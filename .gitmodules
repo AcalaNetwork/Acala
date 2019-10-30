@@ -1,3 +1,3 @@
 [submodule "orml"]
 	path = orml
-	url = git@github.com:laminar-protocol/open-runtime-module-library.git
+	url = https://github.com/laminar-protocol/open-runtime-module-library.git
