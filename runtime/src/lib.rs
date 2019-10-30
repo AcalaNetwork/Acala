@@ -254,6 +254,10 @@ impl oracle::Trait for Runtime {
 	type Event = Event;
 }
 
+impl tokens::Trait for Runtime {
+	type Event = Event;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -271,8 +275,10 @@ construct_runtime!(
 		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
 		OperatorCollective: collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		OperatorMembership: membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
-		Template: template::{Module, Storage, Call, Event<T>},
+
 		Oracle: oracle::{Module, Storage, Call, Event<T>},
+		Tokens: tokens::{Module, Storage, Call, Event<T>},
+		Template: template::{Module, Storage, Call, Event<T>},
 	}
 );
 

@@ -23,7 +23,6 @@ restart: purge run
 
 target/debug/acala: build
 
-GITHOOKS = $(wildcard githooks/*)
 GITHOOKS_SRC = $(wildcard githooks/*)
 GITHOOKS_DEST = $(patsubst githooks/%, .git/hooks/%, $(GITHOOKS_SRC))
 
@@ -35,4 +34,7 @@ GITHOOKS_DEST = $(patsubst githooks/%, .git/hooks/%, $(GITHOOKS_SRC))
 
 githooks: .git/hooks $(GITHOOKS_DEST)
 
-init: toolchain build-wasm
+update:
+	git submodule update --init --recursive
+
+init: toolchain build-wasm update

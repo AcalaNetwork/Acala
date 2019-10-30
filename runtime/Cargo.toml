@@ -31,7 +31,8 @@ offchain-primitives = { package = "substrate-offchain-primitives", git = "https:
 collective = { package = "srml-collective", git = "https://github.com/paritytech/substrate.git", default-features = false }
 membership = { package = "srml-membership", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
-oracle = { package = "module-oracle", path = "../modules/oracle", default-features = false }
+oracle = { package = "orml-oracle", path = "../orml/oracle", default-features = false }
+tokens = { package = "orml-tokens", path = "../orml/tokens", default-features = false }
 template = { package = "module-template", path = "../modules/template", default-features = false }
 
 [build-dependencies]
@@ -67,5 +68,6 @@ std = [
 	"collective/std",
 	"membership/std",
 	"oracle/std",
+	"tokens/std",
 	"template/std",
 ]

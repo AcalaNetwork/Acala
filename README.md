@@ -10,6 +10,12 @@ Install Rust:
 curl https://sh.rustup.rs -sSf | sh
 ```
 
+Make sure you have `submodule.recurse` set to true to make life with submodule easier.
+
+```bash
+git config --global submodule.recurse true
+```
+
 Install required tools and install git hooks:
 
 ```bash
