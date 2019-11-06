@@ -42,3 +42,7 @@ submodule:
 update-orml:
 	cd orml && git checkout master && git pull
 	git add orml
+
+update:
+	cargo update
+	make check

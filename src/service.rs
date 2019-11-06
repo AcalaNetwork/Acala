@@ -1,7 +1,6 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use aura_primitives::sr25519::AuthorityPair as AuraPair;
-use futures::prelude::*;
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use inherents::InherentDataProviders;
 use network::construct_simple_protocol;
@@ -18,7 +17,7 @@ use transaction_pool::{self, txpool::Pool as TransactionPool};
 native_executor_instance!(
 	pub Executor,
 	runtime::api::dispatch,
-     	runtime::native_version,
+	runtime::native_version,
 );
 
 construct_simple_protocol! {
@@ -84,6 +83,11 @@ pub fn new_full<C: Send + Default + 'static>(
 	let name = config.name.clone();
 	let disable_grandpa = config.disable_grandpa;
 
+	// sentry nodes announce themselves as authorities to the network
+	// and should run the same protocols authorities do, but it should
+	// never actively participate in any consensus process.
+	let participates_in_consensus = is_authority && !config.sentry_mode;
+
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
 
 	let (block_import, grandpa_link) = import_setup
@@ -97,7 +101,7 @@ pub fn new_full<C: Send + Default + 'static>(
 		})?
 		.build()?;
 
-	if is_authority {
+	if participates_in_consensus {
 		let proposer = basic_authorship::ProposerFactory {
 			client: service.client(),
 			transaction_pool: service.transaction_pool(),
@@ -118,30 +122,38 @@ pub fn new_full<C: Send + Default + 'static>(
 			service.keystore(),
 		)?;
 
-		let select = aura.select(service.on_exit()).then(|_| Ok(()));
-
 		// the AURA authoring task is considered essential, i.e. if it
 		// fails we take down the service with it.
-		service.spawn_essential_task(select);
+		service.spawn_essential_task(aura);
 	}
+
+	// if the node isn't actively participating in consensus then it doesn't
+	// need a keystore, regardless of which protocol we use below.
+	let keystore = if participates_in_consensus {
+		Some(service.keystore())
+	} else {
+		None
+	};
 
 	let grandpa_config = grandpa::Config {
 		// FIXME #1578 make this available through chainspec
 		gossip_duration: Duration::from_millis(333),
 		justification_period: 512,
 		name: Some(name),
-		keystore: Some(service.keystore()),
+		observer_enabled: true,
+		keystore,
+		is_authority,
 	};
 
 	match (is_authority, disable_grandpa) {
 		(false, false) => {
 			// start the lightweight GRANDPA observer
-			service.spawn_task(Box::new(grandpa::run_grandpa_observer(
+			service.spawn_task(grandpa::run_grandpa_observer(
 				grandpa_config,
 				grandpa_link,
 				service.network(),
 				service.on_exit(),
-			)?));
+			)?);
 		}
 		(true, false) => {
 			// start the full GRANDPA voter

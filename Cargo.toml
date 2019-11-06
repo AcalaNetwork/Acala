@@ -41,6 +41,7 @@ runtime = { package = "acala-runtime", path = "runtime" }
 
 [build-dependencies]
 vergen = "3.0.4"
+build-script-utils = { package = "substrate-build-script-utils", git = "https://github.com/paritytech/substrate.git" }
 
 [workspace]
 members = [ "runtime", "modules/*" ]
