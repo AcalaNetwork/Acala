@@ -145,5 +145,6 @@ fn testnet_genesis(
 		}),
 		collective_Instance1: Some(Default::default()),
 		membership_Instance1: Some(Default::default()),
+		tokens: Some(Default::default()),
 	}
 }

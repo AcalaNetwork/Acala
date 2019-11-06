@@ -256,6 +256,8 @@ impl oracle::Trait for Runtime {
 
 impl tokens::Trait for Runtime {
 	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = u32;
 }
 
 construct_runtime!(
@@ -277,7 +279,7 @@ construct_runtime!(
 		OperatorMembership: membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
 
 		Oracle: oracle::{Module, Storage, Call, Event<T>},
-		Tokens: tokens::{Module, Storage, Call, Event<T>},
+		Tokens: tokens::{Module, Storage, Call, Event<T>, Config<T>},
 		Template: template::{Module, Storage, Call, Event<T>},
 	}
 );

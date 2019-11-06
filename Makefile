@@ -10,6 +10,9 @@ build-wasm: githooks
 check: githooks
 	SKIP_WASM_BUILD= cargo check
 
+check-debug:
+	RUSTFLAGS="-Z external-macro-backtrace" BUILD_DUMMY_WASM_BINARY= cargo +nightly check
+
 check-dummy:
 	BUILD_DUMMY_WASM_BINARY= cargo check
 
@@ -43,6 +46,6 @@ update-orml:
 	cd orml && git checkout master && git pull
 	git add orml
 
-update:
+update: update-orml
 	cargo update
 	make check
