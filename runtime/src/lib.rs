@@ -53,6 +53,9 @@ pub type AccountIndex = u32;
 /// Balance of an account.
 pub type Balance = u128;
 
+/// Signed version of Balance
+pub type Amount = i128;
+
 /// Index of a transaction in the chain.
 pub type Index = u32;
 
@@ -257,6 +260,7 @@ impl oracle::Trait for Runtime {
 impl tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
+	type Amount = Amount;
 	type CurrencyId = u32;
 }
 
