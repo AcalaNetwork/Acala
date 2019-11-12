@@ -2124,6 +2124,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-debits"
+version = "0.0.1"
+dependencies = [
+ "orml-traits 0.0.1",
+ "parity-scale-codec 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sr-io 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "srml-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "srml-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "substrate-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+]
+
+[[package]]
+name = "module-support"
+version = "0.0.1"
+dependencies = [
+ "parity-scale-codec 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sr-io 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "srml-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "srml-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+]
+
+[[package]]
 name = "module-template"
 version = "0.0.1"
 dependencies = [
@@ -2376,6 +2404,7 @@ dependencies = [
  "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "srml-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "srml-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "substrate-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
 ]
 
 [[package]]
