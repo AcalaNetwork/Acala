@@ -13,6 +13,8 @@ system = { package = "srml-system", git = "https://github.com/paritytech/substra
 runtime_io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
+traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+
 [features]
 default = ["std"]
 std = [
@@ -23,4 +25,5 @@ std = [
 	"system/std",
 	"runtime_io/std",
 	"rstd/std",
+	"traits/std",
 ]
