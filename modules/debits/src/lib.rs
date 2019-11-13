@@ -17,6 +17,7 @@ mod mock;
 mod tests;
 
 pub type BalanceOf<T> = <<T as Trait>::Currency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
+pub type AmountOf<T> = <<T as Trait>::Currency as BasicCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
 pub trait Trait: system::Trait {
 	type CurrencyId: FullCodec + Copy + MaybeSerializeDeserialize + Debug;
@@ -24,7 +25,7 @@ pub trait Trait: system::Trait {
 	type DebitBalance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
 	type Convert: Convert<(Self::CurrencyId, BalanceOf<Self>), Self::DebitBalance>
 		+ Convert<(Self::CurrencyId, Self::DebitBalance), BalanceOf<Self>>;
-	type Amount: Signed
+	type DebitAmount: Signed
 		+ TryInto<Self::DebitBalance>
 		+ TryFrom<Self::DebitBalance>
 		+ Parameter
@@ -100,7 +101,7 @@ impl<T: Trait> MultiCurrency<T::AccountId> for Module<T> {
 }
 
 impl<T: Trait> MultiCurrencyExtended<T::AccountId> for Module<T> {
-	type Amount = T::Amount;
+	type Amount = T::DebitAmount;
 
 	fn update_balance(
 		currency_id: Self::CurrencyId,

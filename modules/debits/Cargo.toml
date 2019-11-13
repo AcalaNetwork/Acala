@@ -28,5 +28,5 @@ std = [
 	"system/std",
 	"runtime_io/std",
 	"rstd/std",
-    "traits/std",
+	"traits/std",
 ]

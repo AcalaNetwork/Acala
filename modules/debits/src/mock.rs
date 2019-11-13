@@ -62,7 +62,7 @@ impl Trait for Runtime {
 	type Currency = CurrencyHandler;
 	type DebitBalance = DebitBalance;
 	type Convert = ConvertHandler;
-	type Amount = Amount;
+	type DebitAmount = Amount;
 }
 
 pub type DebitsModule = Module<Runtime>;
@@ -81,23 +81,23 @@ impl BasicCurrency<AccountId> for CurrencyHandler {
 		Self::Balance::default()
 	}
 
-	fn balance(who: &AccountId) -> Self::Balance {
+	fn balance(_who: &AccountId) -> Self::Balance {
 		Self::Balance::default()
 	}
 
-	fn transfer(from: &AccountId, to: &AccountId, amount: Self::Balance) -> result::Result<(), Self::Error> {
+	fn transfer(_from: &AccountId, _to: &AccountId, _amount: Self::Balance) -> result::Result<(), Self::Error> {
 		Ok(())
 	}
 
-	fn deposit(who: &AccountId, amount: Self::Balance) -> result::Result<(), Self::Error> {
+	fn deposit(_who: &AccountId, _amount: Self::Balance) -> result::Result<(), Self::Error> {
 		Ok(())
 	}
 
-	fn withdraw(who: &AccountId, amount: Self::Balance) -> result::Result<(), Self::Error> {
+	fn withdraw(_who: &AccountId, _amount: Self::Balance) -> result::Result<(), Self::Error> {
 		Ok(())
 	}
 
-	fn slash(who: &AccountId, amount: Self::Balance) -> Self::Balance {
+	fn slash(_who: &AccountId, _amount: Self::Balance) -> Self::Balance {
 		Self::Balance::default()
 	}
 }
@@ -105,7 +105,7 @@ impl BasicCurrency<AccountId> for CurrencyHandler {
 impl BasicCurrencyExtended<AccountId> for CurrencyHandler {
 	type Amount = Amount;
 
-	fn update_balance(who: &AccountId, by_amount: Self::Amount) -> result::Result<(), Self::Error> {
+	fn update_balance(_who: &AccountId, _by_amount: Self::Amount) -> result::Result<(), Self::Error> {
 		Ok(())
 	}
 }
@@ -138,7 +138,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> runtime_io::TestExternalities {
-		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
+		let t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		t.into()
 	}
