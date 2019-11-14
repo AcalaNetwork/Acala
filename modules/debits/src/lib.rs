@@ -7,7 +7,7 @@ use rstd::{
 	result,
 };
 use sr_primitives::traits::{Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic};
-use support::{decl_error, decl_module, Parameter};
+use srml_support::{decl_error, decl_module, Parameter};
 use traits::{
 	arithmetic::{self, Signed},
 	BasicCurrency, BasicCurrencyExtended, MultiCurrency, MultiCurrencyExtended,
@@ -17,7 +17,6 @@ mod mock;
 mod tests;
 
 pub type BalanceOf<T> = <<T as Trait>::Currency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
-pub type AmountOf<T> = <<T as Trait>::Currency as BasicCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
 pub trait Trait: system::Trait {
 	type CurrencyId: FullCodec + Copy + MaybeSerializeDeserialize + Debug;

@@ -4,7 +4,7 @@
 
 use primitives::H256;
 use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill};
-use support::{impl_outer_event, impl_outer_origin, parameter_types};
+use srml_support::{impl_outer_event, impl_outer_origin, parameter_types};
 
 use super::*;
 

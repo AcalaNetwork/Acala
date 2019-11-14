@@ -4,7 +4,7 @@
 
 use super::*;
 use mock::{DebitsModule, ExtBuilder, ALICE, BOB, USD};
-use support::assert_ok;
+use srml_support::assert_ok;
 
 #[test]
 fn update_balance_should_work() {
