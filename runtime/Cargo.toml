@@ -43,7 +43,6 @@ default = ["std"]
 no_std = []
 std = [
 	"codec/std",
-	"client/std",
 	"rstd/std",
 	"runtime-io/std",
 	"support/std",
