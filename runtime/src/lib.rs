@@ -255,13 +255,19 @@ impl template::Trait for Runtime {
 
 impl oracle::Trait for Runtime {
 	type Event = Event;
+	type OnNewData = (); // TODO: update this
+	type OperatorProvider = (); // TODO: update this
+	type CombineData = oracle::DefaultCombineData<Runtime>;
+	type Time = Timestamp;
+	type Key = u32; // TODO: update this
+	type Value = Balance;
 }
 
 impl tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
-	type CurrencyId = u32;
+	type CurrencyId = u32; // TODO: update this
 }
 
 construct_runtime!(
