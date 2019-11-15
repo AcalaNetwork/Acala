@@ -1,13 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::FullCodec;
+use paint_support::{decl_error, decl_module, Parameter};
 use rstd::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
 	result,
 };
 use sr_primitives::traits::{Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic};
-use srml_support::{decl_error, decl_module, Parameter};
 use traits::{
 	arithmetic::{self, Signed},
 	BasicCurrency, BasicCurrencyExtended, MultiCurrency, MultiCurrencyExtended,
