@@ -1,6 +1,6 @@
 # acala
 
-A new SRML-based Substrate node, ready for hacking.
+A new paint-based Substrate node, ready for hacking.
 
 # Building
 
