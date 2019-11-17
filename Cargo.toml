@@ -44,5 +44,15 @@ vergen = "3.0.4"
 build-script-utils = { package = "substrate-build-script-utils", git = "https://github.com/paritytech/substrate.git" }
 
 [workspace]
-members = [ "runtime", "modules/*" ]
+members = [
+	"runtime",
+	"modules/*",
+	"orml/oracle",
+	"orml/tokens",
+	"orml/traits",
+	"orml/prices",
+	"orml/utilities",
+	"orml/currencies",
+	"orml/auction",
+]
 exclude = [ "runtime/wasm" ]
