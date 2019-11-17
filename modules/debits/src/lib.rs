@@ -1,13 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::FullCodec;
+use codec::{FullCodec, HasCompact};
+use paint_support::{decl_error, decl_module, Parameter};
 use rstd::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
 	result,
 };
 use sr_primitives::traits::{Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic};
-use srml_support::{decl_error, decl_module, Parameter};
 use traits::{
 	arithmetic::{self, Signed},
 	BasicCurrency, BasicCurrencyExtended, MultiCurrency, MultiCurrencyExtended,
@@ -19,7 +19,7 @@ mod tests;
 pub type BalanceOf<T> = <<T as Trait>::Currency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
 
 pub trait Trait: system::Trait {
-	type CurrencyId: FullCodec + Copy + MaybeSerializeDeserialize + Debug;
+	type CurrencyId: FullCodec + HasCompact + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug;
 	type Currency: BasicCurrencyExtended<Self::AccountId>;
 	type DebitBalance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
 	type Convert: Convert<(Self::CurrencyId, BalanceOf<Self>), Self::DebitBalance>
