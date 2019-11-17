@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use paint_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
 use sr_primitives::{Permill, RuntimeDebug};
-use srml_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
 use traits::{Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult};
 
 mod mock;
@@ -16,10 +16,6 @@ pub struct AuctionItem<AccountId, CurrencyId, Balance, BlockNumber> {
 	amount: Balance,
 	target: Balance,
 	start_time: BlockNumber,
-}
-
-pub trait AuctionManagerHandler<CurrencyId, Balance> {
-	fn on_auction_end(currency_id: CurrencyId, target: Balance, bid: Balance);
 }
 
 pub type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -148,7 +144,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, Auctio
 			};
 
 			// 判断竞价是否有效
-			if new_bid.1 >= minimum_increment_size * std::cmp::max(auction_item.target, current_price)
+			if new_bid.1 - current_price >= minimum_increment_size * std::cmp::max(auction_item.target, current_price)
 				&& T::Currency::balance(T::GetNativeCurrencyId::get(), &(new_bid.0))
 					> std::cmp::min(auction_item.target, new_bid.1)
 			{

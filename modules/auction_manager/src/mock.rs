@@ -2,24 +2,14 @@
 
 #![cfg(test)]
 
+use paint_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
 use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill, Permill};
-use srml_support::{impl_outer_event, impl_outer_origin, parameter_types};
 
 use super::*;
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
-}
-
-mod auction_manager {
-	pub use crate::Event;
-}
-
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		auction_manager<T>,
-	}
 }
 
 // Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
@@ -33,11 +23,11 @@ parameter_types! {
 	pub const MinimumIncrementSize: Permill = Permill::from_percent(5);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetNativeCurrencyId: u32 = 1;
+	pub const GetNativeCurrencyId: CurrencyId = AUSD;
 }
 
 pub type AccountId = u64;
-type BlockNumber = u64;
+pub type BlockNumber = u64;
 pub type AuctionId = u64;
 pub type CurrencyId = u32;
 pub type Balance = u64;
@@ -52,7 +42,7 @@ impl system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = ();
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
@@ -62,7 +52,7 @@ impl system::Trait for Runtime {
 pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = TestEvent;
+	type Event = ();
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
@@ -70,7 +60,7 @@ impl orml_tokens::Trait for Runtime {
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 impl orml_auction::Trait for Runtime {
-	type Event = TestEvent;
+	type Event = ();
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManagerModule;
@@ -78,7 +68,7 @@ impl orml_auction::Trait for Runtime {
 pub type Auction = orml_auction::Module<Runtime>;
 
 impl Trait for Runtime {
-	type Event = TestEvent;
+	type Event = ();
 	type Currency = Tokens;
 	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
@@ -103,7 +93,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			currency_id: vec![AUSD, BTC],
-			endowed_accounts: vec![0],
+			endowed_accounts: vec![ALICE, BOB],
 			initial_balance: 0,
 		}
 	}
