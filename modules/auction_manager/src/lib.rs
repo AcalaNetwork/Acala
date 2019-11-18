@@ -59,6 +59,14 @@ decl_storage! {
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
+
+		fn on_finalize(_now: T::BlockNumber) {
+			let amount = std::cmp::max(Self::bad_debt_pool(), Self::surplus_pool());
+			if amount > 0.into() {
+				<BadDebtPool<T>>::mutate(|debt| *debt -= amount);
+				<SurplusPool<T>>::mutate(|surplus| *surplus -= amount);
+			}
+		}
 	}
 }
 
@@ -87,7 +95,7 @@ impl<T: Trait> Module<T> {
 		while unhandled_amount > 0.into() {
 			let (lot_amount, lot_target) =
 				if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
-					(maximum_auction_size, target * (maximum_auction_size / amount))
+					(maximum_auction_size, target * maximum_auction_size / amount)
 				} else {
 					(unhandled_amount, unhandled_target)
 				};
