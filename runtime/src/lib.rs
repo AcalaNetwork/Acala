@@ -34,7 +34,7 @@ pub use sr_primitives::{Perbill, Permill};
 pub use support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
 
 pub use arml_primitives::CurrencyId;
-pub use currencies::BasicCurrencyAdapter;
+pub use orml_currencies::BasicCurrencyAdapter;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -253,17 +253,17 @@ impl template::Trait for Runtime {
 	type Currency = Balances;
 }
 
-impl oracle::Trait for Runtime {
+impl orml_oracle::Trait for Runtime {
 	type Event = Event;
 	type OnNewData = (); // TODO: update this
 	type OperatorProvider = (); // TODO: update this
-	type CombineData = oracle::DefaultCombineData<Runtime>;
+	type CombineData = orml_oracle::DefaultCombineData<Runtime>;
 	type Time = Timestamp;
 	type Key = u32; // TODO: update this
 	type Value = Balance;
 }
 
-impl tokens::Trait for Runtime {
+impl orml_tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -274,10 +274,10 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
 }
 
-impl currencies::Trait for Runtime {
+impl orml_currencies::Trait for Runtime {
 	type Event = Event;
-	type MultiCurrency = tokens::Module<Runtime>;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, balances::Module<Runtime>, Balance, tokens::Error>;
+	type MultiCurrency = orml_tokens::Module<Runtime>;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, balances::Module<Runtime>, Balance, orml_tokens::Error>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
@@ -299,10 +299,10 @@ construct_runtime!(
 		OperatorCollective: collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		OperatorMembership: membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
 
-		Oracle: oracle::{Module, Storage, Call, Event<T>},
-		Tokens: tokens::{Module, Storage, Call, Event<T>, Config<T>},
+		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Call, Event<T>, Config<T>},
 		Template: template::{Module, Storage, Call, Event<T>},
-		Currencies: currencies::{Module, Call, Event<T>},
+		Currencies: orml_currencies::{Module, Call, Event<T>},
 	}
 );
 

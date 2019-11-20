@@ -35,9 +35,9 @@ block-builder-api = { package = "substrate-block-builder-runtime-api", git = "ht
 sr-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
-oracle = { package = "orml-oracle", path = "../orml/oracle", default-features = false }
-tokens = { package = "orml-tokens", path = "../orml/tokens", default-features = false }
-currencies = { package = "orml-currencies", path = "../orml/currencies", default-features = false }
+orml_oracle = { package = "orml-oracle", path = "../orml/oracle", default-features = false }
+orml_tokens = { package = "orml-tokens", path = "../orml/tokens", default-features = false }
+orml_currencies = { package = "orml-currencies", path = "../orml/currencies", default-features = false }
 template = { package = "module-template", path = "../modules/template", default-features = false }
 arml-primitives = { package = "arml-primitives", path = "../modules/primitives", default-features = false }
 
@@ -76,9 +76,9 @@ std = [
 	"inherents/std",
 	"collective/std",
 	"membership/std",
-	"oracle/std",
-	"tokens/std",
-	"currencies/std",
+	"orml_oracle/std",
+	"orml_tokens/std",
+	"orml_currencies/std",
 	"template/std",
 	"arml-primitives/std",
 ]
