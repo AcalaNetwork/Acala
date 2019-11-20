@@ -2,11 +2,13 @@
 
 use codec::{Decode, Encode};
 use paint_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
-use sr_primitives::{Permill, RuntimeDebug};
+use sr_primitives::{traits::SaturatedConversion, Permill, RuntimeDebug};
 use traits::{Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult};
 
 mod mock;
 mod tests;
+
+pub const U128_MILLION: u128 = 1_000_000;
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
@@ -32,6 +34,7 @@ pub trait Trait: system::Trait {
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
 	type GetNativeCurrencyId: Get<CurrencyIdOf<Self>>;
+	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
 }
 
 decl_event!(
@@ -61,7 +64,7 @@ decl_module! {
 		fn deposit_event() = default;
 
 		fn on_finalize(_now: T::BlockNumber) {
-			let amount = std::cmp::max(Self::bad_debt_pool(), Self::surplus_pool());
+			let amount = std::cmp::min(Self::bad_debt_pool(), Self::surplus_pool());
 			if amount > 0.into() {
 				<BadDebtPool<T>>::mutate(|debt| *debt -= amount);
 				<SurplusPool<T>>::mutate(|surplus| *surplus -= amount);
@@ -82,11 +85,16 @@ impl<T: Trait> Module<T> {
 		<MaximumAuctionSize<T>>::insert(currency_id, size);
 	}
 
+	pub fn increase_surplus(increment: BalanceOf<T>) {
+		<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
+	}
+
 	pub fn new_collateral_auction(
 		who: T::AccountId,
 		currency_id: CurrencyIdOf<T>,
 		amount: BalanceOf<T>,
 		target: BalanceOf<T>,
+		bad_debt: BalanceOf<T>,
 	) {
 		let maximum_auction_size = Self::maximum_auction_size(currency_id);
 		let mut unhandled_amount: BalanceOf<T> = amount;
@@ -124,7 +132,7 @@ impl<T: Trait> Module<T> {
 		}
 
 		<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
-		<BadDebtPool<T>>::mutate(|debt| *debt += target);
+		<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
 	}
 }
 
@@ -152,19 +160,21 @@ impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, Auctio
 			};
 
 			// 判断竞价是否有效
-			if new_bid.1 - current_price >= minimum_increment_size * std::cmp::max(auction_item.target, current_price)
-				&& T::Currency::balance(T::GetNativeCurrencyId::get(), &(new_bid.0))
-					> std::cmp::min(auction_item.target, new_bid.1)
+			if (new_bid.1 - current_price).saturated_into::<u128>()
+				>= u128::from(minimum_increment_size.deconstruct())
+					* std::cmp::max(auction_item.target, current_price).saturated_into::<u128>()
+					/ U128_MILLION && T::Currency::balance(T::GetStableCurrencyId::get(), &(new_bid.0))
+				> std::cmp::min(auction_item.target, new_bid.1)
 			{
 				// 扣除bidder的投标款
 				let payment = std::cmp::min(new_bid.1, auction_item.target);
-				let _ = T::Currency::withdraw(T::GetNativeCurrencyId::get(), &(new_bid.0), payment);
+				let _ = T::Currency::withdraw(T::GetStableCurrencyId::get(), &(new_bid.0), payment);
 				<SurplusPool<T>>::mutate(|surplus| *surplus += payment);
 
 				// 向上一个winner退款
 				if let Some((previous_bidder, previous_price)) = last_bid {
 					let refund = std::cmp::min(previous_price, auction_item.target);
-					let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &(previous_bidder), refund);
+					let _ = T::Currency::deposit(T::GetStableCurrencyId::get(), &(previous_bidder), refund);
 					<SurplusPool<T>>::mutate(|surplus| *surplus -= refund);
 				}
 

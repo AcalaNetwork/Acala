@@ -57,7 +57,7 @@ fn update_position_under_safe_should_not_work() {
 #[test]
 fn update_collateral_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(VaultsModule::update_collaterals(ALICE, X_TOKEN_ID, 1, 1));
+		assert_ok!(VaultsModule::update_collaterals_and_debits(ALICE, X_TOKEN_ID, 1, 1));
 	});
 }
 

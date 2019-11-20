@@ -12,6 +12,9 @@ use traits::{MultiCurrency, MultiCurrencyExtended, PriceProvider};
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 
+pub const U128_BILLION: u128 = 1_000_000_000;
+pub const U128_MILLION: u128 = 1_000_000;
+
 pub type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 pub type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 pub type DebitBalanceOf<T> =
@@ -24,13 +27,13 @@ pub trait Trait: system::Trait + auction_manager::Trait + vaults::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
-	//type CollateralCurrencyIds: Get<static '&[CurrencyIdOf<Self>]>;
-	type StableCurrencyId: Get<CurrencyIdOf<Self>>;
+	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GlobalStabilityFee: Get<Permill>;
 	type DefaultLiquidationRatio: Get<Ratio>;
 	type DefaulDebitExchangeRate: Get<ExchangeRate>;
 	type MinimumDebitValue: Get<BalanceOf<Self>>;
 	type GetNativeCurrencyId: Get<CurrencyIdOf<Self>>;
+	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
 }
 
 decl_event!(
@@ -58,12 +61,32 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		const NativeCurrencyId: CurrencyIdOf<T> = T::GetNativeCurrencyId::get();
+		const StableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
+		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
+		const GlobalStabilityFee: Permill = T::GlobalStabilityFee::get();
 
-		// // TODO: drip stability fee
-		// fn on_finalize(now: T::BlockNumber) {
+		// TODO: drip stability fee
+		fn on_finalize(now: T::BlockNumber) {
+			for currency_id in T::CollateralCurrencyIds {
+				let debit_exchange_rate: u128 = TryInto::<u128>::try_into(Self::debit_exchange_rate(currency_id).unwrap_or(Fixed64::accuracy()).into_inner()).unwrap_or(0);
+				let stability_fee: u128 = Self::stability_fee(currency_id).unwrap_or(Permill::zero()).deconstruct() + T::GlobalStabilityFee.deconstruct();
 
-		// }
+				// update exchange rate
+				let debit_exchange_rate_increment = debit_exchange_rate * stability_fee / U128_MILLION;
+				if debit_exchange_rate_increment > 0 {
+					let new_debit_exchange_rate = Fixed64::from_parts(TryInto::<i64>::try_into(debit_exchange_rate + debit_exchange_rate_increment).unwrap_or(0));
+					<DebitExchangeRate<T>>::insert(currency_id, new_debit_exchange_rate)
+				}
+
+				// stablecoin inflation
+				let total_debit_balance = <vaults::Module<T>>::total_debits(currency_id);
+				let inflation_balance = TryInto::<DebitBalanceOf<T>>::try_into(DebitExchangeRateConvertor::convert((currency_id, total_debit_balance)).saturated_into::<u128>() * debit_exchange_rate_increment / U128_BILLION).unwrap_or(0.into());
+
+				if inflation_balance > 0.into() {
+					<vaults::Module<T>>::increase_surplus(inflation_balance);
+				}
+			}
+		}
 	}
 }
 
@@ -78,15 +101,15 @@ impl<T: Trait> Module<T> {
 
 		let locked_collateral_value: i64 = TryInto::<i64>::try_into(
 			collateral_balance.saturated_into::<u128>()
-				* TryInto::<u128>::try_into(price.into_inner()).unwrap_or(1_000_000_000u128)
-				/ TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(1_000_000_000u128),
+				* TryInto::<u128>::try_into(price.into_inner()).unwrap_or(U128_BILLION)
+				/ TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(U128_BILLION),
 		)
 		.unwrap_or(0);
 
 		let debit_value: u64 = TryInto::<u64>::try_into(
 			debit_balance.saturated_into::<u128>()
-				* TryInto::<u128>::try_into(exchange_rate.into_inner()).unwrap_or(1_000_000_000u128)
-				/ TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(1_000_000_000u128),
+				* TryInto::<u128>::try_into(exchange_rate.into_inner()).unwrap_or(U128_BILLION)
+				/ TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(U128_BILLION),
 		)
 		.unwrap_or(0);
 
@@ -115,6 +138,33 @@ impl<T: Trait> Module<T> {
 
 	// TODO: how to trigger cdp liquidation
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> result::Result<(), Error> {
+		let debit_balance = <vaults::Module<T>>::debits(&who, currency_id);
+		let collateral_balance = <vaults::Module<T>>::collaterals(&who, currency_id);
+
+		// judge the cdp is safe or not
+		let collateral_ratio = T::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance);
+		if let Some(liquidation_ratio) = T::liquidation_ratio(currency_id) {
+			ensure!(collateral_ratio < liquidation_ratio, Error::CdpStillSafe);
+		} else {
+			ensure!(
+				collateral_ratio < T::DefaultLiquidationRatio::get(),
+				Error::CdpStillSafe
+			);
+		}
+
+		// grab collaterals and debits from unsafe cdp
+		let amount = TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::AmountConvertFailed)?;
+		let debit_amount =
+			TryInto::<DebitAmountOf<T>>::try_into(debit_balance).map_err(|_| Error::AmountConvertFailed)?;
+		<vaults::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id, -amount, -debit_amount)?;
+		// create collateral auction
+		let bad_debt = DebitExchangeRateConvertor::convert((currency_id, debit_balance));
+		let mut target = bad_debt;
+		if let Some(penalty_ratio) = Self::liquidation_penalty(currency_id) {
+			target += penalty_ratio * target;
+		}
+		<auction_manager::Module<T>>::new_collateral_auction(who, currency_id, collateral_balance, target, bad_debt);
+
 		Ok(())
 	}
 }
@@ -128,7 +178,7 @@ decl_error! {
 		AmountConvertFailed,
 		BelowRequiredCollateralRatio,
 		BelowLiquidationRatio,
-		CannotLiquidateSafeCdp,
+		CdpStillSafe,
 	}
 }
 

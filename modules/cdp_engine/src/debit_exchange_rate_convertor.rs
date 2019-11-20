@@ -11,9 +11,9 @@ where
 {
 	fn convert(a: (CurrencyIdOf<T>, BalanceOf<T>)) -> DebitBalanceOf<T> {
 		TryInto::<DebitBalanceOf<T>>::try_into(
-			a.1.saturated_into::<u128>() * TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(1_000_000_000u128)
+			a.1.saturated_into::<u128>() * TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(U128_BILLION)
 				/ TryInto::<u128>::try_into(Module::<T>::debit_exchange_rate(a.0).unwrap_or(Fixed64::accuracy()))
-					.unwrap_or(1_000_000_000u128),
+					.unwrap_or(U128_BILLION),
 		)
 		.unwrap_or(0.into())
 	}
@@ -27,8 +27,8 @@ where
 		TryInto::<BalanceOf<T>>::try_into(
 			a.1.saturated_into::<u128>()
 				* TryInto::<u128>::try_into(Module::<T>::debit_exchange_rate(a.0).unwrap_or(Fixed64::accuracy()))
-					.unwrap_or(1_000_000_000u128)
-				/ TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(1_000_000_000u128),
+					.unwrap_or(U128_BILLION)
+				/ TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(U128_BILLION),
 		)
 		.unwrap_or(0.into())
 	}

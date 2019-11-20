@@ -122,7 +122,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	// mutate collaterlas and debits, don't check position safe and don't mutate stable coin
-	pub fn update_collaterals(
+	pub fn update_collaterals_and_debits(
 		who: T::AccountId,
 		currency_id: T::CurrencyId,
 		collaterals: AmountOf<T>,

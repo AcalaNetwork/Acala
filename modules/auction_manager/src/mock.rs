@@ -23,7 +23,8 @@ parameter_types! {
 	pub const MinimumIncrementSize: Permill = Permill::from_percent(5);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetNativeCurrencyId: CurrencyId = AUSD;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 
 pub type AccountId = u64;
@@ -75,6 +76,7 @@ impl Trait for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type GetStableCurrencyId = GetStableCurrencyId;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 
@@ -82,6 +84,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
+pub const ACA: CurrencyId = 3;
 
 pub struct ExtBuilder {
 	currency_id: Vec<CurrencyId>,
