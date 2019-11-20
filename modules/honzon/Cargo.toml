@@ -1,0 +1,32 @@
+[package]
+name = "module-honzon"
+version = "0.0.1"
+authors = ["Acala Developers"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0", optional = true }
+codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false }
+sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+plette-support = { package = "plette-support", git = "https://github.com/paritytech/substrate.git", default-features = false }
+plette-system = { package = "plette-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
+runtime_io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
+rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
+orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+
+cdp-engine = { package = "module-cdp-engine", path = "../cdp_engine", default-features = false }
+vaults = { package = "module-vaults", path = "../vaults", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"serde",
+	"codec/std",
+	"sr-primitives/std",
+	"plette-support/std",
+	"plette-system/std",
+	"runtime_io/std",
+	"rstd/std",
+	"cdp-engine/std",
+	"vaults/std",
+]
