@@ -33,6 +33,9 @@ pub use sr_primitives::BuildStorage;
 pub use sr_primitives::{Perbill, Permill};
 pub use support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
 
+pub use arml_primitives::CurrencyId;
+pub use currencies::BasicCurrencyAdapter;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -264,7 +267,18 @@ impl tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
-	type CurrencyId = u32; // TODO: update this
+	type CurrencyId = CurrencyId;
+}
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
+}
+
+impl currencies::Trait for Runtime {
+	type Event = Event;
+	type MultiCurrency = tokens::Module<Runtime>;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, balances::Module<Runtime>, Balance, tokens::Error>;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
 construct_runtime!(
@@ -288,6 +302,7 @@ construct_runtime!(
 		Oracle: oracle::{Module, Storage, Call, Event<T>},
 		Tokens: tokens::{Module, Storage, Call, Event<T>, Config<T>},
 		Template: template::{Module, Storage, Call, Event<T>},
+		Currencies: currencies::{Module, Call, Event<T>},
 	}
 );
 

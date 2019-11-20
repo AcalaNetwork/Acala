@@ -37,7 +37,9 @@ inherents = { package = "substrate-inherents", git = "https://github.com/parityt
 
 oracle = { package = "orml-oracle", path = "../orml/oracle", default-features = false }
 tokens = { package = "orml-tokens", path = "../orml/tokens", default-features = false }
+currencies = { package = "orml-currencies", path = "../orml/currencies", default-features = false }
 template = { package = "module-template", path = "../modules/template", default-features = false }
+arml-primitives = { package = "arml-primitives", path = "../modules/primitives", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
@@ -76,5 +78,7 @@ std = [
 	"membership/std",
 	"oracle/std",
 	"tokens/std",
+	"currencies/std",
 	"template/std",
+	"arml-primitives/std",
 ]
