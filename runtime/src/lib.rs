@@ -24,7 +24,7 @@ use sr_primitives::{
 use version::NativeVersion;
 use version::RuntimeVersion;
 
-use paint_aura_primitives::sr25519::AuthorityId as AuraId;
+use aura_primitives::sr25519::AuthorityId as AuraId;
 use paint_grandpa::fg_primitives;
 use paint_grandpa::AuthorityList as GrandpaAuthorityList;
 
@@ -34,7 +34,7 @@ pub use paint_support::{construct_runtime, parameter_types, traits::Randomness, 
 pub use sr_primitives::BuildStorage;
 pub use sr_primitives::{Perbill, Permill};
 
-pub use arml_primitives::CurrencyId;
+pub use module_primitives::CurrencyId;
 pub use orml_currencies::BasicCurrencyAdapter;
 
 /// An index to a block.
@@ -393,7 +393,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl paint_aura_primitives::AuraApi<Block, AuraId> for Runtime {
+	impl aura_primitives::AuraApi<Block, AuraId> for Runtime {
 		fn slot_duration() -> u64 {
 			Aura::slot_duration()
 		}

@@ -1,5 +1,5 @@
 [package]
-name = "arml-primitives"
+name = "module-primitives"
 version = "0.0.1"
 authors = ["Acala Developers"]
 edition = "2018"

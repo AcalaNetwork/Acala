@@ -45,7 +45,7 @@ dependencies = [
 name = "acala-runtime"
 version = "0.0.1"
 dependencies = [
- "arml-primitives 0.0.1",
+ "module-primitives 0.0.1",
  "module-template 0.0.1",
  "orml-currencies 0.0.1",
  "orml-oracle 0.0.1",
@@ -169,16 +169,6 @@ dependencies = [
 name = "arc-swap"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "arml-primitives"
-version = "0.0.1"
-dependencies = [
- "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
- "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
- "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
-]
 
 [[package]]
 name = "arrayref"
@@ -2157,6 +2147,16 @@ dependencies = [
  "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "substrate-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+]
+
+[[package]]
+name = "module-primitives"
+version = "0.0.1"
+dependencies = [
+ "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
 ]
 
 [[package]]
