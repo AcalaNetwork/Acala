@@ -3,7 +3,7 @@
 use sr_primitives::Fixed64;
 
 pub type Price = Fixed64;
-pub type ExchangeRage = Fixed64;
+pub type ExchangeRate = Fixed64;
 pub type Ratio = Fixed64;
 
 pub trait RiskManager<AccountId, CurrencyId, Amount, DebitAmount> {

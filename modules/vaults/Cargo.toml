@@ -29,7 +29,6 @@ std = [
 	"serde",
 	"codec/std",
 	"sr-primitives/std",
-	"su-primitives/std",
 	"paint-support/std",
 	"system/std",
 	"runtime_io/std",
