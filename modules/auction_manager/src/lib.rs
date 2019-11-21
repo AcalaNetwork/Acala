@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use paint_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
+use palette_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
 use sr_primitives::{traits::SaturatedConversion, Permill, RuntimeDebug};
-use traits::{Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult};
+use orml_traits::{Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult};
 
 mod mock;
 mod tests;

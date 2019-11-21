@@ -4,7 +4,7 @@
 
 use super::*;
 use mock::{ExtBuilder, VaultsModule, ALICE, STABLE_COIN_ID, X_TOKEN_ID, Y_TOKEN_ID};
-use paint_support::{assert_noop, assert_ok};
+use palette_support::{assert_noop, assert_ok};
 
 #[test]
 fn update_position_should_work() {

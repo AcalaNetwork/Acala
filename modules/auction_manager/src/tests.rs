@@ -4,7 +4,7 @@
 
 use super::*;
 use mock::{Auction, AuctionManagerModule, ExtBuilder, Tokens, ALICE, AUSD, BOB, BTC};
-use paint_support::assert_ok;
+use palette_support::assert_ok;
 
 #[test]
 fn set_maximum_auction_size_work() {

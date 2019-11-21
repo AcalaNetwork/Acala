@@ -1,13 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use paint_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
-use rstd::{
-	convert::{TryFrom, TryInto},
-	marker, result,
-};
+use palette_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use rstd::{ convert::{TryFrom, TryInto}, marker, result};
 use sr_primitives::{traits::SaturatedConversion, Fixed64, Permill, RuntimeDebug};
 use support::{ExchangeRate, Price, Ratio, RiskManager};
-use traits::{MultiCurrency, MultiCurrencyExtended, PriceProvider};
+use orml_traits::{MultiCurrency, MultiCurrencyExtended, PriceProvider};
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
@@ -81,7 +78,7 @@ decl_module! {
 
 				// stablecoin inflation
 				let total_debit_balance = <vaults::Module<T>>::total_debits(currency_id);
-				let inflation_balance = TryInto::<DebitBalanceOf<T>>::try_into(DebitExchangeRateConvertor::convert((currency_id, total_debit_balance)).saturated_into::<u128>() * debit_exchange_rate_increment / U128_BILLION).unwrap_or(0.into());
+				// let inflation_balance = TryInto::<DebitBalanceOf<T>>::try_into(DebitExchangeRateConvertor::<T>::convert((currency_id, total_debit_balance)).saturated_into::<u128>() * debit_exchange_rate_increment / U128_BILLION).unwrap_or(0.into());
 
 				if inflation_balance > 0.into() {
 					<auction_manager::Module<T>>::increase_surplus(inflation_balance);
@@ -120,7 +117,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn exceed_debit_value_cap(currency_id: CurrencyIdOf<T>, debit_balance: DebitBalanceOf<T>) -> bool {
 		let hard_cap = Self::maximum_total_debit_value(currency_id);
-		let issue = DebitExchangeRateConvertor::convert((currency_id, debit_balance));
+		// let issue = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
 		issue > hard_cap
 	}
 
@@ -164,7 +161,7 @@ impl<T: Trait> Module<T> {
 		<vaults::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id, -amount, -debit_amount)
 			.map_err(|_| Error::AmountConvertFailed)?;
 		// create collateral auction
-		let bad_debt = DebitExchangeRateConvertor::convert((currency_id, debit_balance));
+		// let bad_debt = DebitExchangeRateConvertor::convert((currency_id, debit_balance));
 		let mut target = bad_debt;
 		if let Some(penalty_ratio) = Self::liquidation_penalty(currency_id) {
 			target += penalty_ratio * target;
