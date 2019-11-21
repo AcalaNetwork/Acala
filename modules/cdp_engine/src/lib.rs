@@ -3,7 +3,7 @@
 use paint_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use rstd::{
 	convert::{TryFrom, TryInto},
-	result,
+	marker, result,
 };
 use sr_primitives::{traits::SaturatedConversion, Fixed64, Permill, RuntimeDebug};
 use support::{ExchangeRate, Price, Ratio, RiskManager};
@@ -68,8 +68,8 @@ decl_module! {
 		// TODO: drip stability fee
 		fn on_finalize(now: T::BlockNumber) {
 			for currency_id in T::CollateralCurrencyIds {
-				let debit_exchange_rate: u128 = TryInto::<u128>::try_into(Self::debit_exchange_rate(currency_id).unwrap_or(Fixed64::accuracy()).into_inner()).unwrap_or(0);
-				let stability_fee: u128 = Self::stability_fee(currency_id).unwrap_or(Permill::zero()).deconstruct() + T::GlobalStabilityFee.deconstruct();
+				let debit_exchange_rate: u128 = TryInto::<u128>::try_into(Self::debit_exchange_rate(currency_id).unwrap_or(Fixed64::from_natural(1)).into_inner()).unwrap_or(0);
+				let stability_fee: u128 = u128::from(Self::stability_fee(currency_id).unwrap_or(Permill::zero()).deconstruct()) + u128::from(T::GlobalStabilityFee.deconstruct());
 
 				// update exchange rate
 				let debit_exchange_rate_increment = debit_exchange_rate * stability_fee / U128_MILLION;
@@ -156,7 +156,8 @@ impl<T: Trait> Module<T> {
 		let amount = TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::AmountConvertFailed)?;
 		let debit_amount =
 			TryInto::<DebitAmountOf<T>>::try_into(debit_balance).map_err(|_| Error::AmountConvertFailed)?;
-		<vaults::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id, -amount, -debit_amount)?;
+		<vaults::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id.into(), -amount, -debit_amount)
+			.map_err(|_| Error::AmountConvertFailed.into)?;
 		// create collateral auction
 		let bad_debt = DebitExchangeRateConvertor::convert((currency_id, debit_balance));
 		let mut target = bad_debt;
