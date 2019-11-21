@@ -18,15 +18,13 @@ mod tests;
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-	type CurrencyId: From<u8> + Into<CurrencyIdOf<Self>> + Into<DebitCurrencyIdOf<Self>> + Parameter + Copy;
 	type Price: FullCodec + SimpleArithmetic + Member + Into<u64> + From<Self::Balance>;
-	type Balance: From<BalanceOf<Self>> + From<DebitBalanceOf<Self>> + Into<Self::Price> + Zero;
 
-	type Convert: Convert<(Self::CurrencyId, DebitBalanceOf<Self>), BalanceOf<Self>>;
+	type Convert: Convert<(CurrencyIdOf<Self>, DebitBalanceOf<Self>), BalanceOf<Self>>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
-	type DebitCurrency: MultiCurrencyExtended<Self::AccountId>;
-	type PriceSource: PriceProvider<Self::CurrencyId, Self::Price>;
-	type RiskManager: RiskManager<Self::AccountId, Self::CurrencyId, AmountOf<Self>, DebitAmountOf<Self>>;
+	type DebitCurrency: MultiCurrencyExtended<Self::AccountId, Currency = CurrencyIdOf<Self>>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Self::Price>;
+	type RiskManager: RiskManager<Self::AccountId, CurrencyIdOf<Self>, AmountOf<Self>, DebitAmountOf<Self>>;
 }
 
 type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
@@ -40,10 +38,10 @@ type DebitAmountOf<T> = <<T as Trait>::DebitCurrency as MultiCurrencyExtended<<T
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Vaults {
-		pub Debits get(fn debits): double_map T::AccountId, blake2_256(T::CurrencyId) => DebitBalanceOf<T>;
-		pub Collaterals get(fn collaterals): double_map T::AccountId, blake2_256(T::CurrencyId) => BalanceOf<T>;
-		pub TotalDebits get(fn total_debits): map T::CurrencyId => DebitBalanceOf<T>;
-		pub TotalCollaterals get(fn total_collaterals): map T::CurrencyId => BalanceOf<T>;
+		pub Debits get(fn debits): double_map T::AccountId, blake2_256(CurrencyIdOf<T>) => DebitBalanceOf<T>;
+		pub Collaterals get(fn collaterals): double_map T::AccountId, blake2_256(CurrencyIdOf<T>) => BalanceOf<T>;
+		pub TotalDebits get(fn total_debits): map CurrencyIdOf<T> => DebitBalanceOf<T>;
+		pub TotalCollaterals get(fn total_collaterals): map CurrencyIdOf<T> => BalanceOf<T>;
 	}
 }
 
@@ -83,7 +81,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn collateral_ratio(who: T::AccountId, currency_id: T::CurrencyId) -> Option<Fixed64> {
+	pub fn collateral_ratio(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> Option<Fixed64> {
 		// ensure debit and collateral exists
 		if (true, true)
 			!= (
@@ -94,11 +92,11 @@ impl<T: Trait> Module<T> {
 		}
 
 		// get balance of collateral and debits
-		let collateral_balance: T::Balance = Self::collaterals(&who, currency_id).into();
-		let debit_balance: DebitBalanceOf<T> = Self::debits(&who, currency_id);
+		let collateral_balance = Self::collaterals(&who, currency_id).into();
+		let debit_balance = Self::debits(&who, currency_id);
 
 		// get stable coin amount
-		let stable_balance: T::Balance = T::Convert::convert((currency_id, debit_balance)).into();
+		let stable_balance = T::Convert::convert((currency_id, debit_balance)).into();
 
 		// ensure stable coin balance is not zero
 		if stable_balance.is_zero() {
@@ -124,7 +122,7 @@ impl<T: Trait> Module<T> {
 	// mutate collaterlas and debits, don't check position safe and don't mutate stable coin
 	pub fn update_collaterals_and_debits(
 		who: T::AccountId,
-		currency_id: T::CurrencyId,
+		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: DebitAmountOf<T>,
 	) -> result::Result<(), Error> {
@@ -141,7 +139,7 @@ impl<T: Trait> Module<T> {
 	// mulate collaterals and debits and then mulate stable coin
 	pub fn update_position(
 		who: T::AccountId,
-		currency_id: T::CurrencyId,
+		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: DebitAmountOf<T>,
 	) -> result::Result<(), Error> {
@@ -169,7 +167,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	// transfer vault
-	pub fn transfer(from: T::AccountId, to: T::AccountId, currency_id: T::CurrencyId) -> result::Result<(), Error> {
+	pub fn transfer(from: T::AccountId, to: T::AccountId, currency_id: CurrencyIdOf<T>) -> result::Result<(), Error> {
 		// get `from` position data
 		let collateral: BalanceOf<T> = Self::collaterals(&from, currency_id);
 		let debit: DebitBalanceOf<T> = Self::debits(&from, currency_id);
@@ -202,7 +200,7 @@ impl<T: Trait> Module<T> {
 	// ensure sum and sub will success when update
 	fn check_add_and_sub(
 		who: &T::AccountId,
-		currency_id: T::CurrencyId,
+		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: DebitAmountOf<T>,
 	) -> result::Result<(), Error> {
@@ -267,7 +265,7 @@ impl<T: Trait> Module<T> {
 
 	fn update_collateral_and_debit(
 		who: &T::AccountId,
-		currency_id: T::CurrencyId,
+		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: DebitAmountOf<T>,
 	) -> result::Result<(), Error> {

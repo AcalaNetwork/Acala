@@ -15,7 +15,7 @@ sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-f
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
-primitives = { pacakge = "module-primitives", path = "../primitives", default-features = false }
+primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 debits = { package = "module-debits", path = "../debits", default-features = false }
 
@@ -36,4 +36,5 @@ std = [
 	"orml-traits/std",
 	"orml-tokens/std",
 	"debits/std",
+	"primitives/std",
 ]

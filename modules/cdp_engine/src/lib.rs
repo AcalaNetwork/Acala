@@ -19,7 +19,8 @@ pub type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::T
 pub type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 pub type DebitBalanceOf<T> =
 	<<T as vaults::Trait>::DebitCurrency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-pub type AmountOf<T> = <<T as vaults::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
+pub type AmountOf<T> =
+	<<T as vaults::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 pub type DebitAmountOf<T> =
 	<<T as vaults::Trait>::DebitCurrency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
@@ -96,7 +97,8 @@ impl<T: Trait> Module<T> {
 		collateral_balance: BalanceOf<T>,
 		debit_balance: DebitBalanceOf<T>,
 	) -> Ratio {
-		let price = T::PriceSource::get_price(T::GetNativeCurrencyId::get(), currency_id).unwrap_or(Fixed64::from_parts(0));
+		let price =
+			T::PriceSource::get_price(T::GetNativeCurrencyId::get(), currency_id).unwrap_or(Fixed64::from_parts(0));
 		let exchange_rate = Self::debit_exchange_rate(currency_id).unwrap_or(Fixed64::from_parts(0));
 
 		let locked_collateral_value: i64 = TryInto::<i64>::try_into(
@@ -133,7 +135,8 @@ impl<T: Trait> Module<T> {
 		collateral_adjustment: AmountOf<T>,
 		debit_adjustment: DebitAmountOf<T>,
 	) -> result::Result<(), Error> {
-		<vaults::Module<T>>::update_position(who, currency_id, collateral_adjustment, debit_adjustment).map_err(|_| Error::AmountConvertFailed)?;
+		<vaults::Module<T>>::update_position(who, currency_id, collateral_adjustment, debit_adjustment)
+			.map_err(|_| Error::AmountConvertFailed)?;
 
 		Ok(())
 	}
