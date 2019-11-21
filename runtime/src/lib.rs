@@ -25,11 +25,11 @@ use version::NativeVersion;
 use version::RuntimeVersion;
 
 use aura_primitives::sr25519::AuthorityId as AuraId;
-use paint_grandpa::fg_primitives;
-use paint_grandpa::AuthorityList as GrandpaAuthorityList;
+use pallet_grandpa::fg_primitives;
+use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
 
 // A few exports that help ease life for downstream crates.
-pub use paint_support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
+pub use palette_support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
 #[cfg(any(feature = "std", test))]
 pub use sr_primitives::BuildStorage;
 pub use sr_primitives::{Perbill, Permill};
@@ -126,7 +126,7 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 }
 
-// FIXME: `paint-` prefix should be used for all paint modules, but currently `paint_system`
+// FIXME: `pallet/palette-` prefix should be used for all pallet modules, but currently `palette_system`
 // would cause compiling error in `construct_runtime!` https://github.com/paritytech/substrate/issues/3295
 impl system::Trait for Runtime {
 	/// The identifier used to distinguish between accounts.
@@ -161,20 +161,20 @@ impl system::Trait for Runtime {
 	type Version = Version;
 }
 
-impl paint_aura::Trait for Runtime {
+impl pallet_aura::Trait for Runtime {
 	type AuthorityId = AuraId;
 }
 
-impl paint_grandpa::Trait for Runtime {
+impl pallet_grandpa::Trait for Runtime {
 	type Event = Event;
 }
 
-impl paint_indices::Trait for Runtime {
+impl pallet_indices::Trait for Runtime {
 	/// The type for recording indexing into the account enumeration. If this ever overflows, there
 	/// will be problems!
 	type AccountIndex = AccountIndex;
 	/// Use the standard means of resolving an index hint from an id.
-	type ResolveHint = paint_indices::SimpleResolveHint<Self::AccountId, Self::AccountIndex>;
+	type ResolveHint = pallet_indices::SimpleResolveHint<Self::AccountId, Self::AccountIndex>;
 	/// Determine whether an account is dead.
 	type IsDeadAccount = Balances;
 	/// The ubiquitous event type.
@@ -185,7 +185,7 @@ parameter_types! {
 	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
 }
 
-impl paint_timestamp::Trait for Runtime {
+impl pallet_timestamp::Trait for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
 	type OnTimestampSet = Aura;
@@ -198,7 +198,7 @@ parameter_types! {
 	pub const CreationFee: u128 = 0;
 }
 
-impl paint_balances::Trait for Runtime {
+impl pallet_balances::Trait for Runtime {
 	/// The type for recording an account's balance.
 	type Balance = Balance;
 	/// What to do if an account's free balance gets zeroed.
@@ -219,8 +219,8 @@ parameter_types! {
 	pub const TransactionByteFee: Balance = 1;
 }
 
-impl paint_transaction_payment::Trait for Runtime {
-	type Currency = paint_balances::Module<Runtime>;
+impl pallet_transaction_payment::Trait for Runtime {
+	type Currency = pallet_balances::Module<Runtime>;
 	type OnTransactionPayment = ();
 	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
@@ -228,25 +228,25 @@ impl paint_transaction_payment::Trait for Runtime {
 	type FeeMultiplierUpdate = ();
 }
 
-impl paint_sudo::Trait for Runtime {
+impl pallet_sudo::Trait for Runtime {
 	type Event = Event;
 	type Proposal = Call;
 }
 
-type OperatorCollectiveInstance = paint_collective::Instance1;
-impl paint_collective::Trait<OperatorCollectiveInstance> for Runtime {
+type OperatorCollectiveInstance = pallet_collective::Instance1;
+impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
 }
 
-type OperatorMembershipInstance = paint_membership::Instance1;
-impl paint_membership::Trait<OperatorMembershipInstance> for Runtime {
+type OperatorMembershipInstance = pallet_membership::Instance1;
+impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type Event = Event;
-	type AddOrigin = paint_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
-	type RemoveOrigin = paint_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
-	type SwapOrigin = paint_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
-	type ResetOrigin = paint_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
 	type MembershipInitialized = OperatorCollective;
 	type MembershipChanged = OperatorCollective;
 }
@@ -280,7 +280,7 @@ parameter_types! {
 impl orml_currencies::Trait for Runtime {
 	type Event = Event;
 	type MultiCurrency = orml_tokens::Module<Runtime>;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, paint_balances::Module<Runtime>, Balance, orml_tokens::Error>;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance, orml_tokens::Error>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
@@ -291,16 +291,16 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: system::{Module, Call, Storage, Config, Event},
-		Timestamp: paint_timestamp::{Module, Call, Storage, Inherent},
-		Aura: paint_aura::{Module, Config<T>, Inherent(Timestamp)},
-		Grandpa: paint_grandpa::{Module, Call, Storage, Config, Event},
-		Indices: paint_indices::{default, Config<T>},
-		Balances: paint_balances,
-		TransactionPayment: paint_transaction_payment::{Module, Storage},
-		Sudo: paint_sudo,
-		RandomnessCollectiveFlip: paint_randomness_collective_flip::{Module, Call, Storage},
-		OperatorCollective: paint_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		OperatorMembership: paint_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+		Aura: pallet_aura::{Module, Config<T>, Inherent(Timestamp)},
+		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
+		Indices: pallet_indices::{default, Config<T>},
+		Balances: pallet_balances,
+		TransactionPayment: pallet_transaction_payment::{Module, Storage},
+		Sudo: pallet_sudo,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
+		OperatorCollective: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		OperatorMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
 
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Call, Event<T>, Config<T>},
@@ -326,14 +326,14 @@ pub type SignedExtra = (
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
 	system::CheckWeight<Runtime>,
-	paint_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = paint_executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
+pub type Executive = palette_executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
 
 impl_runtime_apis! {
 	impl sr_api::Core<Block> for Runtime {

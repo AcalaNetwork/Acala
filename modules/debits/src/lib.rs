@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{FullCodec, HasCompact};
-use paint_support::{decl_error, decl_module, Parameter};
+use palette_support::{decl_error, decl_module, Parameter};
 use rstd::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
