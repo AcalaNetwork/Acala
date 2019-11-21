@@ -1,8 +1,61 @@
-# acala
+<!-- TOC -->
 
-A new paint-based Substrate node, ready for hacking.
+- [1. Introduction](#1-introduction)
+- [2. Overview](#2-overview)
+  - [2.1. aUSD and the Honzon stablecoin protocol](#21-ausd-and-the-honzon-stablecoin-protocol)
+  - [2.2. Acala Network Economic Model](#22-acala-network-economic-model)
+- [3. Building](#3-building)
+- [4. Run](#4-run)
+- [5. Development](#5-development)
 
-# Building
+<!-- /TOC -->
+
+# 1. Introduction
+This project is initiated and facilitated by the Acala Foundation. Acala Foundation nurtures and stewards applications in the fields of decentralized finance protocols particularly those that can serve as open finance infrastructures such as stable currency and staking liquidity. The Acala Foundation is founded by [Laminar](https://laminar.one/) and [Polkawallet](https://polkawallet.io/) both of whom are participants and contributors to the Polkadot ecosystem. The Acala Foundation aims to broaden its membership and industry participants as we progress.
+
+# 2. Overview
+The significance of cross-chain communication to the blockchain is like that of the internet to the intranet. Polkadot empowers a network of public, consortium and private blockchains, and enables true interoperability, economic and transactional scalability. A cross-chain stablecoin system will:
+1. create a sound, stable currency for low cost, borderless value transfer for all chains in the network
+2. enable business lending with predictable risk
+3. serve as a building block for more open finance services
+
+The Acala Dollar stablecoin (ticker: aUSD) is a multi-collateral-backed cryptocurrency, whose value is stable against US Dollar (aka. 1:1 aUSD to USD soft peg). It is completely decentralized, can use assets from blockchains connected to the Polkadot network including Ethereum and Bitcoin as collaterals, and can be used by any chains (or digital jurisdictions) within the Polkadot network and applications on those chains.
+
+By this nature, it is essential that the Acala Network eventually become community-owned with an economic model that can sustain its development and participation in the Polkadot network, as well as ensure its stability and security. The following section will provide a high-level overview of the following topics:
+- aUSD and the Honzon stablecoin protocol
+- the economic model and initial parachain offering
+
+## 2.1. aUSD and the Honzon stablecoin protocol
+Every aUSD is backed in excess by a crypto asset, the mechanism of which is known as an over-collateralized debt position (or CDP). This together with a set of incentives, supply & demand balancing, and risk management mechanisms, as the core components of the Honzon stablecoin protocol on the Acala Network, ensures the stability of the aUSD. The CDP mechanism design is inspired by the first decentralized stablecoin project MakerDAO, which has become the DeFi building block in the Ethereum ecosystem. Besides, the Honzon protocol enables many unique features - native multi-asset support, cross-chain stablecoin capability, automatic liquidation to increase responsiveness to risk, and pluggable oracle and auction house to improve modularity, just to name a few.
+
+The Honzon protocol contains the following components
+- Multi-Currency
+- Collateral Adapter
+- Oracle and Prices
+- Auction and Auction Manager
+- CDP and CDP Engine
+- Emergency shutdown
+- Governance
+- Honzon as an interface to other components
+
+Note: This section is still work in progress, we will update more information as we progress.
+
+## 2.2. Acala Network Economic Model
+The Acala Network Token (ACA) has the following utilities, and the value of ACA will accrue with the increased usage of the network and revenue from stability fees and liquidation penalties
+1. As Network Utility Token: to pay for network fees and stability fees
+2. As Governance Token: to vote for/against risk parameters and network change proposals
+3. As Economic Capital: in case of liquidation without sufficient collaterals
+
+To enable cross-chain functionality, the Acala Network will connect to the Polkadot in one of the three ways: 
+1. as parathread - pay-as-you-go connection to Polkadot
+2. as parachain - permanent connection for a given period
+3. as an independent chain with a bridge back to Polkadot
+
+Becoming a parachain would be an ideal option to bootstrap the Acala Network, and maximize its benefits and reach to other chains and applications on the Polkadot network. To secure a parachain slot, the Acala Network will require supportive DOT holders to lock their DOTs to bid for a slot - a process known as the Initial Parachain Offering (IPO). ACAs will be offered as a reward for those who participated in the IPO, also as compensation for the potential lost yield of DOT (for staking).
+
+Note: This section is still work in progress, we will update more information as we progress. Refer to the [token economy working paper](https://github.com/AcalaNetwork/Acala-white-paper) for more details.
+
+# 3. Building
 
 Install Rust:
 
@@ -28,7 +81,7 @@ Build all native code:
 make build
 ```
 
-# Run
+# 4. Run
 
 You can start a development chain with:
 
@@ -36,7 +89,7 @@ You can start a development chain with:
 make run
 ```
 
-# Development
+# 5. Development
 
 To type check:
 
@@ -62,5 +115,4 @@ Update ORML
 make update
 ```
 
-
-__Note:__ All build command from Makefile are designed for local development purpose and hence have `SKIP_WASM_BUILD` enabled to speed up build time and use `--execution native` to only run use native execution mode.
+__Note:__ All build command from Makefile are designed for local development purposes and hence have `SKIP_WASM_BUILD` enabled to speed up build time and use `--execution native` to only run use native execution mode.

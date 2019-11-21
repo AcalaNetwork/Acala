@@ -149,8 +149,6 @@ impl Trait for Runtime {
 	type RiskManager = MockRiskManager;
 
 	type Price = Price;
-	type CurrencyId = CurrencyId;
-	type Balance = Balance;
 }
 
 pub type VaultsModule = Module<Runtime>;

@@ -18,17 +18,16 @@ mod tests;
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-	type Price: FullCodec + SimpleArithmetic + Member + Into<u64> + From<Self::Balance>;
+	type Price: FullCodec + SimpleArithmetic + Member + Into<u64>;
 
 	type Convert: Convert<(CurrencyIdOf<Self>, DebitBalanceOf<Self>), BalanceOf<Self>>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
-	type DebitCurrency: MultiCurrencyExtended<Self::AccountId, Currency = CurrencyIdOf<Self>>;
+	type DebitCurrency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyIdOf<Self>>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Self::Price>;
 	type RiskManager: RiskManager<Self::AccountId, CurrencyIdOf<Self>, AmountOf<Self>, DebitAmountOf<Self>>;
 }
 
 type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type DebitCurrencyIdOf<T> = <<T as Trait>::DebitCurrency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 
 type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type DebitBalanceOf<T> = <<T as Trait>::DebitCurrency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -48,7 +47,7 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
-		<T as Trait>::CurrencyId,
+		CurrencyId = CurrencyIdOf<T>,
 		DebitAmount = DebitAmountOf<T>,
 		Amount = AmountOf<T>,
 	{
@@ -92,11 +91,11 @@ impl<T: Trait> Module<T> {
 		}
 
 		// get balance of collateral and debits
-		let collateral_balance = Self::collaterals(&who, currency_id).into();
+		let collateral_balance = Self::collaterals(&who, currency_id);
 		let debit_balance = Self::debits(&who, currency_id);
 
 		// get stable coin amount
-		let stable_balance = T::Convert::convert((currency_id, debit_balance)).into();
+		let stable_balance = T::Convert::convert((currency_id, debit_balance));
 
 		// ensure stable coin balance is not zero
 		if stable_balance.is_zero() {
@@ -110,11 +109,12 @@ impl<T: Trait> Module<T> {
 		let ausd_currency_id = CURRENCY_ID::AUSD as u8;
 
 		// get prices and calc ratio of collateral
-		if let Some(price) = T::PriceSource::get_price(ausd_currency_id.into(), currency_id) {
+		//if let Some(price) = T::PriceSource::get_price(ausd_currency_id.into(), currency_id) {
 			// TODO: fix calculate
-			let result: T::Price = stable_balance.into() / (price * Into::<T::Price>::into(collateral_balance));
-			return Some(Fixed64::from_rational(1i64, result.into()));
-		}
+			// let result: T::Price = stable_balance.into() / (price * Into::<T::Price>::into(collateral_balance));
+			//return Some(Fixed64::from_rational(1i64, 1u64);
+		//}
+
 
 		None
 	}
@@ -151,11 +151,11 @@ impl<T: Trait> Module<T> {
 			.map_err(|_| Error::PositionWillUnsafe)?;
 
 		// update collateral asset
-		T::Currency::update_balance(Into::<CurrencyIdOf<T>>::into(currency_id), &who, -collaterals)
+		T::Currency::update_balance(currency_id, &who, -collaterals)
 			.map_err(|_| Error::UpdateCollateralFailed)?;
 
 		// updaet stable coin
-		T::DebitCurrency::update_balance(Into::<DebitCurrencyIdOf<T>>::into(currency_id), &who, debits)
+		T::DebitCurrency::update_balance(currency_id, &who, debits)
 			.map_err(|_| Error::UpdateStableCoinFailed)?;
 
 		// mutate collaterals and debits
