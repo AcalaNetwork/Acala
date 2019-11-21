@@ -1,6 +1,6 @@
 [package]
-name = "primitives"
-version = "0.1.0"
+name = "module-primitives"
+version = "0.0.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
