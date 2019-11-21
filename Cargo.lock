@@ -45,7 +45,9 @@ dependencies = [
 name = "acala-runtime"
 version = "0.0.1"
 dependencies = [
+ "module-primitives 0.0.1",
  "module-template 0.0.1",
+ "orml-currencies 0.0.1",
  "orml-oracle 0.0.1",
  "orml-tokens 0.0.1",
  "paint-aura 2.0.0 (git+https://github.com/paritytech/substrate.git)",
@@ -2145,6 +2147,16 @@ dependencies = [
  "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "substrate-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+]
+
+[[package]]
+name = "module-primitives"
+version = "0.0.1"
+dependencies = [
+ "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
 ]
 
 [[package]]

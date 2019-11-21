@@ -8,36 +8,39 @@ edition = "2018"
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 safe-mix = { version = "1.0.0", default-features = false }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
+
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 version = { package = "sr-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
-support = { package = "paint-support", git = "https://github.com/paritytech/substrate.git", default-features = false }
 primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
 substrate-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-balances = { package = "paint-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
-aura = { package = "paint-aura", git = "https://github.com/paritytech/substrate.git", default-features = false }
-aura-primitives = { package = "substrate-consensus-aura-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
-grandpa = { package = "paint-grandpa", git = "https://github.com/paritytech/substrate.git", default-features = false }
-executive = { package = "paint-executive", git = "https://github.com/paritytech/substrate.git", default-features = false }
-indices = { package = "paint-indices", git = "https://github.com/paritytech/substrate.git", default-features = false }
-randomness-collective-flip = { package = "paint-randomness-collective-flip", git = "https://github.com/paritytech/substrate.git", default-features = false }
-system = { package = "paint-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
-timestamp = { package = "paint-timestamp", git = "https://github.com/paritytech/substrate.git", default-features = false }
-sudo = { package = "paint-sudo", git = "https://github.com/paritytech/substrate.git", default-features = false }
-transaction-payment = { package = "paint-transaction-payment", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 offchain-primitives = { package = "substrate-offchain-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
-collective = { package = "paint-collective", git = "https://github.com/paritytech/substrate.git", default-features = false }
-membership = { package = "paint-membership", git = "https://github.com/paritytech/substrate.git", default-features = false }
-
 tx-pool-api = { package = "substrate-transaction-pool-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false }
 block-builder-api = { package = "substrate-block-builder-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sr-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
+aura-primitives = { package = "substrate-consensus-aura-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
-oracle = { package = "orml-oracle", path = "../orml/oracle", default-features = false }
-tokens = { package = "orml-tokens", path = "../orml/tokens", default-features = false }
+system = { package = "paint-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-support = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-balances = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-aura = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-grandpa = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-executive = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-indices = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-timestamp = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-sudo = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-transaction-payment = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-collective = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+paint-membership = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+
+orml-oracle = { path = "../orml/oracle", default-features = false }
+orml-tokens = { path = "../orml/tokens", default-features = false }
+orml-currencies = { path = "../orml/currencies", default-features = false }
 template = { package = "module-template", path = "../modules/template", default-features = false }
+module-primitives = { package = "module-primitives", path = "../modules/primitives", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
@@ -49,20 +52,8 @@ std = [
 	"codec/std",
 	"rstd/std",
 	"runtime-io/std",
-	"support/std",
-	"balances/std",
-	"aura/std",
-	"aura-primitives/std",
-	"grandpa/std",
-	"executive/std",
-	"indices/std",
 	"primitives/std",
 	"sr-primitives/std",
-	"randomness-collective-flip/std",
-	"system/std",
-	"timestamp/std",
-	"sudo/std",
-	"transaction-payment/std",
 	"version/std",
 	"serde",
 	"safe-mix/std",
@@ -72,9 +63,23 @@ std = [
 	"sr-api/std",
 	"block-builder-api/std",
 	"inherents/std",
-	"collective/std",
-	"membership/std",
-	"oracle/std",
-	"tokens/std",
+	"aura-primitives/std",
+	"system/std",
+	"paint-support/std",
+	"paint-balances/std",
+	"paint-aura/std",
+	"paint-grandpa/std",
+	"paint-executive/std",
+	"paint-indices/std",
+	"paint-collective/std",
+	"paint-membership/std",
+	"paint-timestamp/std",
+	"paint-sudo/std",
+	"paint-transaction-payment/std",
+	"paint-randomness-collective-flip/std",
+	"orml-oracle/std",
+	"orml-tokens/std",
+	"orml-currencies/std",
 	"template/std",
+	"module-primitives/std",
 ]
