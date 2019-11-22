@@ -112,14 +112,6 @@ impl BasicCurrencyExtended<AccountId> for CurrencyHandler {
 
 pub struct ConvertHandler;
 
-impl Convert<(CurrencyId, Balance), DebitBalance> for ConvertHandler {
-	fn convert(a: (CurrencyId, Balance)) -> DebitBalance {
-		let balance: u64 = (a.1 * Balance::from(2u64)).into();
-		let debit_balance = balance as u32;
-		debit_balance
-	}
-}
-
 impl Convert<(CurrencyId, DebitBalance), Balance> for ConvertHandler {
 	fn convert(a: (CurrencyId, DebitBalance)) -> Balance {
 		let debit_balance: u32 = (a.1 / DebitBalance::from(2u32)).into();

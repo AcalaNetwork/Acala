@@ -17,6 +17,8 @@ orml-traits = { package = "orml-traits", path = "../../orml/traits", default-fea
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 orml-auction = { package = "orml-auction", path = "../../orml/auction", default-features = false }
 
+support = { package = "module-support", path = "../support", default-features = false }
+
 [dev-dependencies]
 primitives = { package = "substrate-primitives",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 
@@ -33,4 +35,5 @@ std = [
 	"orml-traits/std",
 	"orml-tokens/std",
 	"orml-auction/std",
+	"support/std",
 ]

@@ -32,6 +32,7 @@ pub type BlockNumber = u64;
 pub type AuctionId = u64;
 pub type CurrencyId = u32;
 pub type Balance = u64;
+pub type Amount = i64;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -55,7 +56,7 @@ pub type System = system::Module<Runtime>;
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
 	type Balance = Balance;
-	type Amount = i64;
+	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
@@ -71,6 +72,9 @@ pub type Auction = orml_auction::Module<Runtime>;
 impl Trait for Runtime {
 	type Event = ();
 	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type Balance = Balance;
+	type Amount = Amount;
 	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;

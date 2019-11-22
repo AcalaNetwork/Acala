@@ -1,9 +1,20 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
-use palette_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
-use sr_primitives::{traits::SaturatedConversion, Permill, RuntimeDebug};
-use orml_traits::{Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult};
+use codec::{Decode, Encode, FullCodec, HasCompact};
+use orml_traits::{
+	arithmetic::{self, Signed},
+	Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult,
+};
+use palette_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get, Parameter};
+use rstd::{
+	convert::{TryFrom, TryInto},
+	fmt::Debug,
+};
+use sr_primitives::{
+	traits::{MaybeSerializeDeserialize, Member, SaturatedConversion, SimpleArithmetic},
+	Permill, RuntimeDebug,
+};
+use support::AuctionManager;
 
 mod mock;
 mod tests;
@@ -20,29 +31,42 @@ pub struct AuctionItem<AccountId, CurrencyId, Balance, BlockNumber> {
 	start_time: BlockNumber,
 }
 
-pub type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-pub type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 pub type AuctionIdOf<T> =
 	<<T as Trait>::Auction as Auction<<T as system::Trait>::AccountId, <T as system::Trait>::BlockNumber>>::AuctionId;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type Currency: MultiCurrencyExtended<Self::AccountId>;
+	type CurrencyId: FullCodec + HasCompact + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug;
+	type Balance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
+	type Amount: Signed
+		+ TryInto<Self::Balance>
+		+ TryFrom<Self::Balance>
+		+ Parameter
+		+ Member
+		+ arithmetic::SimpleArithmetic
+		+ Default
+		+ Copy
+		+ MaybeSerializeDeserialize;
+	type Currency: MultiCurrencyExtended<
+		Self::AccountId,
+		CurrencyId = Self::CurrencyId,
+		Balance = Self::Balance,
+		Amount = Self::Amount,
+	>;
 	type Auction: Auction<Self::AccountId, Self::BlockNumber>;
-	//type Handler: AuctionManagerHandler<CurrencyIdOf<Self>, BalanceOf<Self>>;
 	type MinimumIncrementSize: Get<Permill>;
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
-	type GetNativeCurrencyId: Get<CurrencyIdOf<Self>>;
-	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
+	type GetNativeCurrencyId: Get<Self::CurrencyId>;
+	type GetStableCurrencyId: Get<Self::CurrencyId>;
 }
 
 decl_event!(
 	pub enum Event<T>
 	where
 		AuctionId = AuctionIdOf<T>,
-		CurrencyId = CurrencyIdOf<T>,
-		Balance = BalanceOf<T>,
+		CurrencyId = <T as Trait>::CurrencyId,
+		Balance = <T as Trait>::Balance,
 	{
 		CollateralAuction(AuctionId, CurrencyId, Balance, Balance),
 	}
@@ -50,12 +74,12 @@ decl_event!(
 
 decl_storage! {
 	trait Store for Module<T: Trait> as AuctionManager {
-		pub MaximumAuctionSize get(fn maximum_auction_size): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub MaximumAuctionSize get(fn maximum_auction_size): map T::CurrencyId => T::Balance;
 		pub Auctions get(fn auctions): map AuctionIdOf<T> =>
-			Option<AuctionItem<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>, T::BlockNumber>>;
-		pub TotalCollateralInAuction get(fn total_collateral_in_auction): map CurrencyIdOf<T> => BalanceOf<T>;
-		pub BadDebtPool get(fn bad_debt_pool): BalanceOf<T>;
-		pub SurplusPool get(fn surplus_pool): BalanceOf<T>;
+			Option<AuctionItem<T::AccountId, T::CurrencyId, T::Balance, T::BlockNumber>>;
+		pub TotalCollateralInAuction get(fn total_collateral_in_auction): map T::CurrencyId => T::Balance;
+		pub BadDebtPool get(fn bad_debt_pool): T::Balance;
+		pub SurplusPool get(fn surplus_pool): T::Balance;
 	}
 }
 
@@ -81,67 +105,67 @@ decl_error! {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn set_maximum_auction_size(currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
+	pub fn set_maximum_auction_size(currency_id: T::CurrencyId, size: T::Balance) {
 		<MaximumAuctionSize<T>>::insert(currency_id, size);
 	}
 
-	pub fn increase_surplus(increment: BalanceOf<T>) {
-		<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
-	}
+	// pub fn increase_surplus(increment: BalanceOf<T>) {
+	// 	<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
+	// }
 
-	pub fn new_collateral_auction(
-		who: T::AccountId,
-		currency_id: CurrencyIdOf<T>,
-		amount: BalanceOf<T>,
-		target: BalanceOf<T>,
-		bad_debt: BalanceOf<T>,
-	) {
-		let maximum_auction_size = Self::maximum_auction_size(currency_id);
-		let mut unhandled_amount: BalanceOf<T> = amount;
-		let mut unhandled_target: BalanceOf<T> = target;
+	// pub fn new_collateral_auction(
+	// 	who: T::AccountId,
+	// 	currency_id: CurrencyIdOf<T>,
+	// 	amount: BalanceOf<T>,
+	// 	target: BalanceOf<T>,
+	// 	bad_debt: BalanceOf<T>,
+	// ) {
+	// 	let maximum_auction_size = Self::maximum_auction_size(currency_id);
+	// 	let mut unhandled_amount: BalanceOf<T> = amount;
+	// 	let mut unhandled_target: BalanceOf<T> = target;
 
-		let block_number = <system::Module<T>>::block_number();
+	// 	let block_number = <system::Module<T>>::block_number();
 
-		while unhandled_amount > 0.into() {
-			let (lot_amount, lot_target) =
-				if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
-					(maximum_auction_size, target * maximum_auction_size / amount)
-				} else {
-					(unhandled_amount, unhandled_target)
-				};
+	// 	while unhandled_amount > 0.into() {
+	// 		let (lot_amount, lot_target) =
+	// 			if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
+	// 				(maximum_auction_size, target * maximum_auction_size / amount)
+	// 			} else {
+	// 				(unhandled_amount, unhandled_target)
+	// 			};
 
-			let auction_id: AuctionIdOf<T> =
-				T::Auction::new_auction(block_number, Some(block_number + T::AuctionTimeToClose::get()));
-			let aution_item = AuctionItem {
-				owner: who.clone(),
-				currency_id: currency_id,
-				amount: lot_amount,
-				target: lot_target,
-				start_time: block_number,
-			};
-			<Auctions<T>>::insert(auction_id, aution_item);
-			Self::deposit_event(RawEvent::CollateralAuction(
-				auction_id,
-				currency_id,
-				lot_amount,
-				lot_target,
-			));
+	// 		let auction_id: AuctionIdOf<T> =
+	// 			T::Auction::new_auction(block_number, Some(block_number + T::AuctionTimeToClose::get()));
+	// 		let aution_item = AuctionItem {
+	// 			owner: who.clone(),
+	// 			currency_id: currency_id,
+	// 			amount: lot_amount,
+	// 			target: lot_target,
+	// 			start_time: block_number,
+	// 		};
+	// 		<Auctions<T>>::insert(auction_id, aution_item);
+	// 		Self::deposit_event(RawEvent::CollateralAuction(
+	// 			auction_id,
+	// 			currency_id,
+	// 			lot_amount,
+	// 			lot_target,
+	// 		));
 
-			unhandled_amount -= lot_amount;
-			unhandled_target -= lot_target;
-		}
+	// 		unhandled_amount -= lot_amount;
+	// 		unhandled_target -= lot_target;
+	// 	}
 
-		<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
-		<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
-	}
+	// 	<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
+	// 	<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
+	// }
 }
 
-impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, AuctionIdOf<T>> for Module<T> {
+impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionIdOf<T>> for Module<T> {
 	fn on_new_bid(
 		now: T::BlockNumber,
 		id: AuctionIdOf<T>,
-		new_bid: (T::AccountId, BalanceOf<T>),
-		last_bid: Option<(T::AccountId, BalanceOf<T>)>,
+		new_bid: (T::AccountId, T::Balance),
+		last_bid: Option<(T::AccountId, T::Balance)>,
 	) -> OnNewBidResult<T::BlockNumber> {
 		if let Some(mut auction_item) = Self::auctions(id) {
 			let (minimum_increment_size, auction_time_to_close) =
@@ -154,7 +178,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, Auctio
 					(T::MinimumIncrementSize::get(), T::AuctionTimeToClose::get())
 				};
 
-			let current_price: BalanceOf<T> = match last_bid {
+			let current_price: T::Balance = match last_bid {
 				None => 0.into(),
 				Some((_, price)) => price,
 			};
@@ -205,7 +229,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, Auctio
 		}
 	}
 
-	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
+	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
 		if let Some(mut auction_item) = Self::auctions(id) {
 			if let Some((bidder, _)) = winner {
 				let _ = T::Currency::deposit(auction_item.currency_id, &bidder, auction_item.amount);
@@ -231,5 +255,57 @@ impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, Auctio
 				));
 			}
 		}
+	}
+}
+
+impl<T: Trait> AuctionManager<T::AccountId, T::CurrencyId, T::Balance> for Module<T> {
+	fn increase_surplus(increment: T::Balance) {
+		<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
+	}
+
+	fn new_collateral_auction(
+		who: T::AccountId,
+		currency_id: T::CurrencyId,
+		amount: T::Balance,
+		target: T::Balance,
+		bad_debt: T::Balance,
+	) {
+		let maximum_auction_size = <Module<T>>::maximum_auction_size(currency_id);
+		let mut unhandled_amount: T::Balance = amount;
+		let mut unhandled_target: T::Balance = target;
+
+		let block_number = <system::Module<T>>::block_number();
+
+		while unhandled_amount > 0.into() {
+			let (lot_amount, lot_target) =
+				if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
+					(maximum_auction_size, target * maximum_auction_size / amount)
+				} else {
+					(unhandled_amount, unhandled_target)
+				};
+
+			let auction_id: AuctionIdOf<T> =
+				T::Auction::new_auction(block_number, Some(block_number + T::AuctionTimeToClose::get()));
+			let aution_item = AuctionItem {
+				owner: who.clone(),
+				currency_id: currency_id,
+				amount: lot_amount,
+				target: lot_target,
+				start_time: block_number,
+			};
+			<Auctions<T>>::insert(auction_id, aution_item);
+			<Module<T>>::deposit_event(RawEvent::CollateralAuction(
+				auction_id,
+				currency_id,
+				lot_amount,
+				lot_target,
+			));
+
+			unhandled_amount -= lot_amount;
+			unhandled_target -= lot_target;
+		}
+
+		<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
+		<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
 	}
 }
