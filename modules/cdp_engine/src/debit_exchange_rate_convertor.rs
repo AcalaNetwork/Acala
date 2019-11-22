@@ -26,7 +26,7 @@ where
 	fn convert(a: (CurrencyIdOf<T>, DebitBalanceOf<T>)) -> BalanceOf<T> {
 		TryInto::<BalanceOf<T>>::try_into(
 			a.1.saturated_into::<u128>()
-				* TryInto::<u128>::try_into(T::debit_exchange_rate(a.0).unwrap_or(Fixed64::accuracy()))
+				* TryInto::<u128>::try_into(<Module<T>>::debit_exchange_rate(a.0).unwrap_or(Fixed64::from_natural(1)).into_inner())
 					.unwrap_or(U128_BILLION)
 				/ TryInto::<u128>::try_into(Fixed64::accuracy()).unwrap_or(U128_BILLION),
 		)

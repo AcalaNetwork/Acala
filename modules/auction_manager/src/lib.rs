@@ -258,21 +258,25 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 	}
 }
 
-impl<T: Trait> AuctionManager<T::AccountId, T::CurrencyId, T::Balance> for Module<T> {
-	fn increase_surplus(increment: T::Balance) {
+impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
+	type CurrencyId = T::CurrencyId;
+	type Balance = T::Balance;
+	type Amount = T::Amount;
+
+	fn increase_surplus(increment: Self::Balance) {
 		<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
 	}
 
 	fn new_collateral_auction(
 		who: T::AccountId,
-		currency_id: T::CurrencyId,
-		amount: T::Balance,
-		target: T::Balance,
-		bad_debt: T::Balance,
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+		target: Self::Balance,
+		bad_debt: Self::Balance,
 	) {
 		let maximum_auction_size = <Module<T>>::maximum_auction_size(currency_id);
-		let mut unhandled_amount: T::Balance = amount;
-		let mut unhandled_target: T::Balance = target;
+		let mut unhandled_amount: Self::Balance = amount;
+		let mut unhandled_target: Self::Balance = target;
 
 		let block_number = <system::Module<T>>::block_number();
 
