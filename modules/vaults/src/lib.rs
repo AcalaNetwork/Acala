@@ -1,11 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::FullCodec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
-use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, PriceProvider};
+use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, result};
 use sr_primitives::{
-	traits::{CheckedAdd, CheckedSub, Convert, Member, SimpleArithmetic, Zero},
+	traits::{CheckedAdd, CheckedSub, Convert, Zero},
 	Fixed64,
 };
 
@@ -49,8 +48,8 @@ decl_event!(
 	{
 		/// Update Position success (account, currency_id, collaterals, debits)
 		UpdatePosition(AccountId, CurrencyId, Amount, DebitAmount),
-		/// Update collateral success (account, currency_id, collaterals, debits)
-		UpdateCollateral(AccountId, CurrencyId, Amount, DebitAmount),
+		/// Update collaterals and debits success (account, currency_id, collaterals, debits)
+		UpdateCollateralsAndDebits(AccountId, CurrencyId, Amount, DebitAmount),
 		/// Transfer vault (from, to)
 		TransferVault(AccountId, AccountId, CurrencyId),
 	}
@@ -114,7 +113,7 @@ impl<T: Trait> Module<T> {
 		None
 	}
 
-	// mutate collaterlas and debits, don't check position safe and don't mutate stable coin
+	// mutate collaterlas and debits, don't check position safe and don't mutate token
 	pub fn update_collaterals_and_debits(
 		who: T::AccountId,
 		currency_id: CurrencyIdOf<T>,
@@ -124,9 +123,9 @@ impl<T: Trait> Module<T> {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
 
-		Self::update_collateral_and_debit(&who, currency_id, collaterals, debits)?;
+		Self::update_vault(&who, currency_id, collaterals, debits)?;
 
-		Self::deposit_event(RawEvent::UpdateCollateral(who, currency_id, collaterals, debits));
+		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(who, currency_id, collaterals, debits));
 
 		Ok(())
 	}
@@ -152,7 +151,7 @@ impl<T: Trait> Module<T> {
 		T::DebitCurrency::update_balance(currency_id, &who, debits).map_err(|_| Error::UpdateStableCoinFailed)?;
 
 		// mutate collaterals and debits
-		Self::update_collateral_and_debit(&who, currency_id, collaterals, debits)?;
+		Self::update_vault(&who, currency_id, collaterals, debits)?;
 
 		Self::deposit_event(RawEvent::UpdatePosition(who, currency_id, collaterals, debits));
 
@@ -182,8 +181,8 @@ impl<T: Trait> Module<T> {
 			.map_err(|_| Error::PositionWillUnsafe)?;
 
 		// execute transfer
-		Self::update_collateral_and_debit(&from, currency_id, -collateral, -debit)?;
-		Self::update_collateral_and_debit(&to, currency_id, collateral, debit)?;
+		Self::update_vault(&from, currency_id, -collateral, -debit)?;
+		Self::update_vault(&to, currency_id, collateral, debit)?;
 
 		Self::deposit_event(RawEvent::TransferVault(from, to, currency_id));
 
@@ -256,7 +255,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn update_collateral_and_debit(
+	fn update_vault(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,

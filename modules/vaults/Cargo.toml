@@ -18,6 +18,7 @@ orml-currencies = { package = "orml-currencies", path = "../../orml/currencies",
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 debits = { package = "module-debits", path = "../debits", default-features = false }
+pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]
 su-primitives = { package = "substrate-primitives",  git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -30,6 +31,7 @@ std = [
 	"codec/std",
 	"sr-primitives/std",
 	"frame-support/std",
+	"pallet-balances/std",
 	"system/std",
 	"runtime-io/std",
 	"rstd/std",
