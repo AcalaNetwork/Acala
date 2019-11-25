@@ -1,11 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
+use frame_support::{decl_event, decl_module, decl_storage, traits::Get, Parameter};
 use orml_traits::{
 	arithmetic::{self, Signed},
 	Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult,
 };
-use palette_support::{decl_event, decl_module, decl_storage, traits::Get, Parameter};
 use rstd::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
@@ -90,7 +90,7 @@ decl_module! {
 		fn on_finalize(_now: T::BlockNumber) {
 			let amount = std::cmp::min(Self::bad_debt_pool(), Self::surplus_pool());
 			if amount > 0.into() {
-				if T::Currency::withdraw(T::GetStableCurrencyId::get(), &<Module<T>>::account_id(), amount).is_ok() {
+				if T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), amount).is_ok() {
 					<BadDebtPool<T>>::mutate(|debt| *debt -= amount);
 					<SurplusPool<T>>::mutate(|surplus| *surplus -= amount);
 				}

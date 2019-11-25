@@ -3,15 +3,8 @@
 #![cfg(test)]
 
 use super::*;
+use frame_support::{assert_noop, assert_ok};
 use mock::{DebitCurrency, ExtBuilder, VaultsModule, ALICE, STABLE_COIN_ID, X_TOKEN_ID, Y_TOKEN_ID};
-use palette_support::{assert_noop, assert_ok};
-
-#[test]
-fn jjjjjjjjjjjjjjjjj() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DebitCurrency::update_balance(Y_TOKEN_ID, &ALICE, 10));
-	});
-}
 
 #[test]
 fn update_position_should_work() {

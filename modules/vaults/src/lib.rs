@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::FullCodec;
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, PriceProvider};
-use palette_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use rstd::{convert::TryInto, result};
 use sr_primitives::{
 	traits::{CheckedAdd, CheckedSub, Convert, Member, SimpleArithmetic, Zero},

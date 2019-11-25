@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 
-use palette_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::H256;
 use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill};
 

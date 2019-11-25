@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, PriceProvider};
-use palette_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use rstd::{convert::TryInto, marker, result};
 use sr_primitives::{
 	traits::{Convert, SaturatedConversion},

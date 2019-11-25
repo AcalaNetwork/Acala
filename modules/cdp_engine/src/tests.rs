@@ -3,8 +3,8 @@
 #![cfg(test)]
 
 use super::*;
+use frame_support::{assert_noop, assert_ok};
 use mock::{CdpEngineModule, DebitCurrency, ExtBuilder, Tokens, VaultsModule, ACA, ALICE, AUSD, BOB, BTC, DOT};
-use palette_support::{assert_noop, assert_ok};
 
 #[test]
 fn set_collateral_params_work() {

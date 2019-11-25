@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 
-use palette_support::{impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_origin, parameter_types};
 use sr_primitives::{testing::Header, traits::IdentityLookup, Fixed64, Perbill};
 use su_primitives::H256;
 use support::RiskManager;
