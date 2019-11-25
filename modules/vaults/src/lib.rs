@@ -3,12 +3,7 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, result};
-use sr_primitives::{
-	traits::{CheckedAdd, CheckedSub, Convert, Zero},
-	Fixed64,
-};
-
-use primitives::CurrencyId as CURRENCY_ID;
+use sr_primitives::traits::{CheckedAdd, CheckedSub, Convert};
 use support::RiskManager;
 
 mod mock;
@@ -75,44 +70,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn collateral_ratio(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> Option<Fixed64> {
-		// ensure debit and collateral exists
-		if (true, true)
-			!= (
-				!<Debits<T>>::exists(&who, currency_id),
-				!<Collaterals<T>>::exists(&who, currency_id),
-			) {
-			return None;
-		}
-
-		// get balance of collateral and debits
-		let collateral_balance = Self::collaterals(&who, currency_id);
-		let debit_balance = Self::debits(&who, currency_id);
-
-		// get stable coin amount
-		let stable_balance = T::Convert::convert((currency_id, debit_balance));
-
-		// ensure stable coin balance is not zero
-		if stable_balance.is_zero() {
-			return None;
-		}
-		// ensure collateral balance is not zero
-		if collateral_balance.is_zero() {
-			return None;
-		}
-
-		let ausd_currency_id = CURRENCY_ID::AUSD as u8;
-
-		// get prices and calc ratio of collateral
-		//if let Some(price) = T::PriceSource::get_price(ausd_currency_id.into(), currency_id) {
-		// TODO: fix calculate
-		// let result: T::Price = stable_balance.into() / (price * Into::<T::Price>::into(collateral_balance));
-		//return Some(Fixed64::from_rational(1i64, 1u64);
-		//}
-
-		None
-	}
-
 	// mutate collaterlas and debits, don't check position safe and don't mutate token
 	pub fn update_collaterals_and_debits(
 		who: T::AccountId,
@@ -125,7 +82,12 @@ impl<T: Trait> Module<T> {
 
 		Self::update_vault(&who, currency_id, collaterals, debits)?;
 
-		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(who, currency_id, collaterals, debits));
+		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(
+			who,
+			currency_id,
+			collaterals,
+			debits,
+		));
 
 		Ok(())
 	}

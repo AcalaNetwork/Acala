@@ -30,8 +30,7 @@ parameter_types! {
 	pub const GlobalStabilityFee: Permill = Permill::from_parts(0);
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
-	pub const MinimumDebitValue: Balance = 1;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const MinimumDebitValue: Balance = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 
@@ -44,8 +43,8 @@ pub type DebitAmount = i64;
 pub type CurrencyId = u32;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const ACA: CurrencyId = 0;
-pub const AUSD: CurrencyId = 1;
+pub const AUSD: CurrencyId = 0;
+pub const ACA: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 pub const DOT: CurrencyId = 3;
 
@@ -79,29 +78,44 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
+impl pallet_balances::Trait for Runtime {
+	type Balance = Balance;
+	type OnFreeBalanceZero = ();
+	type OnNewAccount = ();
+	type TransferPayment = ();
+	type DustRemoval = ();
+	type Event = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type TransferFee = TransferFee;
+	type CreationFee = CreationFee;
+}
+pub type PalletBalances = pallet_balances::Module<Runtime>;
+
+pub type AdaptedBasicCurrency =
+	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
 pub type NativeCurrency = orml_currencies::NativeCurrencyOf<Runtime>;
 impl orml_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
-	type NativeCurrency = NativeCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetStableCurrencyId;
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 impl debits::Trait for Runtime {
+	type CurrencyId = CurrencyId;
 	type Currency = NativeCurrency;
 	type DebitBalance = DebitBalance;
-	type CurrencyId = CurrencyId;
-	type DebitAmount = DebitAmount;
 	type Convert = DebitExchangeRateConvertor<Runtime>;
+	type DebitAmount = Amount;
 }
-pub type DebitCurrency = debits::Module<Runtime>;
+pub type DebitsCurrency = debits::Module<Runtime>;
 
 impl vaults::Trait for Runtime {
 	type Event = ();
 	type Convert = DebitExchangeRateConvertor<Runtime>;
-	type Currency = Tokens;
-	type DebitCurrency = DebitCurrency;
+	type Currency = Currencies;
+	type DebitCurrency = DebitsCurrency;
 	type RiskManager = CdpEngineModule;
 }
 pub type VaultsModule = vaults::Module<Runtime>;
@@ -134,7 +148,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 impl Trait for Runtime {
 	type Event = ();
 	type AuctionManagerHandler = MockAuctionManager;
-	type Currency = Tokens;
+	type Currency = Currencies;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
@@ -154,7 +168,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			currency_ids: vec![AUSD, BTC, DOT],
+			currency_ids: vec![ACA, BTC, DOT],
 			endowed_accounts: vec![ALICE, BOB],
 			initial_balance: 1000,
 		}

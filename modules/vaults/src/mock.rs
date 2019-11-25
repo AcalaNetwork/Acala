@@ -35,7 +35,7 @@ pub type Amount = i64;
 pub type DebitAmount = i64;
 pub type CurrencyId = u32;
 pub const ALICE: AccountId = 1;
-pub const NATIVE_CURRENCY_ID: CurrencyId = 0;
+pub const NATIVE_CURRENCY_ID: CurrencyId = 4;
 pub const STABLE_COIN_ID: CurrencyId = 1;
 pub const X_TOKEN_ID: CurrencyId = 2;
 pub const Y_TOKEN_ID: CurrencyId = 3;
@@ -55,7 +55,6 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 }
-
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 // currencies module
@@ -82,17 +81,15 @@ impl pallet_balances::Trait for Runtime {
 }
 
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
-
+pub type AdaptedBasicCurrency =
+	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
 pub type NativeCurrency = orml_currencies::NativeCurrencyOf<Runtime>;
-
 impl orml_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
-
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 impl debits::Trait for Runtime {

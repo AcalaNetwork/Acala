@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CdpEngineModule, DebitCurrency, ExtBuilder, Tokens, VaultsModule, ACA, ALICE, AUSD, BOB, BTC, DOT};
+use mock::{CdpEngineModule, Currencies, ExtBuilder, VaultsModule, ACA, ALICE, AUSD, BOB, BTC, DOT};
 
 #[test]
 fn set_collateral_params_work() {
@@ -149,14 +149,72 @@ fn update_position_work() {
 			CdpEngineModule::update_position(ALICE, ACA, 100, 50),
 			Error::NotValidCurrencyId,
 		);
-		assert_ok!(DebitCurrency::update_balance(BTC, &ALICE, -10));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 1000);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
+		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 0);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
+		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
+		assert_noop!(
+			CdpEngineModule::update_position(ALICE, BTC, 0, 20),
+			Error::UpdatePositionFailed,
+		);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 0, -20));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 30);
+		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
+	});
+}
 
-		//assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
-		// assert_eq!(Tokens::balance(BTC, &ALICE), 1000);
-		// assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
-		// assert_eq!(VaultsModule::collaterals(ALICE, BTC), 0);
-		// assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
-		// assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
-		// assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
+#[test]
+fn remain_debit_value_too_small_check() {
+	ExtBuilder::default().build().execute_with(|| {
+		CdpEngineModule::set_collateral_params(
+			BTC,
+			Some(Some(Permill::from_parts(1))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Permill::from_percent(20))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
+		assert_noop!(
+			CdpEngineModule::update_position(ALICE, BTC, 0, -49),
+			Error::UpdatePositionFailed,
+		);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 0, -50));
+	});
+}
+
+#[test]
+fn liquidate_unsafe_cdp_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		CdpEngineModule::set_collateral_params(
+			BTC,
+			Some(Some(Permill::from_parts(1))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Permill::from_percent(20))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
+		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
+		assert_noop!(
+			CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC),
+			Error::CollateralRatioStillSafe,
+		);
+		CdpEngineModule::set_collateral_params(BTC, None, Some(Some(Ratio::from_rational(3, 1))), None, None, None);
+		assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
+		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 0);
 	});
 }
