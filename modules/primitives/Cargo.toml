@@ -13,7 +13,8 @@ rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git"
 [features]
 default = ["std"]
 std = [
+	"serde",
 	"codec/std",
 	"sr-primitives/std",
-	"serde/std",
+	"rstd/std",
 ]

@@ -3,8 +3,8 @@
 #![cfg(test)]
 
 use super::*;
+use frame_support::assert_ok;
 use mock::{DebitsModule, ExtBuilder, ALICE, BOB, USD};
-use palette_support::assert_ok;
 
 #[test]
 fn update_balance_should_work() {
