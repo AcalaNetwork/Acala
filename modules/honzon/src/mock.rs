@@ -2,26 +2,19 @@
 
 #![cfg(test)]
 
-use palette_support::{impl_outer_origin, parameter_types};
-use sr_primitives::{testing::Header, traits::IdentityLookup, Fixed64, Perbill};
-use su_primitives::H256;
+use frame_support::{impl_outer_origin, parameter_types};
+use primitives::H256;
+use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill, Permill};
 
 use orml_traits::PriceProvider;
-use support::RiskManager;
+use support::{AuctionManager, ExchangeRate, Price, Ratio};
 
 use super::*;
-
-mod vaults {
-	pub use crate::Event;
-}
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
 }
 
-// Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
@@ -30,104 +23,34 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 0;
 	pub const TransferFee: u64 = 0;
 	pub const CreationFee: u64 = 2;
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
+	pub const GlobalStabilityFee: Permill = Permill::from_parts(0);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
+	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
+	pub const MinimumDebitValue: Balance = 1;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 
-pub type AccountId = u32;
+pub type AccountId = u64;
 pub type BlockNumber = u64;
-pub type Price = u64;
 pub type Balance = u64;
 pub type DebitBalance = u64;
 pub type Amount = i64;
 pub type DebitAmount = i64;
 pub type CurrencyId = u32;
 
-pub const NATIVE_CURRENCY_ID: CurrencyId = 0;
-pub const STABLE_COIN_ID: CurrencyId = 1;
-pub const X_TOKEN_ID: CurrencyId = 2;
-pub const Y_TOKEN_ID: CurrencyId = 3;
-
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const ALEX AccountId = 3;
+pub const ALIEX: AccountId = 3;
 
-impl orml_tokens::Trait for Runtime {
-	type Event = ();
-	type Balance = Balance;
-	type Amount = Amount;
-	type CurrencyId = CurrencyId;
-}
+pub const ACA: CurrencyId = 0;
+pub const AUSD: CurrencyId = 1;
+pub const BTC: CurrencyId = 2;
+pub const DOT: CurrencyId = 3;
 
-pub type Tokens = orml_tokens::Module<Runtime>;
-
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
-}
-
-pub type NativeCurrency = orml_currencies::NativeCurrencyOf<Runtime>;
-
-impl orml_currencies::Trait for Runtime {
-	type Event = ();
-	type MultiCurrency = Tokens;
-	type NativeCurrency = NativeCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
-
-pub type Currencies = orml_currencies::Module<Runtime>;
-
-impl debits::Trait for Runtime {
-	type Currency = NativeCurrency;
-	type DebitBalance = DebitBalance;
-	type CurrencyId = CurrencyId;
-	type DebitAmount = DebitAmount;
-	type Convert = MockConvert;
-}
-
-pub type DebitCurrency = debits::Module<Runtime>;
-
-pub struct MockRiskManager;
-impl RiskManager<AccountId, CurrencyId, Amount, DebitAmount> for MockRiskManager {
-	type Error = &'static str;
-	fn check_position_adjustment(
-		account_id: &AccountId,
-		currency_id: CurrencyId,
-		collaterals: Amount,
-		debits: DebitAmount,
-	) -> Result<(), Self::Error> {
-		match currency_id {
-			2u32 => Err("mock error"),
-			3u32 => Ok(()),
-			_ => Err("mock error"),
-		}
-	}
-	fn required_collateral_ratio(currency_id: CurrencyId) -> Fixed64 {
-		Fixed64::from_parts(1)
-	}
-	fn check_debit_cap(currency_id: CurrencyId, debits: DebitAmount) -> Result<(), Self::Error> {
-		Ok(())
-	}
-}
-
-pub struct MockPriceSource;
-impl PriceProvider<CurrencyId, Price> for MockPriceSource {
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
-		match (base, quote) {
-			(1u32, 2u32) => Some(1u64),
-			(STABLE_COIN_ID, Y_TOKEN_ID) => Some(2u64),
-			_ => None,
-		}
-	}
-}
-
-impl vaults::Trait for Runtime {
-	type Event = ();
-	type Convert = MockConvert;
-	type Currency = Tokens;
-	type DebitCurrency = DebitCurrency;
-	type PriceSource = MockPriceSource;
-	type RiskManager = MockRiskManager;
-
-	type Price = Price;
-}
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -147,7 +70,97 @@ impl system::Trait for Runtime {
 	type Version = ();
 }
 
-pub type System = system::Module<Runtime>;
+impl orml_tokens::Trait for Runtime {
+	type Event = ();
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+}
+pub type Tokens = orml_tokens::Module<Runtime>;
+
+impl pallet_balances::Trait for Runtime {
+	type Balance = Balance;
+	type OnFreeBalanceZero = ();
+	type OnNewAccount = ();
+	type TransferPayment = ();
+	type DustRemoval = ();
+	type Event = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type TransferFee = TransferFee;
+	type CreationFee = CreationFee;
+}
+pub type PalletBalances = pallet_balances::Module<Runtime>;
+
+pub type AdaptedBasicCurrency =
+	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
+pub type NativeCurrency = orml_currencies::NativeCurrencyOf<Runtime>;
+impl orml_currencies::Trait for Runtime {
+	type Event = ();
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetStableCurrencyId;
+}
+
+impl debits::Trait for Runtime {
+	type Currency = NativeCurrency;
+	type DebitBalance = DebitBalance;
+	type CurrencyId = CurrencyId;
+	type DebitAmount = DebitAmount;
+	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
+}
+pub type DebitCurrency = debits::Module<Runtime>;
+
+impl vaults::Trait for Runtime {
+	type Event = ();
+	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
+	type Currency = Tokens;
+	type DebitCurrency = DebitCurrency;
+	type RiskManager = CdpEngineModule;
+}
+pub type VaultsModule = vaults::Module<Runtime>;
+
+pub struct MockPriceSource;
+impl PriceProvider<CurrencyId, Price> for MockPriceSource {
+	#[allow(unused_variables)]
+	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+		Some(Price::from_natural(1))
+	}
+}
+
+pub struct MockAuctionManager;
+impl AuctionManager<AccountId> for MockAuctionManager {
+	type CurrencyId = CurrencyId;
+	type Balance = Balance;
+	type Amount = Amount;
+
+	#[allow(unused_variables)]
+	fn increase_surplus(increment: Self::Balance) {}
+
+	#[allow(unused_variables)]
+	fn new_collateral_auction(
+		who: AccountId,
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+		target: Self::Balance,
+		bad_debt: Self::Balance,
+	) {
+	}
+}
+
+impl cdp_engine::Trait for Runtime {
+	type Event = ();
+	type AuctionManagerHandler = MockAuctionManager;
+	type Currency = Tokens;
+	type PriceSource = MockPriceSource;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type GlobalStabilityFee = GlobalStabilityFee;
+	type DefaultLiquidationRatio = DefaultLiquidationRatio;
+	type DefaulDebitExchangeRate = DefaulDebitExchangeRate;
+	type MinimumDebitValue = MinimumDebitValue;
+	type GetStableCurrencyId = GetStableCurrencyId;
+}
+
+pub type CdpEngineModule = cdp_engine::Module<Runtime>;
 
 impl Trait for Runtime {
 	type Event = ();
@@ -164,8 +177,8 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			currency_ids: vec![STABLE_COIN_ID, X_TOKEN_ID, Y_TOKEN_ID],
-			endowed_accounts: vec![ALICE],
+			currency_ids: vec![AUSD, BTC, DOT],
+			endowed_accounts: vec![ALICE, BOB],
 			initial_balance: 1000,
 		}
 	}
@@ -174,6 +187,7 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
 	pub fn build(self) -> runtime_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
+
 		orml_tokens::GenesisConfig::<Runtime> {
 			tokens: self.currency_ids,
 			initial_balance: self.initial_balance,
@@ -181,6 +195,7 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
+
 		t.into()
 	}
 }

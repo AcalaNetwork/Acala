@@ -3,44 +3,66 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{ExtBuilder, HonzonModule, ALICE, BOB, ALIEX, STABLE_COIN_ID, X_TOKEN_ID, Y_TOKEN_ID};
-use palette_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok};
+use mock::{CdpEngineModule, ExtBuilder, HonzonModule, Origin, VaultsModule, ALICE, ALIEX, BOB, BTC, DOT};
+use sr_primitives::Permill;
+use support::Ratio;
 
 #[test]
 fn authorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::authorization(ALICE, BOB, Y_TOKEN_ID));
-		assert_eq!(HonzonModule::check_authorization(ALICE, BOB, X_TOKEN_ID), true);
+		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 	});
 }
 
 #[test]
 fn unauthorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::authorization(ALICE, BOB, Y_TOKEN_ID));
-		assert_eq!(HonzonModule::check_authorization(ALICE, BOB, X_TOKEN_ID), true);
+		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 
-		assert_ok!(HonzonModule::unauthorize(ALICE, BOB, X_TOKEN_ID));
-		assert_eq!(HonzonModule::check_authorization(ALICE, BOB, X_TOKEN_ID), false);
+		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
+		assert_noop!(
+			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
+			Error::NoAuthorization
+		);
 	});
 }
 
 #[test]
 fn unauthorize_all_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::authorization(ALICE, BOB, X_TOKEN_ID));
-		assert_ok!(HonzonModule::authorization(ALICE, ALIEX, Y_TOKEN_ID));
-		assert_ok!(HonzonModule::unauthorize_all(ALICE));
-		assert_eq!(HonzonModule::check_authorization(ALICE, BOB, X_TOKEN_ID), false);
-		assert_eq!(HonzonModule::check_authorization(ALICE, ALICE, Y_TOKEN_ID), false);
+		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, ALIEX));
+		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
+		assert_noop!(
+			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
+			Error::NoAuthorization
+		);
+		assert_noop!(
+			HonzonModule::check_authorization(&ALICE, &BOB, DOT),
+			Error::NoAuthorization
+		);
 	});
 }
 
 #[test]
-fn transfer_vaults_should_work() {
+fn transfer_vault_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::authorization(BOB, ALICE, X_TOKEN_ID));
-		assert_eq!(HonzonModule::transfer_vaults(ALICE, BOB, X_TOKEN_ID));
+		CdpEngineModule::set_collateral_params(
+			BTC,
+			Some(Some(Permill::from_parts(1))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Permill::from_percent(20))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		);
+		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::authorize(Origin::signed(BOB), BTC, ALICE));
+		assert_ok!(HonzonModule::transfer_vault(Origin::signed(ALICE), BTC, BOB));
+		assert_eq!(VaultsModule::collaterals(BOB, BTC), 100);
+		assert_eq!(VaultsModule::debits(BOB, BTC), 50);
 	});
 }
 
@@ -48,8 +70,8 @@ fn transfer_vaults_should_work() {
 fn transfer_unauthorization_vaults_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			assert_eq!(HonzonModule::transfer_vaults(ALICE, BOB, X_TOKEN_ID));
-			Error::NoAuthorization
+			HonzonModule::transfer_vault(Origin::signed(ALICE), BTC, BOB),
+			"NoAuthorization"
 		);
 	});
 }
@@ -57,6 +79,16 @@ fn transfer_unauthorization_vaults_should_not_work() {
 #[test]
 fn update_vault_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::update_vault(ALICE, X_TOKEN_ID, 1, 1));
+		CdpEngineModule::set_collateral_params(
+			BTC,
+			Some(Some(Permill::from_parts(1))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Permill::from_percent(20))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		);
+		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
+		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
 	});
 }
