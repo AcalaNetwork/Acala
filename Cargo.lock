@@ -2164,9 +2164,11 @@ dependencies = [
 name = "module-cdp-engine"
 version = "0.0.1"
 dependencies = [
- "module-auction-manager 0.0.1",
+ "module-debits 0.0.1",
  "module-support 0.0.1",
  "module-vaults 0.0.1",
+ "orml-currencies 0.0.1",
+ "orml-tokens 0.0.1",
  "orml-traits 0.0.1",
  "palette-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "palette-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
@@ -2175,6 +2177,7 @@ dependencies = [
  "sr-io 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "sr-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "substrate-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",
 ]
 
 [[package]]

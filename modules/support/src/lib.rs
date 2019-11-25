@@ -9,8 +9,6 @@ pub type Ratio = Fixed64;
 pub trait RiskManager<AccountId, CurrencyId, Amount, DebitAmount> {
 	type Error: Into<&'static str>;
 
-	fn required_collateral_ratio(currency_id: CurrencyId) -> Fixed64;
-
 	fn check_position_adjustment(
 		account_id: &AccountId,
 		currency_id: CurrencyId,

@@ -3,8 +3,15 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{ExtBuilder, VaultsModule, ALICE, STABLE_COIN_ID, X_TOKEN_ID, Y_TOKEN_ID};
+use mock::{DebitCurrency, ExtBuilder, VaultsModule, ALICE, STABLE_COIN_ID, X_TOKEN_ID, Y_TOKEN_ID};
 use palette_support::{assert_noop, assert_ok};
+
+#[test]
+fn jjjjjjjjjjjjjjjjj() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(DebitCurrency::update_balance(Y_TOKEN_ID, &ALICE, 10));
+	});
+}
 
 #[test]
 fn update_position_should_work() {
@@ -80,13 +87,13 @@ fn update_collateral_zero_position_should_work() {
 	});
 }
 
-#[test]
-fn get_collateral_rate_should_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(VaultsModule::update_position(ALICE, Y_TOKEN_ID, 100, 100));
-		assert_eq!(
-			VaultsModule::collateral_ratio(ALICE, Y_TOKEN_ID),
-			Some(Fixed64::from_rational(1, 0))
-		);
-	});
-}
+// #[test]
+// fn get_collateral_rate_should_work() {
+// 	ExtBuilder::default().build().execute_with(|| {
+// 		assert_ok!(VaultsModule::update_position(ALICE, Y_TOKEN_ID, 100, 100));
+// 		assert_eq!(
+// 			VaultsModule::collateral_ratio(ALICE, Y_TOKEN_ID),
+// 			Some(Fixed64::from_rational(1, 0))
+// 		);
+// 	});
+// }

@@ -17,13 +17,9 @@ mod tests;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-
-	type Price: FullCodec + SimpleArithmetic + Member + Into<u64>;
-
 	type Convert: Convert<(CurrencyIdOf<Self>, DebitBalanceOf<Self>), BalanceOf<Self>>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type DebitCurrency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyIdOf<Self>>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Self::Price>;
 	type RiskManager: RiskManager<Self::AccountId, CurrencyIdOf<Self>, AmountOf<Self>, DebitAmountOf<Self>>;
 }
 
@@ -110,11 +106,10 @@ impl<T: Trait> Module<T> {
 
 		// get prices and calc ratio of collateral
 		//if let Some(price) = T::PriceSource::get_price(ausd_currency_id.into(), currency_id) {
-			// TODO: fix calculate
-			// let result: T::Price = stable_balance.into() / (price * Into::<T::Price>::into(collateral_balance));
-			//return Some(Fixed64::from_rational(1i64, 1u64);
+		// TODO: fix calculate
+		// let result: T::Price = stable_balance.into() / (price * Into::<T::Price>::into(collateral_balance));
+		//return Some(Fixed64::from_rational(1i64, 1u64);
 		//}
-
 
 		None
 	}
@@ -151,12 +146,10 @@ impl<T: Trait> Module<T> {
 			.map_err(|_| Error::PositionWillUnsafe)?;
 
 		// update collateral asset
-		T::Currency::update_balance(currency_id, &who, -collaterals)
-			.map_err(|_| Error::UpdateCollateralFailed)?;
+		T::Currency::update_balance(currency_id, &who, -collaterals).map_err(|_| Error::UpdateCollateralFailed)?;
 
 		// updaet stable coin
-		T::DebitCurrency::update_balance(currency_id, &who, debits)
-			.map_err(|_| Error::UpdateStableCoinFailed)?;
+		T::DebitCurrency::update_balance(currency_id, &who, debits).map_err(|_| Error::UpdateStableCoinFailed)?;
 
 		// mutate collaterals and debits
 		Self::update_collateral_and_debit(&who, currency_id, collaterals, debits)?;

@@ -5,8 +5,6 @@
 use palette_support::{impl_outer_origin, parameter_types};
 use sr_primitives::{testing::Header, traits::IdentityLookup, Fixed64, Perbill};
 use su_primitives::H256;
-
-use orml_traits::PriceProvider;
 use support::RiskManager;
 
 use super::*;
@@ -34,7 +32,6 @@ parameter_types! {
 
 pub type AccountId = u32;
 pub type BlockNumber = u64;
-pub type Price = u64;
 pub type Balance = u64;
 pub type DebitBalance = u64;
 pub type Amount = i64;
@@ -102,22 +99,8 @@ impl RiskManager<AccountId, CurrencyId, Amount, DebitAmount> for MockRiskManager
 			_ => Err("mock error"),
 		}
 	}
-	fn required_collateral_ratio(currency_id: CurrencyId) -> Fixed64 {
-		Fixed64::from_parts(1)
-	}
 	fn check_debit_cap(currency_id: CurrencyId, debits: DebitAmount) -> Result<(), Self::Error> {
 		Ok(())
-	}
-}
-
-pub struct MockPriceSource;
-impl PriceProvider<CurrencyId, Price> for MockPriceSource {
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
-		match (base, quote) {
-			(1u32, 2u32) => Some(1u64),
-			(STABLE_COIN_ID, Y_TOKEN_ID) => Some(2u64),
-			_ => None,
-		}
 	}
 }
 
@@ -145,10 +128,7 @@ impl Trait for Runtime {
 	type Convert = MockConvert;
 	type Currency = Tokens;
 	type DebitCurrency = DebitCurrency;
-	type PriceSource = MockPriceSource;
 	type RiskManager = MockRiskManager;
-
-	type Price = Price;
 }
 
 pub type VaultsModule = Module<Runtime>;

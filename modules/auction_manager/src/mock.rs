@@ -23,7 +23,6 @@ parameter_types! {
 	pub const MinimumIncrementSize: Permill = Permill::from_percent(5);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 
@@ -79,7 +78,6 @@ impl Trait for Runtime {
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetStableCurrencyId = GetStableCurrencyId;
 }
 pub type AuctionManagerModule = Module<Runtime>;
