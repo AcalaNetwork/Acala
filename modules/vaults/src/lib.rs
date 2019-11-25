@@ -64,6 +64,7 @@ decl_error! {
 		AmountIntoBalanceFailed,
 		BalanceIntoAmountFailed,
 		PositionWillUnsafe,
+		ExceedDebitValueHardCap,
 		UpdateStableCoinFailed,
 		UpdateCollateralFailed,
 	}
@@ -90,6 +91,9 @@ impl<T: Trait> Module<T> {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
 
+		// ensure debits cap
+		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::ExceedDebitValueHardCap)?;
+
 		Self::update_vault(&who, currency_id, collaterals, debits)?;
 
 		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(
@@ -111,6 +115,9 @@ impl<T: Trait> Module<T> {
 	) -> result::Result<(), Error> {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
+
+		// ensure debits cap
+		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::ExceedDebitValueHardCap)?;
 
 		// ensure cdp safe
 		T::RiskManager::check_position_adjustment(&who, currency_id, collaterals, debits)

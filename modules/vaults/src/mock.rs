@@ -121,7 +121,11 @@ impl RiskManager<AccountId, CurrencyId, Amount, DebitAmount> for MockRiskManager
 	}
 	#[allow(unused_variables)]
 	fn check_debit_cap(currency_id: CurrencyId, debits: DebitAmount) -> Result<(), Self::Error> {
-		Ok(())
+		match (currency_id, debits) {
+			(2u32, 1000i64) => Err("mock error"),
+			(3u32, 1000i64) => Err("mock error"),
+			(_, _) => Ok(()),
+		}
 	}
 }
 
