@@ -1,12 +1,14 @@
 use aura_primitives::sr25519::AuthorityId as AuraId;
 use grandpa_primitives::AuthorityId as GrandpaId;
-use primitives::{sr25519, Pair, Public};
+use hex_literal::hex;
+use primitives::{crypto::UncheckedInto, sr25519, Pair, Public};
 use runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, Signature, SudoConfig,
 	SystemConfig, WASM_BINARY,
 };
 use sr_primitives::traits::{IdentifyAccount, Verify};
 use substrate_service;
+use substrate_telemetry::TelemetryEndpoints;
 
 // Note this is the URL for the telemetry server
 //const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -23,6 +25,8 @@ pub enum Alternative {
 	Development,
 	/// Whatever the current runtime is, with simple Alice/Bob auths.
 	LocalTestnet,
+	AlphaTestnet,
+	AlphaTestnetLatest,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -64,7 +68,6 @@ impl Alternative {
 							get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 							get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 						],
-						true,
 					)
 				},
 				vec![],
@@ -97,7 +100,6 @@ impl Alternative {
 							get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 							get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 						],
-						true,
 					)
 				},
 				vec![],
@@ -106,13 +108,55 @@ impl Alternative {
 				None,
 				None,
 			),
+			Alternative::AlphaTestnet => ChainSpec::from_json_bytes(&include_bytes!("../resources/alpha.json")[..])?,
+			Alternative::AlphaTestnetLatest => {
+				ChainSpec::from_genesis(
+					"Acala",
+					"acala",
+					|| {
+						// SECRET="..."
+						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//aura"
+						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//grandpa"
+						// ./target/debug/subkey inspect "$SECRET//acala//root"
+						alphanet_genesis(
+							vec![(
+								// 5GrF4EsvdGLba46WmPS7YYvt49F3kDrkJNuTcUjKPhpzkWYM
+								hex!["d3ac01000fa51af509d12586847013aaa0b7ce6cea501745d8190c4d622324f6"]
+									.unchecked_into(),
+								// 5EWtr28JevMKMwtriEAVebhgwd6iSqGcpPDsHeVhVs3if9Po
+								hex!["6c71d6cdf562a68345b4294eb9aad46599ff74fe6dc1a415f10e0fe2843cea3a"]
+									.unchecked_into(),
+							)],
+							// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+							hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+							vec![
+								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+							],
+						)
+					},
+					vec![
+						"/dns4/bootnode-1.alpha.acala.network/tcp/30333/p2p/QmdjfMKngmW5BxSg8FqTDuqyBD3NkFFkwZ4BVqjKfCMdWg".into(),
+						"/dns4/bootnode-2.alpha.acala.network/tcp/30333/p2p/QmdjfMKngmW5BxSg8FqTDuqyBD3NkFFkwZ4BVqjKfCMdWg".into(),
+					],
+					Some(TelemetryEndpoints::new(vec![(
+						"wss://telemetry.polkadot.io/submit/".into(),
+						0,
+					)])),
+					Some("acala"),
+					None,
+					None,
+				)
+			}
 		})
 	}
 
 	pub(crate) fn from(s: &str) -> Option<Self> {
 		match s {
 			"dev" => Some(Alternative::Development),
-			"" | "local" => Some(Alternative::LocalTestnet),
+			"local" => Some(Alternative::LocalTestnet),
+			"" | "alpha" => Some(Alternative::AlphaTestnet),
+			"alpha-latest" => Some(Alternative::AlphaTestnetLatest),
 			_ => None,
 		}
 	}
@@ -122,7 +166,36 @@ fn testnet_genesis(
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	_enable_println: bool,
+) -> GenesisConfig {
+	GenesisConfig {
+		system: Some(SystemConfig {
+			code: WASM_BINARY.to_vec(),
+			changes_trie_config: Default::default(),
+		}),
+		pallet_indices: Some(IndicesConfig {
+			ids: endowed_accounts.clone(),
+		}),
+		pallet_balances: Some(BalancesConfig {
+			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+			vesting: vec![],
+		}),
+		pallet_sudo: Some(SudoConfig { key: root_key }),
+		pallet_aura: Some(AuraConfig {
+			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+		}),
+		pallet_grandpa: Some(GrandpaConfig {
+			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
+		}),
+		pallet_collective_Instance1: Some(Default::default()),
+		pallet_membership_Instance1: Some(Default::default()),
+		orml_tokens: Some(Default::default()),
+	}
+}
+
+fn alphanet_genesis(
+	initial_authorities: Vec<(AuraId, GrandpaId)>,
+	root_key: AccountId,
+	endowed_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
 	GenesisConfig {
 		system: Some(SystemConfig {

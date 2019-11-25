@@ -22,6 +22,7 @@ tokio = "0.1.22"
 parking_lot = "0.9.0"
 codec = { package = "parity-scale-codec", version = "1.0.0" }
 trie-root = "0.15.2"
+hex-literal = "0.2.1"
 substrate-cli = { git = "https://github.com/paritytech/substrate.git" }
 primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate.git" }
 substrate-executor = { git = "https://github.com/paritytech/substrate.git" }
@@ -36,6 +37,7 @@ grandpa-primitives = { package = "substrate-finality-grandpa-primitives", git = 
 substrate-client = {  git = "https://github.com/paritytech/substrate.git" }
 basic-authorship = { package = "substrate-basic-authorship", git = "https://github.com/paritytech/substrate.git" }
 sr-primitives = { git = "https://github.com/paritytech/substrate.git" }
+substrate-telemetry = { git = "https://github.com/paritytech/substrate.git" }
 
 runtime = { package = "acala-runtime", path = "runtime" }
 
