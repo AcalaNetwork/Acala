@@ -3,11 +3,17 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, result};
-use sr_primitives::traits::{CheckedAdd, CheckedSub, Convert};
+use sr_primitives::{
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Convert},
+	ModuleId,
+};
+
 use support::RiskManager;
 
 mod mock;
 mod tests;
+
+const MODULE_ID: ModuleId = ModuleId(*b"xr1d84ts");
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -70,6 +76,10 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+	pub fn account_id() -> T::AccountId {
+		MODULE_ID.into_account()
+	}
+
 	// mutate collaterlas and debits, don't check position safe and don't mutate token
 	pub fn update_collaterals_and_debits(
 		who: T::AccountId,
@@ -106,8 +116,17 @@ impl<T: Trait> Module<T> {
 		T::RiskManager::check_position_adjustment(&who, currency_id, collaterals, debits)
 			.map_err(|_| Error::PositionWillUnsafe)?;
 
+		let collateral_balance =
+			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+
 		// update collateral asset
-		T::Currency::update_balance(currency_id, &who, -collaterals).map_err(|_| Error::UpdateCollateralFailed)?;
+		if collaterals.is_positive() {
+			T::Currency::transfer(currency_id, &who, &Self::account_id(), collateral_balance)
+				.map_err(|_| Error::UpdateCollateralFailed)?;
+		} else {
+			T::Currency::transfer(currency_id, &Self::account_id(), &who, collateral_balance)
+				.map_err(|_| Error::UpdateCollateralFailed)?;
+		}
 
 		// updaet stable coin
 		T::DebitCurrency::update_balance(currency_id, &who, debits).map_err(|_| Error::UpdateStableCoinFailed)?;

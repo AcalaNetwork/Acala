@@ -35,8 +35,7 @@ pub type Amount = i64;
 pub type DebitAmount = i64;
 pub type CurrencyId = u32;
 pub const ALICE: AccountId = 1;
-pub const NATIVE_CURRENCY_ID: CurrencyId = 4;
-pub const STABLE_COIN_ID: CurrencyId = 1;
+pub const NATIVE_CURRENCY_ID: CurrencyId = 0;
 pub const X_TOKEN_ID: CurrencyId = 2;
 pub const Y_TOKEN_ID: CurrencyId = 3;
 
@@ -163,7 +162,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			currency_ids: vec![STABLE_COIN_ID, X_TOKEN_ID, Y_TOKEN_ID],
+			currency_ids: vec![X_TOKEN_ID, Y_TOKEN_ID],
 			endowed_accounts: vec![ALICE],
 			initial_balance: 1000,
 		}
