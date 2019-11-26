@@ -10,6 +10,7 @@ codec = { package = "parity-scale-codec", version = "1.0.0", default-features = 
 sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 system = { package = "frame-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
+orml-utilities = { package = "orml-utilities", path = "../../orml/utilities", default-features = false }
 
 traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 
@@ -22,4 +23,5 @@ std = [
 	"system/std",
 	"rstd/std",
 	"traits/std",
+	"orml-utilities/std",
 ]

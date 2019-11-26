@@ -10,16 +10,11 @@ where
 	T: Trait,
 {
 	fn convert(a: (CurrencyIdOf<T>, DebitBalanceOf<T>)) -> BalanceOf<T> {
-		TryInto::<BalanceOf<T>>::try_into(
-			a.1.saturated_into::<u128>()
-				* TryInto::<u128>::try_into(
-					<Module<T>>::debit_exchange_rate(a.0)
-						.unwrap_or(T::DefaulDebitExchangeRate::get())
-						.into_inner(),
-				)
-				.unwrap_or(U128_BILLION)
-				/ TryInto::<u128>::try_into(ExchangeRate::accuracy()).unwrap_or(U128_BILLION),
-		)
-		.unwrap_or(0.into())
+		let balance = TryInto::<BalanceOf<T>>::try_into(TryInto::<u128>::try_into(a.1).unwrap_or(u128::max_value()))
+			.unwrap_or(BalanceOf::<T>::max_value());
+		<Module<T>>::debit_exchange_rate(a.0)
+			.unwrap_or(T::DefaulDebitExchangeRate::get())
+			.checked_mul_int(&balance)
+			.unwrap_or(BalanceOf::<T>::max_value())
 	}
 }

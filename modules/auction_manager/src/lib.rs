@@ -148,13 +148,15 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 				let module_account = Self::account_id();
 
 				// first: deduct amount of stablecoin from new bidder, add this to auction manager module
-				T::Currency::transfer(stable_currency_id, &(new_bid.0), &module_account, payment);
+				T::Currency::transfer(stable_currency_id, &(new_bid.0), &module_account, payment)
+					.expect("never failed after balance check");
 				<SurplusPool<T>>::mutate(|surplus| *surplus += payment);
 
 				// second: if these's bid before, return stablecoin from auction manager module to last bidder
 				if let Some((last_bidder, last_price)) = last_bid {
 					let refund = std::cmp::min(last_price, auction_item.target);
-					T::Currency::transfer(stable_currency_id, &module_account, &last_bidder, refund);
+					T::Currency::transfer(stable_currency_id, &module_account, &last_bidder, refund)
+						.expect("never failed because payment >= refund");
 					<SurplusPool<T>>::mutate(|surplus| *surplus -= refund);
 				}
 
@@ -169,7 +171,8 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 							&module_account,
 							&(auction_item.owner),
 							deduct_amount,
-						);
+						)
+						.expect("never failed after balance check");
 						<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| {
 							*balance -= deduct_amount
 						});
@@ -193,21 +196,17 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 	}
 
 	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
-		if let Some(mut auction_item) = Self::auctions(id) {
+		if let Some(auction_item) = Self::auctions(id) {
 			if let Some((bidder, _)) = winner {
 				// these's bidder for this aution, transfer collateral to bidder
-				if Self::total_collateral_in_auction(auction_item.currency_id) >= auction_item.amount {
-					T::Currency::transfer(
-						auction_item.currency_id,
-						&Self::account_id(),
-						&bidder,
-						auction_item.amount,
-					);
-					<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| {
-						*balance -= auction_item.amount
-					});
-					<Auctions<T>>::remove(id);
-				}
+				let amount = std::cmp::min(
+					auction_item.amount,
+					Self::total_collateral_in_auction(auction_item.currency_id),
+				);
+				T::Currency::transfer(auction_item.currency_id, &Self::account_id(), &bidder, amount)
+					.expect("never failed because use");
+				<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| *balance -= amount);
+				<Auctions<T>>::remove(id);
 			}
 		}
 	}
@@ -224,7 +223,8 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 				.checked_add(&increment)
 				.is_some()
 		{
-			T::Currency::deposit(T::GetStableCurrencyId::get(), &Self::account_id(), increment);
+			T::Currency::deposit(T::GetStableCurrencyId::get(), &Self::account_id(), increment)
+				.expect("never failed after overflow check");
 			<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
 		}
 	}
@@ -236,41 +236,48 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		target: Self::Balance,
 		bad_debt: Self::Balance,
 	) {
-		let maximum_auction_size = <Module<T>>::maximum_auction_size(currency_id);
-		let mut unhandled_amount: Self::Balance = amount;
-		let mut unhandled_target: Self::Balance = target;
-		let block_number = <system::Module<T>>::block_number();
+		if Self::total_collateral_in_auction(currency_id)
+			.checked_add(&amount)
+			.is_some() && T::Currency::balance(T::GetStableCurrencyId::get(), &Self::account_id())
+			.checked_add(&amount)
+			.is_some() && Self::bad_debt_pool().checked_add(&bad_debt).is_some()
+		{
+			T::Currency::deposit(currency_id, &Self::account_id(), amount).expect("never failed after overflow check");
+			<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
+			<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
 
-		while unhandled_amount > 0.into() {
-			let (lot_amount, lot_target) =
-				if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
-					(maximum_auction_size, target * maximum_auction_size / amount)
-				} else {
-					(unhandled_amount, unhandled_target)
+			let maximum_auction_size = <Module<T>>::maximum_auction_size(currency_id);
+			let mut unhandled_amount: Self::Balance = amount;
+			let mut unhandled_target: Self::Balance = target;
+			let block_number = <system::Module<T>>::block_number();
+
+			while unhandled_amount > 0.into() {
+				let (lot_amount, lot_target) =
+					if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
+						(maximum_auction_size, target * maximum_auction_size / amount)
+					} else {
+						(unhandled_amount, unhandled_target)
+					};
+
+				let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None);
+				let aution_item = AuctionItem {
+					owner: who.clone(),
+					currency_id: currency_id,
+					amount: lot_amount,
+					target: lot_target,
+					start_time: block_number,
 				};
+				<Auctions<T>>::insert(auction_id, aution_item);
+				<Module<T>>::deposit_event(RawEvent::CollateralAuction(
+					auction_id,
+					currency_id,
+					lot_amount,
+					lot_target,
+				));
 
-			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None);
-			let aution_item = AuctionItem {
-				owner: who.clone(),
-				currency_id: currency_id,
-				amount: lot_amount,
-				target: lot_target,
-				start_time: block_number,
-			};
-			<Auctions<T>>::insert(auction_id, aution_item);
-			<Module<T>>::deposit_event(RawEvent::CollateralAuction(
-				auction_id,
-				currency_id,
-				lot_amount,
-				lot_target,
-			));
-
-			unhandled_amount -= lot_amount;
-			unhandled_target -= lot_target;
+				unhandled_amount -= lot_amount;
+				unhandled_target -= lot_target;
+			}
 		}
-
-		T::Currency::deposit(currency_id, &Self::account_id(), amount);
-		<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
-		<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
 	}
 }

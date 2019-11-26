@@ -2413,6 +2413,7 @@ dependencies = [
  "orml-currencies 0.0.1",
  "orml-tokens 0.0.1",
  "orml-traits 0.0.1",
+ "orml-utilities 0.0.1",
  "pallet-balances 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2456,6 +2457,7 @@ version = "0.0.1"
 dependencies = [
  "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "orml-traits 0.0.1",
+ "orml-utilities 0.0.1",
  "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
  "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",

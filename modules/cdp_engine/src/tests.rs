@@ -11,20 +11,23 @@ fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
-		assert_eq!(CdpEngineModule::stability_fee(BTC), Some(Permill::from_parts(1)));
+		assert_eq!(
+			CdpEngineModule::stability_fee(BTC),
+			Some(Rate::from_rational(1, 100000))
+		);
 		assert_eq!(
 			CdpEngineModule::liquidation_ratio(BTC),
 			Some(Ratio::from_rational(3, 2))
 		);
 		assert_eq!(
 			CdpEngineModule::liquidation_penalty(BTC),
-			Some(Permill::from_percent(20))
+			Some(Rate::from_rational(2, 10))
 		);
 		assert_eq!(
 			CdpEngineModule::required_collateral_ratio(BTC),
@@ -39,9 +42,9 @@ fn calculate_collateral_ratio_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -57,9 +60,9 @@ fn exceed_debit_value_cap_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -73,9 +76,9 @@ fn check_position_adjustment_ratio_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -88,9 +91,9 @@ fn check_position_adjustment_ratio_below_required_ratio() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -106,9 +109,9 @@ fn check_debit_cap_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -121,9 +124,9 @@ fn check_debit_cap_exceed() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -139,9 +142,9 @@ fn update_position_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -175,9 +178,9 @@ fn remain_debit_value_too_small_check() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);
@@ -186,7 +189,7 @@ fn remain_debit_value_too_small_check() {
 			CdpEngineModule::update_position(ALICE, BTC, 0, -49),
 			Error::UpdatePositionFailed,
 		);
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 0, -50));
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, -100, -50));
 	});
 }
 
@@ -195,9 +198,9 @@ fn liquidate_unsafe_cdp_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpEngineModule::set_collateral_params(
 			BTC,
-			Some(Some(Permill::from_parts(1))),
+			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Permill::from_percent(20))),
+			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		);

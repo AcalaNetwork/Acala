@@ -1,10 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sr_primitives::Fixed64;
+use orml_utilities::FixedU128;
 
-pub type Price = Fixed64;
-pub type ExchangeRate = Fixed64;
-pub type Ratio = Fixed64;
+pub type Price = FixedU128;
+pub type ExchangeRate = FixedU128;
+pub type Ratio = FixedU128;
+pub type Rate = FixedU128;
 
 pub trait RiskManager<AccountId, CurrencyId, Amount, DebitAmount> {
 	type Error: Into<&'static str>;

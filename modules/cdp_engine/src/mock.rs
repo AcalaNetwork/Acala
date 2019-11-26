@@ -27,7 +27,7 @@ parameter_types! {
 	pub const TransferFee: u64 = 0;
 	pub const CreationFee: u64 = 2;
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub const GlobalStabilityFee: Permill = Permill::from_parts(0);
+	pub const GlobalStabilityFee: Rate = Rate::from_parts(0);
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
 	pub const MinimumDebitValue: Balance = 2;

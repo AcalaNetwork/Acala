@@ -16,6 +16,7 @@ pallet-balances= { package = "pallet-balances", git = "https://github.com/parity
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
+orml-utilities = { package = "orml-utilities", path = "../../orml/utilities", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 vaults = { package = "module-vaults", path = "../vaults", default-features = false }
 debits = { package = "module-debits", path = "../debits", default-features = false }
@@ -36,6 +37,7 @@ std = [
 	"orml-traits/std",
 	"orml-tokens/std",
 	"orml-currencies/std",
+	"orml-utilities/std",
 	"support/std",
 	"vaults/std",
 	"debits/std",

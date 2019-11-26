@@ -98,13 +98,3 @@ fn update_collaterals_and_debits_with_zero_should_work() {
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 0);
 	});
 }
-
-#[test]
-fn update_collaterals_and_debits_with_overflow_debits_cap_should_not_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			VaultsModule::update_collaterals_and_debits(ALICE, X_TOKEN_ID, 100, 1000),
-			Error::ExceedDebitValueHardCap
-		);
-	});
-}

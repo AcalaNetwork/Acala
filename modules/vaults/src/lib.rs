@@ -90,12 +90,7 @@ impl<T: Trait> Module<T> {
 	) -> result::Result<(), Error> {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
-
-		// ensure debits cap
-		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::ExceedDebitValueHardCap)?;
-
 		Self::update_vault(&who, currency_id, collaterals, debits)?;
-
 		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(
 			who,
 			currency_id,
