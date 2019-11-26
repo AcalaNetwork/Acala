@@ -4,10 +4,10 @@
 
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
-use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill, Permill};
+use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill};
 
 use orml_traits::PriceProvider;
-use support::{AuctionManager, ExchangeRate, Price, Ratio};
+use support::{AuctionManager, ExchangeRate, Price, Rate, Ratio};
 
 use super::*;
 
@@ -24,11 +24,10 @@ parameter_types! {
 	pub const TransferFee: u64 = 0;
 	pub const CreationFee: u64 = 2;
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub const GlobalStabilityFee: Permill = Permill::from_parts(0);
+	pub const GlobalStabilityFee: Rate = Rate::from_parts(0);
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
-	pub const MinimumDebitValue: Balance = 1;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const MinimumDebitValue: Balance = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 
@@ -44,7 +43,6 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const ALIEX: AccountId = 3;
 
-pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 pub const DOT: CurrencyId = 3;
@@ -101,6 +99,8 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetStableCurrencyId;
 }
 
+pub type Currencies = orml_currencies::Module<Runtime>;
+
 impl debits::Trait for Runtime {
 	type Currency = NativeCurrency;
 	type DebitBalance = DebitBalance;
@@ -150,7 +150,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 impl cdp_engine::Trait for Runtime {
 	type Event = ();
 	type AuctionManagerHandler = MockAuctionManager;
-	type Currency = Tokens;
+	type Currency = Currencies;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;

@@ -30,6 +30,8 @@ decl_event!(
 		Amount = AmountOf<T>,
 		DebitAmount = DebitAmountOf<T>,
 	{
+		/// liquidate `who` `currency` vault
+		Liquidate(AccountId, CurrencyId),
 		/// update vault success (from, to, currency_id)
 		UpdateVault(AccountId, CurrencyId, Amount, DebitAmount),
 		/// transfer vault success (from, to, currency_id)
@@ -49,6 +51,7 @@ decl_error! {
 		NoAuthorization,
 		TransferVaultFailed,
 		UpdatePositionFailed,
+		LiquidateFailed,
 	}
 }
 
@@ -56,6 +59,14 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
 		fn deposit_event() = default;
+
+		fn liquidate(_origin, who: <T::Lookup as StaticLookup>::Source, currency_id: CurrencyIdOf<T>) {
+			let who = T::Lookup::lookup(who).map_err(|_| Error::AccountUnSigned)?;
+
+			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::LiquidateFailed)?;
+
+			Self::deposit_event(RawEvent::Liquidate(who, currency_id));
+		}
 
 		fn update_vault(
 			origin,
