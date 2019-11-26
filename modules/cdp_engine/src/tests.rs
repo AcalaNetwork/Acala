@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{CdpEngineModule, Currencies, ExtBuilder, VaultsModule, ACA, ALICE, AUSD, BOB, BTC, DOT};
+use sr_primitives::traits::OnFinalize;
 
 #[test]
 fn set_collateral_params_work() {
@@ -219,5 +220,45 @@ fn liquidate_unsafe_cdp_work() {
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 0);
+	});
+}
+
+#[test]
+fn on_finalize_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		CdpEngineModule::set_collateral_params(
+			BTC,
+			Some(Some(Rate::from_rational(1, 100))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		);
+		CdpEngineModule::set_collateral_params(
+			DOT,
+			Some(Some(Rate::from_rational(2, 100))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		);
+		CdpEngineModule::on_finalize(1);
+		assert_eq!(
+			CdpEngineModule::debit_exchange_rate(BTC),
+			Some(ExchangeRate::from_rational(101, 100))
+		);
+		assert_eq!(
+			CdpEngineModule::debit_exchange_rate(DOT),
+			Some(ExchangeRate::from_rational(102, 100))
+		);
+		CdpEngineModule::on_finalize(2);
+		assert_eq!(
+			CdpEngineModule::debit_exchange_rate(BTC),
+			Some(ExchangeRate::from_rational(10201, 10000))
+		);
+		assert_eq!(
+			CdpEngineModule::debit_exchange_rate(DOT),
+			Some(ExchangeRate::from_rational(10404, 10000))
+		);
 	});
 }

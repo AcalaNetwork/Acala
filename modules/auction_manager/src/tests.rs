@@ -4,6 +4,7 @@
 
 use super::*;
 use mock::{Auction, AuctionManagerModule, ExtBuilder, Tokens, ALICE, AUSD, BOB, BTC};
+use sr_primitives::traits::OnFinalize;
 
 #[test]
 fn set_maximum_auction_size_work() {
@@ -102,5 +103,27 @@ fn on_auction_ended_work() {
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 200)));
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
 		assert_eq!(Tokens::balance(BTC, &BOB), 1100);
+	});
+}
+
+#[test]
+fn on_finalize_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		AuctionManagerModule::new_collateral_auction(ALICE, BTC, 100, 200, 150);
+		assert_eq!(AuctionManagerModule::bad_debt_pool(), 150);
+		assert_eq!(AuctionManagerModule::surplus_pool(), 0);
+		AuctionManagerModule::on_finalize(1);
+		assert_eq!(AuctionManagerModule::bad_debt_pool(), 150);
+		assert_eq!(AuctionManagerModule::surplus_pool(), 0);
+		assert_eq!(
+			AuctionManagerModule::on_new_bid(2, 0, (BOB, 100), None).accept_bid,
+			true
+		);
+		AuctionManagerModule::on_auction_ended(0, Some((BOB, 100)));
+		assert_eq!(AuctionManagerModule::bad_debt_pool(), 150);
+		assert_eq!(AuctionManagerModule::surplus_pool(), 100);
+		AuctionManagerModule::on_finalize(2);
+		assert_eq!(AuctionManagerModule::bad_debt_pool(), 50);
+		assert_eq!(AuctionManagerModule::surplus_pool(), 0);
 	});
 }
