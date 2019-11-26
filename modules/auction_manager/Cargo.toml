@@ -13,11 +13,11 @@ system = { package = "frame-system", git = "https://github.com/paritytech/substr
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
+orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "substrate-primitives",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
-orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 orml-auction = { package = "orml-auction", path = "../../orml/auction", default-features = false }
 
 [features]
@@ -30,7 +30,6 @@ std = [
 	"system/std",
 	"rstd/std",
 	"orml-traits/std",
-	"orml-tokens/std",
-	"orml-auction/std",
 	"support/std",
+	"orml-tokens/std",
 ]
