@@ -20,7 +20,7 @@ fn update_position_with_larger_than_collater_currency_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			VaultsModule::update_position(ALICE, Y_TOKEN_ID, 100000, 100),
-			Error::UpdateCollateralFailed
+			Error::CollateralInSufficient
 		);
 	});
 }
