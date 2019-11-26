@@ -64,8 +64,9 @@ decl_error! {
 		AmountIntoBalanceFailed,
 		BalanceIntoAmountFailed,
 		PositionWillUnsafe,
+		ExceedDebitValueHardCap,
 		UpdateStableCoinFailed,
-		UpdateCollateralFailed,
+		CollateralInSufficient,
 	}
 }
 
@@ -90,6 +91,9 @@ impl<T: Trait> Module<T> {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
 
+		// ensure debits cap
+		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::ExceedDebitValueHardCap)?;
+
 		Self::update_vault(&who, currency_id, collaterals, debits)?;
 
 		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(
@@ -112,27 +116,36 @@ impl<T: Trait> Module<T> {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
 
+		// ensure debits cap
+		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::ExceedDebitValueHardCap)?;
+
 		// ensure cdp safe
 		T::RiskManager::check_position_adjustment(&who, currency_id, collaterals, debits)
 			.map_err(|_| Error::PositionWillUnsafe)?;
 
+		// ensure account has sufficient balance
+		Self::check_balance(&who, currency_id, collaterals)?;
+
+		// amount -> balance
 		let collateral_balance =
 			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
 
-		// update collateral asset
-		if collaterals.is_positive() {
-			T::Currency::transfer(currency_id, &who, &Self::account_id(), collateral_balance)
-				.map_err(|_| Error::UpdateCollateralFailed)?;
-		} else {
-			T::Currency::transfer(currency_id, &Self::account_id(), &who, collateral_balance)
-				.map_err(|_| Error::UpdateCollateralFailed)?;
-		}
-
-		// updaet stable coin
+		// update stable coin
 		T::DebitCurrency::update_balance(currency_id, &who, debits).map_err(|_| Error::UpdateStableCoinFailed)?;
 
+		let module_account = Self::account_id();
+		// update collateral asset
+		if collaterals.is_positive() {
+			T::Currency::transfer(currency_id, &who, &module_account, collateral_balance)
+				.expect("Will never fail ensured by check_balance");
+		} else {
+			T::Currency::transfer(currency_id, &module_account, &who, collateral_balance)
+				.expect("Will never fail ensured by check_balance");
+		}
+
 		// mutate collaterals and debits
-		Self::update_vault(&who, currency_id, collaterals, debits)?;
+		Self::update_vault(&who, currency_id, collaterals, debits)
+			.expect("Will never fail ensured by check_add_and_sub");
 
 		Self::deposit_event(RawEvent::UpdatePosition(who, currency_id, collaterals, debits));
 
@@ -162,15 +175,37 @@ impl<T: Trait> Module<T> {
 			.map_err(|_| Error::PositionWillUnsafe)?;
 
 		// execute transfer
-		Self::update_vault(&from, currency_id, -collateral, -debit)?;
-		Self::update_vault(&to, currency_id, collateral, debit)?;
+		Self::update_vault(&from, currency_id, -collateral, -debit)
+			.expect("Will never fail ensured by check_add_and_sub");
+		Self::update_vault(&to, currency_id, collateral, debit).expect("Will never fail ensured by check_add_and_sub");
 
 		Self::deposit_event(RawEvent::TransferVault(from, to, currency_id));
 
 		Ok(())
 	}
 
-	// ensure sum and sub will success when update
+	/// check `who` has sufficient balance
+	fn check_balance(
+		who: &T::AccountId,
+		currency_id: CurrencyIdOf<T>,
+		collateral: AmountOf<T>,
+	) -> result::Result<(), Error> {
+		let collaterals_balance =
+			TryInto::<BalanceOf<T>>::try_into(collateral.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+
+		let module_balance = T::Currency::balance(currency_id, &Self::account_id());
+		let who_balance = T::Currency::balance(currency_id, who);
+
+		if collateral.is_positive() {
+			ensure!(who_balance >= collaterals_balance, Error::CollateralInSufficient);
+		} else {
+			ensure!(module_balance >= collaterals_balance, Error::CollateralInSufficient);
+		}
+
+		Ok(())
+	}
+
+	/// ensure sum and sub will success when updat when manipulate vault
 	fn check_add_and_sub(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
