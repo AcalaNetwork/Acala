@@ -11,7 +11,9 @@ use rstd::{
 	fmt::Debug,
 };
 use sr_primitives::{
-	traits::{AccountIdConversion, MaybeSerializeDeserialize, Member, SaturatedConversion, SimpleArithmetic},
+	traits::{
+		AccountIdConversion, CheckedAdd, MaybeSerializeDeserialize, Member, SaturatedConversion, SimpleArithmetic,
+	},
 	ModuleId, Permill, RuntimeDebug,
 };
 use support::AuctionManager;
@@ -20,7 +22,7 @@ mod mock;
 mod tests;
 
 const U128_MILLION: u128 = 1_000_000;
-const MODULE_ID: ModuleId = ModuleId(*b"py/trsry");
+const MODULE_ID: ModuleId = ModuleId(*b"aca/amgr");
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
@@ -117,6 +119,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 		last_bid: Option<(T::AccountId, T::Balance)>,
 	) -> OnNewBidResult<T::BlockNumber> {
 		if let Some(mut auction_item) = Self::auctions(id) {
+			// calculate min_increment_size and auction_time_to_close according to elapsed time
 			let (minimum_increment_size, auction_time_to_close) =
 				if now >= auction_item.start_time + T::AuctionDurationSoftCap::get() {
 					(
@@ -127,7 +130,8 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 					(T::MinimumIncrementSize::get(), T::AuctionTimeToClose::get())
 				};
 
-			let current_price: T::Balance = match last_bid {
+			// get last price, if these's no bid set 0
+			let last_price: T::Balance = match last_bid {
 				None => 0.into(),
 				Some((_, price)) => price,
 			};
@@ -135,41 +139,43 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 			let stable_currency_id = T::GetStableCurrencyId::get();
 			let payment = std::cmp::min(auction_item.target, new_bid.1);
 
-			// 判断竞价是否有效
-			if (new_bid.1 - current_price).saturated_into::<u128>()
+			// bid_price - last_price >= max(last_price, target) * minimum_increment_size
+			if (new_bid.1 - last_price).saturated_into::<u128>()
 				>= u128::from(minimum_increment_size.deconstruct())
-					* std::cmp::max(auction_item.target, current_price).saturated_into::<u128>()
+					* std::cmp::max(auction_item.target, last_price).saturated_into::<u128>()
 					/ U128_MILLION && T::Currency::balance(stable_currency_id, &(new_bid.0)) > payment
 			{
 				let module_account = Self::account_id();
 
-				// 扣除bidder的投标款
-				let _ = T::Currency::transfer(stable_currency_id, &(new_bid.0), &module_account, payment);
+				// first: deduct amount of stablecoin from new bidder, add this to auction manager module
+				T::Currency::transfer(stable_currency_id, &(new_bid.0), &module_account, payment);
 				<SurplusPool<T>>::mutate(|surplus| *surplus += payment);
 
-				// 向上一个winner退款
-				if let Some((previous_bidder, previous_price)) = last_bid {
-					let refund = std::cmp::min(previous_price, auction_item.target);
-					let _ = T::Currency::transfer(stable_currency_id, &module_account, &previous_bidder, refund);
+				// second: if these's bid before, return stablecoin from auction manager module to last bidder
+				if let Some((last_bidder, last_price)) = last_bid {
+					let refund = std::cmp::min(last_price, auction_item.target);
+					T::Currency::transfer(stable_currency_id, &module_account, &last_bidder, refund);
 					<SurplusPool<T>>::mutate(|surplus| *surplus -= refund);
 				}
 
-				// 逆向拍卖处理
+				// third: if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction manager module
 				if new_bid.1 > auction_item.target {
-					let new_amount =
-						auction_item.amount * std::cmp::max(current_price, auction_item.target) / new_bid.1;
+					let new_amount = auction_item.amount * std::cmp::max(last_price, auction_item.target) / new_bid.1;
 					let deduct_amount = auction_item.amount - new_amount;
-					auction_item.amount = new_amount;
 
-					let _ = T::Currency::transfer(
-						auction_item.currency_id,
-						&module_account,
-						&(auction_item.owner),
-						deduct_amount,
-					);
-					<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| {
-						*balance -= deduct_amount
-					});
+					if Self::total_collateral_in_auction(auction_item.currency_id) >= deduct_amount {
+						T::Currency::transfer(
+							auction_item.currency_id,
+							&module_account,
+							&(auction_item.owner),
+							deduct_amount,
+						);
+						<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| {
+							*balance -= deduct_amount
+						});
+						auction_item.amount = new_amount;
+					}
+
 					<Auctions<T>>::insert(id, auction_item);
 				}
 
@@ -189,32 +195,19 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
 		if let Some(mut auction_item) = Self::auctions(id) {
 			if let Some((bidder, _)) = winner {
-				let _ = T::Currency::transfer(
-					auction_item.currency_id,
-					&Self::account_id(),
-					&bidder,
-					auction_item.amount,
-				);
-				<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| {
-					*balance -= auction_item.amount
-				});
-				<Auctions<T>>::remove(id);
-			} else {
-				// 流拍的处理
-				<Auctions<T>>::remove(id);
-				let block_number = <system::Module<T>>::block_number();
-
-				let new_id: AuctionIdOf<T> =
-					T::Auction::new_auction(block_number, Some(block_number + T::AuctionTimeToClose::get()));
-				auction_item.start_time = block_number;
-
-				<Auctions<T>>::insert(new_id, auction_item.clone());
-				Self::deposit_event(RawEvent::CollateralAuction(
-					new_id,
-					auction_item.currency_id,
-					auction_item.amount,
-					auction_item.target,
-				));
+				// these's bidder for this aution, transfer collateral to bidder
+				if Self::total_collateral_in_auction(auction_item.currency_id) >= auction_item.amount {
+					T::Currency::transfer(
+						auction_item.currency_id,
+						&Self::account_id(),
+						&bidder,
+						auction_item.amount,
+					);
+					<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| {
+						*balance -= auction_item.amount
+					});
+					<Auctions<T>>::remove(id);
+				}
 			}
 		}
 	}
@@ -226,8 +219,14 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	type Amount = T::Amount;
 
 	fn increase_surplus(increment: Self::Balance) {
-		let _ = T::Currency::deposit(T::GetStableCurrencyId::get(), &Self::account_id(), increment);
-		<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
+		if Self::surplus_pool().checked_add(&increment).is_some()
+			&& T::Currency::balance(T::GetStableCurrencyId::get(), &Self::account_id())
+				.checked_add(&increment)
+				.is_some()
+		{
+			T::Currency::deposit(T::GetStableCurrencyId::get(), &Self::account_id(), increment);
+			<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
+		}
 	}
 
 	fn new_collateral_auction(
@@ -250,8 +249,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 					(unhandled_amount, unhandled_target)
 				};
 
-			let auction_id: AuctionIdOf<T> =
-				T::Auction::new_auction(block_number, Some(block_number + T::AuctionTimeToClose::get()));
+			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None);
 			let aution_item = AuctionItem {
 				owner: who.clone(),
 				currency_id: currency_id,
@@ -271,7 +269,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			unhandled_target -= lot_target;
 		}
 
-		let _ = T::Currency::deposit(currency_id, &Self::account_id(), amount);
+		T::Currency::deposit(currency_id, &Self::account_id(), amount);
 		<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
 		<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
 	}

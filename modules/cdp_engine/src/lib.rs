@@ -266,27 +266,32 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, DebitAmou
 			debit_balance -= debit_balance_adjustment;
 		}
 
-		// check the required collateral ratio and liquidation ratio
-		let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance);
-		if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
+		let debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
+
+		if debit_value != 0.into() {
+			// check the required collateral ratio
+			let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance);
+			if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
+				ensure!(
+					collateral_ratio >= required_collateral_ratio,
+					Error::BelowRequiredCollateralRatio
+				);
+			}
+
+			// check the liquidation ratio
+			let liquidation_ratio = if let Some(ratio) = Self::liquidation_ratio(currency_id) {
+				ratio
+			} else {
+				T::DefaultLiquidationRatio::get()
+			};
+			ensure!(collateral_ratio >= liquidation_ratio, Error::BelowLiquidationRatio);
+
+			// check the minimum_debit_value
 			ensure!(
-				collateral_ratio >= required_collateral_ratio,
-				Error::BelowRequiredCollateralRatio
+				debit_value >= T::MinimumDebitValue::get(),
+				Error::RemainDebitValueTooSmall,
 			);
 		}
-		let liquidation_ratio = if let Some(ratio) = Self::liquidation_ratio(currency_id) {
-			ratio
-		} else {
-			T::DefaultLiquidationRatio::get()
-		};
-		ensure!(collateral_ratio >= liquidation_ratio, Error::BelowLiquidationRatio);
-
-		// check the minimum_debit_value
-		let debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
-		ensure!(
-			debit_value == 0.into() || debit_value >= T::MinimumDebitValue::get(),
-			Error::RemainDebitValueTooSmall,
-		);
 
 		Ok(())
 	}
