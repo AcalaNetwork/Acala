@@ -12,17 +12,16 @@ frame-support = { package = "frame-support", git = "https://github.com/paritytec
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
-orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
-orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
-debits = { package = "module-debits", path = "../debits", default-features = false }
-pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]
 su-primitives = { package = "substrate-primitives",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
-
+debits = { package = "module-debits", path = "../debits", default-features = false }
+pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
+orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
+orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 
 [features]
 default = ["std"]
