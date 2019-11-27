@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{FullCodec, HasCompact};
-use frame_support::{decl_error, decl_module, Parameter};
+use frame_support::{decl_error, decl_module, traits::Get, Parameter};
 use rstd::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
@@ -10,17 +10,18 @@ use rstd::{
 use sr_primitives::traits::{Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic};
 use traits::{
 	arithmetic::{self, Signed},
-	BasicCurrency, BasicCurrencyExtended, MultiCurrency, MultiCurrencyExtended,
+	MultiCurrency, MultiCurrencyExtended,
 };
 
 mod mock;
 mod tests;
 
-pub type BalanceOf<T> = <<T as Trait>::Currency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 
 pub trait Trait: system::Trait {
 	type CurrencyId: FullCodec + HasCompact + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug;
-	type Currency: BasicCurrencyExtended<Self::AccountId>;
+	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = Self::CurrencyId>;
+	type GetStableCurrencyId: Get<Self::CurrencyId>;
 	type DebitBalance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
 	type Convert: Convert<(Self::CurrencyId, Self::DebitBalance), BalanceOf<Self>>;
 	type DebitAmount: Signed
@@ -80,7 +81,8 @@ impl<T: Trait> MultiCurrency<T::AccountId> for Module<T> {
 		debit_amount: Self::Balance,
 	) -> result::Result<(), Self::Error> {
 		let stable_coin_amount: BalanceOf<T> = T::Convert::convert((currency_id, debit_amount));
-		T::Currency::deposit(who, stable_coin_amount).map_err(|_| Error::DebitDepositFailed)
+		T::Currency::deposit(T::GetStableCurrencyId::get(), who, stable_coin_amount)
+			.map_err(|_| Error::DebitDepositFailed)
 	}
 
 	fn withdraw(
@@ -89,7 +91,8 @@ impl<T: Trait> MultiCurrency<T::AccountId> for Module<T> {
 		debit_amount: Self::Balance,
 	) -> result::Result<(), Self::Error> {
 		let stable_coin_amount: BalanceOf<T> = T::Convert::convert((currency_id, debit_amount));
-		T::Currency::withdraw(who, stable_coin_amount).map_err(|_| Error::DebitWithdrawFailed)
+		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, stable_coin_amount)
+			.map_err(|_| Error::DebitWithdrawFailed)
 	}
 
 	// be of no effect
