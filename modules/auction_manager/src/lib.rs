@@ -12,16 +12,17 @@ use rstd::{
 };
 use sr_primitives::{
 	traits::{
-		AccountIdConversion, CheckedAdd, MaybeSerializeDeserialize, Member, SaturatedConversion, SimpleArithmetic,
+		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Member,
+		SimpleArithmetic,
 	},
-	ModuleId, Permill, RuntimeDebug,
+	ModuleId, RuntimeDebug,
 };
-use support::AuctionManager;
+
+use support::{AuctionManager, Rate};
 
 mod mock;
 mod tests;
 
-const U128_MILLION: u128 = 1_000_000;
 const MODULE_ID: ModuleId = ModuleId(*b"aca/amgr");
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -57,7 +58,7 @@ pub trait Trait: system::Trait {
 		Amount = Self::Amount,
 	>;
 	type Auction: Auction<Self::AccountId, Self::BlockNumber>;
-	type MinimumIncrementSize: Get<Permill>;
+	type MinimumIncrementSize: Get<Rate>;
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
 	type GetStableCurrencyId: Get<Self::CurrencyId>;
@@ -109,6 +110,24 @@ impl<T: Trait> Module<T> {
 	pub fn account_id() -> T::AccountId {
 		MODULE_ID.into_account()
 	}
+
+	/// Check `new_price` is larger than minimum increment
+	/// Formula: bid_price - last_price >= max(last_price, target) * minimum_increment_size
+	pub fn check_minimum_increment(
+		new_price: &T::Balance,
+		last_price: &T::Balance,
+		target_price: &T::Balance,
+		minimum_increment: &Rate,
+	) -> bool {
+		if let (Some(target), Some(result)) = (
+			minimum_increment.checked_mul_int(std::cmp::max(target_price, last_price)),
+			new_price.checked_sub(last_price),
+		) {
+			return result >= target;
+		}
+
+		false
+	}
 }
 
 impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionIdOf<T>> for Module<T> {
@@ -120,12 +139,13 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 	) -> OnNewBidResult<T::BlockNumber> {
 		if let Some(mut auction_item) = Self::auctions(id) {
 			// calculate min_increment_size and auction_time_to_close according to elapsed time
+
 			let (minimum_increment_size, auction_time_to_close) =
 				if now >= auction_item.start_time + T::AuctionDurationSoftCap::get() {
-					(
-						Permill::from_parts(T::MinimumIncrementSize::get().deconstruct() * 2_u32),
-						T::AuctionTimeToClose::get() / 2.into(),
-					)
+					T::MinimumIncrementSize::get()
+						.checked_mul(&Rate::from_natural(2))
+						.and_then(|increment| Some((increment, T::AuctionTimeToClose::get() / 2.into())))
+						.unwrap_or((T::MinimumIncrementSize::get(), T::AuctionTimeToClose::get()))
 				} else {
 					(T::MinimumIncrementSize::get(), T::AuctionTimeToClose::get())
 				};
@@ -139,11 +159,11 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 			let stable_currency_id = T::GetStableCurrencyId::get();
 			let payment = std::cmp::min(auction_item.target, new_bid.1);
 
-			// bid_price - last_price >= max(last_price, target) * minimum_increment_size
-			if (new_bid.1 - last_price).saturated_into::<u128>()
-				>= u128::from(minimum_increment_size.deconstruct())
-					* std::cmp::max(auction_item.target, last_price).saturated_into::<u128>()
-					/ U128_MILLION && T::Currency::balance(stable_currency_id, &(new_bid.0)) > payment
+			// check new price is larger than minimum increment
+			// check new bidder has enough stable coin
+			if Self::check_minimum_increment(&new_bid.1, &last_price, &auction_item.target, &minimum_increment_size)
+				&& T::Currency::balance(stable_currency_id, &(new_bid.0)) >= payment
+				&& Self::surplus_pool().checked_add(&payment).is_some()
 			{
 				let module_account = Self::account_id();
 
@@ -155,6 +175,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 				// second: if these's bid before, return stablecoin from auction manager module to last bidder
 				if let Some((last_bidder, last_price)) = last_bid {
 					let refund = std::cmp::min(last_price, auction_item.target);
+
 					T::Currency::transfer(stable_currency_id, &module_account, &last_bidder, refund)
 						.expect("never failed because payment >= refund");
 					<SurplusPool<T>>::mutate(|surplus| *surplus -= refund);
@@ -162,9 +183,15 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 
 				// third: if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction manager module
 				if new_bid.1 > auction_item.target {
-					let new_amount = auction_item.amount * std::cmp::max(last_price, auction_item.target) / new_bid.1;
-					let deduct_amount = auction_item.amount - new_amount;
+					let new_amount = auction_item
+						.amount
+						.checked_mul(std::cmp::max(&last_price, &auction_item.target))
+						.and_then(|n| n.checked_div(&new_bid.1))
+						.unwrap_or(auction_item.amount);
 
+					let deduct_amount = auction_item.amount.checked_sub(&new_amount).unwrap_or(0.into());
+
+					// ensure have sufficient collateral in auction module
 					if Self::total_collateral_in_auction(auction_item.currency_id) >= deduct_amount {
 						T::Currency::transfer(
 							auction_item.currency_id,
@@ -176,6 +203,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 						<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| {
 							*balance -= deduct_amount
 						});
+
 						auction_item.amount = new_amount;
 					}
 
@@ -198,7 +226,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
 		if let Some(auction_item) = Self::auctions(id) {
 			if let Some((bidder, _)) = winner {
-				// these's bidder for this aution, transfer collateral to bidder
+				// these's bidder for this auction, transfer collateral to bidder
 				let amount = std::cmp::min(
 					auction_item.amount,
 					Self::total_collateral_in_auction(auction_item.currency_id),
@@ -254,7 +282,11 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			while unhandled_amount > 0.into() {
 				let (lot_amount, lot_target) =
 					if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
-						(maximum_auction_size, target * maximum_auction_size / amount)
+						target
+							.checked_mul(&maximum_auction_size)
+							.and_then(|n| n.checked_div(&amount))
+							.and_then(|result| Some((maximum_auction_size, result)))
+							.unwrap_or((unhandled_amount, unhandled_target))
 					} else {
 						(unhandled_amount, unhandled_target)
 					};
@@ -275,6 +307,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 					lot_target,
 				));
 
+				// note: this will never fail, because of lot_* are always smaller or equal than unhandled_*
 				unhandled_amount -= lot_amount;
 				unhandled_target -= lot_target;
 			}
