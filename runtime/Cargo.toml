@@ -41,7 +41,14 @@ orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-currencies = { path = "../orml/currencies", default-features = false }
 
 template = { package = "module-template", path = "../modules/template", default-features = false }
+
+module-auction-manager = { package = "module-auction-manager", path = "../modules/auction_manager", default-features = false }
+module-cdp-engine = { package = "module-cdp-engine", path = "../modules/cdp_engine", default-features = false }
+module-debits = { package = "module-debits", path = "../modules/debits", default-features = false }
+module-honzon = { package = "module-honzon", path = "../modules/honzon", default-features = false }
 module-primitives = { package = "module-primitives", path = "../modules/primitives", default-features = false }
+module-support = { package = "module-support", path = "../modules/support", default-features = false }
+module-vaults = { package = "module-vaults", path = "../modules/vaults", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
@@ -82,5 +89,11 @@ std = [
 	"orml-tokens/std",
 	"orml-currencies/std",
 	"template/std",
+	"module-auction-manager/std",
+	"module-cdp-engine/std",
+	"module-debits/std",
+	"module-honzon/std",
 	"module-primitives/std",
+	"module-support/std",
+	"module-vaults/std",
 ]
