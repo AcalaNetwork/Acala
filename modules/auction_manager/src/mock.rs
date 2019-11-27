@@ -4,7 +4,7 @@
 
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
-use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill, Permill};
+use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill};
 
 use super::*;
 
@@ -20,7 +20,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const MinimumIncrementSize: Permill = Permill::from_percent(5);
+	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;

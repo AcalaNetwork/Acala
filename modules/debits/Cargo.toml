@@ -30,8 +30,5 @@ std = [
 	"system/std",
 	"rstd/std",
 	"traits/std",
-	"orml-currencies/std",
-	"orml-tokens/std",
-	"pallet-balances/std",
 	"orml-tokens/std",
 ]
