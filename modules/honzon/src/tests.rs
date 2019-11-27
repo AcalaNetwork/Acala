@@ -12,14 +12,15 @@ use support::{Rate, Ratio};
 #[test]
 fn liquidate_unsafe_cdp_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		CdpEngineModule::set_collateral_params(
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
 			BTC,
 			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
 			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
-		);
+		));
 		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
@@ -29,7 +30,15 @@ fn liquidate_unsafe_cdp_work() {
 			HonzonModule::liquidate(Origin::signed(ALIEX), ALICE, BTC),
 			"LiquidateFailed",
 		);
-		CdpEngineModule::set_collateral_params(BTC, None, Some(Some(Ratio::from_rational(3, 1))), None, None, None);
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			None,
+			Some(Some(Ratio::from_rational(3, 1))),
+			None,
+			None,
+			None
+		));
 		assert_ok!(HonzonModule::liquidate(Origin::signed(ALIEX), ALICE, BTC));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
@@ -80,14 +89,15 @@ fn unauthorize_all_should_work() {
 #[test]
 fn transfer_vault_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		CdpEngineModule::set_collateral_params(
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
 			BTC,
 			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
 			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
-		);
+		));
 		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
 		assert_ok!(HonzonModule::authorize(Origin::signed(BOB), BTC, ALICE));
 		assert_ok!(HonzonModule::transfer_vault(Origin::signed(ALICE), BTC, BOB));
@@ -109,14 +119,15 @@ fn transfer_unauthorization_vaults_should_not_work() {
 #[test]
 fn update_vault_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		CdpEngineModule::set_collateral_params(
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
 			BTC,
 			Some(Some(Rate::from_rational(1, 100000))),
 			Some(Some(Ratio::from_rational(3, 2))),
 			Some(Some(Rate::from_rational(2, 10))),
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
-		);
+		));
 		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
