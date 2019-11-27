@@ -1,5 +1,5 @@
 [package]
-name = "module-debits"
+name = "module-auction-manager"
 version = "0.0.1"
 authors = ["Acala Developers"]
 edition = "2018"
@@ -11,14 +11,14 @@ sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-f
 frame-support = { package = "frame-support", git = "https://github.com/paritytech/substrate.git", default-features = false }
 system = { package = "frame-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+support = { package = "module-support", path = "../support", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "substrate-primitives",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
-orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
-pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
+orml-auction = { package = "orml-auction", path = "../../orml/auction", default-features = false }
 
 [features]
 default = ["std"]
@@ -29,9 +29,7 @@ std = [
 	"frame-support/std",
 	"system/std",
 	"rstd/std",
-	"traits/std",
-	"orml-currencies/std",
-	"orml-tokens/std",
-	"pallet-balances/std",
+	"orml-traits/std",
+	"support/std",
 	"orml-tokens/std",
 ]

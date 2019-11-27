@@ -22,8 +22,7 @@ pub trait Trait: system::Trait {
 	type CurrencyId: FullCodec + HasCompact + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug;
 	type Currency: BasicCurrencyExtended<Self::AccountId>;
 	type DebitBalance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
-	type Convert: Convert<(Self::CurrencyId, BalanceOf<Self>), Self::DebitBalance>
-		+ Convert<(Self::CurrencyId, Self::DebitBalance), BalanceOf<Self>>;
+	type Convert: Convert<(Self::CurrencyId, Self::DebitBalance), BalanceOf<Self>>;
 	type DebitAmount: Signed
 		+ TryInto<Self::DebitBalance>
 		+ TryFrom<Self::DebitBalance>
