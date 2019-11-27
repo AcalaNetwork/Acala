@@ -162,7 +162,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 			// check new price is larger than minimum increment
 			// check new bidder has enough stable coin
 			if Self::check_minimum_increment(&new_bid.1, &last_price, &auction_item.target, &minimum_increment_size)
-				&& T::Currency::balance(stable_currency_id, &(new_bid.0)) > payment
+				&& T::Currency::balance(stable_currency_id, &(new_bid.0)) >= payment
 				&& Self::surplus_pool().checked_add(&payment).is_some()
 			{
 				let module_account = Self::account_id();
@@ -282,7 +282,11 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			while unhandled_amount > 0.into() {
 				let (lot_amount, lot_target) =
 					if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
-						(maximum_auction_size, target * maximum_auction_size / amount)
+						target
+							.checked_mul(&maximum_auction_size)
+							.and_then(|n| n.checked_div(&amount))
+							.and_then(|result| Some((maximum_auction_size, result)))
+							.unwrap_or((unhandled_amount, unhandled_target))
 					} else {
 						(unhandled_amount, unhandled_target)
 					};
@@ -303,6 +307,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 					lot_target,
 				));
 
+				// note: this will never fail, because of lot_* are always smaller or equal than unhandled_*
 				unhandled_amount -= lot_amount;
 				unhandled_target -= lot_target;
 			}
