@@ -6,6 +6,7 @@ use orml_utilities::FixedU128;
 use rstd::{convert::TryInto, marker, result};
 use sr_primitives::traits::{Bounded, CheckedAdd, CheckedSub, Convert};
 use support::{AuctionManager, ExchangeRate, Price, Rate, Ratio, RiskManager};
+use system::ensure_root;
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
@@ -82,6 +83,49 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
+		pub fn set_collateral_params(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			stability_fee: Option<Option<Rate>>,
+			liquidation_ratio: Option<Option<Ratio>>,
+			liquidation_penalty: Option<Option<Rate>>,
+			required_collateral_ratio: Option<Option<Ratio>>,
+			maximum_total_debit_value: Option<BalanceOf<T>>,
+		) {
+			ensure_root(origin)?;
+			if let Some(update) = stability_fee {
+				if let Some(val) = update {
+					<StabilityFee<T>>::insert(currency_id, val);
+				} else {
+					<StabilityFee<T>>::remove(currency_id);
+				}
+			}
+			if let Some(update) = liquidation_ratio {
+				if let Some(val) = update {
+					<LiquidationRatio<T>>::insert(currency_id, val);
+				} else {
+					<LiquidationRatio<T>>::remove(currency_id);
+				}
+			}
+			if let Some(update) = liquidation_penalty {
+				if let Some(val) = update {
+					<LiquidationPenalty<T>>::insert(currency_id, val);
+				} else {
+					<LiquidationPenalty<T>>::remove(currency_id);
+				}
+			}
+			if let Some(update) = required_collateral_ratio {
+				if let Some(val) = update {
+					<RequiredCollateralRatio<T>>::insert(currency_id, val);
+				} else {
+					<RequiredCollateralRatio<T>>::remove(currency_id);
+				}
+			}
+			if let Some(val) = maximum_total_debit_value {
+				<MaximumTotalDebitValue<T>>::insert(currency_id, val);
+			}
+		}
+
 		fn on_finalize(_now: T::BlockNumber) {
 			let global_stability_fee = T::GlobalStabilityFee::get();
 			// handle all kinds of collateral type
@@ -105,47 +149,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn set_collateral_params(
-		currency_id: CurrencyIdOf<T>,
-		stability_fee: Option<Option<Rate>>,
-		liquidation_ratio: Option<Option<Ratio>>,
-		liquidation_penalty: Option<Option<Rate>>,
-		required_collateral_ratio: Option<Option<Ratio>>,
-		maximum_total_debit_value: Option<BalanceOf<T>>,
-	) {
-		if let Some(update) = stability_fee {
-			if let Some(val) = update {
-				<StabilityFee<T>>::insert(currency_id, val);
-			} else {
-				<StabilityFee<T>>::remove(currency_id);
-			}
-		}
-		if let Some(update) = liquidation_ratio {
-			if let Some(val) = update {
-				<LiquidationRatio<T>>::insert(currency_id, val);
-			} else {
-				<LiquidationRatio<T>>::remove(currency_id);
-			}
-		}
-		if let Some(update) = liquidation_penalty {
-			if let Some(val) = update {
-				<LiquidationPenalty<T>>::insert(currency_id, val);
-			} else {
-				<LiquidationPenalty<T>>::remove(currency_id);
-			}
-		}
-		if let Some(update) = required_collateral_ratio {
-			if let Some(val) = update {
-				<RequiredCollateralRatio<T>>::insert(currency_id, val);
-			} else {
-				<RequiredCollateralRatio<T>>::remove(currency_id);
-			}
-		}
-		if let Some(val) = maximum_total_debit_value {
-			<MaximumTotalDebitValue<T>>::insert(currency_id, val);
-		}
-	}
-
 	pub fn calculate_collateral_ratio(
 		currency_id: CurrencyIdOf<T>,
 		collateral_balance: BalanceOf<T>,

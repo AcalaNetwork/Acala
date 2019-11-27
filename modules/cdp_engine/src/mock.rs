@@ -32,6 +32,8 @@ parameter_types! {
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
 	pub const MinimumDebitValue: Balance = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+
 }
 
 pub type AccountId = u64;
@@ -42,8 +44,9 @@ pub type Amount = i64;
 pub type CurrencyId = u32;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const AUSD: CurrencyId = 0;
-pub const ACA: CurrencyId = 1;
+
+pub const ACA: CurrencyId = 0;
+pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 pub const DOT: CurrencyId = 3;
 
@@ -91,18 +94,19 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency =
 	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
-pub type NativeCurrency = orml_currencies::NativeCurrencyOf<Runtime>;
+
 impl orml_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetStableCurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 impl debits::Trait for Runtime {
 	type CurrencyId = CurrencyId;
-	type Currency = NativeCurrency;
+	type Currency = Currencies;
+	type GetStableCurrencyId = GetStableCurrencyId;
 	type DebitBalance = DebitBalance;
 	type Convert = DebitExchangeRateConvertor<Runtime>;
 	type DebitAmount = Amount;

@@ -69,6 +69,7 @@ parameter_types! {
 	pub const TransferFee: u64 = 0;
 	pub const CreationFee: u64 = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -86,18 +87,19 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency =
 	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
-pub type NativeCurrency = orml_currencies::NativeCurrencyOf<Runtime>;
+
 impl orml_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetStableCurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 impl Trait for Runtime {
 	type CurrencyId = CurrencyId;
-	type Currency = NativeCurrency;
+	type Currency = Currencies;
+	type GetStableCurrencyId = GetStableCurrencyId;
 	type DebitBalance = DebitBalance;
 	type Convert = ConvertHandler;
 	type DebitAmount = Amount;
@@ -105,7 +107,8 @@ impl Trait for Runtime {
 pub type DebitsModule = Module<Runtime>;
 
 pub const ALICE: AccountId = 1;
-pub const AUSD: CurrencyId = 0;
+pub const ACA: CurrencyId = 0;
+pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 
 pub struct ConvertHandler;
@@ -121,7 +124,6 @@ pub struct ExtBuilder {
 	currency_ids: Vec<CurrencyId>,
 	endowed_accounts: Vec<AccountId>,
 	initial_balance: Balance,
-	is_for_pallet_balances: bool,
 }
 
 impl Default for ExtBuilder {
@@ -130,7 +132,6 @@ impl Default for ExtBuilder {
 			currency_ids: vec![AUSD, BTC],
 			endowed_accounts: vec![ALICE],
 			initial_balance: 1000,
-			is_for_pallet_balances: true,
 		}
 	}
 }
@@ -138,19 +139,6 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
 	pub fn build(self) -> runtime_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
-
-		if self.is_for_pallet_balances {
-			pallet_balances::GenesisConfig::<Runtime> {
-				balances: self
-					.endowed_accounts
-					.iter()
-					.map(|acc| (acc.clone(), self.initial_balance))
-					.collect(),
-				vesting: vec![],
-			}
-			.assimilate_storage(&mut t)
-			.unwrap();
-		}
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			tokens: self.currency_ids,

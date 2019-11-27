@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Currencies, ExtBuilder, VaultsModule, ALICE, NATIVE_CURRENCY_ID, X_TOKEN_ID, Y_TOKEN_ID};
+use mock::{Currencies, ExtBuilder, VaultsModule, ALICE, AUSD, X_TOKEN_ID, Y_TOKEN_ID};
 
 #[test]
 fn update_position_should_work() {
@@ -35,7 +35,7 @@ fn update_position_with_negative_collateral_should_work() {
 		// ensure tokens
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &ALICE), 900);
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &VaultsModule::account_id()), 100);
-		assert_eq!(Currencies::balance(NATIVE_CURRENCY_ID, &ALICE), 50);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 
 		assert_ok!(VaultsModule::update_position(ALICE, Y_TOKEN_ID, -10, -10));
 		// ensure collateral and debit
@@ -44,7 +44,7 @@ fn update_position_with_negative_collateral_should_work() {
 		// ensure tokens
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &ALICE), 910);
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &VaultsModule::account_id()), 90);
-		assert_eq!(Currencies::balance(NATIVE_CURRENCY_ID, &ALICE), 45);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 45);
 	});
 }
 
@@ -86,7 +86,7 @@ fn update_collaterals_and_debits_should_work() {
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 90);
 		// ensure tokens don't change
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &ALICE), 1000);
-		assert_eq!(Currencies::balance(NATIVE_CURRENCY_ID, &ALICE), 0);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
 	});
 }
 

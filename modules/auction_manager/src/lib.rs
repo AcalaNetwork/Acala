@@ -17,6 +17,7 @@ use sr_primitives::{
 	},
 	ModuleId, RuntimeDebug,
 };
+use system::ensure_root;
 
 use support::{AuctionManager, Rate};
 
@@ -90,6 +91,11 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
+		fn set_maximum_auction_size(origin, currency_id: T::CurrencyId, size: T::Balance) {
+			ensure_root(origin)?;
+			<MaximumAuctionSize<T>>::insert(currency_id, size);
+		}
+
 		fn on_finalize(_now: T::BlockNumber) {
 			let amount = std::cmp::min(Self::bad_debt_pool(), Self::surplus_pool());
 			if amount > 0.into() {
@@ -103,10 +109,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn set_maximum_auction_size(currency_id: T::CurrencyId, size: T::Balance) {
-		<MaximumAuctionSize<T>>::insert(currency_id, size);
-	}
-
 	pub fn account_id() -> T::AccountId {
 		MODULE_ID.into_account()
 	}
