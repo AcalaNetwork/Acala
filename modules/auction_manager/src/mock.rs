@@ -50,7 +50,6 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 }
-pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
@@ -86,7 +85,6 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
-pub const ACA: CurrencyId = 3;
 
 pub struct ExtBuilder {
 	currency_id: Vec<CurrencyId>,
@@ -99,7 +97,7 @@ impl Default for ExtBuilder {
 		Self {
 			currency_id: vec![AUSD, BTC],
 			endowed_accounts: vec![ALICE, BOB],
-			initial_balance: 0,
+			initial_balance: 1000,
 		}
 	}
 }
@@ -109,9 +107,9 @@ impl ExtBuilder {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			tokens: vec![AUSD, BTC],
-			initial_balance: 1000,
-			endowed_accounts: vec![ALICE, BOB],
+			tokens: self.currency_id,
+			initial_balance: self.initial_balance,
+			endowed_accounts: self.endowed_accounts,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

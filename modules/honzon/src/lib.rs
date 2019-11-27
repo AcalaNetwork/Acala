@@ -92,10 +92,9 @@ decl_module! {
 			// check authorization if `from` can manipulate `to`
 			Self::check_authorization(&to, &from, currency_id)?;
 
-			<vaults::Module<T>>::transfer(from.clone(), to.clone(), currency_id).map_err(|err| {
-				println!("{:?}", err);
+			<vaults::Module<T>>::transfer(from.clone(), to.clone(), currency_id).map_err(|_|
 				Error::TransferVaultFailed
-			})?;
+			)?;
 
 			Self::deposit_event(RawEvent::TransferVault(from, to, currency_id));
 		 }
@@ -153,7 +152,7 @@ impl<T: Trait> Module<T> {
 			return Ok(());
 		}
 
-		if let true = Self::authorization(from, (currency_id, to)) {
+		if Self::authorization(from, (currency_id, to)) {
 			return Ok(());
 		}
 

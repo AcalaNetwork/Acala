@@ -55,7 +55,6 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 }
-pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
@@ -106,7 +105,6 @@ impl Trait for Runtime {
 pub type DebitsModule = Module<Runtime>;
 
 pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
 pub const AUSD: CurrencyId = 0;
 pub const BTC: CurrencyId = 2;
 

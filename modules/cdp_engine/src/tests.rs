@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CdpEngineModule, Currencies, ExtBuilder, VaultsModule, ACA, ALICE, AUSD, BOB, BTC, DOT};
+use mock::{CdpEngineModule, Currencies, ExtBuilder, VaultsModule, ACA, ALICE, AUSD, BTC, DOT};
 use sr_primitives::traits::OnFinalize;
 
 #[test]

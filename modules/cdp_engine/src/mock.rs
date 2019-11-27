@@ -39,7 +39,6 @@ pub type BlockNumber = u64;
 pub type Balance = u64;
 pub type DebitBalance = u64;
 pub type Amount = i64;
-pub type DebitAmount = i64;
 pub type CurrencyId = u32;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -68,7 +67,6 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 }
-pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
@@ -122,6 +120,7 @@ pub type VaultsModule = vaults::Module<Runtime>;
 
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId, Price> for MockPriceSource {
+	#[allow(unused_variables)]
 	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
 		Some(Price::from_natural(1))
 	}
@@ -133,8 +132,10 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	type Balance = Balance;
 	type Amount = Amount;
 
+	#[allow(unused_variables)]
 	fn increase_surplus(increment: Self::Balance) {}
 
+	#[allow(unused_variables)]
 	fn new_collateral_auction(
 		who: AccountId,
 		currency_id: Self::CurrencyId,

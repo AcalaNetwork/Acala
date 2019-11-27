@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::assert_ok;
-use mock::{Currencies, DebitsModule, ExtBuilder, NativeCurrency, ALICE, AUSD, BTC};
+use mock::{Currencies, DebitsModule, ExtBuilder, NativeCurrency, ALICE, AUSD};
 
 #[test]
 fn update_balance_should_work() {
