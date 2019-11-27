@@ -8,7 +8,6 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use frame_support::weights::Weight;
 use primitives::u32_trait::{_1, _2};
 use primitives::OpaqueMetadata;
 use rstd::prelude::*;
@@ -29,12 +28,17 @@ use pallet_grandpa::fg_primitives;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
 
 // A few exports that help ease life for downstream crates.
-pub use frame_support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
+
+pub use frame_support::{construct_runtime, parameter_types, traits::Randomness, weights::Weight, StorageValue};
+pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sr_primitives::BuildStorage;
 pub use sr_primitives::{Perbill, Permill};
 
+use orml_traits::DataProvider;
+
 pub use module_primitives::CurrencyId;
+pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 pub use orml_currencies::BasicCurrencyAdapter;
 
 /// An index to a block.
@@ -65,6 +69,8 @@ pub type Hash = primitives::H256;
 
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
+
+pub type AuctionId = u32;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -251,9 +257,11 @@ impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type MembershipChanged = OperatorCollective;
 }
 
-impl template::Trait for Runtime {
+impl orml_auction::Trait for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type Balance = Balance;
+	type AuctionId = AuctionId;
+	type Handler = module_auction_manager::Module<Runtime>;
 }
 
 impl orml_oracle::Trait for Runtime {
@@ -273,8 +281,22 @@ impl orml_tokens::Trait for Runtime {
 	type CurrencyId = CurrencyId;
 }
 
+pub struct MockDataProvider;
+#[allow(unused_variables)]
+impl DataProvider<CurrencyId, Price> for MockDataProvider {
+	fn get(currency: &CurrencyId) -> Option<Price> {
+		Some(Price::from_parts(1))
+	}
+}
+
+impl orml_prices::Trait for Runtime {
+	type CurrencyId = CurrencyId;
+	type Source = MockDataProvider;
+}
+
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
+	pub const GetStableCurrencyId: CurrencyId = CurrencyId::AUSD;
 }
 
 impl orml_currencies::Trait for Runtime {
@@ -282,6 +304,66 @@ impl orml_currencies::Trait for Runtime {
 	type MultiCurrency = orml_tokens::Module<Runtime>;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance, orml_tokens::Error>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+}
+
+parameter_types! {
+	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 50);
+	pub const AuctionTimeToClose: BlockNumber = 100;
+	pub const AuctionDurationSoftCap: BlockNumber = 200;
+}
+
+impl module_auction_manager::Trait for Runtime {
+	type Event = Event;
+	type CurrencyId = CurrencyId;
+	type Balance = Balance;
+	type Amount = Amount;
+	type Currency = orml_currencies::Module<Runtime>;
+	type Auction = orml_auction::Module<Runtime>;
+	type MinimumIncrementSize = MinimumIncrementSize;
+	type AuctionTimeToClose = AuctionTimeToClose;
+	type AuctionDurationSoftCap = AuctionDurationSoftCap;
+	type GetStableCurrencyId = GetStableCurrencyId;
+}
+
+impl module_debits::Trait for Runtime {
+	type CurrencyId = CurrencyId;
+	type Currency = orml_currencies::Module<Runtime>;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type DebitBalance = Balance;
+	type DebitAmount = Amount;
+	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
+}
+
+impl module_vaults::Trait for Runtime {
+	type Event = Event;
+	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
+	type Currency = orml_currencies::Module<Runtime>;
+	type DebitCurrency = module_debits::Module<Runtime>;
+	type RiskManager = module_cdp_engine::Module<Runtime>;
+}
+
+parameter_types! {
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
+	pub const GlobalStabilityFee: Rate = Rate::from_rational(1, 100);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 10);
+	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 1);
+	pub const MinimumDebitValue: Balance = 10;
+}
+impl module_cdp_engine::Trait for Runtime {
+	type Event = Event;
+	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
+	type Currency = orml_currencies::Module<Runtime>;
+	type PriceSource = orml_prices::Module<Runtime>;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type GlobalStabilityFee = GlobalStabilityFee;
+	type DefaultLiquidationRatio = DefaultLiquidationRatio;
+	type DefaulDebitExchangeRate = DefaulDebitExchangeRate;
+	type MinimumDebitValue = MinimumDebitValue;
+	type GetStableCurrencyId = GetStableCurrencyId;
+}
+
+impl module_honzon::Trait for Runtime {
+	type Event = Event;
 }
 
 construct_runtime!(
@@ -302,10 +384,16 @@ construct_runtime!(
 		OperatorCollective: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		OperatorMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
 
+		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Call, Event<T>, Config<T>},
-		Template: template::{Module, Storage, Call, Event<T>},
-		Currencies: orml_currencies::{Module, Call, Event<T>},
+		Auction: orml_auction::{Module, Storage, Event<T>},
+		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
+		Debits: module_debits::{Module},
+		Vaults: module_vaults::{Module, Storage, Call, Event<T>},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>},
+		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
+
 	}
 );
 
