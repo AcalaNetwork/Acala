@@ -2,6 +2,12 @@
   <img src="https://acala.subdao.com/logo/acala-logo-long.svg" width="830">
 </p>
 
+<div align="center">
+
+[![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
+
+</div>
+
 <!-- TOC -->
 
 - [1. Introduction](#1-introduction)
