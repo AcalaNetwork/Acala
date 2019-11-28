@@ -4,6 +4,7 @@
 
 <div align="center">
 
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
 
 </div>
