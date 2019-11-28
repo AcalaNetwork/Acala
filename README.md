@@ -5,6 +5,7 @@
 <div align="center">
 
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
+[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
 
 </div>
