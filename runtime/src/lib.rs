@@ -24,6 +24,7 @@ use version::NativeVersion;
 use version::RuntimeVersion;
 
 use aura_primitives::sr25519::AuthorityId as AuraId;
+use orml_oracle::OperatorProvider;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
 
@@ -262,13 +263,24 @@ impl orml_auction::Trait for Runtime {
 	type Handler = module_auction_manager::Module<Runtime>;
 }
 
+pub struct OperatorCollectiveProvider;
+impl OperatorProvider<AccountId> for OperatorCollectiveProvider {
+	fn can_feed_data(who: &AccountId) -> bool {
+		OperatorCollective::is_member(who)
+	}
+
+	fn operators() -> Vec<AccountId> {
+		OperatorCollective::members()
+	}
+}
+
 impl orml_oracle::Trait for Runtime {
 	type Event = Event;
 	type OnNewData = (); // TODO: update this
-	type OperatorProvider = (); // TODO: update this
+	type OperatorProvider = OperatorCollectiveProvider;
 	type CombineData = orml_oracle::DefaultCombineData<Runtime>;
 	type Time = Timestamp;
-	type OracleKey = CurrencyId; // TODO: update this
+	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 }
 
