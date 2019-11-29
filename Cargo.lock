@@ -56,7 +56,6 @@ dependencies = [
  "module-honzon 0.0.1",
  "module-primitives 0.0.1",
  "module-support 0.0.1",
- "module-template 0.0.1",
  "module-vaults 0.0.1",
  "orml-auction 0.0.1",
  "orml-currencies 0.0.1",

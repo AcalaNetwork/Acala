@@ -223,18 +223,16 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 	}
 
 	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
-		if let Some(auction_item) = Self::auctions(id) {
-			if let Some((bidder, _)) = winner {
-				// these's bidder for this auction, transfer collateral to bidder
-				let amount = rstd::cmp::min(
-					auction_item.amount,
-					Self::total_collateral_in_auction(auction_item.currency_id),
-				);
-				T::Currency::transfer(auction_item.currency_id, &Self::account_id(), &bidder, amount)
-					.expect("never failed because use");
-				<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| *balance -= amount);
-				<Auctions<T>>::remove(id);
-			}
+		if let (Some(auction_item), Some((bidder, _))) = (Self::auctions(id), winner) {
+			// these's bidder for this auction, transfer collateral to bidder
+			let amount = rstd::cmp::min(
+				auction_item.amount,
+				Self::total_collateral_in_auction(auction_item.currency_id),
+			);
+			T::Currency::transfer(auction_item.currency_id, &Self::account_id(), &bidder, amount)
+				.expect("never failed because use");
+			<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| *balance -= amount);
+			<Auctions<T>>::remove(id);
 		}
 	}
 }

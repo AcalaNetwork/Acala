@@ -35,8 +35,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sr_primitives::BuildStorage;
 pub use sr_primitives::{Perbill, Permill};
 
-use orml_traits::DataProvider;
-
 pub use module_primitives::CurrencyId;
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 pub use orml_currencies::BasicCurrencyAdapter;
@@ -106,7 +104,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	apis: RUNTIME_API_VERSIONS,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 4000;
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
@@ -270,8 +268,8 @@ impl orml_oracle::Trait for Runtime {
 	type OperatorProvider = (); // TODO: update this
 	type CombineData = orml_oracle::DefaultCombineData<Runtime>;
 	type Time = Timestamp;
-	type Key = u32; // TODO: update this
-	type Value = Balance;
+	type OracleKey = CurrencyId; // TODO: update this
+	type OracleValue = Price;
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -281,17 +279,9 @@ impl orml_tokens::Trait for Runtime {
 	type CurrencyId = CurrencyId;
 }
 
-pub struct MockDataProvider;
-#[allow(unused_variables)]
-impl DataProvider<CurrencyId, Price> for MockDataProvider {
-	fn get(currency: &CurrencyId) -> Option<Price> {
-		Some(Price::from_parts(1))
-	}
-}
-
 impl orml_prices::Trait for Runtime {
 	type CurrencyId = CurrencyId;
-	type Source = MockDataProvider;
+	type Source = orml_oracle::Module<Runtime>;
 }
 
 parameter_types! {
@@ -344,10 +334,10 @@ impl module_vaults::Trait for Runtime {
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
-	pub const GlobalStabilityFee: Rate = Rate::from_rational(1, 100);
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 10);
+	pub const GlobalStabilityFee: Rate = Rate::from_rational(0, 0);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 1);
-	pub const MinimumDebitValue: Balance = 10;
+	pub const MinimumDebitValue: Balance = 1_000_000_000_000_000;
 }
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;

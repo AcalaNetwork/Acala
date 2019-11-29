@@ -42,7 +42,6 @@ orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-auction = { path = "../orml/auction", default-features = false }
 orml-prices = { path = "../orml/prices", default-features = false }
-template = { package = "module-template", path = "../modules/template", default-features = false }
 
 module-auction-manager = { package = "module-auction-manager", path = "../modules/auction_manager", default-features = false }
 module-cdp-engine = { package = "module-cdp-engine", path = "../modules/cdp_engine", default-features = false }
@@ -91,7 +90,6 @@ std = [
 	"orml-oracle/std",
 	"orml-tokens/std",
 	"orml-currencies/std",
-	"template/std",
 	"module-auction-manager/std",
 	"module-cdp-engine/std",
 	"module-debits/std",
