@@ -7,6 +7,10 @@
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
+ <br />
+[![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FAcalaNetwork)](https://twitter.com/AcalaNetwork)
+[![Riot.im](https://img.shields.io/badge/Riot.im-Welcome-orange?logo=riot)](https://riot.im/app/#/room/#acala:matrix.org)
+[![Medium](https://img.shields.io/badge/Medium-AcalaNetwork-brightgreen?logo=medium)](https://medium.com/@AcalaNetwork)
 
 </div>
 
