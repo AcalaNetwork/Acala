@@ -3,8 +3,8 @@ use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use primitives::{crypto::UncheckedInto, sr25519, Pair, Public};
 use runtime::{
-	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, Signature, SudoConfig,
-	SystemConfig, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, IndicesConfig, Signature,
+	SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
 };
 use sr_primitives::traits::{IdentifyAccount, Verify};
 use substrate_service;
@@ -188,7 +188,11 @@ fn testnet_genesis(
 		}),
 		pallet_collective_Instance1: Some(Default::default()),
 		pallet_membership_Instance1: Some(Default::default()),
-		orml_tokens: Some(Default::default()),
+		orml_tokens: Some(TokensConfig {
+			tokens: vec![CurrencyId::DOT, CurrencyId::XBTC],
+			initial_balance: 1_000_000_000_000_000_000_000_u128, // $1M
+			endowed_accounts: endowed_accounts.clone(),
+		}),
 	}
 }
 
@@ -218,6 +222,10 @@ fn alphanet_genesis(
 		}),
 		pallet_collective_Instance1: Some(Default::default()),
 		pallet_membership_Instance1: Some(Default::default()),
-		orml_tokens: Some(Default::default()),
+		orml_tokens: Some(TokensConfig {
+			tokens: vec![CurrencyId::DOT, CurrencyId::XBTC],
+			initial_balance: 1_000_000_000_000_000_000_000_u128, // $1M
+			endowed_accounts: endowed_accounts.clone(),
+		}),
 	}
 }
