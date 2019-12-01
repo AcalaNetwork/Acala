@@ -1,15 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, FullCodec, HasCompact};
+use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, traits::Get, Parameter};
 use orml_traits::{
 	arithmetic::{self, Signed},
 	Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult,
 };
-use rstd::{
-	convert::{TryFrom, TryInto},
-	fmt::Debug,
-};
+use rstd::convert::{TryFrom, TryInto};
 use sr_primitives::{
 	traits::{
 		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Member,
@@ -41,7 +38,7 @@ type AuctionIdOf<T> =
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type CurrencyId: FullCodec + HasCompact + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug;
+	type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize;
 	type Balance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
 	type Amount: Signed
 		+ TryInto<Self::Balance>
@@ -97,7 +94,7 @@ decl_module! {
 		}
 
 		fn on_finalize(_now: T::BlockNumber) {
-			let amount = std::cmp::min(Self::bad_debt_pool(), Self::surplus_pool());
+			let amount = rstd::cmp::min(Self::bad_debt_pool(), Self::surplus_pool());
 			if amount > 0.into() {
 				if T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), amount).is_ok() {
 					<BadDebtPool<T>>::mutate(|debt| *debt -= amount);
@@ -122,7 +119,7 @@ impl<T: Trait> Module<T> {
 		minimum_increment: &Rate,
 	) -> bool {
 		if let (Some(target), Some(result)) = (
-			minimum_increment.checked_mul_int(std::cmp::max(target_price, last_price)),
+			minimum_increment.checked_mul_int(rstd::cmp::max(target_price, last_price)),
 			new_price.checked_sub(last_price),
 		) {
 			return result >= target;
@@ -159,7 +156,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 			};
 
 			let stable_currency_id = T::GetStableCurrencyId::get();
-			let payment = std::cmp::min(auction_item.target, new_bid.1);
+			let payment = rstd::cmp::min(auction_item.target, new_bid.1);
 
 			// check new price is larger than minimum increment
 			// check new bidder has enough stable coin
@@ -176,7 +173,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 
 				// second: if these's bid before, return stablecoin from auction manager module to last bidder
 				if let Some((last_bidder, last_price)) = last_bid {
-					let refund = std::cmp::min(last_price, auction_item.target);
+					let refund = rstd::cmp::min(last_price, auction_item.target);
 
 					T::Currency::transfer(stable_currency_id, &module_account, &last_bidder, refund)
 						.expect("never failed because payment >= refund");
@@ -187,7 +184,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 				if new_bid.1 > auction_item.target {
 					let new_amount = auction_item
 						.amount
-						.checked_mul(std::cmp::max(&last_price, &auction_item.target))
+						.checked_mul(rstd::cmp::max(&last_price, &auction_item.target))
 						.and_then(|n| n.checked_div(&new_bid.1))
 						.unwrap_or(auction_item.amount);
 
@@ -226,18 +223,16 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 	}
 
 	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
-		if let Some(auction_item) = Self::auctions(id) {
-			if let Some((bidder, _)) = winner {
-				// these's bidder for this auction, transfer collateral to bidder
-				let amount = std::cmp::min(
-					auction_item.amount,
-					Self::total_collateral_in_auction(auction_item.currency_id),
-				);
-				T::Currency::transfer(auction_item.currency_id, &Self::account_id(), &bidder, amount)
-					.expect("never failed because use");
-				<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| *balance -= amount);
-				<Auctions<T>>::remove(id);
-			}
+		if let (Some(auction_item), Some((bidder, _))) = (Self::auctions(id), winner) {
+			// these's bidder for this auction, transfer collateral to bidder
+			let amount = rstd::cmp::min(
+				auction_item.amount,
+				Self::total_collateral_in_auction(auction_item.currency_id),
+			);
+			T::Currency::transfer(auction_item.currency_id, &Self::account_id(), &bidder, amount)
+				.expect("never failed because use");
+			<TotalCollateralInAuction<T>>::mutate(auction_item.currency_id, |balance| *balance -= amount);
+			<Auctions<T>>::remove(id);
 		}
 	}
 }
