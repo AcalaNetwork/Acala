@@ -1,3 +1,20 @@
+<p align="center">
+  <img src="https://acala.subdao.com/logo/acala-logo-long.svg" width="830">
+</p>
+
+<div align="center">
+
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
+[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
+[![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen)](https://substrate.dev/)
+[![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
+ <br />
+[![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FAcalaNetwork)](https://twitter.com/AcalaNetwork)
+[![Riot.im](https://img.shields.io/badge/Riot.im-Welcome-blue?logo=riot)](https://riot.im/app/#/room/#acala:matrix.org)
+[![Medium](https://img.shields.io/badge/Medium-AcalaNetwork-brightgreen?logo=medium)](https://medium.com/@AcalaNetwork)
+
+</div>
+
 <!-- TOC -->
 
 - [1. Introduction](#1-introduction)
