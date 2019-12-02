@@ -6,7 +6,7 @@
 
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
-[![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen)](https://substrate.dev/)
+[![Substrate version](http://rrd.me/feBhm)](https://substrate.dev/)
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
  <br />
 [![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FAcalaNetwork)](https://twitter.com/AcalaNetwork)
