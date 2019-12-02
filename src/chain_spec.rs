@@ -3,8 +3,8 @@ use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use primitives::{crypto::UncheckedInto, sr25519, Pair, Public};
 use runtime::{
-	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, Signature, SudoConfig,
-	SystemConfig, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, IndicesConfig,
+	OperatorMembershipConfig, Signature, SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
 };
 use sr_primitives::traits::{IdentifyAccount, Verify};
 use substrate_service;
@@ -179,7 +179,7 @@ fn testnet_genesis(
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 			vesting: vec![],
 		}),
-		pallet_sudo: Some(SudoConfig { key: root_key }),
+		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
 		pallet_aura: Some(AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
 		}),
@@ -187,8 +187,15 @@ fn testnet_genesis(
 			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
 		}),
 		pallet_collective_Instance1: Some(Default::default()),
-		pallet_membership_Instance1: Some(Default::default()),
-		orml_tokens: Some(Default::default()),
+		pallet_membership_Instance1: Some(OperatorMembershipConfig {
+			members: vec![root_key],
+			phantom: Default::default(),
+		}),
+		orml_tokens: Some(TokensConfig {
+			tokens: vec![CurrencyId::DOT, CurrencyId::XBTC],
+			initial_balance: 1_000_000_000_000_000_000_000_u128, // $1M
+			endowed_accounts: endowed_accounts.clone(),
+		}),
 	}
 }
 
@@ -209,7 +216,7 @@ fn alphanet_genesis(
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 			vesting: vec![],
 		}),
-		pallet_sudo: Some(SudoConfig { key: root_key }),
+		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
 		pallet_aura: Some(AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
 		}),
@@ -217,7 +224,14 @@ fn alphanet_genesis(
 			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
 		}),
 		pallet_collective_Instance1: Some(Default::default()),
-		pallet_membership_Instance1: Some(Default::default()),
-		orml_tokens: Some(Default::default()),
+		pallet_membership_Instance1: Some(OperatorMembershipConfig {
+			members: vec![root_key],
+			phantom: Default::default(),
+		}),
+		orml_tokens: Some(TokensConfig {
+			tokens: vec![CurrencyId::DOT, CurrencyId::XBTC],
+			initial_balance: 1_000_000_000_000_000_000_000_u128, // $1M
+			endowed_accounts: endowed_accounts.clone(),
+		}),
 	}
 }

@@ -105,7 +105,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	apis: RUNTIME_API_VERSIONS,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const MILLISECS_PER_BLOCK: u64 = 4000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
@@ -378,7 +378,7 @@ construct_runtime!(
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Aura: pallet_aura::{Module, Config<T>, Inherent(Timestamp)},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-		Indices: pallet_indices::{default, Config<T>},
+		Indices: pallet_indices,
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo,
@@ -471,7 +471,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl tx_pool_api::TaggedTransactionQueue<Block> for Runtime {
+	impl txpool_runtime_api::TaggedTransactionQueue<Block> for Runtime {
 		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
 			Executive::validate_transaction(tx)
 		}
