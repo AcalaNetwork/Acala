@@ -1,5 +1,0 @@
-build:
-  docker:
-    acala: Dockerfile
-run:
-  acala: /usr/local/bin/acala --dev
