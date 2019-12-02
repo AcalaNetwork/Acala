@@ -22,6 +22,7 @@ dependencies = [
  "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sc-transaction-pool 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "serde_json 1.0.42 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-transaction-pool-api 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "sr-io 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "sr-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git)",

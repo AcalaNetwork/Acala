@@ -6,6 +6,7 @@ use runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, IndicesConfig,
 	OperatorMembershipConfig, Signature, SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
 };
+use serde_json::map::Map;
 use sr_primitives::traits::{IdentifyAccount, Verify};
 use substrate_service;
 use substrate_telemetry::TelemetryEndpoints;
@@ -54,6 +55,10 @@ pub fn get_authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 impl Alternative {
 	/// Get an actual chain config from one of the alternatives.
 	pub(crate) fn load(self) -> Result<ChainSpec, String> {
+		let mut properties = Map::new();
+		properties.insert("tokenSymbol".into(), "ACA".into());
+		properties.insert("tokenDecimals".into(), 18.into());
+
 		Ok(match self {
 			Alternative::Development => ChainSpec::from_genesis(
 				"Development",
@@ -73,7 +78,7 @@ impl Alternative {
 				vec![],
 				None,
 				None,
-				None,
+				Some(properties),
 				None,
 			),
 			Alternative::LocalTestnet => ChainSpec::from_genesis(
@@ -105,7 +110,7 @@ impl Alternative {
 				vec![],
 				None,
 				None,
-				None,
+				Some(properties),
 				None,
 			),
 			Alternative::AlphaTestnet => ChainSpec::from_json_bytes(&include_bytes!("../resources/alpha.json")[..])?,
@@ -144,7 +149,7 @@ impl Alternative {
 						0,
 					)])),
 					Some("acala"),
-					None,
+					Some(properties),
 					None,
 				)
 			}
