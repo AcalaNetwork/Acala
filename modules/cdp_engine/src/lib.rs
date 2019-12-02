@@ -65,6 +65,7 @@ decl_error! {
 		RemainDebitValueTooSmall,
 		GrabCollateralAndDebitFailed,
 		BalanceOverflow,
+		InvalidFeedPrice,
 	}
 }
 
@@ -155,9 +156,8 @@ impl<T: Trait> Module<T> {
 		currency_id: CurrencyIdOf<T>,
 		collateral_balance: BalanceOf<T>,
 		debit_balance: DebitBalanceOf<T>,
+		price: Price,
 	) -> Ratio {
-		let price = <T as Trait>::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
-			.unwrap_or(Price::from_parts(0));
 		let locked_collateral_value = TryInto::<u128>::try_into(
 			price
 				.checked_mul_int(&collateral_balance)
@@ -199,7 +199,10 @@ impl<T: Trait> Module<T> {
 		let collateral_balance: BalanceOf<T> = <vaults::Module<T>>::collaterals(&who, currency_id);
 
 		// ensure the cdp is unsafe
-		let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance);
+		let feed_price = <T as Trait>::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
+			.ok_or(Error::InvalidFeedPrice)?;
+		let collateral_ratio =
+			Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 		let liquidation_ratio = if let Some(ratio) = Self::liquidation_ratio(currency_id) {
 			ratio
 		} else {
@@ -286,7 +289,10 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, DebitAmou
 
 		if debit_value != 0.into() {
 			// check the required collateral ratio
-			let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance);
+			let feed_price = <T as Trait>::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
+				.ok_or(Error::InvalidFeedPrice)?;
+			let collateral_ratio =
+				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 			if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
 				ensure!(
 					collateral_ratio >= required_collateral_ratio,

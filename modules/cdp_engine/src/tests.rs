@@ -52,7 +52,7 @@ fn calculate_collateral_ratio_work() {
 			Some(10000),
 		));
 		assert_eq!(
-			CdpEngineModule::calculate_collateral_ratio(BTC, 100, 50),
+			CdpEngineModule::calculate_collateral_ratio(BTC, 100, 50, Price::from_rational(1, 1)),
 			Ratio::from_rational(100, 50)
 		);
 	});
