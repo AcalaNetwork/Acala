@@ -263,22 +263,31 @@ fn on_finalize_work() {
 			Some(10000),
 		));
 		CdpEngineModule::on_finalize(1);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(BTC), None);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 30));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
+		CdpEngineModule::on_finalize(2);
 		assert_eq!(
 			CdpEngineModule::debit_exchange_rate(BTC),
 			Some(ExchangeRate::from_rational(101, 100))
 		);
-		assert_eq!(
-			CdpEngineModule::debit_exchange_rate(DOT),
-			Some(ExchangeRate::from_rational(102, 100))
-		);
-		CdpEngineModule::on_finalize(2);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
+		CdpEngineModule::on_finalize(3);
 		assert_eq!(
 			CdpEngineModule::debit_exchange_rate(BTC),
 			Some(ExchangeRate::from_rational(10201, 10000))
 		);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 0, -30));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
+		CdpEngineModule::on_finalize(4);
 		assert_eq!(
-			CdpEngineModule::debit_exchange_rate(DOT),
-			Some(ExchangeRate::from_rational(10404, 10000))
+			CdpEngineModule::debit_exchange_rate(BTC),
+			Some(ExchangeRate::from_rational(10201, 10000))
 		);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
 	});
 }

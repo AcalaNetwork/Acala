@@ -132,14 +132,16 @@ decl_module! {
 			for currency_id in T::CollateralCurrencyIds::get() {
 				let debit_exchange_rate = Self::debit_exchange_rate(currency_id).unwrap_or(T::DefaulDebitExchangeRate::get());
 				let stability_fee_rate = Self::stability_fee(currency_id).unwrap_or(Rate::from_parts(0)).checked_add(&global_stability_fee).unwrap_or(Rate::max_value());
-				let debit_exchange_rate_increment = debit_exchange_rate.checked_mul(&stability_fee_rate).unwrap_or(ExchangeRate::max_value());
-				if debit_exchange_rate_increment > ExchangeRate::from_parts(0) {
+				let total_debits = <vaults::Module<T>>::total_debits(currency_id);
+				if stability_fee_rate > Rate::from_parts(0) && total_debits > 0.into() {
+					let debit_exchange_rate_increment = debit_exchange_rate.checked_mul(&stability_fee_rate).unwrap_or(ExchangeRate::max_value());
+
 					// update exchange rate
 					let new_debit_exchange_rate = debit_exchange_rate.checked_add(&debit_exchange_rate_increment).unwrap_or(ExchangeRate::max_value());
 					<DebitExchangeRate<T>>::insert(currency_id, new_debit_exchange_rate);
 
 					// issue stablecoin to surplus pool
-					let total_debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, <vaults::Module<T>>::total_debits(currency_id)));
+					let total_debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, total_debits));
 					let issued_stable_coin_balance = debit_exchange_rate_increment.checked_mul_int(&total_debit_value).unwrap_or(BalanceOf::<T>::max_value());
 					T::AuctionManagerHandler::increase_surplus(issued_stable_coin_balance);
 				}
