@@ -13,13 +13,12 @@ COPY . /acala
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
-	apt-get install -y cmake pkg-config libssl-dev git clang
+	apt-get install -y cmake cmake pkg-config libssl-dev git clang libclang-dev
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \
 	rustup toolchain install nightly && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly && \
-	rustup default nightly && \
 	rustup default stable && \
 	cargo build "--$PROFILE"
 
@@ -33,8 +32,8 @@ ARG PROFILE=release
 RUN mv /usr/share/ca* /tmp && \
 	rm -rf /usr/share/*  && \
 	mv /tmp/ca-certificates /usr/share/ && \
-	mkdir -p /root/.local/share/Polkadot && \
-	ln -s /root/.local/share/Polkadot /data && \
+	mkdir -p /root/.local/share/acala && \
+	ln -s /root/.local/share/acala /data && \
 	useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
 COPY --from=builder /acala/target/$PROFILE/acala /usr/local/bin
