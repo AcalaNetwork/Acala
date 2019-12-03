@@ -7,7 +7,7 @@ use orml_traits::{
 	Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult,
 };
 use rstd::convert::{TryFrom, TryInto};
-use sr_primitives::{
+use sp_runtime::{
 	traits::{
 		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Member,
 		SimpleArithmetic,

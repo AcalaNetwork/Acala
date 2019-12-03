@@ -4,7 +4,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, t
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, PriceProvider};
 use orml_utilities::FixedU128;
 use rstd::{convert::TryInto, marker, prelude::*, result};
-use sr_primitives::traits::{Bounded, CheckedAdd, CheckedSub, Convert};
+use sp_runtime::traits::{Bounded, CheckedAdd, CheckedSub, Convert};
 use support::{AuctionManager, ExchangeRate, Price, Rate, Ratio, RiskManager};
 use system::ensure_root;
 

@@ -4,7 +4,7 @@
 
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
-use sr_primitives::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
 use orml_traits::PriceProvider;
 use support::{AuctionManager, ExchangeRate, Price, Rate, Ratio};
@@ -58,7 +58,7 @@ impl system::Trait for Runtime {
 	type BlockNumber = BlockNumber;
 	type Call = ();
 	type Hash = H256;
-	type Hashing = ::sr_primitives::traits::BlakeTwo256;
+	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;

@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::assert_ok;
 use mock::{Auction, AuctionManagerModule, ExtBuilder, Origin, Tokens, ALICE, AUSD, BOB, BTC};
-use sr_primitives::traits::OnFinalize;
+use sp_runtime::traits::OnFinalize;
 
 #[test]
 fn set_maximum_auction_size_work() {

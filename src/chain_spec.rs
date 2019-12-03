@@ -6,16 +6,16 @@ use runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, IndicesConfig,
 	OperatorMembershipConfig, Signature, SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
 };
+use sc_service;
+use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
-use sr_primitives::traits::{IdentifyAccount, Verify};
-use substrate_service;
-use substrate_telemetry::TelemetryEndpoints;
+use sp_runtime::traits::{IdentifyAccount, Verify};
 
 // Note this is the URL for the telemetry server
 //const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::ChainSpec<GenesisConfig>;
 
 /// The chain specification option. This is expected to come in from the CLI and
 /// is little more than one of a number of alternatives which can easily be converted

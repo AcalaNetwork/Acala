@@ -3,7 +3,7 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use sr_primitives::traits::StaticLookup;
+use sp_runtime::traits::StaticLookup;
 
 mod mock;
 mod tests;
