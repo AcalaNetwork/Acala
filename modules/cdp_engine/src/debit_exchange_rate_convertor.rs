@@ -1,5 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use super::*;
 use sp_runtime::traits::Convert;
 
