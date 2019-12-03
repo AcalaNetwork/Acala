@@ -126,7 +126,10 @@ pub struct MockPriceSource;
 impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 	#[allow(unused_variables)]
 	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
-		Some(Price::from_natural(1))
+		match (base, quote) {
+			(1, 2) => Some(Price::from_natural(1)),
+			_ => None,
+		}
 	}
 }
 

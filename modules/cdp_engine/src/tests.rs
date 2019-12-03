@@ -52,7 +52,7 @@ fn calculate_collateral_ratio_work() {
 			Some(10000),
 		));
 		assert_eq!(
-			CdpEngineModule::calculate_collateral_ratio(BTC, 100, 50),
+			CdpEngineModule::calculate_collateral_ratio(BTC, 100, 50, Price::from_rational(1, 1)),
 			Ratio::from_rational(100, 50)
 		);
 	});
@@ -88,6 +88,25 @@ fn check_position_adjustment_ratio_work() {
 			Some(10000),
 		));
 		assert_ok!(CdpEngineModule::check_position_adjustment(&ALICE, BTC, 100, 50));
+	});
+}
+
+#[test]
+fn check_position_adjustment_ratio_when_invalid_feedprice() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			DOT,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_noop!(
+			CdpEngineModule::check_position_adjustment(&ALICE, DOT, 100, 50),
+			Error::InvalidFeedPrice,
+		);
 	});
 }
 
@@ -242,6 +261,16 @@ fn liquidate_unsafe_cdp_work() {
 }
 
 #[test]
+fn liquidate_unsafe_cdp_when_invalid_feedprice() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CdpEngineModule::liquidate_unsafe_cdp(ALICE, DOT),
+			Error::InvalidFeedPrice,
+		);
+	});
+}
+
+#[test]
 fn on_finalize_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CdpEngineModule::set_collateral_params(
@@ -263,22 +292,31 @@ fn on_finalize_work() {
 			Some(10000),
 		));
 		CdpEngineModule::on_finalize(1);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(BTC), None);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 30));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
+		CdpEngineModule::on_finalize(2);
 		assert_eq!(
 			CdpEngineModule::debit_exchange_rate(BTC),
 			Some(ExchangeRate::from_rational(101, 100))
 		);
-		assert_eq!(
-			CdpEngineModule::debit_exchange_rate(DOT),
-			Some(ExchangeRate::from_rational(102, 100))
-		);
-		CdpEngineModule::on_finalize(2);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
+		CdpEngineModule::on_finalize(3);
 		assert_eq!(
 			CdpEngineModule::debit_exchange_rate(BTC),
 			Some(ExchangeRate::from_rational(10201, 10000))
 		);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
+		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 0, -30));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
+		CdpEngineModule::on_finalize(4);
 		assert_eq!(
-			CdpEngineModule::debit_exchange_rate(DOT),
-			Some(ExchangeRate::from_rational(10404, 10000))
+			CdpEngineModule::debit_exchange_rate(BTC),
+			Some(ExchangeRate::from_rational(10201, 10000))
 		);
+		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
 	});
 }
