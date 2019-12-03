@@ -9,18 +9,18 @@ serde = { version = "1.0.101", optional = true, features = ["derive"] }
 safe-mix = { version = "1.0.0", default-features = false }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
 
-rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
-runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
-version = { package = "sr-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
-primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
-substrate-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-offchain-primitives = { package = "substrate-offchain-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
+rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
+runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
+version = { package = "sp-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
+primitives = { package = "sp-core", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+offchain-primitives = { package = "sp-offchain", git = "https://github.com/paritytech/substrate.git", default-features = false }
 txpool-runtime-api = { package = "sp-transaction-pool-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false }
-block-builder-api = { package = "substrate-block-builder-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false }
-sr-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
-aura-primitives = { package = "substrate-consensus-aura-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
+block-builder-api = { package = "sp-block-builder", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
+aura-primitives = { package = "sp-consensus-aura", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 system = { package = "frame-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -62,14 +62,14 @@ std = [
 	"rstd/std",
 	"runtime-io/std",
 	"primitives/std",
-	"sr-primitives/std",
+	"sp-runtime/std",
 	"version/std",
 	"serde",
 	"safe-mix/std",
 	"offchain-primitives/std",
-	"substrate-session/std",
+	"sp-session/std",
 	"txpool-runtime-api/std",
-	"sr-api/std",
+	"sp-api/std",
 	"block-builder-api/std",
 	"inherents/std",
 	"aura-primitives/std",

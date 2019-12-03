@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use super::*;
-use sr_primitives::traits::Convert;
+use sp_runtime::traits::Convert;
 
 pub struct DebitExchangeRateConvertor<T>(marker::PhantomData<T>);
 

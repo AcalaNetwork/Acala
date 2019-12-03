@@ -5,7 +5,7 @@ use rstd::{
 	convert::{TryFrom, TryInto},
 	result,
 };
-use sr_primitives::traits::{Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic};
+use sp_runtime::traits::{Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic};
 use traits::{
 	arithmetic::{self, Signed},
 	MultiCurrency, MultiCurrencyExtended,

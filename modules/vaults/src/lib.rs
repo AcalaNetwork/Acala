@@ -3,7 +3,7 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, result};
-use sr_primitives::{
+use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Convert},
 	ModuleId,
 };
