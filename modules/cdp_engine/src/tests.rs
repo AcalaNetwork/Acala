@@ -92,6 +92,25 @@ fn check_position_adjustment_ratio_work() {
 }
 
 #[test]
+fn check_position_adjustment_ratio_when_invalid_feedprice() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			DOT,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_noop!(
+			CdpEngineModule::check_position_adjustment(&ALICE, DOT, 100, 50),
+			Error::InvalidFeedPrice,
+		);
+	});
+}
+
+#[test]
 fn check_position_adjustment_ratio_below_required_ratio() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CdpEngineModule::set_collateral_params(
@@ -238,6 +257,16 @@ fn liquidate_unsafe_cdp_work() {
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 0);
+	});
+}
+
+#[test]
+fn liquidate_unsafe_cdp_when_invalid_feedprice() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CdpEngineModule::liquidate_unsafe_cdp(ALICE, DOT),
+			Error::InvalidFeedPrice,
+		);
 	});
 }
 
