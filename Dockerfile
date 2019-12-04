@@ -32,8 +32,6 @@ ARG PROFILE=release
 RUN mv /usr/share/ca* /tmp && \
 	rm -rf /usr/share/*  && \
 	mv /tmp/ca-certificates /usr/share/ && \
-	mkdir -p /root/.local/share/acala && \
-	ln -s /root/.local/share/acala /data && \
 	useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
 COPY --from=builder /acala/target/$PROFILE/acala /usr/local/bin
@@ -48,6 +46,6 @@ RUN rm -rf /usr/lib/python* && \
 
 USER acala
 EXPOSE 30333 9933 9944
-VOLUME ["/data"]
+VOLUME ["/acala/data"]
 
 CMD ["/usr/local/bin/acala"]
