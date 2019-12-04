@@ -379,7 +379,7 @@ construct_runtime!(
 	{
 		System: system::{Module, Call, Storage, Config, Event},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-		Aura: pallet_aura::{Module, Config<T>, Inherent(Timestamp)},
+		Aura: pallet_aura::{Module, Storage, Config<T>, Inherent(Timestamp)},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
 		Indices: pallet_indices,
 		Balances: pallet_balances,
