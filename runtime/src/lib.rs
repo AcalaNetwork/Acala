@@ -272,11 +272,16 @@ impl OperatorProvider<AccountId> for OperatorCollectiveProvider {
 	}
 }
 
+parameter_types! {
+	pub const MinimumCount: u32 = 1; // TODO: change this
+	pub const ExpiresIn: u64 = 1000 * 60 * 60 * 24 * 100; // 100days for now TODO: change this
+}
+
 impl orml_oracle::Trait for Runtime {
 	type Event = Event;
 	type OnNewData = (); // TODO: update this
 	type OperatorProvider = OperatorCollectiveProvider;
-	type CombineData = orml_oracle::DefaultCombineData<Runtime>;
+	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
