@@ -2,7 +2,7 @@
   "name": "Acala",
   "id": "acala",
   "bootNodes": [
-    "/dns4/testnet-node-1.acala.laminar.one/tcp/30333/p2p/QmfZFm6bGGpaJ8J2TJb14ubtm86hdNeAwqvxDoVw5FDWUC"
+    "/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmfZFm6bGGpaJ8J2TJb14ubtm86hdNeAwqvxDoVw5FDWUC"
   ],
   "telemetryEndpoints": [
     [
