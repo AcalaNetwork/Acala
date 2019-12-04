@@ -392,7 +392,7 @@ construct_runtime!(
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Call, Event<T>, Config<T>},
-		Auction: orml_auction::{Module, Storage, Event<T>},
+		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
 		Debits: module_debits::{Module},
 		Vaults: module_vaults::{Module, Storage, Call, Event<T>},
