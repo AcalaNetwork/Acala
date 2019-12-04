@@ -120,13 +120,13 @@ impl Alternative {
 					"acala",
 					|| {
 						// SECRET="..."
-						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//aura"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//aura"
 						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//grandpa"
 						// ./target/debug/subkey inspect "$SECRET//acala//root"
 						alphanet_genesis(
 							vec![(
-								// 5GrF4EsvdGLba46WmPS7YYvt49F3kDrkJNuTcUjKPhpzkWYM
-								hex!["d3ac01000fa51af509d12586847013aaa0b7ce6cea501745d8190c4d622324f6"]
+								// 5D2Nr1DsxqWDwAf84pWavtCnkysfE9gjzpDJMbD6ncsCwg8d
+								hex!["2a75be90e325f6251be9880b1268ab21ef65bb950ac77a21298a81548f9e435d"]
 									.unchecked_into(),
 								// 5EWtr28JevMKMwtriEAVebhgwd6iSqGcpPDsHeVhVs3if9Po
 								hex!["6c71d6cdf562a68345b4294eb9aad46599ff74fe6dc1a415f10e0fe2843cea3a"]
