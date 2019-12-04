@@ -46,6 +46,9 @@ RUN rm -rf /usr/lib/python* && \
 
 USER acala
 EXPOSE 30333 9933 9944
+
+RUN mkdir /acala/data
+
 VOLUME ["/acala/data"]
 
 CMD ["/usr/local/bin/acala"]
