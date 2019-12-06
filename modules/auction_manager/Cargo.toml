@@ -14,7 +14,6 @@ rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git"
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
-orml-utilities = { package = "orml-utilities", path = "../../orml/utilities", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -33,5 +32,4 @@ std = [
 	"orml-traits/std",
 	"support/std",
 	"orml-tokens/std",
-	"orml-utilities/std",
 ]
