@@ -35,3 +35,18 @@ pub trait AuctionManager<AccountId> {
 		bad_debt: Self::Balance,
 	);
 }
+
+pub trait DexManager<AccountId, CurrencyId, Balance> {
+	type Error: Into<&'static str>;
+
+	fn get_supply_amount(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		target_amount: Balance,
+	) -> Balance;
+	fn exchange_token(
+		who: AccountId,
+		supply: (CurrencyId, Balance),
+		target: (CurrencyId, Balance),
+	) -> Result<(), Self::Error>;
+}
