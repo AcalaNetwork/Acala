@@ -42,9 +42,9 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 	fn get_supply_amount(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		target_amount: Balance,
+		target_currency_amount: Balance,
 	) -> Balance;
-	fn exchange_token(
+	fn exchange_currency(
 		who: AccountId,
 		supply: (CurrencyId, Balance),
 		target: (CurrencyId, Balance),

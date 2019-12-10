@@ -37,5 +37,5 @@ std = [
 	"orml-utilities/std",
 	"orml-tokens/std",
 	"support/std",
-    "vaults/std",
+	"vaults/std",
 ]

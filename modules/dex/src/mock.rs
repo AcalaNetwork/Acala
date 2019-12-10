@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
@@ -79,6 +79,8 @@ pub type DexModule = Module<Runtime>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CAROL: AccountId = 3;
+
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 pub const DOT: CurrencyId = 3;
