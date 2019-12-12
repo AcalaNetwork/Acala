@@ -148,9 +148,9 @@ decl_module! {
 				Error::InvalidLiquidityIncrement.into(),
 			);
 			ensure!(
-				T::Currency::balance(base_currency_id, &who) >= base_currency_increment
+				T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_increment).is_ok()
 				&&
-				T::Currency::balance(other_currency_id, &who) >= other_currency_increment,
+				T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_increment).is_ok(),
 				Error::TokenNotEnough.into(),
 			);
 			T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)
@@ -288,7 +288,8 @@ impl<T: Trait> Module<T> {
 		min_base_currency_amount: BalanceOf<T>,
 	) -> result::Result<(), Error> {
 		ensure!(
-			T::Currency::balance(other_currency_id, &who) >= other_currency_amount && other_currency_amount != 0.into(),
+			other_currency_amount > 0.into()
+				&& T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_amount).is_ok(),
 			Error::TokenNotEnough,
 		);
 		let base_currency_id = T::GetBaseCurrencyId::get();
@@ -327,7 +328,8 @@ impl<T: Trait> Module<T> {
 	) -> result::Result<(), Error> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		ensure!(
-			base_currency_amount > 0.into() && T::Currency::balance(base_currency_id, &who) >= base_currency_amount,
+			base_currency_amount > 0.into()
+				&& T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_amount).is_ok(),
 			Error::TokenNotEnough,
 		);
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
@@ -366,7 +368,8 @@ impl<T: Trait> Module<T> {
 	) -> result::Result<(), Error> {
 		ensure!(
 			supply_other_currency_amount > 0.into()
-				&& T::Currency::balance(supply_other_currency_id, &who) >= supply_other_currency_amount,
+				&& T::Currency::ensure_can_withdraw(supply_other_currency_id, &who, supply_other_currency_amount)
+					.is_ok(),
 			Error::TokenNotEnough,
 		);
 		let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_other_currency_id);
