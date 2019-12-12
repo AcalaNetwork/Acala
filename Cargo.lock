@@ -2390,7 +2390,6 @@ dependencies = [
  "orml-auction 0.0.1",
  "orml-tokens 0.0.1",
  "orml-traits 0.0.1",
- "orml-utilities 0.0.1",
  "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-core 2.0.0 (git+https://github.com/paritytech/substrate.git)",
@@ -2440,6 +2439,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-dex"
+version = "0.0.1"
+dependencies = [
+ "frame-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "module-support 0.0.1",
+ "orml-currencies 0.0.1",
+ "orml-tokens 0.0.1",
+ "orml-traits 0.0.1",
+ "orml-utilities 0.0.1",
+ "pallet-balances 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-core 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sp-io 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sp-runtime 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sp-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+]
+
+[[package]]
 name = "module-honzon"
 version = "0.0.1"
 dependencies = [
@@ -2468,20 +2487,13 @@ dependencies = [
  "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-runtime 2.0.0 (git+https://github.com/paritytech/substrate.git)",
- "sp-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
 ]
 
 [[package]]
 name = "module-support"
 version = "0.0.1"
 dependencies = [
- "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
- "orml-traits 0.0.1",
  "orml-utilities 0.0.1",
- "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
- "sp-runtime 2.0.0 (git+https://github.com/paritytech/substrate.git)",
- "sp-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
 ]
 
 [[package]]

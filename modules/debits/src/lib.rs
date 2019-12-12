@@ -54,6 +54,15 @@ impl<T: Trait> MultiCurrency<T::AccountId> for Module<T> {
 	type Error = Error;
 
 	// be of no effect
+	fn ensure_can_withdraw(
+		_currency_id: Self::CurrencyId,
+		_who: &T::AccountId,
+		_amount: Self::Balance,
+	) -> result::Result<(), Self::Error> {
+		Ok(())
+	}
+
+	// be of no effect
 	fn total_issuance(_currency_id: Self::CurrencyId) -> Self::Balance {
 		Self::Balance::default()
 	}

@@ -14,9 +14,8 @@ use sp_runtime::{
 	},
 	ModuleId, RuntimeDebug,
 };
-use system::ensure_root;
-
 use support::{AuctionManager, Rate};
+use system::ensure_root;
 
 mod mock;
 mod tests;

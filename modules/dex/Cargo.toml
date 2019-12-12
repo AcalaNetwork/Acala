@@ -1,5 +1,5 @@
 [package]
-name = "module-cdp-engine"
+name = "module-dex"
 version = "0.0.1"
 authors = ["Acala Developers"]
 edition = "2018"
@@ -15,14 +15,12 @@ orml-traits = { package = "orml-traits", path = "../../orml/traits", default-fea
 orml-utilities = { package = "orml-utilities", path = "../../orml/utilities", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
-vaults = { package = "module-vaults", path = "../vaults", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
-debits = { package = "module-debits", path = "../debits", default-features = false }
 
 [features]
 default = ["std"]
@@ -37,5 +35,4 @@ std = [
 	"orml-utilities/std",
 	"orml-tokens/std",
 	"support/std",
-	"vaults/std",
 ]
