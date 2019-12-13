@@ -30,13 +30,13 @@ sc-executor = { git = "https://github.com/paritytech/substrate.git" }
 sc-service = { git = "https://github.com/paritytech/substrate.git" }
 inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git" }
 txpool = { package = "sc-transaction-pool", git = "https://github.com/paritytech/substrate.git" }
-txpool-api = { package = "sp-transaction-pool-api", git = "https://github.com/paritytech/substrate.git" }
+txpool-api = { package = "sp-transaction-pool", git = "https://github.com/paritytech/substrate.git" }
 network = { package = "sc-network", git = "https://github.com/paritytech/substrate.git" }
 aura = { package = "sc-consensus-aura", git = "https://github.com/paritytech/substrate.git" }
 aura-primitives = { package = "sp-consensus-aura", git = "https://github.com/paritytech/substrate.git" }
 consensus-common = { package = "sp-consensus", git = "https://github.com/paritytech/substrate.git" }
 grandpa = { package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
-grandpa-primitives = { package = "sp-finality-granpda", git = "https://github.com/paritytech/substrate.git" }
+grandpa-primitives = { package = "sp-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
 sc-client = {  git = "https://github.com/paritytech/substrate.git" }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
 basic-authorship = { package = "sc-basic-authority", git = "https://github.com/paritytech/substrate.git"}

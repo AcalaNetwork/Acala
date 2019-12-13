@@ -16,7 +16,7 @@ primitives = { package = "sp-core", git = "https://github.com/paritytech/substra
 sp-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 offchain-primitives = { package = "sp-offchain", git = "https://github.com/paritytech/substrate.git", default-features = false }
-txpool-runtime-api = { package = "sp-transaction-pool-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-transaction-pool = { package = "sp-transaction-pool", git = "https://github.com/paritytech/substrate.git", default-features = false }
 block-builder-api = { package = "sp-block-builder", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -68,7 +68,7 @@ std = [
 	"safe-mix/std",
 	"offchain-primitives/std",
 	"sp-session/std",
-	"txpool-runtime-api/std",
+	"sp-transaction-pool/std",
 	"sp-api/std",
 	"block-builder-api/std",
 	"inherents/std",
