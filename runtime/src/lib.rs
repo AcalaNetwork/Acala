@@ -69,6 +69,8 @@ pub type DigestItem = generic::DigestItem<Hash>;
 
 pub type AuctionId = u32;
 
+pub type Share = u128;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -354,6 +356,7 @@ parameter_types! {
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 1);
 	pub const MinimumDebitValue: Balance = 1_000_000_000_000_000;
 }
+
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
@@ -369,6 +372,18 @@ impl module_cdp_engine::Trait for Runtime {
 
 impl module_honzon::Trait for Runtime {
 	type Event = Event;
+}
+
+parameter_types! {
+	pub const GetExchangeFee: Rate = Rate::from_rational(2, 1000);
+}
+
+impl module_dex::Trait for Runtime {
+	type Event = Event;
+	type Currency = orml_currencies::Module<Runtime>;
+	type Share = Share;
+	type GetBaseCurrencyId = GetStableCurrencyId;
+	type GetExchangeFee = GetExchangeFee;
 }
 
 construct_runtime!(
@@ -398,7 +413,7 @@ construct_runtime!(
 		Vaults: module_vaults::{Module, Storage, Call, Event<T>},
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-
+		Dex: module_dex::{Module, Storage, Call, Event<T>},
 	}
 );
 

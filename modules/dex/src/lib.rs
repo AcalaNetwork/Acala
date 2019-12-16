@@ -43,7 +43,7 @@ decl_event!(
 );
 
 decl_error! {
-	/// Error for cdp dex module.
+	/// Error for dex module.
 	pub enum Error {
 		BaseCurrencyIdNotAllowed,
 		TokenNotEnough,
