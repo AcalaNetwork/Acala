@@ -23,9 +23,6 @@ pub trait RiskManager<AccountId, CurrencyId, Amount, DebitAmount> {
 pub trait AuctionManager<AccountId> {
 	type CurrencyId;
 	type Balance;
-	type Amount;
-
-	fn increase_surplus(increment: Self::Balance);
 
 	fn new_collateral_auction(
 		who: AccountId,
@@ -49,4 +46,11 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 		supply: (CurrencyId, Balance),
 		target: (CurrencyId, Balance),
 	) -> Result<(), Self::Error>;
+}
+
+pub trait CDPTreasury {
+	type Balance;
+
+	fn on_debit(amount: Self::Balance);
+	fn on_surplus(amount: Self::Balance);
 }

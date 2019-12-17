@@ -67,17 +67,23 @@ impl orml_auction::Trait for Runtime {
 }
 pub type Auction = orml_auction::Module<Runtime>;
 
+impl cdp_treasury::Trait for Runtime {
+	type Currency = Tokens;
+	type GetStableCurrencyId = GetStableCurrencyId;
+}
+pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+
 impl Trait for Runtime {
 	type Event = ();
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
-	type Amount = Amount;
 	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type Treasury = CdpTreasury;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 

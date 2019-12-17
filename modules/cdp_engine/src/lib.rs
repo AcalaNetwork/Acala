@@ -5,7 +5,7 @@ use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, Pric
 use orml_utilities::FixedU128;
 use rstd::{convert::TryInto, marker, prelude::*, result};
 use sp_runtime::traits::{Bounded, CheckedAdd, CheckedSub, Convert};
-use support::{AuctionManager, ExchangeRate, Price, Rate, Ratio, RiskManager};
+use support::{AuctionManager, CDPTreasury, ExchangeRate, Price, Rate, Ratio, RiskManager};
 use system::ensure_root;
 
 mod debit_exchange_rate_convertor;
@@ -28,9 +28,7 @@ pub trait Trait: system::Trait + vaults::Trait {
 		Self::AccountId,
 		CurrencyId = CurrencyIdOf<Self>,
 		Balance = BalanceOf<Self>,
-		Amount = AmountOf<Self>,
 	>;
-	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, FixedU128>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GlobalStabilityFee: Get<Rate>;
@@ -38,6 +36,7 @@ pub trait Trait: system::Trait + vaults::Trait {
 	type DefaulDebitExchangeRate: Get<ExchangeRate>;
 	type MinimumDebitValue: Get<BalanceOf<Self>>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
+	type Treasury: CDPTreasury<Balance = BalanceOf<Self>>;
 }
 
 decl_event!(
@@ -144,7 +143,7 @@ decl_module! {
 					// issue stablecoin to surplus pool
 					let total_debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, total_debits));
 					let issued_stable_coin_balance = debit_exchange_rate_increment.checked_mul_int(&total_debit_value).unwrap_or(BalanceOf::<T>::max_value());
-					T::AuctionManagerHandler::increase_surplus(issued_stable_coin_balance);
+					T::Treasury::on_surplus(issued_stable_coin_balance);
 				}
 			}
 		}

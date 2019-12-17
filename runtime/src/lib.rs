@@ -323,13 +323,13 @@ impl module_auction_manager::Trait for Runtime {
 	type Event = Event;
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
-	type Amount = Amount;
 	type Currency = orml_currencies::Module<Runtime>;
 	type Auction = orml_auction::Module<Runtime>;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type Treasury = module_cdp_treasury::Module<Runtime>;
 }
 
 impl module_debits::Trait for Runtime {
@@ -360,7 +360,6 @@ parameter_types! {
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
-	type Currency = orml_currencies::Module<Runtime>;
 	type PriceSource = orml_prices::Module<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
@@ -368,6 +367,7 @@ impl module_cdp_engine::Trait for Runtime {
 	type DefaulDebitExchangeRate = DefaulDebitExchangeRate;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type Treasury = module_cdp_treasury::Module<Runtime>;
 }
 
 impl module_honzon::Trait for Runtime {
@@ -384,6 +384,11 @@ impl module_dex::Trait for Runtime {
 	type Share = Share;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+}
+
+impl module_cdp_treasury::Trait for Runtime {
+	type Currency = orml_currencies::Module<Runtime>;
+	type GetStableCurrencyId = GetStableCurrencyId;
 }
 
 construct_runtime!(
@@ -414,6 +419,7 @@ construct_runtime!(
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
 	}
 );
 

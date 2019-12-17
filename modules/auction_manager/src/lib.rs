@@ -2,11 +2,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, traits::Get, Parameter};
-use orml_traits::{
-	arithmetic::{self, Signed},
-	Auction, AuctionHandler, MultiCurrency, MultiCurrencyExtended, OnNewBidResult,
-};
-use rstd::convert::{TryFrom, TryInto};
+use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Member,
@@ -14,7 +10,7 @@ use sp_runtime::{
 	},
 	ModuleId, RuntimeDebug,
 };
-use support::{AuctionManager, Rate};
+use support::{AuctionManager, CDPTreasury, Rate};
 use system::ensure_root;
 
 mod mock;
@@ -39,26 +35,13 @@ pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize;
 	type Balance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
-	type Amount: Signed
-		+ TryInto<Self::Balance>
-		+ TryFrom<Self::Balance>
-		+ Parameter
-		+ Member
-		+ arithmetic::SimpleArithmetic
-		+ Default
-		+ Copy
-		+ MaybeSerializeDeserialize;
-	type Currency: MultiCurrencyExtended<
-		Self::AccountId,
-		CurrencyId = Self::CurrencyId,
-		Balance = Self::Balance,
-		Amount = Self::Amount,
-	>;
+	type Currency: MultiCurrency<Self::AccountId, CurrencyId = Self::CurrencyId, Balance = Self::Balance>;
 	type Auction: Auction<Self::AccountId, Self::BlockNumber>;
 	type MinimumIncrementSize: Get<Rate>;
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
 	type GetStableCurrencyId: Get<Self::CurrencyId>;
+	type Treasury: CDPTreasury<Balance = Self::Balance>;
 }
 
 decl_event!(
@@ -78,8 +61,6 @@ decl_storage! {
 		Auctions get(fn auctions): map AuctionIdOf<T> =>
 			Option<AuctionItem<T::AccountId, T::CurrencyId, T::Balance, T::BlockNumber>>;
 		TotalCollateralInAuction get(fn total_collateral_in_auction): map T::CurrencyId => T::Balance;
-		BadDebtPool get(fn bad_debt_pool): T::Balance;
-		SurplusPool get(fn surplus_pool): T::Balance;
 	}
 }
 
@@ -90,16 +71,6 @@ decl_module! {
 		fn set_maximum_auction_size(origin, currency_id: T::CurrencyId, size: T::Balance) {
 			ensure_root(origin)?;
 			<MaximumAuctionSize<T>>::insert(currency_id, size);
-		}
-
-		fn on_finalize(_now: T::BlockNumber) {
-			let amount = rstd::cmp::min(Self::bad_debt_pool(), Self::surplus_pool());
-			if amount > 0.into() {
-				if T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), amount).is_ok() {
-					<BadDebtPool<T>>::mutate(|debt| *debt -= amount);
-					<SurplusPool<T>>::mutate(|surplus| *surplus -= amount);
-				}
-			}
 		}
 	}
 }
@@ -161,22 +132,25 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 			// check new bidder has enough stable coin
 			if Self::check_minimum_increment(&new_bid.1, &last_price, &auction_item.target, &minimum_increment_size)
 				&& T::Currency::balance(stable_currency_id, &(new_bid.0)) >= payment
-				&& Self::surplus_pool().checked_add(&payment).is_some()
 			{
 				let module_account = Self::account_id();
+				let mut surplus_increment = payment;
 
 				// first: deduct amount of stablecoin from new bidder, add this to auction manager module
-				T::Currency::transfer(stable_currency_id, &(new_bid.0), &module_account, payment)
+				T::Currency::withdraw(stable_currency_id, &(new_bid.0), payment)
 					.expect("never failed after balance check");
-				<SurplusPool<T>>::mutate(|surplus| *surplus += payment);
 
 				// second: if these's bid before, return stablecoin from auction manager module to last bidder
 				if let Some((last_bidder, last_price)) = last_bid {
 					let refund = rstd::cmp::min(last_price, auction_item.target);
+					surplus_increment -= refund;
 
-					T::Currency::transfer(stable_currency_id, &module_account, &last_bidder, refund)
+					T::Currency::deposit(stable_currency_id, &last_bidder, refund)
 						.expect("never failed because payment >= refund");
-					<SurplusPool<T>>::mutate(|surplus| *surplus -= refund);
+				}
+
+				if surplus_increment > 0.into() {
+					T::Treasury::on_surplus(surplus_increment);
 				}
 
 				// third: if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction manager module
@@ -239,19 +213,6 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	type CurrencyId = T::CurrencyId;
 	type Balance = T::Balance;
-	type Amount = T::Amount;
-
-	fn increase_surplus(increment: Self::Balance) {
-		if Self::surplus_pool().checked_add(&increment).is_some()
-			&& T::Currency::balance(T::GetStableCurrencyId::get(), &Self::account_id())
-				.checked_add(&increment)
-				.is_some()
-		{
-			T::Currency::deposit(T::GetStableCurrencyId::get(), &Self::account_id(), increment)
-				.expect("never failed after overflow check");
-			<SurplusPool<T>>::mutate(|surplus| *surplus += increment);
-		}
-	}
 
 	fn new_collateral_auction(
 		who: T::AccountId,
@@ -264,11 +225,11 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			.checked_add(&amount)
 			.is_some() && T::Currency::balance(T::GetStableCurrencyId::get(), &Self::account_id())
 			.checked_add(&amount)
-			.is_some() && Self::bad_debt_pool().checked_add(&bad_debt).is_some()
+			.is_some()
 		{
 			T::Currency::deposit(currency_id, &Self::account_id(), amount).expect("never failed after overflow check");
 			<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
-			<BadDebtPool<T>>::mutate(|debt| *debt += bad_debt);
+			T::Treasury::on_debit(bad_debt);
 
 			let maximum_auction_size = <Module<T>>::maximum_auction_size(currency_id);
 			let mut unhandled_amount: Self::Balance = amount;
