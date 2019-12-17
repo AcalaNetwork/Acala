@@ -3,7 +3,7 @@
 use frame_support::{decl_module, decl_storage, traits::Get};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd},
+	traits::{AccountIdConversion, CheckedAdd, Saturating},
 	ModuleId,
 };
 use support::CDPTreasury;
@@ -52,9 +52,7 @@ impl<T: Trait> CDPTreasury for Module<T> {
 	type Balance = BalanceOf<T>;
 
 	fn on_debit(amount: Self::Balance) {
-		if Self::debit_pool().checked_add(&amount).is_some() {
-			<DebitPool<T>>::mutate(|debit| *debit += amount);
-		}
+		<DebitPool<T>>::mutate(|debit| *debit = debit.saturating_add(amount));
 	}
 
 	fn on_surplus(amount: Self::Balance) {
