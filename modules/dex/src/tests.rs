@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{DexModule, ExtBuilder, Origin, System, TestEvent, Tokens, ALICE, AUSD, BOB, BTC, CAROL, DOT};
+use mock::{DexModule, ExtBuilder, Origin, Tokens, ALICE, AUSD, BOB, BTC, CAROL, DOT};
 
 #[test]
 fn calculate_swap_target_amount_work() {

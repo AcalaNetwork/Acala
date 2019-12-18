@@ -21,7 +21,7 @@ fn liquidate_unsafe_cdp_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);

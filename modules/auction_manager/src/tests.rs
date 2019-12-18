@@ -17,7 +17,7 @@ fn set_maximum_auction_size_work() {
 #[test]
 fn new_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		AuctionManagerModule::new_collateral_auction(ALICE, BTC, 10, 100, 90);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 90);
 		assert_eq!(CdpTreasury::debit_pool(), 90);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
 		assert_eq!(Auction::auctions_count(), 1);
@@ -27,7 +27,7 @@ fn new_collateral_auction_work() {
 #[test]
 fn on_new_bid_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		AuctionManagerModule::new_collateral_auction(ALICE, BTC, 10, 100, 90);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 90);
 		assert_eq!(CdpTreasury::debit_pool(), 90);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
 		assert_eq!(CdpTreasury::surplus_pool(), 0);
@@ -43,7 +43,7 @@ fn on_new_bid_work() {
 #[test]
 fn bid_when_soft_cap_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		AuctionManagerModule::new_collateral_auction(ALICE, BTC, 10, 100, 90);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 90);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(10, 0, (BOB, 5), None).auction_end,
 			Some(Some(110))
@@ -63,7 +63,7 @@ fn bid_when_soft_cap_work() {
 #[test]
 fn reverse_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		AuctionManagerModule::new_collateral_auction(ALICE, BTC, 100, 200, 90);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200, 90);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 100);
 		assert_eq!(Tokens::balance(BTC, &ALICE), 1000);
 		assert_eq!(Tokens::balance(AUSD, &BOB), 1000);
@@ -90,7 +90,7 @@ fn reverse_collateral_auction_work() {
 #[test]
 fn on_auction_ended_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		AuctionManagerModule::new_collateral_auction(ALICE, BTC, 100, 200, 90);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200, 90);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 100);
 		assert_eq!(Tokens::balance(BTC, &BOB), 1000);
 		assert_eq!(Tokens::balance(AUSD, &BOB), 1000);
