@@ -55,7 +55,9 @@ dependencies = [
  "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "module-auction-manager 0.0.1",
  "module-cdp-engine 0.0.1",
+ "module-cdp-treasury 0.0.1",
  "module-debits 0.0.1",
+ "module-dex 0.0.1",
  "module-honzon 0.0.1",
  "module-primitives 0.0.1",
  "module-support 0.0.1",
@@ -2383,6 +2385,7 @@ version = "0.0.1"
 dependencies = [
  "frame-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "module-cdp-treasury 0.0.1",
  "module-support 0.0.1",
  "orml-auction 0.0.1",
  "orml-tokens 0.0.1",
@@ -2401,6 +2404,7 @@ version = "0.0.1"
 dependencies = [
  "frame-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "module-cdp-treasury 0.0.1",
  "module-debits 0.0.1",
  "module-support 0.0.1",
  "module-vaults 0.0.1",
@@ -2408,6 +2412,25 @@ dependencies = [
  "orml-tokens 0.0.1",
  "orml-traits 0.0.1",
  "orml-utilities 0.0.1",
+ "pallet-balances 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-core 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sp-io 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sp-runtime 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "sp-std 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+]
+
+[[package]]
+name = "module-cdp-treasury"
+version = "0.0.1"
+dependencies = [
+ "frame-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
+ "module-support 0.0.1",
+ "orml-currencies 0.0.1",
+ "orml-tokens 0.0.1",
+ "orml-traits 0.0.1",
  "pallet-balances 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "parity-scale-codec 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2462,6 +2485,7 @@ dependencies = [
  "frame-support 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git)",
  "module-cdp-engine 0.0.1",
+ "module-cdp-treasury 0.0.1",
  "module-debits 0.0.1",
  "module-support 0.0.1",
  "module-vaults 0.0.1",

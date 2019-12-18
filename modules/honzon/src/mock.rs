@@ -134,10 +134,6 @@ pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
-	type Amount = Amount;
-
-	#[allow(unused_variables)]
-	fn increase_surplus(increment: Self::Balance) {}
 
 	#[allow(unused_variables)]
 	fn new_collateral_auction(
@@ -150,10 +146,15 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 }
 
+impl cdp_treasury::Trait for Runtime {
+	type Currency = Currencies;
+	type GetStableCurrencyId = GetStableCurrencyId;
+}
+pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+
 impl cdp_engine::Trait for Runtime {
 	type Event = ();
 	type AuctionManagerHandler = MockAuctionManager;
-	type Currency = Currencies;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
@@ -161,6 +162,7 @@ impl cdp_engine::Trait for Runtime {
 	type DefaulDebitExchangeRate = DefaulDebitExchangeRate;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type Treasury = CdpTreasury;
 }
 
 pub type CdpEngineModule = cdp_engine::Module<Runtime>;

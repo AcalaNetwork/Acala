@@ -12,8 +12,10 @@ frame-support = { package = "frame-support", git = "https://github.com/paritytec
 system = { package = "frame-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
 rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
+support = { package = "module-support", path = "../support", default-features = false }
+cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
+
 
 [dev-dependencies]
 primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -30,6 +32,7 @@ std = [
 	"system/std",
 	"rstd/std",
 	"orml-traits/std",
-	"support/std",
 	"orml-tokens/std",
+	"support/std",
+	"cdp-treasury/std",
 ]

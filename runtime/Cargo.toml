@@ -50,6 +50,8 @@ module-honzon = { package = "module-honzon", path = "../modules/honzon", default
 module-primitives = { package = "module-primitives", path = "../modules/primitives", default-features = false }
 module-support = { package = "module-support", path = "../modules/support", default-features = false }
 module-vaults = { package = "module-vaults", path = "../modules/vaults", default-features = false }
+module-dex = { package = "module-dex", path = "../modules/dex", default-features = false }
+module-cdp-treasury = { package = "module-cdp-treasury", path = "../modules/cdp_treasury", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
@@ -97,4 +99,6 @@ std = [
 	"module-primitives/std",
 	"module-support/std",
 	"module-vaults/std",
+	"module-dex/std",
+	"module-cdp-treasury/std",
 ]

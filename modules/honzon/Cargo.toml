@@ -24,6 +24,7 @@ pallet-balances= { package = "pallet-balances", git = "https://github.com/parity
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 debits = { package = "module-debits", path = "../debits", default-features = false }
+cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
 
 [features]
 default = ["std"]
