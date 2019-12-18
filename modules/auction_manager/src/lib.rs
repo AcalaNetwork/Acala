@@ -161,7 +161,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 						.and_then(|n| n.checked_div(&new_bid.1))
 						.unwrap_or(auction_item.amount);
 
-					let deduct_amount = auction_item.amount.checked_sub(&new_amount).unwrap_or(0.into());
+					let deduct_amount = auction_item.amount.checked_sub(&new_amount).unwrap_or_default();
 
 					// ensure have sufficient collateral in auction module
 					if Self::total_collateral_in_auction(auction_item.currency_id) >= deduct_amount {
@@ -215,7 +215,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	type Balance = T::Balance;
 
 	fn new_collateral_auction(
-		who: T::AccountId,
+		who: &T::AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,

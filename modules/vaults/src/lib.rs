@@ -103,46 +103,46 @@ impl<T: Trait> Module<T> {
 
 	// mulate collaterals and debits and then mulate stable coin
 	pub fn update_position(
-		who: T::AccountId,
+		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: DebitAmountOf<T>,
 	) -> result::Result<(), Error> {
 		// ensure mutate safe
-		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
+		Self::check_add_and_sub(who, currency_id, collaterals, debits)?;
 
 		// ensure debits cap
 		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::ExceedDebitValueHardCap)?;
 
 		// ensure cdp safe
-		T::RiskManager::check_position_adjustment(&who, currency_id, collaterals, debits)
+		T::RiskManager::check_position_adjustment(who, currency_id, collaterals, debits)
 			.map_err(|_| Error::PositionWillUnsafe)?;
 
 		// ensure account has sufficient balance
-		Self::check_balance(&who, currency_id, collaterals)?;
+		Self::check_balance(who, currency_id, collaterals)?;
 
 		// amount -> balance
 		let collateral_balance =
 			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
 
 		// update stable coin
-		T::DebitCurrency::update_balance(currency_id, &who, debits).map_err(|_| Error::UpdateStableCoinFailed)?;
+		T::DebitCurrency::update_balance(currency_id, who, debits).map_err(|_| Error::UpdateStableCoinFailed)?;
 
 		let module_account = Self::account_id();
 		// update collateral asset
 		if collaterals.is_positive() {
-			T::Currency::transfer(currency_id, &who, &module_account, collateral_balance)
+			T::Currency::transfer(currency_id, who, &module_account, collateral_balance)
 				.expect("Will never fail ensured by check_balance");
 		} else {
-			T::Currency::transfer(currency_id, &module_account, &who, collateral_balance)
+			T::Currency::transfer(currency_id, &module_account, who, collateral_balance)
 				.expect("Will never fail ensured by check_balance");
 		}
 
 		// mutate collaterals and debits
-		Self::update_vault(&who, currency_id, collaterals, debits)
+		Self::update_vault(who, currency_id, collaterals, debits)
 			.expect("Will never fail ensured by check_add_and_sub");
 
-		Self::deposit_event(RawEvent::UpdatePosition(who, currency_id, collaterals, debits));
+		Self::deposit_event(RawEvent::UpdatePosition(who.clone(), currency_id, collaterals, debits));
 
 		Ok(())
 	}

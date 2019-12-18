@@ -76,7 +76,7 @@ decl_module! {
 		) {
 			let who = ensure_signed(origin).map_err(|_| Error::AccountUnSigned)?;
 
-			<cdp_engine::Module<T>>::update_position(who.clone(), currency_id, collateral, debit).map_err(|_| Error::UpdatePositionFailed)?;
+			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, debit).map_err(|_| Error::UpdatePositionFailed)?;
 
 			Self::deposit_event(RawEvent::UpdateVault(who, currency_id, collateral, debit));
 		}
