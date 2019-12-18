@@ -123,6 +123,7 @@ impl Alternative {
 						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//aura"
 						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//grandpa"
 						// ./target/debug/subkey inspect "$SECRET//acala//root"
+						// ./target/debug/subkey inspect "$SECRET//acala//oracle"
 						alphanet_genesis(
 							vec![(
 								// 5D2Nr1DsxqWDwAf84pWavtCnkysfE9gjzpDJMbD6ncsCwg8d
@@ -137,6 +138,8 @@ impl Alternative {
 							vec![
 								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
 								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+								// 5Fe3jZRbKes6aeuQ6HkcTvQeNhkkRPTXBwmNkuAPoimGEv45
+								hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].into(),
 							],
 						)
 					},
