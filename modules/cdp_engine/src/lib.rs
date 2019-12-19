@@ -130,7 +130,7 @@ decl_module! {
 			let global_stability_fee = T::GlobalStabilityFee::get();
 			// handle all kinds of collateral type
 			for currency_id in T::CollateralCurrencyIds::get() {
-				let debit_exchange_rate = Self::debit_exchange_rate(currency_id).unwrap_or(T::DefaulDebitExchangeRate::get());
+				let debit_exchange_rate = Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaulDebitExchangeRate::get);
 				let stability_fee_rate = Self::stability_fee(currency_id)
 					.unwrap_or_default()
 					.saturating_add(global_stability_fee);
@@ -265,7 +265,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, DebitAmou
 
 		let debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
 
-		if debit_value != 0.into() {
+		if !debit_value.is_zero() {
 			// check the required collateral ratio
 			let feed_price = <T as Trait>::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
 				.ok_or(Error::InvalidFeedPrice)?;

@@ -3,7 +3,7 @@
 use frame_support::{decl_module, decl_storage, traits::Get};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, Saturating},
+	traits::{AccountIdConversion, CheckedAdd, Saturating, Zero},
 	ModuleId,
 };
 use support::CDPTreasury;
@@ -32,7 +32,7 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn on_finalize(_now: T::BlockNumber) {
 			let amount = rstd::cmp::min(Self::debit_pool(), Self::surplus_pool());
-			if amount > 0.into() {
+			if !amount.is_zero() {
 				if T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), amount).is_ok() {
 					<DebitPool<T>>::mutate(|debit| *debit -= amount);
 					<SurplusPool<T>>::mutate(|surplus| *surplus -= amount);
