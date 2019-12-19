@@ -25,6 +25,7 @@ aura-primitives = { package = "sp-consensus-aura", git = "https://github.com/par
 system = { package = "frame-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 frame-executive = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+system-rpc-runtime-api = { package = "frame-system-rpc-runtime-api", git = "https://github.com/paritytech/substrate", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-aura = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -33,6 +34,7 @@ pallet-randomness-collective-flip = { git = "https://github.com/paritytech/subst
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-sudo = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false }
 pallet-collective = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-membership = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 
@@ -101,4 +103,6 @@ std = [
 	"module-vaults/std",
 	"module-dex/std",
 	"module-cdp-treasury/std",
+	"pallet-transaction-payment-rpc-runtime-api/std",
+	"system-rpc-runtime-api/std",
 ]

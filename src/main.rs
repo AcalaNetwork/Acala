@@ -1,5 +1,6 @@
 mod chain_spec;
 mod cli;
+mod rpc;
 mod service;
 
 pub use sc_cli::{error, IntoExit, VersionInfo};
