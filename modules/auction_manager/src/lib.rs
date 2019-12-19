@@ -6,7 +6,7 @@ use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Member,
-		SimpleArithmetic,
+		SimpleArithmetic, Zero,
 	},
 	ModuleId, RuntimeDebug,
 };
@@ -149,7 +149,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 						.expect("never failed because payment >= refund");
 				}
 
-				if surplus_increment > 0.into() {
+				if !surplus_increment.is_zero() {
 					T::Treasury::on_surplus(surplus_increment);
 				}
 
@@ -236,9 +236,9 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			let mut unhandled_target: Self::Balance = target;
 			let block_number = <system::Module<T>>::block_number();
 
-			while unhandled_amount > 0.into() {
+			while !unhandled_amount.is_zero() {
 				let (lot_amount, lot_target) =
-					if unhandled_amount > maximum_auction_size && maximum_auction_size != 0.into() {
+					if unhandled_amount > maximum_auction_size && !maximum_auction_size.is_zero() {
 						target
 							.checked_mul(&maximum_auction_size)
 							.and_then(|n| n.checked_div(&amount))
