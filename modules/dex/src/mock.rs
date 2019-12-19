@@ -10,7 +10,6 @@ use super::*;
 
 mod dex {
 	pub use super::super::*;
-	use frame_support::impl_outer_event;
 }
 
 impl_outer_event! {
@@ -58,7 +57,6 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 }
-pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;

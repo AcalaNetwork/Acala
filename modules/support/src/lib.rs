@@ -25,7 +25,7 @@ pub trait AuctionManager<AccountId> {
 	type Balance;
 
 	fn new_collateral_auction(
-		who: AccountId,
+		who: &AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,

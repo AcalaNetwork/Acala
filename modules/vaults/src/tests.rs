@@ -9,7 +9,7 @@ use mock::{Currencies, ExtBuilder, VaultsModule, ALICE, AUSD, X_TOKEN_ID, Y_TOKE
 #[test]
 fn update_position_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(VaultsModule::update_position(ALICE, Y_TOKEN_ID, 100, 100));
+		assert_ok!(VaultsModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));
 		assert_eq!(VaultsModule::collaterals(ALICE, Y_TOKEN_ID), 100);
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 100);
 	});
@@ -19,7 +19,7 @@ fn update_position_should_work() {
 fn update_position_with_larger_than_collater_currency_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			VaultsModule::update_position(ALICE, Y_TOKEN_ID, 100000, 100),
+			VaultsModule::update_position(&ALICE, Y_TOKEN_ID, 100000, 100),
 			Error::CollateralInSufficient
 		);
 	});
@@ -28,7 +28,7 @@ fn update_position_with_larger_than_collater_currency_should_not_work() {
 #[test]
 fn update_position_with_negative_collateral_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(VaultsModule::update_position(ALICE, Y_TOKEN_ID, 100, 100));
+		assert_ok!(VaultsModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));
 		// ensure collateral and debit
 		assert_eq!(VaultsModule::collaterals(ALICE, Y_TOKEN_ID), 100);
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 100);
@@ -37,7 +37,7 @@ fn update_position_with_negative_collateral_should_work() {
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &VaultsModule::account_id()), 100);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 
-		assert_ok!(VaultsModule::update_position(ALICE, Y_TOKEN_ID, -10, -10));
+		assert_ok!(VaultsModule::update_position(&ALICE, Y_TOKEN_ID, -10, -10));
 		// ensure collateral and debit
 		assert_eq!(VaultsModule::collaterals(ALICE, Y_TOKEN_ID), 90);
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 90);
@@ -51,7 +51,7 @@ fn update_position_with_negative_collateral_should_work() {
 #[test]
 fn update_position_with_zero_collateral_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(VaultsModule::update_position(ALICE, Y_TOKEN_ID, 0, 0));
+		assert_ok!(VaultsModule::update_position(&ALICE, Y_TOKEN_ID, 0, 0));
 		assert_eq!(VaultsModule::collaterals(ALICE, Y_TOKEN_ID), 0);
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 0);
 	});
@@ -61,7 +61,7 @@ fn update_position_with_zero_collateral_should_work() {
 fn update_position_with_under_safe_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			VaultsModule::update_position(ALICE, X_TOKEN_ID, 1, 1),
+			VaultsModule::update_position(&ALICE, X_TOKEN_ID, 1, 1),
 			Error::PositionWillUnsafe
 		);
 	});
@@ -71,7 +71,7 @@ fn update_position_with_under_safe_should_not_work() {
 fn update_position_with_overflow_debits_cap_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			VaultsModule::update_position(ALICE, X_TOKEN_ID, 100, 1000),
+			VaultsModule::update_position(&ALICE, X_TOKEN_ID, 100, 1000),
 			Error::ExceedDebitValueHardCap
 		);
 	});

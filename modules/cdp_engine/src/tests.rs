@@ -177,23 +177,23 @@ fn update_position_work() {
 			Some(10000),
 		));
 		assert_noop!(
-			CdpEngineModule::update_position(ALICE, ACA, 100, 50),
+			CdpEngineModule::update_position(&ALICE, ACA, 100, 50),
 			Error::NotValidCurrencyId,
 		);
 		assert_eq!(Currencies::balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 0);
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
-			CdpEngineModule::update_position(ALICE, BTC, 0, 20),
+			CdpEngineModule::update_position(&ALICE, BTC, 0, 20),
 			Error::UpdatePositionFailed,
 		);
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 0, -20));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, -20));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 30);
@@ -213,12 +213,12 @@ fn remain_debit_value_too_small_check() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_noop!(
-			CdpEngineModule::update_position(ALICE, BTC, 0, -49),
+			CdpEngineModule::update_position(&ALICE, BTC, 0, -49),
 			Error::UpdatePositionFailed,
 		);
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, -100, -50));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, -100, -50));
 	});
 }
 
@@ -234,7 +234,7 @@ fn liquidate_unsafe_cdp_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 50));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
@@ -294,7 +294,7 @@ fn on_finalize_work() {
 		CdpEngineModule::on_finalize(1);
 		assert_eq!(CdpEngineModule::debit_exchange_rate(BTC), None);
 		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 100, 30));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 30));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
 		CdpEngineModule::on_finalize(2);
@@ -309,7 +309,7 @@ fn on_finalize_work() {
 			Some(ExchangeRate::from_rational(10201, 10000))
 		);
 		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
-		assert_ok!(CdpEngineModule::update_position(ALICE, BTC, 0, -30));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, -30));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
 		CdpEngineModule::on_finalize(4);
