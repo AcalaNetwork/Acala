@@ -48,9 +48,12 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 	) -> Result<(), Self::Error>;
 }
 
-pub trait CDPTreasury {
+pub trait CDPTreasury<AccountId> {
 	type Balance;
+	type Error: Into<&'static str>;
 
-	fn on_debit(amount: Self::Balance);
-	fn on_surplus(amount: Self::Balance);
+	fn on_system_debit(amount: Self::Balance);
+	fn on_system_surplus(amount: Self::Balance);
+	fn add_backed_debit(who: &AccountId, amount: Self::Balance) -> Result<(), Self::Error>;
+	fn sub_backed_debit(who: &AccountId, amount: Self::Balance) -> Result<(), Self::Error>;
 }

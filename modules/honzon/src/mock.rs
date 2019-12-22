@@ -1,4 +1,4 @@
-//! Mocks for the debit module.
+//! Mocks for the honzon module.
 
 #![cfg(test)]
 
@@ -35,8 +35,8 @@ parameter_types! {
 pub type AccountId = u64;
 pub type BlockNumber = u64;
 pub type Balance = u64;
-pub type DebitBalance = u64;
 pub type Amount = i64;
+pub type DebitBalance = u64;
 pub type DebitAmount = i64;
 pub type CurrencyId = u32;
 
@@ -100,25 +100,16 @@ impl orml_currencies::Trait for Runtime {
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
-
 pub type Currencies = orml_currencies::Module<Runtime>;
-
-impl debits::Trait for Runtime {
-	type Currency = Currencies;
-	type GetStableCurrencyId = GetStableCurrencyId;
-	type DebitBalance = DebitBalance;
-	type CurrencyId = CurrencyId;
-	type DebitAmount = DebitAmount;
-	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
-}
-pub type DebitCurrency = debits::Module<Runtime>;
 
 impl vaults::Trait for Runtime {
 	type Event = ();
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
-	type DebitCurrency = DebitCurrency;
 	type RiskManager = CdpEngineModule;
+	type DebitBalance = DebitBalance;
+	type DebitAmount = DebitAmount;
+	type Treasury = CdpTreasury;
 }
 pub type VaultsModule = vaults::Module<Runtime>;
 
@@ -164,13 +155,11 @@ impl cdp_engine::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = CdpTreasury;
 }
-
 pub type CdpEngineModule = cdp_engine::Module<Runtime>;
 
 impl Trait for Runtime {
 	type Event = ();
 }
-
 pub type HonzonModule = Module<Runtime>;
 
 pub struct ExtBuilder {

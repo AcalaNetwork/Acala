@@ -8,14 +8,12 @@ use sp_runtime::traits::StaticLookup;
 mod mock;
 mod tests;
 
-pub trait Trait: system::Trait + cdp_engine::Trait + vaults::Trait {
+pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
 type CurrencyIdOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type AmountOf<T> = <<T as vaults::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
-type DebitAmountOf<T> =
-	<<T as vaults::Trait>::DebitCurrency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Honzon {
@@ -28,7 +26,7 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		CurrencyId = CurrencyIdOf<T>,
 		Amount = AmountOf<T>,
-		DebitAmount = DebitAmountOf<T>,
+		<T as vaults::Trait>::DebitAmount,
 	{
 		/// liquidate `who` `currency` vault
 		Liquidate(AccountId, CurrencyId),
@@ -72,7 +70,7 @@ decl_module! {
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			collateral: AmountOf<T>,
-			debit: DebitAmountOf<T>
+			debit: T::DebitAmount,
 		) {
 			let who = ensure_signed(origin).map_err(|_| Error::AccountUnSigned)?;
 

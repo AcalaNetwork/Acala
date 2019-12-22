@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_module, decl_storage, traits::Get};
+use frame_support::{decl_error, decl_module, decl_storage, traits::Get};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, Saturating, Zero},
@@ -19,6 +19,14 @@ type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Tr
 pub trait Trait: system::Trait {
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
+}
+
+decl_error! {
+	/// Error for cdp treasury module.
+	pub enum Error {
+		AddBackedDebitFailed,
+		SubBackedDebitFailed,
+	}
 }
 
 decl_storage! {
@@ -48,14 +56,15 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> CDPTreasury for Module<T> {
+impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 	type Balance = BalanceOf<T>;
+	type Error = Error;
 
-	fn on_debit(amount: Self::Balance) {
+	fn on_system_debit(amount: Self::Balance) {
 		<DebitPool<T>>::mutate(|debit| *debit = debit.saturating_add(amount));
 	}
 
-	fn on_surplus(amount: Self::Balance) {
+	fn on_system_surplus(amount: Self::Balance) {
 		if T::Currency::balance(T::GetStableCurrencyId::get(), &Self::account_id())
 			.checked_add(&amount)
 			.is_some()
@@ -64,5 +73,13 @@ impl<T: Trait> CDPTreasury for Module<T> {
 				.expect("never failed after overflow check");
 			<SurplusPool<T>>::mutate(|surplus| *surplus += amount);
 		}
+	}
+
+	fn add_backed_debit(who: &T::AccountId, amount: Self::Balance) -> Result<(), Self::Error> {
+		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount).map_err(|_| Error::AddBackedDebitFailed)
+	}
+
+	fn sub_backed_debit(who: &T::AccountId, amount: Self::Balance) -> Result<(), Self::Error> {
+		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, amount).map_err(|_| Error::SubBackedDebitFailed)
 	}
 }

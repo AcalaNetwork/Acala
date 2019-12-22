@@ -1,4 +1,4 @@
-//! Mocks for the debit module.
+//! Mocks for the vaults module.
 
 #![cfg(test)]
 
@@ -36,12 +36,22 @@ pub const AUSD: CurrencyId = 1;
 pub const X_TOKEN_ID: CurrencyId = 2;
 pub const Y_TOKEN_ID: CurrencyId = 3;
 
-// mock convert
-pub struct MockConvert;
-impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
-	fn convert(a: (CurrencyId, DebitBalance)) -> Balance {
-		(a.1 / DebitBalance::from(2u64)).into()
-	}
+impl system::Trait for Runtime {
+	type Origin = Origin;
+	type Index = u64;
+	type BlockNumber = BlockNumber;
+	type Call = ();
+	type Hash = H256;
+	type Hashing = ::sp_runtime::traits::BlakeTwo256;
+	type AccountId = AccountId;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type Header = Header;
+	type Event = ();
+	type BlockHashCount = BlockHashCount;
+	type MaximumBlockWeight = MaximumBlockWeight;
+	type MaximumBlockLength = MaximumBlockLength;
+	type AvailableBlockRatio = AvailableBlockRatio;
+	type Version = ();
 }
 
 // tokens module
@@ -89,17 +99,19 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
-impl debits::Trait for Runtime {
+impl cdp_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type DebitBalance = DebitBalance;
-	type CurrencyId = CurrencyId;
-	type DebitAmount = DebitAmount;
-	type Convert = MockConvert;
 }
+pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
-// debit module
-pub type DebitCurrency = debits::Module<Runtime>;
+// mock convert
+pub struct MockConvert;
+impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
+	fn convert(a: (CurrencyId, DebitBalance)) -> Balance {
+		(a.1 / DebitBalance::from(2u64)).into()
+	}
+}
 
 // mock risk manager
 pub struct MockRiskManager;
@@ -132,29 +144,12 @@ impl Trait for Runtime {
 	type Event = ();
 	type Convert = MockConvert;
 	type Currency = Currencies;
-	type DebitCurrency = DebitCurrency;
 	type RiskManager = MockRiskManager;
+	type DebitBalance = DebitBalance;
+	type DebitAmount = DebitAmount;
+	type Treasury = CdpTreasury;
 }
-
 pub type VaultsModule = Module<Runtime>;
-
-impl system::Trait for Runtime {
-	type Origin = Origin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
-	type Call = ();
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = ();
-	type BlockHashCount = BlockHashCount;
-	type MaximumBlockWeight = MaximumBlockWeight;
-	type MaximumBlockLength = MaximumBlockLength;
-	type AvailableBlockRatio = AvailableBlockRatio;
-	type Version = ();
-}
 
 pub struct ExtBuilder {
 	currency_ids: Vec<CurrencyId>,

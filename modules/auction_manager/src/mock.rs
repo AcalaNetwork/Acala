@@ -1,4 +1,4 @@
-//! Mocks for the auction_manager module.
+//! Mocks for the auction manager module.
 
 #![cfg(test)]
 

@@ -41,7 +41,7 @@ pub trait Trait: system::Trait {
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
 	type GetStableCurrencyId: Get<Self::CurrencyId>;
-	type Treasury: CDPTreasury<Balance = Self::Balance>;
+	type Treasury: CDPTreasury<Self::AccountId, Balance = Self::Balance>;
 }
 
 decl_event!(
@@ -150,7 +150,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 				}
 
 				if !surplus_increment.is_zero() {
-					T::Treasury::on_surplus(surplus_increment);
+					T::Treasury::on_system_surplus(surplus_increment);
 				}
 
 				// third: if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction manager module
@@ -229,7 +229,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		{
 			T::Currency::deposit(currency_id, &Self::account_id(), amount).expect("never failed after overflow check");
 			<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
-			T::Treasury::on_debit(bad_debt);
+			T::Treasury::on_system_debit(bad_debt);
 
 			let maximum_auction_size = <Module<T>>::maximum_auction_size(currency_id);
 			let mut unhandled_amount: Self::Balance = amount;

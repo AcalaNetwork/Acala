@@ -31,6 +31,7 @@ pub type Balance = u64;
 pub type Amount = i64;
 pub type CurrencyId = u32;
 
+pub const ALICE: AccountId = 0;
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 
@@ -103,7 +104,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			currency_ids: vec![ACA, AUSD],
-			endowed_accounts: vec![],
+			endowed_accounts: vec![ALICE],
 			initial_balance: 1000,
 		}
 	}
