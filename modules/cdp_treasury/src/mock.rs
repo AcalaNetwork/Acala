@@ -54,6 +54,7 @@ impl system::Trait for Runtime {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
+	type ModuleToIndex = ();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -77,8 +78,7 @@ impl pallet_balances::Trait for Runtime {
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency =
-	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 impl orml_currencies::Trait for Runtime {
 	type Event = ();

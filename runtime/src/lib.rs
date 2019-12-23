@@ -164,6 +164,7 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	/// Version of the runtime.
 	type Version = Version;
+	type ModuleToIndex = ModuleToIndex;
 }
 
 impl pallet_aura::Trait for Runtime {
@@ -309,7 +310,7 @@ parameter_types! {
 impl orml_currencies::Trait for Runtime {
 	type Event = Event;
 	type MultiCurrency = orml_tokens::Module<Runtime>;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance, orml_tokens::Error>;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 

@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Currencies, ExtBuilder, VaultsModule, ALICE, AUSD, X_TOKEN_ID, Y_TOKEN_ID};
+use mock::{Currencies, ExtBuilder, Runtime, VaultsModule, ALICE, AUSD, X_TOKEN_ID, Y_TOKEN_ID};
 
 #[test]
 fn update_position_should_work() {
@@ -20,7 +20,7 @@ fn update_position_with_larger_than_collater_currency_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			VaultsModule::update_position(&ALICE, Y_TOKEN_ID, 100000, 100),
-			Error::CollateralInSufficient
+			Error::<Runtime>::CollateralInSufficient
 		);
 	});
 }
@@ -62,7 +62,7 @@ fn update_position_with_under_safe_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			VaultsModule::update_position(&ALICE, X_TOKEN_ID, 1, 1),
-			Error::PositionWillUnsafe
+			Error::<Runtime>::RiskCheckFailed
 		);
 	});
 }
@@ -72,7 +72,7 @@ fn update_position_with_overflow_debits_cap_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			VaultsModule::update_position(&ALICE, X_TOKEN_ID, 100, 1000),
-			Error::ExceedDebitValueHardCap
+			Error::<Runtime>::ExceedDebitValueHardCap
 		);
 	});
 }

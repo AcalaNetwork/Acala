@@ -6,9 +6,11 @@ edition = "2018"
 
 [dependencies]
 orml-utilities = { package = "orml-utilities", path = "../../orml/utilities", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [features]
 default = ["std"]
 std = [
 	"orml-utilities/std",
+	"sp-runtime/std",
 ]

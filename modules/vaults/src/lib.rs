@@ -5,15 +5,12 @@ use orml_traits::{
 	arithmetic::{self, Signed},
 	MultiCurrency, MultiCurrencyExtended,
 };
-use rstd::{
-	convert::{TryFrom, TryInto},
-	result,
-};
+use rstd::convert::{TryFrom, TryInto};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic,
 	},
-	ModuleId,
+	DispatchResult, ModuleId,
 };
 use support::{CDPTreasury, RiskManager};
 
@@ -71,12 +68,12 @@ decl_event!(
 
 decl_error! {
 	/// Error for vaults module.
-	pub enum Error {
+	pub enum Error for Module<T: Trait> {
 		DebitOverflow,
 		CollateralOverflow,
 		AmountIntoBalanceFailed,
 		BalanceIntoAmountFailed,
-		PositionWillUnsafe,
+		RiskCheckFailed,
 		ExceedDebitValueHardCap,
 		CollateralInSufficient,
 		AmountIntoDebitBalanceFailed,
@@ -102,7 +99,7 @@ impl<T: Trait> Module<T> {
 		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: T::DebitAmount,
-	) -> result::Result<(), Error> {
+	) -> DispatchResult {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
 		Self::update_vault(&who, currency_id, collaterals, debits)?;
@@ -122,33 +119,33 @@ impl<T: Trait> Module<T> {
 		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: T::DebitAmount,
-	) -> result::Result<(), Error> {
+	) -> DispatchResult {
 		// ensure mutate safe
 		Self::check_add_and_sub(who, currency_id, collaterals, debits)?;
 
 		// ensure debits cap
-		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::ExceedDebitValueHardCap)?;
+		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::<T>::ExceedDebitValueHardCap)?;
 
-		// ensure cdp safe
+		// ensure pass risk check
 		T::RiskManager::check_position_adjustment(who, currency_id, collaterals, debits)
-			.map_err(|_| Error::PositionWillUnsafe)?;
+			.map_err(|_| Error::<T>::RiskCheckFailed)?;
 
 		// ensure account has sufficient balance
 		Self::check_balance(who, currency_id, collaterals)?;
 
 		// amount -> balance
 		let collateral_balance =
-			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
 
 		// update stable coin by Treasury
 		let debit_balance =
-			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::AmountIntoDebitBalanceFailed)?;
+			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::<T>::AmountIntoDebitBalanceFailed)?;
 		if debits.is_positive() {
 			T::Treasury::add_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
-				.map_err(|_| Error::AddBackedDebitFailed)?;
+				.map_err(|_| Error::<T>::AddBackedDebitFailed)?;
 		} else {
 			T::Treasury::sub_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
-				.map_err(|_| Error::SubBackedDebitFailed)?;
+				.map_err(|_| Error::<T>::SubBackedDebitFailed)?;
 		}
 
 		let module_account = Self::account_id();
@@ -171,26 +168,26 @@ impl<T: Trait> Module<T> {
 	}
 
 	// transfer vault
-	pub fn transfer(from: T::AccountId, to: T::AccountId, currency_id: CurrencyIdOf<T>) -> result::Result<(), Error> {
+	pub fn transfer(from: T::AccountId, to: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 		// get `from` position data
 		let collateral: BalanceOf<T> = Self::collaterals(&from, currency_id);
 		let debit: T::DebitBalance = Self::debits(&from, currency_id);
 
 		// banlance -> amount
 		let collateral: AmountOf<T> =
-			TryInto::<AmountOf<T>>::try_into(collateral).map_err(|_| Error::BalanceIntoAmountFailed)?;
+			TryInto::<AmountOf<T>>::try_into(collateral).map_err(|_| Error::<T>::BalanceIntoAmountFailed)?;
 		let debit: T::DebitAmount =
-			TryInto::<T::DebitAmount>::try_into(debit).map_err(|_| Error::BalanceIntoAmountFailed)?;
+			TryInto::<T::DebitAmount>::try_into(debit).map_err(|_| Error::<T>::BalanceIntoAmountFailed)?;
 
 		// ensure mutate safe
 		Self::check_add_and_sub(&from, currency_id, -collateral, -debit)?;
 		Self::check_add_and_sub(&to, currency_id, collateral, debit)?;
 
-		// ensure positions are safe after transfered
+		// ensure positions passes risk check after transfered
 		T::RiskManager::check_position_adjustment(&from, currency_id, -collateral, -debit)
-			.map_err(|_| Error::PositionWillUnsafe)?;
+			.map_err(|_| Error::<T>::RiskCheckFailed)?;
 		T::RiskManager::check_position_adjustment(&to, currency_id, collateral, debit)
-			.map_err(|_| Error::PositionWillUnsafe)?;
+			.map_err(|_| Error::<T>::RiskCheckFailed)?;
 
 		// execute transfer
 		Self::update_vault(&from, currency_id, -collateral, -debit)
@@ -203,21 +200,20 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// check `who` has sufficient balance
-	fn check_balance(
-		who: &T::AccountId,
-		currency_id: CurrencyIdOf<T>,
-		collateral: AmountOf<T>,
-	) -> result::Result<(), Error> {
+	fn check_balance(who: &T::AccountId, currency_id: CurrencyIdOf<T>, collateral: AmountOf<T>) -> DispatchResult {
 		let collaterals_balance =
-			TryInto::<BalanceOf<T>>::try_into(collateral.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+			TryInto::<BalanceOf<T>>::try_into(collateral.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
 
 		let module_balance = T::Currency::balance(currency_id, &Self::account_id());
 		let who_balance = T::Currency::balance(currency_id, who);
 
 		if collateral.is_positive() {
-			ensure!(who_balance >= collaterals_balance, Error::CollateralInSufficient);
+			ensure!(who_balance >= collaterals_balance, Error::<T>::CollateralInSufficient);
 		} else {
-			ensure!(module_balance >= collaterals_balance, Error::CollateralInSufficient);
+			ensure!(
+				module_balance >= collaterals_balance,
+				Error::<T>::CollateralInSufficient
+			);
 		}
 
 		Ok(())
@@ -229,12 +225,12 @@ impl<T: Trait> Module<T> {
 		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: T::DebitAmount,
-	) -> result::Result<(), Error> {
+	) -> DispatchResult {
 		// judge collaterals and debits are negative or positive
 		let collaterals_balance =
-			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
 		let debits_balance =
-			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
 
 		// check collaterals update
 		if collaterals.is_positive() {
@@ -242,26 +238,26 @@ impl<T: Trait> Module<T> {
 				Self::collaterals(who, currency_id)
 					.checked_add(&collaterals_balance)
 					.is_some(),
-				Error::CollateralOverflow
+				Error::<T>::CollateralOverflow
 			);
 			ensure!(
 				Self::total_collaterals(currency_id)
 					.checked_add(&collaterals_balance)
 					.is_some(),
-				Error::CollateralOverflow
+				Error::<T>::CollateralOverflow
 			);
 		} else {
 			ensure!(
 				Self::collaterals(who, currency_id)
 					.checked_sub(&collaterals_balance)
 					.is_some(),
-				Error::CollateralOverflow
+				Error::<T>::CollateralOverflow
 			);
 			ensure!(
 				Self::total_collaterals(currency_id)
 					.checked_sub(&collaterals_balance)
 					.is_some(),
-				Error::CollateralOverflow
+				Error::<T>::CollateralOverflow
 			);
 		}
 
@@ -269,20 +265,20 @@ impl<T: Trait> Module<T> {
 		if debits.is_positive() {
 			ensure!(
 				Self::debits(who, currency_id).checked_add(&debits_balance).is_some(),
-				Error::DebitOverflow
+				Error::<T>::DebitOverflow
 			);
 			ensure!(
 				Self::total_debits(currency_id).checked_add(&debits_balance).is_some(),
-				Error::DebitOverflow
+				Error::<T>::DebitOverflow
 			);
 		} else {
 			ensure!(
 				Self::debits(who, currency_id).checked_sub(&debits_balance).is_some(),
-				Error::DebitOverflow
+				Error::<T>::DebitOverflow
 			);
 			ensure!(
 				Self::total_debits(currency_id).checked_sub(&debits_balance).is_some(),
-				Error::DebitOverflow
+				Error::<T>::DebitOverflow
 			);
 		}
 
@@ -294,12 +290,12 @@ impl<T: Trait> Module<T> {
 		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,
 		debits: T::DebitAmount,
-	) -> result::Result<(), Error> {
+	) -> DispatchResult {
 		// judge collaterals and debits are negative or positive
 		let collaterals_balance =
-			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
 		let debits_balance =
-			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::AmountIntoBalanceFailed)?;
+			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
 
 		// update collaterals record
 		if collaterals.is_positive() {

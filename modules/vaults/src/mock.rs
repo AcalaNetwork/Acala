@@ -52,6 +52,7 @@ impl system::Trait for Runtime {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
+	type ModuleToIndex = ();
 }
 
 // tokens module
@@ -88,8 +89,7 @@ impl pallet_balances::Trait for Runtime {
 }
 
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-pub type AdaptedBasicCurrency =
-	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 impl orml_currencies::Trait for Runtime {
 	type Event = ();
@@ -116,25 +116,24 @@ impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
 // mock risk manager
 pub struct MockRiskManager;
 impl RiskManager<AccountId, CurrencyId, Amount, DebitAmount> for MockRiskManager {
-	type Error = &'static str;
 	#[allow(unused_variables)]
 	fn check_position_adjustment(
 		account_id: &AccountId,
 		currency_id: CurrencyId,
 		collaterals: Amount,
 		debits: DebitAmount,
-	) -> Result<(), Self::Error> {
+	) -> DispatchResult {
 		match currency_id {
-			2u32 => Err("mock error"),
+			2u32 => Err(sp_runtime::DispatchError::Other("mock error")),
 			3u32 => Ok(()),
-			_ => Err("mock error"),
+			_ => Err(sp_runtime::DispatchError::Other("mock error")),
 		}
 	}
 	#[allow(unused_variables)]
-	fn check_debit_cap(currency_id: CurrencyId, debits: DebitAmount) -> Result<(), Self::Error> {
+	fn check_debit_cap(currency_id: CurrencyId, debits: DebitAmount) -> DispatchResult {
 		match (currency_id, debits) {
-			(2u32, 1000i64) => Err("mock error"),
-			(3u32, 1000i64) => Err("mock error"),
+			(2u32, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(3u32, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
 			(_, _) => Ok(()),
 		}
 	}

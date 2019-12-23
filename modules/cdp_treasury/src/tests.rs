@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CdpTreasuryModule, Currencies, ExtBuilder, ALICE, AUSD};
+use mock::{CdpTreasuryModule, Currencies, ExtBuilder, Runtime, ALICE, AUSD};
 use sp_runtime::traits::OnFinalize;
 
 #[test]
@@ -73,7 +73,7 @@ fn sub_backed_debit_work() {
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
 		assert_noop!(
 			CdpTreasuryModule::sub_backed_debit(&ALICE, 1000),
-			Error::SubBackedDebitFailed,
+			orml_tokens::Error::<Runtime>::BalanceTooLow,
 		);
 	});
 }
