@@ -30,6 +30,10 @@ pub trait AuctionManager<AccountId> {
 		target: Self::Balance,
 		bad_debt: Self::Balance,
 	);
+	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance);
+	fn new_surplus_auction(amount: Self::Balance);
+	fn get_total_debit_in_auction() -> Self::Balance;
+	fn get_total_target_in_auction() -> Self::Balance;
 }
 
 pub trait DexManager<AccountId, CurrencyId, Balance> {

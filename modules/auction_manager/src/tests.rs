@@ -7,10 +7,14 @@ use frame_support::assert_ok;
 use mock::{Auction, AuctionManagerModule, CdpTreasury, ExtBuilder, Origin, Tokens, ALICE, AUSD, BOB, BTC};
 
 #[test]
-fn set_maximum_auction_size_work() {
+fn set_maximum_collateral_auction_size_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(AuctionManagerModule::set_maximum_auction_size(Origin::ROOT, BTC, 20));
-		assert_eq!(AuctionManagerModule::maximum_auction_size(BTC), 20);
+		assert_ok!(AuctionManagerModule::set_maximum_collateral_auction_size(
+			Origin::ROOT,
+			BTC,
+			20
+		));
+		assert_eq!(AuctionManagerModule::maximum_collateral_auction_size(BTC), 20);
 	});
 }
 

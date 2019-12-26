@@ -108,36 +108,19 @@ decl_module! {
 				(max_other_currency_amount, max_base_currency_amount, initial_share)
 			} else {
 				let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(other_currency_id);
-
-				let other_base_price = FixedU128::from_rational(
-					base_currency_pool.unique_saturated_into(),
-					other_currency_pool.unique_saturated_into(),
-				);
-
-				let input_other_base_price = FixedU128::from_rational(
-					max_base_currency_amount.unique_saturated_into(),
-					max_other_currency_amount.unique_saturated_into(),
-				);
+				let other_base_price = FixedU128::from_rational(base_currency_pool, other_currency_pool);
+				let input_other_base_price = FixedU128::from_rational(max_base_currency_amount, max_other_currency_amount);
 
 				if input_other_base_price <= other_base_price {
 					// max_other_currency_amount may be too much, calculate the actual other currency amount
-					let base_other_price = FixedU128::from_rational(
-						other_currency_pool.unique_saturated_into(),
-						base_currency_pool.unique_saturated_into(),
-					);
+					let base_other_price = FixedU128::from_rational(other_currency_pool, base_currency_pool);
 					let other_currency_amount = base_other_price.saturating_mul_int(&max_base_currency_amount);
-					let share = FixedU128::from_rational(
-						other_currency_amount.unique_saturated_into(),
-						other_currency_pool.unique_saturated_into(),
-					).checked_mul_int(&total_shares).unwrap_or_default();
+					let share = FixedU128::from_rational(other_currency_amount, other_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
 					(other_currency_amount, max_base_currency_amount, share)
 				} else {
 					// max_base_currency_amount is too much, calculate the actual base currency amount
 					let base_currency_amount = other_base_price.saturating_mul_int(&max_other_currency_amount);
-					let share = FixedU128::from_rational(
-						base_currency_amount.unique_saturated_into(),
-						base_currency_pool.unique_saturated_into(),
-					).checked_mul_int(&total_shares).unwrap_or_default();
+					let share = FixedU128::from_rational(base_currency_amount, base_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
 					(max_other_currency_amount, base_currency_amount, share)
 				}
 			};
@@ -183,10 +166,7 @@ decl_module! {
 			);
 
 			let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(currency_id);
-			let proportion = FixedU128::from_rational(
-				share_amount.unique_saturated_into(),
-				Self::total_shares(currency_id).unique_saturated_into(),
-			);
+			let proportion = FixedU128::from_rational(share_amount, Self::total_shares(currency_id));
 			let withdraw_other_currency_amount = proportion.saturating_mul_int(&other_currency_pool);
 			let withdraw_base_currency_amount = proportion.saturating_mul_int(&base_currency_pool);
 			if !withdraw_other_currency_amount.is_zero() {
@@ -227,12 +207,7 @@ impl<T: Trait> Module<T> {
 		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
 		let new_target_pool = supply_pool
 			.checked_add(&supply_amount)
-			.and_then(|n| {
-				Some(FixedU128::from_rational(
-					supply_pool.unique_saturated_into(),
-					n.unique_saturated_into(),
-				))
-			})
+			.and_then(|n| Some(FixedU128::from_rational(supply_pool, n)))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.unwrap_or_default();
 
@@ -260,12 +235,7 @@ impl<T: Trait> Module<T> {
 			.and_then(|n| FixedU128::from_natural(1).checked_div(&n))
 			.and_then(|n| n.checked_mul_int(&target_amount))
 			.and_then(|n| target_pool.checked_sub(&n))
-			.and_then(|n| {
-				Some(FixedU128::from_rational(
-					supply_pool.unique_saturated_into(),
-					n.unique_saturated_into(),
-				))
-			})
+			.and_then(|n| Some(FixedU128::from_rational(supply_pool, n)))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.and_then(|n| n.checked_sub(&supply_pool))
 			.unwrap_or_default()

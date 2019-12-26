@@ -318,6 +318,7 @@ parameter_types! {
 	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 50);
 	pub const AuctionTimeToClose: BlockNumber = 100;
 	pub const AuctionDurationSoftCap: BlockNumber = 200;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 impl module_auction_manager::Trait for Runtime {
@@ -330,7 +331,9 @@ impl module_auction_manager::Trait for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type GetAmountAdjustment = GetAmountAdjustment;
 }
 
 impl module_vaults::Trait for Runtime {
@@ -383,6 +386,7 @@ impl module_dex::Trait for Runtime {
 impl module_cdp_treasury::Trait for Runtime {
 	type Currency = orml_currencies::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
 }
 
 construct_runtime!(

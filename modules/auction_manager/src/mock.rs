@@ -24,6 +24,8 @@ parameter_types! {
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 pub type AccountId = u64;
@@ -71,6 +73,7 @@ pub type Auction = orml_auction::Module<Runtime>;
 impl cdp_treasury::Trait for Runtime {
 	type Currency = Tokens;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = AuctionManagerModule;
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
@@ -84,12 +87,15 @@ impl Trait for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Treasury = CdpTreasury;
+	type GetAmountAdjustment = GetAmountAdjustment;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 

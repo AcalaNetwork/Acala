@@ -5,7 +5,7 @@
 use frame_support::{impl_outer_origin, parameter_types};
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use su_primitives::H256;
-use support::RiskManager;
+use support::{AuctionManager, RiskManager};
 
 use super::*;
 
@@ -99,9 +99,40 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
+pub struct MockAuctionManager;
+impl AuctionManager<AccountId> for MockAuctionManager {
+	type CurrencyId = CurrencyId;
+	type Balance = Balance;
+
+	#[allow(unused_variables)]
+	fn new_collateral_auction(
+		who: &AccountId,
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+		target: Self::Balance,
+		bad_debt: Self::Balance,
+	) {
+	}
+
+	#[allow(unused_variables)]
+	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+
+	#[allow(unused_variables)]
+	fn new_surplus_auction(amount: Self::Balance) {}
+
+	fn get_total_debit_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_target_in_auction() -> Self::Balance {
+		Default::default()
+	}
+}
+
 impl cdp_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = MockAuctionManager;
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 

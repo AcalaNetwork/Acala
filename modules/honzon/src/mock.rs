@@ -135,11 +135,26 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		bad_debt: Self::Balance,
 	) {
 	}
+
+	#[allow(unused_variables)]
+	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+
+	#[allow(unused_variables)]
+	fn new_surplus_auction(amount: Self::Balance) {}
+
+	fn get_total_debit_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_target_in_auction() -> Self::Balance {
+		Default::default()
+	}
 }
 
 impl cdp_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = MockAuctionManager;
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
