@@ -82,9 +82,8 @@ decl_module! {
 				if T::Currency::ensure_can_withdraw(stable_currency_id, &Self::account_id(), surplus_auction_fixed_size).is_ok() {
 					T::Currency::withdraw(stable_currency_id, &Self::account_id(), surplus_auction_fixed_size)
 					.expect("never fail after balance check");
+					T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
 				}
-
-				T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
 				<SurplusPool<T>>::mutate(|surplus| *surplus -= surplus_auction_fixed_size);
 				remain_surplus_pool -= surplus_auction_fixed_size;
 			}

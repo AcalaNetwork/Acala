@@ -320,3 +320,15 @@ fn on_finalize_work() {
 		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
 	});
 }
+
+#[test]
+fn set_maximum_collateral_auction_size_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_maximum_collateral_auction_size(
+			Origin::ROOT,
+			BTC,
+			20
+		));
+		assert_eq!(CdpEngineModule::maximum_collateral_auction_size(BTC), 20);
+	});
+}

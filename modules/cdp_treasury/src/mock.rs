@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use support::Rate;
 
 mod dex {}
 
@@ -23,6 +24,10 @@ parameter_types! {
 	pub const CreationFee: u64 = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const AuctionTimeToClose: u64 = 100;
+	pub const AuctionDurationSoftCap: u64 = 2000;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 pub type AccountId = u64;

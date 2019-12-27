@@ -5,13 +5,12 @@ use frame_support::{decl_event, decl_module, decl_storage, traits::Get, Paramete
 use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Member,
-		Saturating, SimpleArithmetic, Zero,
+		AccountIdConversion, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating, SimpleArithmetic,
+		Zero,
 	},
 	ModuleId, RuntimeDebug,
 };
 use support::{AuctionManager, CDPTreasury, Rate};
-use system::ensure_root;
 
 mod mock;
 mod tests;
@@ -76,9 +75,6 @@ decl_event!(
 
 decl_storage! {
 	trait Store for Module<T: Trait> as AuctionManager {
-		MaximumCollateralAuctionSize get(fn maximum_collateral_auction_size): map T::CurrencyId => T::Balance;
-		MaximumDebitAuctionSize get(fn maximum_debit_auction_size): T::Balance;
-		MaximumSurplusAuctionSize get(fn maximum_surplus_auction_size): T::Balance;
 		CollateralAuctions get(fn collateral_auctions): map AuctionIdOf<T> =>
 			Option<CollateralAuctionItem<T::AccountId, T::CurrencyId, T::Balance, T::BlockNumber>>;
 		DebitAuctions get(fn debit_auctions): map AuctionIdOf<T> =>
@@ -95,11 +91,6 @@ decl_storage! {
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
-
-		fn set_maximum_collateral_auction_size(origin, currency_id: T::CurrencyId, size: T::Balance) {
-			ensure_root(origin)?;
-			<MaximumCollateralAuctionSize<T>>::insert(currency_id, size);
-		}
 	}
 }
 
@@ -109,7 +100,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Check `new_price` is larger than minimum increment
-	/// Formula: bid_price - last_price >= max(last_price, target) * minimum_increment_size
+	/// Formula: new_price - last_price >= max(last_price, target_price) * minimum_increment
 	pub fn check_minimum_increment(
 		new_price: T::Balance,
 		last_price: T::Balance,
@@ -234,7 +225,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 				last_price,
 				debit_auction.fix,
 				Self::get_minimum_increment_size(now, debit_auction.start_time),
-			) && new_bid.1 >= 0.into()
+			) && new_bid.1 >= debit_auction.fix
 				&& T::Currency::ensure_can_withdraw(stable_currency_id, &new_bid.0, debit_auction.fix).is_ok()
 			{
 				if let Some((last_bidder, _)) = last_bid {
@@ -267,7 +258,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 					)),
 				};
 			}
-		} else if let Some(surplus_auction) = Self::debit_auctions(id) {
+		} else if let Some(surplus_auction) = Self::surplus_auctions(id) {
 			// surplus auction
 			let last_price: T::Balance = match last_bid {
 				None => 0.into(),
@@ -282,6 +273,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 				0.into(),
 				Self::get_minimum_increment_size(now, surplus_auction.start_time),
 			) && T::Currency::ensure_can_withdraw(native_currency_id, &(new_bid.0), new_bid.1).is_ok()
+				&& !new_bid.1.is_zero()
 			{
 				let mut burn_native_currency_amount = new_bid.1;
 
@@ -380,12 +372,12 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 				.is_ok()
 				{
 					T::Currency::transfer(
-						T::GetNativeCurrencyId::get(),
+						T::GetStableCurrencyId::get(),
 						&Self::account_id(),
 						&bidder,
 						surplus_auction.amount,
 					)
-					.expect("never failed after balance check");
+					.expect("never failed after overflow check");
 				}
 
 				// decrease surplus in auction
@@ -419,44 +411,18 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			<TotalTargetInAuction<T>>::mutate(|balance| *balance += target);
 			T::Treasury::on_system_debit(bad_debt);
 
-			let maximum_collateral_auction_size = <Module<T>>::maximum_collateral_auction_size(currency_id);
-			let mut unhandled_amount: Self::Balance = amount;
-			let mut unhandled_target: Self::Balance = target;
 			let block_number = <system::Module<T>>::block_number();
+			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None);
+			let collateral_aution = CollateralAuctionItem {
+				owner: who.clone(),
+				currency_id: currency_id,
+				amount: amount,
+				target: target,
+				start_time: block_number,
+			};
 
-			while !unhandled_amount.is_zero() {
-				let (lot_amount, lot_target) = if unhandled_amount > maximum_collateral_auction_size
-					&& !maximum_collateral_auction_size.is_zero()
-				{
-					target
-						.checked_mul(&maximum_collateral_auction_size)
-						.and_then(|n| n.checked_div(&amount))
-						.and_then(|result| Some((maximum_collateral_auction_size, result)))
-						.unwrap_or((unhandled_amount, unhandled_target))
-				} else {
-					(unhandled_amount, unhandled_target)
-				};
-
-				let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None);
-				let aution_item = CollateralAuctionItem {
-					owner: who.clone(),
-					currency_id: currency_id,
-					amount: lot_amount,
-					target: lot_target,
-					start_time: block_number,
-				};
-				<CollateralAuctions<T>>::insert(auction_id, aution_item);
-				<Module<T>>::deposit_event(RawEvent::CollateralAuction(
-					auction_id,
-					currency_id,
-					lot_amount,
-					lot_target,
-				));
-
-				// note: this will never fail, because of lot_* are always smaller or equal than unhandled_*
-				unhandled_amount -= lot_amount;
-				unhandled_target -= lot_target;
-			}
+			<CollateralAuctions<T>>::insert(auction_id, collateral_aution);
+			<Module<T>>::deposit_event(RawEvent::CollateralAuction(auction_id, currency_id, amount, target));
 		}
 	}
 

@@ -33,7 +33,6 @@ parameter_types! {
 	pub const MinimumDebitValue: Balance = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-
 }
 
 pub type AccountId = u64;

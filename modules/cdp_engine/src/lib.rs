@@ -75,12 +75,18 @@ decl_storage! {
 		pub RequiredCollateralRatio get(fn required_collateral_ratio): map CurrencyIdOf<T> => Option<Ratio>;
 		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map CurrencyIdOf<T> => BalanceOf<T>;
 		pub DebitExchangeRate get(fn debit_exchange_rate): map CurrencyIdOf<T> => Option<ExchangeRate>;
+		pub MaximumCollateralAuctionSize get(fn maximum_collateral_auction_size): map CurrencyIdOf<T> => BalanceOf<T>;
 	}
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
+
+		fn set_maximum_collateral_auction_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
+			ensure_root(origin)?;
+			<MaximumCollateralAuctionSize<T>>::insert(currency_id, size);
+		}
 
 		pub fn set_collateral_params(
 			origin,
@@ -191,7 +197,7 @@ impl<T: Trait> Module<T> {
 		let debit_balance = <vaults::Module<T>>::debits(&who, currency_id);
 		let collateral_balance = <vaults::Module<T>>::collaterals(&who, currency_id);
 
-		// ensure the cdp is unsafe
+		// first: ensure the cdp is unsafe
 		let feed_price = T::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let collateral_ratio =
@@ -202,7 +208,7 @@ impl<T: Trait> Module<T> {
 			Error::<T>::CollateralRatioStillSafe
 		);
 
-		// grab collaterals and debits from unsafe cdp
+		// second: grab collaterals and debits from unsafe cdp
 		let grab_amount =
 			TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let grab_debit_amount =
@@ -210,13 +216,45 @@ impl<T: Trait> Module<T> {
 		<vaults::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id, -grab_amount, -grab_debit_amount)
 			.map_err(|_| Error::<T>::GrabCollateralAndDebitFailed)?;
 
-		// create collateral auction
+		// third: create collateral auction
 		let bad_debt = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
 		let mut target = bad_debt;
 		if let Some(penalty_ratio) = Self::liquidation_penalty(currency_id) {
 			target = target.saturating_add(penalty_ratio.saturating_mul_int(&target));
 		}
-		T::AuctionManagerHandler::new_collateral_auction(&who, currency_id, collateral_balance, target, bad_debt);
+		let maximum_collateral_auction_size = Self::maximum_collateral_auction_size(currency_id);
+		let mut unhandled_collateral_amount = collateral_balance;
+		let mut unhandled_target = target;
+		let mut unhandled_bad_debt = bad_debt;
+
+		while !unhandled_collateral_amount.is_zero() {
+			let (lot_collateral_amount, lot_target, lot_bad_debt) = if unhandled_collateral_amount
+				> maximum_collateral_auction_size
+				&& !maximum_collateral_auction_size.is_zero()
+			{
+				let rate = Rate::from_rational(maximum_collateral_auction_size, collateral_balance);
+				(
+					maximum_collateral_auction_size,
+					rate.saturating_mul_int(&target),
+					rate.saturating_mul_int(&bad_debt),
+				)
+			} else {
+				(unhandled_collateral_amount, unhandled_target, unhandled_bad_debt)
+			};
+
+			T::AuctionManagerHandler::new_collateral_auction(
+				&who,
+				currency_id,
+				lot_collateral_amount,
+				lot_target,
+				lot_bad_debt,
+			);
+
+			unhandled_collateral_amount -= lot_collateral_amount;
+			unhandled_target -= lot_target;
+			unhandled_bad_debt -= lot_bad_debt;
+		}
+
 		Self::deposit_event(RawEvent::LiquidateUnsafeCdp(
 			currency_id,
 			who,
