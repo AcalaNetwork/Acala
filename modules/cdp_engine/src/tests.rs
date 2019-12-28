@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CdpEngineModule, Currencies, ExtBuilder, Origin, VaultsModule, ACA, ALICE, AUSD, BTC, DOT};
+use mock::{CdpEngineModule, Currencies, ExtBuilder, Origin, Runtime, VaultsModule, ACA, ALICE, AUSD, BTC, DOT};
 use sp_runtime::traits::OnFinalize;
 
 #[test]
@@ -105,7 +105,7 @@ fn check_position_adjustment_ratio_when_invalid_feedprice() {
 		));
 		assert_noop!(
 			CdpEngineModule::check_position_adjustment(&ALICE, DOT, 100, 50),
-			Error::InvalidFeedPrice,
+			Error::<Runtime>::InvalidFeedPrice,
 		);
 	});
 }
@@ -124,7 +124,7 @@ fn check_position_adjustment_ratio_below_required_ratio() {
 		));
 		assert_noop!(
 			CdpEngineModule::check_position_adjustment(&ALICE, BTC, 89, 50),
-			Error::BelowRequiredCollateralRatio
+			Error::<Runtime>::BelowRequiredCollateralRatio
 		);
 	});
 }
@@ -159,7 +159,7 @@ fn check_debit_cap_exceed() {
 		));
 		assert_noop!(
 			CdpEngineModule::check_debit_cap(BTC, 10001),
-			Error::ExceedDebitValueHardCap,
+			Error::<Runtime>::ExceedDebitValueHardCap,
 		);
 	});
 }
@@ -178,7 +178,7 @@ fn update_position_work() {
 		));
 		assert_noop!(
 			CdpEngineModule::update_position(&ALICE, ACA, 100, 50),
-			Error::NotValidCurrencyId,
+			Error::<Runtime>::NotValidCurrencyId,
 		);
 		assert_eq!(Currencies::balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
@@ -191,7 +191,7 @@ fn update_position_work() {
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			CdpEngineModule::update_position(&ALICE, BTC, 0, 20),
-			Error::UpdatePositionFailed,
+			Error::<Runtime>::UpdatePositionFailed,
 		);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, -20));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
@@ -216,7 +216,7 @@ fn remain_debit_value_too_small_check() {
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_noop!(
 			CdpEngineModule::update_position(&ALICE, BTC, 0, -49),
-			Error::UpdatePositionFailed,
+			Error::<Runtime>::UpdatePositionFailed,
 		);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, -100, -50));
 	});
@@ -241,7 +241,7 @@ fn liquidate_unsafe_cdp_work() {
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC),
-			Error::CollateralRatioStillSafe,
+			Error::<Runtime>::CollateralRatioStillSafe,
 		);
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
@@ -265,7 +265,7 @@ fn liquidate_unsafe_cdp_when_invalid_feedprice() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			CdpEngineModule::liquidate_unsafe_cdp(ALICE, DOT),
-			Error::InvalidFeedPrice,
+			Error::<Runtime>::InvalidFeedPrice,
 		);
 	});
 }
@@ -318,5 +318,17 @@ fn on_finalize_work() {
 			Some(ExchangeRate::from_rational(10201, 10000))
 		);
 		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
+	});
+}
+
+#[test]
+fn set_maximum_collateral_auction_size_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_maximum_collateral_auction_size(
+			Origin::ROOT,
+			BTC,
+			20
+		));
+		assert_eq!(CdpEngineModule::maximum_collateral_auction_size(BTC), 20);
 	});
 }

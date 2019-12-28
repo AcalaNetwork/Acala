@@ -23,7 +23,6 @@ primitives = { package = "sp-core",  git = "https://github.com/paritytech/substr
 pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
-debits = { package = "module-debits", path = "../debits", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
 
 [features]

@@ -20,6 +20,7 @@ primitives = { package = "sp-core",  git = "https://github.com/paritytech/substr
 runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
+orml-auction = { package = "orml-auction", path = "../../orml/auction", default-features = false }
 
 [features]
 default = ["std"]

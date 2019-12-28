@@ -1,4 +1,4 @@
-//! Mocks for the auction_manager module.
+//! Mocks for the auction manager module.
 
 #![cfg(test)]
 
@@ -20,10 +20,15 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
+	pub const ExistentialDeposit: u64 = 0;
+	pub const TransferFee: u64 = 0;
+	pub const CreationFee: u64 = 2;
 	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 pub type AccountId = u64;
@@ -49,6 +54,7 @@ impl system::Trait for Runtime {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
+	type ModuleToIndex = ();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -70,6 +76,7 @@ pub type Auction = orml_auction::Module<Runtime>;
 impl cdp_treasury::Trait for Runtime {
 	type Currency = Tokens;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = AuctionManagerModule;
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
@@ -83,12 +90,16 @@ impl Trait for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Treasury = CdpTreasury;
+	type GetAmountAdjustment = GetAmountAdjustment;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CAROL: AccountId = 3;
+pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 
@@ -101,8 +112,8 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			currency_id: vec![AUSD, BTC],
-			endowed_accounts: vec![ALICE, BOB],
+			currency_id: vec![AUSD, BTC, ACA],
+			endowed_accounts: vec![ALICE, BOB, CAROL],
 			initial_balance: 1000,
 		}
 	}

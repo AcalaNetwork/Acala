@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use support::Rate;
 
 mod dex {}
 
@@ -23,6 +24,10 @@ parameter_types! {
 	pub const CreationFee: u64 = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const AuctionTimeToClose: u64 = 100;
+	pub const AuctionDurationSoftCap: u64 = 2000;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 pub type AccountId = u64;
@@ -31,6 +36,7 @@ pub type Balance = u64;
 pub type Amount = i64;
 pub type CurrencyId = u32;
 
+pub const ALICE: AccountId = 0;
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 
@@ -53,6 +59,7 @@ impl system::Trait for Runtime {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
+	type ModuleToIndex = ();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -76,8 +83,7 @@ impl pallet_balances::Trait for Runtime {
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency =
-	orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance, orml_tokens::Error>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 impl orml_currencies::Trait for Runtime {
 	type Event = ();
@@ -87,9 +93,40 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
+pub struct MockAuctionManager;
+impl AuctionManager<AccountId> for MockAuctionManager {
+	type CurrencyId = CurrencyId;
+	type Balance = Balance;
+
+	#[allow(unused_variables)]
+	fn new_collateral_auction(
+		who: &AccountId,
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+		target: Self::Balance,
+		bad_debt: Self::Balance,
+	) {
+	}
+
+	#[allow(unused_variables)]
+	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+
+	#[allow(unused_variables)]
+	fn new_surplus_auction(amount: Self::Balance) {}
+
+	fn get_total_debit_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_target_in_auction() -> Self::Balance {
+		Default::default()
+	}
+}
+
 impl Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = MockAuctionManager;
 }
 pub type CdpTreasuryModule = Module<Runtime>;
 
@@ -103,7 +140,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			currency_ids: vec![ACA, AUSD],
-			endowed_accounts: vec![],
+			endowed_accounts: vec![ALICE],
 			initial_balance: 1000,
 		}
 	}

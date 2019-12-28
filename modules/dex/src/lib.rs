@@ -3,13 +3,12 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use orml_utilities::FixedU128;
-use rstd::result;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating, SimpleArithmetic,
 		UniqueSaturatedInto, Zero,
 	},
-	ModuleId,
+	DispatchResult, ModuleId,
 };
 use support::DexManager;
 use system::{self as system, ensure_signed};
@@ -45,7 +44,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for dex module.
-	pub enum Error {
+	pub enum Error for Module<T: Trait> {
 		BaseCurrencyIdNotAllowed,
 		TokenNotEnough,
 		ShareNotEnough,
@@ -66,6 +65,8 @@ decl_storage! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+		type Error = Error<T>;
+
 		fn deposit_event() = default;
 
 		fn swap_currency(origin, supply: (CurrencyIdOf<T>, BalanceOf<T>), target: (CurrencyIdOf<T>, BalanceOf<T>)) {
@@ -73,7 +74,7 @@ decl_module! {
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
 				target.0 != supply.0,
-				Error::CanNotSwapItself.into(),
+				Error::<T>::CanNotSwapItself,
 			);
 
 			if target.0 == base_currency_id {
@@ -90,11 +91,11 @@ decl_module! {
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
 				other_currency_id != base_currency_id,
-				Error::BaseCurrencyIdNotAllowed.into(),
+				Error::<T>::BaseCurrencyIdNotAllowed,
 			);
 			ensure!(
 				!max_other_currency_amount.is_zero() && !max_base_currency_amount.is_zero(),
-				Error::InvalidBalance.into(),
+				Error::<T>::InvalidBalance,
 			);
 
 			let total_shares = Self::total_shares(other_currency_id);
@@ -107,49 +108,32 @@ decl_module! {
 				(max_other_currency_amount, max_base_currency_amount, initial_share)
 			} else {
 				let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(other_currency_id);
-
-				let other_base_price = FixedU128::from_rational(
-					base_currency_pool.unique_saturated_into(),
-					other_currency_pool.unique_saturated_into(),
-				);
-
-				let input_other_base_price = FixedU128::from_rational(
-					max_base_currency_amount.unique_saturated_into(),
-					max_other_currency_amount.unique_saturated_into(),
-				);
+				let other_base_price = FixedU128::from_rational(base_currency_pool, other_currency_pool);
+				let input_other_base_price = FixedU128::from_rational(max_base_currency_amount, max_other_currency_amount);
 
 				if input_other_base_price <= other_base_price {
 					// max_other_currency_amount may be too much, calculate the actual other currency amount
-					let base_other_price = FixedU128::from_rational(
-						other_currency_pool.unique_saturated_into(),
-						base_currency_pool.unique_saturated_into(),
-					);
+					let base_other_price = FixedU128::from_rational(other_currency_pool, base_currency_pool);
 					let other_currency_amount = base_other_price.saturating_mul_int(&max_base_currency_amount);
-					let share = FixedU128::from_rational(
-						other_currency_amount.unique_saturated_into(),
-						other_currency_pool.unique_saturated_into(),
-					).checked_mul_int(&total_shares).unwrap_or_default();
+					let share = FixedU128::from_rational(other_currency_amount, other_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
 					(other_currency_amount, max_base_currency_amount, share)
 				} else {
 					// max_base_currency_amount is too much, calculate the actual base currency amount
 					let base_currency_amount = other_base_price.saturating_mul_int(&max_other_currency_amount);
-					let share = FixedU128::from_rational(
-						base_currency_amount.unique_saturated_into(),
-						base_currency_pool.unique_saturated_into(),
-					).checked_mul_int(&total_shares).unwrap_or_default();
+					let share = FixedU128::from_rational(base_currency_amount, base_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
 					(max_other_currency_amount, base_currency_amount, share)
 				}
 			};
 
 			ensure!(
 				!share_increment.is_zero() && !other_currency_increment.is_zero() && !base_currency_increment.is_zero(),
-				Error::InvalidLiquidityIncrement.into(),
+				Error::<T>::InvalidLiquidityIncrement,
 			);
 			ensure!(
 				T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_increment).is_ok()
 				&&
 				T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_increment).is_ok(),
-				Error::TokenNotEnough.into(),
+				Error::<T>::TokenNotEnough,
 			);
 			T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)
 			.expect("never failed because after checks");
@@ -174,18 +158,15 @@ decl_module! {
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
 				currency_id != base_currency_id,
-				Error::BaseCurrencyIdNotAllowed.into(),
+				Error::<T>::BaseCurrencyIdNotAllowed,
 			);
 			ensure!(
 				Self::shares(currency_id, &who) >= share_amount && !share_amount.is_zero(),
-				Error::ShareNotEnough.into(),
+				Error::<T>::ShareNotEnough,
 			);
 
 			let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(currency_id);
-			let proportion = FixedU128::from_rational(
-				share_amount.unique_saturated_into(),
-				Self::total_shares(currency_id).unique_saturated_into(),
-			);
+			let proportion = FixedU128::from_rational(share_amount, Self::total_shares(currency_id));
 			let withdraw_other_currency_amount = proportion.saturating_mul_int(&other_currency_pool);
 			let withdraw_base_currency_amount = proportion.saturating_mul_int(&base_currency_pool);
 			if !withdraw_other_currency_amount.is_zero() {
@@ -226,12 +207,7 @@ impl<T: Trait> Module<T> {
 		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
 		let new_target_pool = supply_pool
 			.checked_add(&supply_amount)
-			.and_then(|n| {
-				Some(FixedU128::from_rational(
-					supply_pool.unique_saturated_into(),
-					n.unique_saturated_into(),
-				))
-			})
+			.and_then(|n| Some(FixedU128::from_rational(supply_pool, n)))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.unwrap_or_default();
 
@@ -259,12 +235,7 @@ impl<T: Trait> Module<T> {
 			.and_then(|n| FixedU128::from_natural(1).checked_div(&n))
 			.and_then(|n| n.checked_mul_int(&target_amount))
 			.and_then(|n| target_pool.checked_sub(&n))
-			.and_then(|n| {
-				Some(FixedU128::from_rational(
-					supply_pool.unique_saturated_into(),
-					n.unique_saturated_into(),
-				))
-			})
+			.and_then(|n| Some(FixedU128::from_rational(supply_pool, n)))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.and_then(|n| n.checked_sub(&supply_pool))
 			.unwrap_or_default()
@@ -276,11 +247,11 @@ impl<T: Trait> Module<T> {
 		other_currency_id: CurrencyIdOf<T>,
 		other_currency_amount: BalanceOf<T>,
 		min_base_currency_amount: BalanceOf<T>,
-	) -> result::Result<(), Error> {
+	) -> DispatchResult {
 		ensure!(
 			!other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_amount).is_ok(),
-			Error::TokenNotEnough,
+			Error::<T>::TokenNotEnough,
 		);
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
@@ -288,7 +259,7 @@ impl<T: Trait> Module<T> {
 			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, other_currency_amount);
 		ensure!(
 			base_currency_amount >= min_base_currency_amount,
-			Error::InacceptablePrice,
+			Error::<T>::InacceptablePrice,
 		);
 
 		T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_amount)
@@ -317,19 +288,19 @@ impl<T: Trait> Module<T> {
 		other_currency_id: CurrencyIdOf<T>,
 		base_currency_amount: BalanceOf<T>,
 		min_other_currency_amount: BalanceOf<T>,
-	) -> result::Result<(), Error> {
+	) -> DispatchResult {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		ensure!(
 			!base_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_amount).is_ok(),
-			Error::TokenNotEnough,
+			Error::<T>::TokenNotEnough,
 		);
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
 		let other_currency_amount =
 			Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, base_currency_amount);
 		ensure!(
 			other_currency_amount >= min_other_currency_amount,
-			Error::InacceptablePrice,
+			Error::<T>::InacceptablePrice,
 		);
 
 		T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_amount)
@@ -359,12 +330,12 @@ impl<T: Trait> Module<T> {
 		supply_other_currency_amount: BalanceOf<T>,
 		target_other_currency_id: CurrencyIdOf<T>,
 		min_target_other_currency_amount: BalanceOf<T>,
-	) -> result::Result<(), Error> {
+	) -> DispatchResult {
 		ensure!(
 			!supply_other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(supply_other_currency_id, &who, supply_other_currency_amount)
 					.is_ok(),
-			Error::TokenNotEnough,
+			Error::<T>::TokenNotEnough,
 		);
 		let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_other_currency_id);
 		let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
@@ -380,7 +351,7 @@ impl<T: Trait> Module<T> {
 		);
 		ensure!(
 			target_other_currency_amount >= min_target_other_currency_amount,
-			Error::InacceptablePrice,
+			Error::<T>::InacceptablePrice,
 		);
 
 		T::Currency::transfer(
@@ -421,8 +392,6 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
-	type Error = Error;
-
 	fn get_supply_amount(
 		supply_currency_id: CurrencyIdOf<T>,
 		target_currency_id: CurrencyIdOf<T>,
@@ -457,9 +426,9 @@ impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 		who: T::AccountId,
 		supply: (CurrencyIdOf<T>, BalanceOf<T>),
 		target: (CurrencyIdOf<T>, BalanceOf<T>),
-	) -> Result<(), Self::Error> {
+	) -> DispatchResult {
 		let base_currency_id = T::GetBaseCurrencyId::get();
-		ensure!(target.0 != supply.0, Error::CanNotSwapItself.into());
+		ensure!(target.0 != supply.0, Error::<T>::CanNotSwapItself);
 		if target.0 == base_currency_id {
 			Self::swap_other_to_base(who, supply.0, supply.1, target.1)
 		} else if supply.0 == base_currency_id {

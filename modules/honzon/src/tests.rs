@@ -1,11 +1,12 @@
-//! Unit tests for the tokens module.
+//! Unit tests for the honzon module.
 
 #![cfg(test)]
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, Origin, VaultsModule, ALICE, ALIEX, AUSD, BOB, BTC, DOT,
+	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, Origin, Runtime, VaultsModule, ALICE, ALIEX, AUSD, BOB, BTC,
+	DOT,
 };
 use support::{Rate, Ratio};
 
@@ -28,7 +29,7 @@ fn liquidate_unsafe_cdp_work() {
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			HonzonModule::liquidate(Origin::signed(ALIEX), ALICE, BTC),
-			"LiquidateFailed",
+			Error::<Runtime>::LiquidateFailed,
 		);
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
@@ -64,7 +65,7 @@ fn unauthorize_should_work() {
 		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
-			Error::NoAuthorization
+			Error::<Runtime>::NoAuthorization
 		);
 	});
 }
@@ -77,11 +78,11 @@ fn unauthorize_all_should_work() {
 		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
-			Error::NoAuthorization
+			Error::<Runtime>::NoAuthorization
 		);
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, DOT),
-			Error::NoAuthorization
+			Error::<Runtime>::NoAuthorization
 		);
 	});
 }
@@ -111,7 +112,7 @@ fn transfer_unauthorization_vaults_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			HonzonModule::transfer_vault(Origin::signed(ALICE), BTC, BOB),
-			"NoAuthorization"
+			Error::<Runtime>::NoAuthorization,
 		);
 	});
 }

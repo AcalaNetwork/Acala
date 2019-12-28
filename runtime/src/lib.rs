@@ -164,6 +164,7 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	/// Version of the runtime.
 	type Version = Version;
+	type ModuleToIndex = ModuleToIndex;
 }
 
 impl pallet_aura::Trait for Runtime {
@@ -309,7 +310,7 @@ parameter_types! {
 impl orml_currencies::Trait for Runtime {
 	type Event = Event;
 	type MultiCurrency = orml_tokens::Module<Runtime>;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance, orml_tokens::Error>;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
@@ -317,6 +318,7 @@ parameter_types! {
 	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 50);
 	pub const AuctionTimeToClose: BlockNumber = 100;
 	pub const AuctionDurationSoftCap: BlockNumber = 200;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 impl module_auction_manager::Trait for Runtime {
@@ -329,24 +331,19 @@ impl module_auction_manager::Trait for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
-}
-
-impl module_debits::Trait for Runtime {
-	type CurrencyId = CurrencyId;
-	type Currency = orml_currencies::Module<Runtime>;
-	type GetStableCurrencyId = GetStableCurrencyId;
-	type DebitBalance = Balance;
-	type DebitAmount = Amount;
-	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
+	type GetAmountAdjustment = GetAmountAdjustment;
 }
 
 impl module_vaults::Trait for Runtime {
 	type Event = Event;
 	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = orml_currencies::Module<Runtime>;
-	type DebitCurrency = module_debits::Module<Runtime>;
 	type RiskManager = module_cdp_engine::Module<Runtime>;
+	type DebitBalance = Balance;
+	type DebitAmount = Amount;
+	type Treasury = module_cdp_treasury::Module<Runtime>;
 }
 
 parameter_types! {
@@ -389,6 +386,7 @@ impl module_dex::Trait for Runtime {
 impl module_cdp_treasury::Trait for Runtime {
 	type Currency = orml_currencies::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
 }
 
 construct_runtime!(
@@ -414,7 +412,6 @@ construct_runtime!(
 		Tokens: orml_tokens::{Module, Storage, Call, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
-		Debits: module_debits::{Module},
 		Vaults: module_vaults::{Module, Storage, Call, Event<T>},
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},

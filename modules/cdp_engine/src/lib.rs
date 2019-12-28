@@ -3,8 +3,11 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, PriceProvider};
 use orml_utilities::FixedU128;
-use rstd::{convert::TryInto, marker, prelude::*, result};
-use sp_runtime::traits::{CheckedAdd, CheckedSub, Convert, Saturating, UniqueSaturatedInto, Zero};
+use rstd::{convert::TryInto, marker, prelude::*};
+use sp_runtime::{
+	traits::{CheckedAdd, CheckedSub, Convert, Saturating, UniqueSaturatedInto, Zero},
+	DispatchResult,
+};
 use support::{AuctionManager, CDPTreasury, ExchangeRate, Price, Rate, Ratio, RiskManager};
 use system::ensure_root;
 
@@ -14,13 +17,9 @@ pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 mod mock;
 mod tests;
 
-type BalanceOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type CurrencyIdOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type DebitBalanceOf<T> =
-	<<T as vaults::Trait>::DebitCurrency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type AmountOf<T> = <<T as vaults::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
-type DebitAmountOf<T> =
-	<<T as vaults::Trait>::DebitCurrency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
 pub trait Trait: system::Trait + vaults::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -36,7 +35,7 @@ pub trait Trait: system::Trait + vaults::Trait {
 	type DefaulDebitExchangeRate: Get<ExchangeRate>;
 	type MinimumDebitValue: Get<BalanceOf<Self>>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
-	type Treasury: CDPTreasury<Balance = BalanceOf<Self>>;
+	type Treasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>>;
 }
 
 decl_event!(
@@ -52,14 +51,14 @@ decl_event!(
 
 decl_error! {
 	/// Error for cdp engine module.
-	pub enum Error {
+	pub enum Error for Module<T: Trait> {
 		ExceedDebitValueHardCap,
+		UpdatePositionFailed,
 		DebitAmountConvertFailed,
 		AmountConvertFailed,
 		BelowRequiredCollateralRatio,
 		BelowLiquidationRatio,
 		CollateralRatioStillSafe,
-		UpdatePositionFailed,
 		NotValidCurrencyId,
 		RemainDebitValueTooSmall,
 		GrabCollateralAndDebitFailed,
@@ -76,12 +75,18 @@ decl_storage! {
 		pub RequiredCollateralRatio get(fn required_collateral_ratio): map CurrencyIdOf<T> => Option<Ratio>;
 		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map CurrencyIdOf<T> => BalanceOf<T>;
 		pub DebitExchangeRate get(fn debit_exchange_rate): map CurrencyIdOf<T> => Option<ExchangeRate>;
+		pub MaximumCollateralAuctionSize get(fn maximum_collateral_auction_size): map CurrencyIdOf<T> => BalanceOf<T>;
 	}
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
+
+		fn set_maximum_collateral_auction_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
+			ensure_root(origin)?;
+			<MaximumCollateralAuctionSize<T>>::insert(currency_id, size);
+		}
 
 		pub fn set_collateral_params(
 			origin,
@@ -145,7 +150,7 @@ decl_module! {
 					// issue stablecoin to surplus pool
 					let total_debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, total_debits));
 					let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(&total_debit_value);
-					T::Treasury::on_surplus(issued_stable_coin_balance);
+					<T as Trait>::Treasury::on_system_surplus(issued_stable_coin_balance);
 				}
 			}
 		}
@@ -156,7 +161,7 @@ impl<T: Trait> Module<T> {
 	pub fn calculate_collateral_ratio(
 		currency_id: CurrencyIdOf<T>,
 		collateral_balance: BalanceOf<T>,
-		debit_balance: DebitBalanceOf<T>,
+		debit_balance: T::DebitBalance,
 		price: Price,
 	) -> Ratio {
 		let locked_collateral_value = price.saturating_mul_int(&collateral_balance);
@@ -165,7 +170,7 @@ impl<T: Trait> Module<T> {
 		Ratio::from_rational(locked_collateral_value, debit_value)
 	}
 
-	pub fn exceed_debit_value_cap(currency_id: CurrencyIdOf<T>, debit_balance: DebitBalanceOf<T>) -> bool {
+	pub fn exceed_debit_value_cap(currency_id: CurrencyIdOf<T>, debit_balance: T::DebitBalance) -> bool {
 		let hard_cap = Self::maximum_total_debit_value(currency_id);
 		let issue = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
 		issue > hard_cap
@@ -175,46 +180,81 @@ impl<T: Trait> Module<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
 		collateral_adjustment: AmountOf<T>,
-		debit_adjustment: DebitAmountOf<T>,
-	) -> result::Result<(), Error> {
+		debit_adjustment: T::DebitAmount,
+	) -> DispatchResult {
 		ensure!(
 			T::CollateralCurrencyIds::get().contains(&currency_id),
-			Error::NotValidCurrencyId,
+			Error::<T>::NotValidCurrencyId,
 		);
 		<vaults::Module<T>>::update_position(who, currency_id, collateral_adjustment, debit_adjustment)
-			.map_err(|_| Error::UpdatePositionFailed)?;
+			.map_err(|_| Error::<T>::UpdatePositionFailed)?;
 
 		Ok(())
 	}
 
 	// TODO: how to trigger cdp liquidation
-	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> result::Result<(), Error> {
+	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 		let debit_balance = <vaults::Module<T>>::debits(&who, currency_id);
 		let collateral_balance = <vaults::Module<T>>::collaterals(&who, currency_id);
 
-		// ensure the cdp is unsafe
-		let feed_price =
-			T::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id).ok_or(Error::InvalidFeedPrice)?;
+		// first: ensure the cdp is unsafe
+		let feed_price = T::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
+			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let collateral_ratio =
 			Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 		let liquidation_ratio = Self::liquidation_ratio(currency_id).unwrap_or_else(T::DefaultLiquidationRatio::get);
-		ensure!(collateral_ratio < liquidation_ratio, Error::CollateralRatioStillSafe);
+		ensure!(
+			collateral_ratio < liquidation_ratio,
+			Error::<T>::CollateralRatioStillSafe
+		);
 
-		// grab collaterals and debits from unsafe cdp
+		// second: grab collaterals and debits from unsafe cdp
 		let grab_amount =
-			TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::AmountConvertFailed)?;
+			TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let grab_debit_amount =
-			TryInto::<DebitAmountOf<T>>::try_into(debit_balance).map_err(|_| Error::AmountConvertFailed)?;
+			TryInto::<T::DebitAmount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		<vaults::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id, -grab_amount, -grab_debit_amount)
-			.map_err(|_| Error::GrabCollateralAndDebitFailed)?;
+			.map_err(|_| Error::<T>::GrabCollateralAndDebitFailed)?;
 
-		// create collateral auction
+		// third: create collateral auction
 		let bad_debt = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
 		let mut target = bad_debt;
 		if let Some(penalty_ratio) = Self::liquidation_penalty(currency_id) {
 			target = target.saturating_add(penalty_ratio.saturating_mul_int(&target));
 		}
-		T::AuctionManagerHandler::new_collateral_auction(&who, currency_id, collateral_balance, target, bad_debt);
+		let maximum_collateral_auction_size = Self::maximum_collateral_auction_size(currency_id);
+		let mut unhandled_collateral_amount = collateral_balance;
+		let mut unhandled_target = target;
+		let mut unhandled_bad_debt = bad_debt;
+
+		while !unhandled_collateral_amount.is_zero() {
+			let (lot_collateral_amount, lot_target, lot_bad_debt) = if unhandled_collateral_amount
+				> maximum_collateral_auction_size
+				&& !maximum_collateral_auction_size.is_zero()
+			{
+				let rate = Rate::from_rational(maximum_collateral_auction_size, collateral_balance);
+				(
+					maximum_collateral_auction_size,
+					rate.saturating_mul_int(&target),
+					rate.saturating_mul_int(&bad_debt),
+				)
+			} else {
+				(unhandled_collateral_amount, unhandled_target, unhandled_bad_debt)
+			};
+
+			T::AuctionManagerHandler::new_collateral_auction(
+				&who,
+				currency_id,
+				lot_collateral_amount,
+				lot_target,
+				lot_bad_debt,
+			);
+
+			unhandled_collateral_amount -= lot_collateral_amount;
+			unhandled_target -= lot_target;
+			unhandled_bad_debt -= lot_bad_debt;
+		}
+
 		Self::deposit_event(RawEvent::LiquidateUnsafeCdp(
 			currency_id,
 			who,
@@ -226,41 +266,39 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, DebitAmountOf<T>> for Module<T> {
-	type Error = Error;
-
+impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitAmount> for Module<T> {
 	fn check_position_adjustment(
 		account_id: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
 		collateral_amount: AmountOf<T>,
-		debit_amount: DebitAmountOf<T>,
-	) -> Result<(), Self::Error> {
+		debit_amount: T::DebitAmount,
+	) -> DispatchResult {
 		let mut debit_balance = <vaults::Module<T>>::debits(account_id, currency_id);
 		let mut collateral_balance = <vaults::Module<T>>::collaterals(account_id, currency_id);
 
 		// calculate new debit balance and collateral balance after position adjustment
 		let collateral_balance_adjustment =
-			TryInto::<BalanceOf<T>>::try_into(collateral_amount.abs()).map_err(|_| Error::AmountConvertFailed)?;
+			TryInto::<BalanceOf<T>>::try_into(collateral_amount.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		if collateral_amount.is_positive() {
 			collateral_balance = collateral_balance
 				.checked_add(&collateral_balance_adjustment)
-				.ok_or(Error::BalanceOverflow)?;
+				.ok_or(Error::<T>::BalanceOverflow)?;
 		} else {
 			collateral_balance = collateral_balance
 				.checked_sub(&collateral_balance_adjustment)
-				.ok_or(Error::BalanceOverflow)?;
+				.ok_or(Error::<T>::BalanceOverflow)?;
 		}
 
-		let debit_balance_adjustment =
-			TryInto::<DebitBalanceOf<T>>::try_into(debit_amount.abs()).map_err(|_| Error::DebitAmountConvertFailed)?;
+		let debit_balance_adjustment = TryInto::<T::DebitBalance>::try_into(debit_amount.abs())
+			.map_err(|_| Error::<T>::DebitAmountConvertFailed)?;
 		if debit_amount.is_positive() {
 			debit_balance = debit_balance
 				.checked_add(&debit_balance_adjustment)
-				.ok_or(Error::BalanceOverflow)?;
+				.ok_or(Error::<T>::BalanceOverflow)?;
 		} else {
 			debit_balance = debit_balance
 				.checked_sub(&debit_balance_adjustment)
-				.ok_or(Error::BalanceOverflow)?;
+				.ok_or(Error::<T>::BalanceOverflow)?;
 		}
 
 		let debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
@@ -268,13 +306,13 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, DebitAmou
 		if !debit_value.is_zero() {
 			// check the required collateral ratio
 			let feed_price = <T as Trait>::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
-				.ok_or(Error::InvalidFeedPrice)?;
+				.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 			if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
 				ensure!(
 					collateral_ratio >= required_collateral_ratio,
-					Error::BelowRequiredCollateralRatio
+					Error::<T>::BelowRequiredCollateralRatio
 				);
 			}
 
@@ -284,34 +322,34 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, DebitAmou
 			} else {
 				T::DefaultLiquidationRatio::get()
 			};
-			ensure!(collateral_ratio >= liquidation_ratio, Error::BelowLiquidationRatio);
+			ensure!(collateral_ratio >= liquidation_ratio, Error::<T>::BelowLiquidationRatio);
 
 			// check the minimum_debit_value
 			ensure!(
 				debit_value >= T::MinimumDebitValue::get(),
-				Error::RemainDebitValueTooSmall,
+				Error::<T>::RemainDebitValueTooSmall,
 			);
 		}
 
 		Ok(())
 	}
 
-	fn check_debit_cap(currency_id: CurrencyIdOf<T>, debit_amount: DebitAmountOf<T>) -> Result<(), Self::Error> {
+	fn check_debit_cap(currency_id: CurrencyIdOf<T>, debit_amount: T::DebitAmount) -> DispatchResult {
 		let mut total_debit_balance = <vaults::Module<T>>::total_debits(currency_id);
-		let debit_balance_adjustment =
-			TryInto::<DebitBalanceOf<T>>::try_into(debit_amount.abs()).map_err(|_| Error::DebitAmountConvertFailed)?;
+		let debit_balance_adjustment = TryInto::<T::DebitBalance>::try_into(debit_amount.abs())
+			.map_err(|_| Error::<T>::DebitAmountConvertFailed)?;
 		if debit_amount.is_positive() {
 			total_debit_balance = total_debit_balance
 				.checked_add(&debit_balance_adjustment)
-				.ok_or(Error::BalanceOverflow)?;
+				.ok_or(Error::<T>::BalanceOverflow)?;
 		} else {
 			total_debit_balance = total_debit_balance
 				.checked_sub(&debit_balance_adjustment)
-				.ok_or(Error::BalanceOverflow)?;
+				.ok_or(Error::<T>::BalanceOverflow)?;
 		}
 		ensure!(
 			!Self::exceed_debit_value_cap(currency_id, total_debit_balance),
-			Error::ExceedDebitValueHardCap
+			Error::<T>::ExceedDebitValueHardCap
 		);
 
 		Ok(())
