@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use runtime::{opaque::Block, AccountId, Balance, Index, UncheckedExtrinsic};
 use sp_runtime::traits::ProvideRuntimeApi;
-use txpool_api::TransactionPool;
+use sp_transaction_pool::TransactionPool;
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;

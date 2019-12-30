@@ -23,31 +23,32 @@ tokio = "0.1.22"
 parking_lot = "0.9.0"
 codec = { package = "parity-scale-codec", version = "1.0.0" }
 trie-root = "0.15.2"
+jsonrpc-core = "14.0.3"
+
 sp-io = { git = "https://github.com/paritytech/substrate.git" }
 sc-cli = { git = "https://github.com/paritytech/substrate.git" }
-primitives = { package = "sp-core", git = "https://github.com/paritytech/substrate.git" }
+sp-core = { git = "https://github.com/paritytech/substrate.git" }
 sc-executor = { git = "https://github.com/paritytech/substrate.git" }
 sc-service = { git = "https://github.com/paritytech/substrate.git" }
-inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git" }
-txpool = { package = "sc-transaction-pool", git = "https://github.com/paritytech/substrate.git" }
-txpool-api = { package = "sp-transaction-pool", git = "https://github.com/paritytech/substrate.git" }
-network = { package = "sc-network", git = "https://github.com/paritytech/substrate.git" }
-aura = { package = "sc-consensus-aura", git = "https://github.com/paritytech/substrate.git" }
-aura-primitives = { package = "sp-consensus-aura", git = "https://github.com/paritytech/substrate.git" }
-consensus-common = { package = "sp-consensus", git = "https://github.com/paritytech/substrate.git" }
+sp-inherents = { git = "https://github.com/paritytech/substrate.git" }
+sc-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
+sc-network = { git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-aura = { git = "https://github.com/paritytech/substrate.git" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate.git" }
+sp-consensus = { git = "https://github.com/paritytech/substrate.git" }
 grandpa = { package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
 grandpa-primitives = { package = "sp-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
-sc-client = {  git = "https://github.com/paritytech/substrate.git" }
+sc-client = { git = "https://github.com/paritytech/substrate.git" }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
-basic-authorship = { package = "sc-basic-authority", git = "https://github.com/paritytech/substrate.git"}
+sc-basic-authority = { git = "https://github.com/paritytech/substrate.git"}
 sc-telemetry = { git = "https://github.com/paritytech/substrate.git" }
-
-runtime = { package = "acala-runtime", path = "runtime" }
-
 sc-rpc = { git = "https://github.com/paritytech/substrate" }
+
 frame-rpc-system = { package = "substrate-frame-rpc-system", git = "https://github.com/paritytech/substrate" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate" }
-jsonrpc-core = "14.0.3"
+
+runtime = { package = "acala-runtime", path = "runtime" }
 
 [build-dependencies]
 vergen = "3.0.4"

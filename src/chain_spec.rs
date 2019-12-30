@@ -1,7 +1,5 @@
-use aura_primitives::sr25519::AuthorityId as AuraId;
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
-use primitives::{crypto::UncheckedInto, sr25519, Pair, Public};
 use runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, IndicesConfig,
 	OperatorMembershipConfig, Signature, SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
@@ -9,6 +7,8 @@ use runtime::{
 use sc_service;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 // Note this is the URL for the telemetry server
@@ -30,14 +30,14 @@ pub enum Alternative {
 	AlphaTestnetLatest,
 }
 
+type AccountPublic = <Signature as Verify>::Signer;
+
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
 		.expect("static values are valid; qed")
 		.public()
 }
-
-type AccountPublic = <Signature as Verify>::Signer;
 
 /// Helper function to generate an account ID from seed
 pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
@@ -47,9 +47,9 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-/// Helper function to generate an authority key for Aura
-pub fn get_authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
-	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
+/// Helper function to generate session key from seed
+pub fn get_authority_keys_from_seed(seed: &str) -> (AuraId, GrandpaId) {
+	(get_from_seed::<AuraId>(seed), get_from_seed::<GrandpaId>(seed))
 }
 
 impl Alternative {
@@ -169,6 +169,8 @@ impl Alternative {
 	}
 }
 
+const INITIAL_BALANCE: u128 = 1_000_000_000_000_000_000_000_u128; // $1M
+
 fn testnet_genesis(
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	root_key: AccountId,
@@ -183,7 +185,7 @@ fn testnet_genesis(
 			ids: endowed_accounts.clone(),
 		}),
 		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+			balances: endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)).collect(),
 			vesting: vec![],
 		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
@@ -199,9 +201,15 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		orml_tokens: Some(TokensConfig {
-			tokens: vec![CurrencyId::DOT, CurrencyId::XBTC],
-			initial_balance: 1_000_000_000_000_000_000_000_u128, // $1M
-			endowed_accounts: endowed_accounts.clone(),
+			endowed_accounts: endowed_accounts
+				.iter()
+				.flat_map(|x| {
+					vec![
+						(x.clone(), CurrencyId::DOT, INITIAL_BALANCE),
+						(x.clone(), CurrencyId::XBTC, INITIAL_BALANCE),
+					]
+				})
+				.collect(),
 		}),
 	}
 }
@@ -220,7 +228,7 @@ fn alphanet_genesis(
 			ids: endowed_accounts.clone(),
 		}),
 		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+			balances: endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)).collect(),
 			vesting: vec![],
 		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
@@ -236,9 +244,15 @@ fn alphanet_genesis(
 			phantom: Default::default(),
 		}),
 		orml_tokens: Some(TokensConfig {
-			tokens: vec![CurrencyId::DOT, CurrencyId::XBTC],
-			initial_balance: 1_000_000_000_000_000_000_000_u128, // $1M
-			endowed_accounts: endowed_accounts.clone(),
+			endowed_accounts: endowed_accounts
+				.iter()
+				.flat_map(|x| {
+					vec![
+						(x.clone(), CurrencyId::DOT, INITIAL_BALANCE),
+						(x.clone(), CurrencyId::XBTC, INITIAL_BALANCE),
+					]
+				})
+				.collect(),
 		}),
 	}
 }
