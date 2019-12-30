@@ -1,5 +1,4 @@
 use crate::{chain_spec, new_full_start, service};
-use aura_primitives::sr25519::AuthorityPair as AuraPair;
 use futures::{
 	channel::oneshot,
 	compat::Future01CompatExt,
@@ -10,6 +9,7 @@ use log::info;
 use sc_cli::{display_role, informant, parse_and_prepare, NoCustom, ParseAndPrepare};
 pub use sc_cli::{error, IntoExit, VersionInfo};
 use sc_service::{AbstractService, Configuration, Roles as ServiceRoles};
+use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::cell::RefCell;
 use tokio::runtime::Runtime;
 

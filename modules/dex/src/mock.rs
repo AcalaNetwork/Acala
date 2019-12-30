@@ -85,17 +85,20 @@ pub const BTC: CurrencyId = 2;
 pub const DOT: CurrencyId = 3;
 
 pub struct ExtBuilder {
-	currency_id: Vec<CurrencyId>,
-	endowed_accounts: Vec<AccountId>,
-	initial_balance: Balance,
+	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			currency_id: vec![AUSD, BTC, DOT],
-			endowed_accounts: vec![ALICE, BOB],
-			initial_balance: 1_000_000_000_000_000_000u128,
+			endowed_accounts: vec![
+				(ALICE, AUSD, 1_000_000_000_000_000_000u128),
+				(BOB, AUSD, 1_000_000_000_000_000_000u128),
+				(ALICE, BTC, 1_000_000_000_000_000_000u128),
+				(BOB, BTC, 1_000_000_000_000_000_000u128),
+				(ALICE, DOT, 1_000_000_000_000_000_000u128),
+				(BOB, DOT, 1_000_000_000_000_000_000u128),
+			],
 		}
 	}
 }
@@ -105,8 +108,6 @@ impl ExtBuilder {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			tokens: self.currency_id,
-			initial_balance: self.initial_balance,
 			endowed_accounts: self.endowed_accounts,
 		}
 		.assimilate_storage(&mut t)

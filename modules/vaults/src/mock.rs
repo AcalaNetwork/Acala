@@ -182,17 +182,13 @@ impl Trait for Runtime {
 pub type VaultsModule = Module<Runtime>;
 
 pub struct ExtBuilder {
-	currency_ids: Vec<CurrencyId>,
-	endowed_accounts: Vec<AccountId>,
-	initial_balance: Balance,
+	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			currency_ids: vec![X_TOKEN_ID, Y_TOKEN_ID],
-			endowed_accounts: vec![ALICE],
-			initial_balance: 1000,
+			endowed_accounts: vec![(ALICE, X_TOKEN_ID, 1000), (ALICE, Y_TOKEN_ID, 1000)],
 		}
 	}
 }
@@ -201,8 +197,6 @@ impl ExtBuilder {
 	pub fn build(self) -> runtime_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 		orml_tokens::GenesisConfig::<Runtime> {
-			tokens: self.currency_ids,
-			initial_balance: self.initial_balance,
 			endowed_accounts: self.endowed_accounts,
 		}
 		.assimilate_storage(&mut t)
