@@ -57,3 +57,9 @@ pub trait CDPTreasury<AccountId> {
 	fn add_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn sub_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
 }
+
+pub trait PriceProvider<CurrencyId, Price> {
+	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
+	fn lock_price(currency_id: CurrencyId);
+	fn unlock_price(currency_id: CurrencyId);
+}

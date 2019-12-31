@@ -64,13 +64,13 @@ dependencies = [
  "module-cdp-treasury",
  "module-dex",
  "module-honzon",
+ "module-prices",
  "module-primitives",
  "module-support",
  "module-vaults",
  "orml-auction",
  "orml-currencies",
  "orml-oracle",
- "orml-prices",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
@@ -2651,7 +2651,6 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
- "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -2715,6 +2714,22 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-prices"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
  "parity-scale-codec",
  "serde",
  "sp-core",

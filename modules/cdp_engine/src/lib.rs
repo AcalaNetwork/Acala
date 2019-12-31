@@ -1,14 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
-use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, PriceProvider};
-use orml_utilities::FixedU128;
+use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Convert, Saturating, UniqueSaturatedInto, Zero},
 	DispatchResult,
 };
-use support::{AuctionManager, CDPTreasury, ExchangeRate, Price, Rate, Ratio, RiskManager};
+use support::{AuctionManager, CDPTreasury, ExchangeRate, Price, PriceProvider, Rate, Ratio, RiskManager};
 use system::ensure_root;
 
 mod debit_exchange_rate_convertor;
@@ -28,7 +27,7 @@ pub trait Trait: system::Trait + vaults::Trait {
 		CurrencyId = CurrencyIdOf<Self>,
 		Balance = BalanceOf<Self>,
 	>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>, FixedU128>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GlobalStabilityFee: Get<Rate>;
 	type DefaultLiquidationRatio: Get<Ratio>;

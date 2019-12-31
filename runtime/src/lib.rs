@@ -297,9 +297,15 @@ impl orml_tokens::Trait for Runtime {
 	type CurrencyId = CurrencyId;
 }
 
-impl orml_prices::Trait for Runtime {
+parameter_types! {
+	pub const StableCurrencyFixedPrice: Price = Price::from_rational(1, 1);
+}
+
+impl module_prices::Trait for Runtime {
 	type CurrencyId = CurrencyId;
 	type Source = orml_oracle::Module<Runtime>;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
 }
 
 parameter_types! {
@@ -357,7 +363,7 @@ parameter_types! {
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
-	type PriceSource = orml_prices::Module<Runtime>;
+	type PriceSource = module_prices::Module<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
@@ -409,6 +415,7 @@ construct_runtime!(
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
+		Prices: module_prices::{Module, Storage},
 		Tokens: orml_tokens::{Module, Storage, Call, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},

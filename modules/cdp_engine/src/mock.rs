@@ -2,14 +2,10 @@
 
 #![cfg(test)]
 
+use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-
-use orml_traits::PriceProvider;
-use support::AuctionManager;
-
-use super::*;
 
 mod cdp_engine {
 	pub use crate::Event;
@@ -123,6 +119,12 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 			_ => None,
 		}
 	}
+
+	#[allow(unused_variables)]
+	fn lock_price(currency_id: CurrencyId) {}
+
+	#[allow(unused_variables)]
+	fn unlock_price(currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
