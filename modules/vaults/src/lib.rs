@@ -141,10 +141,10 @@ impl<T: Trait> Module<T> {
 		let debit_balance =
 			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::<T>::AmountIntoDebitBalanceFailed)?;
 		if debits.is_positive() {
-			T::Treasury::add_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
+			T::Treasury::deposit_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
 				.map_err(|_| Error::<T>::AddBackedDebitFailed)?;
 		} else {
-			T::Treasury::sub_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
+			T::Treasury::withdraw_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
 				.map_err(|_| Error::<T>::SubBackedDebitFailed)?;
 		}
 

@@ -51,11 +51,18 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 
 pub trait CDPTreasury<AccountId> {
 	type Balance;
+	type CurrencyId;
 
 	fn on_system_debit(amount: Self::Balance);
 	fn on_system_surplus(amount: Self::Balance);
-	fn add_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn sub_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn withdraw_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult;
+	fn transfer_system_collateral(
+		currency_id: Self::CurrencyId,
+		to: &AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult;
 }
 
 pub trait PriceProvider<CurrencyId, Price> {

@@ -115,7 +115,8 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 	#[allow(unused_variables)]
 	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
 		match (base, quote) {
-			(1, 2) => Some(Price::from_natural(1)),
+			(AUSD, BTC) => Some(Price::from_natural(1)),
+			(BTC, AUSD) => Some(Price::from_natural(1)),
 			_ => None,
 		}
 	}

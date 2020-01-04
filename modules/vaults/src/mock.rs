@@ -155,16 +155,16 @@ impl RiskManager<AccountId, CurrencyId, Amount, DebitAmount> for MockRiskManager
 		debits: DebitAmount,
 	) -> DispatchResult {
 		match currency_id {
-			2u32 => Err(sp_runtime::DispatchError::Other("mock error")),
-			3u32 => Ok(()),
+			X_TOKEN_ID => Err(sp_runtime::DispatchError::Other("mock error")),
+			Y_TOKEN_ID => Ok(()),
 			_ => Err(sp_runtime::DispatchError::Other("mock error")),
 		}
 	}
 	#[allow(unused_variables)]
 	fn check_debit_cap(currency_id: CurrencyId, debits: DebitAmount) -> DispatchResult {
 		match (currency_id, debits) {
-			(2u32, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
-			(3u32, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(X_TOKEN_ID, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(Y_TOKEN_ID, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
 			(_, _) => Ok(()),
 		}
 	}

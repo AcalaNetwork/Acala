@@ -8,8 +8,6 @@ use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::Rate;
 
-mod dex {}
-
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
 }
@@ -37,8 +35,10 @@ pub type Amount = i64;
 pub type CurrencyId = u32;
 
 pub const ALICE: AccountId = 0;
+pub const BOB: AccountId = 1;
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
+pub const BTC: CurrencyId = 2;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -137,7 +137,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, ACA, 1000), (ALICE, AUSD, 1000)],
+			endowed_accounts: vec![(ALICE, ACA, 1000), (ALICE, AUSD, 1000), (ALICE, BTC, 1000)],
 		}
 	}
 }

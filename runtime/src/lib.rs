@@ -340,6 +340,7 @@ impl module_auction_manager::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
 	type GetAmountAdjustment = GetAmountAdjustment;
+	type PriceSource = module_prices::Module<Runtime>;
 }
 
 impl module_vaults::Trait for Runtime {

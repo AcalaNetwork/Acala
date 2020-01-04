@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_module, decl_storage, traits::Get};
+use frame_support::{decl_error, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, Saturating, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
 	DispatchResult, ModuleId,
 };
 use support::{AuctionManager, CDPTreasury};
@@ -31,6 +31,15 @@ decl_storage! {
 		SurplusBufferSize get(fn surplus_buffer_size): BalanceOf<T>;
 		InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction): BalanceOf<T>;
 		DebitAuctionFixedSize get(fn debit_auction_fixed_size): BalanceOf<T>;
+		IsShutdown get(fn is_shutdown): bool;
+		TotalCollaterals get(fn total_collaterals): map CurrencyIdOf<T> => BalanceOf<T>;
+	}
+}
+
+decl_error! {
+	/// Error for cdp treasury module.
+	pub enum Error for Module<T: Trait> {
+		CollateralNotEnough,
 	}
 }
 
@@ -71,37 +80,39 @@ decl_module! {
 				<SurplusPool<T>>::mutate(|surplus| *surplus -= offset_amount);
 			}
 
-			// create surplus auction requires:
-			// 1. debit_pool == 0
-			// 2. surplus_pool > surplus_buffer_size + surplus_auction_fixed_size
-			let mut remain_surplus_pool = Self::surplus_pool();
-			let surplus_buffer_size = Self::surplus_buffer_size();
-			let surplus_auction_fixed_size = Self::surplus_auction_fixed_size();
-			while remain_surplus_pool >= surplus_buffer_size + surplus_auction_fixed_size
-			&& !surplus_auction_fixed_size.is_zero() {
-				if T::Currency::ensure_can_withdraw(stable_currency_id, &Self::account_id(), surplus_auction_fixed_size).is_ok() {
-					T::Currency::withdraw(stable_currency_id, &Self::account_id(), surplus_auction_fixed_size)
-					.expect("never fail after balance check");
-					T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
+			if !Self::is_shutdown() {
+				// create surplus auction requires:
+				// 1. debit_pool == 0
+				// 2. surplus_pool > surplus_buffer_size + surplus_auction_fixed_size
+				let mut remain_surplus_pool = Self::surplus_pool();
+				let surplus_buffer_size = Self::surplus_buffer_size();
+				let surplus_auction_fixed_size = Self::surplus_auction_fixed_size();
+				while remain_surplus_pool >= surplus_buffer_size + surplus_auction_fixed_size
+				&& !surplus_auction_fixed_size.is_zero() {
+					if T::Currency::ensure_can_withdraw(stable_currency_id, &Self::account_id(), surplus_auction_fixed_size).is_ok() {
+						T::Currency::withdraw(stable_currency_id, &Self::account_id(), surplus_auction_fixed_size)
+						.expect("never fail after balance check");
+						T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
+					}
+					<SurplusPool<T>>::mutate(|surplus| *surplus -= surplus_auction_fixed_size);
+					remain_surplus_pool -= surplus_auction_fixed_size;
 				}
-				<SurplusPool<T>>::mutate(|surplus| *surplus -= surplus_auction_fixed_size);
-				remain_surplus_pool -= surplus_auction_fixed_size;
-			}
 
-			// create debit auction requires:
-			// 1. surplus_pool == 0
-			// 2. debit_pool >= total_debit_in_auction + get_total_target_in_auction + debit_auction_fixed_size
-			let mut remain_debit_pool = Self::debit_pool();
-			let debit_auction_fixed_size = Self::debit_auction_fixed_size();
-			let initial_amount_per_debit_auction = Self::initial_amount_per_debit_auction();
-			let total_debit_in_auction = T::AuctionManagerHandler::get_total_debit_in_auction();
-			let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
-			while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
-			&& !initial_amount_per_debit_auction.is_zero()
-			&& !debit_auction_fixed_size.is_zero() {
-				T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
-				<DebitPool<T>>::mutate(|debit| *debit -= debit_auction_fixed_size);
-				remain_debit_pool -= debit_auction_fixed_size;
+				// create debit auction requires:
+				// 1. surplus_pool == 0
+				// 2. debit_pool >= total_debit_in_auction + get_total_target_in_auction + debit_auction_fixed_size
+				let mut remain_debit_pool = Self::debit_pool();
+				let debit_auction_fixed_size = Self::debit_auction_fixed_size();
+				let initial_amount_per_debit_auction = Self::initial_amount_per_debit_auction();
+				let total_debit_in_auction = T::AuctionManagerHandler::get_total_debit_in_auction();
+				let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
+				while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
+				&& !initial_amount_per_debit_auction.is_zero()
+				&& !debit_auction_fixed_size.is_zero() {
+					T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
+					<DebitPool<T>>::mutate(|debit| *debit -= debit_auction_fixed_size);
+					remain_debit_pool -= debit_auction_fixed_size;
+				}
 			}
 		}
 	}
@@ -111,10 +122,15 @@ impl<T: Trait> Module<T> {
 	pub fn account_id() -> T::AccountId {
 		MODULE_ID.into_account()
 	}
+
+	pub fn emergency_shutdown() {
+		<IsShutdown>::put(true);
+	}
 }
 
 impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 	type Balance = BalanceOf<T>;
+	type CurrencyId = CurrencyIdOf<T>;
 
 	fn on_system_debit(amount: Self::Balance) {
 		<DebitPool<T>>::mutate(|debit| *debit = debit.saturating_add(amount));
@@ -131,11 +147,31 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		}
 	}
 
-	fn add_backed_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn deposit_backed_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount)
 	}
 
-	fn sub_backed_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn withdraw_backed_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, amount)
+	}
+
+	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
+		T::Currency::deposit(currency_id, &Self::account_id(), amount)?;
+		<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance += amount);
+		Ok(())
+	}
+
+	fn transfer_system_collateral(
+		currency_id: Self::CurrencyId,
+		to: &T::AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult {
+		ensure!(
+			Self::total_collaterals(currency_id).checked_sub(&amount).is_some(),
+			Error::<T>::CollateralNotEnough,
+		);
+		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)?;
+		<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= amount);
+		Ok(())
 	}
 }

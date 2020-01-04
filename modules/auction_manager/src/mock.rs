@@ -80,6 +80,20 @@ impl cdp_treasury::Trait for Runtime {
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
+pub struct MockPriceSource;
+impl PriceProvider<CurrencyId, Price> for MockPriceSource {
+	#[allow(unused_variables)]
+	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+		Some(Price::from_natural(1))
+	}
+
+	#[allow(unused_variables)]
+	fn lock_price(currency_id: CurrencyId) {}
+
+	#[allow(unused_variables)]
+	fn unlock_price(currency_id: CurrencyId) {}
+}
+
 impl Trait for Runtime {
 	type Event = ();
 	type Currency = Tokens;
@@ -93,6 +107,7 @@ impl Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Treasury = CdpTreasury;
 	type GetAmountAdjustment = GetAmountAdjustment;
+	type PriceSource = MockPriceSource;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 

@@ -40,7 +40,7 @@ pub type CurrencyId = u32;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const ALIEX: AccountId = 3;
+pub const CAROL: AccountId = 3;
 
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
