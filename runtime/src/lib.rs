@@ -329,8 +329,6 @@ parameter_types! {
 
 impl module_auction_manager::Trait for Runtime {
 	type Event = Event;
-	type CurrencyId = CurrencyId;
-	type Balance = Balance;
 	type Currency = orml_currencies::Module<Runtime>;
 	type Auction = orml_auction::Module<Runtime>;
 	type MinimumIncrementSize = MinimumIncrementSize;
@@ -376,6 +374,13 @@ impl module_cdp_engine::Trait for Runtime {
 
 impl module_honzon::Trait for Runtime {
 	type Event = Event;
+}
+
+impl module_emergency_shutdown::Trait for Runtime {
+	type Event = Event;
+	type PriceSource = module_prices::Module<Runtime>;
+	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
 }
 
 parameter_types! {
@@ -425,6 +430,7 @@ construct_runtime!(
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
+		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 	}
 );
 

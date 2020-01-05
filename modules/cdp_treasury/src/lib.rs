@@ -6,7 +6,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
 	DispatchResult, ModuleId,
 };
-use support::{AuctionManager, CDPTreasury};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, Ratio};
 use system::ensure_root;
 
 mod mock;
@@ -25,14 +25,14 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
-		DebitPool get(fn debit_pool): BalanceOf<T>;
-		SurplusPool get(fn surplus_pool): BalanceOf<T>;
-		SurplusAuctionFixedSize get(fn surplus_auction_fixed_size): BalanceOf<T>;
-		SurplusBufferSize get(fn surplus_buffer_size): BalanceOf<T>;
-		InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction): BalanceOf<T>;
-		DebitAuctionFixedSize get(fn debit_auction_fixed_size): BalanceOf<T>;
-		IsShutdown get(fn is_shutdown): bool;
-		TotalCollaterals get(fn total_collaterals): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub DebitPool get(fn debit_pool): BalanceOf<T>;
+		pub SurplusPool get(fn surplus_pool): BalanceOf<T>;
+		pub SurplusAuctionFixedSize get(fn surplus_auction_fixed_size): BalanceOf<T>;
+		pub SurplusBufferSize get(fn surplus_buffer_size): BalanceOf<T>;
+		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction): BalanceOf<T>;
+		pub DebitAuctionFixedSize get(fn debit_auction_fixed_size): BalanceOf<T>;
+		pub IsShutdown get(fn is_shutdown): bool;
+		pub TotalCollaterals get(fn total_collaterals): map CurrencyIdOf<T> => BalanceOf<T>;
 	}
 }
 
@@ -123,7 +123,7 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	pub fn emergency_shutdown() {
+	pub fn _emergency_shutdown() {
 		<IsShutdown>::put(true);
 	}
 }
@@ -173,5 +173,26 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)?;
 		<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= amount);
 		Ok(())
+	}
+}
+
+impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
+	fn get_total_collaterals(id: Self::CurrencyId) -> Self::Balance {
+		Self::total_collaterals(id)
+	}
+
+	fn get_surplus_pool() -> Self::Balance {
+		Self::surplus_pool()
+	}
+
+	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio {
+		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
+		Ratio::from_rational(amount, stable_total_supply)
+	}
+}
+
+impl<T: Trait> EmergencyShutdown for Module<T> {
+	fn emergency_shutdown() {
+		Self::_emergency_shutdown();
 	}
 }

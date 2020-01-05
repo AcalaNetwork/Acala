@@ -24,8 +24,8 @@ pub trait Trait: system::Trait + vaults::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type AuctionManagerHandler: AuctionManager<
 		Self::AccountId,
-		CurrencyId = CurrencyIdOf<Self>,
 		Balance = BalanceOf<Self>,
+		CurrencyId = CurrencyIdOf<Self>,
 	>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
@@ -228,7 +228,7 @@ impl<T: Trait> Module<T> {
 		)
 		.map_err(|_| Error::<T>::GrabCollateralAndDebitFailed)?;
 		<T as Trait>::Treasury::deposit_system_collateral(currency_id, confiscate_collateral_amount)
-			.expect("never failed because amount can not cause overflow");
+			.expect("never failed because this amount can not cause overflow");
 		<T as Trait>::Treasury::on_system_debit(debt_in_stable_currency);
 
 		Self::deposit_event(RawEvent::SettleCdpWithDebit(currency_id, who, collateral_balance));

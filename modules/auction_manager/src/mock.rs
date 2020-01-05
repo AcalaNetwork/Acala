@@ -97,8 +97,6 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 impl Trait for Runtime {
 	type Event = ();
 	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type Balance = Balance;
 	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;

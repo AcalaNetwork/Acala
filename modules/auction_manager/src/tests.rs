@@ -16,7 +16,7 @@ fn new_collateral_auction_work() {
 		assert_eq!(CdpTreasury::debit_pool(), 90);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 100);
-		assert_eq!(AuctionModule::auctions_count(), 1);
+		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
 }
 
@@ -25,7 +25,7 @@ fn new_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_debit_auction(200, 100);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
-		assert_eq!(AuctionModule::auctions_count(), 1);
+		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
 }
 
@@ -34,7 +34,7 @@ fn new_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_surplus_auction(100);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
-		assert_eq!(AuctionModule::auctions_count(), 1);
+		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
 }
 
@@ -284,7 +284,7 @@ fn cancel_surplus_auction_work() {
 		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), false);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
 		assert_eq!(CdpTreasury::surplus_pool(), 100);
-		//assert_eq!(AuctionModule::auction_info(0).is_some(), false);
+		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
 	});
 }
 
@@ -307,7 +307,7 @@ fn cancel_debit_auction_work() {
 		assert_ok!(AuctionManagerModule::cancel_debit_auction(0));
 		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), false);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
-		//assert_eq!(AuctionModule::auction_info(0).is_some(), false);
+		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
 	});
 }
 
@@ -361,6 +361,6 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(CdpTreasury::debit_pool(), 170);
 		assert_eq!(CdpTreasury::surplus_pool(), 80);
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), false);
-		//assert_eq!(AuctionModule::auction_info(0).is_some(), false);
+		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
 	});
 }

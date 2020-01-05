@@ -1,6 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::FullCodec;
 use orml_utilities::FixedU128;
+use rstd::{
+	cmp::{Eq, PartialEq},
+	fmt::Debug,
+};
 use sp_runtime::DispatchResult;
 
 pub type Price = FixedU128;
@@ -36,6 +41,14 @@ pub trait AuctionManager<AccountId> {
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
+pub trait AuctionManagerExtended<AccountId>: AuctionManager<AccountId> {
+	type AuctionId: FullCodec + Debug + Clone + Eq + PartialEq;
+
+	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance;
+	fn get_total_surplus_in_auction() -> Self::Balance;
+	fn cancel_auction(id: Self::AuctionId) -> DispatchResult;
+}
+
 pub trait DexManager<AccountId, CurrencyId, Balance> {
 	fn get_supply_amount(
 		supply_currency_id: CurrencyId,
@@ -65,8 +78,18 @@ pub trait CDPTreasury<AccountId> {
 	) -> DispatchResult;
 }
 
+pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
+	fn get_surplus_pool() -> Self::Balance;
+	fn get_total_collaterals(id: Self::CurrencyId) -> Self::Balance;
+	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio;
+}
+
 pub trait PriceProvider<CurrencyId, Price> {
 	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
 	fn lock_price(currency_id: CurrencyId);
 	fn unlock_price(currency_id: CurrencyId);
+}
+
+pub trait EmergencyShutdown {
+	fn emergency_shutdown();
 }
