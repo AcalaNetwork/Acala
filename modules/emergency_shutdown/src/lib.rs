@@ -20,13 +20,13 @@ type AuctionIdOf<T> =
 pub trait Trait: system::Trait + honzon::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
-	type Treasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>
-		+ EmergencyShutdown;
+	type Treasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 	type AuctionManagerHandler: AuctionManagerExtended<
 		Self::AccountId,
 		Balance = BalanceOf<Self>,
 		CurrencyId = CurrencyIdOf<Self>,
 	>;
+	type OnShutdown: EmergencyShutdown;
 }
 
 decl_event!(
@@ -69,9 +69,7 @@ decl_module! {
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			// trigger shutdown in other related modules
-			<honzon::Module<T>>::emergency_shutdown();
-			<cdp_engine::Module<T>>::emergency_shutdown();
-			<T as Trait>::Treasury::emergency_shutdown();
+			T::OnShutdown::on_emergency_shutdown();
 
 			// get all collateral types
 			let collateral_currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();

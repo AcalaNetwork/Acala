@@ -7,7 +7,9 @@ use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Convert, Saturating, UniqueSaturatedInto, Zero},
 	DispatchResult,
 };
-use support::{AuctionManager, CDPTreasury, ExchangeRate, Price, PriceProvider, Rate, Ratio, RiskManager};
+use support::{
+	AuctionManager, CDPTreasury, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio, RiskManager,
+};
 use system::ensure_root;
 
 mod debit_exchange_rate_convertor;
@@ -396,5 +398,11 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 		);
 
 		Ok(())
+	}
+}
+
+impl<T: Trait> EmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		Self::emergency_shutdown();
 	}
 }

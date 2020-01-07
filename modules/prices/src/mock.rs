@@ -33,6 +33,7 @@ pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 pub const DOT: CurrencyId = 3;
 pub const OTHER: CurrencyId = 4;
+pub const ETH: CurrencyId = 5;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;

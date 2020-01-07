@@ -90,6 +90,7 @@ pub trait PriceProvider<CurrencyId, Price> {
 	fn unlock_price(currency_id: CurrencyId);
 }
 
+#[impl_trait_for_tuples::impl_for_tuples(30)]
 pub trait EmergencyShutdown {
-	fn emergency_shutdown();
+	fn on_emergency_shutdown();
 }

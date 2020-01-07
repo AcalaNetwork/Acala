@@ -203,6 +203,7 @@ impl Trait for Runtime {
 	type PriceSource = MockPriceSource;
 	type Treasury = CdpTreasury;
 	type AuctionManagerHandler = MockAuctionManager;
+	type OnShutdown = (CdpTreasury, CdpEngineModule, HonzonModule);
 }
 pub type EmergencyShutdownModule = Module<Runtime>;
 

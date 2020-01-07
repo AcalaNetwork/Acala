@@ -17,7 +17,7 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Prices {
-		LockedPrice get(fn locked_price): map T::CurrencyId => Option<Price>;
+		LockedPrice get(fn locked_price): map T::CurrencyId => Option<Option<Price>>;
 	}
 }
 
@@ -34,16 +34,16 @@ impl<T: Trait> PriceProvider<T::CurrencyId, Price> for Module<T> {
 
 		let base_price = if base_currency_id == stable_currency_id {
 			stable_currency_price
-		} else if let Some(price) = Self::locked_price(base_currency_id) {
-			price
+		} else if let Some(locked_price) = Self::locked_price(base_currency_id) {
+			locked_price?
 		} else {
 			T::Source::get(&base_currency_id)?
 		};
 
 		let quote_price = if quote_currency_id == stable_currency_id {
 			stable_currency_price
-		} else if let Some(price) = Self::locked_price(quote_currency_id) {
-			price
+		} else if let Some(locked_price) = Self::locked_price(quote_currency_id) {
+			locked_price?
 		} else {
 			T::Source::get(&quote_currency_id)?
 		};
@@ -52,9 +52,7 @@ impl<T: Trait> PriceProvider<T::CurrencyId, Price> for Module<T> {
 	}
 
 	fn lock_price(currency_id: T::CurrencyId) {
-		if let Some(price) = T::Source::get(&currency_id) {
-			<LockedPrice<T>>::insert(currency_id, price);
-		}
+		<LockedPrice<T>>::insert(currency_id, T::Source::get(&currency_id));
 	}
 
 	fn unlock_price(currency_id: T::CurrencyId) {

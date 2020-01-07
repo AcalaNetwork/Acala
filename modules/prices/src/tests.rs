@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{ExtBuilder, PricesModule, ACA, AUSD, BTC, DOT, OTHER};
+use mock::{ExtBuilder, PricesModule, ACA, AUSD, BTC, DOT, ETH, OTHER};
 
 #[test]
 fn get_price_should_work() {
@@ -36,7 +36,10 @@ fn lock_price_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(PricesModule::locked_price(AUSD), None);
 		PricesModule::lock_price(AUSD);
-		assert_eq!(PricesModule::locked_price(AUSD), Some(Price::from_rational(101, 100)));
+		assert_eq!(
+			PricesModule::locked_price(AUSD),
+			Some(Some(Price::from_rational(101, 100)))
+		);
 		assert_eq!(PricesModule::get_price(AUSD, AUSD), Some(Price::from_rational(1, 1)));
 	});
 }
@@ -45,8 +48,16 @@ fn lock_price_should_work() {
 fn unlock_price_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		PricesModule::lock_price(AUSD);
-		assert_eq!(PricesModule::locked_price(AUSD), Some(Price::from_rational(101, 100)));
+		assert_eq!(
+			PricesModule::locked_price(AUSD),
+			Some(Some(Price::from_rational(101, 100)))
+		);
 		PricesModule::unlock_price(AUSD);
 		assert_eq!(PricesModule::locked_price(AUSD), None);
+		assert_eq!(PricesModule::locked_price(ETH), None);
+		PricesModule::lock_price(ETH);
+		assert_eq!(PricesModule::locked_price(ETH), Some(None));
+		PricesModule::unlock_price(ETH);
+		assert_eq!(PricesModule::locked_price(ETH), None);
 	});
 }

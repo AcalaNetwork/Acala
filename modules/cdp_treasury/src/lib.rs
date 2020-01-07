@@ -123,7 +123,7 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	pub fn _emergency_shutdown() {
+	pub fn emergency_shutdown() {
 		<IsShutdown>::put(true);
 	}
 }
@@ -192,7 +192,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 }
 
 impl<T: Trait> EmergencyShutdown for Module<T> {
-	fn emergency_shutdown() {
-		Self::_emergency_shutdown();
+	fn on_emergency_shutdown() {
+		Self::emergency_shutdown();
 	}
 }

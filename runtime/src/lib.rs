@@ -381,6 +381,11 @@ impl module_emergency_shutdown::Trait for Runtime {
 	type PriceSource = module_prices::Module<Runtime>;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
+	type OnShutdown = (
+		module_cdp_treasury::Module<Runtime>,
+		module_cdp_engine::Module<Runtime>,
+		module_honzon::Module<Runtime>,
+	);
 }
 
 parameter_types! {

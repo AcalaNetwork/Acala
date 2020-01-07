@@ -4,6 +4,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{traits::Zero, DispatchResult};
+use support::EmergencyShutdown;
 
 mod mock;
 mod tests;
@@ -170,5 +171,11 @@ impl<T: Trait> Module<T> {
 
 	pub fn emergency_shutdown() {
 		<IsShutdown>::put(true);
+	}
+}
+
+impl<T: Trait> EmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		Self::emergency_shutdown();
 	}
 }

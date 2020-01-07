@@ -2776,6 +2776,7 @@ dependencies = [
 name = "module-support"
 version = "0.0.1"
 dependencies = [
+ "impl-trait-for-tuples",
  "orml-utilities",
  "parity-scale-codec",
  "sp-runtime",
