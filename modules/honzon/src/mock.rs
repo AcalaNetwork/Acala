@@ -5,9 +5,7 @@
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-
-use orml_traits::PriceProvider;
-use support::{AuctionManager, ExchangeRate, Price, Rate, Ratio};
+use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 
 use super::*;
 
@@ -42,7 +40,7 @@ pub type CurrencyId = u32;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const ALIEX: AccountId = 3;
+pub const CAROL: AccountId = 3;
 
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
@@ -119,6 +117,12 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
 		Some(Price::from_natural(1))
 	}
+
+	#[allow(unused_variables)]
+	fn lock_price(currency_id: CurrencyId) {}
+
+	#[allow(unused_variables)]
+	fn unlock_price(currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;

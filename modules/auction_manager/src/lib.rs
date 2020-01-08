@@ -1,16 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_event, decl_module, decl_storage, traits::Get, Parameter};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
+use rstd::cmp::{Eq, PartialEq};
 use sp_runtime::{
-	traits::{
-		AccountIdConversion, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating, SimpleArithmetic,
-		Zero,
-	},
-	ModuleId, RuntimeDebug,
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
+	DispatchResult, ModuleId, RuntimeDebug,
 };
-use support::{AuctionManager, CDPTreasury, Rate};
+use support::{AuctionManager, AuctionManagerExtended, CDPTreasury, Price, PriceProvider, Rate};
 
 mod mock;
 mod tests;
@@ -42,49 +40,60 @@ pub struct SurplusAuctionItem<Balance, BlockNumber> {
 	start_time: BlockNumber,
 }
 
+type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
+type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type AuctionIdOf<T> =
 	<<T as Trait>::Auction as Auction<<T as system::Trait>::AccountId, <T as system::Trait>::BlockNumber>>::AuctionId;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize;
-	type Balance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
-	type Currency: MultiCurrency<Self::AccountId, CurrencyId = Self::CurrencyId, Balance = Self::Balance>;
-	type Auction: Auction<Self::AccountId, Self::BlockNumber>;
+	type Currency: MultiCurrency<Self::AccountId>;
+	type Auction: Auction<Self::AccountId, Self::BlockNumber, Balance = BalanceOf<Self>>;
 	type MinimumIncrementSize: Get<Rate>;
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
-	type GetStableCurrencyId: Get<Self::CurrencyId>;
-	type GetNativeCurrencyId: Get<Self::CurrencyId>;
+	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
+	type GetNativeCurrencyId: Get<CurrencyIdOf<Self>>;
 	type GetAmountAdjustment: Get<Rate>;
-	type Treasury: CDPTreasury<Self::AccountId, Balance = Self::Balance>;
+	type Treasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
 }
 
 decl_event!(
 	pub enum Event<T>
 	where
 		AuctionId = AuctionIdOf<T>,
-		CurrencyId = <T as Trait>::CurrencyId,
-		Balance = <T as Trait>::Balance,
+		CurrencyId = CurrencyIdOf<T>,
+		Balance = BalanceOf<T>,
 	{
-		CollateralAuction(AuctionId, CurrencyId, Balance, Balance),
-		DebitAuction(AuctionId, Balance, Balance),
-		SurplusAuction(AuctionId, Balance),
+		NewCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
+		NewDebitAuction(AuctionId, Balance, Balance),
+		NewSurplusAuction(AuctionId, Balance),
+		CancelAuction(AuctionId),
 	}
 );
 
+decl_error! {
+	/// Error for auction manager module.
+	pub enum Error for Module<T: Trait> {
+		AuctionNotExsits,
+		InReservedStage,
+		BalanceNotEnough,
+	}
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as AuctionManager {
-		CollateralAuctions get(fn collateral_auctions): map AuctionIdOf<T> =>
-			Option<CollateralAuctionItem<T::AccountId, T::CurrencyId, T::Balance, T::BlockNumber>>;
-		DebitAuctions get(fn debit_auctions): map AuctionIdOf<T> =>
-			Option<DebitAuctionItem<T::Balance, T::BlockNumber>>;
-		SurplusAuctions get(fn surplus_auctions): map AuctionIdOf<T> =>
-			Option<SurplusAuctionItem<T::Balance, T::BlockNumber>>;
-		TotalCollateralInAuction get(fn total_collateral_in_auction): map T::CurrencyId => T::Balance;
-		TotalTargetInAuction get(fn total_target_in_auction): T::Balance;
-		TotalDebitInAuction get(fn total_debit_in_auction): T::Balance;
-		TotalSurplusInAuction get(fn total_surplus_in_auction): T::Balance;
+		pub CollateralAuctions get(fn collateral_auctions): map AuctionIdOf<T> =>
+			Option<CollateralAuctionItem<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>, T::BlockNumber>>;
+		pub DebitAuctions get(fn debit_auctions): map AuctionIdOf<T> =>
+			Option<DebitAuctionItem<BalanceOf<T>, T::BlockNumber>>;
+		pub SurplusAuctions get(fn surplus_auctions): map AuctionIdOf<T> =>
+			Option<SurplusAuctionItem<BalanceOf<T>, T::BlockNumber>>;
+		pub TotalCollateralInAuction get(fn total_collateral_in_auction): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub TotalTargetInAuction get(fn total_target_in_auction): BalanceOf<T>;
+		pub TotalDebitInAuction get(fn total_debit_in_auction): BalanceOf<T>;
+		pub TotalSurplusInAuction get(fn total_surplus_in_auction): BalanceOf<T>;
 	}
 }
 
@@ -99,12 +108,173 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
+	pub fn cancel_surplus_auction(id: AuctionIdOf<T>) -> DispatchResult {
+		if let Some(surplus_auction) = <SurplusAuctions<T>>::take(id) {
+			if let Some(auction_info) = T::Auction::auction_info(id) {
+				// if these's bid, refund native token to the bidder
+				if let Some((bidder, bid_price)) = auction_info.bid {
+					let native_currency_id = T::GetNativeCurrencyId::get();
+					if T::Currency::balance(native_currency_id, &bidder)
+						.checked_add(&bid_price)
+						.is_some()
+					{
+						T::Currency::deposit(native_currency_id, &bidder, bid_price)
+							.expect("never failed after overflow check");
+					}
+				}
+			}
+
+			// move stable token of this surplus auction from module account to cdp treasury
+			let stable_currency_id = T::GetStableCurrencyId::get();
+			if T::Currency::ensure_can_withdraw(stable_currency_id, &Self::account_id(), surplus_auction.amount).is_ok()
+			{
+				T::Currency::withdraw(stable_currency_id, &Self::account_id(), surplus_auction.amount)
+					.expect("never failed after balance check");
+				T::Treasury::on_system_surplus(surplus_auction.amount);
+			}
+
+			// decrease total surplus in auction
+			<TotalSurplusInAuction<T>>::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
+
+			// remove the auction info in auction module
+			T::Auction::remove_auction(id);
+
+			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
+			Ok(())
+		} else {
+			Err(Error::<T>::AuctionNotExsits.into())
+		}
+	}
+
+	pub fn cancel_debit_auction(id: AuctionIdOf<T>) -> DispatchResult {
+		if let Some(debit_auction) = <DebitAuctions<T>>::take(id) {
+			if let Some(auction_info) = T::Auction::auction_info(id) {
+				// if these's bid, refund stable token to the bidder
+				if let Some((bidder, _)) = auction_info.bid {
+					let stable_currency_id = T::GetStableCurrencyId::get();
+					if T::Currency::balance(stable_currency_id, &bidder)
+						.checked_add(&debit_auction.fix)
+						.is_some()
+					{
+						T::Currency::deposit(stable_currency_id, &bidder, debit_auction.fix)
+							.expect("never failed after overflow check");
+					}
+				}
+			}
+
+			// add debit to cdp treasury and decrease total debit in auction
+			T::Treasury::on_system_debit(debit_auction.fix);
+			<TotalDebitInAuction<T>>::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
+
+			// remove the auction info in auction module
+			T::Auction::remove_auction(id);
+
+			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
+			Ok(())
+		} else {
+			Err(Error::<T>::AuctionNotExsits.into())
+		}
+	}
+
+	pub fn cancel_collateral_auction(id: AuctionIdOf<T>) -> DispatchResult {
+		if let Some(collateral_auction) = Self::collateral_auctions(id) {
+			// must not in reserve bid stage
+			ensure!(
+				!Self::collateral_auction_in_reverse_stage(id),
+				Error::<T>::InReservedStage
+			);
+
+			let stable_currency_id = T::GetStableCurrencyId::get();
+			if let Some(auction_info) = T::Auction::auction_info(id) {
+				// if these's bid, refund stable token to the bidder
+				if let Some((bidder, bid_price)) = auction_info.bid {
+					if T::Currency::balance(stable_currency_id, &bidder)
+						.checked_add(&bid_price)
+						.is_some()
+					{
+						T::Currency::deposit(stable_currency_id, &bidder, bid_price)
+							.expect("never failed after overflow check");
+					}
+					T::Treasury::on_system_debit(bid_price);
+				}
+			}
+
+			// calculate which amount of collateral to offset target
+			// in price stable:collateral
+			let price: Price =
+				T::PriceSource::get_price(collateral_auction.currency_id, stable_currency_id).unwrap_or_default();
+			let confiscate_collateral_amount = rstd::cmp::min(
+				price.saturating_mul_int(&collateral_auction.target),
+				collateral_auction.amount,
+			);
+			let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
+
+			ensure!(
+				T::Currency::ensure_can_withdraw(
+					collateral_auction.currency_id,
+					&Self::account_id(),
+					collateral_auction.amount
+				)
+				.is_ok(),
+				Error::<T>::BalanceNotEnough,
+			);
+
+			// confiscate colleteral from module account to cdp treasury
+			T::Currency::withdraw(
+				collateral_auction.currency_id,
+				&Self::account_id(),
+				confiscate_collateral_amount,
+			)
+			.expect("never failed after balance check");
+			T::Treasury::deposit_system_collateral(collateral_auction.currency_id, confiscate_collateral_amount)
+				.expect("never failed because this amount can not cause overflow");
+
+			// refund remain collateral to auction owner
+			if !refund_collateral_amount.is_zero() {
+				T::Currency::transfer(
+					collateral_auction.currency_id,
+					&Self::account_id(),
+					&collateral_auction.owner,
+					refund_collateral_amount,
+				)
+				.expect("never failed after balance check");
+			}
+
+			// decrease total collateral in auction
+			<TotalCollateralInAuction<T>>::mutate(collateral_auction.currency_id, |balance| {
+				*balance = balance.saturating_sub(collateral_auction.amount)
+			});
+
+			// remove collateral auction
+			<TotalTargetInAuction<T>>::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
+			<CollateralAuctions<T>>::remove(id);
+			T::Auction::remove_auction(id);
+
+			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
+			Ok(())
+		} else {
+			Err(Error::<T>::AuctionNotExsits.into())
+		}
+	}
+
+	pub fn collateral_auction_in_reverse_stage(id: AuctionIdOf<T>) -> bool {
+		if let Some(collateral_auction) = <CollateralAuctions<T>>::get(id) {
+			if let Some(auction_info) = T::Auction::auction_info(id) {
+				if let Some((_, bid_price)) = auction_info.bid {
+					return bid_price >= collateral_auction.target;
+				}
+			}
+		}
+
+		false
+	}
+
 	/// Check `new_price` is larger than minimum increment
 	/// Formula: new_price - last_price >= max(last_price, target_price) * minimum_increment
 	pub fn check_minimum_increment(
-		new_price: T::Balance,
-		last_price: T::Balance,
-		target_price: T::Balance,
+		new_price: BalanceOf<T>,
+		last_price: BalanceOf<T>,
+		target_price: BalanceOf<T>,
 		minimum_increment: Rate,
 	) -> bool {
 		if let (Some(target), Some(result)) = (
@@ -135,12 +305,12 @@ impl<T: Trait> Module<T> {
 	pub fn collateral_auction_bid_handler(
 		now: T::BlockNumber,
 		id: AuctionIdOf<T>,
-		new_bid: (T::AccountId, T::Balance),
-		last_bid: Option<(T::AccountId, T::Balance)>,
+		new_bid: (T::AccountId, BalanceOf<T>),
+		last_bid: Option<(T::AccountId, BalanceOf<T>)>,
 	) -> OnNewBidResult<T::BlockNumber> {
 		if let Some(mut collateral_auction) = Self::collateral_auctions(id) {
 			// get last price, if these's no bid set 0
-			let last_price: T::Balance = match last_bid {
+			let last_price: BalanceOf<T> = match last_bid {
 				None => 0.into(),
 				Some((_, price)) => price,
 			};
@@ -220,11 +390,11 @@ impl<T: Trait> Module<T> {
 	pub fn debit_auction_bid_handler(
 		now: T::BlockNumber,
 		id: AuctionIdOf<T>,
-		new_bid: (T::AccountId, T::Balance),
-		last_bid: Option<(T::AccountId, T::Balance)>,
+		new_bid: (T::AccountId, BalanceOf<T>),
+		last_bid: Option<(T::AccountId, BalanceOf<T>)>,
 	) -> OnNewBidResult<T::BlockNumber> {
 		if let Some(mut debit_auction) = Self::debit_auctions(id) {
-			let last_price: T::Balance = match last_bid {
+			let last_price: BalanceOf<T> = match last_bid {
 				None => 0.into(),
 				Some((_, price)) => price,
 			};
@@ -279,11 +449,11 @@ impl<T: Trait> Module<T> {
 	pub fn surplus_auction_bid_handler(
 		now: T::BlockNumber,
 		id: AuctionIdOf<T>,
-		new_bid: (T::AccountId, T::Balance),
-		last_bid: Option<(T::AccountId, T::Balance)>,
+		new_bid: (T::AccountId, BalanceOf<T>),
+		last_bid: Option<(T::AccountId, BalanceOf<T>)>,
 	) -> OnNewBidResult<T::BlockNumber> {
 		if let Some(surplus_auction) = Self::surplus_auctions(id) {
-			let last_price: T::Balance = match last_bid {
+			let last_price: BalanceOf<T> = match last_bid {
 				None => 0.into(),
 				Some((_, price)) => price,
 			};
@@ -326,7 +496,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn collateral_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
+	pub fn collateral_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
 		if let (Some(collateral_auction), Some((bidder, _))) = (Self::collateral_auctions(id), winner) {
 			let amount = rstd::cmp::min(
 				collateral_auction.amount,
@@ -345,7 +515,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn debit_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
+	pub fn debit_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
 		if let Some(debit_auction) = Self::debit_auctions(id) {
 			if let Some((bidder, _)) = winner {
 				// issue the amount of native token to winner
@@ -374,7 +544,7 @@ impl<T: Trait> Module<T> {
 				};
 				<DebitAuctions<T>>::insert(new_debit_auction_id, new_debit_auction.clone());
 				<DebitAuctions<T>>::remove(id);
-				<Module<T>>::deposit_event(RawEvent::DebitAuction(
+				<Module<T>>::deposit_event(RawEvent::NewDebitAuction(
 					new_debit_auction_id,
 					new_debit_auction.amount,
 					new_debit_auction.fix,
@@ -383,7 +553,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn surplus_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
+	pub fn surplus_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
 		if let (Some(surplus_auction), Some((bidder, _))) = (Self::surplus_auctions(id), winner) {
 			// transfer the amount of stable token from module to winner
 			if T::Currency::balance(T::GetStableCurrencyId::get(), &bidder)
@@ -411,12 +581,12 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionIdOf<T>> for Module<T> {
+impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, AuctionIdOf<T>> for Module<T> {
 	fn on_new_bid(
 		now: T::BlockNumber,
 		id: AuctionIdOf<T>,
-		new_bid: (T::AccountId, T::Balance),
-		last_bid: Option<(T::AccountId, T::Balance)>,
+		new_bid: (T::AccountId, BalanceOf<T>),
+		last_bid: Option<(T::AccountId, BalanceOf<T>)>,
 	) -> OnNewBidResult<T::BlockNumber> {
 		if <CollateralAuctions<T>>::exists(id) {
 			Self::collateral_auction_bid_handler(now, id, new_bid, last_bid)
@@ -432,7 +602,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 		}
 	}
 
-	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, T::Balance)>) {
+	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
 		if <CollateralAuctions<T>>::exists(id) {
 			Self::collateral_auction_end_handler(id, winner)
 		} else if <DebitAuctions<T>>::exists(id) {
@@ -444,8 +614,8 @@ impl<T: Trait> AuctionHandler<T::AccountId, T::Balance, T::BlockNumber, AuctionI
 }
 
 impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
-	type CurrencyId = T::CurrencyId;
-	type Balance = T::Balance;
+	type CurrencyId = CurrencyIdOf<T>;
+	type Balance = BalanceOf<T>;
 
 	fn new_collateral_auction(
 		who: &T::AccountId,
@@ -477,7 +647,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			};
 
 			<CollateralAuctions<T>>::insert(auction_id, collateral_aution);
-			<Module<T>>::deposit_event(RawEvent::CollateralAuction(auction_id, currency_id, amount, target));
+			<Module<T>>::deposit_event(RawEvent::NewCollateralAuction(auction_id, currency_id, amount, target));
 		}
 	}
 
@@ -494,7 +664,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 				start_time: start_block,
 			};
 			<DebitAuctions<T>>::insert(auction_id, debit_auction);
-			<Module<T>>::deposit_event(RawEvent::DebitAuction(auction_id, initial_amount, fix_debit));
+			<Module<T>>::deposit_event(RawEvent::NewDebitAuction(auction_id, initial_amount, fix_debit));
 		}
 	}
 
@@ -513,7 +683,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 				start_time: <system::Module<T>>::block_number(),
 			};
 			<SurplusAuctions<T>>::insert(auction_id, surplus_auction);
-			<Module<T>>::deposit_event(RawEvent::SurplusAuction(auction_id, amount));
+			<Module<T>>::deposit_event(RawEvent::NewSurplusAuction(auction_id, amount));
 		}
 	}
 
@@ -523,5 +693,29 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 
 	fn get_total_target_in_auction() -> Self::Balance {
 		Self::total_target_in_auction()
+	}
+}
+
+impl<T: Trait> AuctionManagerExtended<T::AccountId> for Module<T> {
+	type AuctionId = AuctionIdOf<T>;
+
+	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance {
+		Self::total_collateral_in_auction(id)
+	}
+
+	fn get_total_surplus_in_auction() -> Self::Balance {
+		Self::total_surplus_in_auction()
+	}
+
+	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
+		if <CollateralAuctions<T>>::exists(id) {
+			Self::cancel_collateral_auction(id)
+		} else if <DebitAuctions<T>>::exists(id) {
+			Self::cancel_debit_auction(id)
+		} else if <SurplusAuctions<T>>::exists(id) {
+			Self::cancel_surplus_auction(id)
+		} else {
+			Err(Error::<T>::AuctionNotExsits.into())
+		}
 	}
 }

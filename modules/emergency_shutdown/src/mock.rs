@@ -1,12 +1,13 @@
-//! Mocks for the cdp treasury module.
+//! Mocks for the honzon module.
 
 #![cfg(test)]
 
-use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-use support::Rate;
+use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchResult, Perbill};
+use support::{AuctionManager, AuctionManagerExtended, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+
+use super::*;
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
@@ -20,25 +21,31 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 0;
 	pub const TransferFee: u64 = 0;
 	pub const CreationFee: u64 = 2;
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
+	pub const GlobalStabilityFee: Rate = Rate::from_parts(0);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
+	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
+	pub const MinimumDebitValue: Balance = 2;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
-	pub const AuctionTimeToClose: u64 = 100;
-	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 
 pub type AccountId = u64;
 pub type BlockNumber = u64;
 pub type Balance = u64;
 pub type Amount = i64;
+pub type DebitBalance = u64;
+pub type DebitAmount = i64;
 pub type CurrencyId = u32;
+pub type AuctionId = u64;
 
-pub const ALICE: AccountId = 0;
-pub const BOB: AccountId = 1;
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
+
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
+pub const DOT: CurrencyId = 3;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -93,6 +100,30 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
+impl vaults::Trait for Runtime {
+	type Event = ();
+	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
+	type Currency = Tokens;
+	type RiskManager = CdpEngineModule;
+	type DebitBalance = DebitBalance;
+	type DebitAmount = DebitAmount;
+	type Treasury = CdpTreasury;
+}
+
+pub struct MockPriceSource;
+impl PriceProvider<CurrencyId, Price> for MockPriceSource {
+	#[allow(unused_variables)]
+	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+		Some(Price::from_natural(1))
+	}
+
+	#[allow(unused_variables)]
+	fn lock_price(currency_id: CurrencyId) {}
+
+	#[allow(unused_variables)]
+	fn unlock_price(currency_id: CurrencyId) {}
+}
+
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
 	type CurrencyId = CurrencyId;
@@ -123,12 +154,58 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 }
 
-impl Trait for Runtime {
+impl AuctionManagerExtended<AccountId> for MockAuctionManager {
+	type AuctionId = AuctionId;
+
+	#[allow(unused_variables)]
+	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_surplus_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	#[allow(unused_variables)]
+	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
+		Ok(())
+	}
+}
+
+impl cdp_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 }
-pub type CdpTreasuryModule = Module<Runtime>;
+pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+
+impl cdp_engine::Trait for Runtime {
+	type Event = ();
+	type AuctionManagerHandler = MockAuctionManager;
+	type PriceSource = MockPriceSource;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type GlobalStabilityFee = GlobalStabilityFee;
+	type DefaultLiquidationRatio = DefaultLiquidationRatio;
+	type DefaulDebitExchangeRate = DefaulDebitExchangeRate;
+	type MinimumDebitValue = MinimumDebitValue;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type Treasury = CdpTreasury;
+}
+pub type CdpEngineModule = cdp_engine::Module<Runtime>;
+
+impl honzon::Trait for Runtime {
+	type Event = ();
+}
+pub type HonzonModule = honzon::Module<Runtime>;
+
+impl Trait for Runtime {
+	type Event = ();
+	type PriceSource = MockPriceSource;
+	type Treasury = CdpTreasury;
+	type AuctionManagerHandler = MockAuctionManager;
+	type OnShutdown = (CdpTreasury, CdpEngineModule, HonzonModule);
+}
+pub type EmergencyShutdownModule = Module<Runtime>;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
@@ -137,7 +214,12 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, ACA, 1000), (ALICE, AUSD, 1000), (ALICE, BTC, 1000)],
+			endowed_accounts: vec![
+				(ALICE, BTC, 1000),
+				(BOB, BTC, 1000),
+				(ALICE, DOT, 1000),
+				(BOB, DOT, 1000),
+			],
 		}
 	}
 }

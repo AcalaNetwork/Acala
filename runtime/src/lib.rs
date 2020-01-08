@@ -297,9 +297,15 @@ impl orml_tokens::Trait for Runtime {
 	type CurrencyId = CurrencyId;
 }
 
-impl orml_prices::Trait for Runtime {
+parameter_types! {
+	pub const StableCurrencyFixedPrice: Price = Price::from_rational(1, 1);
+}
+
+impl module_prices::Trait for Runtime {
 	type CurrencyId = CurrencyId;
 	type Source = orml_oracle::Module<Runtime>;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
 }
 
 parameter_types! {
@@ -323,8 +329,6 @@ parameter_types! {
 
 impl module_auction_manager::Trait for Runtime {
 	type Event = Event;
-	type CurrencyId = CurrencyId;
-	type Balance = Balance;
 	type Currency = orml_currencies::Module<Runtime>;
 	type Auction = orml_auction::Module<Runtime>;
 	type MinimumIncrementSize = MinimumIncrementSize;
@@ -334,6 +338,7 @@ impl module_auction_manager::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
 	type GetAmountAdjustment = GetAmountAdjustment;
+	type PriceSource = module_prices::Module<Runtime>;
 }
 
 impl module_vaults::Trait for Runtime {
@@ -357,7 +362,7 @@ parameter_types! {
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
-	type PriceSource = orml_prices::Module<Runtime>;
+	type PriceSource = module_prices::Module<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
@@ -369,6 +374,18 @@ impl module_cdp_engine::Trait for Runtime {
 
 impl module_honzon::Trait for Runtime {
 	type Event = Event;
+}
+
+impl module_emergency_shutdown::Trait for Runtime {
+	type Event = Event;
+	type PriceSource = module_prices::Module<Runtime>;
+	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
+	type OnShutdown = (
+		module_cdp_treasury::Module<Runtime>,
+		module_cdp_engine::Module<Runtime>,
+		module_honzon::Module<Runtime>,
+	);
 }
 
 parameter_types! {
@@ -409,6 +426,7 @@ construct_runtime!(
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
+		Prices: module_prices::{Module, Storage},
 		Tokens: orml_tokens::{Module, Storage, Call, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
@@ -417,6 +435,7 @@ construct_runtime!(
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
+		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 	}
 );
 

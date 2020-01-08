@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, Origin, Runtime, VaultsModule, ALICE, ALIEX, AUSD, BOB, BTC,
+	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, Origin, Runtime, VaultsModule, ALICE, AUSD, BOB, BTC, CAROL,
 	DOT,
 };
 use support::{Rate, Ratio};
@@ -28,7 +28,7 @@ fn liquidate_unsafe_cdp_work() {
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
-			HonzonModule::liquidate(Origin::signed(ALIEX), ALICE, BTC),
+			HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC),
 			Error::<Runtime>::LiquidateFailed,
 		);
 		assert_ok!(CdpEngineModule::set_collateral_params(
@@ -40,7 +40,7 @@ fn liquidate_unsafe_cdp_work() {
 			None,
 			None
 		));
-		assert_ok!(HonzonModule::liquidate(Origin::signed(ALIEX), ALICE, BTC));
+		assert_ok!(HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
@@ -74,7 +74,7 @@ fn unauthorize_should_work() {
 fn unauthorize_all_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, ALIEX));
+		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, CAROL));
 		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
@@ -88,7 +88,7 @@ fn unauthorize_all_should_work() {
 }
 
 #[test]
-fn transfer_vault_should_work() {
+fn transfer_vault_from_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
@@ -100,8 +100,8 @@ fn transfer_vault_should_work() {
 			Some(10000),
 		));
 		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
-		assert_ok!(HonzonModule::authorize(Origin::signed(BOB), BTC, ALICE));
-		assert_ok!(HonzonModule::transfer_vault(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::transfer_vault_from(Origin::signed(BOB), BTC, ALICE));
 		assert_eq!(VaultsModule::collaterals(BOB, BTC), 100);
 		assert_eq!(VaultsModule::debits(BOB, BTC), 50);
 	});
@@ -111,7 +111,7 @@ fn transfer_vault_should_work() {
 fn transfer_unauthorization_vaults_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HonzonModule::transfer_vault(Origin::signed(ALICE), BTC, BOB),
+			HonzonModule::transfer_vault_from(Origin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::NoAuthorization,
 		);
 	});
@@ -132,5 +132,60 @@ fn update_vault_should_work() {
 		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
+	});
+}
+
+#[test]
+fn emergency_shutdown_should_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(HonzonModule::is_shutdown(), false);
+		HonzonModule::emergency_shutdown();
+		assert_eq!(HonzonModule::is_shutdown(), true);
+		assert_noop!(
+			HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC),
+			Error::<Runtime>::AlreadyShutdown,
+		);
+		assert_noop!(
+			HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50),
+			Error::<Runtime>::AlreadyShutdown,
+		);
+		assert_noop!(
+			HonzonModule::transfer_vault_from(Origin::signed(ALICE), BTC, BOB),
+			Error::<Runtime>::AlreadyShutdown,
+		);
+	});
+}
+
+#[test]
+fn settle_cdp_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
+		assert_noop!(
+			HonzonModule::settle_cdp(Origin::signed(CAROL), ALICE, BTC),
+			Error::<Runtime>::MustAfterShutdown,
+		);
+		HonzonModule::emergency_shutdown();
+		assert_ok!(HonzonModule::settle_cdp(Origin::signed(CAROL), ALICE, BTC));
+	});
+}
+
+#[test]
+fn update_collateral_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			HonzonModule::update_collateral(Origin::signed(ALICE), BTC, 100),
+			Error::<Runtime>::MustAfterShutdown,
+		);
+		HonzonModule::emergency_shutdown();
+		assert_ok!(HonzonModule::update_collateral(Origin::signed(ALICE), BTC, 100));
 	});
 }

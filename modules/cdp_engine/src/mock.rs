@@ -2,14 +2,10 @@
 
 #![cfg(test)]
 
+use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-
-use orml_traits::PriceProvider;
-use support::AuctionManager;
-
-use super::*;
 
 mod cdp_engine {
 	pub use crate::Event;
@@ -119,16 +115,23 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 	#[allow(unused_variables)]
 	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
 		match (base, quote) {
-			(1, 2) => Some(Price::from_natural(1)),
+			(AUSD, BTC) => Some(Price::from_natural(1)),
+			(BTC, AUSD) => Some(Price::from_natural(1)),
 			_ => None,
 		}
 	}
+
+	#[allow(unused_variables)]
+	fn lock_price(currency_id: CurrencyId) {}
+
+	#[allow(unused_variables)]
+	fn unlock_price(currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
-	type CurrencyId = CurrencyId;
 	type Balance = Balance;
+	type CurrencyId = CurrencyId;
 
 	#[allow(unused_variables)]
 	fn new_collateral_auction(

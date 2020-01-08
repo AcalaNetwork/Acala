@@ -63,14 +63,15 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-treasury",
  "module-dex",
+ "module-emergency-shutdown",
  "module-honzon",
+ "module-prices",
  "module-primitives",
  "module-support",
  "module-vaults",
  "orml-auction",
  "orml-currencies",
  "orml-oracle",
- "orml-prices",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
@@ -2651,7 +2652,6 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
- "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -2702,6 +2702,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-emergency-shutdown"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-auction-manager",
+ "module-cdp-engine",
+ "module-cdp-treasury",
+ "module-honzon",
+ "module-support",
+ "module-vaults",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-honzon"
 version = "0.0.1"
 dependencies = [
@@ -2724,6 +2748,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-prices"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-primitives"
 version = "0.0.1"
 dependencies = [
@@ -2736,8 +2776,11 @@ dependencies = [
 name = "module-support"
 version = "0.0.1"
 dependencies = [
+ "impl-trait-for-tuples",
  "orml-utilities",
+ "parity-scale-codec",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

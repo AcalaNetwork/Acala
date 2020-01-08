@@ -1,6 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::FullCodec;
 use orml_utilities::FixedU128;
+use rstd::{
+	cmp::{Eq, PartialEq},
+	fmt::Debug,
+};
 use sp_runtime::DispatchResult;
 
 pub type Price = FixedU128;
@@ -36,6 +41,14 @@ pub trait AuctionManager<AccountId> {
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
+pub trait AuctionManagerExtended<AccountId>: AuctionManager<AccountId> {
+	type AuctionId: FullCodec + Debug + Clone + Eq + PartialEq;
+
+	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance;
+	fn get_total_surplus_in_auction() -> Self::Balance;
+	fn cancel_auction(id: Self::AuctionId) -> DispatchResult;
+}
+
 pub trait DexManager<AccountId, CurrencyId, Balance> {
 	fn get_supply_amount(
 		supply_currency_id: CurrencyId,
@@ -51,9 +64,33 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 
 pub trait CDPTreasury<AccountId> {
 	type Balance;
+	type CurrencyId;
 
 	fn on_system_debit(amount: Self::Balance);
 	fn on_system_surplus(amount: Self::Balance);
-	fn add_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn sub_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn withdraw_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult;
+	fn transfer_system_collateral(
+		currency_id: Self::CurrencyId,
+		to: &AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult;
+}
+
+pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
+	fn get_surplus_pool() -> Self::Balance;
+	fn get_total_collaterals(id: Self::CurrencyId) -> Self::Balance;
+	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio;
+}
+
+pub trait PriceProvider<CurrencyId, Price> {
+	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
+	fn lock_price(currency_id: CurrencyId);
+	fn unlock_price(currency_id: CurrencyId);
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+pub trait EmergencyShutdown {
+	fn on_emergency_shutdown();
 }

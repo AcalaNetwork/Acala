@@ -43,7 +43,6 @@ orml-oracle = { path = "../orml/oracle", default-features = false }
 orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-auction = { path = "../orml/auction", default-features = false }
-orml-prices = { path = "../orml/prices", default-features = false }
 
 module-auction-manager = { package = "module-auction-manager", path = "../modules/auction_manager", default-features = false }
 module-cdp-engine = { package = "module-cdp-engine", path = "../modules/cdp_engine", default-features = false }
@@ -53,6 +52,8 @@ module-support = { package = "module-support", path = "../modules/support", defa
 module-vaults = { package = "module-vaults", path = "../modules/vaults", default-features = false }
 module-dex = { package = "module-dex", path = "../modules/dex", default-features = false }
 module-cdp-treasury = { package = "module-cdp-treasury", path = "../modules/cdp_treasury", default-features = false }
+module-prices = { package = "module-prices", path = "../modules/prices", default-features = false }
+module-emergency-shutdown = { package = "module-emergency-shutdown", path = "../modules/emergency_shutdown", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
@@ -100,7 +101,9 @@ std = [
 	"module-support/std",
 	"module-vaults/std",
 	"module-dex/std",
+	"module-prices/std",
 	"module-cdp-treasury/std",
+	"module-emergency-shutdown/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"system-rpc-runtime-api/std",
 ]

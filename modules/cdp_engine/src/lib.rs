@@ -1,14 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
-use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, PriceProvider};
-use orml_utilities::FixedU128;
+use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Convert, Saturating, UniqueSaturatedInto, Zero},
 	DispatchResult,
 };
-use support::{AuctionManager, CDPTreasury, ExchangeRate, Price, Rate, Ratio, RiskManager};
+use support::{
+	AuctionManager, CDPTreasury, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio, RiskManager,
+};
 use system::ensure_root;
 
 mod debit_exchange_rate_convertor;
@@ -25,17 +26,17 @@ pub trait Trait: system::Trait + vaults::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type AuctionManagerHandler: AuctionManager<
 		Self::AccountId,
-		CurrencyId = CurrencyIdOf<Self>,
 		Balance = BalanceOf<Self>,
+		CurrencyId = CurrencyIdOf<Self>,
 	>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>, FixedU128>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GlobalStabilityFee: Get<Rate>;
 	type DefaultLiquidationRatio: Get<Ratio>;
 	type DefaulDebitExchangeRate: Get<ExchangeRate>;
 	type MinimumDebitValue: Get<BalanceOf<Self>>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
-	type Treasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>>;
+	type Treasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 }
 
 decl_event!(
@@ -46,6 +47,7 @@ decl_event!(
 		Balance = BalanceOf<T>,
 	{
 		LiquidateUnsafeCdp(CurrencyId, AccountId, Balance, Balance),
+		SettleCdpWithDebit(CurrencyId, AccountId, Balance),
 	}
 );
 
@@ -64,6 +66,7 @@ decl_error! {
 		GrabCollateralAndDebitFailed,
 		BalanceOverflow,
 		InvalidFeedPrice,
+		AlreadyNoDebit,
 	}
 }
 
@@ -76,6 +79,7 @@ decl_storage! {
 		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map CurrencyIdOf<T> => BalanceOf<T>;
 		pub DebitExchangeRate get(fn debit_exchange_rate): map CurrencyIdOf<T> => Option<ExchangeRate>;
 		pub MaximumCollateralAuctionSize get(fn maximum_collateral_auction_size): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -132,25 +136,28 @@ decl_module! {
 		}
 
 		fn on_finalize(_now: T::BlockNumber) {
-			let global_stability_fee = T::GlobalStabilityFee::get();
-			// handle all kinds of collateral type
-			for currency_id in T::CollateralCurrencyIds::get() {
-				let debit_exchange_rate = Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaulDebitExchangeRate::get);
-				let stability_fee_rate = Self::stability_fee(currency_id)
-					.unwrap_or_default()
-					.saturating_add(global_stability_fee);
-				let total_debits = <vaults::Module<T>>::total_debits(currency_id);
-				if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
-					let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
+			// collect stability fee for all types of collateral
+			if !Self::is_shutdown() {
+				let global_stability_fee = T::GlobalStabilityFee::get();
 
-					// update exchange rate
-					let new_debit_exchange_rate = debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
-					<DebitExchangeRate<T>>::insert(currency_id, new_debit_exchange_rate);
+				for currency_id in T::CollateralCurrencyIds::get() {
+					let debit_exchange_rate = Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaulDebitExchangeRate::get);
+					let stability_fee_rate = Self::stability_fee(currency_id)
+						.unwrap_or_default()
+						.saturating_add(global_stability_fee);
+					let total_debits = <vaults::Module<T>>::total_debits(currency_id);
+					if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
+						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
 
-					// issue stablecoin to surplus pool
-					let total_debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, total_debits));
-					let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(&total_debit_value);
-					<T as Trait>::Treasury::on_system_surplus(issued_stable_coin_balance);
+						// update exchange rate
+						let new_debit_exchange_rate = debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
+						<DebitExchangeRate<T>>::insert(currency_id, new_debit_exchange_rate);
+
+						// issue stablecoin to surplus pool
+						let total_debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, total_debits));
+						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(&total_debit_value);
+						<T as Trait>::Treasury::on_system_surplus(issued_stable_coin_balance);
+					}
 				}
 			}
 		}
@@ -158,6 +165,10 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+	pub fn emergency_shutdown() {
+		<IsShutdown>::put(true);
+	}
+
 	pub fn calculate_collateral_ratio(
 		currency_id: CurrencyIdOf<T>,
 		collateral_balance: BalanceOf<T>,
@@ -192,7 +203,41 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	// TODO: how to trigger cdp liquidation
+	// settle cdp has debit when emergency shutdown
+	pub fn settle_cdp_has_debit(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+		let debit_balance = <vaults::Module<T>>::debits(&who, currency_id);
+		ensure!(!debit_balance.is_zero(), Error::<T>::AlreadyNoDebit);
+
+		// confiscate collateral in cdp to cdp treasury
+		// and decrease cdp's debit to zero
+		let collateral_balance = <vaults::Module<T>>::collaterals(&who, currency_id);
+		let settle_price: Price = T::PriceSource::get_price(currency_id, T::GetStableCurrencyId::get())
+			.ok_or(Error::<T>::InvalidFeedPrice)?;
+		let debt_in_stable_currency = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
+		let confiscate_collateral_amount = rstd::cmp::min(
+			settle_price.saturating_mul_int(&debt_in_stable_currency),
+			collateral_balance,
+		);
+		let grab_collateral_amount = TryInto::<AmountOf<T>>::try_into(confiscate_collateral_amount)
+			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let grab_debit_amount =
+			TryInto::<T::DebitAmount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
+		<vaults::Module<T>>::update_collaterals_and_debits(
+			who.clone(),
+			currency_id,
+			-grab_collateral_amount,
+			-grab_debit_amount,
+		)
+		.map_err(|_| Error::<T>::GrabCollateralAndDebitFailed)?;
+		<T as Trait>::Treasury::deposit_system_collateral(currency_id, confiscate_collateral_amount)
+			.expect("never failed because this amount can not cause overflow");
+		<T as Trait>::Treasury::on_system_debit(debt_in_stable_currency);
+
+		Self::deposit_event(RawEvent::SettleCdpWithDebit(currency_id, who, collateral_balance));
+		Ok(())
+	}
+
+	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 		let debit_balance = <vaults::Module<T>>::debits(&who, currency_id);
 		let collateral_balance = <vaults::Module<T>>::collaterals(&who, currency_id);
@@ -353,5 +398,11 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 		);
 
 		Ok(())
+	}
+}
+
+impl<T: Trait> EmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		Self::emergency_shutdown();
 	}
 }

@@ -1,9 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use sp_runtime::DispatchResult;
+use sp_runtime::{traits::Zero, DispatchResult};
+use support::EmergencyShutdown;
 
 mod mock;
 mod tests;
@@ -18,6 +19,7 @@ type AmountOf<T> = <<T as vaults::Trait>::Currency as MultiCurrencyExtended<<T a
 decl_storage! {
 	trait Store for Module<T: Trait> as Honzon {
 		pub Authorization get(fn authorization): double_map T::AccountId, blake2_256((CurrencyIdOf<T>, T::AccountId)) => bool;
+		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -40,6 +42,7 @@ decl_event!(
 		UnAuthorization(AccountId, AccountId, CurrencyId),
 		/// cancel all authorization
 		UnAuthorizationAll(AccountId),
+		UpdateCollateral(AccountId, CurrencyId, Amount),
 	}
 );
 
@@ -49,6 +52,8 @@ decl_error! {
 		TransferVaultFailed,
 		UpdatePositionFailed,
 		LiquidateFailed,
+		AlreadyShutdown,
+		MustAfterShutdown,
 	}
 }
 
@@ -59,9 +64,16 @@ decl_module! {
 		fn deposit_event() = default;
 
 		fn liquidate(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
-			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::<T>::LiquidateFailed)?;
+			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
+			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::<T>::LiquidateFailed)?;
 			Self::deposit_event(RawEvent::Liquidate(who, currency_id));
+		}
+
+		fn settle_cdp(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+
+			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;
 		}
 
 		fn update_vault(
@@ -71,28 +83,41 @@ decl_module! {
 			debit: T::DebitAmount,
 		) {
 			let who = ensure_signed(origin)?;
+			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, debit).map_err(|_| Error::<T>::UpdatePositionFailed)?;
-
 			Self::deposit_event(RawEvent::UpdateVault(who, currency_id, collateral, debit));
 		}
 
-		fn transfer_vault(
+		fn update_collateral(
 			origin,
 			currency_id: CurrencyIdOf<T>,
-			to: T::AccountId,
+			collateral: AmountOf<T>,
 		) {
-			let from = ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+
+			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, T::DebitAmount::zero())?;
+			Self::deposit_event(RawEvent::UpdateCollateral(who, currency_id, collateral));
+		}
+
+		fn transfer_vault_from(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			from: T::AccountId,
+		) {
+			let to = ensure_signed(origin)?;
+			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			// check authorization if `from` can manipulate `to`
-			Self::check_authorization(&to, &from, currency_id)?;
+			Self::check_authorization(&from, &to, currency_id)?;
 
 			<vaults::Module<T>>::transfer(from.clone(), to.clone(), currency_id).map_err(|_|
 				Error::<T>::TransferVaultFailed
 			)?;
 
 			Self::deposit_event(RawEvent::TransferVault(from, to, currency_id));
-		 }
+		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` vault
 		fn authorize(
@@ -137,14 +162,20 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	/// check if `from` allow `to` to manipulate its vault
 	pub fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		if from == to {
-			return Ok(());
-		}
+		ensure!(
+			from == to || Self::authorization(from, (currency_id, to)),
+			Error::<T>::NoAuthorization
+		);
+		Ok(())
+	}
 
-		if Self::authorization(from, (currency_id, to)) {
-			return Ok(());
-		}
+	pub fn emergency_shutdown() {
+		<IsShutdown>::put(true);
+	}
+}
 
-		Err(Error::<T>::NoAuthorization.into())
+impl<T: Trait> EmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		Self::emergency_shutdown();
 	}
 }

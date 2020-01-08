@@ -3,7 +3,11 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{Auction, AuctionManagerModule, CdpTreasury, ExtBuilder, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL};
+use frame_support::{assert_noop, assert_ok};
+use mock::{
+	Auction as AuctionModule, AuctionManagerModule, CdpTreasury, ExtBuilder, Runtime, Tokens, ACA, ALICE, AUSD, BOB,
+	BTC, CAROL,
+};
 
 #[test]
 fn new_collateral_auction_work() {
@@ -12,7 +16,7 @@ fn new_collateral_auction_work() {
 		assert_eq!(CdpTreasury::debit_pool(), 90);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 100);
-		assert_eq!(Auction::auctions_count(), 1);
+		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
 }
 
@@ -21,7 +25,7 @@ fn new_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_debit_auction(200, 100);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
-		assert_eq!(Auction::auctions_count(), 1);
+		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
 }
 
@@ -30,7 +34,7 @@ fn new_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_surplus_auction(100);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
-		assert_eq!(Auction::auctions_count(), 1);
+		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
 }
 
@@ -256,5 +260,107 @@ fn on_auction_ended_for_surplus_auction_work() {
 		assert_eq!(Tokens::balance(AUSD, &AuctionManagerModule::account_id()), 0);
 		assert_eq!(Tokens::balance(AUSD, &BOB), 1100);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
+	});
+}
+
+#[test]
+fn cancel_surplus_auction_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			AuctionManagerModule::cancel_surplus_auction(0),
+			Error::<Runtime>::AuctionNotExsits
+		);
+		AuctionManagerModule::new_surplus_auction(100);
+		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
+		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
+		assert_eq!(Tokens::balance(AUSD, &AuctionManagerModule::account_id()), 100);
+		assert_eq!(CdpTreasury::surplus_pool(), 0);
+		assert_eq!(AuctionModule::auction_info(0).is_some(), true);
+		assert_eq!(
+			AuctionManagerModule::on_new_bid(1, 0, (BOB, 500), None).accept_bid,
+			true
+		);
+		assert_ok!(AuctionManagerModule::cancel_surplus_auction(0));
+		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), false);
+		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
+		assert_eq!(CdpTreasury::surplus_pool(), 100);
+		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
+	});
+}
+
+#[test]
+fn cancel_debit_auction_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			AuctionManagerModule::cancel_debit_auction(0),
+			Error::<Runtime>::AuctionNotExsits
+		);
+		AuctionManagerModule::new_debit_auction(200, 100);
+		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
+		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
+		assert_eq!(Tokens::balance(AUSD, &BOB), 1000);
+		assert_eq!(
+			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).accept_bid,
+			true
+		);
+		assert_eq!(Tokens::balance(AUSD, &BOB), 900);
+		assert_ok!(AuctionManagerModule::cancel_debit_auction(0));
+		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), false);
+		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
+		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
+	});
+}
+
+#[test]
+fn collateral_auction_in_reverse_stage_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 90);
+		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
+		assert_ok!(AuctionModule::bid(Some(BOB).into(), 0, 20));
+		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
+		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 0, 100));
+		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), true);
+	});
+}
+
+#[test]
+fn cancel_collateral_auction_fail() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			AuctionManagerModule::cancel_collateral_auction(0),
+			Error::<Runtime>::AuctionNotExsits
+		);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 90);
+		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 0, 100));
+		assert_noop!(
+			AuctionManagerModule::cancel_collateral_auction(0),
+			Error::<Runtime>::InReservedStage
+		);
+	});
+}
+
+#[test]
+fn cancel_collateral_auction_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
+		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 90);
+		assert_eq!(Tokens::balance(AUSD, &BOB), 1000);
+		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
+		assert_eq!(AuctionManagerModule::total_target_in_auction(), 100);
+		assert_ok!(AuctionModule::bid(Some(BOB).into(), 0, 80));
+		assert_eq!(Tokens::balance(AUSD, &BOB), 920);
+		assert_eq!(CdpTreasury::total_collaterals(BTC), 0);
+		assert_eq!(CdpTreasury::debit_pool(), 90);
+		assert_ok!(AuctionManagerModule::cancel_collateral_auction(0));
+		assert_eq!(Tokens::balance(AUSD, &BOB), 1000);
+		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
+		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
+		assert_eq!(CdpTreasury::total_collaterals(BTC), 10);
+		assert_eq!(CdpTreasury::debit_pool(), 170);
+		assert_eq!(CdpTreasury::surplus_pool(), 80);
+		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), false);
+		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
 	});
 }

@@ -4,7 +4,9 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CdpEngineModule, Currencies, ExtBuilder, Origin, Runtime, VaultsModule, ACA, ALICE, AUSD, BTC, DOT};
+use mock::{
+	CdpEngineModule, CdpTreasury, Currencies, ExtBuilder, Origin, Runtime, VaultsModule, ACA, ALICE, AUSD, BTC, DOT,
+};
 use sp_runtime::traits::OnFinalize;
 
 #[test]
@@ -330,5 +332,65 @@ fn set_maximum_collateral_auction_size_work() {
 			20
 		));
 		assert_eq!(CdpEngineModule::maximum_collateral_auction_size(BTC), 20);
+	});
+}
+
+#[test]
+fn emergency_shutdown_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 30));
+		CdpEngineModule::on_finalize(1);
+		assert_eq!(
+			CdpEngineModule::debit_exchange_rate(BTC),
+			Some(ExchangeRate::from_rational(101, 100))
+		);
+		assert_eq!(CdpEngineModule::is_shutdown(), false);
+		CdpEngineModule::emergency_shutdown();
+		assert_eq!(CdpEngineModule::is_shutdown(), true);
+		CdpEngineModule::on_finalize(2);
+		assert_eq!(
+			CdpEngineModule::debit_exchange_rate(BTC),
+			Some(ExchangeRate::from_rational(101, 100))
+		);
+	});
+}
+
+#[test]
+fn settle_cdp_has_debit_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 0));
+		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
+		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
+		assert_noop!(
+			CdpEngineModule::settle_cdp_has_debit(ALICE, BTC),
+			Error::<Runtime>::AlreadyNoDebit,
+		);
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, 50));
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
+		assert_eq!(CdpTreasury::debit_pool(), 0);
+		assert_eq!(CdpTreasury::total_collaterals(BTC), 0);
+		assert_ok!(CdpEngineModule::settle_cdp_has_debit(ALICE, BTC));
+		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
+		assert_eq!(CdpTreasury::debit_pool(), 50);
+		assert_eq!(CdpTreasury::total_collaterals(BTC), 50);
 	});
 }
