@@ -59,7 +59,7 @@ decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
 		LiquidityPool get(fn liquidity_pool): map CurrencyIdOf<T> => (BalanceOf<T>, BalanceOf<T>);
 		TotalShares get(fn total_shares): map CurrencyIdOf<T> => T::Share;
-		Shares get(fn shares): double_map CurrencyIdOf<T>, blake2_256(T::AccountId) => T::Share;
+		Shares get(fn shares): double_map CurrencyIdOf<T>, T::AccountId => T::Share;
 	}
 }
 

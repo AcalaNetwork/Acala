@@ -80,6 +80,7 @@ impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type OnFreeBalanceZero = ();
 	type OnNewAccount = ();
+	type OnReapAccount = ();
 	type TransferPayment = ();
 	type DustRemoval = ();
 	type Event = ();
