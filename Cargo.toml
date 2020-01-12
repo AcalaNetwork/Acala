@@ -44,6 +44,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
 sc-basic-authority = { git = "https://github.com/paritytech/substrate.git"}
 sc-telemetry = { git = "https://github.com/paritytech/substrate.git" }
 sc-rpc = { git = "https://github.com/paritytech/substrate" }
+sp-api = { git = "https://github.com/paritytech/substrate.git" }
 
 frame-rpc-system = { package = "substrate-frame-rpc-system", git = "https://github.com/paritytech/substrate" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate" }

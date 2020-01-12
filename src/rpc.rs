@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use runtime::{opaque::Block, AccountId, Balance, Index, UncheckedExtrinsic};
-use sp_runtime::traits::ProvideRuntimeApi;
+use sp_api::ProvideRuntimeApi;
 use sp_transaction_pool::TransactionPool;
 
 /// A type representing all RPC extensions.
@@ -12,7 +12,7 @@ pub type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 /// Instantiate all RPC extensions.
 pub fn create_full<C, P>(client: Arc<C>, pool: Arc<P>) -> RpcExtension
 where
-	C: ProvideRuntimeApi,
+	C: ProvideRuntimeApi<Block>,
 	C: sc_client::blockchain::HeaderBackend<Block>,
 	C: Send + Sync + 'static,
 	C::Api: frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
@@ -36,7 +36,7 @@ pub fn create_light<C, P, F>(
 	pool: Arc<P>,
 ) -> RpcExtension
 where
-	C: ProvideRuntimeApi,
+	C: ProvideRuntimeApi<Block>,
 	C: sc_client::blockchain::HeaderBackend<Block>,
 	C: Send + Sync + 'static,
 	C::Api: frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
