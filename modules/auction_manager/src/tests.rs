@@ -5,14 +5,20 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	Auction as AuctionModule, AuctionManagerModule, CdpTreasury, ExtBuilder, Runtime, Tokens, ACA, ALICE, AUSD, BOB,
-	BTC, CAROL,
+	Auction as AuctionModule, AuctionManagerModule, CdpTreasury, ExtBuilder, Runtime, System, TestEvent, Tokens, ACA,
+	ALICE, AUSD, BOB, BTC, CAROL,
 };
 
 #[test]
 fn new_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 90);
+
+		let new_collateral_auction_event = TestEvent::auction_manager(RawEvent::NewCollateralAuction(0, BTC, 10, 100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == new_collateral_auction_event));
+
 		assert_eq!(CdpTreasury::debit_pool(), 90);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 100);
@@ -24,6 +30,12 @@ fn new_collateral_auction_work() {
 fn new_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_debit_auction(200, 100);
+
+		let new_debit_auction_event = TestEvent::auction_manager(RawEvent::NewDebitAuction(0, 200, 100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == new_debit_auction_event));
+
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
 		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
@@ -33,6 +45,12 @@ fn new_debit_auction_work() {
 fn new_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_surplus_auction(100);
+
+		let new_surplus_auction_event = TestEvent::auction_manager(RawEvent::NewSurplusAuction(0, 100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == new_surplus_auction_event));
+
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
 		assert_eq!(AuctionModule::auctions_index(), 1);
 	});
@@ -281,6 +299,12 @@ fn cancel_surplus_auction_work() {
 			true
 		);
 		assert_ok!(AuctionManagerModule::cancel_surplus_auction(0));
+
+		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == cancel_auction_event));
+
 		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), false);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
 		assert_eq!(CdpTreasury::surplus_pool(), 100);
@@ -305,6 +329,12 @@ fn cancel_debit_auction_work() {
 		);
 		assert_eq!(Tokens::balance(AUSD, &BOB), 900);
 		assert_ok!(AuctionManagerModule::cancel_debit_auction(0));
+
+		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == cancel_auction_event));
+
 		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), false);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
 		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
@@ -354,6 +384,12 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(CdpTreasury::total_collaterals(BTC), 0);
 		assert_eq!(CdpTreasury::debit_pool(), 90);
 		assert_ok!(AuctionManagerModule::cancel_collateral_auction(0));
+
+		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == cancel_auction_event));
+
 		assert_eq!(Tokens::balance(AUSD, &BOB), 1000);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);

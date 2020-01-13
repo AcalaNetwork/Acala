@@ -70,6 +70,7 @@ decl_event!(
 		NewDebitAuction(AuctionId, Balance, Balance),
 		NewSurplusAuction(AuctionId, Balance),
 		CancelAuction(AuctionId),
+		AuctionDealed(AuctionId),
 	}
 );
 
@@ -512,6 +513,8 @@ impl<T: Trait> Module<T> {
 			<TotalCollateralInAuction<T>>::mutate(collateral_auction.currency_id, |balance| *balance -= amount);
 			<TotalTargetInAuction<T>>::mutate(|balance| *balance -= collateral_auction.target);
 			<CollateralAuctions<T>>::remove(id);
+
+			<Module<T>>::deposit_event(RawEvent::AuctionDealed(id));
 		}
 	}
 
@@ -529,6 +532,8 @@ impl<T: Trait> Module<T> {
 				// decrease debit in auction and delete auction
 				<TotalDebitInAuction<T>>::mutate(|balance| *balance -= debit_auction.fix);
 				<DebitAuctions<T>>::remove(id);
+
+				<Module<T>>::deposit_event(RawEvent::AuctionDealed(id));
 			} else {
 				// there's no bidder until auction closed, adjust the native token amount
 				let start_block = <system::Module<T>>::block_number();
@@ -544,6 +549,8 @@ impl<T: Trait> Module<T> {
 				};
 				<DebitAuctions<T>>::insert(new_debit_auction_id, new_debit_auction.clone());
 				<DebitAuctions<T>>::remove(id);
+
+				<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
 				<Module<T>>::deposit_event(RawEvent::NewDebitAuction(
 					new_debit_auction_id,
 					new_debit_auction.amount,
@@ -577,6 +584,8 @@ impl<T: Trait> Module<T> {
 			// decrease surplus in auction
 			<TotalSurplusInAuction<T>>::mutate(|balance| *balance -= surplus_auction.amount);
 			<SurplusAuctions<T>>::remove(id);
+
+			<Module<T>>::deposit_event(RawEvent::AuctionDealed(id));
 		}
 	}
 }

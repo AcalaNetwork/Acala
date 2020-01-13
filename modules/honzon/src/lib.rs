@@ -27,22 +27,13 @@ decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
 		CurrencyId = CurrencyIdOf<T>,
-		Amount = AmountOf<T>,
-		<T as vaults::Trait>::DebitAmount,
 	{
-		/// liquidate `who` `currency` vault
-		Liquidate(AccountId, CurrencyId),
-		/// update vault success (from, to, currency_id)
-		UpdateVault(AccountId, CurrencyId, Amount, DebitAmount),
-		/// transfer vault success (from, to, currency_id)
-		TransferVault(AccountId, AccountId, CurrencyId),
 		/// authorization (from, to, currency_id)
 		Authorization(AccountId, AccountId, CurrencyId),
 		/// cancel authorization (from, to, currency_id)
 		UnAuthorization(AccountId, AccountId, CurrencyId),
 		/// cancel all authorization
 		UnAuthorizationAll(AccountId),
-		UpdateCollateral(AccountId, CurrencyId, Amount),
 	}
 );
 
@@ -67,7 +58,6 @@ decl_module! {
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::<T>::LiquidateFailed)?;
-			Self::deposit_event(RawEvent::Liquidate(who, currency_id));
 		}
 
 		fn settle_cdp(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
@@ -86,10 +76,9 @@ decl_module! {
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, debit).map_err(|_| Error::<T>::UpdatePositionFailed)?;
-			Self::deposit_event(RawEvent::UpdateVault(who, currency_id, collateral, debit));
 		}
 
-		fn update_collateral(
+		fn withdraw_collateral(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			collateral: AmountOf<T>,
@@ -98,7 +87,6 @@ decl_module! {
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 
 			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, T::DebitAmount::zero())?;
-			Self::deposit_event(RawEvent::UpdateCollateral(who, currency_id, collateral));
 		}
 
 		fn transfer_vault_from(
@@ -115,8 +103,6 @@ decl_module! {
 			<vaults::Module<T>>::transfer(from.clone(), to.clone(), currency_id).map_err(|_|
 				Error::<T>::TransferVaultFailed
 			)?;
-
-			Self::deposit_event(RawEvent::TransferVault(from, to, currency_id));
 		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` vault

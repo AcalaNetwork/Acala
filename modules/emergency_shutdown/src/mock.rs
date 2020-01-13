@@ -2,12 +2,28 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchResult, Perbill};
 use support::{AuctionManager, AuctionManagerExtended, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 
 use super::*;
+
+mod emergency_shutdown {
+	pub use super::super::*;
+}
+
+impl_outer_event! {
+	pub enum TestEvent for Runtime {
+		emergency_shutdown<T>,
+		cdp_engine<T>,
+		orml_tokens<T>,
+		vaults<T>,
+		pallet_balances<T>,
+		orml_currencies<T>,
+		honzon<T>,
+	}
+}
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
@@ -60,7 +76,7 @@ impl system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
@@ -68,9 +84,10 @@ impl system::Trait for Runtime {
 	type Version = ();
 	type ModuleToIndex = ();
 }
+pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -84,7 +101,7 @@ impl pallet_balances::Trait for Runtime {
 	type OnReapAccount = ();
 	type TransferPayment = ();
 	type DustRemoval = ();
-	type Event = ();
+	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type TransferFee = TransferFee;
 	type CreationFee = CreationFee;
@@ -94,7 +111,7 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 impl orml_currencies::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -102,7 +119,7 @@ impl orml_currencies::Trait for Runtime {
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 impl vaults::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
 	type RiskManager = CdpEngineModule;
@@ -181,7 +198,7 @@ impl cdp_treasury::Trait for Runtime {
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
 impl cdp_engine::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type AuctionManagerHandler = MockAuctionManager;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
@@ -195,12 +212,12 @@ impl cdp_engine::Trait for Runtime {
 pub type CdpEngineModule = cdp_engine::Module<Runtime>;
 
 impl honzon::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 }
 pub type HonzonModule = honzon::Module<Runtime>;
 
 impl Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type PriceSource = MockPriceSource;
 	type Treasury = CdpTreasury;
 	type AuctionManagerHandler = MockAuctionManager;

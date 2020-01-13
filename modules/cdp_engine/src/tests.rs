@@ -5,7 +5,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, CdpTreasury, Currencies, ExtBuilder, Origin, Runtime, VaultsModule, ACA, ALICE, AUSD, BTC, DOT,
+	CdpEngineModule, CdpTreasury, Currencies, ExtBuilder, Origin, Runtime, System, TestEvent, VaultsModule, ACA, ALICE,
+	AUSD, BTC, DOT,
 };
 use sp_runtime::traits::OnFinalize;
 
@@ -255,6 +256,12 @@ fn liquidate_unsafe_cdp_work() {
 			None
 		));
 		assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
+
+		let liquidate_unsafe_cdp_event = TestEvent::cdp_engine(RawEvent::LiquidateUnsafeCdp(BTC, ALICE, 100, 50));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == liquidate_unsafe_cdp_event));
+
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
@@ -389,6 +396,12 @@ fn settle_cdp_has_debit_work() {
 		assert_eq!(CdpTreasury::debit_pool(), 0);
 		assert_eq!(CdpTreasury::total_collaterals(BTC), 0);
 		assert_ok!(CdpEngineModule::settle_cdp_has_debit(ALICE, BTC));
+
+		let settle_cdp_in_debit_event = TestEvent::cdp_engine(RawEvent::SettleCdpInDebit(BTC, ALICE));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == settle_cdp_in_debit_event));
+
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
 		assert_eq!(CdpTreasury::debit_pool(), 50);
 		assert_eq!(CdpTreasury::total_collaterals(BTC), 50);

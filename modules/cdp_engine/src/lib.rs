@@ -47,7 +47,7 @@ decl_event!(
 		Balance = BalanceOf<T>,
 	{
 		LiquidateUnsafeCdp(CurrencyId, AccountId, Balance, Balance),
-		SettleCdpWithDebit(CurrencyId, AccountId, Balance),
+		SettleCdpInDebit(CurrencyId, AccountId),
 	}
 );
 
@@ -233,7 +233,7 @@ impl<T: Trait> Module<T> {
 			.expect("never failed because this amount can not cause overflow");
 		<T as Trait>::Treasury::on_system_debit(debt_in_stable_currency);
 
-		Self::deposit_event(RawEvent::SettleCdpWithDebit(currency_id, who, collateral_balance));
+		Self::deposit_event(RawEvent::SettleCdpInDebit(currency_id, who));
 		Ok(())
 	}
 
