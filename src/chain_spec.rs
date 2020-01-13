@@ -113,7 +113,9 @@ impl Alternative {
 				Some(properties),
 				None,
 			),
-			Alternative::AlphaTestnet => ChainSpec::from_json_bytes(&include_bytes!("../resources/alpha.json")[..])?,
+			Alternative::AlphaTestnet => {
+				ChainSpec::from_json_bytes(&include_bytes!("../resources/alpha-dist.json")[..])?
+			}
 			Alternative::AlphaTestnetLatest => {
 				ChainSpec::from_genesis(
 					"Acala",
