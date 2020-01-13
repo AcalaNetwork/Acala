@@ -70,7 +70,9 @@ decl_error! {
 	/// Error for vaults module.
 	pub enum Error for Module<T: Trait> {
 		DebitOverflow,
+		DebitUnderflow,
 		CollateralOverflow,
+		CollateralUnderflow,
 		AmountIntoBalanceFailed,
 		BalanceIntoAmountFailed,
 		RiskCheckFailed,
@@ -93,7 +95,7 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	// mutate collaterlas and debits, don't check position safe and don't mutate token
+	// mutate collaterals and debits, don't check position safe and don't mutate token
 	pub fn update_collaterals_and_debits(
 		who: T::AccountId,
 		currency_id: CurrencyIdOf<T>,
@@ -113,7 +115,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	// mulate collaterals and debits and then mulate stable coin
+	// mutate collaterals and debits and then mutate stable coin
 	pub fn update_position(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
@@ -173,7 +175,7 @@ impl<T: Trait> Module<T> {
 		let collateral: BalanceOf<T> = Self::collaterals(&from, currency_id);
 		let debit: T::DebitBalance = Self::debits(&from, currency_id);
 
-		// banlance -> amount
+		// balance -> amount
 		let collateral: AmountOf<T> =
 			TryInto::<AmountOf<T>>::try_into(collateral).map_err(|_| Error::<T>::BalanceIntoAmountFailed)?;
 		let debit: T::DebitAmount =
@@ -183,7 +185,7 @@ impl<T: Trait> Module<T> {
 		Self::check_add_and_sub(&from, currency_id, -collateral, -debit)?;
 		Self::check_add_and_sub(&to, currency_id, collateral, debit)?;
 
-		// ensure positions passes risk check after transfered
+		// ensure positions passes risk check after transferred
 		T::RiskManager::check_position_adjustment(&from, currency_id, -collateral, -debit)
 			.map_err(|_| Error::<T>::RiskCheckFailed)?;
 		T::RiskManager::check_position_adjustment(&to, currency_id, collateral, debit)
@@ -219,7 +221,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	/// ensure sum and sub will success when updat when manipulate vault
+	/// ensure sum and sub will success when updating vault collaterals and debits
 	fn check_add_and_sub(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
@@ -235,12 +237,6 @@ impl<T: Trait> Module<T> {
 		// check collaterals update
 		if collaterals.is_positive() {
 			ensure!(
-				Self::collaterals(who, currency_id)
-					.checked_add(&collaterals_balance)
-					.is_some(),
-				Error::<T>::CollateralOverflow
-			);
-			ensure!(
 				Self::total_collaterals(currency_id)
 					.checked_add(&collaterals_balance)
 					.is_some(),
@@ -251,22 +247,12 @@ impl<T: Trait> Module<T> {
 				Self::collaterals(who, currency_id)
 					.checked_sub(&collaterals_balance)
 					.is_some(),
-				Error::<T>::CollateralOverflow
-			);
-			ensure!(
-				Self::total_collaterals(currency_id)
-					.checked_sub(&collaterals_balance)
-					.is_some(),
-				Error::<T>::CollateralOverflow
+				Error::<T>::CollateralUnderflow
 			);
 		}
 
-		// check collaterals update
+		// check debits update
 		if debits.is_positive() {
-			ensure!(
-				Self::debits(who, currency_id).checked_add(&debits_balance).is_some(),
-				Error::<T>::DebitOverflow
-			);
 			ensure!(
 				Self::total_debits(currency_id).checked_add(&debits_balance).is_some(),
 				Error::<T>::DebitOverflow
@@ -274,11 +260,7 @@ impl<T: Trait> Module<T> {
 		} else {
 			ensure!(
 				Self::debits(who, currency_id).checked_sub(&debits_balance).is_some(),
-				Error::<T>::DebitOverflow
-			);
-			ensure!(
-				Self::total_debits(currency_id).checked_sub(&debits_balance).is_some(),
-				Error::<T>::DebitOverflow
+				Error::<T>::DebitUnderflow
 			);
 		}
 
