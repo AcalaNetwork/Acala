@@ -100,7 +100,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2,
+	spec_version: 3,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 };
@@ -256,6 +256,21 @@ impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
 	type MembershipInitialized = OperatorCollective;
 	type MembershipChanged = OperatorCollective;
+}
+
+parameter_types! {
+	pub const MultisigDepositBase: Balance = 30;
+	pub const MultisigDepositFactor: Balance = 5;
+	pub const MaxSignatories: u16 = 100;
+}
+
+impl pallet_utility::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type MultisigDepositBase = MultisigDepositBase;
+	type MultisigDepositFactor = MultisigDepositFactor;
+	type MaxSignatories = MaxSignatories;
 }
 
 impl orml_auction::Trait for Runtime {
@@ -437,6 +452,8 @@ construct_runtime!(
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
+
+		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 	}
 );
 
