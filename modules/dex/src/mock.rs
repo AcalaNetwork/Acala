@@ -58,6 +58,7 @@ impl system::Trait for Runtime {
 	type Version = ();
 	type ModuleToIndex = ();
 }
+pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;

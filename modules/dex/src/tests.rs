@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{DexModule, ExtBuilder, Origin, Runtime, Tokens, ALICE, AUSD, BOB, BTC, CAROL, DOT};
+use mock::{DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ALICE, AUSD, BOB, BTC, CAROL, DOT};
 
 #[test]
 fn calculate_swap_target_amount_work() {
@@ -42,6 +42,12 @@ fn add_liquidity_work() {
 			Error::<Runtime>::InvalidBalance,
 		);
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
+
+		let add_liquidity_event = TestEvent::dex(RawEvent::AddLiquidity(ALICE, BTC, 10000, 10000000, 10000000));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == add_liquidity_event));
+
 		assert_eq!(DexModule::liquidity_pool(BTC), (10000, 10000000));
 		assert_eq!(DexModule::total_shares(BTC), 10000000);
 		assert_eq!(DexModule::shares(BTC, ALICE), 10000000);
@@ -74,6 +80,12 @@ fn withdraw_liquidity_work() {
 		assert_eq!(DexModule::total_shares(BTC), 10000000);
 		assert_eq!(DexModule::shares(BTC, ALICE), 10000000);
 		assert_ok!(DexModule::withdraw_liquidity(Origin::signed(ALICE), BTC, 10000));
+
+		let withdraw_liquidity_event = TestEvent::dex(RawEvent::WithdrawLiquidity(ALICE, BTC, 10, 10000, 10000));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == withdraw_liquidity_event));
+
 		assert_eq!(DexModule::liquidity_pool(BTC), (9990, 9990000));
 		assert_eq!(DexModule::total_shares(BTC), 9990000);
 		assert_eq!(DexModule::shares(BTC, ALICE), 9990000);
@@ -100,6 +112,10 @@ fn swap_other_to_base_work() {
 			Error::<Runtime>::InacceptablePrice,
 		);
 		assert_ok!(DexModule::swap_other_to_base(CAROL, BTC, 10000, 4950000));
+
+		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, BTC, 10000, AUSD, 4950000));
+		assert!(System::events().iter().any(|record| record.event == swap_event));
+
 		assert_eq!(Tokens::balance(BTC, CAROL), 0);
 		assert_eq!(Tokens::balance(AUSD, CAROL), 4950000);
 		assert_eq!(DexModule::liquidity_pool(BTC), (20000, 5050000));
@@ -123,6 +139,10 @@ fn swap_base_to_other_work() {
 			Error::<Runtime>::InacceptablePrice,
 		);
 		assert_ok!(DexModule::swap_base_to_other(CAROL, BTC, 10000, 4950));
+
+		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, AUSD, 10000, BTC, 4950));
+		assert!(System::events().iter().any(|record| record.event == swap_event));
+
 		assert_eq!(Tokens::balance(BTC, CAROL), 4950);
 		assert_eq!(Tokens::balance(AUSD, CAROL), 0);
 		assert_eq!(DexModule::liquidity_pool(BTC), (5050, 20000));
@@ -148,6 +168,10 @@ fn swap_other_to_other_work() {
 			Error::<Runtime>::InacceptablePrice,
 		);
 		assert_ok!(DexModule::swap_other_to_other(CAROL, DOT, 1000, BTC, 34));
+
+		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, DOT, 1000, BTC, 34));
+		assert!(System::events().iter().any(|record| record.event == swap_event));
+
 		assert_eq!(Tokens::balance(BTC, CAROL), 34);
 		assert_eq!(Tokens::balance(DOT, CAROL), 0);
 		assert_eq!(DexModule::liquidity_pool(BTC), (66, 14950));

@@ -186,7 +186,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::WithdrawLiquidity(
 				who,
 				currency_id,
-				withdraw_base_currency_amount,
+				withdraw_other_currency_amount,
 				withdraw_base_currency_amount,
 				share_amount,
 			));

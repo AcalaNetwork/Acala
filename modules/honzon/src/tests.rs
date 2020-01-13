@@ -5,8 +5,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, Origin, Runtime, VaultsModule, ALICE, AUSD, BOB, BTC, CAROL,
-	DOT,
+	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, Origin, Runtime, System, TestEvent, VaultsModule, ALICE,
+	AUSD, BOB, BTC, CAROL, DOT,
 };
 use support::{Rate, Ratio};
 
@@ -52,6 +52,12 @@ fn liquidate_unsafe_cdp_work() {
 fn authorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+
+		let authorization_event = TestEvent::honzon(RawEvent::Authorization(ALICE, BOB, BTC));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == authorization_event));
+
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 	});
 }
@@ -61,8 +67,13 @@ fn unauthorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
-
 		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
+
+		let unauthorization_event = TestEvent::honzon(RawEvent::UnAuthorization(ALICE, BOB, BTC));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == unauthorization_event));
+
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
 			Error::<Runtime>::NoAuthorization
@@ -76,6 +87,12 @@ fn unauthorize_all_should_work() {
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, CAROL));
 		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
+
+		let unauthorization_all_event = TestEvent::honzon(RawEvent::UnAuthorizationAll(ALICE));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == unauthorization_all_event));
+
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
 			Error::<Runtime>::NoAuthorization
@@ -179,13 +196,13 @@ fn settle_cdp_work() {
 }
 
 #[test]
-fn update_collateral_work() {
+fn withdraw_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HonzonModule::update_collateral(Origin::signed(ALICE), BTC, 100),
+			HonzonModule::withdraw_collateral(Origin::signed(ALICE), BTC, 100),
 			Error::<Runtime>::MustAfterShutdown,
 		);
 		HonzonModule::emergency_shutdown();
-		assert_ok!(HonzonModule::update_collateral(Origin::signed(ALICE), BTC, 100));
+		assert_ok!(HonzonModule::withdraw_collateral(Origin::signed(ALICE), BTC, 100));
 	});
 }

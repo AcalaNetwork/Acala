@@ -4,12 +4,18 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Currencies, ExtBuilder, Runtime, VaultsModule, ALICE, AUSD, X_TOKEN_ID, Y_TOKEN_ID};
+use mock::{Currencies, ExtBuilder, Runtime, System, TestEvent, VaultsModule, ALICE, AUSD, X_TOKEN_ID, Y_TOKEN_ID};
 
 #[test]
 fn update_position_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(VaultsModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));
+
+		let update_position_event = TestEvent::vaults(RawEvent::UpdatePosition(ALICE, Y_TOKEN_ID, 100, 100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_position_event));
+
 		assert_eq!(VaultsModule::collaterals(ALICE, Y_TOKEN_ID), 100);
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 100);
 	});
@@ -81,7 +87,21 @@ fn update_position_with_overflow_debits_cap_should_not_work() {
 fn update_collaterals_and_debits_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(VaultsModule::update_collaterals_and_debits(ALICE, Y_TOKEN_ID, 100, 100));
+
+		let update_position_event_1 =
+			TestEvent::vaults(RawEvent::UpdateCollateralsAndDebits(ALICE, Y_TOKEN_ID, 100, 100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_position_event_1));
+
 		assert_ok!(VaultsModule::update_collaterals_and_debits(ALICE, Y_TOKEN_ID, -10, -10));
+
+		let update_position_event_2 =
+			TestEvent::vaults(RawEvent::UpdateCollateralsAndDebits(ALICE, Y_TOKEN_ID, -10, -10));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_position_event_2));
+
 		assert_eq!(VaultsModule::collaterals(ALICE, Y_TOKEN_ID), 90);
 		assert_eq!(VaultsModule::debits(ALICE, Y_TOKEN_ID), 90);
 		// ensure tokens don't change

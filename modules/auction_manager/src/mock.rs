@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
@@ -10,6 +10,18 @@ use super::*;
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+mod auction_manager {
+	pub use super::super::*;
+}
+
+impl_outer_event! {
+	pub enum TestEvent for Runtime {
+		auction_manager<T>,
+		orml_tokens<T>,
+		orml_auction<T>,
+	}
 }
 
 // Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
@@ -48,7 +60,7 @@ impl system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
@@ -56,9 +68,10 @@ impl system::Trait for Runtime {
 	type Version = ();
 	type ModuleToIndex = ();
 }
+pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -66,7 +79,7 @@ impl orml_tokens::Trait for Runtime {
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 impl orml_auction::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManagerModule;
@@ -95,7 +108,7 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 }
 
 impl Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Currency = Tokens;
 	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
