@@ -70,7 +70,9 @@ decl_error! {
 	/// Error for vaults module.
 	pub enum Error for Module<T: Trait> {
 		DebitOverflow,
+		DebitUnderflow,
 		CollateralOverflow,
+		CollateralUnderflow,
 		AmountIntoBalanceFailed,
 		BalanceIntoAmountFailed,
 		RiskCheckFailed,
@@ -235,12 +237,6 @@ impl<T: Trait> Module<T> {
 		// check collaterals update
 		if collaterals.is_positive() {
 			ensure!(
-				Self::collaterals(who, currency_id)
-					.checked_add(&collaterals_balance)
-					.is_some(),
-				Error::<T>::CollateralOverflow
-			);
-			ensure!(
 				Self::total_collaterals(currency_id)
 					.checked_add(&collaterals_balance)
 					.is_some(),
@@ -251,22 +247,12 @@ impl<T: Trait> Module<T> {
 				Self::collaterals(who, currency_id)
 					.checked_sub(&collaterals_balance)
 					.is_some(),
-				Error::<T>::CollateralOverflow
-			);
-			ensure!(
-				Self::total_collaterals(currency_id)
-					.checked_sub(&collaterals_balance)
-					.is_some(),
-				Error::<T>::CollateralOverflow
+				Error::<T>::CollateralUnderflow
 			);
 		}
 
-		// check collaterals update
+		// check debits update
 		if debits.is_positive() {
-			ensure!(
-				Self::debits(who, currency_id).checked_add(&debits_balance).is_some(),
-				Error::<T>::DebitOverflow
-			);
 			ensure!(
 				Self::total_debits(currency_id).checked_add(&debits_balance).is_some(),
 				Error::<T>::DebitOverflow
@@ -274,11 +260,7 @@ impl<T: Trait> Module<T> {
 		} else {
 			ensure!(
 				Self::debits(who, currency_id).checked_sub(&debits_balance).is_some(),
-				Error::<T>::DebitOverflow
-			);
-			ensure!(
-				Self::total_debits(currency_id).checked_sub(&debits_balance).is_some(),
-				Error::<T>::DebitOverflow
+				Error::<T>::DebitUnderflow
 			);
 		}
 
