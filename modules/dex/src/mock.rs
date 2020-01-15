@@ -31,6 +31,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: FixedU128 = FixedU128::from_rational(1, 100);
+	pub const ExistentialDeposit: u128 = 0;
 }
 
 pub type AccountId = u64;
@@ -65,6 +66,8 @@ impl orml_tokens::Trait for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
+	type ExistentialDeposit = ExistentialDeposit;
+	type DustRemoval = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
