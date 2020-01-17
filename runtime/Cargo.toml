@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
-safe-mix = { version = "1.0.0", default-features = false }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
 
 rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -70,7 +69,6 @@ std = [
 	"sp-runtime/std",
 	"version/std",
 	"serde",
-	"safe-mix/std",
 	"offchain-primitives/std",
 	"sp-session/std",
 	"sp-transaction-pool/std",
