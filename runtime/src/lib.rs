@@ -424,6 +424,7 @@ impl module_cdp_engine::Trait for Runtime {
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 }
 
 impl module_honzon::Trait for Runtime {
@@ -440,6 +441,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 		module_cdp_engine::Module<Runtime>,
 		module_honzon::Module<Runtime>,
 	);
+	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 }
 
 parameter_types! {
@@ -458,6 +460,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type Currency = orml_currencies::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 }
 
 construct_runtime!(

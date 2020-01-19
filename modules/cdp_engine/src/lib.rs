@@ -4,7 +4,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, t
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, Convert, Saturating, UniqueSaturatedInto, Zero},
+	traits::{CheckedAdd, CheckedSub, Convert, EnsureOrigin, Saturating, UniqueSaturatedInto, Zero},
 	DispatchResult,
 };
 use support::{
@@ -37,6 +37,7 @@ pub trait Trait: system::Trait + vaults::Trait {
 	type MinimumDebitValue: Get<BalanceOf<Self>>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
 	type Treasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event!(
@@ -88,7 +89,9 @@ decl_module! {
 		fn deposit_event() = default;
 
 		fn set_maximum_collateral_auction_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
-			ensure_root(origin)?;
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
 			<MaximumCollateralAuctionSize<T>>::insert(currency_id, size);
 		}
 
@@ -101,7 +104,9 @@ decl_module! {
 			required_collateral_ratio: Option<Option<Ratio>>,
 			maximum_total_debit_value: Option<BalanceOf<T>>,
 		) {
-			ensure_root(origin)?;
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
 			if let Some(update) = stability_fee {
 				if let Some(val) = update {
 					<StabilityFee<T>>::insert(currency_id, val);

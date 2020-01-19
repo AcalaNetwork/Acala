@@ -2,7 +2,7 @@
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::MultiCurrency;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{EnsureOrigin, Zero};
 use support::{
 	AuctionManager, AuctionManagerExtended, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, Price, PriceProvider,
 	Ratio,
@@ -27,6 +27,7 @@ pub trait Trait: system::Trait + honzon::Trait {
 		CurrencyId = CurrencyIdOf<Self>,
 	>;
 	type OnShutdown: EmergencyShutdown;
+	type ShutdownOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event!(
@@ -65,7 +66,9 @@ decl_module! {
 		fn deposit_event() = default;
 
 		fn emergency_shutdown(origin) {
-			ensure_root(origin)?;
+			T::ShutdownOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			// trigger shutdown in other related modules
@@ -84,7 +87,9 @@ decl_module! {
 		}
 
 		fn open_collateral_refund(origin) {
-			ensure_root(origin)?;
+			T::ShutdownOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
 			ensure!(<T as Trait>::Treasury::get_surplus_pool().is_zero(), Error::<T>::ExistSurplus);	// these's no surplus in cdp treasury
 			ensure!(

@@ -5,11 +5,28 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{CdpTreasuryModule, Currencies, ExtBuilder, Origin, Runtime, ALICE, AUSD, BOB, BTC};
-use sp_runtime::traits::OnFinalize;
+use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
 fn set_debit_and_surplus_handle_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CdpTreasuryModule::set_debit_and_surplus_handle_params(
+				Origin::signed(5),
+				Some(100),
+				Some(1000),
+				Some(200),
+				Some(100),
+			),
+			BadOrigin
+		);
+		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
+			Origin::signed(1),
+			Some(100),
+			Some(1000),
+			Some(200),
+			Some(100),
+		));
 		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::ROOT,
 			Some(100),
