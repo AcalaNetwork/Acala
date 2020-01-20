@@ -3,12 +3,22 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_dispatch, impl_outer_origin, parameter_types};
 use primitives::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{ConvertInto, IdentityLookup},
+	Perbill,
+};
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+impl_outer_dispatch! {
+	pub enum Call for Runtime where origin: Origin {
+		orml_currencies::Currencies,
+	}
 }
 
 parameter_types! {
@@ -19,7 +29,6 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 0;
 	pub const TransferFee: u64 = 0;
 	pub const CreationFee: u64 = 2;
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
@@ -28,6 +37,7 @@ pub type BlockNumber = u64;
 pub type Balance = u64;
 pub type Amount = i64;
 pub type CurrencyId = u32;
+pub type Moment = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
@@ -91,42 +101,45 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
-pub struct MockAuctionManager;
-impl AuctionManager<AccountId> for MockAuctionManager {
-	type CurrencyId = CurrencyId;
-	type Balance = Balance;
+parameter_types! {
+	pub const MinimumPeriod: Moment = 5;
+}
 
-	#[allow(unused_variables)]
-	fn new_collateral_auction(
-		who: &AccountId,
-		currency_id: Self::CurrencyId,
-		amount: Self::Balance,
-		target: Self::Balance,
-		bad_debt: Self::Balance,
-	) {
-	}
+impl pallet_timestamp::Trait for Runtime {
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+}
+pub type TimeModule = pallet_timestamp::Module<Runtime>;
 
-	#[allow(unused_variables)]
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+parameter_types! {
+	pub const TransactionBaseFee: Balance = 0;
+	pub const TransactionByteFee: Balance = 2;
+}
 
-	#[allow(unused_variables)]
-	fn new_surplus_auction(amount: Self::Balance) {}
+impl pallet_transaction_payment::Trait for Runtime {
+	type Currency = PalletBalances;
+	type OnTransactionPayment = ();
+	type TransactionBaseFee = TransactionBaseFee;
+	type TransactionByteFee = TransactionByteFee;
+	type WeightToFee = ConvertInto;
+	type FeeMultiplierUpdate = ();
+}
+pub type PalletTransactionPayment = pallet_transaction_payment::Module<Runtime>;
 
-	fn get_total_debit_in_auction() -> Self::Balance {
-		Default::default()
-	}
-
-	fn get_total_target_in_auction() -> Self::Balance {
-		Default::default()
-	}
+parameter_types! {
+	pub const FreeTransferCount: u8 = 3;
+	pub const FreeTransferPeriod: Moment = 100;
 }
 
 impl Trait for Runtime {
+	type FreeTransferCount = FreeTransferCount;
+	type FreeTransferPeriod = FreeTransferPeriod;
+	type Time = TimeModule;
 	type Currency = Currencies;
-	type GetStableCurrencyId = GetStableCurrencyId;
-	type AuctionManagerHandler = MockAuctionManager;
+	type Call = Call;
 }
-pub type CdpTreasuryModule = Module<Runtime>;
+pub type Accounts = Module<Runtime>;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

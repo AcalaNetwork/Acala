@@ -9,14 +9,16 @@ use frame_support::{
 	IsSubType, Parameter,
 };
 use orml_traits::MultiCurrency;
+use rstd::prelude::*;
 use sp_runtime::{
-	traits::{Convert, SaturatedConversion, Saturating, SignedExtension, Zero},
+	traits::{SaturatedConversion, Saturating, SignedExtension, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
 };
-//use support::{Ratio};
-use rstd::prelude::*;
+
+mod mock;
+mod tests;
 
 //type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type MomentOf<T> = <<T as Trait>::Time as Time>::Moment;
@@ -83,55 +85,6 @@ impl<T: Trait + Send + Sync> ChargeTransactionPayment<T> {
 	pub fn from(fee: PalletBalanceOf<T>) -> Self {
 		Self(fee)
 	}
-
-	/// Compute the final fee value for a particular transaction.
-	///
-	/// The final fee is composed of:
-	///   - _base_fee_: This is the minimum amount a user pays for a transaction.
-	///   - _len_fee_: This is the amount paid merely to pay for size of the transaction.
-	///   - _weight_fee_: This amount is computed based on the weight of the transaction. Unlike
-	///      size-fee, this is not input dependent and reflects the _complexity_ of the execution
-	///      and the time it consumes.
-	///   - _targeted_fee_adjustment_: This is a multiplier that can tune the final fee based on
-	///     the congestion of the network.
-	///   - (optional) _tip_: if included in the transaction, it will be added on top. Only signed
-	///      transactions can have a tip.
-	///
-	/// final_fee = base_fee + targeted_fee_adjustment(len_fee + weight_fee) + tip;
-	fn compute_fee(
-		len: u32,
-		info: <Self as SignedExtension>::DispatchInfo,
-		tip: PalletBalanceOf<T>,
-	) -> PalletBalanceOf<T>
-	where
-		PalletBalanceOf<T>: Sync + Send,
-	{
-		if info.pays_fee {
-			let len = <PalletBalanceOf<T>>::from(len);
-			let per_byte = <T as pallet_transaction_payment::Trait>::TransactionByteFee::get();
-			let len_fee = per_byte.saturating_mul(len);
-
-			let weight_fee = {
-				// cap the weight to the maximum defined in runtime, otherwise it will be the `Bounded`
-				// maximum of its data type, which is not desired.
-				let capped_weight = info.weight.min(<T as system::Trait>::MaximumBlockWeight::get());
-				<T as pallet_transaction_payment::Trait>::WeightToFee::convert(capped_weight)
-			};
-
-			// the adjustable part of the fee
-			let adjustable_fee = len_fee.saturating_add(weight_fee);
-			let targeted_fee_adjustment = <pallet_transaction_payment::Module<T>>::next_fee_multiplier();
-			// adjusted_fee = adjustable_fee + (adjustable_fee * targeted_fee_adjustment)
-			let adjusted_fee = targeted_fee_adjustment.saturated_multiply_accumulate(adjustable_fee);
-
-			let base_fee = <T as pallet_transaction_payment::Trait>::TransactionBaseFee::get();
-			let final_fee = base_fee.saturating_add(adjusted_fee).saturating_add(tip);
-
-			final_fee
-		} else {
-			tip
-		}
-	}
 }
 
 impl<T: Trait + Send + Sync> rstd::fmt::Debug for ChargeTransactionPayment<T> {
@@ -165,12 +118,16 @@ where
 		info: Self::DispatchInfo,
 		len: usize,
 	) -> TransactionValidity {
+		// pay any fees.
+		let tip = self.0;
+		let fee: PalletBalanceOf<T> =
+			pallet_transaction_payment::ChargeTransactionPayment::<T>::compute_fee(len as u32, info, tip);
+
+		// check call type
 		let call = match call.is_sub_type() {
 			Some(call) => call,
 			None => return Ok(ValidTransaction::default()),
 		};
-
-		// check call type
 		let skip_pay_fee = match call {
 			orml_currencies::Call::transfer(..) => {
 				// call try_free_transfer
@@ -182,10 +139,6 @@ where
 			}
 			_ => false,
 		};
-
-		// pay any fees.
-		let tip = self.0;
-		let fee: PalletBalanceOf<T> = Self::compute_fee(len as u32, info, tip);
 
 		// skip payment withdraw if match conditions
 		if !skip_pay_fee {

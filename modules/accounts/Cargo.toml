@@ -21,6 +21,7 @@ pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.gi
 primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-timestamp= { package = "pallet-timestamp", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 
 [features]
