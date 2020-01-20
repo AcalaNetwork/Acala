@@ -1,9 +1,10 @@
-use crate::{chain_spec, new_full_start, service};
+use crate::chain_spec;
+use crate::new_full_start;
+use crate::service;
 use futures::{
 	channel::oneshot,
-	compat::Future01CompatExt,
-	future::{select, Map},
-	FutureExt, TryFutureExt,
+	future::{select, Either, Map},
+	FutureExt,
 };
 use log::info;
 use sc_cli::{display_role, informant, parse_and_prepare, NoCustom, ParseAndPrepare};
@@ -71,30 +72,23 @@ where
 
 	let informant = informant::build(&service);
 
-	let future = select(exit, informant).map(|_| Ok(())).compat();
-
-	runtime.executor().spawn(future);
+	let handle = runtime.spawn(select(exit, informant));
 
 	// we eagerly drop the service so that the internal exit future is fired,
 	// but we need to keep holding a reference to the global telemetry guard
 	let _telemetry = service.telemetry();
 
-	let service_res = {
-		let exit = e.into_exit();
-		let service = service.map_err(|err| error::Error::Service(err)).compat();
-		let select = select(service, exit).map(|_| Ok(())).compat();
-		runtime.block_on(select)
-	};
+	let exit = e.into_exit();
+	let service_res = runtime.block_on(select(service, exit));
 
 	let _ = exit_send.send(());
 
-	// TODO [andre]: timeout this future #1318
+	let _ = runtime.block_on(handle);
 
-	use futures01::Future;
-
-	let _ = runtime.shutdown_on_idle().wait();
-
-	service_res
+	match service_res {
+		Either::Left((res, _)) => res.map_err(error::Error::Service),
+		Either::Right((_, _)) => Ok(()),
+	}
 }
 
 // handles ctrl-c
