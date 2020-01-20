@@ -3,9 +3,10 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use system::EnsureSignedBy;
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
@@ -121,10 +122,15 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 }
 
+ord_parameter_types! {
+	pub const One: AccountId = 1;
+}
+
 impl Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type CdpTreasuryModule = Module<Runtime>;
 

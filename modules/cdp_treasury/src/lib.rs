@@ -3,7 +3,7 @@
 use frame_support::{decl_error, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureOrigin, Saturating, Zero},
 	DispatchResult, ModuleId,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, Ratio};
@@ -21,6 +21,7 @@ pub trait Trait: system::Trait {
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
 	type AuctionManagerHandler: AuctionManager<Self::AccountId, Balance = BalanceOf<Self>>;
+	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_storage! {
@@ -52,7 +53,9 @@ decl_module! {
 			initial_amount_per_debit_auction: Option<BalanceOf<T>>,
 			debit_auction_fixed_size: Option<BalanceOf<T>>,
 		) {
-			ensure_root(origin)?;
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
 			if let Some(amount) = surplus_auction_fixed_size {
 				<SurplusAuctionFixedSize<T>>::put(amount);
 			}

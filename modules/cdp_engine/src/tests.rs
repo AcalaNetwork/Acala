@@ -8,11 +8,32 @@ use mock::{
 	CdpEngineModule, CdpTreasury, Currencies, ExtBuilder, Origin, Runtime, System, TestEvent, VaultsModule, ACA, ALICE,
 	AUSD, BTC, DOT,
 };
-use sp_runtime::traits::OnFinalize;
+use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CdpEngineModule::set_collateral_params(
+				Origin::signed(5),
+				BTC,
+				Some(Some(Rate::from_rational(1, 100000))),
+				Some(Some(Ratio::from_rational(3, 2))),
+				Some(Some(Rate::from_rational(2, 10))),
+				Some(Some(Ratio::from_rational(9, 5))),
+				Some(10000),
+			),
+			BadOrigin
+		);
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
@@ -333,6 +354,15 @@ fn on_finalize_work() {
 #[test]
 fn set_maximum_collateral_auction_size_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CdpEngineModule::set_maximum_collateral_auction_size(Origin::signed(5), BTC, 20,),
+			BadOrigin
+		);
+		assert_ok!(CdpEngineModule::set_maximum_collateral_auction_size(
+			Origin::signed(1),
+			BTC,
+			20,
+		));
 		assert_ok!(CdpEngineModule::set_maximum_collateral_auction_size(
 			Origin::ROOT,
 			BTC,

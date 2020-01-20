@@ -8,7 +8,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use primitives::u32_trait::{_1, _2};
+use primitives::u32_trait::{_1, _2, _3, _4};
 use primitives::OpaqueMetadata;
 use rstd::prelude::*;
 use sp_api::impl_runtime_apis;
@@ -240,20 +240,56 @@ impl pallet_sudo::Trait for Runtime {
 	type Proposal = Call;
 }
 
-type OperatorCollectiveInstance = pallet_collective::Instance1;
+type BoardInstance = pallet_collective::Instance1;
+impl pallet_collective::Trait<BoardInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+}
+
+type BoardMembershipInstance = pallet_membership::Instance1;
+impl pallet_membership::Trait<BoardMembershipInstance> for Runtime {
+	type Event = Event;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, BoardInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, BoardInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, BoardInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, BoardInstance>;
+	type MembershipInitialized = Board;
+	type MembershipChanged = Board;
+}
+
+type FinancialCouncilInstance = pallet_collective::Instance2;
+impl pallet_collective::Trait<FinancialCouncilInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+}
+
+type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
+impl pallet_membership::Trait<FinancialCouncilMembershipInstance> for Runtime {
+	type Event = Event;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, BoardInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, BoardInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, BoardInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, BoardInstance>;
+	type MembershipInitialized = FinancialCouncil;
+	type MembershipChanged = FinancialCouncil;
+}
+
+type OperatorCollectiveInstance = pallet_collective::Instance3;
 impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
 }
 
-type OperatorMembershipInstance = pallet_membership::Instance1;
+type OperatorMembershipInstance = pallet_membership::Instance3;
 impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type Event = Event;
-	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
-	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
-	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
-	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OperatorCollectiveInstance>;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, BoardInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, BoardInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, BoardInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, BoardInstance>;
 	type MembershipInitialized = OperatorCollective;
 	type MembershipChanged = OperatorCollective;
 }
@@ -388,6 +424,7 @@ impl module_cdp_engine::Trait for Runtime {
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 }
 
 impl module_honzon::Trait for Runtime {
@@ -404,6 +441,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 		module_cdp_engine::Module<Runtime>,
 		module_honzon::Module<Runtime>,
 	);
+	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 }
 
 parameter_types! {
@@ -422,6 +460,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type Currency = orml_currencies::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 }
 
 construct_runtime!(
@@ -439,8 +478,13 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo,
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-		OperatorCollective: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		OperatorMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+		Board: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		BoardMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+		FinancialCouncil: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		FinancialCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
+		OperatorCollective: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		OperatorMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
+		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
@@ -454,8 +498,6 @@ construct_runtime!(
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
-
-		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 	}
 );
 
