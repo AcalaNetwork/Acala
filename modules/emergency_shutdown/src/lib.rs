@@ -64,7 +64,7 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		fn emergency_shutdown(origin) {
+		pub fn emergency_shutdown(origin) {
 			ensure_root(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
@@ -83,7 +83,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Shutdown(<system::Module<T>>::block_number()));
 		}
 
-		fn open_collateral_refund(origin) {
+		pub fn open_collateral_refund(origin) {
 			ensure_root(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
 			ensure!(<T as Trait>::Treasury::get_surplus_pool().is_zero(), Error::<T>::ExistSurplus);	// these's no surplus in cdp treasury
@@ -111,7 +111,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
 		}
 
-		fn refund_collaterals(origin, amount: BalanceOf<T>) {
+		pub fn refund_collaterals(origin, amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
@@ -134,7 +134,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Refund(amount));
 		}
 
-		fn cancel_auction(_origin, id: AuctionIdOf<T>) {
+		pub fn cancel_auction(_origin, id: AuctionIdOf<T>) {
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<T as Trait>::AuctionManagerHandler::cancel_auction(id)?;
 		}

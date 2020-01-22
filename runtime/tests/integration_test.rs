@@ -21,7 +21,6 @@ mod tests {
 
 	pub type OracleModule = orml_oracle::Module<Runtime>;
 	pub type DexModule = module_dex::Module<Runtime>;
-	pub type TokensModule = orml_tokens::Module<Runtime>;
 	pub type HonzonModule = module_honzon::Module<Runtime>;
 	pub type CdpEngineModule = module_cdp_engine::Module<Runtime>;
 	pub type VaultsModule = module_vaults::Module<Runtime>;
@@ -57,7 +56,7 @@ mod tests {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
-			pallet_collective::GenesisConfig::<Runtime, _> {
+			pallet_collective::GenesisConfig::<Runtime, pallet_collective::Instance1> {
 				members: vec![
 					AccountId::from(ORACLE1),
 					AccountId::from(ORACLE2),
@@ -92,7 +91,12 @@ mod tests {
 	#[test]
 	fn test_dex_module() {
 		ExtBuilder::default()
-			.balances(vec![(AccountId::from(ALICE), AUSD, (1_000))])
+			.balances(vec![
+				(AccountId::from(ALICE), AUSD, (1_000_000_000_000_000_000u128)),
+				(AccountId::from(ALICE), XBTC, (1_000_000_000_000_000_000u128)),
+				(AccountId::from(BOB), AUSD, (1_000_000_000_000_000_000u128)),
+				(AccountId::from(BOB), XBTC, (1_000_000_000_000_000_000u128)),
+			])
 			.build()
 			.execute_with(|| {
 				assert_eq!(DexModule::calculate_swap_target_amount(10000, 10000, 10000), 4990);
@@ -102,29 +106,99 @@ mod tests {
 				assert_eq!(DexModule::total_shares(XBTC), 0);
 				assert_eq!(DexModule::shares(XBTC, AccountId::from(ALICE)), 0);
 
-				//TODO: method `add_liquidity` is private
-				//assert_noop!(
-				//	DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), XBTC, 0, 10000000),
-				//	module_dex::Error::<Runtime>::InvalidBalance,
-				//);
+				assert_noop!(
+					DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), XBTC, 0, 10000000),
+					module_dex::Error::<Runtime>::InvalidBalance,
+				);
+
+				assert_ok!(DexModule::add_liquidity(
+					origin_of(AccountId::from(ALICE)),
+					XBTC,
+					10000,
+					10000000
+				));
+
+				let add_liquidity_event = acala_runtime::Event::module_dex(module_dex::RawEvent::AddLiquidity(
+					AccountId::from(ALICE),
+					XBTC,
+					10000,
+					10000000,
+					10000000,
+				));
+				assert!(SystemModule::events()
+					.iter()
+					.any(|record| record.event == add_liquidity_event));
+
+				assert_eq!(DexModule::liquidity_pool(XBTC), (10000, 10000000));
+				assert_eq!(DexModule::total_shares(XBTC), 10000000);
+				assert_eq!(DexModule::shares(XBTC, AccountId::from(ALICE)), 10000000);
+				assert_ok!(DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, 1, 1000));
+				assert_eq!(DexModule::liquidity_pool(XBTC), (10001, 10001000));
+				assert_eq!(DexModule::total_shares(XBTC), 10001000);
+				assert_eq!(DexModule::shares(XBTC, AccountId::from(BOB)), 1000);
+				assert_noop!(
+					DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, 1, 999),
+					module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
+				);
+				assert_eq!(DexModule::liquidity_pool(XBTC), (10001, 10001000));
+				assert_eq!(DexModule::total_shares(XBTC), 10001000);
+				assert_eq!(DexModule::shares(XBTC, AccountId::from(BOB)), 1000);
+				assert_ok!(DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, 2, 1000));
+				assert_eq!(DexModule::liquidity_pool(XBTC), (10002, 10002000));
+				assert_ok!(DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, 1, 1001));
+				assert_eq!(DexModule::liquidity_pool(XBTC), (10003, 10003000));
 			});
 	}
 
 	#[test]
 	fn test_honzon_module() {
 		ExtBuilder::default()
-			.balances(vec![(AccountId::from(ALICE), AUSD, (1_000))])
+			.balances(vec![(AccountId::from(ALICE), XBTC, amount(1_000))])
 			.build()
 			.execute_with(|| {
-				assert_ok!(set_oracle_price(vec![
-					(AUSD, Price::from_rational(1, 1)),
-					(XBTC, Price::from_rational(3, 1))
-				]));
-				//TODO: method `liquidate` is private
-				//assert_noop!(
-				//	HonzonModule::liquidate(origin_of(AccountId::from(CAROL)), AccountId::from(ALICE), XBTC),
-				//	module_honzon::Error::<Runtime>::LiquidateFailed,
-				//);
+				assert_ok!(set_oracle_price(vec![(XBTC, Price::from_rational(1, 1))]));
+
+				assert_ok!(CdpEngineModule::set_collateral_params(
+					<acala_runtime::Runtime as system::Trait>::Origin::ROOT,
+					XBTC,
+					Some(Some(Rate::from_rational(1, 100000))),
+					Some(Some(Ratio::from_rational(3, 2))),
+					Some(Some(Rate::from_rational(2, 10))),
+					Some(Some(Ratio::from_rational(9, 5))),
+					Some(amount(10000)),
+				));
+				assert_ok!(CdpEngineModule::update_position(
+					&AccountId::from(ALICE),
+					XBTC,
+					amount(100) as i128,
+					amount(50) as i128
+				));
+				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
+				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
+				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), amount(50));
+				assert_eq!(VaultsModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
+				assert_noop!(
+					HonzonModule::liquidate(origin_of(AccountId::from(CAROL)), AccountId::from(ALICE), XBTC),
+					module_honzon::Error::<Runtime>::LiquidateFailed,
+				);
+				assert_ok!(CdpEngineModule::set_collateral_params(
+					<acala_runtime::Runtime as system::Trait>::Origin::ROOT,
+					XBTC,
+					None,
+					Some(Some(Ratio::from_rational(3, 1))),
+					None,
+					None,
+					None
+				));
+				assert_ok!(HonzonModule::liquidate(
+					origin_of(AccountId::from(CAROL)),
+					AccountId::from(ALICE),
+					XBTC
+				));
+				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
+				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
+				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), 0);
+				assert_eq!(VaultsModule::collaterals(AccountId::from(ALICE), XBTC), 0);
 			});
 	}
 

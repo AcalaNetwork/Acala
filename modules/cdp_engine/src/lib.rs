@@ -87,7 +87,7 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		fn set_maximum_collateral_auction_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
+		pub fn set_maximum_collateral_auction_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
 			ensure_root(origin)?;
 			<MaximumCollateralAuctionSize<T>>::insert(currency_id, size);
 		}

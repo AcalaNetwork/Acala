@@ -69,7 +69,7 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		fn swap_currency(origin, supply: (CurrencyIdOf<T>, BalanceOf<T>), target: (CurrencyIdOf<T>, BalanceOf<T>)) {
+		pub fn swap_currency(origin, supply: (CurrencyIdOf<T>, BalanceOf<T>), target: (CurrencyIdOf<T>, BalanceOf<T>)) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
@@ -86,7 +86,7 @@ decl_module! {
 			}
 		}
 
-		fn add_liquidity(origin, other_currency_id: CurrencyIdOf<T>, max_other_currency_amount: BalanceOf<T>, max_base_currency_amount: BalanceOf<T>) {
+		pub fn add_liquidity(origin, other_currency_id: CurrencyIdOf<T>, max_other_currency_amount: BalanceOf<T>, max_base_currency_amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
@@ -153,7 +153,7 @@ decl_module! {
 			));
 		}
 
-		fn withdraw_liquidity(origin, currency_id: CurrencyIdOf<T>, share_amount: T::Share) {
+		pub fn withdraw_liquidity(origin, currency_id: CurrencyIdOf<T>, share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
