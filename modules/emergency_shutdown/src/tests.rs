@@ -8,15 +8,20 @@ use mock::{
 	CdpEngineModule, CdpTreasury, EmergencyShutdownModule, ExtBuilder, HonzonModule, Origin, Runtime, System,
 	TestEvent, ALICE,
 };
+use sp_runtime::traits::BadOrigin;
 
 #[test]
-fn set_collateral_params_work() {
+fn emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), false);
 		assert_eq!(HonzonModule::is_shutdown(), false);
 		assert_eq!(CdpEngineModule::is_shutdown(), false);
 		assert_eq!(CdpTreasury::is_shutdown(), false);
-		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::ROOT));
+		assert_noop!(
+			EmergencyShutdownModule::emergency_shutdown(Origin::signed(5)),
+			BadOrigin,
+		);
+		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)));
 
 		let shutdown_event = TestEvent::emergency_shutdown(RawEvent::Shutdown(1));
 		assert!(System::events().iter().any(|record| record.event == shutdown_event));
@@ -55,7 +60,11 @@ fn open_collateral_refund_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(EmergencyShutdownModule::can_refund(), false);
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::ROOT));
-		assert_ok!(EmergencyShutdownModule::open_collateral_refund(Origin::ROOT));
+		assert_noop!(
+			EmergencyShutdownModule::open_collateral_refund(Origin::signed(5)),
+			BadOrigin,
+		);
+		assert_ok!(EmergencyShutdownModule::open_collateral_refund(Origin::signed(1)));
 
 		let open_refund_event = TestEvent::emergency_shutdown(RawEvent::OpenRefund(1));
 		assert!(System::events().iter().any(|record| record.event == open_refund_event));

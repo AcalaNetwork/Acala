@@ -3,9 +3,10 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use system::EnsureSignedBy;
 
 mod cdp_engine {
 	pub use super::super::*;
@@ -177,8 +178,13 @@ impl cdp_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+
+ord_parameter_types! {
+	pub const One: AccountId = 1;
+}
 
 impl Trait for Runtime {
 	type Event = TestEvent;
@@ -191,6 +197,7 @@ impl Trait for Runtime {
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = CdpTreasury;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type CdpEngineModule = Module<Runtime>;
 

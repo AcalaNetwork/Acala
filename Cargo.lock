@@ -2628,6 +2628,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-accounts"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-auction-manager"
 version = "0.0.1"
 dependencies = [

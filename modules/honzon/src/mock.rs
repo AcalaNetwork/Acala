@@ -2,10 +2,11 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+use system::EnsureSignedBy;
 
 use super::*;
 
@@ -174,10 +175,15 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 }
 
+ord_parameter_types! {
+	pub const One: AccountId = 1;
+}
+
 impl cdp_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
@@ -192,6 +198,7 @@ impl cdp_engine::Trait for Runtime {
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = CdpTreasury;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type CdpEngineModule = cdp_engine::Module<Runtime>;
 
