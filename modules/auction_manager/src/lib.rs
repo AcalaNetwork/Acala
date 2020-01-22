@@ -227,8 +227,7 @@ impl<T: Trait> Module<T> {
 				confiscate_collateral_amount,
 			)
 			.expect("never failed after balance check");
-			T::Treasury::deposit_system_collateral(collateral_auction.currency_id, confiscate_collateral_amount)
-				.expect("never failed because this amount can not cause overflow");
+			T::Treasury::deposit_system_collateral(collateral_auction.currency_id, confiscate_collateral_amount);
 
 			// refund remain collateral to auction owner
 			if !refund_collateral_amount.is_zero() {
@@ -631,7 +630,6 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
-		bad_debt: Self::Balance,
 	) {
 		if Self::total_collateral_in_auction(currency_id)
 			.checked_add(&amount)
@@ -643,7 +641,6 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			T::Currency::deposit(currency_id, &Self::account_id(), amount).expect("never failed after overflow check");
 			<TotalCollateralInAuction<T>>::mutate(currency_id, |balance| *balance += amount);
 			<TotalTargetInAuction<T>>::mutate(|balance| *balance += target);
-			T::Treasury::on_system_debit(bad_debt);
 
 			let block_number = <system::Module<T>>::block_number();
 			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None);

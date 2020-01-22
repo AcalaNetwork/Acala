@@ -3,9 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
-use mock::{Accounts, Currencies, ExtBuilder, Origin, Runtime, TimeModule, ALICE, AUSD, BOB, BTC};
-use sp_runtime::traits::OnFinalize;
+use frame_support::assert_ok;
+use mock::{Accounts, ExtBuilder, Origin, TimeModule, ALICE};
 
 #[test]
 fn try_free_transfer_over_cap() {

@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use support::AuctionManager;
 use system::EnsureSignedBy;
 
 mod cdp_engine {
@@ -19,6 +20,7 @@ impl_outer_event! {
 		vaults<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
+		dex<T>,
 	}
 }
 
@@ -50,8 +52,10 @@ pub type Amount = i64;
 pub type DebitBalance = u64;
 pub type DebitAmount = i64;
 pub type CurrencyId = u32;
+pub type Share = u64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CAROL: AccountId = 3;
 
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
@@ -155,7 +159,6 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
-		bad_debt: Self::Balance,
 	) {
 	}
 
@@ -179,16 +182,33 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type Dex = DexModule;
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+
+parameter_types! {
+	pub const GetExchangeFee: Rate = Rate::from_natural(0);
+}
+
+impl dex::Trait for Runtime {
+	type Event = TestEvent;
+	type Currency = Currencies;
+	type Share = Share;
+	type GetBaseCurrencyId = GetStableCurrencyId;
+	type GetExchangeFee = GetExchangeFee;
+}
+pub type DexModule = dex::Module<Runtime>;
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
 
+parameter_types! {
+	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(50, 100);
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
-	type AuctionManagerHandler = MockAuctionManager;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
@@ -198,6 +218,9 @@ impl Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = CdpTreasury;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
+	type Currency = Currencies;
+	type Dex = DexModule;
 }
 pub type CdpEngineModule = Module<Runtime>;
 
@@ -213,8 +236,10 @@ impl Default for ExtBuilder {
 				(BOB, ACA, 1000),
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
+				(CAROL, BTC, 100),
 				(ALICE, DOT, 1000),
 				(BOB, DOT, 1000),
+				(CAROL, AUSD, 1000),
 			],
 		}
 	}
