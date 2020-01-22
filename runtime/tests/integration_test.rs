@@ -204,10 +204,12 @@ mod tests {
 				assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 0);
 				assert_ok!(CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), XBTC));
 
-				//let settle_cdp_in_debit_event = RawEvent::SettleCdpInDebit(XBTC, AccountId::from(ALICE));
-				//assert!(SystemModule::events()
-				//		.iter()
-				//		.any(|record| record.event == settle_cdp_in_debit_event));
+				let settle_cdp_in_debit_event = acala_runtime::Event::module_cdp_engine(
+					module_cdp_engine::RawEvent::SettleCdpInDebit(XBTC, AccountId::from(ALICE)),
+				);
+				assert!(SystemModule::events()
+					.iter()
+					.any(|record| record.event == settle_cdp_in_debit_event));
 
 				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), 0);
 				assert_eq!(CdpTreasuryModule::debit_pool(), amount(100));
