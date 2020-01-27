@@ -285,8 +285,7 @@ impl<T: Trait> Module<T> {
 		if !supply_amount.is_zero() 				// supply_amount must not be zero
 		&& collateral_balance >= supply_amount		// can afford supply_amount
 		&& slippage_limit > Ratio::from_natural(0)	// slippage_limit must be greater than zero
-		&& slippage.is_some()
-		&& slippage.unwrap_or_default() <= slippage_limit
+		&& slippage.map_or(false, |s| s <= slippage_limit)
 		{
 			// directly exchange with DEX
 			// deposit supply_amount collateral to cdp treasury
