@@ -411,11 +411,11 @@ parameter_types! {
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 1);
 	pub const MinimumDebitValue: Balance = 1_000_000_000_000_000;
+	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(1, 100);
 }
 
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
-	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
 	type PriceSource = module_prices::Module<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
@@ -425,6 +425,9 @@ impl module_cdp_engine::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
+	type Currency = orml_currencies::Module<Runtime>;
+	type Dex = module_dex::Module<Runtime>;
 }
 
 impl module_honzon::Trait for Runtime {
@@ -461,6 +464,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type Dex = module_dex::Module<Runtime>;
 }
 
 construct_runtime!(

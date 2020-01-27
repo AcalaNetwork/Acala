@@ -6,7 +6,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureOrigin, Saturating, Zero},
 	DispatchResult, ModuleId,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DexManager, EmergencyShutdown, Ratio};
 use system::ensure_root;
 
 mod mock;
@@ -20,20 +20,27 @@ type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Tr
 pub trait Trait: system::Trait {
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
-	type AuctionManagerHandler: AuctionManager<Self::AccountId, Balance = BalanceOf<Self>>;
+	type AuctionManagerHandler: AuctionManager<
+		Self::AccountId,
+		CurrencyId = CurrencyIdOf<Self>,
+		Balance = BalanceOf<Self>,
+	>;
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
+	type Dex: DexManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>>;
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
-		pub DebitPool get(fn debit_pool): BalanceOf<T>;
-		pub SurplusPool get(fn surplus_pool): BalanceOf<T>;
 		pub SurplusAuctionFixedSize get(fn surplus_auction_fixed_size): BalanceOf<T>;
 		pub SurplusBufferSize get(fn surplus_buffer_size): BalanceOf<T>;
 		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction): BalanceOf<T>;
 		pub DebitAuctionFixedSize get(fn debit_auction_fixed_size): BalanceOf<T>;
-		pub IsShutdown get(fn is_shutdown): bool;
+		pub CollateralAuctionMaximumSize get(fn collateral_auction_maximum_size): map CurrencyIdOf<T> => BalanceOf<T>;
+
+		pub DebitPool get(fn debit_pool): BalanceOf<T>;
+		pub SurplusPool get(fn surplus_pool): BalanceOf<T>;
 		pub TotalCollaterals get(fn total_collaterals): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -52,6 +59,7 @@ decl_module! {
 			surplus_buffer_size: Option<BalanceOf<T>>,
 			initial_amount_per_debit_auction: Option<BalanceOf<T>>,
 			debit_auction_fixed_size: Option<BalanceOf<T>>,
+			collateral_auction_maximum_size: Option<(CurrencyIdOf<T>, BalanceOf<T>)>,
 		) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
@@ -67,6 +75,9 @@ decl_module! {
 			}
 			if let Some(amount) = debit_auction_fixed_size {
 				<DebitAuctionFixedSize<T>>::put(amount);
+			}
+			if let Some((currency_id, amount)) = collateral_auction_maximum_size {
+				<CollateralAuctionMaximumSize<T>>::insert(currency_id, amount);
 			}
 		}
 
@@ -158,10 +169,14 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, amount)
 	}
 
-	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::deposit(currency_id, &Self::account_id(), amount)?;
-		<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance += amount);
-		Ok(())
+	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance) {
+		if T::Currency::balance(currency_id, &Self::account_id())
+			.checked_add(&amount)
+			.is_some()
+		{
+			T::Currency::deposit(currency_id, &Self::account_id(), amount).expect("never failed after overflow check");
+			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance += amount);
+		}
 	}
 
 	fn transfer_system_collateral(
@@ -191,6 +206,63 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio {
 		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
 		Ratio::from_rational(amount, stable_total_supply)
+	}
+
+	fn swap_collateral_to_stable(
+		currency_id: CurrencyIdOf<T>,
+		supply_amount: BalanceOf<T>,
+		target_amount: BalanceOf<T>,
+	) {
+		if T::Dex::exchange_currency(
+			Self::account_id(),
+			(currency_id, supply_amount),
+			(T::GetStableCurrencyId::get(), target_amount),
+		)
+		.is_ok()
+		{
+			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= supply_amount);
+			<SurplusPool<T>>::mutate(|surplus| *surplus += target_amount);
+		}
+	}
+
+	fn create_collateral_auctions(
+		currency_id: CurrencyIdOf<T>,
+		amount: BalanceOf<T>,
+		target: BalanceOf<T>,
+		refund_receiver: T::AccountId,
+	) {
+		if Self::total_collaterals(currency_id) >= amount
+			&& T::Currency::ensure_can_withdraw(currency_id, &Self::account_id(), amount).is_ok()
+		{
+			T::Currency::withdraw(currency_id, &Self::account_id(), amount).expect("never fail after balance check");
+			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= amount);
+
+			let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
+			let mut unhandled_collateral_amount = amount;
+			let mut unhandled_target = target;
+
+			while !unhandled_collateral_amount.is_zero() {
+				let (lot_collateral_amount, lot_target) = if unhandled_collateral_amount
+					> collateral_auction_maximum_size
+					&& !collateral_auction_maximum_size.is_zero()
+				{
+					let proportion = Ratio::from_rational(collateral_auction_maximum_size, amount);
+					(collateral_auction_maximum_size, proportion.saturating_mul_int(&target))
+				} else {
+					(unhandled_collateral_amount, unhandled_target)
+				};
+
+				T::AuctionManagerHandler::new_collateral_auction(
+					&refund_receiver,
+					currency_id,
+					lot_collateral_amount,
+					lot_target,
+				);
+
+				unhandled_collateral_amount -= lot_collateral_amount;
+				unhandled_target -= lot_target;
+			}
+		}
 	}
 }
 

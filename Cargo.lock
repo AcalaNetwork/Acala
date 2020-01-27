@@ -2674,6 +2674,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
+ "module-dex",
  "module-support",
  "module-vaults",
  "orml-currencies",
@@ -2694,6 +2695,7 @@ version = "0.0.1"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-dex",
  "module-support",
  "orml-auction",
  "orml-currencies",

@@ -128,7 +128,6 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
-		bad_debt: Self::Balance,
 	) {
 	}
 
@@ -156,6 +155,7 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type Dex = ();
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 

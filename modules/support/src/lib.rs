@@ -33,7 +33,6 @@ pub trait AuctionManager<AccountId> {
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
-		bad_debt: Self::Balance,
 	);
 	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance);
 	fn new_surplus_auction(amount: Self::Balance);
@@ -55,11 +54,47 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
 	) -> Balance;
+
 	fn exchange_currency(
 		who: AccountId,
 		supply: (CurrencyId, Balance),
 		target: (CurrencyId, Balance),
 	) -> DispatchResult;
+
+	fn get_exchange_slippage(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		supply_amount: Balance,
+	) -> Option<Ratio>;
+}
+
+impl<AccountId, CurrencyId, Balance> DexManager<AccountId, CurrencyId, Balance> for ()
+where
+	Balance: Default,
+{
+	fn get_supply_amount(
+		_supply_currency_id: CurrencyId,
+		_target_currency_id: CurrencyId,
+		_target_currency_amount: Balance,
+	) -> Balance {
+		Balance::default()
+	}
+
+	fn exchange_currency(
+		_who: AccountId,
+		_supply: (CurrencyId, Balance),
+		_target: (CurrencyId, Balance),
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn get_exchange_slippage(
+		_supply_currency_id: CurrencyId,
+		_target_currency_id: CurrencyId,
+		_supply_amount: Balance,
+	) -> Option<Ratio> {
+		None
+	}
 }
 
 pub trait CDPTreasury<AccountId> {
@@ -70,7 +105,7 @@ pub trait CDPTreasury<AccountId> {
 	fn on_system_surplus(amount: Self::Balance);
 	fn deposit_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn withdraw_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance);
 	fn transfer_system_collateral(
 		currency_id: Self::CurrencyId,
 		to: &AccountId,
@@ -82,6 +117,17 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 	fn get_surplus_pool() -> Self::Balance;
 	fn get_total_collaterals(id: Self::CurrencyId) -> Self::Balance;
 	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio;
+	fn swap_collateral_to_stable(
+		currency_id: Self::CurrencyId,
+		supply_amount: Self::Balance,
+		target_amount: Self::Balance,
+	);
+	fn create_collateral_auctions(
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+		target: Self::Balance,
+		refund_receiver: AccountId,
+	);
 }
 
 pub trait PriceProvider<CurrencyId, Price> {

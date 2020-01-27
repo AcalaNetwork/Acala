@@ -2,7 +2,6 @@
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use orml_utilities::FixedU128;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating, SimpleArithmetic,
@@ -10,7 +9,7 @@ use sp_runtime::{
 	},
 	DispatchResult, ModuleId,
 };
-use support::DexManager;
+use support::{DexManager, Price, Rate, Ratio};
 use system::{self as system, ensure_signed};
 
 mod mock;
@@ -26,7 +25,7 @@ pub trait Trait: system::Trait {
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type Share: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
 	type GetBaseCurrencyId: Get<CurrencyIdOf<Self>>;
-	type GetExchangeFee: Get<FixedU128>;
+	type GetExchangeFee: Get<Rate>;
 }
 
 decl_event!(
@@ -69,7 +68,9 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		fn swap_currency(origin, supply: (CurrencyIdOf<T>, BalanceOf<T>), target: (CurrencyIdOf<T>, BalanceOf<T>)) {
+		const GetExchangeFee: Rate = T::GetExchangeFee::get();
+
+		pub fn swap_currency(origin, supply: (CurrencyIdOf<T>, BalanceOf<T>), target: (CurrencyIdOf<T>, BalanceOf<T>)) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
@@ -86,7 +87,7 @@ decl_module! {
 			}
 		}
 
-		fn add_liquidity(origin, other_currency_id: CurrencyIdOf<T>, max_other_currency_amount: BalanceOf<T>, max_base_currency_amount: BalanceOf<T>) {
+		pub fn add_liquidity(origin, other_currency_id: CurrencyIdOf<T>, max_other_currency_amount: BalanceOf<T>, max_base_currency_amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
@@ -108,19 +109,19 @@ decl_module! {
 				(max_other_currency_amount, max_base_currency_amount, initial_share)
 			} else {
 				let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(other_currency_id);
-				let other_base_price = FixedU128::from_rational(base_currency_pool, other_currency_pool);
-				let input_other_base_price = FixedU128::from_rational(max_base_currency_amount, max_other_currency_amount);
+				let other_base_price = Price::from_rational(base_currency_pool, other_currency_pool);
+				let input_other_base_price = Price::from_rational(max_base_currency_amount, max_other_currency_amount);
 
 				if input_other_base_price <= other_base_price {
 					// max_other_currency_amount may be too much, calculate the actual other currency amount
-					let base_other_price = FixedU128::from_rational(other_currency_pool, base_currency_pool);
+					let base_other_price = Price::from_rational(other_currency_pool, base_currency_pool);
 					let other_currency_amount = base_other_price.saturating_mul_int(&max_base_currency_amount);
-					let share = FixedU128::from_rational(other_currency_amount, other_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
+					let share = Ratio::from_rational(other_currency_amount, other_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
 					(other_currency_amount, max_base_currency_amount, share)
 				} else {
 					// max_base_currency_amount is too much, calculate the actual base currency amount
 					let base_currency_amount = other_base_price.saturating_mul_int(&max_other_currency_amount);
-					let share = FixedU128::from_rational(base_currency_amount, base_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
+					let share = Ratio::from_rational(base_currency_amount, base_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
 					(max_other_currency_amount, base_currency_amount, share)
 				}
 			};
@@ -153,7 +154,7 @@ decl_module! {
 			));
 		}
 
-		fn withdraw_liquidity(origin, currency_id: CurrencyIdOf<T>, share_amount: T::Share) {
+		pub fn withdraw_liquidity(origin, currency_id: CurrencyIdOf<T>, share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
@@ -166,7 +167,7 @@ decl_module! {
 			);
 
 			let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(currency_id);
-			let proportion = FixedU128::from_rational(share_amount, Self::total_shares(currency_id));
+			let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
 			let withdraw_other_currency_amount = proportion.saturating_mul_int(&other_currency_pool);
 			let withdraw_base_currency_amount = proportion.saturating_mul_int(&base_currency_pool);
 			if !withdraw_other_currency_amount.is_zero() {
@@ -207,7 +208,7 @@ impl<T: Trait> Module<T> {
 		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
 		let new_target_pool = supply_pool
 			.checked_add(&supply_amount)
-			.and_then(|n| Some(FixedU128::from_rational(supply_pool, n)))
+			.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.unwrap_or_default();
 
@@ -230,12 +231,12 @@ impl<T: Trait> Module<T> {
 	) -> BalanceOf<T> {
 		// new_target_pool = target_pool - target_amount / (1 - GetExchangeFee)
 		// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
-		FixedU128::from_natural(1)
+		Rate::from_natural(1)
 			.checked_sub(&T::GetExchangeFee::get())
-			.and_then(|n| FixedU128::from_natural(1).checked_div(&n))
+			.and_then(|n| Ratio::from_natural(1).checked_div(&n))
 			.and_then(|n| n.checked_mul_int(&target_amount))
 			.and_then(|n| target_pool.checked_sub(&n))
-			.and_then(|n| Some(FixedU128::from_rational(supply_pool, n)))
+			.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.and_then(|n| n.checked_sub(&supply_pool))
 			.unwrap_or_default()
@@ -435,6 +436,61 @@ impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 			Self::swap_base_to_other(who, target.0, supply.1, target.1)
 		} else {
 			Self::swap_other_to_other(who, supply.0, supply.1, target.0, target.1)
+		}
+	}
+
+	fn get_exchange_slippage(
+		supply_currency_id: CurrencyIdOf<T>,
+		target_currency_id: CurrencyIdOf<T>,
+		supply_amount: BalanceOf<T>,
+	) -> Option<Ratio> {
+		let base_currency_id = T::GetBaseCurrencyId::get();
+
+		if supply_currency_id == target_currency_id {
+			None
+		} else if supply_currency_id == base_currency_id {
+			let (_, base_currency_pool) = Self::liquidity_pool(target_currency_id);
+
+			// supply_amount / (supply_amount + base_currency_pool)
+			Some(Ratio::from_rational(
+				supply_amount,
+				supply_amount.saturating_add(base_currency_pool),
+			))
+		} else if target_currency_id == base_currency_id {
+			let (other_currency_pool, _) = Self::liquidity_pool(supply_currency_id);
+
+			// supply_amount / (supply_amount + other_currency_pool)
+			Some(Ratio::from_rational(
+				supply_amount,
+				supply_amount.saturating_add(other_currency_pool),
+			))
+		} else {
+			let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_currency_id);
+			let (_, target_base_currency_pool) = Self::liquidity_pool(target_currency_id);
+
+			// first slippage in swap supply other currency to base currency:
+			// first_slippage = supply_amount / (supply_amount + supply_other_currency_pool)
+			let supply_to_base_slippage: Ratio =
+				Ratio::from_rational(supply_amount, supply_amount.saturating_add(supply_other_currency_pool));
+
+			// second slippage in swap base currency to target other currency:
+			// base_amount = first_slippage * supply_base_currency_pool
+			// second_slippage = base_amount / (base_amount + target_base_currency_pool)
+			let base_to_target_slippage: Ratio = Ratio::from_rational(
+				supply_to_base_slippage.saturating_mul_int(&supply_base_currency_pool),
+				supply_to_base_slippage
+					.saturating_mul_int(&supply_base_currency_pool)
+					.saturating_add(target_base_currency_pool),
+			);
+
+			// final_slippage = first_slippage + (1 - first_slippage) * second_slippage
+			let final_slippage: Ratio = supply_to_base_slippage.saturating_add(
+				Ratio::from_natural(1)
+					.saturating_sub(supply_to_base_slippage)
+					.saturating_mul(base_to_target_slippage),
+			);
+
+			Some(final_slippage)
 		}
 	}
 }

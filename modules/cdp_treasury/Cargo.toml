@@ -21,6 +21,7 @@ runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate
 pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 orml-auction = { package = "orml-auction", path = "../../orml/auction", default-features = false }
+dex = { package = "module-dex", path = "../dex", default-features = false }
 
 [features]
 default = ["std"]
