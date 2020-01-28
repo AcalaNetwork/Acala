@@ -24,9 +24,8 @@ use system::ensure_signed;
 mod mock;
 mod tests;
 
-const ACCOUNTS_ID: LockIdentifier = *b"accounts";
+const ACCOUNTS_ID: LockIdentifier = *b"ACA/acct";
 
-//type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type MomentOf<T> = <<T as Trait>::Time as Time>::Moment;
 type PalletBalanceOf<T> =
 	<<T as pallet_transaction_payment::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
