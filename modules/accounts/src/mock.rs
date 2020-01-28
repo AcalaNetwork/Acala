@@ -40,7 +40,6 @@ pub type CurrencyId = u32;
 pub type Moment = u64;
 
 pub const ALICE: AccountId = 0;
-pub const BOB: AccountId = 1;
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
@@ -130,6 +129,7 @@ pub type PalletTransactionPayment = pallet_transaction_payment::Module<Runtime>;
 parameter_types! {
 	pub const FreeTransferCount: u8 = 3;
 	pub const FreeTransferPeriod: Moment = 100;
+	pub const FreeTransferDeposit: Balance = 200;
 }
 
 impl Trait for Runtime {
@@ -138,6 +138,8 @@ impl Trait for Runtime {
 	type Time = TimeModule;
 	type Currency = Currencies;
 	type Call = Call;
+	type FreeTransferDeposit = FreeTransferDeposit;
+	type DepositCurrency = pallet_balances::Module<Self>;
 }
 pub type Accounts = Module<Runtime>;
 
