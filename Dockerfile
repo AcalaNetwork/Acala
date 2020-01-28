@@ -51,4 +51,4 @@ RUN mkdir /acala/data
 
 VOLUME ["/acala/data"]
 
-CMD ["/usr/local/bin/acala"]
+ENTRYPOINT ["/usr/local/bin/acala"]
