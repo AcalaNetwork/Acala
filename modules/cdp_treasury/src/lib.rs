@@ -35,11 +35,11 @@ decl_storage! {
 		pub SurplusBufferSize get(fn surplus_buffer_size): BalanceOf<T>;
 		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction): BalanceOf<T>;
 		pub DebitAuctionFixedSize get(fn debit_auction_fixed_size): BalanceOf<T>;
-		pub CollateralAuctionMaximumSize get(fn collateral_auction_maximum_size): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub CollateralAuctionMaximumSize get(fn collateral_auction_maximum_size): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 
 		pub DebitPool get(fn debit_pool): BalanceOf<T>;
 		pub SurplusPool get(fn surplus_pool): BalanceOf<T>;
-		pub TotalCollaterals get(fn total_collaterals): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub TotalCollaterals get(fn total_collaterals): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }

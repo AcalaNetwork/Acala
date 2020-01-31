@@ -1,11 +1,13 @@
 mod chain_spec;
 mod cli;
+mod command;
 mod rpc;
+#[macro_use]
 mod service;
 
-pub use sc_cli::{error, IntoExit, VersionInfo};
+pub use sc_cli::{error, VersionInfo};
 
-fn main() {
+fn main() -> Result<(), error::Error> {
 	let version = VersionInfo {
 		name: "Acala",
 		commit: env!("VERGEN_SHA_SHORT"),
@@ -13,11 +15,9 @@ fn main() {
 		executable_name: "acala",
 		author: "Acala Developers",
 		description: "acala",
-		support_url: "",
+		support_url: "https://github.com/AcalaNetwork/Acala/issues",
+		copyright_start_year: 2020,
 	};
 
-	if let Err(e) = cli::run(::std::env::args(), cli::Exit, version) {
-		eprintln!("Fatal error: {}\n\n{:?}", e, e);
-		std::process::exit(1)
-	}
+	command::run(version)
 }

@@ -85,13 +85,13 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as AuctionManager {
-		pub CollateralAuctions get(fn collateral_auctions): map AuctionIdOf<T> =>
+		pub CollateralAuctions get(fn collateral_auctions): map hasher(blake2_256) AuctionIdOf<T> =>
 			Option<CollateralAuctionItem<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>, T::BlockNumber>>;
-		pub DebitAuctions get(fn debit_auctions): map AuctionIdOf<T> =>
+		pub DebitAuctions get(fn debit_auctions): map hasher(blake2_256) AuctionIdOf<T> =>
 			Option<DebitAuctionItem<BalanceOf<T>, T::BlockNumber>>;
-		pub SurplusAuctions get(fn surplus_auctions): map AuctionIdOf<T> =>
+		pub SurplusAuctions get(fn surplus_auctions): map hasher(blake2_256) AuctionIdOf<T> =>
 			Option<SurplusAuctionItem<BalanceOf<T>, T::BlockNumber>>;
-		pub TotalCollateralInAuction get(fn total_collateral_in_auction): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub TotalCollateralInAuction get(fn total_collateral_in_auction): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 		pub TotalTargetInAuction get(fn total_target_in_auction): BalanceOf<T>;
 		pub TotalDebitInAuction get(fn total_debit_in_auction): BalanceOf<T>;
 		pub TotalSurplusInAuction get(fn total_surplus_in_auction): BalanceOf<T>;
