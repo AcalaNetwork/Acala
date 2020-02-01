@@ -46,8 +46,8 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Accounts {
-		LastFreeTransfers get(fn last_free_transfers): map T::AccountId => Vec<MomentOf<T>>;
-		FreeTransferEnabledAccounts get(fn free_transfer_enabled_accounts): map T::AccountId => Option<()>;
+		LastFreeTransfers get(fn last_free_transfers): map hasher(blake2_256) T::AccountId => Vec<MomentOf<T>>;
+		FreeTransferEnabledAccounts get(fn free_transfer_enabled_accounts): map hasher(blake2_256) T::AccountId => Option<()>;
 	}
 }
 
@@ -129,6 +129,7 @@ impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync,
 {
+	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
 	type Call = <T as Trait>::Call;
 	type AdditionalSigned = ();

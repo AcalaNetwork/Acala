@@ -43,10 +43,10 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Vaults {
-		pub Debits get(fn debits): double_map T::AccountId, CurrencyIdOf<T> => T::DebitBalance;
-		pub Collaterals get(fn collaterals): double_map T::AccountId, CurrencyIdOf<T> => BalanceOf<T>;
-		pub TotalDebits get(fn total_debits): map CurrencyIdOf<T> => T::DebitBalance;
-		pub TotalCollaterals get(fn total_collaterals): map CurrencyIdOf<T> => BalanceOf<T>;
+		pub Debits get(fn debits): double_map hasher(blake2_256) T::AccountId, hasher(blake2_256) CurrencyIdOf<T> => T::DebitBalance;
+		pub Collaterals get(fn collaterals): double_map hasher(blake2_256) T::AccountId, hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
+		pub TotalDebits get(fn total_debits): map hasher(blake2_256) CurrencyIdOf<T> => T::DebitBalance;
+		pub TotalCollaterals get(fn total_collaterals): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 	}
 }
 
