@@ -3135,6 +3135,7 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "serde",
+ "serde_json",
  "sp-core",
  "sp-io",
  "sp-runtime",
