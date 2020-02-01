@@ -28,11 +28,16 @@ use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
 
 // A few exports that help ease life for downstream crates.
 
-pub use frame_support::{construct_runtime, parameter_types, traits::Randomness, weights::Weight, StorageValue};
+pub use frame_support::{
+	construct_runtime, parameter_types,
+	traits::{Contains, Randomness},
+	weights::Weight,
+	StorageValue,
+};
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Permill};
+pub use sp_runtime::{Perbill, Percent, Permill};
 
 pub use module_primitives::CurrencyId;
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
@@ -309,6 +314,45 @@ impl pallet_utility::Trait for Runtime {
 	type MaxSignatories = MaxSignatories;
 }
 
+pub struct GeneralCouncilProvider;
+impl Contains<AccountId> for GeneralCouncilProvider {
+	fn contains(who: &AccountId) -> bool {
+		GeneralCouncil::is_member(who)
+	}
+
+	fn sorted_members() -> Vec<AccountId> {
+		GeneralCouncil::members()
+	}
+}
+
+parameter_types! {
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+	pub const ProposalBondMinimum: Balance = 1_000_000_000_000_000_000;
+	pub const SpendPeriod: BlockNumber = 1 * DAYS;
+	pub const Burn: Permill = Permill::from_percent(0);
+	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const TipFindersFee: Percent = Percent::from_percent(20);
+	pub const TipReportDepositBase: Balance = 1_000_000_000_000_000_000;
+	pub const TipReportDepositPerByte: Balance = 1_000_000_000_000_000;
+}
+
+impl pallet_treasury::Trait for Runtime {
+	type Currency = Balances;
+	type ApproveOrigin = pallet_collective::EnsureMembers<_4, AccountId, GeneralCouncilInstance>;
+	type RejectOrigin = pallet_collective::EnsureMembers<_2, AccountId, GeneralCouncilInstance>;
+	type Event = Event;
+	type ProposalRejection = ();
+	type ProposalBond = ProposalBond;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+	type Tippers = GeneralCouncilProvider;
+	type TipCountdown = TipCountdown;
+	type TipFindersFee = TipFindersFee;
+	type TipReportDepositBase = TipReportDepositBase;
+	type TipReportDepositPerByte = TipReportDepositPerByte;
+}
+
 impl orml_auction::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -489,6 +533,7 @@ construct_runtime!(
 		OperatorCollective: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		OperatorMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
 		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
+		SystemTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},

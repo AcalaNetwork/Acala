@@ -213,6 +213,7 @@ fn testnet_genesis(
 			members: vec![root_key],
 			phantom: Default::default(),
 		}),
+		pallet_treasury: Some(Default::default()),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()
@@ -266,6 +267,7 @@ fn alphanet_genesis(
 			members: vec![root_key],
 			phantom: Default::default(),
 		}),
+		pallet_treasury: Some(Default::default()),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()

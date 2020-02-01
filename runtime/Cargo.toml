@@ -37,6 +37,7 @@ pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/parityt
 pallet-collective = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-membership = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-treasury = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 orml-traits = { path = "../orml/traits", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
@@ -91,6 +92,7 @@ std = [
 	"pallet-utility/std",
 	"pallet-transaction-payment/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-treasury/std",
 	"system-rpc-runtime-api/std",
 	"orml-traits/std",
 	"orml-oracle/std",
