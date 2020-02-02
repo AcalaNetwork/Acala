@@ -247,7 +247,7 @@ fn remain_debit_value_too_small_check() {
 }
 
 #[test]
-fn liquidate_unsafe_cdp_work() {
+fn liquidate_unsafe_cdp_by_collateral_auction() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
@@ -283,6 +283,7 @@ fn liquidate_unsafe_cdp_work() {
 			.iter()
 			.any(|record| record.event == liquidate_unsafe_cdp_event));
 
+		assert_eq!(CdpTreasury::debit_pool(), 50);
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
 		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
@@ -348,27 +349,6 @@ fn on_finalize_work() {
 			Some(ExchangeRate::from_rational(10201, 10000))
 		);
 		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
-	});
-}
-
-#[test]
-fn set_maximum_collateral_auction_size_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			CdpEngineModule::set_maximum_collateral_auction_size(Origin::signed(5), BTC, 20,),
-			BadOrigin
-		);
-		assert_ok!(CdpEngineModule::set_maximum_collateral_auction_size(
-			Origin::signed(1),
-			BTC,
-			20,
-		));
-		assert_ok!(CdpEngineModule::set_maximum_collateral_auction_size(
-			Origin::ROOT,
-			BTC,
-			20
-		));
-		assert_eq!(CdpEngineModule::maximum_collateral_auction_size(BTC), 20);
 	});
 }
 

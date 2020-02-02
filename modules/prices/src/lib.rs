@@ -17,7 +17,7 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Prices {
-		LockedPrice get(fn locked_price): map T::CurrencyId => Option<Option<Price>>;
+		LockedPrice get(fn locked_price): map hasher(blake2_256) T::CurrencyId => Option<Option<Price>>;
 	}
 }
 

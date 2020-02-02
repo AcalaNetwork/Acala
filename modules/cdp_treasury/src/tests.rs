@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CdpTreasuryModule, Currencies, ExtBuilder, Origin, Runtime, ALICE, AUSD, BOB, BTC};
+use mock::{CdpTreasuryModule, Currencies, DexModule, ExtBuilder, Origin, Runtime, ALICE, AUSD, BOB, BTC};
 use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
@@ -17,6 +17,7 @@ fn set_debit_and_surplus_handle_params_work() {
 				Some(1000),
 				Some(200),
 				Some(100),
+				Some((BTC, 200)),
 			),
 			BadOrigin
 		);
@@ -26,6 +27,7 @@ fn set_debit_and_surplus_handle_params_work() {
 			Some(1000),
 			Some(200),
 			Some(100),
+			Some((BTC, 200)),
 		));
 		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::ROOT,
@@ -33,11 +35,13 @@ fn set_debit_and_surplus_handle_params_work() {
 			Some(1000),
 			Some(200),
 			Some(100),
+			Some((BTC, 200)),
 		));
 		assert_eq!(CdpTreasuryModule::surplus_auction_fixed_size(), 100);
 		assert_eq!(CdpTreasuryModule::surplus_buffer_size(), 1000);
 		assert_eq!(CdpTreasuryModule::initial_amount_per_debit_auction(), 200);
 		assert_eq!(CdpTreasuryModule::debit_auction_fixed_size(), 100);
+		assert_eq!(CdpTreasuryModule::collateral_auction_maximum_size(BTC), 200);
 	});
 }
 
@@ -48,6 +52,7 @@ fn create_surplus_auction_on_finailize_work() {
 			Origin::ROOT,
 			Some(100),
 			Some(1000),
+			None,
 			None,
 			None,
 		));
@@ -63,6 +68,7 @@ fn create_surplus_auction_on_finailize_work() {
 		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::ROOT,
 			Some(0),
+			None,
 			None,
 			None,
 			None,
@@ -82,6 +88,7 @@ fn create_debit_auction_on_finailize_work() {
 			None,
 			Some(200),
 			Some(100),
+			None,
 		));
 		CdpTreasuryModule::on_system_debit(99);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 99);
@@ -96,6 +103,7 @@ fn create_debit_auction_on_finailize_work() {
 			None,
 			Some(0),
 			None,
+			None,
 		));
 		CdpTreasuryModule::on_system_debit(99);
 		CdpTreasuryModule::on_finalize(3);
@@ -106,6 +114,7 @@ fn create_debit_auction_on_finailize_work() {
 			None,
 			Some(200),
 			Some(0),
+			None,
 		));
 		CdpTreasuryModule::on_finalize(4);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 100);
@@ -192,6 +201,7 @@ fn emergency_shutdown_work() {
 			Some(1000),
 			None,
 			None,
+			None,
 		));
 		CdpTreasuryModule::on_system_surplus(2000);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 2000);
@@ -211,7 +221,7 @@ fn deposit_system_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 0);
-		assert_ok!(CdpTreasuryModule::deposit_system_collateral(BTC, 100));
+		CdpTreasuryModule::deposit_system_collateral(BTC, 100);
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 100);
 	});
@@ -220,7 +230,7 @@ fn deposit_system_collateral_work() {
 #[test]
 fn transfer_system_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CdpTreasuryModule::deposit_system_collateral(BTC, 500));
+		CdpTreasuryModule::deposit_system_collateral(BTC, 500);
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 500);
 		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 500);
 		assert_noop!(
@@ -231,5 +241,63 @@ fn transfer_system_collateral_work() {
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 100);
 		assert_eq!(Currencies::balance(BTC, &BOB), 400);
+	});
+}
+
+#[test]
+fn get_total_collaterals_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		CdpTreasuryModule::deposit_system_collateral(BTC, 500);
+		assert_eq!(CdpTreasuryModule::get_total_collaterals(BTC), 500);
+	});
+}
+
+#[test]
+fn get_surplus_pool_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		CdpTreasuryModule::on_system_surplus(1000);
+		assert_eq!(CdpTreasuryModule::get_surplus_pool(), 1000);
+	});
+}
+
+#[test]
+fn get_stable_currency_ratio_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			CdpTreasuryModule::get_stable_currency_ratio(100),
+			Ratio::from_rational(100, Currencies::total_issuance(AUSD))
+		);
+	});
+}
+
+#[test]
+fn swap_collateral_to_stable_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 100, 1000));
+		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 0);
+		assert_eq!(CdpTreasuryModule::surplus_pool(), 0);
+		CdpTreasuryModule::deposit_system_collateral(BTC, 100);
+		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 100);
+		CdpTreasuryModule::swap_collateral_to_stable(BTC, 100, 500);
+		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 0);
+		assert_eq!(CdpTreasuryModule::surplus_pool(), 500);
+	});
+}
+
+#[test]
+fn create_collateral_auctions_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
+			Origin::ROOT,
+			None,
+			None,
+			None,
+			None,
+			Some((BTC, 100)),
+		));
+		CdpTreasuryModule::deposit_system_collateral(BTC, 1000);
+		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 1000);
+		CdpTreasuryModule::create_collateral_auctions(BTC, 700, 2100, ALICE);
+		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 300);
 	});
 }
