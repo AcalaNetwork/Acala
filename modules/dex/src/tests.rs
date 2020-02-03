@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ALICE, AUSD, BOB, BTC, CAROL, DOT};
+use mock::{DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL, DOT};
 
 #[test]
 fn calculate_swap_target_amount_work() {
@@ -229,5 +229,34 @@ fn get_supply_amount_work() {
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000));
 		let supply_amount = DexModule::get_supply_amount(BTC, AUSD, 4950);
 		assert_ok!(DexModule::exchange_currency(BOB, (BTC, supply_amount), (AUSD, 4950)));
+	});
+}
+
+#[test]
+fn get_exchange_slippage_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 100, 1000));
+		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 200, 2000));
+		assert_eq!(DexModule::get_exchange_slippage(BTC, BTC, 100), None);
+		assert_eq!(
+			DexModule::get_exchange_slippage(ACA, AUSD, 100),
+			Some(Ratio::from_natural(1))
+		);
+		assert_eq!(
+			DexModule::get_exchange_slippage(BTC, AUSD, 0),
+			Some(Ratio::from_natural(0))
+		);
+		assert_eq!(
+			DexModule::get_exchange_slippage(BTC, AUSD, 10),
+			Some(Ratio::from_rational(10, 110))
+		);
+		assert_eq!(
+			DexModule::get_exchange_slippage(AUSD, BTC, 100),
+			Some(Ratio::from_rational(100, 1100))
+		);
+		assert_eq!(
+			DexModule::get_exchange_slippage(BTC, DOT, 100),
+			Some(Ratio::from_rational(3, 5))
+		);
 	});
 }

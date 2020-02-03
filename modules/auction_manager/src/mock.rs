@@ -98,6 +98,7 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManagerModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type Dex = ();
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 

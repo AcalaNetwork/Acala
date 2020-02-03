@@ -156,7 +156,6 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
-		bad_debt: Self::Balance,
 	) {
 	}
 
@@ -202,12 +201,16 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type Dex = ();
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
+parameter_types! {
+	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(50, 100);
+}
+
 impl cdp_engine::Trait for Runtime {
 	type Event = TestEvent;
-	type AuctionManagerHandler = MockAuctionManager;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
@@ -217,6 +220,9 @@ impl cdp_engine::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = CdpTreasury;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
+	type Currency = Currencies;
+	type Dex = ();
 }
 pub type CdpEngineModule = cdp_engine::Module<Runtime>;
 

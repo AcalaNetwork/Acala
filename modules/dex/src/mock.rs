@@ -30,7 +30,7 @@ parameter_types! {
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub const GetExchangeFee: FixedU128 = FixedU128::from_rational(1, 100);
+	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
 	pub const ExistentialDeposit: u128 = 0;
 }
 
@@ -87,6 +87,7 @@ pub const CAROL: AccountId = 3;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
 pub const DOT: CurrencyId = 3;
+pub const ACA: CurrencyId = 4;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

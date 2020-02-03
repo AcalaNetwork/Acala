@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use support::Rate;
 use system::EnsureSignedBy;
 
 impl_outer_origin! {
@@ -29,6 +30,7 @@ pub type BlockNumber = u64;
 pub type Balance = u64;
 pub type Amount = i64;
 pub type CurrencyId = u32;
+pub type Share = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
@@ -92,26 +94,35 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
+parameter_types! {
+	pub const GetExchangeFee: Rate = Rate::from_rational(0, 100);
+}
+
+impl dex::Trait for Runtime {
+	type Event = ();
+	type Currency = Currencies;
+	type Share = Share;
+	type GetBaseCurrencyId = GetStableCurrencyId;
+	type GetExchangeFee = GetExchangeFee;
+}
+pub type DexModule = dex::Module<Runtime>;
+
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
 
-	#[allow(unused_variables)]
 	fn new_collateral_auction(
-		who: &AccountId,
-		currency_id: Self::CurrencyId,
-		amount: Self::Balance,
-		target: Self::Balance,
-		bad_debt: Self::Balance,
+		_who: &AccountId,
+		_currency_id: Self::CurrencyId,
+		_amount: Self::Balance,
+		_target: Self::Balance,
 	) {
 	}
 
-	#[allow(unused_variables)]
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {}
 
-	#[allow(unused_variables)]
-	fn new_surplus_auction(amount: Self::Balance) {}
+	fn new_surplus_auction(_amount: Self::Balance) {}
 
 	fn get_total_debit_in_auction() -> Self::Balance {
 		Default::default()
@@ -131,6 +142,7 @@ impl Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type Dex = DexModule;
 }
 pub type CdpTreasuryModule = Module<Runtime>;
 

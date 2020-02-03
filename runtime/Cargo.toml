@@ -8,10 +8,10 @@ edition = "2018"
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
 
-rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 version = { package = "sp-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
-primitives = { package = "sp-core", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 offchain-primitives = { package = "sp-offchain", git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -63,9 +63,9 @@ default = ["std"]
 no_std = []
 std = [
 	"codec/std",
-	"rstd/std",
+	"sp-std/std",
 	"runtime-io/std",
-	"primitives/std",
+	"sp-core/std",
 	"sp-runtime/std",
 	"version/std",
 	"serde",
