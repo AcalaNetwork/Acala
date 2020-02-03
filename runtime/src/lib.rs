@@ -640,7 +640,7 @@ impl_runtime_apis! {
 		CurrencyId,
 		TimeStampedPrice,
 	> for Runtime {
-		fn get_no_op(key: CurrencyId) -> Option<TimeStampedPrice> {
+		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
 			Oracle::get_no_op(&key)
 		}
 	}
