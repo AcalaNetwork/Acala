@@ -44,8 +44,8 @@ pub enum Alternative {
 	Development,
 	/// Whatever the current runtime is, with simple Alice/Bob auths.
 	LocalTestnet,
-	AlphaTestnet,
-	AlphaTestnetLatest,
+	MandalaTestnet,
+	MandalaTestnetLatest,
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -136,32 +136,30 @@ impl Alternative {
 				Some(properties),
 				Default::default(),
 			),
-			Alternative::AlphaTestnet => {
-				ChainSpec::from_json_bytes(&include_bytes!("../resources/alpha-dist.json")[..])?
+			Alternative::MandalaTestnet => {
+				ChainSpec::from_json_bytes(&include_bytes!("../resources/mandala-dist.json")[..])?
 			}
-			Alternative::AlphaTestnetLatest => {
+			Alternative::MandalaTestnetLatest => {
 				ChainSpec::from_genesis(
-					"Acala",
-					"acala",
+					"Acala Mandala Tesetnet",
+					"mandala",
 					|| {
-						// TODO: regenerate alphanet according to babe-grandpa consensus
-
 						// SECRET="..."
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//aura"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//babe"
 						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//grandpa"
 						// ./target/debug/subkey inspect "$SECRET//acala//root"
 						// ./target/debug/subkey inspect "$SECRET//acala//oracle"
-						alphanet_genesis(
+						mandala_genesis(
 							vec![(
 								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
 								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
 								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
 								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-								// 5D2Nr1DsxqWDwAf84pWavtCnkysfE9gjzpDJMbD6ncsCwg8d
-								hex!["2a75be90e325f6251be9880b1268ab21ef65bb950ac77a21298a81548f9e435d"]
-									.unchecked_into(),
 								// 5EWtr28JevMKMwtriEAVebhgwd6iSqGcpPDsHeVhVs3if9Po
 								hex!["6c71d6cdf562a68345b4294eb9aad46599ff74fe6dc1a415f10e0fe2843cea3a"]
+									.unchecked_into(),
+								// 5HgPc3qxvJa8wNHAFtPoiy5khfQf8v9YCuw1wYHsy8Jshn2x
+								hex!["f8648f588affb6d92a444748b71ef0fc30ed4f9b3687f8be23635ac5de8fe17b"]
 									.unchecked_into(),
 							)],
 							// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
@@ -181,7 +179,7 @@ impl Alternative {
 						"wss://telemetry.polkadot.io/submit/".into(),
 						0,
 					)])),
-					Some("acala"),
+					Some("mandala"),
 					Some(properties),
 					Default::default(),
 				)
@@ -193,8 +191,8 @@ impl Alternative {
 		match s {
 			"dev" => Some(Alternative::Development),
 			"local" => Some(Alternative::LocalTestnet),
-			"" | "alpha" => Some(Alternative::AlphaTestnet),
-			"alpha-latest" => Some(Alternative::AlphaTestnetLatest),
+			"" | "mandala" => Some(Alternative::MandalaTestnet),
+			"mandala-latest" => Some(Alternative::MandalaTestnetLatest),
 			_ => None,
 		}
 	}
@@ -283,7 +281,7 @@ fn testnet_genesis(
 	}
 }
 
-fn alphanet_genesis(
+fn mandala_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
