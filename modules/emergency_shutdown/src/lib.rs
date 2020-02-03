@@ -65,7 +65,7 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		fn emergency_shutdown(origin) {
+		pub fn emergency_shutdown(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
@@ -86,7 +86,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Shutdown(<system::Module<T>>::block_number()));
 		}
 
-		fn open_collateral_refund(origin) {
+		pub fn open_collateral_refund(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
@@ -116,7 +116,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
 		}
 
-		fn refund_collaterals(origin, amount: BalanceOf<T>) {
+		pub fn refund_collaterals(origin, amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
@@ -139,7 +139,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Refund(amount));
 		}
 
-		fn cancel_auction(_origin, id: AuctionIdOf<T>) {
+		pub fn cancel_auction(_origin, id: AuctionIdOf<T>) {
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<T as Trait>::AuctionManagerHandler::cancel_auction(id)?;
 		}

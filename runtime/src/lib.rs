@@ -226,15 +226,12 @@ impl pallet_timestamp::Trait for Runtime {
 
 parameter_types! {
 	pub const ExistentialDeposit: u128 = 500;
-	pub const TransferFee: u128 = 0;
 	pub const CreationFee: u128 = 0;
 }
 
 impl pallet_balances::Trait for Runtime {
 	/// The type for recording an account's balance.
 	type Balance = Balance;
-	/// What to do if an account's free balance gets zeroed.
-	type OnFreeBalanceZero = Staking;
 	/// What to do if a new account is created.
 	type OnNewAccount = Indices;
 	type OnReapAccount = System;
@@ -243,7 +240,6 @@ impl pallet_balances::Trait for Runtime {
 	type DustRemoval = ();
 	type TransferPayment = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type TransferFee = TransferFee;
 	type CreationFee = CreationFee;
 }
 
@@ -483,6 +479,8 @@ impl orml_oracle::Trait for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 }
+
+pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = Event;
@@ -783,6 +781,16 @@ impl_runtime_apis! {
 	> for Runtime {
 		fn query_info(uxt: UncheckedExtrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
+		}
+	}
+
+	impl orml_oracle_rpc_runtime_api::OracleApi<
+		Block,
+		CurrencyId,
+		TimeStampedPrice,
+	> for Runtime {
+		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
+			Oracle::get_no_op(&key)
 		}
 	}
 }

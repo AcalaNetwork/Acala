@@ -231,7 +231,6 @@ fn testnet_genesis(
 				.map(|k| (k, INITIAL_BALANCE))
 				.chain(initial_authorities.iter().map(|x| (x.0.clone(), INITIAL_STAKING)))
 				.collect(),
-			vesting: vec![],
 		}),
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
@@ -308,7 +307,6 @@ fn alphanet_genesis(
 				.map(|k| (k, INITIAL_BALANCE))
 				.chain(initial_authorities.iter().map(|x| (x.0.clone(), INITIAL_STAKING)))
 				.collect(),
-			vesting: vec![],
 		}),
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities

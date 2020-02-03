@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use runtime::{opaque::Block, AccountId, Balance, Index, UncheckedExtrinsic};
+use runtime::{opaque::Block, AccountId, Balance, CurrencyId, Index, TimeStampedPrice, UncheckedExtrinsic};
 use sp_api::ProvideRuntimeApi;
 use sp_transaction_pool::TransactionPool;
 
@@ -34,11 +34,13 @@ where
 	C: Send + Sync + 'static,
 	C::Api: frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance, UncheckedExtrinsic>,
+	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, TimeStampedPrice>,
 	F: sc_client::light::fetcher::Fetcher<Block> + 'static,
 	P: TransactionPool + 'static,
 	M: jsonrpc_core::Metadata + Default,
 {
 	use frame_rpc_system::{FullSystem, LightSystem, SystemApi};
+	use orml_oracle_rpc::{Oracle, OracleApi};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 
 	let mut io = jsonrpc_core::IoHandler::default();
@@ -60,7 +62,11 @@ where
 		// Making synchronous calls in light client freezes the browser currently,
 		// more context: https://github.com/paritytech/substrate/pull/3480
 		// These RPCs should use an asynchronous caller instead.
-		io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client)));
+		io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
+			client.clone(),
+		)));
+
+		io.extend_with(OracleApi::to_delegate(Oracle::new(client)));
 	}
 	io
 }

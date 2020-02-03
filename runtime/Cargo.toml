@@ -47,6 +47,7 @@ pallet-babe = { git = "https://github.com/paritytech/substrate.git", default-fea
 
 orml-traits = { path = "../orml/traits", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
+orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
 orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-auction = { path = "../orml/auction", default-features = false }
@@ -107,6 +108,7 @@ std = [
 	"system-rpc-runtime-api/std",
 	"orml-traits/std",
 	"orml-oracle/std",
+	"orml-oracle-rpc-runtime-api/std",
 	"orml-tokens/std",
 	"orml-currencies/std",
 	"module-auction-manager/std",
