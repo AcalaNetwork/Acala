@@ -53,7 +53,7 @@ decl_error! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		fn set_debit_and_surplus_handle_params(
+		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<BalanceOf<T>>,
 			surplus_buffer_size: Option<BalanceOf<T>>,
