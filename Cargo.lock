@@ -22,21 +22,29 @@ dependencies = [
  "orml-oracle-rpc",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
+ "sc-authority-discovery",
  "sc-basic-authorship",
+ "sc-chain-spec",
  "sc-cli",
  "sc-client",
+ "sc-client-api",
+ "sc-client-db",
  "sc-consensus-aura",
+ "sc-consensus-babe",
  "sc-executor",
  "sc-finality-grandpa",
  "sc-network",
+ "sc-offchain",
  "sc-rpc",
  "sc-service",
  "sc-telemetry",
  "sc-transaction-pool",
+ "serde",
  "serde_json",
  "sp-api",
  "sp-consensus",
  "sp-consensus-aura",
+ "sp-consensus-babe",
  "sp-core",
  "sp-finality-grandpa",
  "sp-inherents",
@@ -74,28 +82,35 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
+ "pallet-babe",
  "pallet-balances",
  "pallet-collective",
  "pallet-grandpa",
  "pallet-indices",
  "pallet-membership",
  "pallet-randomness-collective-flip",
+ "pallet-session",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-treasury",
  "pallet-utility",
  "parity-scale-codec",
  "serde",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
+ "sp-consensus-babe",
  "sp-core",
  "sp-inherents",
  "sp-io",
  "sp-offchain",
  "sp-runtime",
  "sp-session",
+ "sp-staking",
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
@@ -3232,6 +3247,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-authorship"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "sp-authorship",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-babe"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "pallet-session",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-consensus-babe",
+ "sp-inherents",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+ "sp-timestamp",
+]
+
+[[package]]
 name = "pallet-balances"
 version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
@@ -3356,6 +3409,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-staking"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-session",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-keyring",
+ "sp-phragmen",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-staking-reward-curve"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn",
+]
+
+[[package]]
 name = "pallet-sudo"
 version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
@@ -3425,6 +3508,20 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-treasury"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
@@ -3693,6 +3790,12 @@ dependencies = [
  "byteorder 1.3.2",
  "crypto-mac",
 ]
+
+[[package]]
+name = "pdqselect"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ec91767ecc0a0bbe558ce8c9da33c068066c57ecc8bb8477ef8c1ad3ef77c27"
 
 [[package]]
 name = "peeking_take_while"
@@ -4277,6 +4380,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc-authority-discovery"
+version = "0.8.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "bytes 0.4.12",
+ "derive_more",
+ "futures 0.3.1",
+ "futures-timer 2.0.2",
+ "libp2p",
+ "log",
+ "parity-scale-codec",
+ "prost",
+ "prost-build",
+ "rand 0.7.3",
+ "sc-client-api",
+ "sc-keystore",
+ "sc-network",
+ "serde_json",
+ "sp-api",
+ "sp-authority-discovery",
+ "sp-blockchain",
+ "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
 name = "sc-basic-authorship"
 version = "0.8.0"
 source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
@@ -4497,6 +4626,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc-consensus-babe"
+version = "0.8.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "derive_more",
+ "fork-tree",
+ "futures 0.3.1",
+ "futures-timer 0.4.0",
+ "log",
+ "merlin",
+ "num-bigint",
+ "num-rational",
+ "num-traits",
+ "parity-scale-codec",
+ "parking_lot 0.9.0",
+ "pdqselect",
+ "rand 0.7.3",
+ "sc-client",
+ "sc-client-api",
+ "sc-consensus-slots",
+ "sc-consensus-uncles",
+ "sc-keystore",
+ "sc-telemetry",
+ "schnorrkel",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-block-builder",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-runtime",
+ "sp-timestamp",
+ "sp-version",
+]
+
+[[package]]
 name = "sc-consensus-slots"
 version = "0.8.0"
 source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
@@ -4515,6 +4683,20 @@ dependencies = [
  "sp-inherents",
  "sp-runtime",
  "sp-state-machine",
+]
+
+[[package]]
+name = "sc-consensus-uncles"
+version = "0.8.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "log",
+ "sc-client-api",
+ "sp-authorship",
+ "sp-consensus",
+ "sp-core",
+ "sp-inherents",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -5247,6 +5429,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-authority-discovery"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "parity-scale-codec",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "sp-authorship"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "parity-scale-codec",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "sp-block-builder"
 version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
@@ -5465,6 +5670,16 @@ source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58
 dependencies = [
  "backtrace",
  "log",
+]
+
+[[package]]
+name = "sp-phragmen"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "serde",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

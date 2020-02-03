@@ -1,22 +1,39 @@
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, FinancialCouncilMembershipConfig,
-	GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig, IndicesConfig, OperatorMembershipConfig, Signature,
-	SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
+	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CurrencyId,
+	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig, IndicesConfig,
+	OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+	TokensConfig, WASM_BINARY,
 };
+use sc_chain_spec::ChainSpecExtension;
 use sc_service;
 use sc_telemetry::TelemetryEndpoints;
+use serde::{Deserialize, Serialize};
 use serde_json::map::Map;
-use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::Perbill;
 
 // Note this is the URL for the telemetry server
 //const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
+/// Node `ChainSpec` extensions.
+///
+/// Additional parameters for some Substrate core modules,
+/// customizable from the chain spec.
+#[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
+#[serde(rename_all = "camelCase")]
+pub struct Extensions {
+	/// Block numbers with known hashes.
+	pub fork_blocks: sc_client::ForkBlocks<Block>,
+	/// Known bad block hashes.
+	pub bad_blocks: sc_client::BadBlocks<Block>,
+}
+
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::ChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::ChainSpec<GenesisConfig, Extensions>;
 
 /// The chain specification option. This is expected to come in from the CLI and
 /// is little more than one of a number of alternatives which can easily be converted
@@ -49,8 +66,13 @@ where
 }
 
 /// Helper function to generate session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (AuraId, GrandpaId) {
-	(get_from_seed::<AuraId>(seed), get_from_seed::<GrandpaId>(seed))
+pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId) {
+	(
+		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+		get_account_id_from_seed::<sr25519::Public>(seed),
+		get_from_seed::<GrandpaId>(seed),
+		get_from_seed::<BabeId>(seed),
+	)
 }
 
 impl Alternative {
@@ -80,7 +102,7 @@ impl Alternative {
 				None,
 				None,
 				Some(properties),
-				None,
+				Default::default(),
 			),
 			Alternative::LocalTestnet => ChainSpec::from_genesis(
 				"Local Testnet",
@@ -112,7 +134,7 @@ impl Alternative {
 				None,
 				None,
 				Some(properties),
-				None,
+				Default::default(),
 			),
 			Alternative::AlphaTestnet => {
 				ChainSpec::from_json_bytes(&include_bytes!("../resources/alpha-dist.json")[..])?
@@ -122,6 +144,8 @@ impl Alternative {
 					"Acala",
 					"acala",
 					|| {
+						// TODO: regenerate alphanet according to babe-grandpa consensus
+
 						// SECRET="..."
 						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//aura"
 						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//grandpa"
@@ -129,6 +153,10 @@ impl Alternative {
 						// ./target/debug/subkey inspect "$SECRET//acala//oracle"
 						alphanet_genesis(
 							vec![(
+								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
 								// 5D2Nr1DsxqWDwAf84pWavtCnkysfE9gjzpDJMbD6ncsCwg8d
 								hex!["2a75be90e325f6251be9880b1268ab21ef65bb950ac77a21298a81548f9e435d"]
 									.unchecked_into(),
@@ -155,7 +183,7 @@ impl Alternative {
 					)])),
 					Some("acala"),
 					Some(properties),
-					None,
+					Default::default(),
 				)
 			}
 		})
@@ -172,10 +200,15 @@ impl Alternative {
 	}
 }
 
+fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
+	SessionKeys { grandpa, babe }
+}
+
 const INITIAL_BALANCE: u128 = 1_000_000_000_000_000_000_000_u128; // $1M
+const INITIAL_STAKING: u128 = 1_000_000_000_000_000_000_u128;
 
 fn testnet_genesis(
-	initial_authorities: Vec<(AuraId, GrandpaId)>,
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
@@ -185,18 +218,41 @@ fn testnet_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		pallet_indices: Some(IndicesConfig {
-			ids: endowed_accounts.clone(),
+			ids: endowed_accounts
+				.iter()
+				.cloned()
+				.chain(initial_authorities.iter().map(|x| x.0.clone()))
+				.collect::<Vec<_>>(),
 		}),
 		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)).collect(),
+			balances: endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, INITIAL_BALANCE))
+				.chain(initial_authorities.iter().map(|x| (x.0.clone(), INITIAL_STAKING)))
+				.collect(),
+		}),
+		pallet_session: Some(SessionConfig {
+			keys: initial_authorities
+				.iter()
+				.map(|x| (x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
+				.collect::<Vec<_>>(),
+		}),
+		pallet_staking: Some(StakingConfig {
+			current_era: 0,
+			validator_count: initial_authorities.len() as u32 * 2,
+			minimum_validator_count: initial_authorities.len() as u32,
+			stakers: initial_authorities
+				.iter()
+				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
+				.collect(),
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+			slash_reward_fraction: Perbill::from_percent(10),
+			..Default::default()
 		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
-		pallet_aura: Some(AuraConfig {
-			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
-		}),
-		pallet_grandpa: Some(GrandpaConfig {
-			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
-		}),
+		pallet_babe: Some(BabeConfig { authorities: vec![] }),
+		pallet_grandpa: Some(GrandpaConfig { authorities: vec![] }),
 		pallet_collective_Instance1: Some(Default::default()),
 		pallet_membership_Instance1: Some(GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -212,6 +268,7 @@ fn testnet_genesis(
 			members: vec![root_key],
 			phantom: Default::default(),
 		}),
+		pallet_treasury: Some(Default::default()),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()
@@ -227,7 +284,7 @@ fn testnet_genesis(
 }
 
 fn alphanet_genesis(
-	initial_authorities: Vec<(AuraId, GrandpaId)>,
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
@@ -237,18 +294,41 @@ fn alphanet_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		pallet_indices: Some(IndicesConfig {
-			ids: endowed_accounts.clone(),
+			ids: endowed_accounts
+				.iter()
+				.cloned()
+				.chain(initial_authorities.iter().map(|x| x.0.clone()))
+				.collect::<Vec<_>>(),
 		}),
 		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)).collect(),
+			balances: endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, INITIAL_BALANCE))
+				.chain(initial_authorities.iter().map(|x| (x.0.clone(), INITIAL_STAKING)))
+				.collect(),
+		}),
+		pallet_session: Some(SessionConfig {
+			keys: initial_authorities
+				.iter()
+				.map(|x| (x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
+				.collect::<Vec<_>>(),
+		}),
+		pallet_staking: Some(StakingConfig {
+			current_era: 0,
+			validator_count: initial_authorities.len() as u32 * 2,
+			minimum_validator_count: initial_authorities.len() as u32,
+			stakers: initial_authorities
+				.iter()
+				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
+				.collect(),
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+			slash_reward_fraction: Perbill::from_percent(10),
+			..Default::default()
 		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
-		pallet_aura: Some(AuraConfig {
-			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
-		}),
-		pallet_grandpa: Some(GrandpaConfig {
-			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
-		}),
+		pallet_babe: Some(BabeConfig { authorities: vec![] }),
+		pallet_grandpa: Some(GrandpaConfig { authorities: vec![] }),
 		pallet_collective_Instance1: Some(Default::default()),
 		pallet_membership_Instance1: Some(GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -264,6 +344,7 @@ fn alphanet_genesis(
 			members: vec![root_key],
 			phantom: Default::default(),
 		}),
+		pallet_treasury: Some(Default::default()),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()

@@ -14,7 +14,7 @@ use frame_support::{
 use orml_traits::MultiCurrency;
 use rstd::prelude::*;
 use sp_runtime::{
-	traits::{Bounded, SaturatedConversion, Saturating, SignedExtension, Zero},
+	traits::{SaturatedConversion, Saturating, SignedExtension, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
@@ -30,7 +30,6 @@ type MomentOf<T> = <<T as Trait>::Time as Time>::Moment;
 type PalletBalanceOf<T> =
 	<<T as pallet_transaction_payment::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 type DepositBalanceOf<T> = <<T as Trait>::DepositCurrency as Currency<<T as system::Trait>::AccountId>>::Balance;
-type DepositMomentOf<T> = <<T as Trait>::DepositCurrency as LockableCurrency<<T as system::Trait>::AccountId>>::Moment;
 
 pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_currencies::Trait {
 	type FreeTransferCount: Get<u8>;
