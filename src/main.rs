@@ -1,9 +1,9 @@
 mod chain_spec;
-mod cli;
-mod command;
 mod rpc;
 #[macro_use]
 mod service;
+mod cli;
+mod command;
 
 pub use sc_cli::{error, VersionInfo};
 
