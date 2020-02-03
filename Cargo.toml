@@ -31,8 +31,6 @@ sp-inherents = { git = "https://github.com/paritytech/substrate.git" }
 sc-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
 sc-network = { git = "https://github.com/paritytech/substrate.git" }
-sc-consensus-aura = { git = "https://github.com/paritytech/substrate.git" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate.git" }
 sp-consensus = { git = "https://github.com/paritytech/substrate.git" }
 grandpa = { package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
 grandpa-primitives = { package = "sp-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
