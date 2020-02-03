@@ -19,6 +19,7 @@ dependencies = [
  "hex-literal",
  "jsonrpc-core",
  "log",
+ "orml-oracle-rpc",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "sc-basic-authorship",
@@ -69,6 +70,7 @@ dependencies = [
  "orml-auction",
  "orml-currencies",
  "orml-oracle",
+ "orml-oracle-rpc-runtime-api",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
@@ -3096,6 +3098,28 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "orml-oracle-rpc"
+version = "0.0.1"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "orml-oracle-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "orml-oracle-rpc-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "sp-api",
 ]
 
 [[package]]

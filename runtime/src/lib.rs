@@ -338,6 +338,8 @@ impl orml_oracle::Trait for Runtime {
 	type OracleValue = Price;
 }
 
+pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
+
 impl orml_tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -626,6 +628,16 @@ impl_runtime_apis! {
 	> for Runtime {
 		fn query_info(uxt: UncheckedExtrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
+		}
+	}
+
+	impl orml_oracle_rpc_runtime_api::OracleApi<
+		Block,
+		CurrencyId,
+		TimeStampedPrice,
+	> for Runtime {
+		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
+			Oracle::get_no_op(&key)
 		}
 	}
 }
