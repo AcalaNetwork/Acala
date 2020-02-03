@@ -19,7 +19,6 @@ sp-transaction-pool = { package = "sp-transaction-pool", git = "https://github.c
 block-builder-api = { package = "sp-block-builder", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
-aura-primitives = { package = "sp-consensus-aura", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-staking = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 
@@ -28,7 +27,6 @@ frame-support = { git = "https://github.com/paritytech/substrate.git", default-f
 frame-executive = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 system-rpc-runtime-api = { package = "frame-system-rpc-runtime-api", git = "https://github.com/paritytech/substrate", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-aura = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-indices = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -44,6 +42,7 @@ pallet-staking = { git = "https://github.com/paritytech/substrate.git", default-
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-babe = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-recovery = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 orml-traits = { path = "../orml/traits", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
@@ -85,12 +84,10 @@ std = [
 	"sp-consensus-babe/std",
 	"block-builder-api/std",
 	"inherents/std",
-	"aura-primitives/std",
 	"system/std",
 	"frame-support/std",
 	"frame-executive/std",
 	"pallet-balances/std",
-	"pallet-aura/std",
 	"pallet-grandpa/std",
 	"pallet-indices/std",
 	"pallet-collective/std",
@@ -105,6 +102,7 @@ std = [
 	"pallet-staking/std",
 	"pallet-session/std",
 	"pallet-babe/std",
+	"pallet-recovery/std",
 	"system-rpc-runtime-api/std",
 	"orml-traits/std",
 	"orml-oracle/std",

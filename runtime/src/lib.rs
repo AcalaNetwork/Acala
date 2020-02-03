@@ -234,7 +234,7 @@ impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	/// What to do if a new account is created.
 	type OnNewAccount = Indices;
-	type OnReapAccount = System;
+	type OnReapAccount = (System, Recovery);
 	/// The ubiquitous event type.
 	type Event = Event;
 	type DustRemoval = ();
@@ -447,6 +447,23 @@ impl pallet_staking::Trait for Runtime {
 	type RewardCurve = RewardCurve;
 }
 
+parameter_types! {
+	pub const ConfigDepositBase: Balance = 5 * 1_000_000_000_000_000_000;
+	pub const FriendDepositFactor: Balance = 50 * 10_000_000_000_000_000;
+	pub const MaxFriends: u16 = 9;
+	pub const RecoveryDeposit: Balance = 5 * 1_000_000_000_000_000_000;
+}
+
+impl pallet_recovery::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type ConfigDepositBase = ConfigDepositBase;
+	type FriendDepositFactor = FriendDepositFactor;
+	type MaxFriends = MaxFriends;
+	type RecoveryDeposit = RecoveryDeposit;
+}
+
 impl orml_auction::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -632,6 +649,7 @@ construct_runtime!(
 		PalletTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		Staking: pallet_staking,
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
+		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},

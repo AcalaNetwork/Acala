@@ -29,7 +29,6 @@ dependencies = [
  "sc-client",
  "sc-client-api",
  "sc-client-db",
- "sc-consensus-aura",
  "sc-consensus-babe",
  "sc-executor",
  "sc-finality-grandpa",
@@ -43,7 +42,6 @@ dependencies = [
  "serde_json",
  "sp-api",
  "sp-consensus",
- "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-core",
  "sp-finality-grandpa",
@@ -81,7 +79,6 @@ dependencies = [
  "orml-oracle-rpc-runtime-api",
  "orml-tokens",
  "orml-traits",
- "pallet-aura",
  "pallet-babe",
  "pallet-balances",
  "pallet-collective",
@@ -89,6 +86,7 @@ dependencies = [
  "pallet-indices",
  "pallet-membership",
  "pallet-randomness-collective-flip",
+ "pallet-recovery",
  "pallet-session",
  "pallet-staking",
  "pallet-staking-reward-curve",
@@ -102,7 +100,6 @@ dependencies = [
  "serde",
  "sp-api",
  "sp-block-builder",
- "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-core",
  "sp-inherents",
@@ -885,6 +882,26 @@ name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
+
+[[package]]
+name = "enumflags2"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33121c8782ba948ba332dab29311b026a8716dc65a1599e5b88f392d38496af8"
+dependencies = [
+ "enumflags2_derive",
+]
+
+[[package]]
+name = "enumflags2_derive"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecf634c5213044b8d54a46dd282cf5dd1f86bb5cb53e92c409cb4680a7fb9894"
+dependencies = [
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn",
+]
 
 [[package]]
 name = "env_logger"
@@ -3226,27 +3243,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-aura"
-version = "2.0.0"
-source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-session",
- "pallet-timestamp",
- "parity-scale-codec",
- "serde",
- "sp-application-crypto",
- "sp-consensus-aura",
- "sp-core",
- "sp-inherents",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "sp-timestamp",
-]
-
-[[package]]
 name = "pallet-authorship"
 version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
@@ -3386,6 +3382,21 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "safe-mix",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-recovery"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
+dependencies = [
+ "enumflags2",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -4596,36 +4607,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-consensus-aura"
-version = "0.8.0"
-source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
-dependencies = [
- "derive_more",
- "futures 0.3.1",
- "futures-timer 0.4.0",
- "log",
- "parity-scale-codec",
- "parking_lot 0.9.0",
- "sc-client",
- "sc-client-api",
- "sc-consensus-slots",
- "sc-keystore",
- "sc-telemetry",
- "sp-api",
- "sp-application-crypto",
- "sp-block-builder",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-core",
- "sp-inherents",
- "sp-io",
- "sp-runtime",
- "sp-timestamp",
- "sp-version",
-]
-
-[[package]]
 name = "sc-consensus-babe"
 version = "0.8.0"
 source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
@@ -5499,20 +5480,6 @@ dependencies = [
  "sp-state-machine",
  "sp-std",
  "sp-version",
-]
-
-[[package]]
-name = "sp-consensus-aura"
-version = "0.8.0"
-source = "git+https://github.com/paritytech/substrate.git#de2ffd937db78093efaa58d7cc08f5599a8f4728"
-dependencies = [
- "parity-scale-codec",
- "sp-api",
- "sp-application-crypto",
- "sp-inherents",
- "sp-runtime",
- "sp-std",
- "sp-timestamp",
 ]
 
 [[package]]
