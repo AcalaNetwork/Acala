@@ -54,19 +54,19 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		fn liquidate(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+		pub fn liquidate(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::<T>::LiquidateFailed)?;
 		}
 
-		fn settle_cdp(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+		pub fn settle_cdp(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 
 			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;
 		}
 
-		fn update_vault(
+		pub fn update_vault(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			collateral: AmountOf<T>,
@@ -78,7 +78,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, debit).map_err(|_| Error::<T>::UpdatePositionFailed)?;
 		}
 
-		fn withdraw_collateral(
+		pub fn withdraw_collateral(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			collateral: AmountOf<T>,
@@ -89,7 +89,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, T::DebitAmount::zero())?;
 		}
 
-		fn transfer_vault_from(
+		pub fn transfer_vault_from(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			from: T::AccountId,
@@ -106,7 +106,7 @@ decl_module! {
 		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` vault
-		fn authorize(
+		pub fn authorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			to: T::AccountId,
@@ -120,7 +120,7 @@ decl_module! {
 		}
 
 		/// `origin` refuse `to` to manipulate the vault  of `currency_id`
-		fn unauthorize(
+		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			to: T::AccountId,
@@ -134,7 +134,7 @@ decl_module! {
 		}
 
 		/// `origin` refuse anyone to manipulate its vault
-		fn unauthorize_all(origin) {
+		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
 
 			// update authorization

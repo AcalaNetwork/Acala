@@ -27,7 +27,6 @@ parameter_types! {
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub const ExistentialDeposit: u64 = 0;
-	pub const TransferFee: u64 = 0;
 	pub const CreationFee: u64 = 2;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
@@ -78,14 +77,12 @@ pub type Tokens = orml_tokens::Module<Runtime>;
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
-	type OnFreeBalanceZero = ();
 	type OnNewAccount = ();
 	type OnReapAccount = ();
 	type TransferPayment = ();
 	type DustRemoval = ();
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type TransferFee = TransferFee;
 	type CreationFee = CreationFee;
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
