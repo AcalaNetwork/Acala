@@ -189,7 +189,6 @@ fn testnet_genesis(
 		}),
 		pallet_balances: Some(BalancesConfig {
 			balances: endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)).collect(),
-			vesting: vec![],
 		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
 		pallet_aura: Some(AuraConfig {
@@ -242,7 +241,6 @@ fn alphanet_genesis(
 		}),
 		pallet_balances: Some(BalancesConfig {
 			balances: endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)).collect(),
-			vesting: vec![],
 		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
 		pallet_aura: Some(AuraConfig {
