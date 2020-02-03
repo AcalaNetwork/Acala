@@ -60,7 +60,7 @@ decl_module! {
 		fn enable_free_transfer(origin) {
 			let who = ensure_signed(origin)?;
 
-			T::DepositCurrency::set_lock(ACCOUNTS_ID, &who, T::FreeTransferDeposit::get(), DepositMomentOf::<T>::max_value(), WithdrawReasons::all());
+			T::DepositCurrency::set_lock(ACCOUNTS_ID, &who, T::FreeTransferDeposit::get(), WithdrawReasons::all());
 			<FreeTransferEnabledAccounts<T>>::insert(who, ());
 		}
 
