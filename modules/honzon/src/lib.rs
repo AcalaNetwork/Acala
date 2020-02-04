@@ -40,8 +40,6 @@ decl_event!(
 decl_error! {
 	pub enum Error for Module<T: Trait> {
 		NoAuthorization,
-		TransferVaultFailed,
-		UpdatePositionFailed,
 		LiquidateFailed,
 		AlreadyShutdown,
 		MustAfterShutdown,
@@ -75,7 +73,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
-			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, debit).map_err(|_| Error::<T>::UpdatePositionFailed)?;
+			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, debit)?;
 		}
 
 		pub fn withdraw_collateral(
@@ -100,9 +98,7 @@ decl_module! {
 			// check authorization if `from` can manipulate `to`
 			Self::check_authorization(&from, &to, currency_id)?;
 
-			<vaults::Module<T>>::transfer(from.clone(), to.clone(), currency_id).map_err(|_|
-				Error::<T>::TransferVaultFailed
-			)?;
+			<vaults::Module<T>>::transfer(from.clone(), to.clone(), currency_id)?;
 		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` vault
