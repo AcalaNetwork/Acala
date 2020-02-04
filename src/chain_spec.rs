@@ -5,7 +5,7 @@ use runtime::{
 	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 	CurrencyId, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
 	IndicesConfig, OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-	SystemConfig, TokensConfig, WASM_BINARY,
+	SystemConfig, TokensConfig, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service;
@@ -203,8 +203,8 @@ fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
 	SessionKeys { grandpa, babe }
 }
 
-const INITIAL_BALANCE: u128 = 1_000_000_000_000_000_000_000_u128; // $1M
-const INITIAL_STAKING: u128 = 1_000_000_000_000_000_000_u128;
+const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
+const INITIAL_STAKING: u128 = 10_0000 * DOLLARS;
 
 fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
@@ -280,11 +280,11 @@ fn testnet_genesis(
 				.collect(),
 		}),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			surplus_auction_fixed_size: 0,
-			surplus_buffer_size: 0,
-			initial_amount_per_debit_auction: 0,
-			debit_auction_fixed_size: 0,
-			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 0), (CurrencyId::XBTC, 0)],
+			surplus_auction_fixed_size: 1_000 * DOLLARS,
+			surplus_buffer_size: 10_000 * DOLLARS,
+			initial_amount_per_debit_auction: 2_000 * DOLLARS,
+			debit_auction_fixed_size: 1_000 * DOLLARS,
+			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 1 * DOLLARS), (CurrencyId::XBTC, 1 * DOLLARS)],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
@@ -294,7 +294,7 @@ fn testnet_genesis(
 					Some(FixedU128::from_rational(150, 100)),
 					Some(FixedU128::from_rational(10, 100)),
 					Some(FixedU128::from_rational(150, 100)),
-					0,
+					10_000_000 * DOLLARS,
 				),
 				(
 					CurrencyId::XBTC,
@@ -302,7 +302,7 @@ fn testnet_genesis(
 					Some(FixedU128::from_rational(150, 100)),
 					Some(FixedU128::from_rational(10, 100)),
 					Some(FixedU128::from_rational(150, 100)),
-					0,
+					10_000_000 * DOLLARS,
 				),
 			],
 		}),
@@ -383,11 +383,11 @@ fn mandala_genesis(
 				.collect(),
 		}),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			surplus_auction_fixed_size: 0,
-			surplus_buffer_size: 0,
-			initial_amount_per_debit_auction: 0,
-			debit_auction_fixed_size: 0,
-			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 0), (CurrencyId::XBTC, 0)],
+			surplus_auction_fixed_size: 1_000 * DOLLARS,
+			surplus_buffer_size: 10_000 * DOLLARS,
+			initial_amount_per_debit_auction: 2_000 * DOLLARS,
+			debit_auction_fixed_size: 1_000 * DOLLARS,
+			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 1 * DOLLARS), (CurrencyId::XBTC, 1 * DOLLARS)],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
@@ -397,7 +397,7 @@ fn mandala_genesis(
 					Some(FixedU128::from_rational(150, 100)),
 					Some(FixedU128::from_rational(10, 100)),
 					Some(FixedU128::from_rational(150, 100)),
-					0,
+					10_000_000 * DOLLARS,
 				),
 				(
 					CurrencyId::XBTC,
@@ -405,7 +405,7 @@ fn mandala_genesis(
 					Some(FixedU128::from_rational(150, 100)),
 					Some(FixedU128::from_rational(10, 100)),
 					Some(FixedU128::from_rational(150, 100)),
-					0,
+					10_000_000 * DOLLARS,
 				),
 			],
 		}),

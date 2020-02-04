@@ -171,11 +171,11 @@ mod tests {
 					&AccountId::from(ALICE),
 					XBTC,
 					amount(100) as i128,
-					amount(50) as i128
+					amount(500) as i128
 				));
 				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
 				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
-				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), amount(50));
+				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), amount(500));
 				assert_eq!(VaultsModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
 				assert_noop!(
 					HonzonModule::liquidate(origin_of(AccountId::from(CAROL)), AccountId::from(ALICE), XBTC),
@@ -241,11 +241,11 @@ mod tests {
 
 				assert_eq!(
 					CdpEngineModule::calculate_collateral_ratio(XBTC, 100, 50, Price::from_rational(1, 1)),
-					Ratio::from_rational(100, 50)
+					Ratio::from_rational(100 * 10, 50)
 				);
 
-				assert_eq!(CdpEngineModule::exceed_debit_value_cap(XBTC, amount(9999)), false);
-				assert_eq!(CdpEngineModule::exceed_debit_value_cap(XBTC, amount(10001)), true);
+				assert_eq!(CdpEngineModule::exceed_debit_value_cap(XBTC, amount(99999)), false);
+				assert_eq!(CdpEngineModule::exceed_debit_value_cap(XBTC, amount(100001)), true);
 
 				assert_ok!(CdpEngineModule::update_position(
 					&AccountId::from(ALICE),
@@ -286,8 +286,8 @@ mod tests {
 					.any(|record| record.event == settle_cdp_in_debit_event));
 
 				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), 0);
-				assert_eq!(CdpTreasuryModule::debit_pool(), amount(100));
-				assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 33333333333333333300);
+				assert_eq!(CdpTreasuryModule::debit_pool(), amount(10));
+				assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 3333333333333333330);
 			});
 	}
 }
