@@ -574,6 +574,22 @@ impl module_cdp_treasury::Trait for Runtime {
 	type Dex = module_dex::Module<Runtime>;
 }
 
+parameter_types! {
+	pub const FreeTransferCount: u8 = 3;
+	pub const FreeTransferPeriod: BlockNumber = 1 * DAYS;
+	pub const FreeTransferDeposit: Balance = 1 * DOLLARS;
+}
+
+impl module_accounts::Trait for Runtime {
+	type FreeTransferCount = FreeTransferCount;
+	type FreeTransferPeriod = FreeTransferPeriod;
+	type FreeTransferDeposit = FreeTransferDeposit;
+	type Time = Timestamp;
+	type Currency = orml_currencies::Module<Runtime>;
+	type Call = Call;
+	type DepositCurrency = Balances;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -613,6 +629,7 @@ construct_runtime!(
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
+		Accounts: module_accounts::{Module, Call, Storage},
 	}
 );
 
@@ -633,7 +650,7 @@ pub type SignedExtra = (
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
 	system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	module_accounts::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
