@@ -4,7 +4,7 @@ use runtime::{
 	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CurrencyId,
 	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig, IndicesConfig,
 	OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-	TokensConfig, WASM_BINARY,
+	TokensConfig, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service;
@@ -202,8 +202,8 @@ fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
 	SessionKeys { grandpa, babe }
 }
 
-const INITIAL_BALANCE: u128 = 1_000_000_000_000_000_000_000_u128; // $1M
-const INITIAL_STAKING: u128 = 1_000_000_000_000_000_000_u128;
+const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
+const INITIAL_STAKING: u128 = 10_0000 * DOLLARS;
 
 fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,

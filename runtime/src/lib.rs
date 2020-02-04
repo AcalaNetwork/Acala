@@ -8,15 +8,16 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+mod constants;
+mod types;
+
 use sp_api::impl_runtime_apis;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
-use sp_runtime::traits::{
-	BlakeTwo256, Block as BlockT, Convert, ConvertInto, IdentifyAccount, OpaqueKeys, StaticLookup, Verify,
-};
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Convert, ConvertInto, OpaqueKeys, StaticLookup};
 use sp_runtime::{
 	create_runtime_str, curve::PiecewiseLinear, generic, impl_opaque_keys, transaction_validity::TransactionValidity,
-	ApplyExtrinsicResult, MultiSignature,
+	ApplyExtrinsicResult,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -45,40 +46,27 @@ pub use module_primitives::CurrencyId;
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 pub use orml_currencies::BasicCurrencyAdapter;
 
-/// An index to a block.
-pub type BlockNumber = u32;
+pub use constants::{currency::*, time::*};
+pub use types::*;
 
-/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
-pub type Signature = MultiSignature;
+/// This runtime version.
+pub const VERSION: RuntimeVersion = RuntimeVersion {
+	spec_name: create_runtime_str!("acala"),
+	impl_name: create_runtime_str!("acala"),
+	authoring_version: 1,
+	spec_version: 21,
+	impl_version: 0,
+	apis: RUNTIME_API_VERSIONS,
+};
 
-/// Some way of identifying an account on the chain. We intentionally make it equivalent
-/// to the public key of our transaction signing scheme.
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-/// The type for looking up accounts. We don't expect more than 4 billion of them, but you
-/// never know...
-pub type AccountIndex = u32;
-
-/// Balance of an account.
-pub type Balance = u128;
-
-/// Signed version of Balance
-pub type Amount = i128;
-
-/// Index of a transaction in the chain.
-pub type Index = u32;
-
-/// A hash of some data used by the chain.
-pub type Hash = sp_core::H256;
-
-/// Digest item type.
-pub type DigestItem = generic::DigestItem<Hash>;
-
-pub type AuctionId = u32;
-
-pub type Share = u128;
-
-pub type Moment = u64;
+/// The version infromation used to identify this runtime when compiled natively.
+#[cfg(feature = "std")]
+pub fn native_version() -> NativeVersion {
+	NativeVersion {
+		runtime_version: VERSION,
+		can_author_with: Default::default(),
+	}
+}
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -104,52 +92,9 @@ pub mod opaque {
 	}
 }
 
-/// This runtime version.
-pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("acala"),
-	impl_name: create_runtime_str!("acala"),
-	authoring_version: 1,
-	spec_version: 20,
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-};
-
-// Money
-pub const MILLICENTS: Balance = 10_000_000_000_000;
-pub const CENTS: Balance = 1_000 * MILLICENTS; // assume this is worth about a cent.
-pub const DOLLARS: Balance = 100 * CENTS;
-
-// Time
-pub const MILLISECS_PER_BLOCK: Moment = 4000;
-pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
-
-// These time units are defined in number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
-
-// 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
-pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
-
-pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 10 * MINUTES;
-pub const EPOCH_DURATION_IN_SLOTS: u64 = {
-	const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;
-
-	(EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
-};
-
-/// The version infromation used to identify this runtime when compiled natively.
-#[cfg(feature = "std")]
-pub fn native_version() -> NativeVersion {
-	NativeVersion {
-		runtime_version: VERSION,
-		can_author_with: Default::default(),
-	}
-}
-
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 250;
-	pub const MaximumBlockWeight: Weight = 1_000_000;
+	pub const MaximumBlockWeight: Weight = 1_000_000_000;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	pub const Version: RuntimeVersion = VERSION;
@@ -230,8 +175,8 @@ impl pallet_timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u128 = 500;
-	pub const CreationFee: u128 = 0;
+	pub const AcaExistentialDeposit: Balance = 100 * MILLICENTS;
+	pub const CreationFee: Balance = 50 * MILLICENTS;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -244,13 +189,13 @@ impl pallet_balances::Trait for Runtime {
 	type Event = Event;
 	type DustRemoval = ();
 	type TransferPayment = ();
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = AcaExistentialDeposit;
 	type CreationFee = CreationFee;
 }
 
 parameter_types! {
-	pub const TransactionBaseFee: Balance = 0;
-	pub const TransactionByteFee: Balance = 1;
+	pub const TransactionBaseFee: Balance = 200 * MILLICENTS;
+	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -322,8 +267,8 @@ impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const MultisigDepositBase: Balance = 30;
-	pub const MultisigDepositFactor: Balance = 5;
+	pub const MultisigDepositBase: Balance = 500 * MILLICENTS;
+	pub const MultisigDepositFactor: Balance = 100 * MILLICENTS;
 	pub const MaxSignatories: u16 = 100;
 }
 
@@ -353,7 +298,7 @@ parameter_types! {
 	pub const SpendPeriod: BlockNumber = 1 * DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
 	pub const TipCountdown: BlockNumber = 1 * DAYS;
-	pub const TipFindersFee: Percent = Percent::from_percent(20);
+	pub const TipFindersFee: Percent = Percent::from_percent(10);
 	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
 	pub const TipReportDepositPerByte: Balance = 1 * CENTS;
 }
@@ -429,9 +374,9 @@ impl Convert<u128, Balance> for CurrencyToVoteHandler {
 }
 
 parameter_types! {
-	pub const SessionsPerEra: sp_staking::SessionIndex = 6;
-	pub const BondingDuration: pallet_staking::EraIndex = 24 * 28;
-	pub const SlashDeferDuration: pallet_staking::EraIndex = 24 * 7; // 1/4 the bonding duration.
+	pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 1 hour
+	pub const BondingDuration: pallet_staking::EraIndex = 4; // 4 hours
+	pub const SlashDeferDuration: pallet_staking::EraIndex = 4; // 4 hours
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 }
 
@@ -453,10 +398,10 @@ impl pallet_staking::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ConfigDepositBase: Balance = 5 * DOLLARS;
-	pub const FriendDepositFactor: Balance = 50 * CENTS;
+	pub const ConfigDepositBase: Balance = 10 * CENTS;
+	pub const FriendDepositFactor: Balance = 1 * CENTS;
 	pub const MaxFriends: u16 = 9;
-	pub const RecoveryDeposit: Balance = 5 * DOLLARS;
+	pub const RecoveryDeposit: Balance = 10 * CENTS;
 }
 
 impl pallet_recovery::Trait for Runtime {
@@ -488,13 +433,13 @@ impl OperatorProvider<AccountId> for OperatorCollectiveProvider {
 }
 
 parameter_types! {
-	pub const MinimumCount: u32 = 1; // TODO: change this
-	pub const ExpiresIn: u64 = 1000 * 60 * 60 * 24 * 100; // 100days for now TODO: change this
+	pub const MinimumCount: u32 = 1;
+	pub const ExpiresIn: Moment = 1000 * 60 * 60 * 24 * 7; // 7 days
 }
 
 impl orml_oracle::Trait for Runtime {
 	type Event = Event;
-	type OnNewData = (); // TODO: update this
+	type OnNewData = ();
 	type OperatorProvider = OperatorCollectiveProvider;
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
@@ -504,12 +449,16 @@ impl orml_oracle::Trait for Runtime {
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
 
+parameter_types! {
+	pub const TokenExistentialDeposit: Balance = 0;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = TokenExistentialDeposit;
 	type DustRemoval = ();
 }
 
@@ -537,10 +486,10 @@ impl orml_currencies::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 50);
-	pub const AuctionTimeToClose: BlockNumber = 100;
-	pub const AuctionDurationSoftCap: BlockNumber = 200;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const MinimumIncrementSize: Rate = Rate::from_rational(2, 100);
+	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
+	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(20, 100);
 }
 
 impl module_auction_manager::Trait for Runtime {
@@ -569,11 +518,11 @@ impl module_vaults::Trait for Runtime {
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
-	pub const GlobalStabilityFee: Rate = Rate::from_rational(0, 0);
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
-	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 1);
-	pub const MinimumDebitValue: Balance = 100 * MILLICENTS;
-	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(1, 100);
+	pub const GlobalStabilityFee: Rate = Rate::from_rational(14708, 100000000000u128); // 0.00000014708 per block, or 10% per month
+	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(150, 100);
+	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
+	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
+	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(5, 100);
 }
 
 impl module_cdp_engine::Trait for Runtime {
