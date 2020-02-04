@@ -171,11 +171,11 @@ mod tests {
 					&AccountId::from(ALICE),
 					XBTC,
 					amount(100) as i128,
-					amount(50) as i128
+					amount(500) as i128
 				));
 				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
 				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
-				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), amount(50));
+				assert_eq!(VaultsModule::debits(AccountId::from(ALICE), XBTC), amount(500));
 				assert_eq!(VaultsModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
 				assert_noop!(
 					HonzonModule::liquidate(origin_of(AccountId::from(CAROL)), AccountId::from(ALICE), XBTC),
