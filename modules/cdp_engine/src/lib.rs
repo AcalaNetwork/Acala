@@ -80,6 +80,35 @@ decl_storage! {
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(blake2_256) CurrencyIdOf<T> => Option<ExchangeRate>;
 		pub IsShutdown get(fn is_shutdown): bool;
 	}
+
+	add_extra_genesis {
+		config(collaterals_params): Vec<(CurrencyIdOf<T>, Option<Rate>, Option<Ratio>, Option<Rate>, Option<Ratio>, BalanceOf<T>)>;
+
+		build(|config: &GenesisConfig<T>| {
+			config.collaterals_params.iter().for_each(|(
+				currency_id,
+				stability_fee,
+				liquidation_ratio,
+				liquidation_penalty,
+				required_collateral_ratio,
+				maximum_total_debit_value,
+			)| {
+				if let Some(val) = stability_fee {
+					<StabilityFee<T>>::insert(currency_id, val);
+				}
+				if let Some(val) = liquidation_ratio {
+					<LiquidationRatio<T>>::insert(currency_id, val);
+				}
+				if let Some(val) = liquidation_penalty {
+					<LiquidationPenalty<T>>::insert(currency_id, val);
+				}
+				if let Some(val) = required_collateral_ratio {
+					<RequiredCollateralRatio<T>>::insert(currency_id, val);
+				}
+				<MaximumTotalDebitValue<T>>::insert(currency_id, maximum_total_debit_value);
+			})
+		})
+	}
 }
 
 decl_module! {

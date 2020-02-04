@@ -1,10 +1,11 @@
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
+use orml_utilities::FixedU128;
 use runtime::{
-	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CurrencyId,
-	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig, IndicesConfig,
-	OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-	TokensConfig, WASM_BINARY,
+	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+	CurrencyId, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
+	IndicesConfig, OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
+	SystemConfig, TokensConfig, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service;
@@ -278,6 +279,33 @@ fn testnet_genesis(
 				})
 				.collect(),
 		}),
+		module_cdp_treasury: Some(CdpTreasuryConfig {
+			surplus_auction_fixed_size: 0,
+			surplus_buffer_size: 0,
+			initial_amount_per_debit_auction: 0,
+			debit_auction_fixed_size: 0,
+			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 0), (CurrencyId::XBTC, 0)],
+		}),
+		module_cdp_engine: Some(CdpEngineConfig {
+			collaterals_params: vec![
+				(
+					CurrencyId::DOT,
+					Some(FixedU128::from_natural(0)),
+					Some(FixedU128::from_rational(150, 100)),
+					Some(FixedU128::from_rational(10, 100)),
+					Some(FixedU128::from_rational(150, 100)),
+					0,
+				),
+				(
+					CurrencyId::XBTC,
+					Some(FixedU128::from_natural(0)),
+					Some(FixedU128::from_rational(150, 100)),
+					Some(FixedU128::from_rational(10, 100)),
+					Some(FixedU128::from_rational(150, 100)),
+					0,
+				),
+			],
+		}),
 	}
 }
 
@@ -353,6 +381,33 @@ fn mandala_genesis(
 					]
 				})
 				.collect(),
+		}),
+		module_cdp_treasury: Some(CdpTreasuryConfig {
+			surplus_auction_fixed_size: 0,
+			surplus_buffer_size: 0,
+			initial_amount_per_debit_auction: 0,
+			debit_auction_fixed_size: 0,
+			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 0), (CurrencyId::XBTC, 0)],
+		}),
+		module_cdp_engine: Some(CdpEngineConfig {
+			collaterals_params: vec![
+				(
+					CurrencyId::DOT,
+					Some(FixedU128::from_natural(0)),
+					Some(FixedU128::from_rational(150, 100)),
+					Some(FixedU128::from_rational(10, 100)),
+					Some(FixedU128::from_rational(150, 100)),
+					0,
+				),
+				(
+					CurrencyId::XBTC,
+					Some(FixedU128::from_natural(0)),
+					Some(FixedU128::from_rational(150, 100)),
+					Some(FixedU128::from_rational(10, 100)),
+					Some(FixedU128::from_rational(150, 100)),
+					0,
+				),
+			],
 		}),
 	}
 }

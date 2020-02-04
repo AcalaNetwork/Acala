@@ -20,6 +20,7 @@ dependencies = [
  "jsonrpc-core",
  "log",
  "orml-oracle-rpc",
+ "orml-utilities",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "sc-authority-discovery",

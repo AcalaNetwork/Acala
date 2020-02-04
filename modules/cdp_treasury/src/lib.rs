@@ -31,16 +31,26 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
-		pub SurplusAuctionFixedSize get(fn surplus_auction_fixed_size): BalanceOf<T>;
-		pub SurplusBufferSize get(fn surplus_buffer_size): BalanceOf<T>;
-		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction): BalanceOf<T>;
-		pub DebitAuctionFixedSize get(fn debit_auction_fixed_size): BalanceOf<T>;
+		pub SurplusAuctionFixedSize get(fn surplus_auction_fixed_size) config(): BalanceOf<T>;
+		pub SurplusBufferSize get(fn surplus_buffer_size) config(): BalanceOf<T>;
+		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction) config(): BalanceOf<T>;
+		pub DebitAuctionFixedSize get(fn debit_auction_fixed_size) config(): BalanceOf<T>;
 		pub CollateralAuctionMaximumSize get(fn collateral_auction_maximum_size): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 
 		pub DebitPool get(fn debit_pool): BalanceOf<T>;
 		pub SurplusPool get(fn surplus_pool): BalanceOf<T>;
 		pub TotalCollaterals get(fn total_collaterals): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 		pub IsShutdown get(fn is_shutdown): bool;
+	}
+
+	add_extra_genesis {
+		config(collateral_auction_maximum_size): Vec<(CurrencyIdOf<T>, BalanceOf<T>)>;
+
+		build(|config: &GenesisConfig<T>| {
+			config.collateral_auction_maximum_size.iter().for_each(|(currency_id, size)| {
+				<CollateralAuctionMaximumSize<T>>::insert(currency_id, size);
+			})
+		})
 	}
 }
 
