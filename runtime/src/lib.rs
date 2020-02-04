@@ -175,8 +175,8 @@ impl pallet_timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u128 = 1 * CENTS;
-	pub const CreationFee: u128 = 50 * MILLICENTS;
+	pub const AcaExistentialDeposit: Balance = 100 * MILLICENTS;
+	pub const CreationFee: Balance = 50 * MILLICENTS;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -189,7 +189,7 @@ impl pallet_balances::Trait for Runtime {
 	type Event = Event;
 	type DustRemoval = ();
 	type TransferPayment = ();
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = AcaExistentialDeposit;
 	type CreationFee = CreationFee;
 }
 
@@ -449,12 +449,16 @@ impl orml_oracle::Trait for Runtime {
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
 
+parameter_types! {
+	pub const TokenExistentialDeposit: Balance = 0;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = TokenExistentialDeposit;
 	type DustRemoval = ();
 }
 
