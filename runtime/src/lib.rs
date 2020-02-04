@@ -114,8 +114,13 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	apis: RUNTIME_API_VERSIONS,
 };
 
-pub const MILLISECS_PER_BLOCK: Moment = 4000;
+// Money
+pub const MILLICENTS: Balance = 10_000_000_000_000;
+pub const CENTS: Balance = 1_000 * MILLICENTS; // assume this is worth about a cent.
+pub const DOLLARS: Balance = 100 * CENTS;
 
+// Time
+pub const MILLISECS_PER_BLOCK: Moment = 4000;
 pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
 // These time units are defined in number of blocks.
@@ -344,13 +349,13 @@ impl Contains<AccountId> for GeneralCouncilProvider {
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 1_000_000_000_000_000_000;
+	pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = 1 * DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
 	pub const TipCountdown: BlockNumber = 1 * DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
-	pub const TipReportDepositBase: Balance = 1_000_000_000_000_000_000;
-	pub const TipReportDepositPerByte: Balance = 1_000_000_000_000_000;
+	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
+	pub const TipReportDepositPerByte: Balance = 1 * CENTS;
 }
 
 impl pallet_treasury::Trait for Runtime {
@@ -448,10 +453,10 @@ impl pallet_staking::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ConfigDepositBase: Balance = 5 * 1_000_000_000_000_000_000;
-	pub const FriendDepositFactor: Balance = 50 * 10_000_000_000_000_000;
+	pub const ConfigDepositBase: Balance = 5 * DOLLARS;
+	pub const FriendDepositFactor: Balance = 50 * CENTS;
 	pub const MaxFriends: u16 = 9;
-	pub const RecoveryDeposit: Balance = 5 * 1_000_000_000_000_000_000;
+	pub const RecoveryDeposit: Balance = 5 * DOLLARS;
 }
 
 impl pallet_recovery::Trait for Runtime {
@@ -567,7 +572,7 @@ parameter_types! {
 	pub const GlobalStabilityFee: Rate = Rate::from_rational(0, 0);
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
 	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 1);
-	pub const MinimumDebitValue: Balance = 1_000_000_000_000_000;
+	pub const MinimumDebitValue: Balance = 100 * MILLICENTS;
 	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(1, 100);
 }
 
@@ -624,6 +629,22 @@ impl module_cdp_treasury::Trait for Runtime {
 	type Dex = module_dex::Module<Runtime>;
 }
 
+parameter_types! {
+	pub const FreeTransferCount: u8 = 3;
+	pub const FreeTransferPeriod: BlockNumber = 1 * DAYS;
+	pub const FreeTransferDeposit: Balance = 1 * DOLLARS;
+}
+
+impl module_accounts::Trait for Runtime {
+	type FreeTransferCount = FreeTransferCount;
+	type FreeTransferPeriod = FreeTransferPeriod;
+	type FreeTransferDeposit = FreeTransferDeposit;
+	type Time = Timestamp;
+	type Currency = orml_currencies::Module<Runtime>;
+	type Call = Call;
+	type DepositCurrency = Balances;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -663,6 +684,7 @@ construct_runtime!(
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
+		Accounts: module_accounts::{Module, Call, Storage},
 	}
 );
 
@@ -683,7 +705,7 @@ pub type SignedExtra = (
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
 	system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	module_accounts::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
