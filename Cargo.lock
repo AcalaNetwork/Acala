@@ -63,6 +63,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "module-accounts",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
