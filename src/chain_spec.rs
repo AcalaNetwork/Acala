@@ -280,21 +280,24 @@ fn testnet_genesis(
 				.collect(),
 		}),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			surplus_auction_fixed_size: 1_000 * DOLLARS,
-			surplus_buffer_size: 10_000 * DOLLARS,
-			initial_amount_per_debit_auction: 2_000 * DOLLARS,
-			debit_auction_fixed_size: 1_000 * DOLLARS,
-			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 1 * DOLLARS), (CurrencyId::XBTC, 1 * DOLLARS)],
+			surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
+			surplus_buffer_size: 10_000 * DOLLARS,       // cache amount, exceed this will create surplus auction
+			initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
+			debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
+			collateral_auction_maximum_size: vec![
+				(CurrencyId::DOT, 1 * DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::XBTC, 1 * DOLLARS),
+			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					Some(FixedU128::from_natural(0)),
-					Some(FixedU128::from_rational(150, 100)),
-					Some(FixedU128::from_rational(10, 100)),
-					Some(FixedU128::from_rational(150, 100)),
-					10_000_000 * DOLLARS,
+					Some(FixedU128::from_natural(0)),         // stability fee for this collateral
+					Some(FixedU128::from_rational(150, 100)), // liquidation ratio
+					Some(FixedU128::from_rational(10, 100)),  // liquidation penalty rate
+					Some(FixedU128::from_rational(150, 100)), // required liquidation ratio
+					10_000_000 * DOLLARS,                     // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
@@ -383,21 +386,24 @@ fn mandala_genesis(
 				.collect(),
 		}),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			surplus_auction_fixed_size: 1_000 * DOLLARS,
-			surplus_buffer_size: 10_000 * DOLLARS,
-			initial_amount_per_debit_auction: 2_000 * DOLLARS,
-			debit_auction_fixed_size: 1_000 * DOLLARS,
-			collateral_auction_maximum_size: vec![(CurrencyId::DOT, 1 * DOLLARS), (CurrencyId::XBTC, 1 * DOLLARS)],
+			surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
+			surplus_buffer_size: 10_000 * DOLLARS,       // cache amount, exceed this will create surplus auction
+			initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
+			debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
+			collateral_auction_maximum_size: vec![
+				(CurrencyId::DOT, 1 * DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::XBTC, 1 * DOLLARS),
+			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					Some(FixedU128::from_natural(0)),
-					Some(FixedU128::from_rational(150, 100)),
-					Some(FixedU128::from_rational(10, 100)),
-					Some(FixedU128::from_rational(150, 100)),
-					10_000_000 * DOLLARS,
+					Some(FixedU128::from_natural(0)),         // stability fee for this collateral
+					Some(FixedU128::from_rational(150, 100)), // liquidation ratio
+					Some(FixedU128::from_rational(10, 100)),  // liquidation penalty rate
+					Some(FixedU128::from_rational(150, 100)), // required liquidation ratio
+					10_000_000 * DOLLARS,                     // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
