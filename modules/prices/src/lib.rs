@@ -22,7 +22,10 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin { }
+	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+		const GetStableCurrencyId: T::CurrencyId = T::GetStableCurrencyId::get();
+		const StableCurrencyFixedPrice: Price = T::StableCurrencyFixedPrice::get();
+	}
 }
 
 impl<T: Trait> Module<T> {}

@@ -101,6 +101,13 @@ decl_storage! {
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
+
+		const MinimumIncrementSize: Rate = T::MinimumIncrementSize::get();
+		const AuctionTimeToClose: T::BlockNumber = T::AuctionTimeToClose::get();
+		const AuctionDurationSoftCap: T::BlockNumber = T::AuctionDurationSoftCap::get();
+		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
+		const GetNativeCurrencyId: CurrencyIdOf<T> = T::GetNativeCurrencyId::get();
+		const GetAmountAdjustment: Rate = T::GetAmountAdjustment::get();
 	}
 }
 
