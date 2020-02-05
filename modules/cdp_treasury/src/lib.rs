@@ -72,7 +72,6 @@ decl_module! {
 			surplus_buffer_size: Option<BalanceOf<T>>,
 			initial_amount_per_debit_auction: Option<BalanceOf<T>>,
 			debit_auction_fixed_size: Option<BalanceOf<T>>,
-			collateral_auction_maximum_size: Option<(CurrencyIdOf<T>, BalanceOf<T>)>,
 		) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
@@ -89,9 +88,13 @@ decl_module! {
 			if let Some(amount) = debit_auction_fixed_size {
 				<DebitAuctionFixedSize<T>>::put(amount);
 			}
-			if let Some((currency_id, amount)) = collateral_auction_maximum_size {
-				<CollateralAuctionMaximumSize<T>>::insert(currency_id, amount);
-			}
+		}
+
+		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
+			<CollateralAuctionMaximumSize<T>>::insert(currency_id, size);
 		}
 
 		fn on_finalize(_now: T::BlockNumber) {

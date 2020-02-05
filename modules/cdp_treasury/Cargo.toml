@@ -14,11 +14,11 @@ rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git"
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
+pallet-balances = { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 orml-auction = { package = "orml-auction", path = "../../orml/auction", default-features = false }
 dex = { package = "module-dex", path = "../dex", default-features = false }
@@ -35,4 +35,5 @@ std = [
 	"orml-traits/std",
 	"orml-tokens/std",
 	"support/std",
+	"pallet-balances/std",
 ]

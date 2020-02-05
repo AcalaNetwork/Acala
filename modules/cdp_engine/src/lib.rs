@@ -29,7 +29,8 @@ pub trait Trait: system::Trait + vaults::Trait {
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GlobalStabilityFee: Get<Rate>;
 	type DefaultLiquidationRatio: Get<Ratio>;
-	type DefaulDebitExchangeRate: Get<ExchangeRate>;
+	type DefaultDebitExchangeRate: Get<ExchangeRate>;
+	type DefaultLiquidationPenalty: Get<Rate>;
 	type MinimumDebitValue: Get<BalanceOf<Self>>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
 	type Treasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
@@ -118,10 +119,11 @@ decl_module! {
 		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
 		const GlobalStabilityFee: Rate = T::GlobalStabilityFee::get();
 		const DefaultLiquidationRatio: Ratio = T::DefaultLiquidationRatio::get();
-		const DefaulDebitExchangeRate: ExchangeRate = T::DefaulDebitExchangeRate::get();
+		const DefaultDebitExchangeRate: ExchangeRate = T::DefaultDebitExchangeRate::get();
 		const MinimumDebitValue: BalanceOf<T> = T::MinimumDebitValue::get();
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 		const MaxSlippageSwapWithDex: Ratio = T::MaxSlippageSwapWithDex::get();
+		const DefaultLiquidationPenalty: Rate = T::DefaultLiquidationPenalty::get();
 
 		pub fn set_collateral_params(
 			origin,
@@ -174,7 +176,7 @@ decl_module! {
 				let global_stability_fee = T::GlobalStabilityFee::get();
 
 				for currency_id in T::CollateralCurrencyIds::get() {
-					let debit_exchange_rate = Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaulDebitExchangeRate::get);
+					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
 					let stability_fee_rate = Self::stability_fee(currency_id)
 						.unwrap_or_default()
 						.saturating_add(global_stability_fee);
@@ -198,6 +200,18 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+	pub fn get_liquidation_ratio(currency_id: CurrencyIdOf<T>) -> Ratio {
+		Self::liquidation_ratio(currency_id).unwrap_or_else(T::DefaultLiquidationRatio::get)
+	}
+
+	pub fn get_debit_exchange_rate(currency_id: CurrencyIdOf<T>) -> ExchangeRate {
+		Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaultDebitExchangeRate::get)
+	}
+
+	pub fn get_liquidation_penalty(currency_id: CurrencyIdOf<T>) -> Rate {
+		Self::liquidation_penalty(currency_id).unwrap_or_else(T::DefaultLiquidationPenalty::get)
+	}
+
 	pub fn emergency_shutdown() {
 		<IsShutdown>::put(true);
 	}
@@ -280,7 +294,7 @@ impl<T: Trait> Module<T> {
 			T::PriceSource::get_price(stable_currency_id, currency_id).ok_or(Error::<T>::InvalidFeedPrice)?;
 		let collateral_ratio =
 			Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
-		let liquidation_ratio = Self::liquidation_ratio(currency_id).unwrap_or_else(T::DefaultLiquidationRatio::get);
+		let liquidation_ratio = Self::get_liquidation_ratio(currency_id);
 		ensure!(
 			collateral_ratio < liquidation_ratio,
 			Error::<T>::CollateralRatioStillSafe
@@ -296,10 +310,7 @@ impl<T: Trait> Module<T> {
 
 		// third: calculate bad_debt and target
 		let bad_debt = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
-		let mut target = bad_debt;
-		if let Some(penalty_ratio) = Self::liquidation_penalty(currency_id) {
-			target = target.saturating_add(penalty_ratio.saturating_mul_int(&target));
-		}
+		let target = bad_debt.saturating_add(Self::get_liquidation_penalty(currency_id).saturating_mul_int(&bad_debt));
 
 		// add system debit to cdp treasury
 		<T as Trait>::Treasury::on_system_debit(bad_debt);

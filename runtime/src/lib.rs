@@ -520,7 +520,8 @@ parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
 	pub const GlobalStabilityFee: Rate = Rate::from_rational(14708, 100000000000u128); // 0.00000014708 per block, or 10% per month
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(150, 100);
-	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
+	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
+	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
 	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(5, 100);
 }
@@ -531,7 +532,8 @@ impl module_cdp_engine::Trait for Runtime {
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
-	type DefaulDebitExchangeRate = DefaulDebitExchangeRate;
+	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
+	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = module_cdp_treasury::Module<Runtime>;
