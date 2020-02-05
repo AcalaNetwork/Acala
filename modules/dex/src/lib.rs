@@ -68,6 +68,7 @@ decl_module! {
 
 		fn deposit_event() = default;
 
+		const GetBaseCurrencyId: CurrencyIdOf<T> = T::GetBaseCurrencyId::get();
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
 		pub fn swap_currency(origin, supply: (CurrencyIdOf<T>, BalanceOf<T>), target: (CurrencyIdOf<T>, BalanceOf<T>)) {

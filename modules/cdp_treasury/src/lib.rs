@@ -63,6 +63,9 @@ decl_error! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
+
 		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<BalanceOf<T>>,
