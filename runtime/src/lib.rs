@@ -628,10 +628,10 @@ construct_runtime!(
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
 		Vaults: module_vaults::{Module, Storage, Call, Event<T>},
-		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
-		CdpTreasury: module_cdp_treasury::{Module, Storage, Call},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
 	}
