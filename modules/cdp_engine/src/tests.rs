@@ -5,10 +5,63 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, CdpTreasury, Currencies, ExtBuilder, Origin, Runtime, System, TestEvent, VaultsModule, ACA, ALICE,
-	AUSD, BTC, DOT,
+	CdpEngineModule, CdpTreasury, Currencies, DefaultDebitExchangeRate, DefaultLiquidationPenalty,
+	DefaultLiquidationRatio, ExtBuilder, Origin, Runtime, System, TestEvent, VaultsModule, ACA, ALICE, AUSD, BTC, DOT,
 };
 use sp_runtime::traits::{BadOrigin, OnFinalize};
+
+#[test]
+fn get_debit_exchange_rate_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			CdpEngineModule::get_debit_exchange_rate(BTC),
+			DefaultDebitExchangeRate::get()
+		);
+	});
+}
+
+#[test]
+fn get_liquidation_penalty_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			CdpEngineModule::get_liquidation_penalty(BTC),
+			DefaultLiquidationPenalty::get()
+		);
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(5, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_eq!(
+			CdpEngineModule::get_liquidation_penalty(BTC),
+			Rate::from_rational(2, 10)
+		);
+	});
+}
+
+#[test]
+fn get_liquidation_ratio_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			CdpEngineModule::get_liquidation_ratio(BTC),
+			DefaultLiquidationRatio::get()
+		);
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(5, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_eq!(CdpEngineModule::get_liquidation_ratio(BTC), Ratio::from_rational(5, 2));
+	});
+}
 
 #[test]
 fn set_collateral_params_work() {

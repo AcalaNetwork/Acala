@@ -8,6 +8,28 @@ use mock::{CdpTreasuryModule, Currencies, DexModule, ExtBuilder, Origin, Runtime
 use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
+fn set_collateral_auction_maximum_size_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(CdpTreasuryModule::collateral_auction_maximum_size(BTC), 0);
+		assert_noop!(
+			CdpTreasuryModule::set_collateral_auction_maximum_size(Origin::signed(5), BTC, 200),
+			BadOrigin
+		);
+		assert_ok!(CdpTreasuryModule::set_collateral_auction_maximum_size(
+			Origin::signed(1),
+			BTC,
+			200
+		));
+		assert_ok!(CdpTreasuryModule::set_collateral_auction_maximum_size(
+			Origin::ROOT,
+			BTC,
+			200
+		));
+		assert_eq!(CdpTreasuryModule::collateral_auction_maximum_size(BTC), 200);
+	});
+}
+
+#[test]
 fn set_debit_and_surplus_handle_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
@@ -17,7 +39,6 @@ fn set_debit_and_surplus_handle_params_work() {
 				Some(1000),
 				Some(200),
 				Some(100),
-				Some((BTC, 200)),
 			),
 			BadOrigin
 		);
@@ -27,7 +48,6 @@ fn set_debit_and_surplus_handle_params_work() {
 			Some(1000),
 			Some(200),
 			Some(100),
-			Some((BTC, 200)),
 		));
 		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::ROOT,
@@ -35,13 +55,11 @@ fn set_debit_and_surplus_handle_params_work() {
 			Some(1000),
 			Some(200),
 			Some(100),
-			Some((BTC, 200)),
 		));
 		assert_eq!(CdpTreasuryModule::surplus_auction_fixed_size(), 100);
 		assert_eq!(CdpTreasuryModule::surplus_buffer_size(), 1000);
 		assert_eq!(CdpTreasuryModule::initial_amount_per_debit_auction(), 200);
 		assert_eq!(CdpTreasuryModule::debit_auction_fixed_size(), 100);
-		assert_eq!(CdpTreasuryModule::collateral_auction_maximum_size(BTC), 200);
 	});
 }
 
@@ -52,7 +70,6 @@ fn create_surplus_auction_on_finailize_work() {
 			Origin::ROOT,
 			Some(100),
 			Some(1000),
-			None,
 			None,
 			None,
 		));
@@ -68,7 +85,6 @@ fn create_surplus_auction_on_finailize_work() {
 		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::ROOT,
 			Some(0),
-			None,
 			None,
 			None,
 			None,
@@ -88,7 +104,6 @@ fn create_debit_auction_on_finailize_work() {
 			None,
 			Some(200),
 			Some(100),
-			None,
 		));
 		CdpTreasuryModule::on_system_debit(99);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 99);
@@ -103,7 +118,6 @@ fn create_debit_auction_on_finailize_work() {
 			None,
 			Some(0),
 			None,
-			None,
 		));
 		CdpTreasuryModule::on_system_debit(99);
 		CdpTreasuryModule::on_finalize(3);
@@ -114,7 +128,6 @@ fn create_debit_auction_on_finailize_work() {
 			None,
 			Some(200),
 			Some(0),
-			None,
 		));
 		CdpTreasuryModule::on_finalize(4);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 100);
@@ -199,7 +212,6 @@ fn emergency_shutdown_work() {
 			Origin::ROOT,
 			Some(100),
 			Some(1000),
-			None,
 			None,
 			None,
 		));
@@ -287,13 +299,10 @@ fn swap_collateral_to_stable_work() {
 #[test]
 fn create_collateral_auctions_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
+		assert_ok!(CdpTreasuryModule::set_collateral_auction_maximum_size(
 			Origin::ROOT,
-			None,
-			None,
-			None,
-			None,
-			Some((BTC, 100)),
+			BTC,
+			100
 		));
 		CdpTreasuryModule::deposit_system_collateral(BTC, 1000);
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 1000);

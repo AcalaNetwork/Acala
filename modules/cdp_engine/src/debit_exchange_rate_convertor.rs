@@ -12,7 +12,7 @@ where
 		let balance: u128 = balance.unique_saturated_into();
 		let balance: BalanceOf<T> = balance.unique_saturated_into();
 		<Module<T>>::debit_exchange_rate(currency_id)
-			.unwrap_or(T::DefaulDebitExchangeRate::get())
+			.unwrap_or(T::DefaultDebitExchangeRate::get())
 			.saturating_mul_int(&balance)
 	}
 }

@@ -40,7 +40,8 @@ parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub const GlobalStabilityFee: Rate = Rate::from_parts(0);
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
-	pub const DefaulDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
+	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
+	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
@@ -212,7 +213,8 @@ impl cdp_engine::Trait for Runtime {
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
-	type DefaulDebitExchangeRate = DefaulDebitExchangeRate;
+	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
+	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type Treasury = CdpTreasury;
