@@ -146,28 +146,50 @@ impl Alternative {
 					"mandala",
 					|| {
 						// SECRET="..."
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//babe"
-						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//grandpa"
 						// ./target/debug/subkey inspect "$SECRET//acala//root"
 						// ./target/debug/subkey inspect "$SECRET//acala//oracle"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//validator"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//babe"
+						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//1//grandpa"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//validator"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//babe"
+						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//2//grandpa"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//validator"
+						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//babe"
+						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
 						mandala_genesis(
-							vec![(
-								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-								// 5EWtr28JevMKMwtriEAVebhgwd6iSqGcpPDsHeVhVs3if9Po
-								hex!["6c71d6cdf562a68345b4294eb9aad46599ff74fe6dc1a415f10e0fe2843cea3a"]
-									.unchecked_into(),
-								// 5HgPc3qxvJa8wNHAFtPoiy5khfQf8v9YCuw1wYHsy8Jshn2x
-								hex!["f8648f588affb6d92a444748b71ef0fc30ed4f9b3687f8be23635ac5de8fe17b"]
-									.unchecked_into(),
-							)],
+							vec![
+								(
+									// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
+									hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
+									hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
+									hex!["21b5a771b99ef0f059c476502c018c4b817fb0e48858e95a238850d2b7828556"]
+										.unchecked_into(),
+									hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
+										.unchecked_into(),
+								),
+								(
+									// 5FnLzAUmXeTZg5J9Ao5psKU68oA5PBekXqhrZCKDbhSCQi88
+									hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
+									hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
+									hex!["77f3c27e98da7849ed0749e1dea449321a4a5a36a1dccf3f08fc0ab3af24c62e"]
+										.unchecked_into(),
+									hex!["b4f5713322656d29930aa89efa5509554a36c40fb50a226eae0f38fc1a6ceb25"]
+										.unchecked_into(),
+								),
+								(
+									// 5Gn5LuLuWNcY21Vue4QcFFD3hLvjQY3weMHXuEyejUbUnArt
+									hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
+									hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
+									hex!["c5dfcf68ccf1a64ed4145383e4bbbb8bbcc50f654d87187c39df2b88a9683b7f"]
+										.unchecked_into(),
+									hex!["4cc54799f38715771605a21e8272a7a1344667e4681611988a913412755a8a04"]
+										.unchecked_into(),
+								),
+							],
 							// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
 							hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
 							vec![
-								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
 								// 5Fe3jZRbKes6aeuQ6HkcTvQeNhkkRPTXBwmNkuAPoimGEv45
 								hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].into(),
 							],
@@ -204,7 +226,7 @@ fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
 }
 
 const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
-const INITIAL_STAKING: u128 = 10_0000 * DOLLARS;
+const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
 fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
@@ -345,8 +367,8 @@ fn mandala_genesis(
 		}),
 		pallet_staking: Some(StakingConfig {
 			current_era: 0,
-			validator_count: initial_authorities.len() as u32 * 2,
-			minimum_validator_count: initial_authorities.len() as u32,
+			validator_count: 7,
+			minimum_validator_count: 3,
 			stakers: initial_authorities
 				.iter()
 				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
@@ -370,20 +392,15 @@ fn mandala_genesis(
 		}),
 		pallet_collective_Instance3: Some(Default::default()),
 		pallet_membership_Instance3: Some(OperatorMembershipConfig {
-			members: vec![root_key],
+			members: endowed_accounts.clone(),
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),
 		orml_tokens: Some(TokensConfig {
-			endowed_accounts: endowed_accounts
-				.iter()
-				.flat_map(|x| {
-					vec![
-						(x.clone(), CurrencyId::DOT, INITIAL_BALANCE),
-						(x.clone(), CurrencyId::XBTC, INITIAL_BALANCE),
-					]
-				})
-				.collect(),
+			endowed_accounts: vec![
+				(root_key.clone(), CurrencyId::DOT, INITIAL_BALANCE),
+				(root_key.clone(), CurrencyId::XBTC, INITIAL_BALANCE),
+			],
 		}),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
@@ -391,7 +408,7 @@ fn mandala_genesis(
 			initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
 			debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::DOT, 1 * DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::DOT, 5 * DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, 1 * DOLLARS),
 			],
 		}),
@@ -399,17 +416,17 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					Some(FixedU128::from_natural(0)),         // stability fee for this collateral
-					Some(FixedU128::from_rational(150, 100)), // liquidation ratio
+					None,                                     // stability fee for this collateral
+					Some(FixedU128::from_rational(130, 100)), // liquidation ratio
 					Some(FixedU128::from_rational(10, 100)),  // liquidation penalty rate
-					Some(FixedU128::from_rational(150, 100)), // required liquidation ratio
+					Some(FixedU128::from_rational(160, 100)), // required liquidation ratio
 					10_000_000 * DOLLARS,                     // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
-					Some(FixedU128::from_natural(0)),
-					Some(FixedU128::from_rational(150, 100)),
-					Some(FixedU128::from_rational(10, 100)),
+					None,
+					Some(FixedU128::from_rational(120, 100)),
+					Some(FixedU128::from_rational(11, 100)),
 					Some(FixedU128::from_rational(150, 100)),
 					10_000_000 * DOLLARS,
 				),
