@@ -196,7 +196,7 @@ impl Alternative {
 						)
 					},
 					vec![
-						"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmfZFm6bGGpaJ8J2TJb14ubtm86hdNeAwqvxDoVw5FDWUC".into(),
+						"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA".into(),
 					],
 					Some(TelemetryEndpoints::new(vec![(
 						"wss://telemetry.polkadot.io/submit/".into(),
