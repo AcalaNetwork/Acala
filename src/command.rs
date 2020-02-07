@@ -7,8 +7,7 @@ use sc_cli::{error, VersionInfo};
 pub fn run(version: VersionInfo) -> error::Result<()> {
 	let opt = sc_cli::from_args::<Cli>(&version);
 
-	let mut config = sc_service::Configuration::default();
-	config.impl_name = "acala";
+	let config = sc_service::Configuration::new(&version);
 
 	match opt.subcommand {
 		Some(subcommand) => sc_cli::run_subcommand(
