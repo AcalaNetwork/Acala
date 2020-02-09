@@ -61,8 +61,8 @@ decl_event!(
 		UpdatePosition(AccountId, CurrencyId, Amount, DebitAmount),
 		/// Update collaterals and debits success (account, currency_id, collaterals, debits)
 		UpdateCollateralsAndDebits(AccountId, CurrencyId, Amount, DebitAmount),
-		/// Transfer vault (from, to)
-		TransferVault(AccountId, AccountId, CurrencyId),
+		/// Transfer loan (from, to)
+		TransferLoan(AccountId, AccountId, CurrencyId),
 	}
 );
 
@@ -104,7 +104,7 @@ impl<T: Trait> Module<T> {
 	) -> DispatchResult {
 		// ensure mutate safe
 		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
-		Self::update_vault(&who, currency_id, collaterals, debits)?;
+		Self::update_loan(&who, currency_id, collaterals, debits)?;
 		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(
 			who,
 			currency_id,
@@ -161,15 +161,14 @@ impl<T: Trait> Module<T> {
 		}
 
 		// mutate collaterals and debits
-		Self::update_vault(who, currency_id, collaterals, debits)
-			.expect("Will never fail ensured by check_add_and_sub");
+		Self::update_loan(who, currency_id, collaterals, debits).expect("Will never fail ensured by check_add_and_sub");
 
 		Self::deposit_event(RawEvent::UpdatePosition(who.clone(), currency_id, collaterals, debits));
 
 		Ok(())
 	}
 
-	// transfer vault
+	// transfer loan
 	pub fn transfer(from: T::AccountId, to: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 		// get `from` position data
 		let collateral: BalanceOf<T> = Self::collaterals(&from, currency_id);
@@ -192,11 +191,11 @@ impl<T: Trait> Module<T> {
 			.map_err(|_| Error::<T>::RiskCheckFailed)?;
 
 		// execute transfer
-		Self::update_vault(&from, currency_id, -collateral, -debit)
+		Self::update_loan(&from, currency_id, -collateral, -debit)
 			.expect("Will never fail ensured by check_add_and_sub");
-		Self::update_vault(&to, currency_id, collateral, debit).expect("Will never fail ensured by check_add_and_sub");
+		Self::update_loan(&to, currency_id, collateral, debit).expect("Will never fail ensured by check_add_and_sub");
 
-		Self::deposit_event(RawEvent::TransferVault(from, to, currency_id));
+		Self::deposit_event(RawEvent::TransferLoan(from, to, currency_id));
 
 		Ok(())
 	}
@@ -221,7 +220,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	/// ensure sum and sub will success when updating vault collaterals and debits
+	/// ensure sum and sub will success when updating loan collaterals and debits
 	fn check_add_and_sub(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
@@ -267,7 +266,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn update_vault(
+	fn update_loan(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
 		collaterals: AmountOf<T>,

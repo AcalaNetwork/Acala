@@ -64,7 +64,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;
 		}
 
-		pub fn update_vault(
+		pub fn update_loan(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			collateral: AmountOf<T>,
@@ -87,7 +87,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, T::DebitAmount::zero())?;
 		}
 
-		pub fn transfer_vault_from(
+		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			from: T::AccountId,
@@ -101,7 +101,7 @@ decl_module! {
 			<loans::Module<T>>::transfer(from.clone(), to.clone(), currency_id)?;
 		}
 
-		/// `origin` allow `to` to manipulate the `currency_id` vault
+		/// `origin` allow `to` to manipulate the `currency_id` loan
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -115,7 +115,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Authorization(from, to, currency_id));
 		}
 
-		/// `origin` refuse `to` to manipulate the vault  of `currency_id`
+		/// `origin` refuse `to` to manipulate the loan  of `currency_id`
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -129,7 +129,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::UnAuthorization(from, to, currency_id));
 		}
 
-		/// `origin` refuse anyone to manipulate its vault
+		/// `origin` refuse anyone to manipulate its loan
 		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
 
@@ -142,7 +142,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	/// check if `from` allow `to` to manipulate its vault
+	/// check if `from` allow `to` to manipulate its loan
 	pub fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 		ensure!(
 			from == to || Self::authorization(from, (currency_id, to)),
