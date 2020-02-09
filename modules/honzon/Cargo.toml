@@ -15,7 +15,7 @@ rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git"
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 cdp-engine = { package = "module-cdp-engine", path = "../cdp_engine", default-features = false }
-vaults = { package = "module-vaults", path = "../vaults", default-features = false }
+loans = { package = "module-loans", path = "../loans", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 
 [dev-dependencies]
@@ -36,7 +36,7 @@ std = [
 	"rstd/std",
 	"orml-traits/std",
 	"orml-tokens/std",
-	"vaults/std",
+	"loans/std",
 	"cdp-engine/std",
 	"support/std",
 ]

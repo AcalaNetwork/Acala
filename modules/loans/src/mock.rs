@@ -1,4 +1,4 @@
-//! Mocks for the vaults module.
+//! Mocks for the loans module.
 
 #![cfg(test)]
 
@@ -10,13 +10,13 @@ use system::EnsureSignedBy;
 
 use super::*;
 
-mod vaults {
+mod loans {
 	pub use super::super::*;
 }
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
-		vaults<T>,
+		loans<T>,
 		orml_tokens<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
@@ -199,7 +199,7 @@ impl Trait for Runtime {
 	type DebitAmount = DebitAmount;
 	type Treasury = CdpTreasury;
 }
-pub type VaultsModule = Module<Runtime>;
+pub type LoansModule = Module<Runtime>;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

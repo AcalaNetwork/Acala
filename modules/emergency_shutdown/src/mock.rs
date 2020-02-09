@@ -19,7 +19,7 @@ impl_outer_event! {
 		emergency_shutdown<T>,
 		cdp_engine<T>,
 		orml_tokens<T>,
-		vaults<T>,
+		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
 		honzon<T>,
@@ -119,7 +119,7 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
-impl vaults::Trait for Runtime {
+impl loans::Trait for Runtime {
 	type Event = TestEvent;
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
