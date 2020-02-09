@@ -105,7 +105,7 @@ fn unauthorize_all_should_work() {
 }
 
 #[test]
-fn transfer_vault_from_should_work() {
+fn transfer_loan_from_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
@@ -116,9 +116,9 @@ fn transfer_vault_from_should_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-		assert_ok!(HonzonModule::transfer_vault_from(Origin::signed(BOB), BTC, ALICE));
+		assert_ok!(HonzonModule::transfer_loan_from(Origin::signed(BOB), BTC, ALICE));
 		assert_eq!(LoansModule::collaterals(BOB, BTC), 100);
 		assert_eq!(LoansModule::debits(BOB, BTC), 50);
 	});
@@ -128,14 +128,14 @@ fn transfer_vault_from_should_work() {
 fn transfer_unauthorization_loans_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HonzonModule::transfer_vault_from(Origin::signed(ALICE), BTC, BOB),
+			HonzonModule::transfer_loan_from(Origin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::NoAuthorization,
 		);
 	});
 }
 
 #[test]
-fn update_vault_should_work() {
+fn update_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
@@ -146,7 +146,7 @@ fn update_vault_should_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
 	});
@@ -163,11 +163,11 @@ fn emergency_shutdown_should_work() {
 			Error::<Runtime>::AlreadyShutdown,
 		);
 		assert_noop!(
-			HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50),
+			HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 50),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 		assert_noop!(
-			HonzonModule::transfer_vault_from(Origin::signed(ALICE), BTC, BOB),
+			HonzonModule::transfer_loan_from(Origin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 	});
