@@ -506,7 +506,7 @@ impl module_auction_manager::Trait for Runtime {
 	type PriceSource = module_prices::Module<Runtime>;
 }
 
-impl module_vaults::Trait for Runtime {
+impl module_loans::Trait for Runtime {
 	type Event = Event;
 	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = orml_currencies::Module<Runtime>;
@@ -629,7 +629,7 @@ construct_runtime!(
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
-		Vaults: module_vaults::{Module, Storage, Call, Event<T>},
+		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},

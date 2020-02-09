@@ -12,8 +12,8 @@ use system::{ensure_root, ensure_signed};
 mod mock;
 mod tests;
 
-type CurrencyIdOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type BalanceOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
+type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
+type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type AuctionIdOf<T> =
 	<<T as Trait>::AuctionManagerHandler as AuctionManagerExtended<<T as system::Trait>::AccountId>>::AuctionId;
 
@@ -107,7 +107,7 @@ decl_module! {
 				);
 				// there's on debit in cdp
 				ensure!(
-					<vaults::Module<T>>::total_debits(currency_id).is_zero(),
+					<loans::Module<T>>::total_debits(currency_id).is_zero(),
 					Error::<T>::ExistUnhandleDebit,
 				);
 			}

@@ -19,11 +19,11 @@ pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 mod mock;
 mod tests;
 
-type CurrencyIdOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type BalanceOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-type AmountOf<T> = <<T as vaults::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
+type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
+type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
+type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
-pub trait Trait: system::Trait + vaults::Trait {
+pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
@@ -180,7 +180,7 @@ decl_module! {
 					let stability_fee_rate = Self::stability_fee(currency_id)
 						.unwrap_or_default()
 						.saturating_add(global_stability_fee);
-					let total_debits = <vaults::Module<T>>::total_debits(currency_id);
+					let total_debits = <loans::Module<T>>::total_debits(currency_id);
 					if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
 						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
 
@@ -244,7 +244,7 @@ impl<T: Trait> Module<T> {
 			T::CollateralCurrencyIds::get().contains(&currency_id),
 			Error::<T>::NotValidCurrencyId,
 		);
-		<vaults::Module<T>>::update_position(who, currency_id, collateral_adjustment, debit_adjustment)
+		<loans::Module<T>>::update_position(who, currency_id, collateral_adjustment, debit_adjustment)
 			.map_err(|_| Error::<T>::UpdatePositionFailed)?;
 
 		Ok(())
@@ -252,12 +252,12 @@ impl<T: Trait> Module<T> {
 
 	// settle cdp has debit when emergency shutdown
 	pub fn settle_cdp_has_debit(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <vaults::Module<T>>::debits(&who, currency_id);
+		let debit_balance = <loans::Module<T>>::debits(&who, currency_id);
 		ensure!(!debit_balance.is_zero(), Error::<T>::AlreadyNoDebit);
 
 		// confiscate collateral in cdp to cdp treasury
 		// and decrease cdp's debit to zero
-		let collateral_balance = <vaults::Module<T>>::collaterals(&who, currency_id);
+		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
 		let settle_price: Price = T::PriceSource::get_price(currency_id, T::GetStableCurrencyId::get())
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let debt_in_stable_currency = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
@@ -269,7 +269,7 @@ impl<T: Trait> Module<T> {
 			.map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let grab_debit_amount =
 			TryInto::<T::DebitAmount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
-		<vaults::Module<T>>::update_collaterals_and_debits(
+		<loans::Module<T>>::update_collaterals_and_debits(
 			who.clone(),
 			currency_id,
 			-grab_collateral_amount,
@@ -285,8 +285,8 @@ impl<T: Trait> Module<T> {
 
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <vaults::Module<T>>::debits(&who, currency_id);
-		let collateral_balance = <vaults::Module<T>>::collaterals(&who, currency_id);
+		let debit_balance = <loans::Module<T>>::debits(&who, currency_id);
+		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		// first: ensure the cdp is unsafe
@@ -305,7 +305,7 @@ impl<T: Trait> Module<T> {
 			TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let grab_debit_amount =
 			TryInto::<T::DebitAmount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
-		<vaults::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id, -grab_amount, -grab_debit_amount)
+		<loans::Module<T>>::update_collaterals_and_debits(who.clone(), currency_id, -grab_amount, -grab_debit_amount)
 			.map_err(|_| Error::<T>::GrabCollateralAndDebitFailed)?;
 
 		// third: calculate bad_debt and target
@@ -365,8 +365,8 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 		collateral_amount: AmountOf<T>,
 		debit_amount: T::DebitAmount,
 	) -> DispatchResult {
-		let mut debit_balance = <vaults::Module<T>>::debits(account_id, currency_id);
-		let mut collateral_balance = <vaults::Module<T>>::collaterals(account_id, currency_id);
+		let mut debit_balance = <loans::Module<T>>::debits(account_id, currency_id);
+		let mut collateral_balance = <loans::Module<T>>::collaterals(account_id, currency_id);
 
 		// calculate new debit balance and collateral balance after position adjustment
 		let collateral_balance_adjustment =
@@ -427,7 +427,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 	}
 
 	fn check_debit_cap(currency_id: CurrencyIdOf<T>, debit_amount: T::DebitAmount) -> DispatchResult {
-		let mut total_debit_balance = <vaults::Module<T>>::total_debits(currency_id);
+		let mut total_debit_balance = <loans::Module<T>>::total_debits(currency_id);
 		let debit_balance_adjustment = TryInto::<T::DebitBalance>::try_into(debit_amount.abs())
 			.map_err(|_| Error::<T>::DebitAmountConvertFailed)?;
 		if debit_amount.is_positive() {

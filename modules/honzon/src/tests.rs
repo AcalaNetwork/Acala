@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, Origin, Runtime, System, TestEvent, VaultsModule, ALICE,
+	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, LoansModule, Origin, Runtime, System, TestEvent, ALICE,
 	AUSD, BOB, BTC, CAROL, DOT,
 };
 use support::{Rate, Ratio};
@@ -25,8 +25,8 @@ fn liquidate_unsafe_cdp_work() {
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
-		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
-		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
+		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
+		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC),
 			Error::<Runtime>::LiquidateFailed,
@@ -43,8 +43,8 @@ fn liquidate_unsafe_cdp_work() {
 		assert_ok!(HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
-		assert_eq!(VaultsModule::debits(ALICE, BTC), 0);
-		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 0);
+		assert_eq!(LoansModule::debits(ALICE, BTC), 0);
+		assert_eq!(LoansModule::collaterals(ALICE, BTC), 0);
 	});
 }
 
@@ -119,13 +119,13 @@ fn transfer_vault_from_should_work() {
 		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::transfer_vault_from(Origin::signed(BOB), BTC, ALICE));
-		assert_eq!(VaultsModule::collaterals(BOB, BTC), 100);
-		assert_eq!(VaultsModule::debits(BOB, BTC), 50);
+		assert_eq!(LoansModule::collaterals(BOB, BTC), 100);
+		assert_eq!(LoansModule::debits(BOB, BTC), 50);
 	});
 }
 
 #[test]
-fn transfer_unauthorization_vaults_should_not_work() {
+fn transfer_unauthorization_loans_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			HonzonModule::transfer_vault_from(Origin::signed(ALICE), BTC, BOB),
@@ -147,8 +147,8 @@ fn update_vault_should_work() {
 			Some(10000),
 		));
 		assert_ok!(HonzonModule::update_vault(Origin::signed(ALICE), BTC, 100, 50));
-		assert_eq!(VaultsModule::collaterals(ALICE, BTC), 100);
-		assert_eq!(VaultsModule::debits(ALICE, BTC), 50);
+		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
+		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
 	});
 }
 

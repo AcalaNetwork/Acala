@@ -13,8 +13,8 @@ pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
-type CurrencyIdOf<T> = <<T as vaults::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type AmountOf<T> = <<T as vaults::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
+type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
+type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Honzon {
@@ -98,7 +98,7 @@ decl_module! {
 			// check authorization if `from` can manipulate `to`
 			Self::check_authorization(&from, &to, currency_id)?;
 
-			<vaults::Module<T>>::transfer(from.clone(), to.clone(), currency_id)?;
+			<loans::Module<T>>::transfer(from.clone(), to.clone(), currency_id)?;
 		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` vault

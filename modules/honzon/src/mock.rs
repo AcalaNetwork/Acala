@@ -19,7 +19,7 @@ impl_outer_event! {
 		honzon<T>,
 		cdp_engine<T>,
 		orml_tokens<T>,
-		vaults<T>,
+		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
 	}
@@ -118,7 +118,7 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
-impl vaults::Trait for Runtime {
+impl loans::Trait for Runtime {
 	type Event = TestEvent;
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
@@ -127,7 +127,7 @@ impl vaults::Trait for Runtime {
 	type DebitAmount = DebitAmount;
 	type Treasury = CdpTreasury;
 }
-pub type VaultsModule = vaults::Module<Runtime>;
+pub type LoansModule = loans::Module<Runtime>;
 
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId, Price> for MockPriceSource {
