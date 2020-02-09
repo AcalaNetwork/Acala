@@ -82,7 +82,7 @@ impl<T: Trait> Module<T> {
 		last_free_transfer.retain(|&x| x.saturating_add(free_transfer_period) > now);
 
 		// check if can transfer for free
-		if <FreeTransferEnabledAccounts<T>>::exists(who)
+		if <FreeTransferEnabledAccounts<T>>::contains_key(who)
 			&& last_free_transfer.len() < T::FreeTransferCount::get() as usize
 		{
 			// add entry to last_free_transfer
