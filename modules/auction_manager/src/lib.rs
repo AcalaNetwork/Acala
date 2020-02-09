@@ -603,11 +603,11 @@ impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, Auctio
 		new_bid: (T::AccountId, BalanceOf<T>),
 		last_bid: Option<(T::AccountId, BalanceOf<T>)>,
 	) -> OnNewBidResult<T::BlockNumber> {
-		if <CollateralAuctions<T>>::exists(id) {
+		if <CollateralAuctions<T>>::contains_key(id) {
 			Self::collateral_auction_bid_handler(now, id, new_bid, last_bid)
-		} else if <DebitAuctions<T>>::exists(id) {
+		} else if <DebitAuctions<T>>::contains_key(id) {
 			Self::debit_auction_bid_handler(now, id, new_bid, last_bid)
-		} else if <SurplusAuctions<T>>::exists(id) {
+		} else if <SurplusAuctions<T>>::contains_key(id) {
 			Self::surplus_auction_bid_handler(now, id, new_bid, last_bid)
 		} else {
 			OnNewBidResult {
@@ -618,11 +618,11 @@ impl<T: Trait> AuctionHandler<T::AccountId, BalanceOf<T>, T::BlockNumber, Auctio
 	}
 
 	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
-		if <CollateralAuctions<T>>::exists(id) {
+		if <CollateralAuctions<T>>::contains_key(id) {
 			Self::collateral_auction_end_handler(id, winner)
-		} else if <DebitAuctions<T>>::exists(id) {
+		} else if <DebitAuctions<T>>::contains_key(id) {
 			Self::debit_auction_end_handler(id, winner)
-		} else if <SurplusAuctions<T>>::exists(id) {
+		} else if <SurplusAuctions<T>>::contains_key(id) {
 			Self::surplus_auction_end_handler(id, winner)
 		}
 	}
@@ -721,11 +721,11 @@ impl<T: Trait> AuctionManagerExtended<T::AccountId> for Module<T> {
 	}
 
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
-		if <CollateralAuctions<T>>::exists(id) {
+		if <CollateralAuctions<T>>::contains_key(id) {
 			Self::cancel_collateral_auction(id)
-		} else if <DebitAuctions<T>>::exists(id) {
+		} else if <DebitAuctions<T>>::contains_key(id) {
 			Self::cancel_debit_auction(id)
-		} else if <SurplusAuctions<T>>::exists(id) {
+		} else if <SurplusAuctions<T>>::contains_key(id) {
 			Self::cancel_surplus_auction(id)
 		} else {
 			Err(Error::<T>::AuctionNotExsits.into())
