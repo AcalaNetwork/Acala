@@ -2,7 +2,9 @@
   "name": "Acala Mandala Tesetnet",
   "id": "mandala",
   "bootNodes": [
-    "/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA"
+	"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
+	"/ip4/39.99.168.67/tcp/30333/p2p/QmRxjcXuf4F5YTpP5Y97oH3SAR5BUoKTLLKeLApkHdSbLy",
+	"/dns4/libp2p.au.onfinality.cloud/tcp/57960/p2p/QmVJQaEtCwcTadaqk5VXKgirzVVanEpmqLj3exuKJtzRrK"
   ],
   "telemetryEndpoints": [
     [
