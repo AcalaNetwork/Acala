@@ -142,7 +142,7 @@ impl Alternative {
 			}
 			Alternative::MandalaTestnetLatest => {
 				ChainSpec::from_genesis(
-					"Acala Mandala Tesetnet",
+					"Acala Mandala Testnet",
 					"mandala",
 					|| {
 						// SECRET="..."

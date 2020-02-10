@@ -1,5 +1,5 @@
 {
-  "name": "Acala Mandala Tesetnet",
+  "name": "Acala Mandala Testnet",
   "id": "mandala",
   "bootNodes": [
 	"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
