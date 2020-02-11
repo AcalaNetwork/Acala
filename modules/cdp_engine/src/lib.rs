@@ -68,6 +68,7 @@ decl_error! {
 		BalanceOverflow,
 		InvalidFeedPrice,
 		AlreadyNoDebit,
+		NoDebitInCdp,
 	}
 }
 
@@ -288,10 +289,11 @@ impl<T: Trait> Module<T> {
 		let debit_balance = <loans::Module<T>>::debits(&who, currency_id);
 		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
-
-		// first: ensure the cdp is unsafe
 		let feed_price =
 			T::PriceSource::get_price(stable_currency_id, currency_id).ok_or(Error::<T>::InvalidFeedPrice)?;
+
+		// first: ensure the cdp is unsafe
+		ensure!(!debit_balance.is_zero(), Error::<T>::NoDebitInCdp);
 		let collateral_ratio =
 			Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 		let liquidation_ratio = Self::get_liquidation_ratio(currency_id);

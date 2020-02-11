@@ -355,6 +355,30 @@ fn liquidate_unsafe_cdp_when_invalid_feedprice() {
 }
 
 #[test]
+fn liquidate_unsafe_cdp_when_no_debit() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_noop!(
+			CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC),
+			Error::<Runtime>::NoDebitInCdp,
+		);
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 0));
+		assert_noop!(
+			CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC),
+			Error::<Runtime>::NoDebitInCdp,
+		);
+	});
+}
+
+#[test]
 fn on_finalize_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CdpEngineModule::set_collateral_params(
