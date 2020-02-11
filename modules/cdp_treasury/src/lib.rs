@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureOrigin, Saturating, Zero},
@@ -18,6 +18,7 @@ type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait
 type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 
 pub trait Trait: system::Trait {
+	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
 	type AuctionManagerHandler: AuctionManager<
@@ -28,6 +29,20 @@ pub trait Trait: system::Trait {
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 	type Dex: DexManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>>;
 }
+
+decl_event!(
+	pub enum Event<T>
+	where
+		CurrencyId = CurrencyIdOf<T>,
+		Balance = BalanceOf<T>,
+	{
+		UpdateSurplusAuctionFixedSize(Balance),
+		UpdateSurplusBufferSize(Balance),
+		UpdateInitialAmountPerDebitAuction(Balance),
+		UpdateDebitAuctionFixedSize(Balance),
+		UpdateCollateralAuctionMaximumSize(CurrencyId, Balance),
+	}
+);
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
@@ -63,6 +78,7 @@ decl_error! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+		fn deposit_event() = default;
 
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 
@@ -78,15 +94,19 @@ decl_module! {
 				.or_else(ensure_root)?;
 			if let Some(amount) = surplus_auction_fixed_size {
 				<SurplusAuctionFixedSize<T>>::put(amount);
+				Self::deposit_event(RawEvent::UpdateSurplusAuctionFixedSize(amount));
 			}
 			if let Some(amount) = surplus_buffer_size {
 				<SurplusBufferSize<T>>::put(amount);
+				Self::deposit_event(RawEvent::UpdateSurplusBufferSize(amount));
 			}
 			if let Some(amount) = initial_amount_per_debit_auction {
 				<InitialAmountPerDebitAuction<T>>::put(amount);
+				Self::deposit_event(RawEvent::UpdateInitialAmountPerDebitAuction(amount));
 			}
 			if let Some(amount) = debit_auction_fixed_size {
 				<DebitAuctionFixedSize<T>>::put(amount);
+				Self::deposit_event(RawEvent::UpdateDebitAuctionFixedSize(amount));
 			}
 		}
 
@@ -95,6 +115,7 @@ decl_module! {
 				.map(|_| ())
 				.or_else(ensure_root)?;
 			<CollateralAuctionMaximumSize<T>>::insert(currency_id, size);
+			Self::deposit_event(RawEvent::UpdateCollateralAuctionMaximumSize(currency_id, size));
 		}
 
 		fn on_finalize(_now: T::BlockNumber) {

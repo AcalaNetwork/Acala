@@ -4,7 +4,9 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CdpTreasuryModule, Currencies, DexModule, ExtBuilder, Origin, Runtime, ALICE, AUSD, BOB, BTC};
+use mock::{
+	CdpTreasuryModule, Currencies, DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE, AUSD, BOB, BTC,
+};
 use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
@@ -20,6 +22,13 @@ fn set_collateral_auction_maximum_size_work() {
 			BTC,
 			200
 		));
+
+		let update_collateral_auction_maximum_size_event =
+			TestEvent::cdp_treasury(RawEvent::UpdateCollateralAuctionMaximumSize(BTC, 200));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_collateral_auction_maximum_size_event));
+
 		assert_ok!(CdpTreasuryModule::set_collateral_auction_maximum_size(
 			Origin::ROOT,
 			BTC,
@@ -49,6 +58,26 @@ fn set_debit_and_surplus_handle_params_work() {
 			Some(200),
 			Some(100),
 		));
+
+		let update_surplus_auction_fixed_size_event =
+			TestEvent::cdp_treasury(RawEvent::UpdateSurplusAuctionFixedSize(100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_surplus_auction_fixed_size_event));
+		let update_surplus_buffer_size_event = TestEvent::cdp_treasury(RawEvent::UpdateSurplusBufferSize(1000));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_surplus_buffer_size_event));
+		let update_initial_amount_per_debit_auction_event =
+			TestEvent::cdp_treasury(RawEvent::UpdateInitialAmountPerDebitAuction(200));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_initial_amount_per_debit_auction_event));
+		let update_debit_auction_fixed_size_event = TestEvent::cdp_treasury(RawEvent::UpdateDebitAuctionFixedSize(100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_debit_auction_fixed_size_event));
+
 		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::ROOT,
 			Some(100),

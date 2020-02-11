@@ -22,6 +22,7 @@ impl_outer_event! {
 		auction_manager<T>,
 		orml_tokens<T>,
 		orml_auction<T>,
+		cdp_treasury<T>,
 	}
 }
 
@@ -93,6 +94,7 @@ ord_parameter_types! {
 }
 
 impl cdp_treasury::Trait for Runtime {
+	type Event = TestEvent;
 	type Currency = Tokens;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManagerModule;

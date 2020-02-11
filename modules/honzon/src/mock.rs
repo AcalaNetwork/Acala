@@ -22,6 +22,7 @@ impl_outer_event! {
 		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
+		cdp_treasury<T>,
 	}
 }
 
@@ -177,6 +178,7 @@ ord_parameter_types! {
 }
 
 impl cdp_treasury::Trait for Runtime {
+	type Event = TestEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;

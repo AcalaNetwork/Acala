@@ -2699,6 +2699,7 @@ dependencies = [
  "orml-auction",
  "orml-tokens",
  "orml-traits",
+ "pallet-balances",
  "parity-scale-codec",
  "serde",
  "sp-core",
