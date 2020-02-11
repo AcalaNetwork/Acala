@@ -3,14 +3,28 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::Rate;
 use system::EnsureSignedBy;
 
+mod cdp_treasury {
+	pub use super::super::*;
+}
+
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+impl_outer_event! {
+	pub enum TestEvent for Runtime {
+		cdp_treasury<T>,
+		orml_tokens<T>,
+		pallet_balances<T>,
+		orml_currencies<T>,
+		dex<T>,
+	}
 }
 
 parameter_types! {
@@ -50,7 +64,7 @@ impl system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
@@ -58,9 +72,10 @@ impl system::Trait for Runtime {
 	type Version = ();
 	type ModuleToIndex = ();
 }
+pub type System = system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -75,7 +90,7 @@ impl pallet_balances::Trait for Runtime {
 	type OnReapAccount = ();
 	type TransferPayment = ();
 	type DustRemoval = ();
-	type Event = ();
+	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type CreationFee = CreationFee;
 }
@@ -84,7 +99,7 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 impl orml_currencies::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -96,7 +111,7 @@ parameter_types! {
 }
 
 impl dex::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Currency = Currencies;
 	type Share = Share;
 	type GetBaseCurrencyId = GetStableCurrencyId;
@@ -135,6 +150,7 @@ ord_parameter_types! {
 }
 
 impl Trait for Runtime {
+	type Event = TestEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;

@@ -21,6 +21,7 @@ impl_outer_event! {
 		pallet_balances<T>,
 		orml_currencies<T>,
 		dex<T>,
+		cdp_treasury<T>,
 	}
 }
 
@@ -176,6 +177,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 }
 
 impl cdp_treasury::Trait for Runtime {
+	type Event = TestEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;

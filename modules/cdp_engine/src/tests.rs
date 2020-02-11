@@ -87,6 +87,37 @@ fn set_collateral_params_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
+
+		let update_stability_fee_event =
+			TestEvent::cdp_engine(RawEvent::UpdateStabilityFee(BTC, Some(Rate::from_rational(1, 100000))));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_stability_fee_event));
+		let update_liquidation_ratio_event =
+			TestEvent::cdp_engine(RawEvent::UpdateLiquidationRatio(BTC, Some(Ratio::from_rational(3, 2))));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_liquidation_ratio_event));
+		let update_liquidation_penalty_event = TestEvent::cdp_engine(RawEvent::UpdateLiquidationPenalty(
+			BTC,
+			Some(Rate::from_rational(2, 10)),
+		));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_liquidation_penalty_event));
+		let update_required_collateral_ratio_event = TestEvent::cdp_engine(RawEvent::UpdateRequiredCollateralRatio(
+			BTC,
+			Some(Ratio::from_rational(9, 5)),
+		));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_required_collateral_ratio_event));
+		let update_maximum_total_debit_value_event =
+			TestEvent::cdp_engine(RawEvent::UpdateMaximumTotalDebitValue(BTC, 10000));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_maximum_total_debit_value_event));
+
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,

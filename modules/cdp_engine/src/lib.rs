@@ -49,6 +49,11 @@ decl_event!(
 	{
 		LiquidateUnsafeCdp(CurrencyId, AccountId, Balance, Balance),
 		SettleCdpInDebit(CurrencyId, AccountId),
+		UpdateStabilityFee(CurrencyId, Option<Rate>),
+		UpdateLiquidationRatio(CurrencyId, Option<Ratio>),
+		UpdateLiquidationPenalty(CurrencyId, Option<Rate>),
+		UpdateRequiredCollateralRatio(CurrencyId, Option<Ratio>),
+		UpdateMaximumTotalDebitValue(CurrencyId, Balance),
 	}
 );
 
@@ -144,6 +149,7 @@ decl_module! {
 				} else {
 					<StabilityFee<T>>::remove(currency_id);
 				}
+				Self::deposit_event(RawEvent::UpdateStabilityFee(currency_id, update));
 			}
 			if let Some(update) = liquidation_ratio {
 				if let Some(val) = update {
@@ -151,6 +157,7 @@ decl_module! {
 				} else {
 					<LiquidationRatio<T>>::remove(currency_id);
 				}
+				Self::deposit_event(RawEvent::UpdateLiquidationRatio(currency_id, update));
 			}
 			if let Some(update) = liquidation_penalty {
 				if let Some(val) = update {
@@ -158,6 +165,7 @@ decl_module! {
 				} else {
 					<LiquidationPenalty<T>>::remove(currency_id);
 				}
+				Self::deposit_event(RawEvent::UpdateLiquidationPenalty(currency_id, update));
 			}
 			if let Some(update) = required_collateral_ratio {
 				if let Some(val) = update {
@@ -165,9 +173,11 @@ decl_module! {
 				} else {
 					<RequiredCollateralRatio<T>>::remove(currency_id);
 				}
+				Self::deposit_event(RawEvent::UpdateRequiredCollateralRatio(currency_id, update));
 			}
 			if let Some(val) = maximum_total_debit_value {
 				<MaximumTotalDebitValue<T>>::insert(currency_id, val);
+				Self::deposit_event(RawEvent::UpdateMaximumTotalDebitValue(currency_id, val));
 			}
 		}
 

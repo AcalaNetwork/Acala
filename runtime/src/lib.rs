@@ -573,6 +573,7 @@ impl module_dex::Trait for Runtime {
 }
 
 impl module_cdp_treasury::Trait for Runtime {
+	type Event = Event;
 	type Currency = orml_currencies::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
@@ -633,7 +634,7 @@ construct_runtime!(
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
-		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
 	}
