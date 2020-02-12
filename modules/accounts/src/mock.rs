@@ -26,7 +26,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 0;
+	pub const ExistentialDeposit: u64 = 1;
 	pub const CreationFee: u64 = 2;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
@@ -121,7 +121,6 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type WeightToFee = ConvertInto;
 	type FeeMultiplierUpdate = ();
 }
-pub type PalletTransactionPayment = pallet_transaction_payment::Module<Runtime>;
 
 parameter_types! {
 	pub const FreeTransferCount: u8 = 3;

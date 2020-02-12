@@ -32,7 +32,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 0;
+	pub const ExistentialDeposit: u64 = 1;
 	pub const CreationFee: u64 = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
