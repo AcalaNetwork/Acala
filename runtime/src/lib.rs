@@ -54,7 +54,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 26,
+	spec_version: 27,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 };
