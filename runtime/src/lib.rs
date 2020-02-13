@@ -439,6 +439,7 @@ parameter_types! {
 
 impl orml_oracle::Trait for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type OnNewData = ();
 	type OperatorProvider = OperatorCollectiveProvider;
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
@@ -657,6 +658,7 @@ pub type SignedExtra = (
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
 	system::CheckWeight<Runtime>,
+	orml_oracle::CheckOperator<Runtime>,
 	module_accounts::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
