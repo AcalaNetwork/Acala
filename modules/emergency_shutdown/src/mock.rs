@@ -33,6 +33,7 @@ impl_outer_event! {
 		pallet_balances<T>,
 		orml_currencies<T>,
 		honzon<T>,
+		cdp_treasury<T>,
 	}
 }
 
@@ -45,7 +46,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 0;
+	pub const ExistentialDeposit: u64 = 1;
 	pub const CreationFee: u64 = 2;
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub const GlobalStabilityFee: Rate = Rate::from_parts(0);
@@ -205,6 +206,7 @@ ord_parameter_types! {
 }
 
 impl cdp_treasury::Trait for Runtime {
+	type Event = TestEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;

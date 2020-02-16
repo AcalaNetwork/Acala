@@ -59,7 +59,8 @@ decl_module! {
 			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::<T>::LiquidateFailed)?;
 		}
 
-		pub fn settle_cdp(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+		pub fn settle_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+			let _ = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 
 			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;

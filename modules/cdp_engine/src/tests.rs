@@ -87,6 +87,37 @@ fn set_collateral_params_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
+
+		let update_stability_fee_event =
+			TestEvent::cdp_engine(RawEvent::UpdateStabilityFee(BTC, Some(Rate::from_rational(1, 100000))));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_stability_fee_event));
+		let update_liquidation_ratio_event =
+			TestEvent::cdp_engine(RawEvent::UpdateLiquidationRatio(BTC, Some(Ratio::from_rational(3, 2))));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_liquidation_ratio_event));
+		let update_liquidation_penalty_event = TestEvent::cdp_engine(RawEvent::UpdateLiquidationPenalty(
+			BTC,
+			Some(Rate::from_rational(2, 10)),
+		));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_liquidation_penalty_event));
+		let update_required_collateral_ratio_event = TestEvent::cdp_engine(RawEvent::UpdateRequiredCollateralRatio(
+			BTC,
+			Some(Ratio::from_rational(9, 5)),
+		));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_required_collateral_ratio_event));
+		let update_maximum_total_debit_value_event =
+			TestEvent::cdp_engine(RawEvent::UpdateMaximumTotalDebitValue(BTC, 10000));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_maximum_total_debit_value_event));
+
 		assert_ok!(CdpEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
@@ -350,6 +381,30 @@ fn liquidate_unsafe_cdp_when_invalid_feedprice() {
 		assert_noop!(
 			CdpEngineModule::liquidate_unsafe_cdp(ALICE, DOT),
 			Error::<Runtime>::InvalidFeedPrice,
+		);
+	});
+}
+
+#[test]
+fn liquidate_unsafe_cdp_when_no_debit() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_noop!(
+			CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC),
+			Error::<Runtime>::NoDebitInCdp,
+		);
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 0));
+		assert_noop!(
+			CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC),
+			Error::<Runtime>::NoDebitInCdp,
 		);
 	});
 }

@@ -59,7 +59,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 26,
+	spec_version: 27,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 };
@@ -625,6 +625,7 @@ impl module_dex::Trait for Runtime {
 }
 
 impl module_cdp_treasury::Trait for Runtime {
+	type Event = Event;
 	type Currency = orml_currencies::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
@@ -685,7 +686,7 @@ construct_runtime!(
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
-		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
 	}
