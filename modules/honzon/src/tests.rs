@@ -25,7 +25,7 @@ fn liquidate_unsafe_cdp_work() {
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC),
@@ -43,7 +43,7 @@ fn liquidate_unsafe_cdp_work() {
 		assert_ok!(HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 0);
 	});
 }
@@ -120,7 +120,7 @@ fn transfer_loan_from_should_work() {
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::transfer_loan_from(Origin::signed(BOB), BTC, ALICE));
 		assert_eq!(LoansModule::collaterals(BOB, BTC), 100);
-		assert_eq!(LoansModule::debits(BOB, BTC), 50);
+		assert_eq!(LoansModule::debits(BTC, BOB).0, 50);
 	});
 }
 
@@ -148,7 +148,7 @@ fn update_loan_should_work() {
 		));
 		assert_ok!(HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 	});
 }
 

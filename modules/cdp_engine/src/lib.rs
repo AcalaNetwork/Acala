@@ -1,23 +1,49 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use codec::{Decode, Encode};
+use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
+use sp_application_crypto::{KeyTypeId, RuntimeAppPublic};
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, Convert, EnsureOrigin, Saturating, UniqueSaturatedInto, Zero},
-	DispatchResult,
+	offchain::storage::StorageValueRef,
+	traits::{CheckedAdd, CheckedSub, Convert, EnsureOrigin, Member, Saturating, UniqueSaturatedInto, Zero},
+	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
+	DispatchResult, RuntimeDebug,
 };
 use support::{
 	CDPTreasury, CDPTreasuryExtended, DexManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
-use system::ensure_root;
+use system::{ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
+//use rand::{Rng, thread_rng};
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 
 mod mock;
 mod tests;
+
+const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
+
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cdpe");
+pub mod sr25519 {
+	mod app_sr25519 {
+		use crate::KEY_TYPE;
+		use sp_application_crypto::{app_crypto, sr25519};
+		app_crypto!(sr25519, KEY_TYPE);
+	}
+
+	/// An cdp engine keypair using sr25519 as its crypto.
+	#[cfg(feature = "std")]
+	pub type AuthorityPair = app_sr25519::Pair;
+
+	/// An cdp engine signature using sr25519 as its crypto.
+	pub type AuthoritySignature = app_sr25519::Signature;
+
+	/// An cdp engine identifier using sr25519 as its crypto.
+	pub type AuthorityId = app_sr25519::Public;
+}
 
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -38,6 +64,16 @@ pub trait Trait: system::Trait + loans::Trait {
 	type MaxSlippageSwapWithDex: Get<Ratio>;
 	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyIdOf<Self>, Balance = BalanceOf<Self>>;
 	type Dex: DexManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>>;
+
+	/// extension for automatic liquidation by offchain worker
+	/// The identifier type for an authority.
+	type AuthorityId: Member + Parameter + RuntimeAppPublic + Default + Ord;
+
+	/// A dispatchable call type.
+	type Call: From<Call<Self>>;
+
+	/// A transaction submitter.
+	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
 }
 
 decl_event!(
@@ -68,6 +104,7 @@ decl_error! {
 		BalanceOverflow,
 		InvalidFeedPrice,
 		AlreadyNoDebit,
+		AlreadyShutdown,
 	}
 }
 
@@ -80,10 +117,14 @@ decl_storage! {
 		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(blake2_256) CurrencyIdOf<T> => Option<ExchangeRate>;
 		pub IsShutdown get(fn is_shutdown): bool;
+
+		/// The current set of keys that may send automatic liquidation transations.
+		Authorities get(fn authorities): Vec<T::AuthorityId>;
 	}
 
 	add_extra_genesis {
 		config(collaterals_params): Vec<(CurrencyIdOf<T>, Option<Rate>, Option<Ratio>, Option<Rate>, Option<Ratio>, BalanceOf<T>)>;
+		config(authorities): Vec<T::AuthorityId>;
 
 		build(|config: &GenesisConfig<T>| {
 			config.collaterals_params.iter().for_each(|(
@@ -107,8 +148,41 @@ decl_storage! {
 					<RequiredCollateralRatio<T>>::insert(currency_id, val);
 				}
 				<MaximumTotalDebitValue<T>>::insert(currency_id, maximum_total_debit_value);
-			})
-		})
+			});
+
+			if !config.authorities.is_empty() {
+				assert!(<Authorities<T>>::get().is_empty(), "Keys are already initialized!");
+				<Authorities<T>>::put(&config.authorities);
+			}
+		});
+	}
+}
+
+/// Error which may occur while executing the off-chain code.
+#[cfg_attr(test, derive(PartialEq))]
+enum OffchainErr {
+	FailedSigning,
+	FailedToAcquireLock,
+	SubmitTransaction,
+	NotValidator,
+	NotInAuthoritesSet,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
+struct OffchainWorkerLock {
+	pub previous_position: u32,
+	pub locked: bool,
+}
+
+impl rstd::fmt::Debug for OffchainErr {
+	fn fmt(&self, fmt: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+		match *self {
+			OffchainErr::FailedSigning => write!(fmt, "Failed to sign"),
+			OffchainErr::FailedToAcquireLock => write!(fmt, "Failed to acquire lock"),
+			OffchainErr::SubmitTransaction => write!(fmt, "Failed to submit transaction"),
+			OffchainErr::NotInAuthoritesSet => write!(fmt, "Not in the authorities set"),
+			OffchainErr::NotValidator => write!(fmt, "Not validator"),
+		}
 	}
 }
 
@@ -124,6 +198,16 @@ decl_module! {
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 		const MaxSlippageSwapWithDex: Ratio = T::MaxSlippageSwapWithDex::get();
 		const DefaultLiquidationPenalty: Rate = T::DefaultLiquidationPenalty::get();
+
+		pub fn add_authority(origin, authority_id: T::AuthorityId) {
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
+
+			if !Self::is_authority(&authority_id) {
+				<Authorities<T>>::mutate(|authorities| authorities.push(authority_id));
+			}
+		}
 
 		pub fn set_collateral_params(
 			origin,
@@ -196,10 +280,151 @@ decl_module! {
 				}
 			}
 		}
+
+		// Call by unsigned transaction
+		pub fn liquidate(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			_signature: <T::AuthorityId as RuntimeAppPublic>::Signature,
+		) {
+			ensure_none(origin)?;
+			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+			Self::liquidate_unsafe_cdp(who.clone(), currency_id)?;
+		}
+
+		// Runs after every block.
+		fn offchain_worker(now: T::BlockNumber) {
+			debug::RuntimeLogger::init();
+
+			if let Err(e) = Self::automatic_liquidation() {
+				debug::debug!(
+					target: "cdp-engine offchain worker",
+					"do not start automatic liquidation at {:?}: {:?}",
+					now,
+					e,
+				);
+			}
+		}
 	}
 }
 
 impl<T: Trait> Module<T> {
+	fn automatic_liquidation() -> Result<(), OffchainErr> {
+		// check if is validator
+		if !runtime_io::offchain::is_validator() {
+			return Err(OffchainErr::NotValidator);
+		}
+
+		// check if has authority id
+		let authority_id = Self::get_local_authority_id().ok_or(OffchainErr::NotInAuthoritesSet)?;
+
+		// check if require offchain worker lock succecced
+		let local_storage_key = DB_PREFIX.to_vec();
+		let local_storage = StorageValueRef::local(&local_storage_key);
+		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+		let mut execute_position: u32 = 0;
+
+		let require_lock = local_storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
+			match lock {
+				None => {
+					// // start with random collateral
+					// execute_position = thread_rng().gen_range(0, collateral_currency_ids.len() as u32);
+
+					Ok(OffchainWorkerLock {
+						previous_position: execute_position,
+						locked: true,
+					})
+				}
+				Some(Some(lock)) if !lock.locked => {
+					if lock.previous_position < collateral_currency_ids.len() as u32 - 1 {
+						execute_position = lock.previous_position + 1
+					}
+
+					Ok(OffchainWorkerLock {
+						previous_position: execute_position,
+						locked: true,
+					})
+				}
+				_ => Err(OffchainErr::FailedToAcquireLock),
+			}
+		})?;
+		let _ = require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)?;
+
+		// start
+		let currency_id = collateral_currency_ids[(execute_position as usize)];
+		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
+			if let Some((_, account_id)) = key {
+				if Self::is_unsafe_cdp(currency_id, &account_id) {
+					if let Err(e) = Self::submit_unsigned_liquidation_tx(&authority_id, currency_id, account_id) {
+						debug::debug!(
+							target: "cdp-engine offchain worker",
+							"faild to submit unsigned liquidation tx: {:?}",
+							e,
+						);
+					}
+				}
+			}
+		}
+
+		// finally, release lock
+		local_storage.set(&OffchainWorkerLock {
+			previous_position: execute_position,
+			locked: false,
+		});
+
+		Ok(())
+	}
+
+	fn submit_unsigned_liquidation_tx(
+		authority_id: &T::AuthorityId,
+		currency_id: CurrencyIdOf<T>,
+		who: T::AccountId,
+	) -> Result<(), OffchainErr> {
+		let signature = authority_id
+			.sign(&(currency_id, &who).encode())
+			.ok_or(OffchainErr::FailedSigning)?;
+
+		let call = Call::<T>::liquidate(currency_id, who, signature);
+
+		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
+		Ok(())
+	}
+
+	fn get_local_authority_id() -> Option<T::AuthorityId> {
+		let local_keys = T::AuthorityId::all();
+
+		Self::authorities().into_iter().find_map(|authority| {
+			if local_keys.contains(&authority) {
+				Some(authority)
+			} else {
+				None
+			}
+		})
+	}
+
+	fn is_authority(authority_id: &T::AuthorityId) -> bool {
+		Self::authorities().into_iter().find(|i| i == authority_id).is_some()
+	}
+
+	pub fn is_unsafe_cdp(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> bool {
+		let debit_balance = <loans::Module<T>>::debits(currency_id, who).0;
+		let collateral_balance = <loans::Module<T>>::collaterals(who, currency_id);
+		let stable_currency_id = T::GetStableCurrencyId::get();
+
+		if debit_balance.is_zero() {
+			false
+		} else if let Some(feed_price) = T::PriceSource::get_price(stable_currency_id, currency_id) {
+			let collateral_ratio =
+				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
+			let liquidation_ratio = Self::get_liquidation_ratio(currency_id);
+			collateral_ratio < liquidation_ratio
+		} else {
+			// if feed_price is invalid, can not judge the cdp is safe or unsafe!
+			false
+		}
+	}
+
 	pub fn get_liquidation_ratio(currency_id: CurrencyIdOf<T>) -> Ratio {
 		Self::liquidation_ratio(currency_id).unwrap_or_else(T::DefaultLiquidationRatio::get)
 	}
@@ -252,7 +477,7 @@ impl<T: Trait> Module<T> {
 
 	// settle cdp has debit when emergency shutdown
 	pub fn settle_cdp_has_debit(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <loans::Module<T>>::debits(&who, currency_id);
+		let debit_balance = <loans::Module<T>>::debits(currency_id, &who).0;
 		ensure!(!debit_balance.is_zero(), Error::<T>::AlreadyNoDebit);
 
 		// confiscate collateral in cdp to cdp treasury
@@ -285,7 +510,7 @@ impl<T: Trait> Module<T> {
 
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <loans::Module<T>>::debits(&who, currency_id);
+		let debit_balance = <loans::Module<T>>::debits(currency_id, &who).0;
 		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
@@ -365,7 +590,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 		collateral_amount: AmountOf<T>,
 		debit_amount: T::DebitAmount,
 	) -> DispatchResult {
-		let mut debit_balance = <loans::Module<T>>::debits(account_id, currency_id);
+		let mut debit_balance = <loans::Module<T>>::debits(currency_id, account_id).0;
 		let mut collateral_balance = <loans::Module<T>>::collaterals(account_id, currency_id);
 
 		// calculate new debit balance and collateral balance after position adjustment
@@ -451,5 +676,38 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 impl<T: Trait> EmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
 		Self::emergency_shutdown();
+	}
+}
+
+#[allow(deprecated)]
+impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+	type Call = Call<T>;
+
+	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
+		if let Call::liquidate(currency_id, who, signature) = call {
+			// check cdp is unsafe
+			if !Self::is_unsafe_cdp(*currency_id, &who) {
+				return InvalidTransaction::Stale.into();
+			}
+
+			// verify that the incoming (unverified) pubkey is actually an authority id
+			let authorities = Self::authorities();
+			let submit_authority = authorities.into_iter().find(|authority_id| {
+				(currency_id, &who).using_encoded(|encoded_params| authority_id.verify(&encoded_params, &signature))
+			});
+			if let Some(authority_id) = submit_authority {
+				Ok(ValidTransaction {
+					priority: TransactionPriority::max_value(),
+					requires: vec![],
+					provides: vec![authority_id.encode()],
+					longevity: 64_u64,
+					propagate: true,
+				})
+			} else {
+				InvalidTransaction::BadProof.into()
+			}
+		} else {
+			InvalidTransaction::Call.into()
+		}
 	}
 }

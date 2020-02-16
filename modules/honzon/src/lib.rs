@@ -52,7 +52,8 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		pub fn liquidate(_origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+		pub fn liquidate(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+			let _ = ensure_signed(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::<T>::LiquidateFailed)?;

@@ -2,10 +2,10 @@ use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use orml_utilities::FixedU128;
 use runtime::{
-	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-	CurrencyId, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
-	IndicesConfig, OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-	SystemConfig, TokensConfig, DOLLARS, WASM_BINARY,
+	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpEngineId,
+	CdpTreasuryConfig, CurrencyId, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig,
+	GrandpaConfig, IndicesConfig, OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig,
+	SudoConfig, SystemConfig, TokensConfig, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service;
@@ -67,12 +67,13 @@ where
 }
 
 /// Helper function to generate session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId) {
+pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId, CdpEngineId) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
 		get_from_seed::<BabeId>(seed),
+		get_from_seed::<CdpEngineId>(seed),
 	)
 }
 
@@ -167,6 +168,8 @@ impl Alternative {
 										.unchecked_into(),
 									hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
 										.unchecked_into(),
+									hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
+										.unchecked_into(),
 								),
 								(
 									// 5FnLzAUmXeTZg5J9Ao5psKU68oA5PBekXqhrZCKDbhSCQi88
@@ -176,6 +179,8 @@ impl Alternative {
 										.unchecked_into(),
 									hex!["b4f5713322656d29930aa89efa5509554a36c40fb50a226eae0f38fc1a6ceb25"]
 										.unchecked_into(),
+									hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
+										.unchecked_into(),
 								),
 								(
 									// 5Gn5LuLuWNcY21Vue4QcFFD3hLvjQY3weMHXuEyejUbUnArt
@@ -184,6 +189,8 @@ impl Alternative {
 									hex!["c5dfcf68ccf1a64ed4145383e4bbbb8bbcc50f654d87187c39df2b88a9683b7f"]
 										.unchecked_into(),
 									hex!["4cc54799f38715771605a21e8272a7a1344667e4681611988a913412755a8a04"]
+										.unchecked_into(),
+									hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
 										.unchecked_into(),
 								),
 							],
@@ -229,7 +236,7 @@ const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
 fn testnet_genesis(
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, CdpEngineId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
@@ -330,12 +337,13 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
+			authorities: initial_authorities.iter().map(|x| x.4.clone()).collect(),
 		}),
 	}
 }
 
 fn mandala_genesis(
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, CdpEngineId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
@@ -431,6 +439,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
+			authorities: initial_authorities.iter().map(|x| x.4.clone()).collect(),
 		}),
 	}
 }
