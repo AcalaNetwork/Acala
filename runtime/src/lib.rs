@@ -27,7 +27,6 @@ use sp_std::prelude::*;
 use version::NativeVersion;
 use version::RuntimeVersion;
 
-pub use module_cdp_engine::sr25519::AuthorityId as CdpEngineId;
 use orml_oracle::OperatorProvider;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
@@ -522,7 +521,7 @@ impl module_loans::Trait for Runtime {
 }
 
 /// A runtime transaction submitter.
-pub type SubmitTransaction = TransactionSubmitter<CdpEngineId, Runtime, UncheckedExtrinsic>;
+pub type SubmitTransaction = TransactionSubmitter<(), Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
@@ -549,7 +548,6 @@ impl module_cdp_engine::Trait for Runtime {
 	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
 	type Currency = orml_currencies::Module<Runtime>;
 	type Dex = module_dex::Module<Runtime>;
-	type AuthorityId = CdpEngineId;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
 }
@@ -683,7 +681,7 @@ construct_runtime!(
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
-		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},

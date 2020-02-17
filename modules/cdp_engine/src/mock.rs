@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{
-	testing::{Header, TestXt, UintAuthorityId},
+	testing::{Header, TestXt},
 	traits::IdentityLookup,
 	Perbill,
 };
@@ -236,7 +236,6 @@ impl Trait for Runtime {
 	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
 	type Currency = Currencies;
 	type Dex = DexModule;
-	type AuthorityId = UintAuthorityId;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
 }

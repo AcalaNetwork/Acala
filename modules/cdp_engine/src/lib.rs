@@ -1,22 +1,27 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
+use frame_support::{
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchInfo,
+};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
-use sp_application_crypto::{KeyTypeId, RuntimeAppPublic};
 use sp_runtime::{
 	offchain::storage::StorageValueRef,
-	traits::{CheckedAdd, CheckedSub, Convert, EnsureOrigin, Member, Saturating, UniqueSaturatedInto, Zero},
-	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
-	DispatchResult, RuntimeDebug,
+	traits::{
+		BlakeTwo256, CheckedAdd, CheckedSub, Convert, EnsureOrigin, Hash, Saturating, SignedExtension,
+		UniqueSaturatedInto, Zero,
+	},
+	transaction_validity::{
+		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
+	},
+	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
 use support::{
 	CDPTreasury, CDPTreasuryExtended, DexManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
 use system::{ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
-//use rand::{Rng, thread_rng};
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
@@ -25,25 +30,6 @@ mod mock;
 mod tests;
 
 const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
-
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cdpe");
-pub mod sr25519 {
-	mod app_sr25519 {
-		use crate::KEY_TYPE;
-		use sp_application_crypto::{app_crypto, sr25519};
-		app_crypto!(sr25519, KEY_TYPE);
-	}
-
-	/// An cdp engine keypair using sr25519 as its crypto.
-	#[cfg(feature = "std")]
-	pub type AuthorityPair = app_sr25519::Pair;
-
-	/// An cdp engine signature using sr25519 as its crypto.
-	pub type AuthoritySignature = app_sr25519::Signature;
-
-	/// An cdp engine identifier using sr25519 as its crypto.
-	pub type AuthorityId = app_sr25519::Public;
-}
 
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -64,10 +50,6 @@ pub trait Trait: system::Trait + loans::Trait {
 	type MaxSlippageSwapWithDex: Get<Ratio>;
 	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyIdOf<Self>, Balance = BalanceOf<Self>>;
 	type Dex: DexManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>>;
-
-	/// extension for automatic liquidation by offchain worker
-	/// The identifier type for an authority.
-	type AuthorityId: Member + Parameter + RuntimeAppPublic + Default + Ord;
 
 	/// A dispatchable call type.
 	type Call: From<Call<Self>>;
@@ -123,15 +105,10 @@ decl_storage! {
 		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(blake2_256) CurrencyIdOf<T> => Option<ExchangeRate>;
 		pub IsShutdown get(fn is_shutdown): bool;
-
-		/// The current set of keys that may send automatic liquidation transations.
-		Authorities get(fn authorities): Vec<T::AuthorityId>;
 	}
 
 	add_extra_genesis {
 		config(collaterals_params): Vec<(CurrencyIdOf<T>, Option<Rate>, Option<Ratio>, Option<Rate>, Option<Ratio>, BalanceOf<T>)>;
-		config(authorities): Vec<T::AuthorityId>;
-
 		build(|config: &GenesisConfig<T>| {
 			config.collaterals_params.iter().for_each(|(
 				currency_id,
@@ -155,11 +132,6 @@ decl_storage! {
 				}
 				<MaximumTotalDebitValue<T>>::insert(currency_id, maximum_total_debit_value);
 			});
-
-			if !config.authorities.is_empty() {
-				assert!(<Authorities<T>>::get().is_empty(), "Keys are already initialized!");
-				<Authorities<T>>::put(&config.authorities);
-			}
 		});
 	}
 }
@@ -167,11 +139,9 @@ decl_storage! {
 /// Error which may occur while executing the off-chain code.
 #[cfg_attr(test, derive(PartialEq))]
 enum OffchainErr {
-	FailedSigning,
 	FailedToAcquireLock,
 	SubmitTransaction,
 	NotValidator,
-	NotInAuthoritesSet,
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -183,10 +153,8 @@ struct OffchainWorkerLock {
 impl rstd::fmt::Debug for OffchainErr {
 	fn fmt(&self, fmt: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
 		match *self {
-			OffchainErr::FailedSigning => write!(fmt, "Failed to sign"),
 			OffchainErr::FailedToAcquireLock => write!(fmt, "Failed to acquire lock"),
 			OffchainErr::SubmitTransaction => write!(fmt, "Failed to submit transaction"),
-			OffchainErr::NotInAuthoritesSet => write!(fmt, "Not in the authorities set"),
 			OffchainErr::NotValidator => write!(fmt, "Not validator"),
 		}
 	}
@@ -204,16 +172,6 @@ decl_module! {
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 		const MaxSlippageSwapWithDex: Ratio = T::MaxSlippageSwapWithDex::get();
 		const DefaultLiquidationPenalty: Rate = T::DefaultLiquidationPenalty::get();
-
-		pub fn add_authority(origin, authority_id: T::AuthorityId) {
-			T::UpdateOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
-
-			if !Self::is_authority(&authority_id) {
-				<Authorities<T>>::mutate(|authorities| authorities.push(authority_id));
-			}
-		}
 
 		pub fn set_collateral_params(
 			origin,
@@ -297,7 +255,6 @@ decl_module! {
 			origin,
 			currency_id: CurrencyIdOf<T>,
 			who: T::AccountId,
-			_signature: <T::AuthorityId as RuntimeAppPublic>::Signature,
 		) {
 			ensure_none(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
@@ -327,9 +284,6 @@ impl<T: Trait> Module<T> {
 			return Err(OffchainErr::NotValidator);
 		}
 
-		// check if has authority id
-		let authority_id = Self::get_local_authority_id().ok_or(OffchainErr::NotInAuthoritesSet)?;
-
 		// check if require offchain worker lock succecced
 		let local_storage_key = DB_PREFIX.to_vec();
 		let local_storage = StorageValueRef::local(&local_storage_key);
@@ -339,8 +293,10 @@ impl<T: Trait> Module<T> {
 		let require_lock = local_storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
 			match lock {
 				None => {
-					// // start with random collateral
-					// execute_position = thread_rng().gen_range(0, collateral_currency_ids.len() as u32);
+					// start with random collateral
+					let random_seed = runtime_io::offchain::random_seed();
+					let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+					execute_position = rng.pick_u32(collateral_currency_ids.len() as u32);
 
 					Ok(OffchainWorkerLock {
 						previous_position: execute_position,
@@ -368,7 +324,7 @@ impl<T: Trait> Module<T> {
 			if let Some((_, account_id)) = key {
 				// TODO: liquidate unsafe cdp before emergency shutdown, settle cdp with debit when emergency shutdown occurs.
 				if Self::is_unsafe_cdp(currency_id, &account_id) {
-					if let Err(e) = Self::submit_unsigned_liquidation_tx(&authority_id, currency_id, account_id) {
+					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id) {
 						debug::debug!(
 							target: "cdp-engine offchain worker",
 							"faild to submit unsigned liquidation tx: {:?}",
@@ -388,35 +344,11 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn submit_unsigned_liquidation_tx(
-		authority_id: &T::AuthorityId,
-		currency_id: CurrencyIdOf<T>,
-		who: T::AccountId,
-	) -> Result<(), OffchainErr> {
-		let signature = authority_id
-			.sign(&(currency_id, &who).encode())
-			.ok_or(OffchainErr::FailedSigning)?;
-
-		let call = Call::<T>::liquidate(currency_id, who, signature);
+	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
+		let call = Call::<T>::liquidate(currency_id, who);
 
 		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
-	}
-
-	fn get_local_authority_id() -> Option<T::AuthorityId> {
-		let local_keys = T::AuthorityId::all();
-
-		Self::authorities().into_iter().find_map(|authority| {
-			if local_keys.contains(&authority) {
-				Some(authority)
-			} else {
-				None
-			}
-		})
-	}
-
-	fn is_authority(authority_id: &T::AuthorityId) -> bool {
-		Self::authorities().into_iter().find(|i| i == authority_id).is_some()
 	}
 
 	pub fn is_unsafe_cdp(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> bool {
@@ -697,30 +629,75 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
-		if let Call::liquidate(currency_id, who, signature) = call {
+		if let Call::liquidate(currency_id, who) = call {
 			// check cdp is unsafe
 			if !Self::is_unsafe_cdp(*currency_id, &who) {
 				return InvalidTransaction::Stale.into();
 			}
 
-			// verify that the incoming (unverified) pubkey is actually an authority id
-			let authorities = Self::authorities();
-			let submit_authority = authorities.into_iter().find(|authority_id| {
-				(currency_id, &who).using_encoded(|encoded_params| authority_id.verify(&encoded_params, &signature))
-			});
-			if let Some(authority_id) = submit_authority {
-				Ok(ValidTransaction {
-					priority: TransactionPriority::max_value(),
-					requires: vec![],
-					provides: vec![authority_id.encode()],
-					longevity: 64_u64,
-					propagate: true,
-				})
-			} else {
-				InvalidTransaction::BadProof.into()
-			}
+			Ok(ValidTransaction {
+				priority: TransactionPriority::max_value(),
+				requires: vec![],
+				provides: vec![],
+				longevity: 64_u64,
+				propagate: true,
+			})
 		} else {
 			InvalidTransaction::Call.into()
+		}
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct AutomaticLiquidationValidation<T: Trait + Send + Sync>(rstd::marker::PhantomData<T>);
+
+impl<T: Trait + Send + Sync> AutomaticLiquidationValidation<T> {
+	pub fn new() -> Self {
+		Self(rstd::marker::PhantomData)
+	}
+}
+
+impl<T: Trait + Send + Sync> rstd::fmt::Debug for AutomaticLiquidationValidation<T> {
+	#[cfg(feature = "std")]
+	fn fmt(&self, f: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+		write!(f, "AutomaticLiquidationValidation")
+	}
+	#[cfg(not(feature = "std"))]
+	fn fmt(&self, _: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+		Ok(())
+	}
+}
+
+impl<T: Trait + Send + Sync> SignedExtension for AutomaticLiquidationValidation<T> {
+	const IDENTIFIER: &'static str = "AutomaticLiquidationValidation";
+	type AccountId = T::AccountId;
+	type Call = Call<T>;
+	type AdditionalSigned = ();
+	type DispatchInfo = DispatchInfo;
+	type Pre = ();
+	fn additional_signed(&self) -> rstd::result::Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn validate(
+		&self,
+		_who: &Self::AccountId,
+		call: &Self::Call,
+		_info: Self::DispatchInfo,
+		_len: usize,
+	) -> TransactionValidity {
+		match call {
+			Call::liquidate(currency_id, account_id) => {
+				// check cdp is unsafe
+				if !<Module<T>>::is_unsafe_cdp(*currency_id, account_id) {
+					InvalidTransaction::Stale.into()
+				} else {
+					let mut valid_tx = ValidTransaction::default();
+					valid_tx.priority = TransactionPriority::max_value();
+					Ok(valid_tx)
+				}
+			}
+			_ => Ok(ValidTransaction::default()),
 		}
 	}
 }
