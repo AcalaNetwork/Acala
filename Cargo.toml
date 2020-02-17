@@ -1,6 +1,6 @@
 [package]
 name = "acala"
-version = "0.2.7"
+version = "0.2.8"
 authors = ["Acala Developers"]
 build = "build.rs"
 edition = "2018"

@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "acala-runtime",
  "futures 0.3.4",
@@ -58,7 +58,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -2664,7 +2664,7 @@ dependencies = [
 
 [[package]]
 name = "module-accounts"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2685,7 +2685,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2705,7 +2705,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2727,7 +2727,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2748,7 +2748,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2768,7 +2768,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2792,7 +2792,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2814,7 +2814,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2835,7 +2835,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2851,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "module-primitives"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -2860,7 +2860,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "impl-trait-for-tuples",
  "orml-utilities",
@@ -2871,7 +2871,7 @@ dependencies = [
 
 [[package]]
 name = "module-template"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "frame-support",
  "frame-system",
