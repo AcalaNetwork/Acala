@@ -441,6 +441,7 @@ impl orml_oracle::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type OnNewData = ();
+	type OnRedundantCall = ();
 	type OperatorProvider = OperatorCollectiveProvider;
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
