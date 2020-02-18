@@ -581,6 +581,7 @@ impl system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for Runtim
 			system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			system::CheckNonce::<Runtime>::from(index),
 			system::CheckWeight::<Runtime>::new(),
+			orml_oracle::CheckOperator::<Runtime>::new(),
 			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_cdp_engine::AutomaticLiquidationValidation::<Runtime>::new(),
 		);
