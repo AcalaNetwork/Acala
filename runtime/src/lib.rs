@@ -434,7 +434,7 @@ impl OperatorProvider<AccountId> for OperatorCollectiveProvider {
 
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
-	pub const ExpiresIn: Moment = 1000 * 60 * 60 * 24 * 7; // 7 days
+	pub const ExpiresIn: Moment = 1000 * 60 * 30; // 30 mins
 }
 
 impl orml_oracle::Trait for Runtime {
