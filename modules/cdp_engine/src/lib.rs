@@ -2,7 +2,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchInfo,
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchInfo, IsSubType,
 };
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
@@ -52,7 +52,7 @@ pub trait Trait: system::Trait + loans::Trait {
 	type Dex: DexManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>>;
 
 	/// A dispatchable call type.
-	type Call: From<Call<Self>>;
+	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
 
 	/// A transaction submitter.
 	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
@@ -265,7 +265,7 @@ decl_module! {
 		fn offchain_worker(now: T::BlockNumber) {
 			debug::RuntimeLogger::init();
 
-			if let Err(e) = Self::automatic_liquidation() {
+			if let Err(e) = Self::automatic_liquidation(now) {
 				debug::debug!(
 					target: "cdp-engine offchain worker",
 					"do not start automatic liquidation at {:?}: {:?}",
@@ -278,7 +278,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn automatic_liquidation() -> Result<(), OffchainErr> {
+	fn automatic_liquidation(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
 		// check if is validator
 		if !runtime_io::offchain::is_validator() {
 			return Err(OffchainErr::NotValidator);
@@ -288,7 +288,6 @@ impl<T: Trait> Module<T> {
 		let local_storage_key = DB_PREFIX.to_vec();
 		let local_storage = StorageValueRef::local(&local_storage_key);
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
-		let mut execute_position: u32 = 0;
 
 		let require_lock = local_storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
 			match lock {
@@ -296,17 +295,18 @@ impl<T: Trait> Module<T> {
 					// start with random collateral
 					let random_seed = runtime_io::offchain::random_seed();
 					let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
-					execute_position = rng.pick_u32(collateral_currency_ids.len() as u32);
 
 					Ok(OffchainWorkerLock {
-						previous_position: execute_position,
+						previous_position: rng.pick_u32(collateral_currency_ids.len() as u32),
 						locked: true,
 					})
 				}
 				Some(Some(lock)) if !lock.locked => {
-					if lock.previous_position < collateral_currency_ids.len() as u32 - 1 {
-						execute_position = lock.previous_position + 1
-					}
+					let execute_position = if lock.previous_position < collateral_currency_ids.len() as u32 - 1 {
+						lock.previous_position + 1
+					} else {
+						0
+					};
 
 					Ok(OffchainWorkerLock {
 						previous_position: execute_position,
@@ -316,10 +316,20 @@ impl<T: Trait> Module<T> {
 				_ => Err(OffchainErr::FailedToAcquireLock),
 			}
 		})?;
-		let _ = require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)?;
+		let OffchainWorkerLock {
+			previous_position,
+			locked: _,
+		} = require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)?;
 
 		// start
-		let currency_id = collateral_currency_ids[(execute_position as usize)];
+		let currency_id = collateral_currency_ids[(previous_position as usize)];
+		debug::info!(
+			target: "cdp-engine offchain worker",
+			"offchain worker start at block: {:?} execute automatic liquidation for collateral: {:?}",
+			block_number,
+			currency_id,
+		);
+
 		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
 			if let Some((_, account_id)) = key {
 				// TODO: liquidate unsafe cdp before emergency shutdown, settle cdp with debit when emergency shutdown occurs.
@@ -337,9 +347,14 @@ impl<T: Trait> Module<T> {
 
 		// finally, release lock
 		local_storage.set(&OffchainWorkerLock {
-			previous_position: execute_position,
+			previous_position: previous_position,
 			locked: false,
 		});
+		debug::info!(
+			target: "cdp-engine offchain worker",
+			"offchain worker start at block: {:?} done!",
+			block_number,
+		);
 
 		Ok(())
 	}
@@ -671,7 +686,7 @@ impl<T: Trait + Send + Sync> rstd::fmt::Debug for AutomaticLiquidationValidation
 impl<T: Trait + Send + Sync> SignedExtension for AutomaticLiquidationValidation<T> {
 	const IDENTIFIER: &'static str = "AutomaticLiquidationValidation";
 	type AccountId = T::AccountId;
-	type Call = Call<T>;
+	type Call = <T as Trait>::Call;
 	type AdditionalSigned = ();
 	type DispatchInfo = DispatchInfo;
 	type Pre = ();
@@ -686,8 +701,13 @@ impl<T: Trait + Send + Sync> SignedExtension for AutomaticLiquidationValidation<
 		_info: Self::DispatchInfo,
 		_len: usize,
 	) -> TransactionValidity {
+		let call = match call.is_sub_type() {
+			Some(call) => call,
+			None => return Ok(ValidTransaction::default()),
+		};
+
 		match call {
-			Call::liquidate(currency_id, account_id) => {
+			Call::<T>::liquidate(currency_id, account_id) => {
 				// check cdp is unsafe
 				if !<Module<T>>::is_unsafe_cdp(*currency_id, account_id) {
 					InvalidTransaction::Stale.into()
