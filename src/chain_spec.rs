@@ -246,11 +246,10 @@ fn testnet_genesis(
 				.collect::<Vec<_>>(),
 		}),
 		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts
+			balances: initial_authorities
 				.iter()
-				.cloned()
-				.map(|k| (k, INITIAL_BALANCE))
-				.chain(initial_authorities.iter().map(|x| (x.0.clone(), INITIAL_STAKING)))
+				.map(|x| (x.0.clone(), INITIAL_STAKING))
+				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
 				.collect(),
 		}),
 		pallet_session: Some(SessionConfig {
@@ -352,11 +351,10 @@ fn mandala_genesis(
 				.collect::<Vec<_>>(),
 		}),
 		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts
+			balances: initial_authorities
 				.iter()
-				.cloned()
-				.map(|k| (k, INITIAL_BALANCE))
-				.chain(initial_authorities.iter().map(|x| (x.0.clone(), INITIAL_STAKING)))
+				.map(|x| (x.0.clone(), INITIAL_STAKING))
+				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
 				.collect(),
 		}),
 		pallet_session: Some(SessionConfig {

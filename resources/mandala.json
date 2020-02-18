@@ -2,9 +2,13 @@
   "name": "Acala Mandala Testnet",
   "id": "mandala",
   "bootNodes": [
-    "/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
+	"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
+	"/dns4/libp2p.au.onfinality.cloud/tcp/57960/p2p/QmVJQaEtCwcTadaqk5VXKgirzVVanEpmqLj3exuKJtzRrK",
+	"/dns4/libp2p.au.onfinality.cloud/tcp/16346/p2p/QmQcDpsK6eRX3s152LHEYho7UGpeKxrkwv1uL8E6545VDu",
+	"/dns4/libp2p.au.onfinality.cloud/tcp/51009/p2p/Qmb12zCxc81rCdyHArW5HGZKeLvpQqWSwNk8e4f6NZD1hu",
 	"/ip4/39.99.168.67/tcp/30333/p2p/QmRxjcXuf4F5YTpP5Y97oH3SAR5BUoKTLLKeLApkHdSbLy",
-	"/dns4/libp2p.au.onfinality.cloud/tcp/57960/p2p/QmVJQaEtCwcTadaqk5VXKgirzVVanEpmqLj3exuKJtzRrK"
+	"/ip4/121.43.163.151/tcp/30333/p2p/QmeumciP73NTKzXAXbWjGDKDT7Krn8erC1q2cfT5mhS5ES",
+	"/ip4/140.82.61.232/tcp/30333/p2p/QmNsRpNNmLiRkb4FLwmczPPeym73jCPBZtwiFvdZEpAKgC"
   ],
   "telemetryEndpoints": [
     [

@@ -58,7 +58,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 27,
+	spec_version: 28,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 };
@@ -443,7 +443,9 @@ parameter_types! {
 
 impl orml_oracle::Trait for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type OnNewData = ();
+	type OnRedundantCall = ();
 	type OperatorProvider = OperatorCollectiveProvider;
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
@@ -708,6 +710,7 @@ pub type SignedExtra = (
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
 	system::CheckWeight<Runtime>,
+	orml_oracle::CheckOperator<Runtime>,
 	module_accounts::ChargeTransactionPayment<Runtime>,
 	module_cdp_engine::AutomaticLiquidationValidation<Runtime>,
 );

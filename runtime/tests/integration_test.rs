@@ -9,7 +9,7 @@ mod tests {
 	use frame_support::{assert_noop, assert_ok};
 	use module_support::{Price, Rate, Ratio};
 	use orml_traits::MultiCurrency;
-	use sp_runtime::DispatchResult;
+	use sp_runtime::{traits::OnFinalize, DispatchResult};
 
 	const ORACLE1: [u8; 32] = [0u8; 32];
 	const ORACLE2: [u8; 32] = [1u8; 32];
@@ -76,11 +76,16 @@ mod tests {
 	}
 
 	fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
-		prices.iter().for_each(|(c, p)| {
-			assert_ok!(OracleModule::feed_value(origin_of(AccountId::from(ORACLE1)), *c, *p));
-			assert_ok!(OracleModule::feed_value(origin_of(AccountId::from(ORACLE2)), *c, *p));
-			assert_ok!(OracleModule::feed_value(origin_of(AccountId::from(ORACLE3)), *c, *p));
-		});
+		OracleModule::on_finalize(0);
+		assert_ok!(OracleModule::feed_values(
+			origin_of(AccountId::from(ORACLE1)),
+			prices.clone()
+		));
+		assert_ok!(OracleModule::feed_values(
+			origin_of(AccountId::from(ORACLE2)),
+			prices.clone()
+		));
+		assert_ok!(OracleModule::feed_values(origin_of(AccountId::from(ORACLE3)), prices));
 		Ok(())
 	}
 
