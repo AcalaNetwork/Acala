@@ -3,9 +3,11 @@
   "id": "mandala",
   "bootNodes": [
 	"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
-	"/dns4/libp2p.au.onfinality.cloud/tcp/57960/p2p/QmVJQaEtCwcTadaqk5VXKgirzVVanEpmqLj3exuKJtzRrK",
-	"/dns4/libp2p.au.onfinality.cloud/tcp/16346/p2p/QmQcDpsK6eRX3s152LHEYho7UGpeKxrkwv1uL8E6545VDu",
-	"/dns4/libp2p.au.onfinality.cloud/tcp/51009/p2p/Qmb12zCxc81rCdyHArW5HGZKeLvpQqWSwNk8e4f6NZD1hu",
+	"/dns4/libp2p.jm.onfinality.io/tcp/11387/p2p/QmWMTjkUGrgNPhhWGwVGPVuX3DN1XnPbL3Vjvfv4Lb2H6i",
+	"/dns4/libp2p.rz.onfinality.io/tcp/52818/p2p/QmW56qvwMT81uepVqvW5c3mpvBkDRUjiLXwy6zKwQvy7CD",
+	"/dns4/libp2p.jm.onfinality.io/tcp/35786/p2p/QmeuvJdDhxDeNQsY1Ex4T7ue1ULEw15YyCAz24M692aAXW",
+	"/dns4/libp2p.rz.onfinality.io/tcp/18076/p2p/QmdWAyo8w1NpfQNv5FETADPZS7XJu7iqrnDPDGqjBPatP4",
+	"/dns4/libp2p.rz.onfinality.io/tcp/51281/p2p/QmaBVxj4PMDt3Fy9C3iY5iXyb2tuPvUdEo2sj9kBVGtCDs",
 	"/ip4/39.99.168.67/tcp/30333/p2p/QmRxjcXuf4F5YTpP5Y97oH3SAR5BUoKTLLKeLApkHdSbLy",
 	"/ip4/121.43.163.151/tcp/30333/p2p/QmeumciP73NTKzXAXbWjGDKDT7Krn8erC1q2cfT5mhS5ES",
 	"/ip4/140.82.61.232/tcp/30333/p2p/QmNsRpNNmLiRkb4FLwmczPPeym73jCPBZtwiFvdZEpAKgC"

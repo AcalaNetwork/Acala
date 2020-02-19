@@ -138,6 +138,9 @@ impl system::Trait for Runtime {
 	/// Version of the runtime.
 	type Version = Version;
 	type ModuleToIndex = ModuleToIndex;
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnReapAccount = (Balances, Staking, Session, Recovery);
 }
 
 parameter_types! {
@@ -155,16 +158,15 @@ impl pallet_grandpa::Trait for Runtime {
 	type Event = Event;
 }
 
+parameter_types! {
+	pub const IndexDeposit: Balance = 100 * MILLICENTS;
+}
+
 impl pallet_indices::Trait for Runtime {
-	/// The type for recording indexing into the account enumeration. If this ever overflows, there
-	/// will be problems!
 	type AccountIndex = AccountIndex;
-	/// Use the standard means of resolving an index hint from an id.
-	type ResolveHint = pallet_indices::SimpleResolveHint<Self::AccountId, Self::AccountIndex>;
-	/// Determine whether an account is dead.
-	type IsDeadAccount = Balances;
-	/// The ubiquitous event type.
 	type Event = Event;
+	type Currency = Balances;
+	type Deposit = IndexDeposit;
 }
 
 parameter_types! {
@@ -180,21 +182,14 @@ impl pallet_timestamp::Trait for Runtime {
 
 parameter_types! {
 	pub const AcaExistentialDeposit: Balance = 100 * MILLICENTS;
-	pub const CreationFee: Balance = 50 * MILLICENTS;
 }
 
 impl pallet_balances::Trait for Runtime {
-	/// The type for recording an account's balance.
 	type Balance = Balance;
-	/// What to do if a new account is created.
-	type OnNewAccount = Indices;
-	type OnReapAccount = (System, Recovery);
-	/// The ubiquitous event type.
-	type Event = Event;
 	type DustRemoval = ();
-	type TransferPayment = ();
+	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
-	type CreationFee = CreationFee;
+	type AccountStore = system::Module<Runtime>;
 }
 
 parameter_types! {
@@ -213,7 +208,7 @@ impl pallet_transaction_payment::Trait for Runtime {
 
 impl pallet_sudo::Trait for Runtime {
 	type Event = Event;
-	type Proposal = Call;
+	type Call = Call;
 }
 
 type GeneralCouncilInstance = pallet_collective::Instance1;
@@ -438,7 +433,7 @@ impl OperatorProvider<AccountId> for OperatorCollectiveProvider {
 
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
-	pub const ExpiresIn: Moment = 1000 * 60 * 60 * 24 * 7; // 7 days
+	pub const ExpiresIn: Moment = 1000 * 60 * 30; // 30 mins
 }
 
 impl orml_oracle::Trait for Runtime {
@@ -657,14 +652,14 @@ construct_runtime!(
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: system::{Module, Call, Storage, Config, Event},
+		System: system::{Module, Call, Storage, Config, Event<T>},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-		Indices: pallet_indices,
+		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		Balances: pallet_balances::{Module, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
-		Sudo: pallet_sudo,
+		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		GeneralCouncilMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
@@ -674,7 +669,7 @@ construct_runtime!(
 		OperatorMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
 		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 		PalletTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
-		Staking: pallet_staking,
+		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 
@@ -750,6 +745,10 @@ impl_runtime_apis! {
 			Executive::apply_extrinsic(extrinsic)
 		}
 
+		fn apply_trusted_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
+			Executive::apply_trusted_extrinsic(extrinsic)
+		}
+
 		fn finalize_block() -> <Block as BlockT>::Header {
 			Executive::finalize_block()
 		}
@@ -797,6 +796,10 @@ impl_runtime_apis! {
 				randomness: Babe::randomness(),
 				secondary_slots: true,
 			}
+		}
+
+		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
+			Babe::current_epoch_start()
 		}
 	}
 

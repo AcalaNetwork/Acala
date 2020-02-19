@@ -1,6 +1,6 @@
 [package]
 name = "module-loans"
-version = "0.2.8"
+version = "0.2.9"
 authors = ["Acala Developers"]
 edition = "2018"
 
