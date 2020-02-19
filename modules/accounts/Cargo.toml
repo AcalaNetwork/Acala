@@ -16,13 +16,12 @@ orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-fea
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-balances = { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-timestamp = { package = "pallet-timestamp", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
 runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-balances= { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-timestamp= { package = "pallet-timestamp", git = "https://github.com/paritytech/substrate.git", default-features = false }
-
 
 [features]
 default = ["std"]
@@ -38,4 +37,6 @@ std = [
 	"orml-currencies/std",
 	"support/std",
 	"pallet-transaction-payment/std",
+	"pallet-balances/std",
+	"pallet-timestamp/std",
 ]

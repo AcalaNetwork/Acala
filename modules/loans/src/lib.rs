@@ -7,9 +7,7 @@ use orml_traits::{
 };
 use rstd::convert::{TryFrom, TryInto};
 use sp_runtime::{
-	traits::{
-		AccountIdConversion, CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Member, SimpleArithmetic,
-	},
+	traits::{AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Member},
 	DispatchResult, ModuleId,
 };
 use support::{CDPTreasury, RiskManager};
@@ -28,7 +26,7 @@ pub trait Trait: system::Trait {
 	type Convert: Convert<(CurrencyIdOf<Self>, Self::DebitBalance), BalanceOf<Self>>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type RiskManager: RiskManager<Self::AccountId, CurrencyIdOf<Self>, AmountOf<Self>, Self::DebitAmount>;
-	type DebitBalance: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
+	type DebitBalance: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
 	type DebitAmount: Signed
 		+ TryInto<Self::DebitBalance>
 		+ TryFrom<Self::DebitBalance>

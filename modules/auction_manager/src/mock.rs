@@ -19,6 +19,7 @@ mod auction_manager {
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
+		system<T>,
 		auction_manager<T>,
 		orml_tokens<T>,
 		orml_auction<T>,
@@ -68,6 +69,9 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 	type ModuleToIndex = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnReapAccount = ();
 }
 pub type System = system::Module<Runtime>;
 

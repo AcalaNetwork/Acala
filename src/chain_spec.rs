@@ -238,13 +238,7 @@ fn testnet_genesis(
 			code: WASM_BINARY.to_vec(),
 			changes_trie_config: Default::default(),
 		}),
-		pallet_indices: Some(IndicesConfig {
-			ids: endowed_accounts
-				.iter()
-				.cloned()
-				.chain(initial_authorities.iter().map(|x| x.0.clone()))
-				.collect::<Vec<_>>(),
-		}),
+		pallet_indices: Some(IndicesConfig { indices: vec![] }),
 		pallet_balances: Some(BalancesConfig {
 			balances: initial_authorities
 				.iter()
@@ -343,13 +337,7 @@ fn mandala_genesis(
 			code: WASM_BINARY.to_vec(),
 			changes_trie_config: Default::default(),
 		}),
-		pallet_indices: Some(IndicesConfig {
-			ids: endowed_accounts
-				.iter()
-				.cloned()
-				.chain(initial_authorities.iter().map(|x| x.0.clone()))
-				.collect::<Vec<_>>(),
-		}),
+		pallet_indices: Some(IndicesConfig { indices: vec![] }),
 		pallet_balances: Some(BalancesConfig {
 			balances: initial_authorities
 				.iter()

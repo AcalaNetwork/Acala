@@ -4,6 +4,7 @@ mod rpc;
 mod service;
 mod cli;
 mod command;
+mod executor;
 
 pub use sc_cli::{error, VersionInfo};
 

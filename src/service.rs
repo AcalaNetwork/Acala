@@ -10,17 +10,8 @@ use sc_network::construct_simple_protocol;
 use sc_service::{config::Configuration, error::Error as ServiceError, AbstractService, ServiceBuilder};
 use sp_inherents::InherentDataProviders;
 
-use sc_executor::native_executor_instance;
-
+use crate::executor::Executor;
 use crate::rpc;
-
-// Declare an instance of the native executor named `Executor`. Include the wasm binary as the
-// equivalent wasm code.
-native_executor_instance!(
-	pub Executor,
-	runtime::api::dispatch,
-	runtime::native_version,
-);
 
 construct_simple_protocol! {
 	/// Demo protocol attachment for substrate.
@@ -40,7 +31,7 @@ macro_rules! new_full_start {
 		let builder = sc_service::ServiceBuilder::new_full::<
 			runtime::opaque::Block,
 			runtime::RuntimeApi,
-			crate::service::Executor,
+			crate::executor::Executor,
 		>($config)?
 		.with_select_chain(|_config, backend| Ok(sc_client::LongestChain::new(backend.clone())))?
 		.with_transaction_pool(|config, client, _fetcher| {
@@ -75,11 +66,27 @@ macro_rules! new_full_start {
 			import_setup = Some((block_import, grandpa_link, babe_link));
 			Ok(import_queue)
 		})?
-		.with_rpc_extensions(
-			|client, pool, _backend, fetcher, _remote_blockchain| -> Result<RpcExtension, _> {
-				Ok(crate::rpc::create(client, pool, crate::rpc::LightDeps::none(fetcher)))
-			},
-		)?;
+		.with_rpc_extensions(|builder| -> Result<RpcExtension, _> {
+			let babe_link = import_setup
+				.as_ref()
+				.map(|s| &s.2)
+				.expect("BabeLink is present for full services or set up failed; qed.");
+			let deps = crate::rpc::FullDeps {
+				client: builder.client().clone(),
+				pool: builder.pool(),
+				select_chain: builder
+					.select_chain()
+					.cloned()
+					.expect("SelectChain is present for full services or set up failed; qed."),
+				babe: crate::rpc::BabeDeps {
+					keystore: builder.keystore(),
+					babe_config: sc_consensus_babe::BabeLink::config(babe_link).clone(),
+					shared_epoch_changes: sc_consensus_babe::BabeLink::epoch_changes(babe_link).clone(),
+				},
+			};
+
+			Ok(crate::rpc::create_full(deps))
+		})?;
 
 		(builder, import_setup, inherent_data_providers)
 		}};
@@ -245,18 +252,22 @@ pub fn new_light(config: NodeConfiguration) -> Result<impl AbstractService, Serv
 		.with_finality_proof_provider(|client, backend| {
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
 		})?
-		.with_rpc_extensions(
-			|client, pool, _backend, fetcher, remote_blockchain| -> Result<RpcExtension, _> {
-				let fetcher = fetcher.ok_or_else(|| "Trying to start node RPC without active fetcher")?;
-				let remote_blockchain =
-					remote_blockchain.ok_or_else(|| "Trying to start node RPC without active remote blockchain")?;
+		.with_rpc_extensions(|builder| -> Result<RpcExtension, _> {
+			let fetcher = builder
+				.fetcher()
+				.ok_or_else(|| "Trying to start node RPC without active fetcher")?;
+			let remote_blockchain = builder
+				.remote_backend()
+				.ok_or_else(|| "Trying to start node RPC without active remote blockchain")?;
 
-				let light_deps = rpc::LightDeps {
-					remote_blockchain,
-					fetcher,
-				};
-				Ok(crate::rpc::create(client, pool, Some(light_deps)))
-			},
-		)?
+			let light_deps = rpc::LightDeps {
+				remote_blockchain,
+				fetcher,
+				client: builder.client().clone(),
+				pool: builder.pool(),
+			};
+
+			Ok(rpc::create_light(light_deps))
+		})?
 		.build()
 }
