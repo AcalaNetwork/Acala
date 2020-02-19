@@ -16,6 +16,7 @@ mod emergency_shutdown {
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
+		system<T>,
 		emergency_shutdown<T>,
 		cdp_engine<T>,
 		orml_tokens<T>,
@@ -85,6 +86,9 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 	type ModuleToIndex = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnReapAccount = ();
 }
 pub type System = system::Module<Runtime>;
 
@@ -100,13 +104,10 @@ pub type Tokens = orml_tokens::Module<Runtime>;
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
-	type OnNewAccount = ();
-	type OnReapAccount = ();
-	type TransferPayment = ();
 	type DustRemoval = ();
 	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
-	type CreationFee = CreationFee;
+	type AccountStore = system::Module<Runtime>;
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 

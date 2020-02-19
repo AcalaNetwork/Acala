@@ -47,6 +47,9 @@ sc-chain-spec = { git = "https://github.com/paritytech/substrate.git" }
 sc-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
 sc-client-api = { git = "https://github.com/paritytech/substrate.git" }
 sc-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-epochs = { git = "https://github.com/paritytech/substrate.git" }
+sc-keystore = { git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-babe-rpc = { git = "https://github.com/paritytech/substrate.git" }
 
 frame-rpc-system = { package = "substrate-frame-rpc-system", git = "https://github.com/paritytech/substrate" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate" }

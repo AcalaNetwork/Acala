@@ -4,7 +4,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, t
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating, SimpleArithmetic,
+		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating,
 		UniqueSaturatedInto, Zero,
 	},
 	DispatchResult, ModuleId,
@@ -23,7 +23,7 @@ type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Tr
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
-	type Share: Parameter + Member + SimpleArithmetic + Default + Copy + MaybeSerializeDeserialize;
+	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
 	type GetBaseCurrencyId: Get<CurrencyIdOf<Self>>;
 	type GetExchangeFee: Get<Rate>;
 }

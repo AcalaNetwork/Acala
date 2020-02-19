@@ -14,7 +14,9 @@ mod dex {
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
-		dex<T>, orml_tokens<T>,
+		system<T>,
+		dex<T>,
+		orml_tokens<T>,
 	}
 }
 impl_outer_origin! {
@@ -58,6 +60,9 @@ impl system::Trait for Runtime {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 	type ModuleToIndex = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnReapAccount = ();
 }
 pub type System = system::Module<Runtime>;
 
