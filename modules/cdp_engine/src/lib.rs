@@ -145,7 +145,7 @@ enum OffchainErr {
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
-struct OffchainWorkerLock {
+struct LiquidatorLock {
 	pub previous_position: u32,
 	pub locked: bool,
 }
@@ -250,7 +250,6 @@ decl_module! {
 			}
 		}
 
-		// Call by unsigned transaction
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -278,25 +277,19 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn automatic_liquidation(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
-		// check if is validator
-		if !runtime_io::offchain::is_validator() {
-			return Err(OffchainErr::NotValidator);
-		}
-
-		// check if require offchain worker lock succecced
+	fn required_liquidator_lock() -> Result<LiquidatorLock, OffchainErr> {
 		let local_storage_key = DB_PREFIX.to_vec();
 		let local_storage = StorageValueRef::local(&local_storage_key);
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-		let require_lock = local_storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
+		let require_lock = local_storage.mutate(|lock: Option<Option<LiquidatorLock>>| {
 			match lock {
 				None => {
-					// start with random collateral
+					//start with random collateral
 					let random_seed = runtime_io::offchain::random_seed();
 					let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
 
-					Ok(OffchainWorkerLock {
+					Ok(LiquidatorLock {
 						previous_position: rng.pick_u32(collateral_currency_ids.len() as u32),
 						locked: true,
 					})
@@ -308,7 +301,7 @@ impl<T: Trait> Module<T> {
 						0
 					};
 
-					Ok(OffchainWorkerLock {
+					Ok(LiquidatorLock {
 						previous_position: execute_position,
 						locked: true,
 					})
@@ -316,20 +309,28 @@ impl<T: Trait> Module<T> {
 				_ => Err(OffchainErr::FailedToAcquireLock),
 			}
 		})?;
-		let OffchainWorkerLock {
-			previous_position,
-			locked: _,
-		} = require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)?;
 
-		// start
-		let currency_id = collateral_currency_ids[(previous_position as usize)];
-		debug::info!(
-			target: "cdp-engine offchain worker",
-			"offchain worker start at block: {:?} execute automatic liquidation for collateral: {:?}",
-			block_number,
-			currency_id,
-		);
+		require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
+	}
 
+	fn release_liquidator_lock(previous_position: u32) {
+		let local_storage_key = DB_PREFIX.to_vec();
+		let local_storage = StorageValueRef::local(&local_storage_key);
+
+		local_storage.set(&LiquidatorLock {
+			previous_position: previous_position,
+			locked: false,
+		});
+	}
+
+	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
+		let call = Call::<T>::liquidate(currency_id, who);
+
+		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
+		Ok(())
+	}
+
+	fn liquidate_specific_collateral(currency_id: CurrencyIdOf<T>) {
 		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
 			if let Some((_, account_id)) = key {
 				// TODO: liquidate unsafe cdp before emergency shutdown, settle cdp with debit when emergency shutdown occurs.
@@ -344,25 +345,40 @@ impl<T: Trait> Module<T> {
 				}
 			}
 		}
+	}
+
+	fn automatic_liquidation(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
+		// check if we are a potential validator
+		if !runtime_io::offchain::is_validator() {
+			return Err(OffchainErr::NotValidator);
+		}
+
+		// check if require offchain worker lock succecced
+		let LiquidatorLock {
+			previous_position,
+			locked: _,
+		} = Self::required_liquidator_lock()?;
+
+		// start
+		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+		let currency_id = collateral_currency_ids[(previous_position as usize)];
+		debug::info!(
+			target: "cdp-engine offchain worker",
+			"offchain worker start at block: {:?} execute automatic liquidation for collateral: {:?}",
+			block_number,
+			currency_id,
+		);
+
+		Self::liquidate_specific_collateral(currency_id);
 
 		// finally, release lock
-		local_storage.set(&OffchainWorkerLock {
-			previous_position: previous_position,
-			locked: false,
-		});
+		Self::release_liquidator_lock(previous_position);
 		debug::info!(
 			target: "cdp-engine offchain worker",
 			"offchain worker start at block: {:?} done!",
 			block_number,
 		);
 
-		Ok(())
-	}
-
-	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
-		let call = Call::<T>::liquidate(currency_id, who);
-
-		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
 	}
 

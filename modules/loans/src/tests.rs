@@ -7,6 +7,17 @@ use frame_support::{assert_noop, assert_ok};
 use mock::{Currencies, ExtBuilder, LoansModule, Runtime, System, TestEvent, ALICE, AUSD, X_TOKEN_ID, Y_TOKEN_ID};
 
 #[test]
+fn debits_key() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (0, None));
+		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (100, Some((Y_TOKEN_ID, ALICE))));
+		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, -100, -100));
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (0, None));
+	});
+}
+
+#[test]
 fn update_position_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));

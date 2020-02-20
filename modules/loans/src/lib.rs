@@ -7,7 +7,9 @@ use orml_traits::{
 };
 use rstd::convert::{TryFrom, TryInto};
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Member},
+	traits::{
+		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Member, Zero,
+	},
 	DispatchResult, ModuleId,
 };
 use support::{CDPTreasury, RiskManager};
@@ -41,7 +43,7 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Loans {
-		pub Debits get(fn debits): double_map hasher(blake2_128_concat) CurrencyIdOf<T>, hasher(blake2_128_concat) T::AccountId => (T::DebitBalance, Option<(CurrencyIdOf<T>, T::AccountId)>);
+		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => (T::DebitBalance, Option<(CurrencyIdOf<T>, T::AccountId)>);
 		pub Collaterals get(fn collaterals): double_map hasher(blake2_256) T::AccountId, hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
 		pub TotalDebits get(fn total_debits): map hasher(blake2_256) CurrencyIdOf<T> => T::DebitBalance;
 		pub TotalCollaterals get(fn total_collaterals): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
@@ -293,7 +295,12 @@ impl<T: Trait> Module<T> {
 
 		// update debits record
 		if debits.is_positive() {
-			<Debits<T>>::mutate(currency_id, who, |(balance, _)| *balance += debits_balance);
+			<Debits<T>>::mutate(currency_id, who, |(balance, key)| {
+				if balance.is_zero() {
+					*key = Some((currency_id, (*who).clone()));
+				}
+				*balance += debits_balance;
+			});
 			<TotalDebits<T>>::mutate(currency_id, |balance| *balance += debits_balance);
 		} else {
 			<Debits<T>>::mutate(currency_id, who, |(balance, key)| {
