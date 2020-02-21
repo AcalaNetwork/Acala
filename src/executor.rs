@@ -6,5 +6,4 @@ native_executor_instance!(
 	pub Executor,
 	runtime::api::dispatch,
 	runtime::native_version,
-	sp_io::benchmarking::HostFunctions,
 );

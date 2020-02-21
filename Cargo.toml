@@ -50,12 +50,11 @@ sc-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
 sc-consensus-epochs = { git = "https://github.com/paritytech/substrate.git" }
 sc-keystore = { git = "https://github.com/paritytech/substrate.git" }
 sc-consensus-babe-rpc = { git = "https://github.com/paritytech/substrate.git" }
-
 frame-rpc-system = { package = "substrate-frame-rpc-system", git = "https://github.com/paritytech/substrate" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate" }
+
 orml-oracle-rpc = { path = "orml/oracle/rpc" }
 orml-utilities = { path = "orml/utilities" }
-
 runtime = { package = "acala-runtime", path = "runtime" }
 
 [build-dependencies]
