@@ -7,7 +7,7 @@ use frame_support::{
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
 use sp_runtime::{
-	offchain::storage::StorageValueRef,
+	offchain::{storage::StorageValueRef, Duration, Timestamp},
 	traits::{
 		BlakeTwo256, CheckedAdd, CheckedSub, Convert, EnsureOrigin, Hash, Saturating, SignedExtension,
 		UniqueSaturatedInto, Zero,
@@ -29,6 +29,8 @@ pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 mod mock;
 mod tests;
 
+const LOCK_EXPIRE_DURATION: u64 = 300_000; // 5 min
+const LOCK_UPDATE_DURATION: u64 = 240_000; // 4 min
 const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
 
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
@@ -142,12 +144,13 @@ enum OffchainErr {
 	FailedToAcquireLock,
 	SubmitTransaction,
 	NotValidator,
+	LockStillInLocked,
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
 struct LiquidatorLock {
 	pub previous_position: u32,
-	pub locked: bool,
+	pub expire_timestamp: Timestamp,
 }
 
 impl rstd::fmt::Debug for OffchainErr {
@@ -156,6 +159,7 @@ impl rstd::fmt::Debug for OffchainErr {
 			OffchainErr::FailedToAcquireLock => write!(fmt, "Failed to acquire lock"),
 			OffchainErr::SubmitTransaction => write!(fmt, "Failed to submit transaction"),
 			OffchainErr::NotValidator => write!(fmt, "Not validator"),
+			OffchainErr::LockStillInLocked => write!(fmt, "Liquidator lock is still in locked"),
 		}
 	}
 }
@@ -278,35 +282,39 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	fn required_liquidator_lock() -> Result<LiquidatorLock, OffchainErr> {
-		let local_storage_key = DB_PREFIX.to_vec();
-		let local_storage = StorageValueRef::local(&local_storage_key);
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-		let require_lock = local_storage.mutate(|lock: Option<Option<LiquidatorLock>>| {
+		let require_lock = storage.mutate(|lock: Option<Option<LiquidatorLock>>| {
 			match lock {
 				None => {
 					//start with random collateral
 					let random_seed = runtime_io::offchain::random_seed();
 					let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+					let expire_timestamp =
+						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
 
 					Ok(LiquidatorLock {
 						previous_position: rng.pick_u32(collateral_currency_ids.len() as u32),
-						locked: true,
+						expire_timestamp: expire_timestamp,
 					})
 				}
-				Some(Some(lock)) if !lock.locked => {
+				Some(Some(lock)) if runtime_io::offchain::timestamp() >= lock.expire_timestamp => {
 					let execute_position = if lock.previous_position < collateral_currency_ids.len() as u32 - 1 {
 						lock.previous_position + 1
 					} else {
 						0
 					};
+					let expire_timestamp =
+						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
 
 					Ok(LiquidatorLock {
 						previous_position: execute_position,
-						locked: true,
+						expire_timestamp: expire_timestamp,
 					})
 				}
-				_ => Err(OffchainErr::FailedToAcquireLock),
+				_ => Err(OffchainErr::LockStillInLocked),
 			}
 		})?;
 
@@ -314,13 +322,34 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn release_liquidator_lock(previous_position: u32) {
-		let local_storage_key = DB_PREFIX.to_vec();
-		let local_storage = StorageValueRef::local(&local_storage_key);
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
 
-		local_storage.set(&LiquidatorLock {
-			previous_position: previous_position,
-			locked: false,
-		});
+		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
+			if liquidator_lock.previous_position == previous_position {
+				storage.set(&LiquidatorLock {
+					previous_position: previous_position,
+					expire_timestamp: runtime_io::offchain::timestamp(),
+				});
+			}
+		}
+	}
+
+	fn extend_expire_duration_if_needed() {
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
+
+		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
+			if liquidator_lock.expire_timestamp
+				<= runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_UPDATE_DURATION))
+			{
+				storage.set(&LiquidatorLock {
+					previous_position: liquidator_lock.previous_position,
+					expire_timestamp: runtime_io::offchain::timestamp()
+						.add(Duration::from_millis(LOCK_EXPIRE_DURATION)),
+				});
+			}
+		}
 	}
 
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
@@ -344,6 +373,8 @@ impl<T: Trait> Module<T> {
 					}
 				}
 			}
+
+			Self::extend_expire_duration_if_needed();
 		}
 	}
 
@@ -356,7 +387,7 @@ impl<T: Trait> Module<T> {
 		// check if require offchain worker lock succecced
 		let LiquidatorLock {
 			previous_position,
-			locked: _,
+			expire_timestamp: _,
 		} = Self::required_liquidator_lock()?;
 
 		// start

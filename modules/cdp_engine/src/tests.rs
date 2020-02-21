@@ -16,6 +16,31 @@ use primitives::offchain::{
 use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
+fn liquidator_lock_work() {
+	let mut ext = ExtBuilder::default().build();
+	let (offchain, _state) = TestOffchainExt::new();
+	let (pool, _state) = TestTransactionPoolExt::new();
+	ext.register_extension(OffchainExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
+
+		// manipulate to set liquidator lock initially
+		// because offchain::random_seed() is still not implemented for TestOffchainExt
+		storage.set(&LiquidatorLock {
+			previous_position: 0,
+			expire_timestamp: Timestamp::from_unix_millis(0),
+		});
+		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), false);
+		CdpEngineModule::release_liquidator_lock(1);
+		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
+	});
+}
+
+#[test]
 fn liquidate_specific_collateral_work() {
 	let mut ext = ExtBuilder::default().build();
 	let (offchain, _state) = TestOffchainExt::new();
