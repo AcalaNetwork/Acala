@@ -62,6 +62,7 @@ module-cdp-treasury = { package = "module-cdp-treasury", path = "../modules/cdp_
 module-prices = { package = "module-prices", path = "../modules/prices", default-features = false }
 module-emergency-shutdown = { package = "module-emergency-shutdown", path = "../modules/emergency_shutdown", default-features = false }
 module-accounts = { package = "module-accounts", path = "../modules/accounts", default-features = false }
+module-airdrop = { package = "module-airdrop", path = "../modules/airdrop", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
@@ -121,4 +122,5 @@ std = [
 	"module-cdp-treasury/std",
 	"module-emergency-shutdown/std",
 	"module-accounts/std",
+	"module-airdrop/std",
 ]

@@ -68,6 +68,7 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "module-accounts",
+ "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -2695,6 +2696,20 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "pallet-transaction-payment",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-airdrop"
+version = "0.2.9"
+dependencies = [
+ "frame-support",
+ "frame-system",
  "parity-scale-codec",
  "serde",
  "sp-core",
