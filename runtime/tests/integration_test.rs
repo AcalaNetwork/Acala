@@ -180,7 +180,7 @@ mod tests {
 				));
 				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
 				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
-				assert_eq!(LoansModule::debits(AccountId::from(ALICE), XBTC), amount(500));
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, amount(500));
 				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
 				assert_noop!(
 					HonzonModule::liquidate(origin_of(AccountId::from(CAROL)), AccountId::from(ALICE), XBTC),
@@ -202,7 +202,7 @@ mod tests {
 				));
 				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
 				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
-				assert_eq!(LoansModule::debits(AccountId::from(ALICE), XBTC), 0);
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, 0);
 				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), 0);
 			});
 	}
@@ -259,7 +259,7 @@ mod tests {
 					0
 				));
 				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
-				assert_eq!(LoansModule::debits(AccountId::from(ALICE), XBTC), 0);
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, 0);
 				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
 
 				assert_noop!(
@@ -278,7 +278,7 @@ mod tests {
 					0,
 					amount(100) as i128
 				));
-				assert_eq!(LoansModule::debits(AccountId::from(ALICE), XBTC), amount(100));
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, amount(100));
 				assert_eq!(CdpTreasuryModule::debit_pool(), 0);
 				assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 0);
 				assert_ok!(CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), XBTC));
@@ -290,7 +290,7 @@ mod tests {
 					.iter()
 					.any(|record| record.event == settle_cdp_in_debit_event));
 
-				assert_eq!(LoansModule::debits(AccountId::from(ALICE), XBTC), 0);
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, 0);
 				assert_eq!(CdpTreasuryModule::debit_pool(), amount(10));
 				assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 3333333333333333330);
 			});

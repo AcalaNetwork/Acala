@@ -17,10 +17,11 @@ support = { package = "module-support", path = "../support", default-features = 
 loans = { package = "module-loans", path = "../loans", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
 pallet-balances = { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-application-crypto = { package = "sp-application-crypto", git = "https://github.com/paritytech/substrate.git", default-features = false }
+runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
-runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 dex = { package = "module-dex", path = "../dex", default-features = false }
 
@@ -39,4 +40,6 @@ std = [
 	"loans/std",
 	"cdp-treasury/std",
 	"pallet-balances/std",
+	"sp-application-crypto/std",
+	"runtime-io/std",
 ]

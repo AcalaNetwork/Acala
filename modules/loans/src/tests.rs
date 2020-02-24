@@ -7,6 +7,17 @@ use frame_support::{assert_noop, assert_ok};
 use mock::{Currencies, ExtBuilder, LoansModule, Runtime, System, TestEvent, ALICE, AUSD, X_TOKEN_ID, Y_TOKEN_ID};
 
 #[test]
+fn debits_key() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (0, None));
+		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (100, Some((Y_TOKEN_ID, ALICE))));
+		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, -100, -100));
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (0, None));
+	});
+}
+
+#[test]
 fn update_position_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));
@@ -17,7 +28,7 @@ fn update_position_should_work() {
 			.any(|record| record.event == update_position_event));
 
 		assert_eq!(LoansModule::collaterals(ALICE, Y_TOKEN_ID), 100);
-		assert_eq!(LoansModule::debits(ALICE, Y_TOKEN_ID), 100);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE).0, 100);
 	});
 }
 
@@ -37,7 +48,7 @@ fn update_position_with_negative_collateral_should_work() {
 		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, 100, 100));
 		// ensure collateral and debit
 		assert_eq!(LoansModule::collaterals(ALICE, Y_TOKEN_ID), 100);
-		assert_eq!(LoansModule::debits(ALICE, Y_TOKEN_ID), 100);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE).0, 100);
 		// ensure tokens
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &ALICE), 900);
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &LoansModule::account_id()), 100);
@@ -46,7 +57,7 @@ fn update_position_with_negative_collateral_should_work() {
 		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, -10, -10));
 		// ensure collateral and debit
 		assert_eq!(LoansModule::collaterals(ALICE, Y_TOKEN_ID), 90);
-		assert_eq!(LoansModule::debits(ALICE, Y_TOKEN_ID), 90);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE).0, 90);
 		// ensure tokens
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &ALICE), 910);
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &LoansModule::account_id()), 90);
@@ -59,7 +70,7 @@ fn update_position_with_zero_collateral_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(LoansModule::update_position(&ALICE, Y_TOKEN_ID, 0, 0));
 		assert_eq!(LoansModule::collaterals(ALICE, Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(ALICE, Y_TOKEN_ID), 0);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE).0, 0);
 	});
 }
 
@@ -103,7 +114,7 @@ fn update_collaterals_and_debits_should_work() {
 			.any(|record| record.event == update_position_event_2));
 
 		assert_eq!(LoansModule::collaterals(ALICE, Y_TOKEN_ID), 90);
-		assert_eq!(LoansModule::debits(ALICE, Y_TOKEN_ID), 90);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE).0, 90);
 		// ensure tokens don't change
 		assert_eq!(Currencies::balance(Y_TOKEN_ID, &ALICE), 1000);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
@@ -115,6 +126,6 @@ fn update_collaterals_and_debits_with_zero_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(LoansModule::update_collaterals_and_debits(ALICE, Y_TOKEN_ID, 0, 0));
 		assert_eq!(LoansModule::collaterals(ALICE, Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(ALICE, Y_TOKEN_ID), 0);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (0, None));
 	});
 }

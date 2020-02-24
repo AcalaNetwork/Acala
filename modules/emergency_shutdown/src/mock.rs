@@ -2,9 +2,13 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchResult, Perbill};
+use sp_runtime::{
+	testing::{Header, TestXt},
+	traits::IdentityLookup,
+	DispatchResult, Perbill,
+};
 use support::{AuctionManager, AuctionManagerExtended, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 use system::EnsureSignedBy;
 
@@ -12,6 +16,12 @@ use super::*;
 
 mod emergency_shutdown {
 	pub use super::super::*;
+}
+
+impl_outer_dispatch! {
+	pub enum Call for Runtime where origin: Origin {
+		cdp_engine::CdpEngineModule,
+	}
 }
 
 impl_outer_event! {
@@ -206,6 +216,10 @@ impl cdp_treasury::Trait for Runtime {
 }
 pub type CdpTreasury = cdp_treasury::Module<Runtime>;
 
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
+
 parameter_types! {
 	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(50, 100);
 }
@@ -225,6 +239,8 @@ impl cdp_engine::Trait for Runtime {
 	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
 	type Currency = Currencies;
 	type Dex = ();
+	type Call = Call;
+	type SubmitTransaction = SubmitTransaction;
 }
 pub type CdpEngineModule = cdp_engine::Module<Runtime>;
 

@@ -6,9 +6,103 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	CdpEngineModule, CdpTreasury, Currencies, DefaultDebitExchangeRate, DefaultLiquidationPenalty,
-	DefaultLiquidationRatio, ExtBuilder, LoansModule, Origin, Runtime, System, TestEvent, ACA, ALICE, AUSD, BTC, DOT,
+	DefaultLiquidationRatio, ExtBuilder, LoansModule, Origin, Runtime, System, TestEvent, ACA, ALICE, AUSD, BOB, BTC,
+	DOT,
+};
+use primitives::offchain::{
+	testing::{TestOffchainExt, TestTransactionPoolExt},
+	OffchainExt, TransactionPoolExt,
 };
 use sp_runtime::traits::{BadOrigin, OnFinalize};
+
+#[test]
+fn liquidator_lock_work() {
+	let mut ext = ExtBuilder::default().build();
+	let (offchain, _state) = TestOffchainExt::new();
+	let (pool, _state) = TestTransactionPoolExt::new();
+	ext.register_extension(OffchainExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
+
+		// manipulate to set liquidator lock initially
+		// because offchain::random_seed() is still not implemented for TestOffchainExt
+		storage.set(&LiquidatorLock {
+			previous_position: 0,
+			expire_timestamp: Timestamp::from_unix_millis(0),
+		});
+		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), false);
+		CdpEngineModule::release_liquidator_lock(1);
+		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
+	});
+}
+
+#[test]
+fn liquidate_specific_collateral_work() {
+	let mut ext = ExtBuilder::default().build();
+	let (offchain, _state) = TestOffchainExt::new();
+	let (pool, state) = TestTransactionPoolExt::new();
+	ext.register_extension(OffchainExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
+		assert_ok!(CdpEngineModule::update_position(&BOB, BTC, 100, 50));
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			None,
+			Some(Some(Ratio::from_rational(3, 1))),
+			None,
+			None,
+			None
+		));
+		assert_eq!(CdpEngineModule::is_unsafe_cdp(BTC, &ALICE), true);
+		assert_eq!(CdpEngineModule::is_unsafe_cdp(BTC, &BOB), true);
+		CdpEngineModule::liquidate_specific_collateral(BTC);
+		assert_eq!(state.read().transactions.len(), 2);
+	});
+}
+
+#[test]
+fn is_unsafe_cdp_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_eq!(CdpEngineModule::is_unsafe_cdp(BTC, &ALICE), false);
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
+		assert_eq!(CdpEngineModule::is_unsafe_cdp(BTC, &ALICE), false);
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			None,
+			Some(Some(Ratio::from_rational(3, 1))),
+			None,
+			None,
+			None
+		));
+		assert_eq!(CdpEngineModule::is_unsafe_cdp(BTC, &ALICE), true);
+	});
+}
 
 #[test]
 fn get_debit_exchange_rate_work() {
@@ -290,12 +384,12 @@ fn update_position_work() {
 		);
 		assert_eq!(Currencies::balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 0);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			CdpEngineModule::update_position(&ALICE, BTC, 0, 20),
@@ -304,7 +398,7 @@ fn update_position_work() {
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, -20));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 30);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 30);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 	});
 }
@@ -345,7 +439,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			CdpEngineModule::liquidate_unsafe_cdp(ALICE, BTC),
@@ -370,7 +464,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		assert_eq!(CdpTreasury::debit_pool(), 50);
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 0);
 	});
 }
@@ -503,14 +597,14 @@ fn settle_cdp_has_debit_work() {
 		));
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 0));
 		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(LoansModule::debits(ALICE, BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			CdpEngineModule::settle_cdp_has_debit(ALICE, BTC),
 			Error::<Runtime>::AlreadyNoDebit,
 		);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, 50));
-		assert_eq!(LoansModule::debits(ALICE, BTC), 50);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(CdpTreasury::debit_pool(), 0);
 		assert_eq!(CdpTreasury::total_collaterals(BTC), 0);
 		assert_ok!(CdpEngineModule::settle_cdp_has_debit(ALICE, BTC));
@@ -520,7 +614,7 @@ fn settle_cdp_has_debit_work() {
 			.iter()
 			.any(|record| record.event == settle_cdp_in_debit_event));
 
-		assert_eq!(LoansModule::debits(ALICE, BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(CdpTreasury::debit_pool(), 50);
 		assert_eq!(CdpTreasury::total_collaterals(BTC), 50);
 	});

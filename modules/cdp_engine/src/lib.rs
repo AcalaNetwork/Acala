@@ -1,23 +1,37 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use codec::{Decode, Encode};
+use frame_support::{
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchInfo, IsSubType,
+};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, Convert, EnsureOrigin, Saturating, UniqueSaturatedInto, Zero},
-	DispatchResult,
+	offchain::{storage::StorageValueRef, Duration, Timestamp},
+	traits::{
+		BlakeTwo256, CheckedAdd, CheckedSub, Convert, EnsureOrigin, Hash, Saturating, SignedExtension,
+		UniqueSaturatedInto, Zero,
+	},
+	transaction_validity::{
+		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
+	},
+	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
 use support::{
 	CDPTreasury, CDPTreasuryExtended, DexManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
-use system::ensure_root;
+use system::{ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 
 mod mock;
 mod tests;
+
+const LOCK_EXPIRE_DURATION: u64 = 300_000; // 5 min
+const LOCK_UPDATE_DURATION: u64 = 240_000; // 4 min
+const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
 
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -38,6 +52,12 @@ pub trait Trait: system::Trait + loans::Trait {
 	type MaxSlippageSwapWithDex: Get<Ratio>;
 	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyIdOf<Self>, Balance = BalanceOf<Self>>;
 	type Dex: DexManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>>;
+
+	/// A dispatchable call type.
+	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
+
+	/// A transaction submitter.
+	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
 }
 
 decl_event!(
@@ -73,6 +93,7 @@ decl_error! {
 		BalanceOverflow,
 		InvalidFeedPrice,
 		AlreadyNoDebit,
+		AlreadyShutdown,
 		NoDebitInCdp,
 	}
 }
@@ -90,7 +111,6 @@ decl_storage! {
 
 	add_extra_genesis {
 		config(collaterals_params): Vec<(CurrencyIdOf<T>, Option<Rate>, Option<Ratio>, Option<Rate>, Option<Ratio>, BalanceOf<T>)>;
-
 		build(|config: &GenesisConfig<T>| {
 			config.collaterals_params.iter().for_each(|(
 				currency_id,
@@ -113,8 +133,34 @@ decl_storage! {
 					<RequiredCollateralRatio<T>>::insert(currency_id, val);
 				}
 				<MaximumTotalDebitValue<T>>::insert(currency_id, maximum_total_debit_value);
-			})
-		})
+			});
+		});
+	}
+}
+
+/// Error which may occur while executing the off-chain code.
+#[cfg_attr(test, derive(PartialEq))]
+enum OffchainErr {
+	FailedToAcquireLock,
+	SubmitTransaction,
+	NotValidator,
+	LockStillInLocked,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
+struct LiquidatorLock {
+	pub previous_position: u32,
+	pub expire_timestamp: Timestamp,
+}
+
+impl rstd::fmt::Debug for OffchainErr {
+	fn fmt(&self, fmt: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+		match *self {
+			OffchainErr::FailedToAcquireLock => write!(fmt, "Failed to acquire lock"),
+			OffchainErr::SubmitTransaction => write!(fmt, "Failed to submit transaction"),
+			OffchainErr::NotValidator => write!(fmt, "Not validator"),
+			OffchainErr::LockStillInLocked => write!(fmt, "Liquidator lock is still in locked"),
+		}
 	}
 }
 
@@ -207,10 +253,184 @@ decl_module! {
 				}
 			}
 		}
+
+		pub fn liquidate(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+		) {
+			ensure_none(origin)?;
+			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+			Self::liquidate_unsafe_cdp(who.clone(), currency_id)?;
+		}
+
+		// Runs after every block.
+		fn offchain_worker(now: T::BlockNumber) {
+			debug::RuntimeLogger::init();
+
+			if let Err(e) = Self::automatic_liquidation(now) {
+				debug::debug!(
+					target: "cdp-engine offchain worker",
+					"do not start automatic liquidation at {:?}: {:?}",
+					now,
+					e,
+				);
+			}
+		}
 	}
 }
 
 impl<T: Trait> Module<T> {
+	fn required_liquidator_lock() -> Result<LiquidatorLock, OffchainErr> {
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
+		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+
+		let require_lock = storage.mutate(|lock: Option<Option<LiquidatorLock>>| {
+			match lock {
+				None => {
+					//start with random collateral
+					let random_seed = runtime_io::offchain::random_seed();
+					let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+					let expire_timestamp =
+						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
+
+					Ok(LiquidatorLock {
+						previous_position: rng.pick_u32(collateral_currency_ids.len() as u32),
+						expire_timestamp: expire_timestamp,
+					})
+				}
+				Some(Some(lock)) if runtime_io::offchain::timestamp() >= lock.expire_timestamp => {
+					let execute_position = if lock.previous_position < collateral_currency_ids.len() as u32 - 1 {
+						lock.previous_position + 1
+					} else {
+						0
+					};
+					let expire_timestamp =
+						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
+
+					Ok(LiquidatorLock {
+						previous_position: execute_position,
+						expire_timestamp: expire_timestamp,
+					})
+				}
+				_ => Err(OffchainErr::LockStillInLocked),
+			}
+		})?;
+
+		require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
+	}
+
+	fn release_liquidator_lock(previous_position: u32) {
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
+
+		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
+			if liquidator_lock.previous_position == previous_position {
+				storage.set(&LiquidatorLock {
+					previous_position: previous_position,
+					expire_timestamp: runtime_io::offchain::timestamp(),
+				});
+			}
+		}
+	}
+
+	fn extend_expire_duration_if_needed() {
+		let storage_key = DB_PREFIX.to_vec();
+		let storage = StorageValueRef::persistent(&storage_key);
+
+		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
+			if liquidator_lock.expire_timestamp
+				<= runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_UPDATE_DURATION))
+			{
+				storage.set(&LiquidatorLock {
+					previous_position: liquidator_lock.previous_position,
+					expire_timestamp: runtime_io::offchain::timestamp()
+						.add(Duration::from_millis(LOCK_EXPIRE_DURATION)),
+				});
+			}
+		}
+	}
+
+	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
+		let call = Call::<T>::liquidate(currency_id, who);
+
+		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
+		Ok(())
+	}
+
+	fn liquidate_specific_collateral(currency_id: CurrencyIdOf<T>) {
+		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
+			if let Some((_, account_id)) = key {
+				// TODO: liquidate unsafe cdp before emergency shutdown, settle cdp with debit when emergency shutdown occurs.
+				if Self::is_unsafe_cdp(currency_id, &account_id) {
+					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id) {
+						debug::debug!(
+							target: "cdp-engine offchain worker",
+							"faild to submit unsigned liquidation tx: {:?}",
+							e,
+						);
+					}
+				}
+			}
+
+			Self::extend_expire_duration_if_needed();
+		}
+	}
+
+	fn automatic_liquidation(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
+		// check if we are a potential validator
+		if !runtime_io::offchain::is_validator() {
+			return Err(OffchainErr::NotValidator);
+		}
+
+		// check if require offchain worker lock succecced
+		let LiquidatorLock {
+			previous_position,
+			expire_timestamp: _,
+		} = Self::required_liquidator_lock()?;
+
+		// start
+		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+		let currency_id = collateral_currency_ids[(previous_position as usize)];
+		debug::info!(
+			target: "cdp-engine offchain worker",
+			"offchain worker start at block: {:?} execute automatic liquidation for collateral: {:?}",
+			block_number,
+			currency_id,
+		);
+
+		Self::liquidate_specific_collateral(currency_id);
+
+		// finally, release lock
+		Self::release_liquidator_lock(previous_position);
+		debug::info!(
+			target: "cdp-engine offchain worker",
+			"offchain worker start at block: {:?} done!",
+			block_number,
+		);
+
+		Ok(())
+	}
+
+	pub fn is_unsafe_cdp(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> bool {
+		let debit_balance = <loans::Module<T>>::debits(currency_id, who).0;
+		let collateral_balance = <loans::Module<T>>::collaterals(who, currency_id);
+		let stable_currency_id = T::GetStableCurrencyId::get();
+
+		if debit_balance.is_zero() {
+			false
+		} else if let Some(feed_price) = T::PriceSource::get_price(stable_currency_id, currency_id) {
+			let collateral_ratio =
+				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
+			let liquidation_ratio = Self::get_liquidation_ratio(currency_id);
+			collateral_ratio < liquidation_ratio
+		} else {
+			// if feed_price is invalid, can not judge the cdp is safe or unsafe!
+			false
+		}
+	}
+
 	pub fn get_liquidation_ratio(currency_id: CurrencyIdOf<T>) -> Ratio {
 		Self::liquidation_ratio(currency_id).unwrap_or_else(T::DefaultLiquidationRatio::get)
 	}
@@ -263,7 +483,7 @@ impl<T: Trait> Module<T> {
 
 	// settle cdp has debit when emergency shutdown
 	pub fn settle_cdp_has_debit(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <loans::Module<T>>::debits(&who, currency_id);
+		let debit_balance = <loans::Module<T>>::debits(currency_id, &who).0;
 		ensure!(!debit_balance.is_zero(), Error::<T>::AlreadyNoDebit);
 
 		// confiscate collateral in cdp to cdp treasury
@@ -296,7 +516,7 @@ impl<T: Trait> Module<T> {
 
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <loans::Module<T>>::debits(&who, currency_id);
+		let debit_balance = <loans::Module<T>>::debits(currency_id, &who).0;
 		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 		let feed_price =
@@ -377,7 +597,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 		collateral_amount: AmountOf<T>,
 		debit_amount: T::DebitAmount,
 	) -> DispatchResult {
-		let mut debit_balance = <loans::Module<T>>::debits(account_id, currency_id);
+		let mut debit_balance = <loans::Module<T>>::debits(currency_id, account_id).0;
 		let mut collateral_balance = <loans::Module<T>>::collaterals(account_id, currency_id);
 
 		// calculate new debit balance and collateral balance after position adjustment
@@ -463,5 +683,88 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, AmountOf<T>, T::DebitA
 impl<T: Trait> EmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
 		Self::emergency_shutdown();
+	}
+}
+
+#[allow(deprecated)]
+impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+	type Call = Call<T>;
+
+	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
+		if let Call::liquidate(currency_id, who) = call {
+			// check cdp is unsafe
+			if !Self::is_unsafe_cdp(*currency_id, &who) {
+				return InvalidTransaction::Stale.into();
+			}
+
+			Ok(ValidTransaction {
+				priority: TransactionPriority::max_value(),
+				requires: vec![],
+				provides: vec![],
+				longevity: 64_u64,
+				propagate: true,
+			})
+		} else {
+			InvalidTransaction::Call.into()
+		}
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct AutomaticLiquidationValidation<T: Trait + Send + Sync>(rstd::marker::PhantomData<T>);
+
+impl<T: Trait + Send + Sync> AutomaticLiquidationValidation<T> {
+	pub fn new() -> Self {
+		Self(rstd::marker::PhantomData)
+	}
+}
+
+impl<T: Trait + Send + Sync> rstd::fmt::Debug for AutomaticLiquidationValidation<T> {
+	#[cfg(feature = "std")]
+	fn fmt(&self, f: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+		write!(f, "AutomaticLiquidationValidation")
+	}
+	#[cfg(not(feature = "std"))]
+	fn fmt(&self, _: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+		Ok(())
+	}
+}
+
+impl<T: Trait + Send + Sync> SignedExtension for AutomaticLiquidationValidation<T> {
+	const IDENTIFIER: &'static str = "AutomaticLiquidationValidation";
+	type AccountId = T::AccountId;
+	type Call = <T as Trait>::Call;
+	type AdditionalSigned = ();
+	type DispatchInfo = DispatchInfo;
+	type Pre = ();
+	fn additional_signed(&self) -> rstd::result::Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn validate(
+		&self,
+		_who: &Self::AccountId,
+		call: &Self::Call,
+		_info: Self::DispatchInfo,
+		_len: usize,
+	) -> TransactionValidity {
+		let call = match call.is_sub_type() {
+			Some(call) => call,
+			None => return Ok(ValidTransaction::default()),
+		};
+
+		match call {
+			Call::<T>::liquidate(currency_id, account_id) => {
+				// check cdp is unsafe
+				if !<Module<T>>::is_unsafe_cdp(*currency_id, account_id) {
+					InvalidTransaction::Stale.into()
+				} else {
+					let mut valid_tx = ValidTransaction::default();
+					valid_tx.priority = TransactionPriority::max_value();
+					Ok(valid_tx)
+				}
+			}
+			_ => Ok(ValidTransaction::default()),
+		}
 	}
 }

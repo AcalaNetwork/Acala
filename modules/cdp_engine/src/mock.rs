@@ -3,9 +3,13 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::{Header, TestXt},
+	traits::IdentityLookup,
+	Perbill,
+};
 use support::AuctionManager;
 use system::EnsureSignedBy;
 
@@ -28,6 +32,12 @@ impl_outer_event! {
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+impl_outer_dispatch! {
+	pub enum Call for Runtime where origin: Origin {
+		cdp_engine::CdpEngineModule,
+	}
 }
 
 parameter_types! {
@@ -200,6 +210,10 @@ impl dex::Trait for Runtime {
 }
 pub type DexModule = dex::Module<Runtime>;
 
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
+
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -223,6 +237,8 @@ impl Trait for Runtime {
 	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
 	type Currency = Currencies;
 	type Dex = DexModule;
+	type Call = Call;
+	type SubmitTransaction = SubmitTransaction;
 }
 pub type CdpEngineModule = Module<Runtime>;
 
