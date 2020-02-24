@@ -42,7 +42,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill};
 
-pub use module_primitives::CurrencyId;
+pub use module_primitives::{AirDropCurrencyId, CurrencyId};
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 pub use orml_currencies::BasicCurrencyAdapter;
 
@@ -594,6 +594,12 @@ impl module_accounts::Trait for Runtime {
 	type DepositCurrency = Balances;
 }
 
+impl module_airdrop::Trait for Runtime {
+	type Event = Event;
+	type CurrencyId = AirDropCurrencyId;
+	type Balance = Balance;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -634,6 +640,7 @@ construct_runtime!(
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
+		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>},
 	}
 );
 
