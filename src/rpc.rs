@@ -2,7 +2,6 @@
 
 use std::{fmt, sync::Arc};
 
-use frame_rpc_system::AccountNonceApi;
 use runtime::{opaque::Block, AccountId, Balance, CurrencyId, Index, TimeStampedPrice, UncheckedExtrinsic};
 use sc_client::blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sc_consensus_babe::{Config, Epoch};
@@ -13,6 +12,7 @@ use sp_api::ProvideRuntimeApi;
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
 use sp_transaction_pool::TransactionPool;
+use substrate_frame_rpc_system::AccountNonceApi;
 
 /// Light client extra dependencies.
 pub struct LightDeps<C, F, P> {
@@ -63,9 +63,9 @@ where
 	M: jsonrpc_core::Metadata + Default,
 	SC: SelectChain<Block> + 'static,
 {
-	use frame_rpc_system::{FullSystem, SystemApi};
 	use orml_oracle_rpc::{Oracle, OracleApi};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
+	use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
 	let mut io = jsonrpc_core::IoHandler::default();
 	let FullDeps {
@@ -105,7 +105,7 @@ where
 	P: TransactionPool + 'static,
 	M: jsonrpc_core::Metadata + Default,
 {
-	use frame_rpc_system::{LightSystem, SystemApi};
+	use substrate_frame_rpc_system::{LightSystem, SystemApi};
 
 	let LightDeps {
 		client,
