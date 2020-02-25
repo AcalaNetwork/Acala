@@ -96,7 +96,7 @@ impl system::Trait for Runtime {
 	type ModuleToIndex = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
-	type OnReapAccount = ();
+	type OnKilledAccount = ();
 }
 pub type System = system::Module<Runtime>;
 

@@ -100,12 +100,12 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CdpEngine {
-		pub StabilityFee get(fn stability_fee): map hasher(blake2_256) CurrencyIdOf<T> => Option<Rate>;
-		pub LiquidationRatio get(fn liquidation_ratio): map hasher(blake2_256) CurrencyIdOf<T> => Option<Ratio>;
-		pub LiquidationPenalty get(fn liquidation_penalty): map hasher(blake2_256) CurrencyIdOf<T> => Option<Rate>;
-		pub RequiredCollateralRatio get(fn required_collateral_ratio): map hasher(blake2_256) CurrencyIdOf<T> => Option<Ratio>;
-		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
-		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(blake2_256) CurrencyIdOf<T> => Option<ExchangeRate>;
+		pub StabilityFee get(fn stability_fee): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Rate>;
+		pub LiquidationRatio get(fn liquidation_ratio): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Ratio>;
+		pub LiquidationPenalty get(fn liquidation_penalty): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Rate>;
+		pub RequiredCollateralRatio get(fn required_collateral_ratio): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Ratio>;
+		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<ExchangeRate>;
 		pub IsShutdown get(fn is_shutdown): bool;
 	}
 

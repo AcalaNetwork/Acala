@@ -65,7 +65,7 @@ impl system::Trait for Runtime {
 	type ModuleToIndex = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
-	type OnReapAccount = ();
+	type OnKilledAccount = ();
 }
 
 impl orml_tokens::Trait for Runtime {

@@ -6,10 +6,8 @@ mod cli;
 mod command;
 mod executor;
 
-pub use sc_cli::{error, VersionInfo};
-
-fn main() -> Result<(), error::Error> {
-	let version = VersionInfo {
+fn main() -> sc_cli::Result<()> {
+	let version = sc_cli::VersionInfo {
 		name: "Acala",
 		commit: env!("VERGEN_SHA_SHORT"),
 		version: env!("CARGO_PKG_VERSION"),

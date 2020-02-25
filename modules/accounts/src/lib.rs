@@ -5,7 +5,7 @@ use frame_support::{
 	decl_module, decl_storage,
 	dispatch::Dispatchable,
 	traits::{
-		Currency, ExistenceRequirement, Get, LockIdentifier, LockableCurrency, OnReapAccount, OnUnbalanced, Time,
+		Currency, ExistenceRequirement, Get, LockIdentifier, LockableCurrency, OnKilledAccount, OnUnbalanced, Time,
 		WithdrawReason, WithdrawReasons,
 	},
 	weights::DispatchInfo,
@@ -45,8 +45,8 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Accounts {
-		LastFreeTransfers get(fn last_free_transfers): map hasher(blake2_256) T::AccountId => Vec<MomentOf<T>>;
-		FreeTransferEnabledAccounts get(fn free_transfer_enabled_accounts): map hasher(blake2_256) T::AccountId => Option<()>;
+		LastFreeTransfers get(fn last_free_transfers): map hasher(twox_64_concat) T::AccountId => Vec<MomentOf<T>>;
+		FreeTransferEnabledAccounts get(fn free_transfer_enabled_accounts): map hasher(twox_64_concat) T::AccountId => Option<()>;
 	}
 }
 
@@ -95,8 +95,8 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> OnReapAccount<T::AccountId> for Module<T> {
-	fn on_reap_account(who: &T::AccountId) {
+impl<T: Trait> OnKilledAccount<T::AccountId> for Module<T> {
+	fn on_killed_account(who: &T::AccountId) {
 		<LastFreeTransfers<T>>::remove(who);
 	}
 }

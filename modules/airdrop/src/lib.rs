@@ -15,7 +15,7 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as AirDrop {
-		AirDrops get(fn airdrops): double_map hasher(blake2_256) T::AccountId, hasher(blake2_256) T::CurrencyId => T::Balance;
+		AirDrops get(fn airdrops): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) T::CurrencyId => T::Balance;
 	}
 }
 

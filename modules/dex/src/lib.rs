@@ -56,9 +56,9 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
-		LiquidityPool get(fn liquidity_pool): map hasher(blake2_256) CurrencyIdOf<T> => (BalanceOf<T>, BalanceOf<T>);
-		TotalShares get(fn total_shares): map hasher(blake2_256) CurrencyIdOf<T> => T::Share;
-		Shares get(fn shares): double_map hasher(blake2_256) CurrencyIdOf<T>, hasher(blake2_256) T::AccountId => T::Share;
+		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyIdOf<T> => (BalanceOf<T>, BalanceOf<T>);
+		TotalShares get(fn total_shares): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
+		Shares get(fn shares): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::Share;
 	}
 }
 

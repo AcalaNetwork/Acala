@@ -44,9 +44,9 @@ pub trait Trait: system::Trait {
 decl_storage! {
 	trait Store for Module<T: Trait> as Loans {
 		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => (T::DebitBalance, Option<(CurrencyIdOf<T>, T::AccountId)>);
-		pub Collaterals get(fn collaterals): double_map hasher(blake2_256) T::AccountId, hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
-		pub TotalDebits get(fn total_debits): map hasher(blake2_256) CurrencyIdOf<T> => T::DebitBalance;
-		pub TotalCollaterals get(fn total_collaterals): map hasher(blake2_256) CurrencyIdOf<T> => BalanceOf<T>;
+		pub Collaterals get(fn collaterals): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyIdOf<T> => T::DebitBalance;
+		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
 	}
 }
 
