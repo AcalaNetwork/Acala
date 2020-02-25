@@ -6,17 +6,11 @@ use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use runtime::{opaque::Block, GenesisConfig, RuntimeApi};
 use sc_client::{self, LongestChain};
 use sc_consensus_babe;
-use sc_network::construct_simple_protocol;
 use sc_service::{config::Configuration, error::Error as ServiceError, AbstractService, ServiceBuilder};
 use sp_inherents::InherentDataProviders;
 
 use crate::executor::Executor;
 use crate::rpc;
-
-construct_simple_protocol! {
-	/// Demo protocol attachment for substrate.
-	pub struct NodeProtocol where Block = Block { }
-}
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
@@ -50,7 +44,6 @@ macro_rules! new_full_start {
 				sc_consensus_babe::Config::get_or_compute(&*client)?,
 				grandpa_block_import,
 				client.clone(),
-				client.clone(),
 			)?;
 
 			let import_queue = sc_consensus_babe::import_queue(
@@ -58,7 +51,6 @@ macro_rules! new_full_start {
 				block_import.clone(),
 				Some(Box::new(justification_import)),
 				None,
-				client.clone(),
 				client,
 				inherent_data_providers.clone(),
 			)?;
@@ -114,7 +106,6 @@ pub fn new_full(config: NodeConfiguration) -> Result<impl AbstractService, Servi
 		.expect("Link Half and Block Import are present for Full Services or setup failed before. qed");
 
 	let service = builder
-		.with_network_protocol(|_| Ok(NodeProtocol::new()))?
 		.with_finality_proof_provider(|client, backend| {
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
 		})?
@@ -161,38 +152,34 @@ pub fn new_full(config: NodeConfiguration) -> Result<impl AbstractService, Servi
 		gossip_duration: std::time::Duration::from_millis(333),
 		justification_period: 512,
 		name: Some(name),
-		observer_enabled: true,
+		observer_enabled: false,
 		keystore,
 		is_authority,
 	};
 
-	match (is_authority, disable_grandpa) {
-		(false, false) => {
-			// start the lightweight GRANDPA observer
-			service.spawn_task(
-				"grandpa-observer",
-				grandpa::run_grandpa_observer(grandpa_config, grandpa_link, service.network(), service.on_exit())?,
-			);
-		}
-		(true, false) => {
-			// start the full GRANDPA voter
-			let voter_config = grandpa::GrandpaParams {
-				config: grandpa_config,
-				link: grandpa_link,
-				network: service.network(),
-				inherent_data_providers: inherent_data_providers.clone(),
-				on_exit: service.on_exit(),
-				telemetry_on_connect: Some(service.telemetry_on_connect_stream()),
-				voting_rule: grandpa::VotingRulesBuilder::default().build(),
-			};
+	let enable_grandpa = !disable_grandpa;
+	if enable_grandpa {
+		// start the full GRANDPA voter
+		// NOTE: non-authorities could run the GRANDPA observer protocol, but at
+		// this point the full voter should provide better guarantees of block
+		// and vote data availability than the observer. The observer has not
+		// been tested extensively yet and having most nodes in a network run it
+		// could lead to finality stalls.
+		let grandpa_config = grandpa::GrandpaParams {
+			config: grandpa_config,
+			link: grandpa_link,
+			network: service.network(),
+			inherent_data_providers: inherent_data_providers.clone(),
+			on_exit: service.on_exit(),
+			telemetry_on_connect: Some(service.telemetry_on_connect_stream()),
+			voting_rule: grandpa::VotingRulesBuilder::default().build(),
+		};
 
-			// the GRANDPA voter task is considered infallible, i.e.
-			// if it fails we take down the service with it.
-			service.spawn_essential_task("grandpa", grandpa::run_grandpa_voter(voter_config)?);
-		}
-		(_, true) => {
-			grandpa::setup_disabled_grandpa(service.client(), &inherent_data_providers, service.network())?;
-		}
+		// the GRANDPA voter task is considered infallible, i.e.
+		// if it fails we take down the service with it.
+		service.spawn_essential_task("grandpa-voter", grandpa::run_grandpa_voter(grandpa_config)?);
+	} else {
+		grandpa::setup_disabled_grandpa(service.client(), &inherent_data_providers, service.network())?;
 	}
 
 	Ok(service)
@@ -233,7 +220,6 @@ pub fn new_light(config: NodeConfiguration) -> Result<impl AbstractService, Serv
 				sc_consensus_babe::Config::get_or_compute(&*client)?,
 				grandpa_block_import,
 				client.clone(),
-				client.clone(),
 			)?;
 
 			let import_queue = sc_consensus_babe::import_queue(
@@ -242,13 +228,11 @@ pub fn new_light(config: NodeConfiguration) -> Result<impl AbstractService, Serv
 				None,
 				Some(Box::new(finality_proof_import)),
 				client.clone(),
-				client,
 				inherent_data_providers.clone(),
 			)?;
 
 			Ok((import_queue, finality_proof_request_builder))
 		})?
-		.with_network_protocol(|_| Ok(NodeProtocol::new()))?
 		.with_finality_proof_provider(|client, backend| {
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
 		})?

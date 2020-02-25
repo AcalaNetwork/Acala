@@ -249,7 +249,7 @@ fn testnet_genesis(
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
+				.map(|x| (x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
 				.collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
@@ -348,7 +348,7 @@ fn mandala_genesis(
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
+				.map(|x| (x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
 				.collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {

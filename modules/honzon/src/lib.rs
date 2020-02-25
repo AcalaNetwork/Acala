@@ -18,7 +18,7 @@ type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Honzon {
-		pub Authorization get(fn authorization): double_map hasher(blake2_256) T::AccountId, hasher(blake2_256) (CurrencyIdOf<T>, T::AccountId) => bool;
+		pub Authorization get(fn authorization): double_map hasher(twox_64_concat) T::AccountId, hasher(blake2_128_concat) (CurrencyIdOf<T>, T::AccountId) => bool;
 		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
