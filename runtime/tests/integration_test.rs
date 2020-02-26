@@ -47,7 +47,7 @@ mod tests {
 			self
 		}
 
-		pub fn build(self) -> runtime_io::TestExternalities {
+		pub fn build(self) -> sp_io::TestExternalities {
 			let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 			orml_tokens::GenesisConfig::<Runtime> {

@@ -13,45 +13,44 @@ name = "acala"
 path = "src/main.rs"
 
 [dependencies]
-futures = "0.3.1"
-log = "0.4.8"
-structopt = "0.3.8"
-hex-literal = "0.2.1"
-serde_json = "1.0.41"
 codec = { package = "parity-scale-codec", version = "1.0.0" }
+futures = "0.3.1"
+hex-literal = "0.2.1"
 jsonrpc-core = "14.0.3"
+log = "0.4.8"
 serde = { version = "1.0.102", features = ["derive"] }
+serde_json = "1.0.41"
+structopt = "0.3.8"
 
-sp-io = { git = "https://github.com/paritytech/substrate.git" }
-sc-cli = { git = "https://github.com/paritytech/substrate.git" }
-sp-core = { git = "https://github.com/paritytech/substrate.git" }
-sc-executor = { git = "https://github.com/paritytech/substrate.git" }
-sc-service = { git = "https://github.com/paritytech/substrate.git" }
-sp-inherents = { git = "https://github.com/paritytech/substrate.git" }
-sc-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
-sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
-sc-network = { git = "https://github.com/paritytech/substrate.git" }
-sp-consensus = { git = "https://github.com/paritytech/substrate.git" }
-grandpa = { package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
-grandpa-primitives = { package = "sp-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
-sc-client = { git = "https://github.com/paritytech/substrate.git" }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
-sc-basic-authorship = { git = "https://github.com/paritytech/substrate.git"}
-sc-telemetry = { git = "https://github.com/paritytech/substrate.git" }
-sc-rpc = { git = "https://github.com/paritytech/substrate" }
-sp-api = { git = "https://github.com/paritytech/substrate.git" }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
-sc-client-db = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-sc-offchain = { git = "https://github.com/paritytech/substrate.git" }
-sc-chain-spec = { git = "https://github.com/paritytech/substrate.git" }
-sc-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
-sc-client-api = { git = "https://github.com/paritytech/substrate.git" }
-sc-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
-sc-consensus-epochs = { git = "https://github.com/paritytech/substrate.git" }
-sc-keystore = { git = "https://github.com/paritytech/substrate.git" }
-sc-consensus-babe-rpc = { git = "https://github.com/paritytech/substrate.git" }
-frame-rpc-system = { package = "substrate-frame-rpc-system", git = "https://github.com/paritytech/substrate" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate" }
+sc-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
+sc-basic-authorship = { git = "https://github.com/paritytech/substrate.git"}
+sc-chain-spec = { git = "https://github.com/paritytech/substrate.git" }
+sc-cli = { git = "https://github.com/paritytech/substrate.git" }
+sc-client = { git = "https://github.com/paritytech/substrate.git" }
+sc-client-api = { git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-babe-rpc = { git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-epochs = { git = "https://github.com/paritytech/substrate.git" }
+sc-executor = { git = "https://github.com/paritytech/substrate.git" }
+sc-finality-grandpa = { git = "https://github.com/paritytech/substrate.git" }
+sc-keystore = { git = "https://github.com/paritytech/substrate.git" }
+sc-network = { git = "https://github.com/paritytech/substrate.git" }
+sc-offchain = { git = "https://github.com/paritytech/substrate.git" }
+sc-rpc = { git = "https://github.com/paritytech/substrate" }
+sc-service = { git = "https://github.com/paritytech/substrate.git" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate.git" }
+sc-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
+sp-api = { git = "https://github.com/paritytech/substrate.git" }
+sp-consensus = { git = "https://github.com/paritytech/substrate.git" }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
+sp-core = { git = "https://github.com/paritytech/substrate.git" }
+sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git" }
+sp-inherents = { git = "https://github.com/paritytech/substrate.git" }
+sp-io = { git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
+substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate" }
 
 orml-oracle-rpc = { path = "orml/oracle/rpc" }
 orml-utilities = { path = "orml/utilities" }
@@ -65,13 +64,13 @@ build-script-utils = { package = "substrate-build-script-utils", git = "https://
 members = [
 	"runtime",
 	"modules/*",
+	"orml/auction",
+	"orml/currencies",
 	"orml/oracle",
+	"orml/prices",
 	"orml/tokens",
 	"orml/traits",
-	"orml/prices",
 	"orml/utilities",
-	"orml/currencies",
-	"orml/auction",
 	"orml/vesting",
 ]
 exclude = [ "runtime/wasm" ]

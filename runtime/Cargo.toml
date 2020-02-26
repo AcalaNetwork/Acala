@@ -5,122 +5,122 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
 
-sp-std = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git", default-features = false }
-version = { package = "sp-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-sp-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-offchain-primitives = { package = "sp-offchain", git = "https://github.com/paritytech/substrate.git", default-features = false }
-sp-transaction-pool = { package = "sp-transaction-pool", git = "https://github.com/paritytech/substrate.git", default-features = false }
-block-builder-api = { package = "sp-block-builder", git = "https://github.com/paritytech/substrate.git", default-features = false }
-sp-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
-sp-staking = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-
-system = { package = "frame-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 frame-executive = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-system-rpc-runtime-api = { package = "frame-system-rpc-runtime-api", git = "https://github.com/paritytech/substrate", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false }
+pallet-babe = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-collective = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-indices = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-sudo = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false }
-pallet-collective = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-membership = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-utility = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-treasury = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-recovery = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-staking = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-babe = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-recovery = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-sudo = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false }
+pallet-treasury = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-utility = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-block-builder = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-inherents = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-offchain = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-staking = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-version = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+system = { package = "frame-system", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
-orml-traits = { path = "../orml/traits", default-features = false }
+orml-auction = { path = "../orml/auction", default-features = false }
+orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
 orml-tokens = { path = "../orml/tokens", default-features = false }
-orml-currencies = { path = "../orml/currencies", default-features = false }
-orml-auction = { path = "../orml/auction", default-features = false }
+orml-traits = { path = "../orml/traits", default-features = false }
 
-module-auction-manager = { package = "module-auction-manager", path = "../modules/auction_manager", default-features = false }
-module-cdp-engine = { package = "module-cdp-engine", path = "../modules/cdp_engine", default-features = false }
-module-honzon = { package = "module-honzon", path = "../modules/honzon", default-features = false }
-module-primitives = { package = "module-primitives", path = "../modules/primitives", default-features = false }
-module-support = { package = "module-support", path = "../modules/support", default-features = false }
-module-loans = { package = "module-loans", path = "../modules/loans", default-features = false }
-module-dex = { package = "module-dex", path = "../modules/dex", default-features = false }
-module-cdp-treasury = { package = "module-cdp-treasury", path = "../modules/cdp_treasury", default-features = false }
-module-prices = { package = "module-prices", path = "../modules/prices", default-features = false }
-module-emergency-shutdown = { package = "module-emergency-shutdown", path = "../modules/emergency_shutdown", default-features = false }
-module-accounts = { package = "module-accounts", path = "../modules/accounts", default-features = false }
-module-airdrop = { package = "module-airdrop", path = "../modules/airdrop", default-features = false }
+module-accounts = { path = "../modules/accounts", default-features = false }
+module-airdrop = { path = "../modules/airdrop", default-features = false }
+module-auction-manager = { path = "../modules/auction_manager", default-features = false }
+module-cdp-engine = { path = "../modules/cdp_engine", default-features = false }
+module-cdp-treasury = { path = "../modules/cdp_treasury", default-features = false }
+module-dex = { path = "../modules/dex", default-features = false }
+module-emergency-shutdown = { path = "../modules/emergency_shutdown", default-features = false }
+module-honzon = { path = "../modules/honzon", default-features = false }
+module-loans = { path = "../modules/loans", default-features = false }
+module-prices = { path = "../modules/prices", default-features = false }
+module-primitives = { path = "../modules/primitives", default-features = false }
+module-support = { path = "../modules/support", default-features = false }
 
 [build-dependencies]
-wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
+wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.5" }
 
 [features]
 default = ["std"]
 no_std = []
 std = [
 	"codec/std",
-	"sp-std/std",
-	"runtime-io/std",
-	"sp-core/std",
-	"sp-runtime/std",
-	"version/std",
 	"serde",
-	"offchain-primitives/std",
-	"sp-session/std",
-	"sp-transaction-pool/std",
-	"sp-api/std",
-	"sp-staking/std",
-	"sp-consensus-babe/std",
-	"block-builder-api/std",
-	"inherents/std",
-	"system/std",
-	"frame-support/std",
+
 	"frame-executive/std",
+	"frame-support/std",
+	"frame-system-rpc-runtime-api/std",
+	"pallet-babe/std",
 	"pallet-balances/std",
+	"pallet-collective/std",
 	"pallet-grandpa/std",
 	"pallet-indices/std",
-	"pallet-collective/std",
 	"pallet-membership/std",
-	"pallet-timestamp/std",
-	"pallet-sudo/std",
 	"pallet-randomness-collective-flip/std",
-	"pallet-utility/std",
-	"pallet-transaction-payment/std",
-	"pallet-transaction-payment-rpc-runtime-api/std",
-	"pallet-treasury/std",
-	"pallet-staking/std",
-	"pallet-session/std",
-	"pallet-babe/std",
 	"pallet-recovery/std",
-	"system-rpc-runtime-api/std",
-	"orml-traits/std",
-	"orml-oracle/std",
-	"orml-oracle-rpc-runtime-api/std",
-	"orml-tokens/std",
+	"pallet-session/std",
+	"pallet-staking/std",
+	"pallet-sudo/std",
+	"pallet-timestamp/std",
+	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-transaction-payment/std",
+	"pallet-treasury/std",
+	"pallet-utility/std",
+	"sp-api/std",
+	"sp-block-builder/std",
+	"sp-consensus-babe/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-offchain/std",
+	"sp-runtime/std",
+	"sp-session/std",
+	"sp-staking/std",
+	"sp-std/std",
+	"sp-transaction-pool/std",
+	"sp-version/std",
+
 	"orml-currencies/std",
-	"module-auction-manager/std",
-	"module-cdp-engine/std",
-	"module-honzon/std",
-	"module-primitives/std",
-	"module-support/std",
-	"module-loans/std",
-	"module-dex/std",
-	"module-prices/std",
-	"module-cdp-treasury/std",
-	"module-emergency-shutdown/std",
+	"orml-oracle-rpc-runtime-api/std",
+	"orml-oracle/std",
+	"orml-tokens/std",
+	"orml-traits/std",
+
 	"module-accounts/std",
 	"module-airdrop/std",
+	"module-auction-manager/std",
+	"module-cdp-engine/std",
+	"module-cdp-treasury/std",
+	"module-dex/std",
+	"module-emergency-shutdown/std",
+	"module-honzon/std",
+	"module-loans/std",
+	"module-prices/std",
+	"module-primitives/std",
+	"module-support/std",
 ]
