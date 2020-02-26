@@ -104,8 +104,8 @@ mod tests {
 			])
 			.build()
 			.execute_with(|| {
-				assert_eq!(DexModule::calculate_swap_target_amount(10000, 10000, 10000), 4990);
-				assert_eq!(DexModule::calculate_swap_supply_amount(10000, 10000, 4950), 9837);
+				assert_eq!(DexModule::calculate_swap_target_amount(10000, 10000, 10000), 4995);
+				assert_eq!(DexModule::calculate_swap_supply_amount(10000, 10000, 4995), 9996);
 
 				assert_eq!(DexModule::liquidity_pool(XBTC), (0, 0));
 				assert_eq!(DexModule::total_shares(XBTC), 0);
