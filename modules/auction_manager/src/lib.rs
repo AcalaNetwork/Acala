@@ -129,6 +129,9 @@ impl<T: Trait> Module<T> {
 						T::Currency::deposit(native_currency_id, &bidder, bid_price)
 							.expect("never failed after overflow check");
 					}
+
+					// decrease account ref of bidder
+					system::Module::<T>::dec_ref(&bidder);
 				}
 			}
 
@@ -167,6 +170,9 @@ impl<T: Trait> Module<T> {
 						T::Currency::deposit(stable_currency_id, &bidder, debit_auction.fix)
 							.expect("never failed after overflow check");
 					}
+
+					// decrease account ref of bidder
+					system::Module::<T>::dec_ref(&bidder);
 				}
 			}
 
@@ -203,6 +209,10 @@ impl<T: Trait> Module<T> {
 						T::Currency::deposit(stable_currency_id, &bidder, bid_price)
 							.expect("never failed after overflow check");
 					}
+
+					// decrease account ref of bidder
+					system::Module::<T>::dec_ref(&bidder);
+
 					T::Treasury::on_system_debit(bid_price);
 				}
 			}
@@ -246,6 +256,9 @@ impl<T: Trait> Module<T> {
 				)
 				.expect("never failed after balance check");
 			}
+
+			// decrease account ref of owner
+			system::Module::<T>::dec_ref(&collateral_auction.owner);
 
 			// decrease total collateral in auction
 			<TotalCollateralInAuction<T>>::mutate(collateral_auction.currency_id, |balance| {
@@ -330,14 +343,17 @@ impl<T: Trait> Module<T> {
 				last_price,
 				collateral_auction.target,
 				Self::get_minimum_increment_size(now, collateral_auction.start_time),
-			) && T::Currency::balance(stable_currency_id, &(new_bid.0)) >= payment
+			) && T::Currency::balance(stable_currency_id, &new_bid.0) >= payment
 			{
 				let module_account = Self::account_id();
 				let mut surplus_increment = payment;
 
 				// first: deduct amount of stablecoin from new bidder, add this to auction manager module
-				T::Currency::withdraw(stable_currency_id, &(new_bid.0), payment)
+				T::Currency::withdraw(stable_currency_id, &new_bid.0, payment)
 					.expect("never failed after balance check");
+
+				// increase account ref of new bidder
+				system::Module::<T>::inc_ref(&new_bid.0);
 
 				// second: if these's bid before, return stablecoin from auction manager module to last bidder
 				if let Some((last_bidder, last_price)) = last_bid {
@@ -346,6 +362,9 @@ impl<T: Trait> Module<T> {
 
 					T::Currency::deposit(stable_currency_id, &last_bidder, refund)
 						.expect("never failed because payment >= refund");
+
+					// decrease account ref of last bidder
+					system::Module::<T>::dec_ref(&last_bidder);
 				}
 
 				if !surplus_increment.is_zero() {
@@ -419,6 +438,9 @@ impl<T: Trait> Module<T> {
 					// these's bid before, transfer the stablecoin from new bidder to last bidder
 					T::Currency::transfer(stable_currency_id, &new_bid.0, &last_bidder, debit_auction.fix)
 						.expect("never failed after balance check");
+
+					// decrease account ref of last bidder
+					system::Module::<T>::dec_ref(&last_bidder);
 				} else {
 					// these's no bid before, on_surplus to treasury
 					T::Currency::withdraw(stable_currency_id, &new_bid.0, debit_auction.fix)
@@ -427,6 +449,9 @@ impl<T: Trait> Module<T> {
 					// add surplus for cdp treasury
 					T::Treasury::on_system_surplus(debit_auction.fix);
 				}
+
+				// increase account ref of bidder
+				system::Module::<T>::inc_ref(&new_bid.0);
 
 				// if bid price is more than fix
 				// calculate new amount of issue native token
@@ -472,17 +497,23 @@ impl<T: Trait> Module<T> {
 				last_price,
 				0.into(),
 				Self::get_minimum_increment_size(now, surplus_auction.start_time),
-			) && T::Currency::ensure_can_withdraw(native_currency_id, &(new_bid.0), new_bid.1).is_ok()
+			) && T::Currency::ensure_can_withdraw(native_currency_id, &new_bid.0, new_bid.1).is_ok()
 				&& !new_bid.1.is_zero()
 			{
 				let mut burn_native_currency_amount = new_bid.1;
 
-				// if these's bid before, transfer the  stablecoin from auction manager module to last bidder
+				// if these's bid before, transfer the stablecoin from auction manager module to last bidder
 				if let Some((last_bidder, last_price)) = last_bid {
 					burn_native_currency_amount = burn_native_currency_amount.saturating_sub(last_price);
 					T::Currency::transfer(native_currency_id, &new_bid.0, &last_bidder, last_price)
 						.expect("never failed after balance check");
+
+					// decrease account ref of last bidder
+					system::Module::<T>::dec_ref(&last_bidder);
 				}
+
+				// increase account ref of bidder
+				system::Module::<T>::inc_ref(&new_bid.0);
 
 				// burn remain native token from new bidder
 				T::Currency::withdraw(native_currency_id, &new_bid.0, burn_native_currency_amount)
@@ -516,6 +547,13 @@ impl<T: Trait> Module<T> {
 				T::Currency::transfer(collateral_auction.currency_id, &Self::account_id(), &bidder, amount)
 					.expect("never failed after overflow check");
 			}
+
+			// decrease account ref of winner
+			system::Module::<T>::dec_ref(&bidder);
+
+			// decrease account ref of collateral auction owner
+			system::Module::<T>::dec_ref(&collateral_auction.owner);
+
 			<TotalCollateralInAuction<T>>::mutate(collateral_auction.currency_id, |balance| *balance -= amount);
 			<TotalTargetInAuction<T>>::mutate(|balance| *balance -= collateral_auction.target);
 			<CollateralAuctions<T>>::remove(id);
@@ -535,6 +573,10 @@ impl<T: Trait> Module<T> {
 					T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount)
 						.expect("never failed after overflow check");
 				}
+
+				// decrease account ref of winner
+				system::Module::<T>::dec_ref(&bidder);
+
 				// decrease debit in auction and delete auction
 				<TotalDebitInAuction<T>>::mutate(|balance| *balance -= debit_auction.fix);
 				<DebitAuctions<T>>::remove(id);
@@ -586,6 +628,9 @@ impl<T: Trait> Module<T> {
 				)
 				.expect("never failed after overflow check");
 			}
+
+			// decrease account ref of winner
+			system::Module::<T>::dec_ref(&bidder);
 
 			// decrease surplus in auction
 			<TotalSurplusInAuction<T>>::mutate(|balance| *balance -= surplus_auction.amount);
@@ -658,6 +703,9 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 				target: target,
 				start_time: block_number,
 			};
+
+			// decrease account ref of owner(remain receiver)
+			system::Module::<T>::inc_ref(&who);
 
 			<CollateralAuctions<T>>::insert(auction_id, collateral_aution);
 			<Module<T>>::deposit_event(RawEvent::NewCollateralAuction(auction_id, currency_id, amount, target));

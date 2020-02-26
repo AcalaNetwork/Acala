@@ -286,10 +286,22 @@ impl<T: Trait> Module<T> {
 
 		// update collaterals record
 		if collaterals.is_positive() {
-			<Collaterals<T>>::mutate(who, currency_id, |balance| *balance += collaterals_balance);
+			<Collaterals<T>>::mutate(who, currency_id, |balance| {
+				// increase account ref for who when has no amount before
+				if balance.is_zero() {
+					system::Module::<T>::inc_ref(who);
+				}
+				*balance += collaterals_balance;
+			});
 			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance += collaterals_balance);
 		} else {
-			<Collaterals<T>>::mutate(who, currency_id, |balance| *balance -= collaterals_balance);
+			<Collaterals<T>>::mutate(who, currency_id, |balance| {
+				*balance -= collaterals_balance;
+				// decrease account ref for who when has no amount
+				if balance.is_zero() {
+					system::Module::<T>::dec_ref(who);
+				}
+			});
 			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= collaterals_balance);
 		}
 
