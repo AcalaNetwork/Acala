@@ -17,7 +17,7 @@ type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system
 type AuctionIdOf<T> =
 	<<T as Trait>::AuctionManagerHandler as AuctionManagerExtended<<T as system::Trait>::AccountId>>::AuctionId;
 
-pub trait Trait: system::Trait + honzon::Trait {
+pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
 	type Treasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
@@ -91,13 +91,21 @@ decl_module! {
 				.map(|_| ())
 				.or_else(ensure_root)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
-			ensure!(<T as Trait>::Treasury::get_surplus_pool().is_zero(), Error::<T>::ExistSurplus);	// these's no surplus in cdp treasury
+
+			// Ensure these's no surplus in cdp treasury
+			ensure!(<T as Trait>::Treasury::get_surplus_pool().is_zero(), Error::<T>::ExistSurplus);
+
+			// Ensure there's no debit and surplus auction now, these maybe bring uncertain surplus to system.
+			// Cancel all surplus auctions and debit auctions to pass the check!
 			ensure!(
 				<T as Trait>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
 				&& <T as Trait>::AuctionManagerHandler::get_total_surplus_in_auction().is_zero(),
 				Error::<T>::ExistPotentialSurplus,
-			);	// there's no debit and surplus auction now
+			);
 
+			// Ensure all debits of CDPs have been settled, and all collateral auction has been done or canceled.
+			// Settle all collaterals type CDPs which have debit, cancel all collateral auctions in forward stage and
+			// wait for all collateral auctions in reverse stage to be ended.
 			let collateral_currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
 			for currency_id in collateral_currency_ids {
 				// these's no collateral auction
@@ -112,6 +120,7 @@ decl_module! {
 				);
 			}
 
+			// Open refund stage
 			<CanRefund>::put(true);
 			Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
 		}
@@ -139,7 +148,8 @@ decl_module! {
 			Self::deposit_event(RawEvent::Refund(amount));
 		}
 
-		pub fn cancel_auction(_origin, id: AuctionIdOf<T>) {
+		pub fn cancel_auction(origin, id: AuctionIdOf<T>) {
+			let _ = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<T as Trait>::AuctionManagerHandler::cancel_auction(id)?;
 		}

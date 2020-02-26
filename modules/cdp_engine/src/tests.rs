@@ -16,7 +16,7 @@ use primitives::offchain::{
 use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
-fn liquidator_lock_work() {
+fn offchain_worker_lock_work() {
 	let mut ext = ExtBuilder::default().build();
 	let (offchain, _state) = TestOffchainExt::new();
 	let (pool, _state) = TestTransactionPoolExt::new();
@@ -27,16 +27,16 @@ fn liquidator_lock_work() {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 
-		// manipulate to set liquidator lock initially
+		// manipulate to set offchain worker lock initially
 		// because offchain::random_seed() is still not implemented for TestOffchainExt
-		storage.set(&LiquidatorLock {
+		storage.set(&OffchainWorkerLock {
 			previous_position: 0,
 			expire_timestamp: Timestamp::from_unix_millis(0),
 		});
-		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
-		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), false);
-		CdpEngineModule::release_liquidator_lock(1);
-		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::required_offchain_worker_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::required_offchain_worker_lock().is_ok(), false);
+		CdpEngineModule::release_offchain_worker_lock(1);
+		assert_eq!(CdpEngineModule::required_offchain_worker_lock().is_ok(), true);
 	});
 }
 

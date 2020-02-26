@@ -95,6 +95,7 @@ decl_error! {
 		AlreadyNoDebit,
 		AlreadyShutdown,
 		NoDebitInCdp,
+		MustAfterShutdown,
 	}
 }
 
@@ -147,8 +148,10 @@ enum OffchainErr {
 	LockStillInLocked,
 }
 
+// The lock to limit the number of offchain worker at the same time.
+// Before expire timestamp, can not start new offchain worker
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
-struct LiquidatorLock {
+struct OffchainWorkerLock {
 	pub previous_position: u32,
 	pub expire_timestamp: Timestamp,
 }
@@ -254,6 +257,7 @@ decl_module! {
 			}
 		}
 
+		// unsigned tx to liquidate unsafe cdp, submitted by offchain worker
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -261,17 +265,26 @@ decl_module! {
 		) {
 			ensure_none(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
-			Self::liquidate_unsafe_cdp(who.clone(), currency_id)?;
+			Self::liquidate_unsafe_cdp(who, currency_id)?;
+		}
+
+		// unsigned tx to settle cdp which has debit, submitted by offchain worker
+		pub fn settle(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+		) {
+			ensure_none(origin)?;
+			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+			Self::settle_cdp_has_debit(who, currency_id)?;
 		}
 
 		// Runs after every block.
 		fn offchain_worker(now: T::BlockNumber) {
-			debug::RuntimeLogger::init();
-
-			if let Err(e) = Self::automatic_liquidation(now) {
+			if let Err(e) = Self::_offchain_worker(now) {
 				debug::debug!(
 					target: "cdp-engine offchain worker",
-					"do not start automatic liquidation at {:?}: {:?}",
+					"cannot run offchain worker at {:?}: {:?}",
 					now,
 					e,
 				);
@@ -281,12 +294,12 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn required_liquidator_lock() -> Result<LiquidatorLock, OffchainErr> {
+	fn required_offchain_worker_lock() -> Result<OffchainWorkerLock, OffchainErr> {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-		let require_lock = storage.mutate(|lock: Option<Option<LiquidatorLock>>| {
+		let require_lock = storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
 			match lock {
 				None => {
 					//start with random collateral
@@ -295,7 +308,7 @@ impl<T: Trait> Module<T> {
 					let expire_timestamp =
 						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
 
-					Ok(LiquidatorLock {
+					Ok(OffchainWorkerLock {
 						previous_position: rng.pick_u32(collateral_currency_ids.len() as u32),
 						expire_timestamp: expire_timestamp,
 					})
@@ -309,7 +322,7 @@ impl<T: Trait> Module<T> {
 					let expire_timestamp =
 						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
 
-					Ok(LiquidatorLock {
+					Ok(OffchainWorkerLock {
 						previous_position: execute_position,
 						expire_timestamp: expire_timestamp,
 					})
@@ -321,13 +334,13 @@ impl<T: Trait> Module<T> {
 		require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
 	}
 
-	fn release_liquidator_lock(previous_position: u32) {
+	fn release_offchain_worker_lock(previous_position: u32) {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 
-		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
-			if liquidator_lock.previous_position == previous_position {
-				storage.set(&LiquidatorLock {
+		if let Some(Some(lock)) = storage.get::<OffchainWorkerLock>() {
+			if lock.previous_position == previous_position {
+				storage.set(&OffchainWorkerLock {
 					previous_position: previous_position,
 					expire_timestamp: runtime_io::offchain::timestamp(),
 				});
@@ -335,16 +348,16 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	fn extend_expire_duration_if_needed() {
+	fn extend_offchain_worker_lock_if_needed() {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 
-		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
-			if liquidator_lock.expire_timestamp
+		if let Some(Some(lock)) = storage.get::<OffchainWorkerLock>() {
+			if lock.expire_timestamp
 				<= runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_UPDATE_DURATION))
 			{
-				storage.set(&LiquidatorLock {
-					previous_position: liquidator_lock.previous_position,
+				storage.set(&OffchainWorkerLock {
+					previous_position: lock.previous_position,
 					expire_timestamp: runtime_io::offchain::timestamp()
 						.add(Duration::from_millis(LOCK_EXPIRE_DURATION)),
 				});
@@ -354,7 +367,12 @@ impl<T: Trait> Module<T> {
 
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
 		let call = Call::<T>::liquidate(currency_id, who);
+		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
+		Ok(())
+	}
 
+	fn submit_unsigned_settle_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
+		let call = Call::<T>::settle(currency_id, who);
 		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
 	}
@@ -362,7 +380,6 @@ impl<T: Trait> Module<T> {
 	fn liquidate_specific_collateral(currency_id: CurrencyIdOf<T>) {
 		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
 			if let Some((_, account_id)) = key {
-				// TODO: liquidate unsafe cdp before emergency shutdown, settle cdp with debit when emergency shutdown occurs.
 				if Self::is_unsafe_cdp(currency_id, &account_id) {
 					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id) {
 						debug::debug!(
@@ -374,36 +391,67 @@ impl<T: Trait> Module<T> {
 				}
 			}
 
-			Self::extend_expire_duration_if_needed();
+			// check the expire timestamp of lock that is needed to extend
+			Self::extend_offchain_worker_lock_if_needed();
 		}
 	}
 
-	fn automatic_liquidation(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
+	fn settle_specific_collateral(currency_id: CurrencyIdOf<T>) {
+		for (debit, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
+			if let Some((_, account_id)) = key {
+				if !debit.is_zero() {
+					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id) {
+						debug::debug!(
+							target: "cdp-engine offchain worker",
+							"faild to submit unsigned settle tx: {:?}",
+							e,
+						);
+					}
+				}
+			}
+
+			// check the expire timestamp of lock that is needed to extend
+			Self::extend_offchain_worker_lock_if_needed();
+		}
+	}
+
+	fn _offchain_worker(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
 		// check if we are a potential validator
 		if !runtime_io::offchain::is_validator() {
 			return Err(OffchainErr::NotValidator);
 		}
 
-		// check if require offchain worker lock succecced
-		let LiquidatorLock {
+		// Require offchain worker lock.
+		// If succeeded, update the lock, otherwise return error
+		let OffchainWorkerLock {
 			previous_position,
 			expire_timestamp: _,
-		} = Self::required_liquidator_lock()?;
+		} = Self::required_offchain_worker_lock()?;
 
 		// start
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		let currency_id = collateral_currency_ids[(previous_position as usize)];
-		debug::info!(
-			target: "cdp-engine offchain worker",
-			"offchain worker start at block: {:?} execute automatic liquidation for collateral: {:?}",
-			block_number,
-			currency_id,
-		);
 
-		Self::liquidate_specific_collateral(currency_id);
+		if !Self::is_shutdown() {
+			debug::info!(
+				target: "cdp-engine offchain worker",
+				"start at block: {:?} execute automatic liquidation for collateral: {:?}",
+				block_number,
+				currency_id,
+			);
+			Self::liquidate_specific_collateral(currency_id);
+		} else {
+			debug::info!(
+				target: "cdp-engine offchain worker",
+				"start at block: {:?} execute automatic settlement for collateral: {:?}",
+				block_number,
+				currency_id,
+			);
+			Self::settle_specific_collateral(currency_id);
+		}
 
-		// finally, release lock
-		Self::release_liquidator_lock(previous_position);
+		// finally, reset the expire timestamp to now in order to release lock in advance.
+		Self::release_offchain_worker_lock(previous_position);
 		debug::info!(
 			target: "cdp-engine offchain worker",
 			"offchain worker start at block: {:?} done!",
