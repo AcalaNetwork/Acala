@@ -9,24 +9,24 @@ mod tests;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord;
+	type AirDropCurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord;
 	type Balance: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as AirDrop {
-		AirDrops get(fn airdrops): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) T::CurrencyId => T::Balance;
+		AirDrops get(fn airdrops): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) T::AirDropCurrencyId => T::Balance;
 	}
 }
 
 decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
-		<T as Trait>::CurrencyId,
+		<T as Trait>::AirDropCurrencyId,
 		<T as Trait>::Balance,
 	{
-		Airdrop(AccountId, CurrencyId, Balance),
-		UpdateAirdrop(AccountId, CurrencyId, Balance),
+		Airdrop(AccountId, AirDropCurrencyId, Balance),
+		UpdateAirdrop(AccountId, AirDropCurrencyId, Balance),
 	}
 );
 
@@ -37,7 +37,7 @@ decl_module! {
 		pub fn airdrop(
 			origin,
 			to: T::AccountId,
-			currency_id: T::CurrencyId,
+			currency_id: T::AirDropCurrencyId,
 			amount: T::Balance,
 		) {
 			ensure_root(origin)?;
@@ -48,7 +48,7 @@ decl_module! {
 		pub fn update_airdrop(
 			origin,
 			to: T::AccountId,
-			currency_id: T::CurrencyId,
+			currency_id: T::AirDropCurrencyId,
 			amount: T::Balance,
 		) {
 			ensure_root(origin)?;
