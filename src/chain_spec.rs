@@ -142,8 +142,8 @@ impl Alternative {
 			}
 			Alternative::MandalaTestnetLatest => {
 				ChainSpec::from_genesis(
-					"Acala Mandala Testnet",
-					"mandala",
+					"Acala Mandala TC2",
+					"mandala2",
 					|| {
 						// SECRET="..."
 						// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -202,7 +202,7 @@ impl Alternative {
 						"wss://telemetry.polkadot.io/submit/".into(),
 						0,
 					)])),
-					Some("mandala"),
+					Some("mandala2"),
 					Some(properties),
 					Default::default(),
 				)
