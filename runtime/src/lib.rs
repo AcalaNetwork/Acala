@@ -648,7 +648,7 @@ impl module_accounts::Trait for Runtime {
 
 impl module_airdrop::Trait for Runtime {
 	type Event = Event;
-	type CurrencyId = AirDropCurrencyId;
+	type AirDropCurrencyId = AirDropCurrencyId;
 	type Balance = Balance;
 }
 

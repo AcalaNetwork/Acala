@@ -25,12 +25,12 @@ impl_outer_event! {
 pub type AccountId = u64;
 pub type BlockNumber = u64;
 pub type Balance = u64;
-pub type CurrencyId = u32;
+pub type AirDropCurrencyId = u32;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const KAR: CurrencyId = 0;
-pub const ACA: CurrencyId = 1;
+pub const KAR: AirDropCurrencyId = 0;
+pub const ACA: AirDropCurrencyId = 1;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -68,7 +68,7 @@ pub type System = system::Module<Runtime>;
 
 impl Trait for Runtime {
 	type Event = TestEvent;
-	type CurrencyId = CurrencyId;
+	type AirDropCurrencyId = AirDropCurrencyId;
 	type Balance = Balance;
 }
 pub type Airdrop = Module<Runtime>;
