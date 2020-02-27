@@ -2,7 +2,14 @@
   "name": "Acala Mandala TC2",
   "id": "mandala2",
   "bootNodes": [
-    "/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA"
+	"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
+	"/dns4/libp2p.jm.onfinality.io/tcp/15431/p2p/QmXRUbRhxcUsvTzWrDTNhzfcRY1bYZgbjp5aBW9QVK8sYp",
+	"/dns4/libp2p.rz.onfinality.io/tcp/34317/p2p/QmaeegAuywuBKbeZiZRzpuXAuoYFs8tDtE1oLyXVtpCNeE",
+	"/dns4/libp2p.jm.onfinality.io/tcp/44274/p2p/QmWiJ6G14imSsiXYSNAuxV7oFZVauXw6gh4YqEVwZNEhRJ",
+	"/dns4/libp2p.jm.onfinality.io/tcp/49017/p2p/QmdptL7Zzenfqa2S742L1iX6fCj4ohjM62x5VgvX756Kwf",
+	"/dns4/libp2p.rz.onfinality.io/tcp/44559/p2p/QmRBi3SBAWccthStWLQRkYa7dTkfAC84HhqVJ8FFEFpQhH",
+	"/ip4/140.82.61.232/tcp/30333/p2p/QmS65JgH4ocbqxbGdrXo25Ufk1YQPV45qVDhkYLwaJXynS",
+	"/dns4/mandala-01.acala.network/tcp/30334/p2p/QmVLjCXppsqUAt1GJKhjrTSkTuChM7fWPgzBZ3AWmdTM4f"
   ],
   "telemetryEndpoints": [
     [
