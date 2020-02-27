@@ -55,7 +55,7 @@ The Honzon protocol contains the following components
 - Governance
 - Honzon as an interface to other components
 
-Note: This section is still work in progress, we will update more information as we progress.
+Note: This section is still work in progress, we will update more information as we progress. Refer to the [Github Wiki](https://github.com/AcalaNetwork/Acala/wiki) for more details.
 
 ## 2.2. Acala Network Economic Model
 The Acala Network Token (ACA) features the following utilities, and the value of ACA token will accrue with the increased usage of the network and revenue from stability fees and liquidation penalties
