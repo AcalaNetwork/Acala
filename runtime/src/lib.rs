@@ -578,7 +578,6 @@ impl system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for Runtim
 			system::CheckWeight::<Runtime>::new(),
 			orml_oracle::CheckOperator::<Runtime>::new(),
 			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
-			module_cdp_engine::AutomaticLiquidationValidation::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -686,7 +685,7 @@ construct_runtime!(
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
-		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
@@ -715,7 +714,6 @@ pub type SignedExtra = (
 	system::CheckWeight<Runtime>,
 	orml_oracle::CheckOperator<Runtime>,
 	module_accounts::ChargeTransactionPayment<Runtime>,
-	module_cdp_engine::AutomaticLiquidationValidation<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
