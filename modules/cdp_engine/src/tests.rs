@@ -33,10 +33,10 @@ fn offchain_worker_lock_work() {
 			previous_position: 0,
 			expire_timestamp: Timestamp::from_unix_millis(0),
 		});
-		assert_eq!(CdpEngineModule::required_offchain_worker_lock().is_ok(), true);
-		assert_eq!(CdpEngineModule::required_offchain_worker_lock().is_ok(), false);
+		assert_eq!(CdpEngineModule::acquire_offchain_worker_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::acquire_offchain_worker_lock().is_ok(), false);
 		CdpEngineModule::release_offchain_worker_lock(1);
-		assert_eq!(CdpEngineModule::required_offchain_worker_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::acquire_offchain_worker_lock().is_ok(), true);
 	});
 }
 

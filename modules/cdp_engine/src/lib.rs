@@ -275,7 +275,7 @@ decl_module! {
 		// Runs after every block.
 		fn offchain_worker(now: T::BlockNumber) {
 			if let Err(e) = Self::_offchain_worker(now) {
-				debug::debug!(
+				debug::info!(
 					target: "cdp-engine offchain worker",
 					"cannot run offchain worker at {:?}: {:?}",
 					now,
@@ -287,12 +287,12 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn required_offchain_worker_lock() -> Result<OffchainWorkerLock, OffchainErr> {
+	fn acquire_offchain_worker_lock() -> Result<OffchainWorkerLock, OffchainErr> {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-		let require_lock = storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
+		let acquire_lock = storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
 			match lock {
 				None => {
 					//start with random collateral
@@ -324,7 +324,7 @@ impl<T: Trait> Module<T> {
 			}
 		})?;
 
-		require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
+		acquire_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
 	}
 
 	fn release_offchain_worker_lock(previous_position: u32) {
@@ -375,13 +375,13 @@ impl<T: Trait> Module<T> {
 			if let Some((_, account_id)) = key {
 				if Self::is_unsafe_cdp(currency_id, &account_id) {
 					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
-						debug::debug!(
+						debug::warn!(
 							target: "cdp-engine offchain worker",
 							"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
 							account_id, currency_id, e,
 						);
 					} else {
-						debug::info!(
+						debug::debug!(
 							target: "cdp-engine offchain worker",
 							"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
 							account_id, currency_id,
@@ -400,13 +400,13 @@ impl<T: Trait> Module<T> {
 			if let Some((_, account_id)) = key {
 				if !debit.is_zero() {
 					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
-						debug::debug!(
+						debug::warn!(
 							target: "cdp-engine offchain worker",
 							"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
 							account_id, currency_id, e,
 						);
 					} else {
-						debug::info!(
+						debug::debug!(
 							target: "cdp-engine offchain worker",
 							"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
 							account_id, currency_id,
@@ -426,19 +426,19 @@ impl<T: Trait> Module<T> {
 			return Err(OffchainErr::NotValidator);
 		}
 
-		// Require offchain worker lock.
+		// Acquire offchain worker lock.
 		// If succeeded, update the lock, otherwise return error
 		let OffchainWorkerLock {
 			previous_position,
 			expire_timestamp: _,
-		} = Self::required_offchain_worker_lock()?;
+		} = Self::acquire_offchain_worker_lock()?;
 
 		// start
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		let currency_id = collateral_currency_ids[(previous_position as usize)];
 
 		if !Self::is_shutdown() {
-			debug::info!(
+			debug::debug!(
 				target: "cdp-engine offchain worker",
 				"execute automatic liquidation at block: {:?} for collateral: {:?}",
 				block_number,
@@ -446,7 +446,7 @@ impl<T: Trait> Module<T> {
 			);
 			Self::liquidate_specific_collateral(currency_id);
 		} else {
-			debug::info!(
+			debug::debug!(
 				target: "cdp-engine offchain worker",
 				"execute automatic settlement at block: {:?} for collateral: {:?}",
 				block_number,
@@ -457,7 +457,7 @@ impl<T: Trait> Module<T> {
 
 		// finally, reset the expire timestamp to now in order to release lock in advance.
 		Self::release_offchain_worker_lock(previous_position);
-		debug::info!(
+		debug::debug!(
 			target: "cdp-engine offchain worker",
 			"offchain worker start at block: {:?} already done!",
 			block_number,
