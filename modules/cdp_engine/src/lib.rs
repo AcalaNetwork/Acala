@@ -1,20 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchInfo, IsSubType,
-};
+use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
 use sp_runtime::{
 	offchain::{storage::StorageValueRef, Duration, Timestamp},
-	traits::{
-		BlakeTwo256, CheckedAdd, CheckedSub, Convert, EnsureOrigin, Hash, Saturating, SignedExtension,
-		UniqueSaturatedInto, Zero,
-	},
-	transaction_validity::{
-		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
-	},
+	traits::{BlakeTwo256, CheckedAdd, CheckedSub, Convert, EnsureOrigin, Hash, Saturating, UniqueSaturatedInto, Zero},
+	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
 use support::{
@@ -384,15 +377,14 @@ impl<T: Trait> Module<T> {
 					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
 						debug::debug!(
 							target: "cdp-engine offchain worker",
-							"faild to submit unsigned liquidation tx: {:?}",
-							e,
+							"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+							account_id, currency_id, e,
 						);
 					} else {
 						debug::info!(
 							target: "cdp-engine offchain worker",
-							"successfully submit unsigned liquidation tx for CDP: \n AccountId - {:?} \n CurrencyId: {:?}",
-							account_id,
-							currency_id,
+							"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+							account_id, currency_id,
 						);
 					}
 				}
@@ -407,11 +399,17 @@ impl<T: Trait> Module<T> {
 		for (debit, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
 			if let Some((_, account_id)) = key {
 				if !debit.is_zero() {
-					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id) {
+					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
 						debug::debug!(
 							target: "cdp-engine offchain worker",
-							"faild to submit unsigned settle tx: {:?}",
-							e,
+							"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+							account_id, currency_id, e,
+						);
+					} else {
+						debug::info!(
+							target: "cdp-engine offchain worker",
+							"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+							account_id, currency_id,
 						);
 					}
 				}
@@ -442,7 +440,7 @@ impl<T: Trait> Module<T> {
 		if !Self::is_shutdown() {
 			debug::info!(
 				target: "cdp-engine offchain worker",
-				"start at block: {:?} execute automatic liquidation for collateral: {:?}",
+				"execute automatic liquidation at block: {:?} for collateral: {:?}",
 				block_number,
 				currency_id,
 			);
@@ -450,7 +448,7 @@ impl<T: Trait> Module<T> {
 		} else {
 			debug::info!(
 				target: "cdp-engine offchain worker",
-				"start at block: {:?} execute automatic settlement for collateral: {:?}",
+				"execute automatic settlement at block: {:?} for collateral: {:?}",
 				block_number,
 				currency_id,
 			);
@@ -461,7 +459,7 @@ impl<T: Trait> Module<T> {
 		Self::release_offchain_worker_lock(previous_position);
 		debug::info!(
 			target: "cdp-engine offchain worker",
-			"offchain worker start at block: {:?} done!",
+			"offchain worker start at block: {:?} already done!",
 			block_number,
 		);
 
@@ -746,80 +744,37 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
-		if let Call::liquidate(currency_id, who) = call {
-			// check cdp is unsafe
-			if !Self::is_unsafe_cdp(*currency_id, &who) {
-				return InvalidTransaction::Stale.into();
-			}
-
-			Ok(ValidTransaction {
-				priority: TransactionPriority::max_value(),
-				requires: vec![],
-				provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
-				longevity: 64_u64,
-				propagate: true,
-			})
-		} else {
-			InvalidTransaction::Call.into()
-		}
-	}
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq)]
-pub struct AutomaticLiquidationValidation<T: Trait + Send + Sync>(rstd::marker::PhantomData<T>);
-
-impl<T: Trait + Send + Sync> AutomaticLiquidationValidation<T> {
-	pub fn new() -> Self {
-		Self(rstd::marker::PhantomData)
-	}
-}
-
-impl<T: Trait + Send + Sync> rstd::fmt::Debug for AutomaticLiquidationValidation<T> {
-	#[cfg(feature = "std")]
-	fn fmt(&self, f: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
-		write!(f, "AutomaticLiquidationValidation")
-	}
-	#[cfg(not(feature = "std"))]
-	fn fmt(&self, _: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
-		Ok(())
-	}
-}
-
-impl<T: Trait + Send + Sync> SignedExtension for AutomaticLiquidationValidation<T> {
-	const IDENTIFIER: &'static str = "AutomaticLiquidationValidation";
-	type AccountId = T::AccountId;
-	type Call = <T as Trait>::Call;
-	type AdditionalSigned = ();
-	type DispatchInfo = DispatchInfo;
-	type Pre = ();
-	fn additional_signed(&self) -> rstd::result::Result<(), TransactionValidityError> {
-		Ok(())
-	}
-
-	fn validate(
-		&self,
-		_who: &Self::AccountId,
-		call: &Self::Call,
-		_info: Self::DispatchInfo,
-		_len: usize,
-	) -> TransactionValidity {
-		let call = match call.is_sub_type() {
-			Some(call) => call,
-			None => return Ok(ValidTransaction::default()),
-		};
-
 		match call {
-			Call::<T>::liquidate(currency_id, account_id) => {
-				// check cdp is unsafe
-				if !<Module<T>>::is_unsafe_cdp(*currency_id, account_id) {
-					InvalidTransaction::Stale.into()
-				} else {
-					let mut valid_tx = ValidTransaction::default();
-					valid_tx.priority = TransactionPriority::max_value();
-					Ok(valid_tx)
+			Call::liquidate(currency_id, who) => {
+				if !Self::is_unsafe_cdp(*currency_id, &who) || Self::is_shutdown() {
+					return InvalidTransaction::Stale.into();
 				}
+
+				Ok(ValidTransaction {
+					priority: TransactionPriority::max_value(),
+					requires: vec![],
+					provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
+					longevity: 64_u64,
+					propagate: true,
+				})
 			}
-			_ => Ok(ValidTransaction::default()),
+
+			Call::settle(currency_id, who) => {
+				let debit_balance = <loans::Module<T>>::debits(currency_id, who).0;
+				if debit_balance.is_zero() || !Self::is_shutdown() {
+					return InvalidTransaction::Stale.into();
+				}
+
+				Ok(ValidTransaction {
+					priority: TransactionPriority::max_value(),
+					requires: vec![],
+					provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
+					longevity: 64_u64,
+					propagate: true,
+				})
+			}
+
+			_ => InvalidTransaction::Call.into(),
 		}
 	}
 }
