@@ -58,7 +58,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 28,
+	spec_version: 301,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 };
@@ -159,7 +159,7 @@ impl pallet_grandpa::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = 100 * MILLICENTS;
+	pub const IndexDeposit: Balance = 1 * DOLLARS;
 }
 
 impl pallet_indices::Trait for Runtime {
@@ -373,9 +373,9 @@ impl Convert<u128, Balance> for CurrencyToVoteHandler {
 }
 
 parameter_types! {
-	pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 1 hour
-	pub const BondingDuration: pallet_staking::EraIndex = 4; // 4 hours
-	pub const SlashDeferDuration: pallet_staking::EraIndex = 4; // 4 hours
+	pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
+	pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
+	pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 }
 
@@ -522,10 +522,10 @@ pub type SubmitTransaction = TransactionSubmitter<(), Runtime, UncheckedExtrinsi
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
-	pub const GlobalStabilityFee: Rate = Rate::from_rational(14708, 100000000000u128); // 0.00000014708 per block, or 10% per month
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(150, 100);
+	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
+	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
-	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(10, 100);
+	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
 	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(5, 100);
 }
@@ -578,7 +578,6 @@ impl system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for Runtim
 			system::CheckWeight::<Runtime>::new(),
 			orml_oracle::CheckOperator::<Runtime>::new(),
 			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
-			module_cdp_engine::AutomaticLiquidationValidation::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -610,7 +609,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::from_rational(2, 1000);
+	pub const GetExchangeFee: Rate = Rate::from_rational(1, 1000);
 }
 
 impl module_dex::Trait for Runtime {
@@ -686,7 +685,7 @@ construct_runtime!(
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
-		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
@@ -715,7 +714,6 @@ pub type SignedExtra = (
 	system::CheckWeight<Runtime>,
 	orml_oracle::CheckOperator<Runtime>,
 	module_accounts::ChargeTransactionPayment<Runtime>,
-	module_cdp_engine::AutomaticLiquidationValidation<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;

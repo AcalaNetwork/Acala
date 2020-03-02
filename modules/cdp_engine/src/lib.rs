@@ -381,11 +381,18 @@ impl<T: Trait> Module<T> {
 		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
 			if let Some((_, account_id)) = key {
 				if Self::is_unsafe_cdp(currency_id, &account_id) {
-					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id) {
+					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
 						debug::debug!(
 							target: "cdp-engine offchain worker",
 							"faild to submit unsigned liquidation tx: {:?}",
 							e,
+						);
+					} else {
+						debug::info!(
+							target: "cdp-engine offchain worker",
+							"successfully submit unsigned liquidation tx for CDP: \n AccountId - {:?} \n CurrencyId: {:?}",
+							account_id,
+							currency_id,
 						);
 					}
 				}
@@ -748,7 +755,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 			Ok(ValidTransaction {
 				priority: TransactionPriority::max_value(),
 				requires: vec![],
-				provides: vec![],
+				provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
 				longevity: 64_u64,
 				propagate: true,
 			})

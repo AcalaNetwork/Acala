@@ -6,7 +6,7 @@
 
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
-[![Substrate version](http://rrd.me/feBhm)](https://substrate.dev/)
+[![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.dev/)
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
  <br />
 [![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FAcalaNetwork)](https://twitter.com/AcalaNetwork)
@@ -55,7 +55,7 @@ The Honzon protocol contains the following components
 - Governance
 - Honzon as an interface to other components
 
-Note: This section is still work in progress, we will update more information as we progress.
+Note: This section is still work in progress, we will update more information as we progress. Refer to the [Github Wiki](https://github.com/AcalaNetwork/Acala/wiki) for more details.
 
 ## 2.2. Acala Network Economic Model
 The Acala Network Token (ACA) features the following utilities, and the value of ACA token will accrue with the increased usage of the network and revenue from stability fees and liquidation penalties

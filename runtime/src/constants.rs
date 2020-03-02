@@ -13,8 +13,8 @@ pub mod currency {
 pub mod time {
 	use crate::types::{BlockNumber, Moment};
 
-	pub const MILLISECS_PER_BLOCK: Moment = 4000;
-	pub const SECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK / 1000;
+	pub const SECS_PER_BLOCK: Moment = 4;
+	pub const MILLISECS_PER_BLOCK: Moment = SECS_PER_BLOCK * 1000;
 
 	// These time units are defined in number of blocks.
 	pub const MINUTES: BlockNumber = 60 / (SECS_PER_BLOCK as BlockNumber);
@@ -26,7 +26,7 @@ pub mod time {
 	// 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
 	pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
 
-	pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 10 * MINUTES;
+	pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 1 * HOURS;
 	pub const EPOCH_DURATION_IN_SLOTS: u64 = {
 		const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;
 

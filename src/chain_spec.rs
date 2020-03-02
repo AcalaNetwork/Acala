@@ -4,7 +4,7 @@ use runtime::{
 	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 	CurrencyId, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
 	IndicesConfig, OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-	SystemConfig, TokensConfig, DOLLARS, WASM_BINARY,
+	SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service;
@@ -142,8 +142,8 @@ impl Alternative {
 			}
 			Alternative::MandalaTestnetLatest => {
 				ChainSpec::from_genesis(
-					"Acala Mandala Testnet",
-					"mandala",
+					"Acala Mandala TC2",
+					"mandala2",
 					|| {
 						// SECRET="..."
 						// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -202,7 +202,7 @@ impl Alternative {
 						"wss://telemetry.polkadot.io/submit/".into(),
 						0,
 					)])),
-					Some("mandala"),
+					Some("mandala2"),
 					Some(properties),
 					Default::default(),
 				)
@@ -389,13 +389,13 @@ fn mandala_genesis(
 			],
 		}),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
-			surplus_buffer_size: 10_000 * DOLLARS,       // cache amount, exceed this will create surplus auction
-			initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
-			debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
+			surplus_auction_fixed_size: 100 * DOLLARS, // amount in aUSD of per surplus auction
+			surplus_buffer_size: 1_000 * DOLLARS,      // cache amount, exceed this will create surplus auction
+			initial_amount_per_debit_auction: 20 * DOLLARS, // initial bid amount in ACA of per debit auction
+			debit_auction_fixed_size: 1_000 * DOLLARS, // amount in debit(aUSD) of per debit auction
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::DOT, 5 * DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::XBTC, 1 * DOLLARS),
+				(CurrencyId::DOT, 1 * DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::XBTC, 5 * CENTS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
@@ -403,17 +403,17 @@ fn mandala_genesis(
 				(
 					CurrencyId::DOT,
 					None,                                     // stability fee for this collateral
-					Some(FixedU128::from_rational(130, 100)), // liquidation ratio
-					Some(FixedU128::from_rational(10, 100)),  // liquidation penalty rate
-					Some(FixedU128::from_rational(160, 100)), // required liquidation ratio
+					Some(FixedU128::from_rational(105, 100)), // liquidation ratio
+					Some(FixedU128::from_rational(3, 100)),   // liquidation penalty rate
+					Some(FixedU128::from_rational(110, 100)), // required liquidation ratio
 					10_000_000 * DOLLARS,                     // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
 					None,
-					Some(FixedU128::from_rational(120, 100)),
-					Some(FixedU128::from_rational(11, 100)),
-					Some(FixedU128::from_rational(150, 100)),
+					Some(FixedU128::from_rational(110, 100)),
+					Some(FixedU128::from_rational(4, 100)),
+					Some(FixedU128::from_rational(115, 100)),
 					10_000_000 * DOLLARS,
 				),
 			],
