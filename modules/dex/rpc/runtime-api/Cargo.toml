@@ -1,0 +1,16 @@
+[package]
+name = "module-dex-rpc-runtime-api"
+version = "0.3.1"
+authors = ["Acala Developers"]
+edition = "2018"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "1.0.6", default-features = false, features = ["derive"] }
+sp-api = { default-features = false, git = "https://github.com/paritytech/substrate.git" }
+
+[features]
+default = ["std"]
+std = [
+	"sp-api/std",
+	"codec/std",
+]

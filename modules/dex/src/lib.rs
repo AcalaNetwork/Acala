@@ -391,10 +391,10 @@ impl<T: Trait> Module<T> {
 		));
 		Ok(())
 	}
-}
 
-impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
-	fn get_supply_amount(
+	// get the minimum amount of supply currency needed for the target currency amount
+	// return 0 means cannot exchange
+	pub fn get_supply_amount_needed(
 		supply_currency_id: CurrencyIdOf<T>,
 		target_currency_id: CurrencyIdOf<T>,
 		target_currency_amount: BalanceOf<T>,
@@ -422,6 +422,48 @@ impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 				intermediate_base_currency_amount,
 			)
 		}
+	}
+
+	// get the maximum amount of target currency you can get for the supply currency amount
+	// return 0 means cannot exchange
+	pub fn get_target_amount_available(
+		supply_currency_id: CurrencyIdOf<T>,
+		target_currency_id: CurrencyIdOf<T>,
+		supply_currency_amount: BalanceOf<T>,
+	) -> BalanceOf<T> {
+		let base_currency_id = T::GetBaseCurrencyId::get();
+		if supply_currency_id == target_currency_id {
+			0.into()
+		} else if target_currency_id == base_currency_id {
+			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(supply_currency_id);
+			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, supply_currency_amount)
+		} else if supply_currency_id == base_currency_id {
+			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(target_currency_id);
+			Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, supply_currency_amount)
+		} else {
+			let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_currency_id);
+			let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
+				supply_other_currency_pool,
+				supply_base_currency_pool,
+				supply_currency_amount,
+			);
+			let (target_other_currency_pool, target_base_currency_pool) = Self::liquidity_pool(target_currency_id);
+			Self::calculate_swap_target_amount(
+				target_base_currency_pool,
+				target_other_currency_pool,
+				intermediate_base_currency_amount,
+			)
+		}
+	}
+}
+
+impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
+	fn get_supply_amount(
+		supply_currency_id: CurrencyIdOf<T>,
+		target_currency_id: CurrencyIdOf<T>,
+		target_currency_amount: BalanceOf<T>,
+	) -> BalanceOf<T> {
+		Self::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
 	}
 
 	fn exchange_currency(

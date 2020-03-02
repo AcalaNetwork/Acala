@@ -19,6 +19,7 @@ dependencies = [
  "hex-literal",
  "jsonrpc-core",
  "log",
+ "module-dex-rpc",
  "orml-oracle-rpc",
  "orml-utilities",
  "pallet-transaction-payment-rpc",
@@ -72,6 +73,7 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-treasury",
  "module-dex",
+ "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
  "module-honzon",
  "module-loans",
@@ -2767,6 +2769,28 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "module-dex-rpc"
+version = "0.3.1"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "module-dex-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "module-dex-rpc-runtime-api"
+version = "0.3.1"
+dependencies = [
+ "parity-scale-codec",
+ "sp-api",
 ]
 
 [[package]]

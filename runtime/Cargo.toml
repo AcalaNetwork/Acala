@@ -56,6 +56,7 @@ module-auction-manager = { path = "../modules/auction_manager", default-features
 module-cdp-engine = { path = "../modules/cdp_engine", default-features = false }
 module-cdp-treasury = { path = "../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../modules/dex", default-features = false }
+module-dex-rpc-runtime-api = { path = "../modules/dex/rpc/runtime-api", default-features = false }
 module-emergency-shutdown = { path = "../modules/emergency_shutdown", default-features = false }
 module-honzon = { path = "../modules/honzon", default-features = false }
 module-loans = { path = "../modules/loans", default-features = false }
@@ -117,6 +118,7 @@ std = [
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
 	"module-dex/std",
+	"module-dex-rpc-runtime-api/std",
 	"module-emergency-shutdown/std",
 	"module-honzon/std",
 	"module-loans/std",
