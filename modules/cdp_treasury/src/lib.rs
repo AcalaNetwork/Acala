@@ -131,6 +131,7 @@ decl_module! {
 				<SurplusPool<T>>::mutate(|surplus| *surplus -= offset_amount);
 			}
 
+			// Stop to create surplus auction and debit auction after emergency shutdown occurs.
 			if !Self::is_shutdown() {
 				// create surplus auction requires:
 				// 1. debit_pool == 0

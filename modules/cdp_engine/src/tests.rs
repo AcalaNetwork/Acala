@@ -6,8 +6,8 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	CdpEngineModule, CdpTreasury, Currencies, DefaultDebitExchangeRate, DefaultLiquidationPenalty,
-	DefaultLiquidationRatio, ExtBuilder, LoansModule, Origin, Runtime, System, TestEvent, ACA, ALICE, AUSD, BOB, BTC,
-	DOT,
+	DefaultLiquidationRatio, ExtBuilder, Extrinsic, LoansModule, Origin, Runtime, System, TestEvent, ACA, ALICE, AUSD,
+	BOB, BTC, DOT,
 };
 use primitives::offchain::{
 	testing::{TestOffchainExt, TestTransactionPoolExt},
@@ -16,7 +16,7 @@ use primitives::offchain::{
 use sp_runtime::traits::{BadOrigin, OnFinalize};
 
 #[test]
-fn liquidator_lock_work() {
+fn offchain_worker_lock_work() {
 	let mut ext = ExtBuilder::default().build();
 	let (offchain, _state) = TestOffchainExt::new();
 	let (pool, _state) = TestTransactionPoolExt::new();
@@ -27,16 +27,16 @@ fn liquidator_lock_work() {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 
-		// manipulate to set liquidator lock initially
+		// manipulate to set offchain worker lock initially
 		// because offchain::random_seed() is still not implemented for TestOffchainExt
-		storage.set(&LiquidatorLock {
+		storage.set(&OffchainWorkerLock {
 			previous_position: 0,
 			expire_timestamp: Timestamp::from_unix_millis(0),
 		});
-		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
-		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), false);
-		CdpEngineModule::release_liquidator_lock(1);
-		assert_eq!(CdpEngineModule::required_liquidator_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::acquire_offchain_worker_lock().is_ok(), true);
+		assert_eq!(CdpEngineModule::acquire_offchain_worker_lock().is_ok(), false);
+		CdpEngineModule::release_offchain_worker_lock(1);
+		assert_eq!(CdpEngineModule::acquire_offchain_worker_lock().is_ok(), true);
 	});
 }
 
@@ -73,6 +73,42 @@ fn liquidate_specific_collateral_work() {
 		assert_eq!(CdpEngineModule::is_unsafe_cdp(BTC, &BOB), true);
 		CdpEngineModule::liquidate_specific_collateral(BTC);
 		assert_eq!(state.read().transactions.len(), 2);
+		let tx = state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		assert_eq!(tx.signature, None);
+	});
+}
+
+#[test]
+fn settle_specific_collateral_work() {
+	let mut ext = ExtBuilder::default().build();
+	let (offchain, _state) = TestOffchainExt::new();
+	let (pool, state) = TestTransactionPoolExt::new();
+	ext.register_extension(OffchainExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		assert_ok!(CdpEngineModule::set_collateral_params(
+			Origin::ROOT,
+			BTC,
+			Some(Some(Rate::from_rational(1, 100000))),
+			Some(Some(Ratio::from_rational(3, 2))),
+			Some(Some(Rate::from_rational(2, 10))),
+			Some(Some(Ratio::from_rational(9, 5))),
+			Some(10000),
+		));
+		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
+		assert_ok!(CdpEngineModule::update_position(&BOB, BTC, 100, 0));
+		CdpEngineModule::emergency_shutdown();
+		CdpEngineModule::settle_specific_collateral(BTC);
+		assert_eq!(state.read().transactions.len(), 1);
+		let tx = state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		assert_eq!(tx.signature, None);
+		assert_eq!(
+			tx.call,
+			crate::mock::Call::CdpEngineModule(crate::Call::settle(BTC, ALICE))
+		);
 	});
 }
 

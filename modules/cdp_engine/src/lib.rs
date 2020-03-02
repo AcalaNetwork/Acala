@@ -1,20 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchInfo, IsSubType,
-};
+use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended};
 use rstd::{convert::TryInto, marker, prelude::*};
 use sp_runtime::{
 	offchain::{storage::StorageValueRef, Duration, Timestamp},
-	traits::{
-		BlakeTwo256, CheckedAdd, CheckedSub, Convert, EnsureOrigin, Hash, Saturating, SignedExtension,
-		UniqueSaturatedInto, Zero,
-	},
-	transaction_validity::{
-		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
-	},
+	traits::{BlakeTwo256, CheckedAdd, CheckedSub, Convert, EnsureOrigin, Hash, Saturating, UniqueSaturatedInto, Zero},
+	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
 use support::{
@@ -95,6 +88,7 @@ decl_error! {
 		AlreadyNoDebit,
 		AlreadyShutdown,
 		NoDebitInCdp,
+		MustAfterShutdown,
 	}
 }
 
@@ -147,8 +141,10 @@ enum OffchainErr {
 	LockStillInLocked,
 }
 
+// The lock to limit the number of offchain worker at the same time.
+// Before expire timestamp, can not start new offchain worker
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
-struct LiquidatorLock {
+struct OffchainWorkerLock {
 	pub previous_position: u32,
 	pub expire_timestamp: Timestamp,
 }
@@ -254,6 +250,7 @@ decl_module! {
 			}
 		}
 
+		// unsigned tx to liquidate unsafe cdp, submitted by offchain worker
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -261,17 +258,26 @@ decl_module! {
 		) {
 			ensure_none(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
-			Self::liquidate_unsafe_cdp(who.clone(), currency_id)?;
+			Self::liquidate_unsafe_cdp(who, currency_id)?;
+		}
+
+		// unsigned tx to settle cdp which has debit, submitted by offchain worker
+		pub fn settle(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+		) {
+			ensure_none(origin)?;
+			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+			Self::settle_cdp_has_debit(who, currency_id)?;
 		}
 
 		// Runs after every block.
 		fn offchain_worker(now: T::BlockNumber) {
-			debug::RuntimeLogger::init();
-
-			if let Err(e) = Self::automatic_liquidation(now) {
-				debug::debug!(
+			if let Err(e) = Self::_offchain_worker(now) {
+				debug::info!(
 					target: "cdp-engine offchain worker",
-					"do not start automatic liquidation at {:?}: {:?}",
+					"cannot run offchain worker at {:?}: {:?}",
 					now,
 					e,
 				);
@@ -281,12 +287,12 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn required_liquidator_lock() -> Result<LiquidatorLock, OffchainErr> {
+	fn acquire_offchain_worker_lock() -> Result<OffchainWorkerLock, OffchainErr> {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-		let require_lock = storage.mutate(|lock: Option<Option<LiquidatorLock>>| {
+		let acquire_lock = storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
 			match lock {
 				None => {
 					//start with random collateral
@@ -295,7 +301,7 @@ impl<T: Trait> Module<T> {
 					let expire_timestamp =
 						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
 
-					Ok(LiquidatorLock {
+					Ok(OffchainWorkerLock {
 						previous_position: rng.pick_u32(collateral_currency_ids.len() as u32),
 						expire_timestamp: expire_timestamp,
 					})
@@ -309,7 +315,7 @@ impl<T: Trait> Module<T> {
 					let expire_timestamp =
 						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
 
-					Ok(LiquidatorLock {
+					Ok(OffchainWorkerLock {
 						previous_position: execute_position,
 						expire_timestamp: expire_timestamp,
 					})
@@ -318,16 +324,16 @@ impl<T: Trait> Module<T> {
 			}
 		})?;
 
-		require_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
+		acquire_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
 	}
 
-	fn release_liquidator_lock(previous_position: u32) {
+	fn release_offchain_worker_lock(previous_position: u32) {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 
-		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
-			if liquidator_lock.previous_position == previous_position {
-				storage.set(&LiquidatorLock {
+		if let Some(Some(lock)) = storage.get::<OffchainWorkerLock>() {
+			if lock.previous_position == previous_position {
+				storage.set(&OffchainWorkerLock {
 					previous_position: previous_position,
 					expire_timestamp: runtime_io::offchain::timestamp(),
 				});
@@ -335,16 +341,16 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	fn extend_expire_duration_if_needed() {
+	fn extend_offchain_worker_lock_if_needed() {
 		let storage_key = DB_PREFIX.to_vec();
 		let storage = StorageValueRef::persistent(&storage_key);
 
-		if let Some(Some(liquidator_lock)) = storage.get::<LiquidatorLock>() {
-			if liquidator_lock.expire_timestamp
+		if let Some(Some(lock)) = storage.get::<OffchainWorkerLock>() {
+			if lock.expire_timestamp
 				<= runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_UPDATE_DURATION))
 			{
-				storage.set(&LiquidatorLock {
-					previous_position: liquidator_lock.previous_position,
+				storage.set(&OffchainWorkerLock {
+					previous_position: lock.previous_position,
 					expire_timestamp: runtime_io::offchain::timestamp()
 						.add(Duration::from_millis(LOCK_EXPIRE_DURATION)),
 				});
@@ -354,7 +360,12 @@ impl<T: Trait> Module<T> {
 
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
 		let call = Call::<T>::liquidate(currency_id, who);
+		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
+		Ok(())
+	}
 
+	fn submit_unsigned_settle_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
+		let call = Call::<T>::settle(currency_id, who);
 		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
 	}
@@ -362,58 +373,93 @@ impl<T: Trait> Module<T> {
 	fn liquidate_specific_collateral(currency_id: CurrencyIdOf<T>) {
 		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
 			if let Some((_, account_id)) = key {
-				// TODO: liquidate unsafe cdp before emergency shutdown, settle cdp with debit when emergency shutdown occurs.
 				if Self::is_unsafe_cdp(currency_id, &account_id) {
 					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
-						debug::debug!(
+						debug::warn!(
 							target: "cdp-engine offchain worker",
-							"faild to submit unsigned liquidation tx: {:?}",
-							e,
+							"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+							account_id, currency_id, e,
 						);
 					} else {
-						debug::info!(
+						debug::debug!(
 							target: "cdp-engine offchain worker",
-							"successfully submit unsigned liquidation tx for CDP: \n AccountId - {:?} \n CurrencyId: {:?}",
-							account_id,
-							currency_id,
+							"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+							account_id, currency_id,
 						);
 					}
 				}
 			}
 
-			Self::extend_expire_duration_if_needed();
+			// check the expire timestamp of lock that is needed to extend
+			Self::extend_offchain_worker_lock_if_needed();
 		}
 	}
 
-	fn automatic_liquidation(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
+	fn settle_specific_collateral(currency_id: CurrencyIdOf<T>) {
+		for (debit, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
+			if let Some((_, account_id)) = key {
+				if !debit.is_zero() {
+					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
+						debug::warn!(
+							target: "cdp-engine offchain worker",
+							"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+							account_id, currency_id, e,
+						);
+					} else {
+						debug::debug!(
+							target: "cdp-engine offchain worker",
+							"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+							account_id, currency_id,
+						);
+					}
+				}
+			}
+
+			// check the expire timestamp of lock that is needed to extend
+			Self::extend_offchain_worker_lock_if_needed();
+		}
+	}
+
+	fn _offchain_worker(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
 		// check if we are a potential validator
 		if !runtime_io::offchain::is_validator() {
 			return Err(OffchainErr::NotValidator);
 		}
 
-		// check if require offchain worker lock succecced
-		let LiquidatorLock {
+		// Acquire offchain worker lock.
+		// If succeeded, update the lock, otherwise return error
+		let OffchainWorkerLock {
 			previous_position,
 			expire_timestamp: _,
-		} = Self::required_liquidator_lock()?;
+		} = Self::acquire_offchain_worker_lock()?;
 
 		// start
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		let currency_id = collateral_currency_ids[(previous_position as usize)];
-		debug::info!(
-			target: "cdp-engine offchain worker",
-			"offchain worker start at block: {:?} execute automatic liquidation for collateral: {:?}",
-			block_number,
-			currency_id,
-		);
 
-		Self::liquidate_specific_collateral(currency_id);
+		if !Self::is_shutdown() {
+			debug::debug!(
+				target: "cdp-engine offchain worker",
+				"execute automatic liquidation at block: {:?} for collateral: {:?}",
+				block_number,
+				currency_id,
+			);
+			Self::liquidate_specific_collateral(currency_id);
+		} else {
+			debug::debug!(
+				target: "cdp-engine offchain worker",
+				"execute automatic settlement at block: {:?} for collateral: {:?}",
+				block_number,
+				currency_id,
+			);
+			Self::settle_specific_collateral(currency_id);
+		}
 
-		// finally, release lock
-		Self::release_liquidator_lock(previous_position);
-		debug::info!(
+		// finally, reset the expire timestamp to now in order to release lock in advance.
+		Self::release_offchain_worker_lock(previous_position);
+		debug::debug!(
 			target: "cdp-engine offchain worker",
-			"offchain worker start at block: {:?} done!",
+			"offchain worker start at block: {:?} already done!",
 			block_number,
 		);
 
@@ -698,80 +744,35 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
-		if let Call::liquidate(currency_id, who) = call {
-			// check cdp is unsafe
-			if !Self::is_unsafe_cdp(*currency_id, &who) {
-				return InvalidTransaction::Stale.into();
-			}
-
-			Ok(ValidTransaction {
-				priority: TransactionPriority::max_value(),
-				requires: vec![],
-				provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
-				longevity: 64_u64,
-				propagate: true,
-			})
-		} else {
-			InvalidTransaction::Call.into()
-		}
-	}
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq)]
-pub struct AutomaticLiquidationValidation<T: Trait + Send + Sync>(rstd::marker::PhantomData<T>);
-
-impl<T: Trait + Send + Sync> AutomaticLiquidationValidation<T> {
-	pub fn new() -> Self {
-		Self(rstd::marker::PhantomData)
-	}
-}
-
-impl<T: Trait + Send + Sync> rstd::fmt::Debug for AutomaticLiquidationValidation<T> {
-	#[cfg(feature = "std")]
-	fn fmt(&self, f: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
-		write!(f, "AutomaticLiquidationValidation")
-	}
-	#[cfg(not(feature = "std"))]
-	fn fmt(&self, _: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
-		Ok(())
-	}
-}
-
-impl<T: Trait + Send + Sync> SignedExtension for AutomaticLiquidationValidation<T> {
-	const IDENTIFIER: &'static str = "AutomaticLiquidationValidation";
-	type AccountId = T::AccountId;
-	type Call = <T as Trait>::Call;
-	type AdditionalSigned = ();
-	type DispatchInfo = DispatchInfo;
-	type Pre = ();
-	fn additional_signed(&self) -> rstd::result::Result<(), TransactionValidityError> {
-		Ok(())
-	}
-
-	fn validate(
-		&self,
-		_who: &Self::AccountId,
-		call: &Self::Call,
-		_info: Self::DispatchInfo,
-		_len: usize,
-	) -> TransactionValidity {
-		let call = match call.is_sub_type() {
-			Some(call) => call,
-			None => return Ok(ValidTransaction::default()),
-		};
-
 		match call {
-			Call::<T>::liquidate(currency_id, account_id) => {
-				// check cdp is unsafe
-				if !<Module<T>>::is_unsafe_cdp(*currency_id, account_id) {
-					InvalidTransaction::Stale.into()
-				} else {
-					let mut valid_tx = ValidTransaction::default();
-					valid_tx.priority = TransactionPriority::max_value();
-					Ok(valid_tx)
+			Call::liquidate(currency_id, who) => {
+				if !Self::is_unsafe_cdp(*currency_id, &who) || Self::is_shutdown() {
+					return InvalidTransaction::Stale.into();
 				}
+
+				Ok(ValidTransaction {
+					priority: TransactionPriority::max_value(),
+					requires: vec![],
+					provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
+					longevity: 64_u64,
+					propagate: true,
+				})
 			}
-			_ => Ok(ValidTransaction::default()),
+			Call::settle(currency_id, who) => {
+				let debit_balance = <loans::Module<T>>::debits(currency_id, who).0;
+				if debit_balance.is_zero() || !Self::is_shutdown() {
+					return InvalidTransaction::Stale.into();
+				}
+
+				Ok(ValidTransaction {
+					priority: TransactionPriority::max_value(),
+					requires: vec![],
+					provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
+					longevity: 64_u64,
+					propagate: true,
+				})
+			}
+			_ => InvalidTransaction::Call.into(),
 		}
 	}
 }
