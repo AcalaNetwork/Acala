@@ -758,7 +758,6 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 					propagate: true,
 				})
 			}
-
 			Call::settle(currency_id, who) => {
 				let debit_balance = <loans::Module<T>>::debits(currency_id, who).0;
 				if debit_balance.is_zero() || !Self::is_shutdown() {
@@ -773,7 +772,6 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 					propagate: true,
 				})
 			}
-
 			_ => InvalidTransaction::Call.into(),
 		}
 	}
