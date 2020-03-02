@@ -28,20 +28,6 @@ fn calculate_swap_supply_amount_work() {
 }
 
 #[test]
-fn get_exchange_amount_is_correct() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
-
-		let target_amount = 8000;
-		let surply_amount = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount);
-		assert_eq!(
-			DexModule::get_target_amount_available(BTC, AUSD, surply_amount),
-			target_amount
-		);
-	});
-}
-
-#[test]
 fn add_liquidity_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
