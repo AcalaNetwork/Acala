@@ -258,22 +258,28 @@ impl<T: Trait> Module<T> {
 		who: T::AccountId,
 		other_currency_id: CurrencyIdOf<T>,
 		other_currency_amount: BalanceOf<T>,
-		min_base_currency_amount: BalanceOf<T>,
+		acceptable_base_currency_amount: BalanceOf<T>,
 	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		// 1. ensure supply amount must > 0 and account has sufficient balance
 		ensure!(
 			!other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_amount).is_ok(),
 			Error::<T>::TokenNotEnough,
 		);
+
+		// 2. calculate the base currency amount can get
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
 		let base_currency_amount =
 			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, other_currency_amount);
+
+		// 3. ensure the amount can get is not 0 and >= minium acceptable
 		ensure!(
-			base_currency_amount >= min_base_currency_amount,
+			!base_currency_amount.is_zero() && base_currency_amount >= acceptable_base_currency_amount,
 			Error::<T>::InacceptablePrice,
 		);
 
+		// 4. transfer token between account and dex and update liquidity pool
 		T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_amount)
 			.expect("never failed because after checks");
 		T::Currency::transfer(base_currency_id, &Self::account_id(), &who, base_currency_amount)
@@ -300,7 +306,7 @@ impl<T: Trait> Module<T> {
 		who: T::AccountId,
 		other_currency_id: CurrencyIdOf<T>,
 		base_currency_amount: BalanceOf<T>,
-		min_other_currency_amount: BalanceOf<T>,
+		acceptable_other_currency_amount: BalanceOf<T>,
 	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		ensure!(
@@ -308,11 +314,12 @@ impl<T: Trait> Module<T> {
 				&& T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_amount).is_ok(),
 			Error::<T>::TokenNotEnough,
 		);
+
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
 		let other_currency_amount =
 			Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, base_currency_amount);
 		ensure!(
-			other_currency_amount >= min_other_currency_amount,
+			!other_currency_amount.is_zero() && other_currency_amount >= acceptable_other_currency_amount,
 			Error::<T>::InacceptablePrice,
 		);
 
@@ -343,7 +350,7 @@ impl<T: Trait> Module<T> {
 		supply_other_currency_id: CurrencyIdOf<T>,
 		supply_other_currency_amount: BalanceOf<T>,
 		target_other_currency_id: CurrencyIdOf<T>,
-		min_target_other_currency_amount: BalanceOf<T>,
+		acceptable_target_other_currency_amount: BalanceOf<T>,
 	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		ensure!(
 			!supply_other_currency_amount.is_zero()
@@ -351,6 +358,7 @@ impl<T: Trait> Module<T> {
 					.is_ok(),
 			Error::<T>::TokenNotEnough,
 		);
+
 		let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_other_currency_id);
 		let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
 			supply_other_currency_pool,
@@ -364,7 +372,8 @@ impl<T: Trait> Module<T> {
 			intermediate_base_currency_amount,
 		);
 		ensure!(
-			target_other_currency_amount >= min_target_other_currency_amount,
+			!target_other_currency_amount.is_zero()
+				&& target_other_currency_amount >= acceptable_target_other_currency_amount,
 			Error::<T>::InacceptablePrice,
 		);
 
