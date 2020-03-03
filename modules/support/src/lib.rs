@@ -6,7 +6,7 @@ use rstd::{
 	cmp::{Eq, PartialEq},
 	fmt::Debug,
 };
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
@@ -59,7 +59,7 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 		who: AccountId,
 		supply: (CurrencyId, Balance),
 		target: (CurrencyId, Balance),
-	) -> DispatchResult;
+	) -> rstd::result::Result<Balance, DispatchError>;
 
 	fn get_exchange_slippage(
 		supply_currency_id: CurrencyId,
@@ -84,8 +84,8 @@ where
 		_who: AccountId,
 		_supply: (CurrencyId, Balance),
 		_target: (CurrencyId, Balance),
-	) -> DispatchResult {
-		Ok(())
+	) -> rstd::result::Result<Balance, DispatchError> {
+		Ok(Default::default())
 	}
 
 	fn get_exchange_slippage(

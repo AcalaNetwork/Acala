@@ -144,7 +144,7 @@ fn swap_other_to_base_work() {
 			DexModule::swap_other_to_base(CAROL, BTC, 10000, 5000000),
 			Error::<Runtime>::InacceptablePrice,
 		);
-		assert_ok!(DexModule::swap_other_to_base(CAROL, BTC, 10000, 4950000));
+		assert_eq!(DexModule::swap_other_to_base(CAROL, BTC, 10000, 4950000).is_ok(), true);
 
 		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, BTC, 10000, AUSD, 4950000));
 		assert!(System::events().iter().any(|record| record.event == swap_event));
@@ -171,7 +171,7 @@ fn swap_base_to_other_work() {
 			DexModule::swap_base_to_other(CAROL, BTC, 10000, 5000),
 			Error::<Runtime>::InacceptablePrice,
 		);
-		assert_ok!(DexModule::swap_base_to_other(CAROL, BTC, 10000, 4950));
+		assert_eq!(DexModule::swap_base_to_other(CAROL, BTC, 10000, 4950).is_ok(), true);
 
 		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, AUSD, 10000, BTC, 4950));
 		assert!(System::events().iter().any(|record| record.event == swap_event));
@@ -200,7 +200,7 @@ fn swap_other_to_other_work() {
 			DexModule::swap_other_to_other(CAROL, DOT, 1000, BTC, 35),
 			Error::<Runtime>::InacceptablePrice,
 		);
-		assert_ok!(DexModule::swap_other_to_other(CAROL, DOT, 1000, BTC, 34));
+		assert_eq!(DexModule::swap_other_to_other(CAROL, DOT, 1000, BTC, 34).is_ok(), true);
 
 		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, DOT, 1000, BTC, 34));
 		assert!(System::events().iter().any(|record| record.event == swap_event));
@@ -250,9 +250,15 @@ fn exchange_currency_work() {
 			DexModule::exchange_currency(CAROL, (BTC, 101), (DOT, 1000)),
 			Error::<Runtime>::TokenNotEnough
 		);
-		assert_ok!(DexModule::exchange_currency(CAROL, (BTC, 100), (AUSD, 4950)));
-		assert_ok!(DexModule::exchange_currency(CAROL, (AUSD, 4950), (BTC, 90)));
-		assert_ok!(DexModule::exchange_currency(CAROL, (BTC, 90), (DOT, 300)));
+		assert_eq!(
+			DexModule::exchange_currency(CAROL, (BTC, 100), (AUSD, 4950)).is_ok(),
+			true
+		);
+		assert_eq!(
+			DexModule::exchange_currency(CAROL, (AUSD, 4950), (BTC, 90)).is_ok(),
+			true
+		);
+		assert_eq!(DexModule::exchange_currency(CAROL, (BTC, 90), (DOT, 300)).is_ok(), true);
 	});
 }
 
@@ -261,7 +267,10 @@ fn get_supply_amount_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000));
 		let supply_amount = DexModule::get_supply_amount(BTC, AUSD, 4950);
-		assert_ok!(DexModule::exchange_currency(BOB, (BTC, supply_amount), (AUSD, 4950)));
+		assert_eq!(
+			DexModule::exchange_currency(BOB, (BTC, supply_amount), (AUSD, 4950)).is_ok(),
+			true
+		);
 	});
 }
 
