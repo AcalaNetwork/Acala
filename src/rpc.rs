@@ -58,11 +58,13 @@ where
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance, UncheckedExtrinsic>,
 	C::Api: BabeApi<Block>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, TimeStampedPrice>,
+	C::Api: module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>,
 	<C::Api as sp_api::ApiErrorExt>::Error: fmt::Debug,
 	P: TransactionPool + 'static,
 	M: jsonrpc_core::Metadata + Default,
 	SC: SelectChain<Block> + 'static,
 {
+	use module_dex_rpc::{Dex, DexApi};
 	use orml_oracle_rpc::{Oracle, OracleApi};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
@@ -91,7 +93,8 @@ where
 		babe_config,
 		select_chain,
 	)));
-	io.extend_with(OracleApi::to_delegate(Oracle::new(client)));
+	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
+	io.extend_with(DexApi::to_delegate(Dex::new(client)));
 
 	io
 }

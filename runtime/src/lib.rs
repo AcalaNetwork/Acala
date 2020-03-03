@@ -806,4 +806,26 @@ impl_runtime_apis! {
 			Oracle::get_no_op(&key)
 		}
 	}
+
+	impl module_dex_rpc_runtime_api::DexApi<
+		Block,
+		CurrencyId,
+		Balance,
+	> for Runtime {
+		fn get_supply_amount(
+			supply_currency_id: CurrencyId,
+			target_currency_id: CurrencyId,
+			target_currency_amount: Balance,
+		) -> Balance {
+			Dex::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
+		}
+
+		fn get_target_amount(
+			supply_currency_id: CurrencyId,
+			target_currency_id: CurrencyId,
+			supply_currency_amount: Balance,
+		) -> Balance {
+			Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
+		}
+	}
 }

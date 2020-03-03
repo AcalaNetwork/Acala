@@ -53,6 +53,7 @@ sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate" }
 
 orml-oracle-rpc = { path = "orml/oracle/rpc" }
+module-dex-rpc = { path = "modules/dex/rpc" }
 orml-utilities = { path = "orml/utilities" }
 runtime = { package = "acala-runtime", path = "runtime" }
 
