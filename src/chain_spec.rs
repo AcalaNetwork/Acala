@@ -143,7 +143,7 @@ impl Alternative {
 			Alternative::MandalaTestnetLatest => {
 				ChainSpec::from_genesis(
 					"Acala Mandala TC2",
-					"mandala2",
+					"mandala22",
 					|| {
 						// SECRET="..."
 						// ./target/debug/subkey inspect "$SECRET//acala//root"
