@@ -608,7 +608,7 @@ impl<T: Trait> Module<T> {
 
 		// forth: handle bad debt and collateral
 		if !supply_amount.is_zero() 				// supply_amount must not be zero
-		&& collateral_balance >= supply_amount		// can afford supply_amount
+		&& collateral_balance >= supply_amount		// make sure supply can afford target debit amount
 		&& slippage_limit > Ratio::from_natural(0)	// slippage_limit must be greater than zero
 		&& slippage.map_or(false, |s| s <= slippage_limit)
 		{

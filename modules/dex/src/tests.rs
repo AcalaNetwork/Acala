@@ -9,7 +9,7 @@ use mock::{DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, AC
 #[test]
 fn calculate_swap_target_amount_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(DexModule::calculate_swap_target_amount(10000, 10000, 10000), 4950);
+		assert!(DexModule::calculate_swap_target_amount(10000, 10000, 10000) <= 4950);
 		// when target pool is 1
 		assert_eq!(DexModule::calculate_swap_target_amount(10000, 1, 10000), 0);
 		// when supply is too big
@@ -22,8 +22,41 @@ fn calculate_swap_target_amount_work() {
 #[test]
 fn calculate_swap_supply_amount_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert!(DexModule::calculate_swap_supply_amount(10000, 10000, 4950) <= 10000);
-		assert_eq!(DexModule::calculate_swap_supply_amount(10000, 1, 1), 0);
+		assert!(DexModule::calculate_swap_supply_amount(10000, 10000, 4950) >= 10000);
+		// when target amount is too big
+		assert_eq!(DexModule::calculate_swap_supply_amount(10000, 10000, 10000), 0);
+		// when target amount is zero
+		assert_eq!(DexModule::calculate_swap_supply_amount(10000, 10000, 0), 0);
+	});
+}
+
+#[test]
+fn make_sure_get_supply_amount_needed_can_affort_target() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC,
+			500000000000,
+			100000000000000000
+		));
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(BOB),
+			DOT,
+			80000000000,
+			4000000000000000
+		));
+
+		let target_amount_btc_ausd = 90000000000000;
+		let surply_amount_btc_ausd = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_ausd);
+		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_ausd) >= target_amount_btc_ausd);
+
+		let target_amount_ausd_dot = 8000000000000;
+		let surply_amount_ausd_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_ausd_dot);
+		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_ausd_dot) >= target_amount_ausd_dot);
+
+		let target_amount_btc_dot = 60000000000;
+		let surply_amount_btc_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_dot);
+		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_dot) >= target_amount_btc_dot);
 	});
 }
 

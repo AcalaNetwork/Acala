@@ -230,17 +230,27 @@ impl<T: Trait> Module<T> {
 		target_pool: BalanceOf<T>,
 		target_amount: BalanceOf<T>,
 	) -> BalanceOf<T> {
+		// formular:
 		// new_target_pool = target_pool - target_amount / (1 - GetExchangeFee)
 		// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
-		Rate::from_natural(1)
-			.checked_sub(&T::GetExchangeFee::get())
-			.and_then(|n| Ratio::from_natural(1).checked_div(&n))
-			.and_then(|n| n.checked_mul_int(&target_amount))
-			.and_then(|n| target_pool.checked_sub(&n))
-			.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
-			.and_then(|n| n.checked_mul_int(&target_pool))
-			.and_then(|n| n.checked_sub(&supply_pool))
-			.unwrap_or_default()
+
+		// TODO : determine if there is a remainder before adding 1 in multiple calculation of FixedU128
+		// that needs FixedU128 supporting new mul function
+		if target_amount.is_zero() {
+			Zero::zero()
+		} else {
+			Rate::from_natural(1)
+				.checked_sub(&T::GetExchangeFee::get())
+				.and_then(|n| Ratio::from_natural(1).checked_div(&n))
+				.and_then(|n| n.checked_mul_int(&target_amount))
+				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| target_pool.checked_sub(&n))
+				.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
+				.and_then(|n| n.checked_mul_int(&target_pool))
+				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| n.checked_sub(&supply_pool))
+				.unwrap_or_default()
+		}
 	}
 
 	// use other currency to swap base currency
