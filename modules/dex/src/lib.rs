@@ -7,7 +7,7 @@ use sp_runtime::{
 		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating,
 		UniqueSaturatedInto, Zero,
 	},
-	DispatchResult, ModuleId,
+	DispatchError, ModuleId,
 };
 use support::{DexManager, Price, Rate, Ratio};
 use system::{self as system, ensure_signed};
@@ -230,17 +230,27 @@ impl<T: Trait> Module<T> {
 		target_pool: BalanceOf<T>,
 		target_amount: BalanceOf<T>,
 	) -> BalanceOf<T> {
+		// formular:
 		// new_target_pool = target_pool - target_amount / (1 - GetExchangeFee)
 		// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
-		Rate::from_natural(1)
-			.checked_sub(&T::GetExchangeFee::get())
-			.and_then(|n| Ratio::from_natural(1).checked_div(&n))
-			.and_then(|n| n.checked_mul_int(&target_amount))
-			.and_then(|n| target_pool.checked_sub(&n))
-			.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
-			.and_then(|n| n.checked_mul_int(&target_pool))
-			.and_then(|n| n.checked_sub(&supply_pool))
-			.unwrap_or_default()
+
+		// TODO : determine if there is a remainder before adding 1 in multiple calculation of FixedU128
+		// that needs FixedU128 supporting new mul function
+		if target_amount.is_zero() {
+			Zero::zero()
+		} else {
+			Rate::from_natural(1)
+				.checked_sub(&T::GetExchangeFee::get())
+				.and_then(|n| Ratio::from_natural(1).checked_div(&n))
+				.and_then(|n| n.checked_mul_int(&target_amount))
+				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| target_pool.checked_sub(&n))
+				.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
+				.and_then(|n| n.checked_mul_int(&target_pool))
+				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| n.checked_sub(&supply_pool))
+				.unwrap_or_default()
+		}
 	}
 
 	// use other currency to swap base currency
@@ -248,22 +258,28 @@ impl<T: Trait> Module<T> {
 		who: T::AccountId,
 		other_currency_id: CurrencyIdOf<T>,
 		other_currency_amount: BalanceOf<T>,
-		min_base_currency_amount: BalanceOf<T>,
-	) -> DispatchResult {
+		acceptable_base_currency_amount: BalanceOf<T>,
+	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		// 1. ensure supply amount must > 0 and account has sufficient balance
 		ensure!(
 			!other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_amount).is_ok(),
 			Error::<T>::TokenNotEnough,
 		);
+
+		// 2. calculate the base currency amount can get
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
 		let base_currency_amount =
 			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, other_currency_amount);
+
+		// 3. ensure the amount can get is not 0 and >= minium acceptable
 		ensure!(
-			base_currency_amount >= min_base_currency_amount,
+			!base_currency_amount.is_zero() && base_currency_amount >= acceptable_base_currency_amount,
 			Error::<T>::InacceptablePrice,
 		);
 
+		// 4. transfer token between account and dex and update liquidity pool
 		T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_amount)
 			.expect("never failed because after checks");
 		T::Currency::transfer(base_currency_id, &Self::account_id(), &who, base_currency_amount)
@@ -274,6 +290,7 @@ impl<T: Trait> Module<T> {
 				pool.1.saturating_sub(base_currency_amount),
 			);
 		});
+
 		Self::deposit_event(RawEvent::Swap(
 			who,
 			other_currency_id,
@@ -281,7 +298,7 @@ impl<T: Trait> Module<T> {
 			base_currency_id,
 			base_currency_amount,
 		));
-		Ok(())
+		Ok(base_currency_amount)
 	}
 
 	// use base currency to swap other currency
@@ -289,19 +306,20 @@ impl<T: Trait> Module<T> {
 		who: T::AccountId,
 		other_currency_id: CurrencyIdOf<T>,
 		base_currency_amount: BalanceOf<T>,
-		min_other_currency_amount: BalanceOf<T>,
-	) -> DispatchResult {
+		acceptable_other_currency_amount: BalanceOf<T>,
+	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		ensure!(
 			!base_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_amount).is_ok(),
 			Error::<T>::TokenNotEnough,
 		);
+
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
 		let other_currency_amount =
 			Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, base_currency_amount);
 		ensure!(
-			other_currency_amount >= min_other_currency_amount,
+			!other_currency_amount.is_zero() && other_currency_amount >= acceptable_other_currency_amount,
 			Error::<T>::InacceptablePrice,
 		);
 
@@ -315,6 +333,7 @@ impl<T: Trait> Module<T> {
 				pool.1.saturating_add(base_currency_amount),
 			);
 		});
+
 		Self::deposit_event(RawEvent::Swap(
 			who,
 			base_currency_id,
@@ -322,7 +341,7 @@ impl<T: Trait> Module<T> {
 			other_currency_id,
 			other_currency_amount,
 		));
-		Ok(())
+		Ok(other_currency_amount)
 	}
 
 	// use other currency to swap another other currency
@@ -331,14 +350,15 @@ impl<T: Trait> Module<T> {
 		supply_other_currency_id: CurrencyIdOf<T>,
 		supply_other_currency_amount: BalanceOf<T>,
 		target_other_currency_id: CurrencyIdOf<T>,
-		min_target_other_currency_amount: BalanceOf<T>,
-	) -> DispatchResult {
+		acceptable_target_other_currency_amount: BalanceOf<T>,
+	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		ensure!(
 			!supply_other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(supply_other_currency_id, &who, supply_other_currency_amount)
 					.is_ok(),
 			Error::<T>::TokenNotEnough,
 		);
+
 		let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_other_currency_id);
 		let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
 			supply_other_currency_pool,
@@ -352,7 +372,8 @@ impl<T: Trait> Module<T> {
 			intermediate_base_currency_amount,
 		);
 		ensure!(
-			target_other_currency_amount >= min_target_other_currency_amount,
+			!target_other_currency_amount.is_zero()
+				&& target_other_currency_amount >= acceptable_target_other_currency_amount,
 			Error::<T>::InacceptablePrice,
 		);
 
@@ -382,6 +403,7 @@ impl<T: Trait> Module<T> {
 				pool.1.saturating_add(intermediate_base_currency_amount),
 			);
 		});
+
 		Self::deposit_event(RawEvent::Swap(
 			who,
 			supply_other_currency_id,
@@ -389,7 +411,7 @@ impl<T: Trait> Module<T> {
 			target_other_currency_id,
 			target_other_currency_amount,
 		));
-		Ok(())
+		Ok(target_other_currency_amount)
 	}
 
 	// get the minimum amount of supply currency needed for the target currency amount
@@ -470,7 +492,7 @@ impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 		who: T::AccountId,
 		supply: (CurrencyIdOf<T>, BalanceOf<T>),
 		target: (CurrencyIdOf<T>, BalanceOf<T>),
-	) -> DispatchResult {
+	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		ensure!(target.0 != supply.0, Error::<T>::CanNotSwapItself);
 		if target.0 == base_currency_id {
