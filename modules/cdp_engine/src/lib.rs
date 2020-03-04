@@ -608,9 +608,11 @@ impl<T: Trait> Module<T> {
 
 		// forth: handle bad debt and collateral
 		if !supply_amount.is_zero() 				// supply_amount must not be zero
-		&& collateral_balance >= supply_amount		// make sure supply can afford target debit amount
+		&& collateral_balance >= supply_amount		// ensure have sufficient collateral
 		&& slippage_limit > Ratio::from_natural(0)	// slippage_limit must be greater than zero
 		&& slippage.map_or(false, |s| s <= slippage_limit)
+		&& T::Dex::get_target_amount(currency_id, stable_currency_id, supply_amount) >= target
+		// ensure supply can afford target
 		{
 			// directly exchange with DEX
 			// deposit supply_amount collateral to cdp treasury

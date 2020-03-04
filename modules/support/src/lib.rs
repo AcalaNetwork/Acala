@@ -49,6 +49,12 @@ pub trait AuctionManagerExtended<AccountId>: AuctionManager<AccountId> {
 }
 
 pub trait DexManager<AccountId, CurrencyId, Balance> {
+	fn get_target_amount(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		supply_currency_amount: Balance,
+	) -> Balance;
+
 	fn get_supply_amount(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
@@ -72,12 +78,20 @@ impl<AccountId, CurrencyId, Balance> DexManager<AccountId, CurrencyId, Balance> 
 where
 	Balance: Default,
 {
+	fn get_target_amount(
+		_supply_currency_id: CurrencyId,
+		_target_currency_id: CurrencyId,
+		_supply_currency_amount: Balance,
+	) -> Balance {
+		Default::default()
+	}
+
 	fn get_supply_amount(
 		_supply_currency_id: CurrencyId,
 		_target_currency_id: CurrencyId,
 		_target_currency_amount: Balance,
 	) -> Balance {
-		Balance::default()
+		Default::default()
 	}
 
 	fn exchange_currency(
