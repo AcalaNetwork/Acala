@@ -73,5 +73,6 @@ members = [
 	"orml/traits",
 	"orml/utilities",
 	"orml/vesting",
+	"orml/gradually-update",
 ]
 exclude = [ "runtime/wasm" ]
