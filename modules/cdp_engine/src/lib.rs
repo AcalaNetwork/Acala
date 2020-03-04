@@ -612,7 +612,7 @@ impl<T: Trait> Module<T> {
 		&& slippage_limit > Ratio::from_natural(0)	// slippage_limit must be greater than zero
 		&& slippage.map_or(false, |s| s <= slippage_limit)
 		&& T::Dex::get_target_amount(currency_id, stable_currency_id, supply_amount) >= target
-		// ensure can supply can afford target
+		// ensure supply can afford target
 		{
 			// directly exchange with DEX
 			// deposit supply_amount collateral to cdp treasury
