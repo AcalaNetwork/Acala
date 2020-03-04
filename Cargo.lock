@@ -3090,6 +3090,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-gradually-update"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-utilities",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-oracle"
 version = "0.0.1"
 dependencies = [
