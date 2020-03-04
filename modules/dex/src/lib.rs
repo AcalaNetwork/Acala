@@ -242,10 +242,12 @@ impl<T: Trait> Module<T> {
 			Rate::from_natural(1)
 				.checked_sub(&T::GetExchangeFee::get())
 				.and_then(|n| Ratio::from_natural(1).checked_div(&n))
+				.and_then(|n| Ratio::from_parts(1).checked_add(&n)) // add Ratio::from_parts(1) to correct the possible losses caused by discarding the remainder in inner division
 				.and_then(|n| n.checked_mul_int(&target_amount))
 				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
 				.and_then(|n| target_pool.checked_sub(&n))
 				.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
+				.and_then(|n| Ratio::from_parts(1).checked_add(&n)) // add Ratio::from_parts(1) to correct the possible losses caused by discarding the remainder in inner division
 				.and_then(|n| n.checked_mul_int(&target_pool))
 				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
 				.and_then(|n| n.checked_sub(&supply_pool))
@@ -480,6 +482,14 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
+	fn get_target_amount(
+		supply_currency_id: CurrencyIdOf<T>,
+		target_currency_id: CurrencyIdOf<T>,
+		supply_currency_amount: BalanceOf<T>,
+	) -> BalanceOf<T> {
+		Self::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
+	}
+
 	fn get_supply_amount(
 		supply_currency_id: CurrencyIdOf<T>,
 		target_currency_id: CurrencyIdOf<T>,
