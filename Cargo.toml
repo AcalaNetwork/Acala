@@ -22,57 +22,57 @@ serde = { version = "1.0.102", features = ["derive"] }
 serde_json = "1.0.41"
 structopt = "0.3.8"
 
-pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate" }
-sc-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
-sc-basic-authorship = { git = "https://github.com/paritytech/substrate.git"}
-sc-chain-spec = { git = "https://github.com/paritytech/substrate.git" }
-sc-cli = { git = "https://github.com/paritytech/substrate.git" }
-sc-client = { git = "https://github.com/paritytech/substrate.git" }
-sc-client-api = { git = "https://github.com/paritytech/substrate.git" }
-sc-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
-sc-consensus-babe-rpc = { git = "https://github.com/paritytech/substrate.git" }
-sc-consensus-epochs = { git = "https://github.com/paritytech/substrate.git" }
-sc-executor = { git = "https://github.com/paritytech/substrate.git" }
-sc-finality-grandpa = { git = "https://github.com/paritytech/substrate.git" }
-sc-keystore = { git = "https://github.com/paritytech/substrate.git" }
-sc-network = { git = "https://github.com/paritytech/substrate.git" }
-sc-offchain = { git = "https://github.com/paritytech/substrate.git" }
-sc-rpc = { git = "https://github.com/paritytech/substrate" }
-sc-service = { git = "https://github.com/paritytech/substrate.git" }
-sc-telemetry = { git = "https://github.com/paritytech/substrate.git" }
-sc-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
-sp-api = { git = "https://github.com/paritytech/substrate.git" }
-sp-consensus = { git = "https://github.com/paritytech/substrate.git" }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
-sp-core = { git = "https://github.com/paritytech/substrate.git" }
-sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git" }
-sp-inherents = { git = "https://github.com/paritytech/substrate.git" }
-sp-io = { git = "https://github.com/paritytech/substrate.git" }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
-sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
-substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate" }
+pallet-transaction-payment-rpc = { version = "2.0.0-alpha.3" }
+sc-authority-discovery = { version = "0.8.0-alpha.3" }
+sc-basic-authorship = { version = "0.8.0-alpha.3"}
+sc-chain-spec = { version = "2.0.0-alpha.3" }
+sc-cli = { version = "0.8.0-alpha.3" }
+sc-client = { version = "0.8.0-alpha.3" }
+sc-client-api = { version = "2.0.0-alpha.3" }
+sc-consensus-babe = { version = "0.8.0-alpha.3" }
+sc-consensus-babe-rpc = { version = "0.8.0-alpha.3" }
+sc-consensus-epochs = { version = "0.8.0-alpha.3" }
+sc-executor = { version = "0.8.0-alpha.3" }
+sc-finality-grandpa = { version = "0.8.0-alpha.3" }
+sc-keystore = { version = "2.0.0-alpha.3" }
+sc-network = { version = "0.8.0-alpha.3" }
+sc-offchain = { version = "2.0.0-alpha.3" }
+sc-rpc = { version = "2.0.0-alpha.3" }
+sc-service = { version = "0.8.0-alpha.3" }
+sc-telemetry = { version = "2.0.0-alpha.3" }
+sc-transaction-pool = { version = "2.0.0-alpha.3" }
+sp-api = { version = "2.0.0-alpha.3" }
+sp-consensus = { version = "0.8.0-alpha.3" }
+sp-consensus-babe = { version = "0.8.0-alpha.3" }
+sp-core = { version = "2.0.0-alpha.3" }
+sp-finality-grandpa = { version = "2.0.0-alpha.3" }
+sp-inherents = { version = "2.0.0-alpha.3" }
+sp-io = { version = "2.0.0-alpha.3" }
+sp-runtime = { version = "2.0.0-alpha.3" }
+sp-transaction-pool = { version = "2.0.0-alpha.3" }
+substrate-frame-rpc-system = { version = "2.0.0-alpha.3" }
 
-orml-oracle-rpc = { path = "orml/oracle/rpc" }
 module-dex-rpc = { path = "modules/dex/rpc" }
+orml-oracle-rpc = { path = "orml/oracle/rpc" }
 orml-utilities = { path = "orml/utilities" }
 runtime = { package = "acala-runtime", path = "runtime" }
 
 [build-dependencies]
 vergen = "3.0.4"
-build-script-utils = { package = "substrate-build-script-utils", git = "https://github.com/paritytech/substrate.git" }
+build-script-utils = { package = "substrate-build-script-utils", version = "2.0.0-alpha.3" }
 
 [workspace]
 members = [
-	"runtime",
 	"modules/*",
 	"orml/auction",
 	"orml/currencies",
+	"orml/gradually-update",
 	"orml/oracle",
 	"orml/prices",
 	"orml/tokens",
 	"orml/traits",
 	"orml/utilities",
 	"orml/vesting",
-	"orml/gradually-update",
+	"runtime",
 ]
 exclude = [ "runtime/wasm" ]
