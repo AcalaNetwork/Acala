@@ -3,8 +3,9 @@
   "id": "mandala22",
   "bootNodes": [
 	"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
-	"/ip4/140.82.61.232/tcp/30333/p2p/QmS65JgH4ocbqxbGdrXo25Ufk1YQPV45qVDhkYLwaJXynS",
-	"/dns4/mandala-01.acala.network/tcp/30334/p2p/QmVLjCXppsqUAt1GJKhjrTSkTuChM7fWPgzBZ3AWmdTM4f"
+	"/ip4/140.82.61.232/tcp/30333/p2p/QmasTVEbNxPJtgyjU7rkAY7KGBxnUEMR5JHNRLzUCmYpVW",
+	"/dns4/libp2p.jm.onfinality.io/tcp/19337/p2p/QmTWJxo4A2Cs24vL3bD3fKTXppPASYtWcxmrk62SxEJpmo",
+	"/dns4/libp2p.rz.onfinality.io/tcp/31138/p2p/QmbmMHe4pPG7WBNWQev7i1vBgLWgmXTHLvhKjx5gHR8W5v"
   ],
   "telemetryEndpoints": [
     [
