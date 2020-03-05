@@ -1,6 +1,6 @@
 [package]
 name = "module-dex-rpc"
-version = "0.3.2"
+version = "0.3.4"
 authors = ["Acala Developers"]
 edition = "2018"
 
