@@ -125,7 +125,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
 		}
 
-		pub fn refund_collaterals(origin, amount: BalanceOf<T>) {
+		pub fn refund_collaterals(origin, #[compact] amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
