@@ -63,7 +63,7 @@ The Acala Network Token (ACA) features the following utilities, and the value of
 2. As Governance Token: to vote for/against risk parameters and network change proposals
 3. As Economic Capital: in case of liquidation without sufficient collaterals
 
-To enable cross-chain functionality, the Acala Network will connect to the Polkadot in one of the three ways: 
+To enable cross-chain functionality, the Acala Network will connect to the Polkadot in one of the three ways:
 1. as parathread - pay-as-you-go connection to Polkadot
 2. as parachain - permanent connection for a given period
 3. as an independent chain with a bridge back to Polkadot
@@ -73,6 +73,12 @@ Becoming a parachain would be an ideal option to bootstrap the Acala Network, an
 Note: This section is still work in progress, we will update more information as we progress. Refer to the [token economy working paper](https://github.com/AcalaNetwork/Acala-white-paper) for more details.
 
 # 3. Building
+
+## NOTE
+
+To connect on the "Mandala TC2" network, you will want the version `~0.3.2` code which is in this repo.
+
+- **Mandala TC2** is in this [Acala](https://github.com/AcalaNetwork/Acala/tree/mandala) repo branch `mandala`.
 
 Install Rust:
 
