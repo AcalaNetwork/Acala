@@ -74,9 +74,9 @@ decl_module! {
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyIdOf<T>,
-			supply_amount: BalanceOf<T>,
+			#[compact] supply_amount: BalanceOf<T>,
 			target_currency_id: CurrencyIdOf<T>,
-			acceptable_target_amount: BalanceOf<T>,
+			#[compact] acceptable_target_amount: BalanceOf<T>,
 		) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
