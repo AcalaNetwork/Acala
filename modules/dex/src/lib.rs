@@ -71,20 +71,26 @@ decl_module! {
 		const GetBaseCurrencyId: CurrencyIdOf<T> = T::GetBaseCurrencyId::get();
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
-		pub fn swap_currency(origin, supply: (CurrencyIdOf<T>, BalanceOf<T>), target: (CurrencyIdOf<T>, BalanceOf<T>)) {
+		pub fn swap_currency(
+			origin,
+			supply_currency_id: CurrencyIdOf<T>,
+			#[compact] supply_amount: BalanceOf<T>,
+			target_currency_id: CurrencyIdOf<T>,
+			#[compact] acceptable_target_amount: BalanceOf<T>,
+		) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
-				target.0 != supply.0,
+				supply_currency_id != target_currency_id,
 				Error::<T>::CanNotSwapItself,
 			);
 
-			if target.0 == base_currency_id {
-				Self::swap_other_to_base(who, supply.0, supply.1, target.1)?;
-			} else if supply.0 == base_currency_id {
-				Self::swap_base_to_other(who, target.0, supply.1, target.1)?;
+			if target_currency_id == base_currency_id {
+				Self::swap_other_to_base(who, supply_currency_id, supply_amount, acceptable_target_amount)?;
+			} else if supply_currency_id == base_currency_id {
+				Self::swap_base_to_other(who, target_currency_id, supply_amount, acceptable_target_amount)?;
 			} else {
-				Self::swap_other_to_other(who, supply.0, supply.1, target.0, target.1)?;
+				Self::swap_other_to_other(who, supply_currency_id, supply_amount, target_currency_id, acceptable_target_amount)?;
 			}
 		}
 
@@ -505,17 +511,25 @@ impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 
 	fn exchange_currency(
 		who: T::AccountId,
-		supply: (CurrencyIdOf<T>, BalanceOf<T>),
-		target: (CurrencyIdOf<T>, BalanceOf<T>),
+		supply_currency_id: CurrencyIdOf<T>,
+		supply_amount: BalanceOf<T>,
+		target_currency_id: CurrencyIdOf<T>,
+		acceptable_target_amount: BalanceOf<T>,
 	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
-		ensure!(target.0 != supply.0, Error::<T>::CanNotSwapItself);
-		if target.0 == base_currency_id {
-			Self::swap_other_to_base(who, supply.0, supply.1, target.1)
-		} else if supply.0 == base_currency_id {
-			Self::swap_base_to_other(who, target.0, supply.1, target.1)
+		ensure!(target_currency_id != supply_currency_id, Error::<T>::CanNotSwapItself);
+		if target_currency_id == base_currency_id {
+			Self::swap_other_to_base(who, supply_currency_id, supply_amount, acceptable_target_amount)
+		} else if supply_currency_id == base_currency_id {
+			Self::swap_base_to_other(who, target_currency_id, supply_amount, acceptable_target_amount)
 		} else {
-			Self::swap_other_to_other(who, supply.0, supply.1, target.0, target.1)
+			Self::swap_other_to_other(
+				who,
+				supply_currency_id,
+				supply_amount,
+				target_currency_id,
+				acceptable_target_amount,
+			)
 		}
 	}
 

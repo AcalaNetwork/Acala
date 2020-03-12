@@ -253,8 +253,10 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 	) {
 		if let Ok(amount) = T::Dex::exchange_currency(
 			Self::account_id(),
-			(currency_id, supply_amount),
-			(T::GetStableCurrencyId::get(), target_amount),
+			currency_id,
+			supply_amount,
+			T::GetStableCurrencyId::get(),
+			target_amount,
 		) {
 			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= supply_amount);
 			<SurplusPool<T>>::mutate(|surplus| *surplus += amount);

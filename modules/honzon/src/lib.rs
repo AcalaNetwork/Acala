@@ -3,6 +3,7 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use rstd::convert::TryInto;
 use sp_runtime::{traits::Zero, DispatchResult};
 use support::EmergencyShutdown;
 
@@ -13,6 +14,7 @@ pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
+type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
@@ -43,6 +45,7 @@ decl_error! {
 		LiquidateFailed,
 		AlreadyShutdown,
 		MustAfterShutdown,
+		AmountConvertFailed,
 	}
 }
 
@@ -81,12 +84,13 @@ decl_module! {
 		pub fn withdraw_collateral(
 			origin,
 			currency_id: CurrencyIdOf<T>,
-			collateral: AmountOf<T>,
+			#[compact] withdraw_amount: BalanceOf<T>,
 		) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 
-			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, T::DebitAmount::zero())?;
+			let adjust_amount = TryInto::<AmountOf<T>>::try_into(withdraw_amount).map_err(|_| Error::<T>::AmountConvertFailed)?;
+			<cdp_engine::Module<T>>::update_position(&who, currency_id, -adjust_amount, T::DebitAmount::zero())?;
 		}
 
 		pub fn transfer_loan_from(
