@@ -219,20 +219,16 @@ fn swap_currency_work() {
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 1000, 10000));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, BTC, 100));
 		assert_noop!(
-			DexModule::swap_currency(Origin::signed(CAROL), (BTC, 10000), (BTC, 1000)),
+			DexModule::swap_currency(Origin::signed(CAROL), BTC, 10000, BTC, 1000),
 			Error::<Runtime>::CanNotSwapItself,
 		);
 		assert_noop!(
-			DexModule::swap_currency(Origin::signed(CAROL), (BTC, 101), (DOT, 1000)),
+			DexModule::swap_currency(Origin::signed(CAROL), BTC, 101, DOT, 1000),
 			Error::<Runtime>::TokenNotEnough,
 		);
-		assert_ok!(DexModule::swap_currency(
-			Origin::signed(CAROL),
-			(BTC, 100),
-			(AUSD, 4950)
-		));
-		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), (AUSD, 4950), (BTC, 90)));
-		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), (BTC, 90), (DOT, 300)));
+		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), BTC, 100, AUSD, 4950));
+		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), AUSD, 4950, BTC, 90));
+		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), BTC, 90, DOT, 300));
 	});
 }
 
@@ -243,22 +239,16 @@ fn exchange_currency_work() {
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 1000, 10000));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, BTC, 100));
 		assert_noop!(
-			DexModule::exchange_currency(CAROL, (BTC, 10000), (BTC, 1000)),
+			DexModule::exchange_currency(CAROL, BTC, 10000, BTC, 1000),
 			Error::<Runtime>::CanNotSwapItself
 		);
 		assert_noop!(
-			DexModule::exchange_currency(CAROL, (BTC, 101), (DOT, 1000)),
+			DexModule::exchange_currency(CAROL, BTC, 101, DOT, 1000),
 			Error::<Runtime>::TokenNotEnough
 		);
-		assert_eq!(
-			DexModule::exchange_currency(CAROL, (BTC, 100), (AUSD, 4950)).is_ok(),
-			true
-		);
-		assert_eq!(
-			DexModule::exchange_currency(CAROL, (AUSD, 4950), (BTC, 90)).is_ok(),
-			true
-		);
-		assert_eq!(DexModule::exchange_currency(CAROL, (BTC, 90), (DOT, 300)).is_ok(), true);
+		assert_eq!(DexModule::exchange_currency(CAROL, BTC, 100, AUSD, 4950).is_ok(), true);
+		assert_eq!(DexModule::exchange_currency(CAROL, AUSD, 4950, BTC, 90).is_ok(), true);
+		assert_eq!(DexModule::exchange_currency(CAROL, BTC, 90, DOT, 300).is_ok(), true);
 	});
 }
 
@@ -268,7 +258,7 @@ fn get_supply_amount_work() {
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000));
 		let supply_amount = DexModule::get_supply_amount(BTC, AUSD, 4950);
 		assert_eq!(
-			DexModule::exchange_currency(BOB, (BTC, supply_amount), (AUSD, 4950)).is_ok(),
+			DexModule::exchange_currency(BOB, BTC, supply_amount, AUSD, 4950).is_ok(),
 			true
 		);
 	});

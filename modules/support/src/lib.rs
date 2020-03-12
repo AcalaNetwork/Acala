@@ -63,8 +63,10 @@ pub trait DexManager<AccountId, CurrencyId, Balance> {
 
 	fn exchange_currency(
 		who: AccountId,
-		supply: (CurrencyId, Balance),
-		target: (CurrencyId, Balance),
+		supply_currency_id: CurrencyId,
+		supply_amount: Balance,
+		target_currency_id: CurrencyId,
+		acceptable_target_amount: Balance,
 	) -> rstd::result::Result<Balance, DispatchError>;
 
 	fn get_exchange_slippage(
@@ -96,8 +98,10 @@ where
 
 	fn exchange_currency(
 		_who: AccountId,
-		_supply: (CurrencyId, Balance),
-		_target: (CurrencyId, Balance),
+		_supply_currency_id: CurrencyId,
+		_supply_amount: Balance,
+		_target_currency_id: CurrencyId,
+		_acceptable_target_amount: Balance,
 	) -> rstd::result::Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
