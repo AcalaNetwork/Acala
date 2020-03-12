@@ -198,6 +198,7 @@ fn settle_cdp_work() {
 #[test]
 fn withdraw_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 0));
 		assert_noop!(
 			HonzonModule::withdraw_collateral(Origin::signed(ALICE), BTC, 100),
 			Error::<Runtime>::MustAfterShutdown,
