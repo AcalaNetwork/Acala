@@ -189,7 +189,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 	}
 
 	fn on_system_surplus(amount: Self::Balance) {
-		if T::Currency::balance(T::GetStableCurrencyId::get(), &Self::account_id())
+		if T::Currency::free_balance(T::GetStableCurrencyId::get(), &Self::account_id())
 			.checked_add(&amount)
 			.is_some()
 		{
@@ -208,7 +208,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 	}
 
 	fn deposit_system_collateral(currency_id: Self::CurrencyId, amount: Self::Balance) {
-		if T::Currency::balance(currency_id, &Self::account_id())
+		if T::Currency::free_balance(currency_id, &Self::account_id())
 			.checked_add(&amount)
 			.is_some()
 		{

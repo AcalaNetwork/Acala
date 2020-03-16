@@ -122,7 +122,7 @@ impl<T: Trait> Module<T> {
 				// if these's bid, refund native token to the bidder
 				if let Some((bidder, bid_price)) = auction_info.bid {
 					let native_currency_id = T::GetNativeCurrencyId::get();
-					if T::Currency::balance(native_currency_id, &bidder)
+					if T::Currency::free_balance(native_currency_id, &bidder)
 						.checked_add(&bid_price)
 						.is_some()
 					{
@@ -163,7 +163,7 @@ impl<T: Trait> Module<T> {
 				// if these's bid, refund stable token to the bidder
 				if let Some((bidder, _)) = auction_info.bid {
 					let stable_currency_id = T::GetStableCurrencyId::get();
-					if T::Currency::balance(stable_currency_id, &bidder)
+					if T::Currency::free_balance(stable_currency_id, &bidder)
 						.checked_add(&debit_auction.fix)
 						.is_some()
 					{
@@ -202,7 +202,7 @@ impl<T: Trait> Module<T> {
 			if let Some(auction_info) = T::Auction::auction_info(id) {
 				// if these's bid, refund stable token to the bidder
 				if let Some((bidder, bid_price)) = auction_info.bid {
-					if T::Currency::balance(stable_currency_id, &bidder)
+					if T::Currency::free_balance(stable_currency_id, &bidder)
 						.checked_add(&bid_price)
 						.is_some()
 					{
@@ -343,7 +343,7 @@ impl<T: Trait> Module<T> {
 				last_price,
 				collateral_auction.target,
 				Self::get_minimum_increment_size(now, collateral_auction.start_time),
-			) && T::Currency::balance(stable_currency_id, &new_bid.0) >= payment
+			) && T::Currency::free_balance(stable_currency_id, &new_bid.0) >= payment
 			{
 				let module_account = Self::account_id();
 				let mut surplus_increment = payment;
@@ -540,7 +540,7 @@ impl<T: Trait> Module<T> {
 				collateral_auction.amount,
 				Self::total_collateral_in_auction(collateral_auction.currency_id),
 			);
-			if T::Currency::balance(collateral_auction.currency_id, &bidder)
+			if T::Currency::free_balance(collateral_auction.currency_id, &bidder)
 				.checked_add(&amount)
 				.is_some()
 			{
@@ -566,7 +566,7 @@ impl<T: Trait> Module<T> {
 		if let Some(debit_auction) = Self::debit_auctions(id) {
 			if let Some((bidder, _)) = winner {
 				// issue the amount of native token to winner
-				if T::Currency::balance(T::GetNativeCurrencyId::get(), &bidder)
+				if T::Currency::free_balance(T::GetNativeCurrencyId::get(), &bidder)
 					.checked_add(&debit_auction.amount)
 					.is_some()
 				{
@@ -611,7 +611,7 @@ impl<T: Trait> Module<T> {
 	pub fn surplus_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
 		if let (Some(surplus_auction), Some((bidder, _))) = (Self::surplus_auctions(id), winner) {
 			// transfer the amount of stable token from module to winner
-			if T::Currency::balance(T::GetStableCurrencyId::get(), &bidder)
+			if T::Currency::free_balance(T::GetStableCurrencyId::get(), &bidder)
 				.checked_add(&surplus_auction.amount)
 				.is_some() && T::Currency::ensure_can_withdraw(
 				T::GetStableCurrencyId::get(),
@@ -686,7 +686,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		if Self::total_collateral_in_auction(currency_id)
 			.checked_add(&amount)
 			.is_some() && Self::total_target_in_auction().checked_add(&target).is_some()
-			&& T::Currency::balance(currency_id, &Self::account_id())
+			&& T::Currency::free_balance(currency_id, &Self::account_id())
 				.checked_add(&amount)
 				.is_some()
 		{
@@ -731,7 +731,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 
 	fn new_surplus_auction(amount: Self::Balance) {
 		if Self::total_surplus_in_auction().checked_add(&amount).is_some()
-			&& T::Currency::balance(T::GetStableCurrencyId::get(), &Self::account_id())
+			&& T::Currency::free_balance(T::GetStableCurrencyId::get(), &Self::account_id())
 				.checked_add(&amount)
 				.is_some()
 		{

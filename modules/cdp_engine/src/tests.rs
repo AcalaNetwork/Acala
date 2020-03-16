@@ -418,13 +418,13 @@ fn update_position_work() {
 			CdpEngineModule::update_position(&ALICE, ACA, 100, 50),
 			Error::<Runtime>::NotValidCurrencyId,
 		);
-		assert_eq!(Currencies::balance(BTC, &ALICE), 1000);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 0);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
@@ -432,8 +432,8 @@ fn update_position_work() {
 			Error::<Runtime>::UpdatePositionFailed,
 		);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, -20));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 30);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 30);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 	});
@@ -473,8 +473,8 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			Some(10000),
 		));
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
@@ -498,8 +498,8 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			.any(|record| record.event == liquidate_unsafe_cdp_event));
 
 		assert_eq!(CdpTreasury::debit_pool(), 50);
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 0);
 	});
@@ -564,8 +564,8 @@ fn on_finalize_work() {
 		assert_eq!(CdpEngineModule::debit_exchange_rate(BTC), None);
 		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 30));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 30);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 30);
 		CdpEngineModule::on_finalize(2);
 		assert_eq!(
 			CdpEngineModule::debit_exchange_rate(BTC),
@@ -579,8 +579,8 @@ fn on_finalize_work() {
 		);
 		assert_eq!(CdpEngineModule::debit_exchange_rate(DOT), None);
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 0, -30));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 		CdpEngineModule::on_finalize(4);
 		assert_eq!(
 			CdpEngineModule::debit_exchange_rate(BTC),
@@ -632,7 +632,7 @@ fn settle_cdp_has_debit_work() {
 			Some(10000),
 		));
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 0));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(

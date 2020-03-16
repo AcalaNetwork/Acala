@@ -23,8 +23,8 @@ fn liquidate_unsafe_cdp_work() {
 			Some(10000),
 		));
 		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
@@ -41,8 +41,8 @@ fn liquidate_unsafe_cdp_work() {
 			None
 		));
 		assert_ok!(HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC));
-		assert_eq!(Currencies::balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 50);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 0);
 	});
