@@ -211,8 +211,8 @@ impl<T: Trait> Module<T> {
 		let collaterals_balance =
 			TryInto::<BalanceOf<T>>::try_into(collateral.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
 
-		let module_balance = T::Currency::balance(currency_id, &Self::account_id());
-		let who_balance = T::Currency::balance(currency_id, who);
+		let module_balance = T::Currency::free_balance(currency_id, &Self::account_id());
+		let who_balance = T::Currency::free_balance(currency_id, who);
 
 		if collateral.is_positive() {
 			ensure!(who_balance >= collaterals_balance, Error::<T>::CollateralInSufficient);

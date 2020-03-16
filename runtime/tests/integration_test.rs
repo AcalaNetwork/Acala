@@ -178,8 +178,8 @@ mod tests {
 					amount(100) as i128,
 					amount(500) as i128
 				));
-				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
-				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
+				assert_eq!(Currencies::free_balance(XBTC, &AccountId::from(ALICE)), amount(900));
+				assert_eq!(Currencies::free_balance(AUSD, &AccountId::from(ALICE)), amount(50));
 				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, amount(500));
 				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
 				assert_noop!(
@@ -200,8 +200,8 @@ mod tests {
 					AccountId::from(ALICE),
 					XBTC
 				));
-				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
-				assert_eq!(Currencies::balance(AUSD, &AccountId::from(ALICE)), amount(50));
+				assert_eq!(Currencies::free_balance(XBTC, &AccountId::from(ALICE)), amount(900));
+				assert_eq!(Currencies::free_balance(AUSD, &AccountId::from(ALICE)), amount(50));
 				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, 0);
 				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), 0);
 			});
@@ -258,7 +258,7 @@ mod tests {
 					amount(100) as i128,
 					0
 				));
-				assert_eq!(Currencies::balance(XBTC, &AccountId::from(ALICE)), amount(900));
+				assert_eq!(Currencies::free_balance(XBTC, &AccountId::from(ALICE)), amount(900));
 				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, 0);
 				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
 

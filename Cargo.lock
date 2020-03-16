@@ -3223,6 +3223,7 @@ name = "orml-traits"
 version = "0.0.1"
 dependencies = [
  "clear_on_drop",
+ "frame-support",
  "impl-trait-for-tuples",
  "num-traits",
  "parity-scale-codec",

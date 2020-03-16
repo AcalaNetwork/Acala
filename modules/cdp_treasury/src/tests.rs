@@ -107,10 +107,10 @@ fn create_surplus_auction_on_finailize_work() {
 		CdpTreasuryModule::on_finalize(1);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 1099);
 		CdpTreasuryModule::on_system_surplus(102);
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 1201);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 1201);
 		CdpTreasuryModule::on_finalize(2);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 1001);
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 1001);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 1001);
 		assert_ok!(CdpTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::ROOT,
 			Some(0),
@@ -166,7 +166,7 @@ fn create_debit_auction_on_finailize_work() {
 #[test]
 fn on_system_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 0);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 0);
 		CdpTreasuryModule::on_system_debit(1000);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 1000);
@@ -176,10 +176,10 @@ fn on_system_debit_work() {
 #[test]
 fn on_system_surplus_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 0);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 0);
 		CdpTreasuryModule::on_system_surplus(1000);
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 1000);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 1000);
 	});
 }
@@ -187,26 +187,26 @@ fn on_system_surplus_work() {
 #[test]
 fn offset_debit_and_surplus_on_finalize_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 0);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 0);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 0);
 		CdpTreasuryModule::on_system_surplus(1000);
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 1000);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 1000);
 		CdpTreasuryModule::on_finalize(1);
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 1000);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 1000);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 0);
 		CdpTreasuryModule::on_system_debit(300);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 300);
 		CdpTreasuryModule::on_finalize(2);
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 700);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 700);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 700);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 0);
 		CdpTreasuryModule::on_system_debit(800);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 800);
 		CdpTreasuryModule::on_finalize(3);
-		assert_eq!(Currencies::balance(AUSD, &CdpTreasuryModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &CdpTreasuryModule::account_id()), 0);
 		assert_eq!(CdpTreasuryModule::surplus_pool(), 0);
 		assert_eq!(CdpTreasuryModule::debit_pool(), 100);
 	});
@@ -215,18 +215,18 @@ fn offset_debit_and_surplus_on_finalize_work() {
 #[test]
 fn deposit_backed_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 1000);
 		assert_ok!(CdpTreasuryModule::deposit_backed_debit(&ALICE, 1000));
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 2000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 2000);
 	});
 }
 
 #[test]
 fn withdraw_backed_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 1000);
 		assert_ok!(CdpTreasuryModule::withdraw_backed_debit(&ALICE, 1000));
-		assert_eq!(Currencies::balance(AUSD, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 		assert_noop!(
 			CdpTreasuryModule::withdraw_backed_debit(&ALICE, 1000),
 			orml_tokens::Error::<Runtime>::BalanceTooLow,
@@ -261,10 +261,10 @@ fn emergency_shutdown_work() {
 fn deposit_system_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 0);
-		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(BTC, &CdpTreasuryModule::account_id()), 0);
 		CdpTreasuryModule::deposit_system_collateral(BTC, 100);
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 100);
-		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 100);
+		assert_eq!(Currencies::free_balance(BTC, &CdpTreasuryModule::account_id()), 100);
 	});
 }
 
@@ -273,15 +273,15 @@ fn transfer_system_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		CdpTreasuryModule::deposit_system_collateral(BTC, 500);
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 500);
-		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 500);
+		assert_eq!(Currencies::free_balance(BTC, &CdpTreasuryModule::account_id()), 500);
 		assert_noop!(
 			CdpTreasuryModule::transfer_system_collateral(BTC, &BOB, 501),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 		assert_ok!(CdpTreasuryModule::transfer_system_collateral(BTC, &BOB, 400));
 		assert_eq!(CdpTreasuryModule::total_collaterals(BTC), 100);
-		assert_eq!(Currencies::balance(BTC, &CdpTreasuryModule::account_id()), 100);
-		assert_eq!(Currencies::balance(BTC, &BOB), 400);
+		assert_eq!(Currencies::free_balance(BTC, &CdpTreasuryModule::account_id()), 100);
+		assert_eq!(Currencies::free_balance(BTC, &BOB), 400);
 	});
 }
 
