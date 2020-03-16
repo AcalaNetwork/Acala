@@ -5,7 +5,7 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "1.2.0", default-features = false }
 orml-utilities = { package = "orml-utilities", path = "../../orml/utilities", default-features = false }
 sp-runtime = { version = "2.0.0-alpha.3", default-features = false }
 rstd = { package = "sp-std", version = "2.0.0-alpha.3", default-features = false }

@@ -13,7 +13,7 @@ name = "acala"
 path = "src/main.rs"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "1.0.0" }
+codec = { package = "parity-scale-codec", version = "1.2.0" }
 futures = "0.3.1"
 hex-literal = "0.2.1"
 jsonrpc-core = "14.0.3"
