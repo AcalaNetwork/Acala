@@ -7,7 +7,7 @@ mod tests {
 		Runtime,
 	};
 	use frame_support::{assert_noop, assert_ok};
-	use module_support::{Price, Rate, Ratio};
+	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
 	use sp_runtime::{traits::OnFinalize, DispatchResult};
 
@@ -172,7 +172,7 @@ mod tests {
 					Some(Some(Ratio::from_rational(9, 5))),
 					Some(amount(10000)),
 				));
-				assert_ok!(CdpEngineModule::update_position(
+				assert_ok!(CdpEngineModule::adjust_position(
 					&AccountId::from(ALICE),
 					XBTC,
 					amount(100) as i128,
@@ -182,9 +182,10 @@ mod tests {
 				assert_eq!(Currencies::free_balance(AUSD, &AccountId::from(ALICE)), amount(50));
 				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)).0, amount(500));
 				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), amount(100));
-				assert_noop!(
-					HonzonModule::liquidate(origin_of(AccountId::from(CAROL)), AccountId::from(ALICE), XBTC),
-					module_honzon::Error::<Runtime>::LiquidateFailed,
+				assert_eq!(
+					HonzonModule::liquidate_cdp(origin_of(AccountId::from(CAROL)), AccountId::from(ALICE), XBTC)
+						.is_ok(),
+					false
 				);
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as system::Trait>::Origin::ROOT,
@@ -195,7 +196,7 @@ mod tests {
 					None,
 					None
 				));
-				assert_ok!(HonzonModule::liquidate(
+				assert_ok!(HonzonModule::liquidate_cdp(
 					origin_of(AccountId::from(CAROL)),
 					AccountId::from(ALICE),
 					XBTC
@@ -249,10 +250,10 @@ mod tests {
 					Ratio::from_rational(100 * 10, 50)
 				);
 
-				assert_eq!(CdpEngineModule::exceed_debit_value_cap(XBTC, amount(99999)), false);
-				assert_eq!(CdpEngineModule::exceed_debit_value_cap(XBTC, amount(100001)), true);
+				assert_ok!(CdpEngineModule::check_debit_cap(XBTC, amount(99999)));
+				assert_eq!(CdpEngineModule::check_debit_cap(XBTC, amount(100001)).is_ok(), false);
 
-				assert_ok!(CdpEngineModule::update_position(
+				assert_ok!(CdpEngineModule::adjust_position(
 					&AccountId::from(ALICE),
 					XBTC,
 					amount(100) as i128,
@@ -272,7 +273,7 @@ mod tests {
 					(XBTC, Price::from_rational(3, 1))
 				]));
 
-				assert_ok!(CdpEngineModule::update_position(
+				assert_ok!(CdpEngineModule::adjust_position(
 					&AccountId::from(ALICE),
 					XBTC,
 					0,
@@ -284,7 +285,7 @@ mod tests {
 				assert_ok!(CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), XBTC));
 
 				let settle_cdp_in_debit_event = acala_runtime::Event::module_cdp_engine(
-					module_cdp_engine::RawEvent::SettleCdpInDebit(XBTC, AccountId::from(ALICE)),
+					module_cdp_engine::RawEvent::SettleCDPInDebit(XBTC, AccountId::from(ALICE)),
 				);
 				assert!(SystemModule::events()
 					.iter()

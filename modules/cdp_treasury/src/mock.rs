@@ -45,6 +45,7 @@ pub type Balance = u64;
 pub type Amount = i64;
 pub type CurrencyId = u32;
 pub type Share = u64;
+pub type AuctionId = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
@@ -118,12 +119,13 @@ impl dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 }
-pub type DexModule = dex::Module<Runtime>;
+pub type DEXModule = dex::Module<Runtime>;
 
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
+	type AuctionId = AuctionId;
 
 	fn new_collateral_auction(
 		_who: &AccountId,
@@ -136,6 +138,18 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {}
 
 	fn new_surplus_auction(_amount: Self::Balance) {}
+
+	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		Ok(())
+	}
+
+	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_surplus_in_auction() -> Self::Balance {
+		Default::default()
+	}
 
 	fn get_total_debit_in_auction() -> Self::Balance {
 		Default::default()
@@ -156,9 +170,9 @@ impl Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type Dex = DexModule;
+	type DEX = DEXModule;
 }
-pub type CdpTreasuryModule = Module<Runtime>;
+pub type CDPTreasuryModule = Module<Runtime>;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
@@ -167,7 +181,14 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, ACA, 1000), (ALICE, AUSD, 1000), (ALICE, BTC, 1000)],
+			endowed_accounts: vec![
+				(ALICE, ACA, 1000),
+				(ALICE, AUSD, 1000),
+				(ALICE, BTC, 1000),
+				(BOB, ACA, 1000),
+				(BOB, AUSD, 1000),
+				(BOB, BTC, 1000),
+			],
 		}
 	}
 }

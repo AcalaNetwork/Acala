@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, Currencies, ExtBuilder, HonzonModule, LoansModule, Origin, Runtime, System, TestEvent, ALICE,
+	CDPEngineModule, Currencies, ExtBuilder, HonzonModule, LoansModule, Origin, Runtime, System, TestEvent, ALICE,
 	AUSD, BOB, BTC, CAROL, DOT,
 };
 use support::{Rate, Ratio};
@@ -13,7 +13,7 @@ use support::{Rate, Ratio};
 #[test]
 fn liquidate_unsafe_cdp_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CdpEngineModule::set_collateral_params(
+		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
 			Some(Some(Rate::from_rational(1, 100000))),
@@ -22,16 +22,16 @@ fn liquidate_unsafe_cdp_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
-		assert_noop!(
-			HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC),
-			Error::<Runtime>::LiquidateFailed,
+		assert_eq!(
+			HonzonModule::liquidate_cdp(Origin::signed(CAROL), ALICE, BTC).is_ok(),
+			false
 		);
-		assert_ok!(CdpEngineModule::set_collateral_params(
+		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
 			None,
@@ -40,7 +40,7 @@ fn liquidate_unsafe_cdp_work() {
 			None,
 			None
 		));
-		assert_ok!(HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC));
+		assert_ok!(HonzonModule::liquidate_cdp(Origin::signed(CAROL), ALICE, BTC));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 0);
@@ -107,7 +107,7 @@ fn unauthorize_all_should_work() {
 #[test]
 fn transfer_loan_from_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CdpEngineModule::set_collateral_params(
+		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
 			Some(Some(Rate::from_rational(1, 100000))),
@@ -116,7 +116,7 @@ fn transfer_loan_from_should_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::transfer_loan_from(Origin::signed(BOB), BTC, ALICE));
 		assert_eq!(LoansModule::collaterals(BOB, BTC), 100);
@@ -135,9 +135,9 @@ fn transfer_unauthorization_loans_should_not_work() {
 }
 
 #[test]
-fn update_loan_should_work() {
+fn adjust_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CdpEngineModule::set_collateral_params(
+		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
 			Some(Some(Rate::from_rational(1, 100000))),
@@ -146,7 +146,7 @@ fn update_loan_should_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_eq!(LoansModule::debits(BTC, ALICE).0, 50);
 	});
@@ -159,11 +159,11 @@ fn emergency_shutdown_should_work() {
 		HonzonModule::emergency_shutdown();
 		assert_eq!(HonzonModule::is_shutdown(), true);
 		assert_noop!(
-			HonzonModule::liquidate(Origin::signed(CAROL), ALICE, BTC),
+			HonzonModule::liquidate_cdp(Origin::signed(CAROL), ALICE, BTC),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 		assert_noop!(
-			HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 50),
+			HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 		assert_noop!(
@@ -176,7 +176,7 @@ fn emergency_shutdown_should_work() {
 #[test]
 fn settle_cdp_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CdpEngineModule::set_collateral_params(
+		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
 			Some(Some(Rate::from_rational(1, 100000))),
@@ -185,7 +185,7 @@ fn settle_cdp_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
-		assert_ok!(CdpEngineModule::update_position(&ALICE, BTC, 100, 50));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
 		assert_noop!(
 			HonzonModule::settle_cdp(Origin::signed(CAROL), ALICE, BTC),
 			Error::<Runtime>::MustAfterShutdown,
@@ -196,14 +196,18 @@ fn settle_cdp_work() {
 }
 
 #[test]
-fn withdraw_collateral_work() {
+fn adjust_collateral_after_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::update_loan(Origin::signed(ALICE), BTC, 100, 0));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 0));
 		assert_noop!(
-			HonzonModule::withdraw_collateral(Origin::signed(ALICE), BTC, 100),
+			HonzonModule::adjust_collateral_after_shutdown(Origin::signed(ALICE), BTC, -100),
 			Error::<Runtime>::MustAfterShutdown,
 		);
 		HonzonModule::emergency_shutdown();
-		assert_ok!(HonzonModule::withdraw_collateral(Origin::signed(ALICE), BTC, 100));
+		assert_ok!(HonzonModule::adjust_collateral_after_shutdown(
+			Origin::signed(ALICE),
+			BTC,
+			-100
+		));
 	});
 }

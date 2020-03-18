@@ -499,7 +499,7 @@ impl module_auction_manager::Trait for Runtime {
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = module_prices::Module<Runtime>;
 }
@@ -511,7 +511,7 @@ impl module_loans::Trait for Runtime {
 	type RiskManager = module_cdp_engine::Module<Runtime>;
 	type DebitBalance = Balance;
 	type DebitAmount = Amount;
-	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
 }
 
 /// A runtime transaction submitter.
@@ -524,7 +524,7 @@ parameter_types! {
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
-	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(5, 100);
+	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(5, 100);
 }
 
 impl module_cdp_engine::Trait for Runtime {
@@ -537,11 +537,11 @@ impl module_cdp_engine::Trait for Runtime {
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
-	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
+	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type Currency = orml_currencies::Module<Runtime>;
-	type Dex = module_dex::Module<Runtime>;
+	type DEX = module_dex::Module<Runtime>;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
 }
@@ -553,7 +553,7 @@ impl module_honzon::Trait for Runtime {
 impl module_emergency_shutdown::Trait for Runtime {
 	type Event = Event;
 	type PriceSource = module_prices::Module<Runtime>;
-	type Treasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
 	type OnShutdown = (
 		module_cdp_treasury::Module<Runtime>,
@@ -581,7 +581,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
-	type Dex = module_dex::Module<Runtime>;
+	type DEX = module_dex::Module<Runtime>;
 }
 
 parameter_types! {
@@ -640,10 +640,10 @@ construct_runtime!(
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
-		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>},

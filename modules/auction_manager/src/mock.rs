@@ -103,9 +103,9 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManagerModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type Dex = ();
+	type DEX = ();
 }
-pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId, Price> for MockPriceSource {
@@ -130,7 +130,7 @@ impl Trait for Runtime {
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type Treasury = CdpTreasury;
+	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = MockPriceSource;
 }

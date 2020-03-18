@@ -3,10 +3,7 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::MultiCurrency;
 use sp_runtime::traits::{EnsureOrigin, Zero};
-use support::{
-	AuctionManager, AuctionManagerExtended, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, Price, PriceProvider,
-	Ratio,
-};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, Price, PriceProvider, Ratio};
 use system::{ensure_root, ensure_signed};
 
 mod mock;
@@ -15,13 +12,13 @@ mod tests;
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type AuctionIdOf<T> =
-	<<T as Trait>::AuctionManagerHandler as AuctionManagerExtended<<T as system::Trait>::AccountId>>::AuctionId;
+	<<T as Trait>::AuctionManagerHandler as AuctionManager<<T as system::Trait>::AccountId>>::AuctionId;
 
 pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
-	type Treasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
-	type AuctionManagerHandler: AuctionManagerExtended<
+	type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type AuctionManagerHandler: AuctionManager<
 		Self::AccountId,
 		Balance = BalanceOf<Self>,
 		CurrencyId = CurrencyIdOf<Self>,
@@ -46,7 +43,6 @@ decl_error! {
 		AlreadyShutdown,
 		MustAfterShutdown,
 		CanNotRefund,
-		ExistSurplus,
 		ExistPotentialSurplus,
 		ExistUnhandleDebit,
 	}
@@ -92,9 +88,6 @@ decl_module! {
 				.or_else(ensure_root)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
 
-			// Ensure these's no surplus in cdp treasury
-			ensure!(<T as Trait>::Treasury::get_surplus_pool().is_zero(), Error::<T>::ExistSurplus);
-
 			// Ensure there's no debit and surplus auction now, these maybe bring uncertain surplus to system.
 			// Cancel all surplus auctions and debit auctions to pass the check!
 			ensure!(
@@ -129,19 +122,19 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
-			let refund_ratio: Ratio = <T as Trait>::Treasury::get_stable_currency_ratio(amount);
+			let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_stable_currency_ratio(amount);
 			let collateral_currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
 
 			// burn caller's stable currency by cdp treasury
-			<T as Trait>::Treasury::withdraw_backed_debit(&who, amount)?;
+			<T as Trait>::CDPTreasury::withdraw_backed_debit(&who, amount)?;
 
 			// refund collaterals to caller by cdp treasury
 			for currency_id in collateral_currency_ids {
 				let refund_amount = refund_ratio
-					.saturating_mul_int(&<T as Trait>::Treasury::get_total_collaterals(currency_id));
+					.saturating_mul_int(&<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
 
 				if !refund_amount.is_zero() {
-					<T as Trait>::Treasury::transfer_system_collateral(currency_id, &who, refund_amount)?;
+					<T as Trait>::CDPTreasury::transfer_system_collateral(currency_id, &who, refund_amount)?;
 				}
 			}
 
