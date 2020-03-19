@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CdpEngineModule, CdpTreasury, EmergencyShutdownModule, ExtBuilder, HonzonModule, Origin, Runtime, System,
+	CDPEngineModule, CDPTreasuryModule, EmergencyShutdownModule, ExtBuilder, HonzonModule, Origin, Runtime, System,
 	TestEvent, ALICE,
 };
 use sp_runtime::traits::BadOrigin;
@@ -15,8 +15,8 @@ fn emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), false);
 		assert_eq!(HonzonModule::is_shutdown(), false);
-		assert_eq!(CdpEngineModule::is_shutdown(), false);
-		assert_eq!(CdpTreasury::is_shutdown(), false);
+		assert_eq!(CDPEngineModule::is_shutdown(), false);
+		assert_eq!(CDPTreasuryModule::is_shutdown(), false);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(5)),
 			BadOrigin,
@@ -28,8 +28,8 @@ fn emergency_shutdown_work() {
 
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), true);
 		assert_eq!(HonzonModule::is_shutdown(), true);
-		assert_eq!(CdpEngineModule::is_shutdown(), true);
-		assert_eq!(CdpTreasury::is_shutdown(), true);
+		assert_eq!(CDPEngineModule::is_shutdown(), true);
+		assert_eq!(CDPTreasuryModule::is_shutdown(), true);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::ROOT),
 			Error::<Runtime>::AlreadyShutdown,
@@ -46,12 +46,6 @@ fn open_collateral_refund_fail() {
 			Error::<Runtime>::MustAfterShutdown,
 		);
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::ROOT));
-		CdpTreasury::on_system_surplus(100);
-		assert_eq!(CdpTreasury::get_surplus_pool(), 100);
-		assert_noop!(
-			EmergencyShutdownModule::open_collateral_refund(Origin::ROOT),
-			Error::<Runtime>::ExistSurplus,
-		);
 	});
 }
 

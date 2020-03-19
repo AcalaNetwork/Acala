@@ -9,7 +9,7 @@ use sp_runtime::{
 	traits::IdentityLookup,
 	DispatchResult, Perbill,
 };
-use support::{AuctionManager, AuctionManagerExtended, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 use system::EnsureSignedBy;
 
 use super::*;
@@ -20,7 +20,7 @@ mod emergency_shutdown {
 
 impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
-		cdp_engine::CdpEngineModule,
+		cdp_engine::CDPEngineModule,
 	}
 }
 
@@ -135,10 +135,10 @@ impl loans::Trait for Runtime {
 	type Event = TestEvent;
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
-	type RiskManager = CdpEngineModule;
+	type RiskManager = CDPEngineModule;
 	type DebitBalance = DebitBalance;
 	type DebitAmount = DebitAmount;
-	type Treasury = CdpTreasury;
+	type CDPTreasury = CDPTreasuryModule;
 }
 
 pub struct MockPriceSource;
@@ -157,23 +157,25 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
-	type CurrencyId = CurrencyId;
 	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type AuctionId = AuctionId;
 
-	#[allow(unused_variables)]
 	fn new_collateral_auction(
-		who: &AccountId,
-		currency_id: Self::CurrencyId,
-		amount: Self::Balance,
-		target: Self::Balance,
+		_who: &AccountId,
+		_currency_id: Self::CurrencyId,
+		_amount: Self::Balance,
+		_target: Self::Balance,
 	) {
 	}
 
-	#[allow(unused_variables)]
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {}
 
-	#[allow(unused_variables)]
-	fn new_surplus_auction(amount: Self::Balance) {}
+	fn new_surplus_auction(_amount: Self::Balance) {}
+
+	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		Ok(())
+	}
 
 	fn get_total_debit_in_auction() -> Self::Balance {
 		Default::default()
@@ -182,23 +184,13 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	fn get_total_target_in_auction() -> Self::Balance {
 		Default::default()
 	}
-}
 
-impl AuctionManagerExtended<AccountId> for MockAuctionManager {
-	type AuctionId = AuctionId;
-
-	#[allow(unused_variables)]
-	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance {
+	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
 		Default::default()
 	}
 
 	fn get_total_surplus_in_auction() -> Self::Balance {
 		Default::default()
-	}
-
-	#[allow(unused_variables)]
-	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
-		Ok(())
 	}
 }
 
@@ -212,16 +204,16 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type Dex = ();
+	type DEX = ();
 }
-pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 /// An extrinsic type used for tests.
 pub type Extrinsic = TestXt<Call, ()>;
 type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
 
 parameter_types! {
-	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(50, 100);
+	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
 }
 
 impl cdp_engine::Trait for Runtime {
@@ -234,15 +226,15 @@ impl cdp_engine::Trait for Runtime {
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type Treasury = CdpTreasury;
+	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
+	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type Currency = Currencies;
-	type Dex = ();
+	type DEX = ();
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
 }
-pub type CdpEngineModule = cdp_engine::Module<Runtime>;
+pub type CDPEngineModule = cdp_engine::Module<Runtime>;
 
 impl honzon::Trait for Runtime {
 	type Event = TestEvent;
@@ -252,9 +244,9 @@ pub type HonzonModule = honzon::Module<Runtime>;
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type PriceSource = MockPriceSource;
-	type Treasury = CdpTreasury;
+	type CDPTreasury = CDPTreasuryModule;
 	type AuctionManagerHandler = MockAuctionManager;
-	type OnShutdown = (CdpTreasury, CdpEngineModule, HonzonModule);
+	type OnShutdown = (CDPTreasuryModule, CDPEngineModule, HonzonModule);
 	type ShutdownOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type EmergencyShutdownModule = Module<Runtime>;

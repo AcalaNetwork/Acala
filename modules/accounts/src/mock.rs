@@ -39,6 +39,7 @@ pub type CurrencyId = u32;
 pub type Moment = u64;
 
 pub const ALICE: AccountId = 0;
+pub const BOB: AccountId = 1;
 pub const ACA: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 pub const BTC: CurrencyId = 2;
@@ -50,7 +51,7 @@ impl system::Trait for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = ();
+	type Call = Call;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
@@ -109,7 +110,7 @@ impl pallet_timestamp::Trait for Runtime {
 pub type TimeModule = pallet_timestamp::Module<Runtime>;
 
 parameter_types! {
-	pub const TransactionBaseFee: Balance = 0;
+	pub const TransactionBaseFee: Balance = 42;
 	pub const TransactionByteFee: Balance = 2;
 }
 
@@ -146,7 +147,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, ACA, 1000), (ALICE, AUSD, 1000), (ALICE, BTC, 1000)],
+			endowed_accounts: vec![(ALICE, AUSD, 10000), (ALICE, BTC, 1000)],
 		}
 	}
 }
@@ -154,6 +155,12 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
 	pub fn build(self) -> runtime_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(ALICE, 100000)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			endowed_accounts: self.endowed_accounts,

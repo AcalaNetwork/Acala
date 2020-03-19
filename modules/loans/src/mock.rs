@@ -46,7 +46,9 @@ pub type DebitBalance = u64;
 pub type Amount = i64;
 pub type DebitAmount = i64;
 pub type CurrencyId = u32;
+pub type AuctionId = u64;
 pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
 pub const NATIVE_CURRENCY_ID: CurrencyId = 0;
 pub const AUSD: CurrencyId = 1;
 pub const X_TOKEN_ID: CurrencyId = 2;
@@ -120,27 +122,37 @@ pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
+	type AuctionId = AuctionId;
 
-	#[allow(unused_variables)]
 	fn new_collateral_auction(
-		who: &AccountId,
-		currency_id: Self::CurrencyId,
-		amount: Self::Balance,
-		target: Self::Balance,
+		_who: &AccountId,
+		_currency_id: Self::CurrencyId,
+		_amount: Self::Balance,
+		_target: Self::Balance,
 	) {
 	}
 
-	#[allow(unused_variables)]
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {}
 
-	#[allow(unused_variables)]
-	fn new_surplus_auction(amount: Self::Balance) {}
+	fn new_surplus_auction(_amount: Self::Balance) {}
+
+	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		Ok(())
+	}
 
 	fn get_total_debit_in_auction() -> Self::Balance {
 		Default::default()
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_surplus_in_auction() -> Self::Balance {
 		Default::default()
 	}
 }
@@ -155,9 +167,9 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type Dex = ();
+	type DEX = ();
 }
-pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 // mock convert
 pub struct MockConvert;
@@ -169,13 +181,11 @@ impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
 
 // mock risk manager
 pub struct MockRiskManager;
-impl RiskManager<AccountId, CurrencyId, Amount, DebitAmount> for MockRiskManager {
-	#[allow(unused_variables)]
-	fn check_position_adjustment(
-		account_id: &AccountId,
+impl RiskManager<AccountId, CurrencyId, Balance, DebitBalance> for MockRiskManager {
+	fn check_position_valid(
 		currency_id: CurrencyId,
-		collaterals: Amount,
-		debits: DebitAmount,
+		_collateral_balance: Balance,
+		_debit_balance: DebitBalance,
 	) -> DispatchResult {
 		match currency_id {
 			X_TOKEN_ID => Err(sp_runtime::DispatchError::Other("mock error")),
@@ -183,11 +193,11 @@ impl RiskManager<AccountId, CurrencyId, Amount, DebitAmount> for MockRiskManager
 			_ => Err(sp_runtime::DispatchError::Other("mock error")),
 		}
 	}
-	#[allow(unused_variables)]
-	fn check_debit_cap(currency_id: CurrencyId, debits: DebitAmount) -> DispatchResult {
-		match (currency_id, debits) {
-			(X_TOKEN_ID, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
-			(Y_TOKEN_ID, 1000i64) => Err(sp_runtime::DispatchError::Other("mock error")),
+
+	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult {
+		match (currency_id, total_debit_balance) {
+			(X_TOKEN_ID, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(Y_TOKEN_ID, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
 			(_, _) => Ok(()),
 		}
 	}
@@ -200,7 +210,7 @@ impl Trait for Runtime {
 	type RiskManager = MockRiskManager;
 	type DebitBalance = DebitBalance;
 	type DebitAmount = DebitAmount;
-	type Treasury = CdpTreasury;
+	type CDPTreasury = CDPTreasuryModule;
 }
 pub type LoansModule = Module<Runtime>;
 
@@ -211,7 +221,12 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, X_TOKEN_ID, 1000), (ALICE, Y_TOKEN_ID, 1000)],
+			endowed_accounts: vec![
+				(ALICE, X_TOKEN_ID, 1000),
+				(ALICE, Y_TOKEN_ID, 1000),
+				(BOB, X_TOKEN_ID, 1000),
+				(BOB, Y_TOKEN_ID, 1000),
+			],
 		}
 	}
 }

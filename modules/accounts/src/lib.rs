@@ -2,8 +2,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	decl_module, decl_storage,
+	decl_error, decl_module, decl_storage,
 	dispatch::Dispatchable,
+	ensure,
 	traits::{
 		Currency, ExistenceRequirement, Get, LockIdentifier, LockableCurrency, OnKilledAccount, OnUnbalanced, Time,
 		WithdrawReason, WithdrawReasons,
@@ -43,6 +44,12 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	type DepositCurrency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 }
 
+decl_error! {
+	pub enum Error for Module<T: Trait> {
+		NotEnoughBalance,
+	}
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as Accounts {
 		LastFreeTransfers get(fn last_free_transfers): map hasher(twox_64_concat) T::AccountId => Vec<MomentOf<T>>;
@@ -52,12 +59,16 @@ decl_storage! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+		type Error = Error<T>;
+
 		const FreeTransferCount: u8 = T::FreeTransferCount::get();
 		const FreeTransferPeriod: MomentOf<T> = T::FreeTransferPeriod::get();
 		const FreeTransferDeposit: DepositBalanceOf<T> = T::FreeTransferDeposit::get();
 
 		fn enable_free_transfer(origin) {
 			let who = ensure_signed(origin)?;
+
+			ensure!(T::DepositCurrency::free_balance(&who) > T::FreeTransferDeposit::get(), Error::<T>::NotEnoughBalance);
 
 			T::DepositCurrency::set_lock(ACCOUNTS_ID, &who, T::FreeTransferDeposit::get(), WithdrawReasons::all());
 			<FreeTransferEnabledAccounts<T>>::insert(who, ());
@@ -147,36 +158,42 @@ where
 	) -> TransactionValidity {
 		// pay any fees.
 		let tip = self.0;
-		let fee: PalletBalanceOf<T> =
-			pallet_transaction_payment::ChargeTransactionPayment::<T>::compute_fee(len as u32, info, tip);
 
 		// check call type
-		let call = match call.is_sub_type() {
-			Some(call) => call,
-			None => return Ok(ValidTransaction::default()),
-		};
-		let skip_pay_fee = match call {
-			orml_currencies::Call::transfer(..) => <Module<T>>::try_free_transfer(who),
+		let skip_pay_fee = match call.is_sub_type() {
+			Some(orml_currencies::Call::transfer(..)) => <Module<T>>::try_free_transfer(who),
 			_ => false,
 		};
 
+		let pay_fee = !skip_pay_fee;
+		let pay_tip = !tip.is_zero();
+
 		// skip payment withdraw if match conditions
-		if !skip_pay_fee {
+		let fee = if pay_fee || pay_tip {
+			let mut reason = WithdrawReasons::none();
+			let fee = if pay_fee {
+				reason.set(WithdrawReason::TransactionPayment);
+				pallet_transaction_payment::ChargeTransactionPayment::<T>::compute_fee(len as u32, info, tip)
+			} else {
+				tip
+			};
+			if pay_tip {
+				reason.set(WithdrawReason::Tip);
+			}
 			let imbalance = match <T as pallet_transaction_payment::Trait>::Currency::withdraw(
 				who,
 				fee,
-				if tip.is_zero() {
-					WithdrawReason::TransactionPayment.into()
-				} else {
-					WithdrawReason::TransactionPayment | WithdrawReason::Tip
-				},
+				reason,
 				ExistenceRequirement::KeepAlive,
 			) {
 				Ok(imbalance) => imbalance,
 				Err(_) => return InvalidTransaction::Payment.into(),
 			};
 			<T as pallet_transaction_payment::Trait>::OnTransactionPayment::on_unbalanced(imbalance);
-		}
+			fee
+		} else {
+			0.into()
+		};
 
 		let mut r = ValidTransaction::default();
 		// NOTE: we probably want to maximize the _fee (of any type) per weight unit_ here, which

@@ -7,7 +7,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
 [![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.dev/)
-[![License](https://img.shields.io/github/license/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/AcalaNetwork/Acala?color=green)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
  <br />
 [![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FAcalaNetwork)](https://twitter.com/AcalaNetwork)
 [![Riot.im](https://img.shields.io/badge/Riot.im-Welcome-blue?logo=riot)](https://riot.im/app/#/room/#acala:matrix.org)
@@ -63,7 +63,7 @@ The Acala Network Token (ACA) features the following utilities, and the value of
 2. As Governance Token: to vote for/against risk parameters and network change proposals
 3. As Economic Capital: in case of liquidation without sufficient collaterals
 
-To enable cross-chain functionality, the Acala Network will connect to the Polkadot in one of the three ways: 
+To enable cross-chain functionality, the Acala Network will connect to the Polkadot in one of the three ways:
 1. as parathread - pay-as-you-go connection to Polkadot
 2. as parachain - permanent connection for a given period
 3. as an independent chain with a bridge back to Polkadot
@@ -73,6 +73,12 @@ Becoming a parachain would be an ideal option to bootstrap the Acala Network, an
 Note: This section is still work in progress, we will update more information as we progress. Refer to the [token economy working paper](https://github.com/AcalaNetwork/Acala-white-paper) for more details.
 
 # 3. Building
+
+## NOTE
+
+To connect on the "Mandala TC2" network, you will want the version `~0.3.2` code which is in this repo.
+
+- **Mandala TC2** is in this [Acala](https://github.com/AcalaNetwork/Acala/tree/mandala) repo branch `mandala`.
 
 Install Rust:
 
