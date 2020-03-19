@@ -9,7 +9,7 @@ use sp_runtime::{
 	},
 	DispatchError, ModuleId,
 };
-use support::{DexManager, Price, Rate, Ratio};
+use support::{DEXManager, Price, Rate, Ratio};
 use system::{self as system, ensure_signed};
 
 mod mock;
@@ -492,7 +492,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> DexManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
+impl<T: Trait> DEXManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
 	fn get_target_amount(
 		supply_currency_id: CurrencyIdOf<T>,
 		target_currency_id: CurrencyIdOf<T>,

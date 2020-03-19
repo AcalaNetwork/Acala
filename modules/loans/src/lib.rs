@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, storage::PrefixIterator, Parameter};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, storage::PrefixIterator, Parameter};
 use orml_traits::{
 	arithmetic::{self, Signed},
 	MultiCurrency, MultiCurrencyExtended,
@@ -17,7 +17,7 @@ use support::{CDPTreasury, RiskManager};
 mod mock;
 mod tests;
 
-const MODULE_ID: ModuleId = ModuleId(*b"aca/vlts");
+const MODULE_ID: ModuleId = ModuleId(*b"aca/loan");
 
 type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -27,7 +27,7 @@ pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Convert: Convert<(CurrencyIdOf<Self>, Self::DebitBalance), BalanceOf<Self>>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
-	type RiskManager: RiskManager<Self::AccountId, CurrencyIdOf<Self>, AmountOf<Self>, Self::DebitAmount>;
+	type RiskManager: RiskManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>, Self::DebitBalance>;
 	type DebitBalance: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
 	type DebitAmount: Signed
 		+ TryInto<Self::DebitBalance>
@@ -38,7 +38,7 @@ pub trait Trait: system::Trait {
 		+ Default
 		+ Copy
 		+ MaybeSerializeDeserialize;
-	type Treasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>>;
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 }
 
 decl_storage! {
@@ -56,11 +56,13 @@ decl_event!(
 		CurrencyId = CurrencyIdOf<T>,
 		<T as Trait>::DebitAmount,
 		Amount = AmountOf<T>,
+		<T as Trait>::DebitBalance,
+		Balance = BalanceOf<T>,
 	{
 		/// Update Position success (account, currency_id, collaterals, debits)
 		UpdatePosition(AccountId, CurrencyId, Amount, DebitAmount),
-		/// Update collaterals and debits success (account, currency_id, collaterals, debits)
-		UpdateCollateralsAndDebits(AccountId, CurrencyId, Amount, DebitAmount),
+		/// confiscate collateral and deduct debit
+		ConfiscateCollateralAndDebit(AccountId, CurrencyId, Balance, DebitBalance),
 		/// Transfer loan (from, to)
 		TransferLoan(AccountId, AccountId, CurrencyId),
 	}
@@ -70,17 +72,10 @@ decl_error! {
 	/// Error for loans module.
 	pub enum Error for Module<T: Trait> {
 		DebitOverflow,
-		DebitUnderflow,
+		DebitTooLow,
 		CollateralOverflow,
-		CollateralUnderflow,
-		AmountIntoBalanceFailed,
-		BalanceIntoAmountFailed,
-		RiskCheckFailed,
-		ExceedDebitValueHardCap,
-		CollateralInSufficient,
-		AmountIntoDebitBalanceFailed,
-		AddBackedDebitFailed,
-		SubBackedDebitFailed,
+		CollateralTooLow,
+		AmountConvertFailed,
 	}
 }
 
@@ -101,172 +96,158 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	// mutate collaterals and debits, don't check position safe and don't mutate token
-	pub fn update_collaterals_and_debits(
-		who: T::AccountId,
+	// confiscate collateral to cdp treasury and decrease debit
+	pub fn confiscate_collateral_and_debit(
+		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
-		collaterals: AmountOf<T>,
-		debits: T::DebitAmount,
+		collateral_confiscate: BalanceOf<T>,
+		debit_decrease: T::DebitBalance,
 	) -> DispatchResult {
-		// ensure mutate safe
-		Self::check_add_and_sub(&who, currency_id, collaterals, debits)?;
-		Self::update_loan(&who, currency_id, collaterals, debits)?;
-		Self::deposit_event(RawEvent::UpdateCollateralsAndDebits(
-			who,
-			currency_id,
-			collaterals,
-			debits,
-		));
+		// balance -> amount
+		let collateral_adjustment =
+			TryInto::<AmountOf<T>>::try_into(collateral_confiscate).map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let debit_adjustment =
+			TryInto::<T::DebitAmount>::try_into(debit_decrease).map_err(|_| Error::<T>::AmountConvertFailed)?;
 
+		// check overflow
+		Self::check_update_loan_overflow(who, currency_id, -collateral_adjustment, -debit_adjustment)?;
+
+		T::CDPTreasury::transfer_collateral_from(currency_id, &Self::account_id(), collateral_confiscate)?;
+		Self::update_loan(&who, currency_id, -collateral_adjustment, -debit_adjustment)
+			.expect("never failed ensured by overflow check");
+
+		Self::deposit_event(RawEvent::ConfiscateCollateralAndDebit(
+			who.clone(),
+			currency_id,
+			collateral_confiscate,
+			debit_decrease,
+		));
 		Ok(())
 	}
 
 	// mutate collaterals and debits and then mutate stable coin
-	pub fn update_position(
+	pub fn adjust_position(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
-		collaterals: AmountOf<T>,
-		debits: T::DebitAmount,
+		collateral_adjustment: AmountOf<T>,
+		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
-		// ensure mutate safe
-		Self::check_add_and_sub(who, currency_id, collaterals, debits)?;
+		Self::check_update_loan_overflow(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		// ensure debits cap
-		T::RiskManager::check_debit_cap(currency_id, debits).map_err(|_| Error::<T>::ExceedDebitValueHardCap)?;
-
-		// ensure pass risk check
-		T::RiskManager::check_position_adjustment(who, currency_id, collaterals, debits)
-			.map_err(|_| Error::<T>::RiskCheckFailed)?;
-
-		// ensure account has sufficient balance
-		Self::check_balance(who, currency_id, collaterals)?;
-
-		// amount -> balance
-		let collateral_balance =
-			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
-
-		// update stable coin by Treasury
-		let debit_balance =
-			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::<T>::AmountIntoDebitBalanceFailed)?;
-		if debits.is_positive() {
-			T::Treasury::deposit_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
-				.map_err(|_| Error::<T>::AddBackedDebitFailed)?;
-		} else {
-			T::Treasury::withdraw_backed_debit(who, T::Convert::convert((currency_id, debit_balance)))
-				.map_err(|_| Error::<T>::SubBackedDebitFailed)?;
-		}
+		let collateral_balance_adjustment = TryInto::<BalanceOf<T>>::try_into(collateral_adjustment.abs())
+			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let debit_balance_adjustment = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
+			.map_err(|_| Error::<T>::AmountConvertFailed)?;
 
 		let module_account = Self::account_id();
-		// update collateral asset
-		if collaterals.is_positive() {
-			T::Currency::transfer(currency_id, who, &module_account, collateral_balance)
-				.expect("Will never fail ensured by check_balance");
-		} else {
-			T::Currency::transfer(currency_id, &module_account, who, collateral_balance)
-				.expect("Will never fail ensured by check_balance");
+		let mut new_collateral_balance = Self::collaterals(who, currency_id);
+		let mut new_debit_balance = Self::debits(currency_id, who).0;
+
+		if collateral_adjustment.is_positive() {
+			T::Currency::ensure_can_withdraw(currency_id, who, collateral_balance_adjustment)?;
+			new_collateral_balance += collateral_balance_adjustment;
+		} else if collateral_adjustment.is_negative() {
+			T::Currency::ensure_can_withdraw(currency_id, &module_account, collateral_balance_adjustment)?;
+			new_collateral_balance -= collateral_balance_adjustment;
 		}
 
-		// mutate collaterals and debits
-		Self::update_loan(who, currency_id, collaterals, debits).expect("Will never fail ensured by check_add_and_sub");
+		if debit_adjustment.is_positive() {
+			let new_total_debit_balance = Self::total_debits(currency_id) + debit_balance_adjustment;
+			// check debit cap when increase debit
+			T::RiskManager::check_debit_cap(currency_id, new_total_debit_balance)?;
+			new_debit_balance += debit_balance_adjustment;
+		} else if debit_adjustment.is_negative() {
+			new_debit_balance -= debit_balance_adjustment;
+		}
 
-		Self::deposit_event(RawEvent::UpdatePosition(who.clone(), currency_id, collaterals, debits));
+		// ensure pass risk check
+		T::RiskManager::check_position_valid(currency_id, new_collateral_balance, new_debit_balance)?;
 
+		// update stable coin by Treasury
+		if debit_adjustment.is_positive() {
+			T::CDPTreasury::deposit_backed_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
+		} else if debit_adjustment.is_negative() {
+			T::CDPTreasury::withdraw_backed_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
+		}
+
+		// update collateral asset
+		if collateral_adjustment.is_positive() {
+			T::Currency::transfer(currency_id, who, &module_account, collateral_balance_adjustment)
+				.expect("never failed ensured by balance check");
+		} else if collateral_adjustment.is_negative() {
+			T::Currency::transfer(currency_id, &module_account, who, collateral_balance_adjustment)
+				.expect("never failed ensured by balance check");
+		}
+
+		// mutate collateral and debit
+		Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)
+			.expect("Will never fail ensured by overflow check");
+
+		Self::deposit_event(RawEvent::UpdatePosition(
+			who.clone(),
+			currency_id,
+			collateral_adjustment,
+			debit_adjustment,
+		));
 		Ok(())
 	}
 
-	// transfer loan
-	pub fn transfer(from: T::AccountId, to: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+	// transfer whole loan of `from` to `to`
+	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 		// get `from` position data
-		let collateral: BalanceOf<T> = Self::collaterals(&from, currency_id);
-		let (debit, _) = Self::debits(currency_id, &from);
+		let collateral_balance = Self::collaterals(from, currency_id);
+		let debit_balance = Self::debits(currency_id, from).0;
+
+		let new_to_collateral_balance = Self::collaterals(to, currency_id) + collateral_balance;
+		let new_to_debit_balance = Self::debits(currency_id, to).0 + debit_balance;
+
+		// check new position
+		T::RiskManager::check_position_valid(currency_id, new_to_collateral_balance, new_to_debit_balance)?;
 
 		// balance -> amount
-		let collateral: AmountOf<T> =
-			TryInto::<AmountOf<T>>::try_into(collateral).map_err(|_| Error::<T>::BalanceIntoAmountFailed)?;
-		let debit: T::DebitAmount =
-			TryInto::<T::DebitAmount>::try_into(debit).map_err(|_| Error::<T>::BalanceIntoAmountFailed)?;
+		let collateral_adjustment =
+			TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let debit_adjustment =
+			TryInto::<T::DebitAmount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
 
-		// ensure mutate safe
-		Self::check_add_and_sub(&from, currency_id, -collateral, -debit)?;
-		Self::check_add_and_sub(&to, currency_id, collateral, debit)?;
+		Self::update_loan(from, currency_id, -collateral_adjustment, -debit_adjustment)?;
+		Self::update_loan(to, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		// ensure positions passes risk check after transferred
-		T::RiskManager::check_position_adjustment(&from, currency_id, -collateral, -debit)
-			.map_err(|_| Error::<T>::RiskCheckFailed)?;
-		T::RiskManager::check_position_adjustment(&to, currency_id, collateral, debit)
-			.map_err(|_| Error::<T>::RiskCheckFailed)?;
-
-		// execute transfer
-		Self::update_loan(&from, currency_id, -collateral, -debit)
-			.expect("Will never fail ensured by check_add_and_sub");
-		Self::update_loan(&to, currency_id, collateral, debit).expect("Will never fail ensured by check_add_and_sub");
-
-		Self::deposit_event(RawEvent::TransferLoan(from, to, currency_id));
-
+		Self::deposit_event(RawEvent::TransferLoan(from.clone(), to.clone(), currency_id));
 		Ok(())
 	}
 
-	/// check `who` has sufficient balance
-	fn check_balance(who: &T::AccountId, currency_id: CurrencyIdOf<T>, collateral: AmountOf<T>) -> DispatchResult {
-		let collaterals_balance =
-			TryInto::<BalanceOf<T>>::try_into(collateral.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
-
-		let module_balance = T::Currency::free_balance(currency_id, &Self::account_id());
-		let who_balance = T::Currency::free_balance(currency_id, who);
-
-		if collateral.is_positive() {
-			ensure!(who_balance >= collaterals_balance, Error::<T>::CollateralInSufficient);
-		} else {
-			ensure!(
-				module_balance >= collaterals_balance,
-				Error::<T>::CollateralInSufficient
-			);
-		}
-
-		Ok(())
-	}
-
-	/// ensure sum and sub will success when updating loan collaterals and debits
-	fn check_add_and_sub(
+	// check overflow for update_loan function
+	pub fn check_update_loan_overflow(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
-		collaterals: AmountOf<T>,
-		debits: T::DebitAmount,
+		collateral_adjustment: AmountOf<T>,
+		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
-		// judge collaterals and debits are negative or positive
-		let collaterals_balance =
-			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
-		let debits_balance =
-			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
+		let collateral_balance = TryInto::<BalanceOf<T>>::try_into(collateral_adjustment.abs())
+			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let debit_balance = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
+			.map_err(|_| Error::<T>::AmountConvertFailed)?;
 
-		// check collaterals update
-		if collaterals.is_positive() {
-			ensure!(
-				Self::total_collaterals(currency_id)
-					.checked_add(&collaterals_balance)
-					.is_some(),
-				Error::<T>::CollateralOverflow
-			);
-		} else {
-			ensure!(
-				Self::collaterals(who, currency_id)
-					.checked_sub(&collaterals_balance)
-					.is_some(),
-				Error::<T>::CollateralUnderflow
-			);
+		if collateral_adjustment.is_positive() {
+			Self::total_collaterals(currency_id)
+				.checked_add(&collateral_balance)
+				.ok_or(Error::<T>::CollateralOverflow)?;
+		} else if collateral_adjustment.is_negative() {
+			Self::collaterals(who, currency_id)
+				.checked_sub(&collateral_balance)
+				.ok_or(Error::<T>::CollateralTooLow)?;
 		}
 
-		// check debits update
-		if debits.is_positive() {
-			ensure!(
-				Self::total_debits(currency_id).checked_add(&debits_balance).is_some(),
-				Error::<T>::DebitOverflow
-			);
-		} else {
-			ensure!(
-				Self::debits(currency_id, who).0.checked_sub(&debits_balance).is_some(),
-				Error::<T>::DebitUnderflow
-			);
+		if debit_adjustment.is_positive() {
+			Self::total_debits(currency_id)
+				.checked_add(&debit_balance)
+				.ok_or(Error::<T>::DebitOverflow)?;
+		} else if debit_adjustment.is_negative() {
+			Self::debits(currency_id, who)
+				.0
+				.checked_sub(&debit_balance)
+				.ok_or(Error::<T>::DebitTooLow)?;
 		}
 
 		Ok(())
@@ -275,53 +256,55 @@ impl<T: Trait> Module<T> {
 	fn update_loan(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
-		collaterals: AmountOf<T>,
-		debits: T::DebitAmount,
+		collateral_adjustment: AmountOf<T>,
+		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
-		// judge collaterals and debits are negative or positive
-		let collaterals_balance =
-			TryInto::<BalanceOf<T>>::try_into(collaterals.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
-		let debits_balance =
-			TryInto::<T::DebitBalance>::try_into(debits.abs()).map_err(|_| Error::<T>::AmountIntoBalanceFailed)?;
+		// check overflow first
+		Self::check_update_loan_overflow(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		// update collaterals record
-		if collaterals.is_positive() {
+		let collateral_balance = TryInto::<BalanceOf<T>>::try_into(collateral_adjustment.abs())
+			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let debit_balance = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
+			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+
+		// update collateral record
+		if collateral_adjustment.is_positive() {
 			<Collaterals<T>>::mutate(who, currency_id, |balance| {
 				// increase account ref for who when has no amount before
 				if balance.is_zero() {
 					system::Module::<T>::inc_ref(who);
 				}
-				*balance += collaterals_balance;
+				*balance += collateral_balance;
 			});
-			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance += collaterals_balance);
-		} else {
+			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance += collateral_balance);
+		} else if collateral_adjustment.is_negative() {
 			<Collaterals<T>>::mutate(who, currency_id, |balance| {
-				*balance -= collaterals_balance;
+				*balance -= collateral_balance;
 				// decrease account ref for who when has no amount
 				if balance.is_zero() {
 					system::Module::<T>::dec_ref(who);
 				}
 			});
-			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= collaterals_balance);
+			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= collateral_balance);
 		}
 
-		// update debits record
-		if debits.is_positive() {
+		// update debit record
+		if debit_adjustment.is_positive() {
 			<Debits<T>>::mutate(currency_id, who, |(balance, key)| {
 				if balance.is_zero() {
 					*key = Some((currency_id, (*who).clone()));
 				}
-				*balance += debits_balance;
+				*balance += debit_balance;
 			});
-			<TotalDebits<T>>::mutate(currency_id, |balance| *balance += debits_balance);
-		} else {
+			<TotalDebits<T>>::mutate(currency_id, |balance| *balance += debit_balance);
+		} else if debit_adjustment.is_negative() {
 			<Debits<T>>::mutate(currency_id, who, |(balance, key)| {
-				if debits_balance == *balance {
+				*balance -= debit_balance;
+				if balance.is_zero() {
 					*key = None;
 				}
-				*balance -= debits_balance;
 			});
-			<TotalDebits<T>>::mutate(currency_id, |balance| *balance -= debits_balance);
+			<TotalDebits<T>>::mutate(currency_id, |balance| *balance -= debit_balance);
 		}
 
 		Ok(())

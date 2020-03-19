@@ -3,7 +3,6 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use rstd::convert::TryInto;
 use sp_runtime::{traits::Zero, DispatchResult};
 use support::EmergencyShutdown;
 
@@ -14,7 +13,6 @@ pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
-type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
@@ -42,10 +40,8 @@ decl_event!(
 decl_error! {
 	pub enum Error for Module<T: Trait> {
 		NoAuthorization,
-		LiquidateFailed,
 		AlreadyShutdown,
 		MustAfterShutdown,
-		AmountConvertFailed,
 	}
 }
 
@@ -55,11 +51,11 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		pub fn liquidate(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
+		pub fn liquidate_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
 			let _ = ensure_signed(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
-			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id).map_err(|_| Error::<T>::LiquidateFailed)?;
+			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id)?;
 		}
 
 		pub fn settle_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
@@ -69,28 +65,26 @@ decl_module! {
 			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;
 		}
 
-		pub fn update_loan(
+		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyIdOf<T>,
-			collateral: AmountOf<T>,
-			debit: T::DebitAmount,
+			collateral_adjustment: AmountOf<T>,
+			debit_adjustment: T::DebitAmount,
 		) {
 			let who = ensure_signed(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
-			<cdp_engine::Module<T>>::update_position(&who, currency_id, collateral, debit)?;
+			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
 		}
 
-		pub fn withdraw_collateral(
+		pub fn adjust_collateral_after_shutdown(
 			origin,
 			currency_id: CurrencyIdOf<T>,
-			#[compact] withdraw_amount: BalanceOf<T>,
+			collateral_adjustment: AmountOf<T>,
 		) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
-
-			let adjust_amount = TryInto::<AmountOf<T>>::try_into(withdraw_amount).map_err(|_| Error::<T>::AmountConvertFailed)?;
-			<cdp_engine::Module<T>>::update_position(&who, currency_id, -adjust_amount, T::DebitAmount::zero())?;
+			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, -collateral_adjustment, Zero::zero())?;
 		}
 
 		pub fn transfer_loan_from(
@@ -104,7 +98,7 @@ decl_module! {
 			// check authorization if `from` can manipulate `to`
 			Self::check_authorization(&from, &to, currency_id)?;
 
-			<loans::Module<T>>::transfer(from.clone(), to.clone(), currency_id)?;
+			<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
 		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` loan

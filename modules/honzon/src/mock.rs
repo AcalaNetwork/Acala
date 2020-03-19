@@ -20,7 +20,7 @@ mod honzon {
 
 impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
-		cdp_engine::CdpEngineModule,
+		cdp_engine::CDPEngineModule,
 	}
 }
 
@@ -67,6 +67,7 @@ pub type Amount = i64;
 pub type DebitBalance = u64;
 pub type DebitAmount = i64;
 pub type CurrencyId = u32;
+pub type AuctionId = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -136,10 +137,10 @@ impl loans::Trait for Runtime {
 	type Event = TestEvent;
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
-	type RiskManager = CdpEngineModule;
+	type RiskManager = CDPEngineModule;
 	type DebitBalance = DebitBalance;
 	type DebitAmount = DebitAmount;
-	type Treasury = CdpTreasury;
+	type CDPTreasury = CDPTreasuryModule;
 }
 pub type LoansModule = loans::Module<Runtime>;
 
@@ -159,29 +160,39 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
-	type CurrencyId = CurrencyId;
 	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type AuctionId = AuctionId;
 
-	#[allow(unused_variables)]
 	fn new_collateral_auction(
-		who: &AccountId,
-		currency_id: Self::CurrencyId,
-		amount: Self::Balance,
-		target: Self::Balance,
+		_who: &AccountId,
+		_currency_id: Self::CurrencyId,
+		_amount: Self::Balance,
+		_target: Self::Balance,
 	) {
 	}
 
-	#[allow(unused_variables)]
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) {}
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {}
 
-	#[allow(unused_variables)]
-	fn new_surplus_auction(amount: Self::Balance) {}
+	fn new_surplus_auction(_amount: Self::Balance) {}
+
+	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		Ok(())
+	}
 
 	fn get_total_debit_in_auction() -> Self::Balance {
 		Default::default()
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_surplus_in_auction() -> Self::Balance {
 		Default::default()
 	}
 }
@@ -196,16 +207,16 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type Dex = ();
+	type DEX = ();
 }
-pub type CdpTreasury = cdp_treasury::Module<Runtime>;
+pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 /// An extrinsic type used for tests.
 pub type Extrinsic = TestXt<Call, ()>;
 type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
 
 parameter_types! {
-	pub const MaxSlippageSwapWithDex: Ratio = Ratio::from_rational(50, 100);
+	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
 }
 
 impl cdp_engine::Trait for Runtime {
@@ -218,15 +229,15 @@ impl cdp_engine::Trait for Runtime {
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type Treasury = CdpTreasury;
+	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type MaxSlippageSwapWithDex = MaxSlippageSwapWithDex;
+	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type Currency = Currencies;
-	type Dex = ();
+	type DEX = ();
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
 }
-pub type CdpEngineModule = cdp_engine::Module<Runtime>;
+pub type CDPEngineModule = cdp_engine::Module<Runtime>;
 
 impl Trait for Runtime {
 	type Event = TestEvent;
