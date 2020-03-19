@@ -104,7 +104,7 @@ fn charges_fee() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee);
+		assert_eq!(Currencies::balance(ACA, &ALICE,), 100000 - fee);
 
 		let fee2 = 42 + 18 * 2 + 1000; // base + len * byte + weight
 		assert_eq!(
@@ -114,7 +114,7 @@ fn charges_fee() {
 				.priority,
 			fee2
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee - fee2);
+		assert_eq!(Currencies::balance(ACA, &ALICE,), 100000 - fee - fee2);
 	});
 }
 
@@ -130,7 +130,7 @@ fn enabled_free_transaction_not_charges_fee() {
 				.priority,
 			0
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000);
+		assert_eq!(Currencies::balance(ACA, &ALICE,), 100000);
 	});
 }
 
@@ -146,7 +146,7 @@ fn enabled_free_transaction_charges_tip() {
 				.priority,
 			100
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - 100);
+		assert_eq!(Currencies::balance(ACA, &ALICE,), 100000 - 100);
 	});
 }
 
@@ -163,7 +163,7 @@ fn enabled_free_transaction_charges_other_call() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee);
+		assert_eq!(Currencies::balance(ACA, &ALICE,), 100000 - fee);
 	});
 }
 
@@ -180,6 +180,6 @@ fn enabled_free_transaction_charges_other_call_with_tip() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee);
+		assert_eq!(Currencies::balance(ACA, &ALICE,), 100000 - fee);
 	});
 }
