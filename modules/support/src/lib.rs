@@ -11,8 +11,8 @@ use sp_runtime::{DispatchError, DispatchResult};
 pub mod homa;
 
 pub use homa::{
-	EraIndex, NomineesProvider, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType,
-	StakingLedger, UnlockChunk,
+	EraIndex, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
+	PolkadotBridgeType, StakingLedger, UnlockChunk,
 };
 
 pub type Price = FixedU128;

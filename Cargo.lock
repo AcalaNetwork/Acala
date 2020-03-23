@@ -2869,6 +2869,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
+ "orml-traits",
  "parity-scale-codec",
  "serde",
  "sp-core",

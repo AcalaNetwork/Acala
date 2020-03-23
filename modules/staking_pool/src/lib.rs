@@ -4,13 +4,15 @@ use codec::{Decode, Encode};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::BasicCurrency;
 use rstd::prelude::*;
-use sp_runtime::{Permill, RuntimeDebug};
-use support::{EraIndex, NomineesProvider, OnNewEra, PolkadotBridge, Ratio, StakingLedger};
-use system::{self as system, ensure_signed};
-
-pub trait OnCommission<Balance> {
-	fn on_commission(amount: Balance);
-}
+use sp_runtime::{
+	traits::{CheckedSub, Saturating, Zero},
+	RuntimeDebug,
+};
+use support::{
+	EraIndex, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
+	PolkadotBridgeType, Rate, Ratio, StakingLedger,
+};
+use system::{self as system, ensure_root, ensure_signed};
 
 type StakingBalanceOf<T> = <<T as Trait>::StakingCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
 type LiquidBalanceOf<T> = <<T as Trait>::LiquidCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -21,11 +23,11 @@ pub trait Trait: system::Trait {
 	type LiquidCurrency: BasicCurrency<Self::AccountId>;
 	type Nominees: NomineesProvider<Self::AccountId>;
 	type OnCommission: OnCommission<StakingBalanceOf<Self>>;
-	type Bridge: PolkadotBridge<EraIndex, Self::BlockNumber, StakingBalanceOf<Self>>;
-	type MaxBondPercent: Get<Permill>;
-	type MinBondPercent: Get<Permill>;
-	type MaxClaimFee: Get<Permill>;
-	type Commission: Get<Permill>;
+	type Bridge: PolkadotBridge<Self::BlockNumber, StakingBalanceOf<Self>>;
+	type MaxBondRatio: Get<Ratio>;
+	type MinBondRatio: Get<Ratio>;
+	type MaxClaimFee: Get<Rate>;
+	type Commission: Get<Rate>;
 }
 
 decl_event!(
@@ -49,7 +51,7 @@ decl_error! {
 decl_storage! {
 	trait Store for Module<T: Trait> as StakingPool {
 		pub ClaimedUnlockChunk get(claimed_unlock_chunk): double_map hasher(twox_64_concat) EraIndex, hasher(twox_64_concat) T::AccountId => StakingBalanceOf<T>;
-		pub Ledger get(ledger): StakingLedger<StakingBalanceOf<T>, EraIndex>;
+		pub Ledger get(ledger): StakingLedger<StakingBalanceOf<T>>;
 	}
 }
 
@@ -57,19 +59,28 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		const MaxBondPercent: Permill = T::MaxBondPercent::get();
-		const MinBondPercent: Permill = T::MinBondPercent::get();
-		const MaxClaimFee: Permill = T::MaxClaimFee::get();
-		const Commission: Permill = T::Commission::get();
+		const MaxBondRatio: Ratio = T::MaxBondRatio::get();
+		const MinBondRatio: Ratio = T::MinBondRatio::get();
+		const MaxClaimFee: Rate = T::MaxClaimFee::get();
+		const Commission: Rate = T::Commission::get();
 
 		pub fn claim_payout(origin, amount: StakingBalanceOf<T>, proof: Vec<u8>) {
-
+			ensure_root(origin)?;
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-	pub fn rebalance() {}
+	pub fn rebalance() {
+		let ledger = Self::ledger();
+		let bonded_ratio = Ratio::from_rational(ledger.total_bonded, ledger.total_bonded.saturating_add(ledger.free));
+
+		if bonded_ratio > T::MaxBondRatio::get() {
+			// bond more
+		} else if bonded_ratio < T::MinBondRatio::get() {
+			// unbond some
+		}
+	}
 
 	pub fn bond(amount: StakingBalanceOf<T>) {}
 
@@ -78,16 +89,28 @@ impl<T: Trait> Module<T> {
 	pub fn claim(amount: LiquidBalanceOf<T>, era: EraIndex) {}
 
 	pub fn claim_amount_percent(amount: StakingBalanceOf<T>, era: EraIndex) -> Ratio {
-		Default::default()
+		let ledger = T::Bridge::ledger();
+		let free = T::Bridge::balance().saturating_sub(ledger.total_bonded);
+		let mut available: StakingBalanceOf<T> = Zero::zero();
+		ledger.unlocking.into_iter().map(|x| {
+			if x.era <= era {
+				available = available.saturating_add(x.value);
+			}
+		});
+
+		Ratio::from_rational(amount, free.saturating_add(available))
 	}
 
 	pub fn claim_period_percent(era: EraIndex) -> Ratio {
-		Default::default()
+		Ratio::from_rational(
+			era.checked_sub(T::Bridge::current_era()).unwrap_or_default(),
+			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get(),
+		)
 	}
 
 	pub fn claim_fee(amount: StakingBalanceOf<T>, era: EraIndex) {}
 }
 
-impl<T: Trait> OnNewEra<EraIndex> for Module<T> {
+impl<T: Trait> OnNewEra for Module<T> {
 	fn on_new_era(era: EraIndex) {}
 }
