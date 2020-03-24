@@ -1,9 +1,9 @@
-use codec::{Decode, Encode, HasCompact};
+use codec::{Decode, Encode};
 use frame_support::{traits::Get, Parameter};
 use rstd::fmt::Debug;
 use rstd::prelude::*;
 use sp_runtime::{
-	traits::{AtLeast32Bit, MaybeDisplay, MaybeSerializeDeserialize, Member, Saturating, Zero},
+	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member},
 	RuntimeDebug,
 };
 
@@ -20,76 +20,20 @@ pub trait NomineesProvider<AccountId> {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct UnlockChunk<Balance> {
+pub struct PolkadotUnlockChunk<Balance> {
+	#[codec(compact)]
 	pub value: Balance,
+	#[codec(compact)]
 	pub era: EraIndex,
-	pub claimed: Balance,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
-pub struct StakingLedger<Balance> {
-	pub total_bonded: Balance,
+pub struct PolkadotStakingLedger<Balance> {
+	#[codec(compact)]
+	pub total: Balance,
+	#[codec(compact)]
 	pub active: Balance,
-	pub unlocking: Vec<UnlockChunk<Balance>>,
-	pub free: Balance,
-}
-
-impl<Balance> StakingLedger<Balance>
-where
-	Balance: HasCompact + Copy + Saturating + AtLeast32Bit,
-{
-	/// Remove entries from `unlocking` that are sufficiently old and reduce the
-	/// total by the sum of their balances, and increase the free by the sum of
-	/// their claimed.
-	fn consolidate_unlocked(self, current_era: EraIndex) -> Self {
-		let mut total_bonded = self.total_bonded;
-		let mut free = self.free;
-		let unlocking = self
-			.unlocking
-			.into_iter()
-			.filter(|chunk| {
-				if chunk.era > current_era {
-					true
-				} else {
-					total_bonded = total_bonded.saturating_sub(chunk.value);
-					free = free.saturating_add(chunk.claimed);
-					false
-				}
-			})
-			.collect();
-
-		Self {
-			total_bonded: total_bonded,
-			active: self.active,
-			unlocking: unlocking,
-			free: free,
-		}
-	}
-
-	/// Re-bond funds that were scheduled for unlocking.
-	fn rebond(mut self, value: Balance) -> Self {
-		let mut unlocking_balance: Balance = Zero::zero();
-
-		while let Some(last) = self.unlocking.last_mut() {
-			if unlocking_balance + last.value <= value {
-				unlocking_balance += last.value;
-				self.active += last.value;
-				self.unlocking.pop();
-			} else {
-				let diff = value - unlocking_balance;
-
-				unlocking_balance += diff;
-				self.active += diff;
-				last.value -= diff;
-			}
-
-			if unlocking_balance >= value {
-				break;
-			}
-		}
-
-		self
-	}
+	pub unlocking: Vec<PolkadotUnlockChunk<Balance>>,
 }
 
 pub trait PolkadotBridgeType<BlockNumber> {
@@ -109,7 +53,7 @@ pub trait PolkadotBridgeCall<BlockNumber, Balance>: PolkadotBridgeType<BlockNumb
 }
 
 pub trait PolkadotBridgeState<Balance> {
-	fn ledger() -> StakingLedger<Balance>;
+	fn ledger() -> PolkadotStakingLedger<Balance>;
 	fn balance() -> Balance;
 	fn current_era() -> EraIndex;
 }

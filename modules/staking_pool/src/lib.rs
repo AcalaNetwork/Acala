@@ -1,18 +1,91 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, HasCompact};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::BasicCurrency;
 use rstd::prelude::*;
 use sp_runtime::{
-	traits::{CheckedSub, Saturating, Zero},
+	traits::{AtLeast32Bit, CheckedSub, Saturating, Zero},
 	RuntimeDebug,
 };
 use support::{
 	EraIndex, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
-	PolkadotBridgeType, Rate, Ratio, StakingLedger,
+	PolkadotBridgeType, Rate, Ratio,
 };
 use system::{self as system, ensure_root, ensure_signed};
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+pub struct UnlockChunk<Balance> {
+	pub value: Balance,
+	pub era: EraIndex,
+	pub claimed: Balance,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
+pub struct StakingLedger<Balance> {
+	pub total_bonded: Balance,
+	pub active: Balance,
+	pub unlocking: Vec<UnlockChunk<Balance>>,
+	pub free: Balance,
+}
+
+impl<Balance> StakingLedger<Balance>
+where
+	Balance: HasCompact + Copy + Saturating + AtLeast32Bit,
+{
+	/// Remove entries from `unlocking` that are sufficiently old and reduce the
+	/// total by the sum of their balances, and increase the free by the sum of
+	/// their claimed.
+	fn consolidate_unlocked(self, current_era: EraIndex) -> Self {
+		let mut total_bonded = self.total_bonded;
+		let mut free = self.free;
+		let unlocking = self
+			.unlocking
+			.into_iter()
+			.filter(|chunk| {
+				if chunk.era > current_era {
+					true
+				} else {
+					total_bonded = total_bonded.saturating_sub(chunk.value);
+					free = free.saturating_add(chunk.claimed);
+					false
+				}
+			})
+			.collect();
+
+		Self {
+			total_bonded: total_bonded,
+			active: self.active,
+			unlocking: unlocking,
+			free: free,
+		}
+	}
+
+	/// Re-bond funds that were scheduled for unlocking.
+	fn rebond(mut self, value: Balance) -> Self {
+		let mut unlocking_balance: Balance = Zero::zero();
+
+		while let Some(last) = self.unlocking.last_mut() {
+			if unlocking_balance + last.value <= value {
+				unlocking_balance += last.value;
+				self.active += last.value;
+				self.unlocking.pop();
+			} else {
+				let diff = value - unlocking_balance;
+
+				unlocking_balance += diff;
+				self.active += diff;
+				last.value -= diff;
+			}
+
+			if unlocking_balance >= value {
+				break;
+			}
+		}
+
+		self
+	}
+}
 
 type StakingBalanceOf<T> = <<T as Trait>::StakingCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
 type LiquidBalanceOf<T> = <<T as Trait>::LiquidCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
@@ -90,7 +163,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn claim_amount_percent(amount: StakingBalanceOf<T>, era: EraIndex) -> Ratio {
 		let ledger = T::Bridge::ledger();
-		let free = T::Bridge::balance().saturating_sub(ledger.total_bonded);
+		let free = T::Bridge::balance().saturating_sub(ledger.total);
 		let mut available: StakingBalanceOf<T> = Zero::zero();
 		ledger.unlocking.into_iter().map(|x| {
 			if x.era <= era {
