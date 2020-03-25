@@ -42,13 +42,14 @@ pub trait PolkadotBridgeType<BlockNumber> {
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 }
 
-pub trait PolkadotBridgeCall<BlockNumber, Balance>: PolkadotBridgeType<BlockNumber> {
+pub trait PolkadotBridgeCall<BlockNumber, Balance, AccountId>: PolkadotBridgeType<BlockNumber> {
 	fn bond_extra(amount: Balance);
 	fn unbond(amount: Balance);
 	fn rebond(amount: Balance);
 	fn withdraw_unbonded();
 	fn nominate(targets: Vec<Self::PolkadotAccountId>);
-	fn transfer(to: Self::PolkadotAccountId, amount: Balance);
+	fn transfer_to_bridge(from: &AccountId, amount: Balance);
+	fn receive_from_bridge(to: &AccountId, amount: Balance);
 	fn payout_nominator();
 }
 
@@ -58,8 +59,8 @@ pub trait PolkadotBridgeState<Balance> {
 	fn current_era() -> EraIndex;
 }
 
-pub trait PolkadotBridge<BlockNumber, Balance>:
-	PolkadotBridgeCall<BlockNumber, Balance> + PolkadotBridgeState<Balance>
+pub trait PolkadotBridge<BlockNumber, Balance, AccountId>:
+	PolkadotBridgeCall<BlockNumber, Balance, AccountId> + PolkadotBridgeState<Balance>
 {
 }
 

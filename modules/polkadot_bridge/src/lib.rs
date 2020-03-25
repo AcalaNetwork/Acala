@@ -125,7 +125,7 @@ impl<T: Trait> PolkadotBridgeType<T::BlockNumber> for Module<T> {
 	type PolkadotAccountId = T::PolkadotAccountId;
 }
 
-impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>> for Module<T> {
+impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> for Module<T> {
 	// simulate bond extra
 	fn bond_extra(amount: BalanceOf<T>) {
 		let free_balance = Self::available();
@@ -200,7 +200,21 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>> for Module<T> {
 
 	fn nominate(_targets: Vec<Self::PolkadotAccountId>) {}
 
-	fn transfer(_to: Self::PolkadotAccountId, _amount: BalanceOf<T>) {}
+	// simulate transfer dot from acala to parachain account in polkadot
+	fn transfer_to_bridge(from: &T::AccountId, amount: BalanceOf<T>) {
+		if T::DotCurrency::ensure_can_withdraw(from, amount).is_ok() {
+			T::DotCurrency::withdraw(from, amount).expect("never failed after check");
+			<Available<T>>::mutate(|balance| *balance = balance.saturating_add(amount));
+		}
+	}
+
+	// simulate receive dot from parachain account in polkadot to acala
+	fn receive_from_bridge(to: &T::AccountId, amount: BalanceOf<T>) {
+		if let Some(new_available) = Self::available().checked_sub(&amount) {
+			<Available<T>>::put(new_available);
+			T::DotCurrency::deposit(&to, amount).expect("shouldn't fail");
+		}
+	}
 
 	fn payout_nominator() {}
 }
@@ -228,7 +242,7 @@ impl<T: Trait> PolkadotBridgeState<BalanceOf<T>> for Module<T> {
 	}
 
 	fn balance() -> BalanceOf<T> {
-		// bonded + unlocking + available
+		// bonded + total_unlocking + available
 		let mut total = Self::bonded().saturating_add(Self::available());
 
 		for (balance, _) in Self::unbonding() {
@@ -243,4 +257,4 @@ impl<T: Trait> PolkadotBridgeState<BalanceOf<T>> for Module<T> {
 	}
 }
 
-impl<T: Trait> PolkadotBridge<T::BlockNumber, BalanceOf<T>> for Module<T> {}
+impl<T: Trait> PolkadotBridge<T::BlockNumber, BalanceOf<T>, T::AccountId> for Module<T> {}

@@ -307,6 +307,7 @@ impl<T: Trait> Module<T> {
 
 impl<T: Trait> NomineesProvider<T::PolkadotAccountId> for Module<T> {
 	fn nominees() -> Vec<T::PolkadotAccountId> {
+		Self::rebalance(); // can remove the operation by ensure homa_council::on_new_era execute before staking_pool::on_new_era
 		Self::nominees()
 	}
 }
