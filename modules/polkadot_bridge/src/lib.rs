@@ -10,7 +10,7 @@ use sp_runtime::{
 };
 use support::{
 	EraIndex, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType,
-	PolkadotStakingLedger, PolkadotUnlockChunk,
+	PolkadotStakingLedger, PolkadotUnlockChunk, Rate,
 };
 use system::{self as system, ensure_root, ensure_signed};
 
@@ -52,6 +52,7 @@ decl_storage! {
 		pub CurrentEra get(current_era): EraIndex;
 		pub EraStartBlockNumber get(fn era_start_block_number): T::BlockNumber;
 		pub ForcedEra get(forced_era): Option<T::BlockNumber>;
+		pub InflationRate get(fn inflation_rate) config(): Option<Rate>;
 	}
 }
 
@@ -63,6 +64,15 @@ decl_module! {
 		const MockRewardPercent: Permill = T::MockRewardPercent::get();
 		const BondingDuration: EraIndex = T::BondingDuration::get();
 		const EraLength: T::BlockNumber = T::EraLength::get();
+
+		pub fn set_inflation_rate(origin, inflation_rate: Option<Rate>) {
+			ensure_root(origin)?;
+			if let Some(inflation_rate) = inflation_rate {
+				InflationRate::put(inflation_rate);
+			} else {
+				InflationRate::kill();
+			}
+		}
 
 		pub fn simulate_slash(origin, amount: BalanceOf<T>) {
 			ensure_root(origin)?;
@@ -216,7 +226,13 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 		}
 	}
 
-	fn payout_nominator() {}
+	// simulate receive staking reward
+	fn payout_nominator() {
+		if let Some(inflation_rate) = Self::inflation_rate() {
+			let reward = inflation_rate.saturating_mul_int(&Self::bonded());
+			<Available<T>>::mutate(|balance| *balance = balance.saturating_add(reward));
+		}
+	}
 }
 
 impl<T: Trait> PolkadotBridgeState<BalanceOf<T>> for Module<T> {

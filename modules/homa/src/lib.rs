@@ -20,25 +20,11 @@ type StakingBalanceOf<T> =
 type LiquidBalanceOf<T> =
 	<<T as staking_pool::Trait>::LiquidCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
 
-pub trait Trait: system::Trait + staking_pool::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-}
-
-decl_event!(
-	pub enum Event<T>
-	where
-		<T as system::Trait>::AccountId,
-		StakingBalance = StakingBalanceOf<T>,
-		LiquidBalance = LiquidBalanceOf<T>,
-	{
-		Mint(AccountId, StakingBalance, LiquidBalance),
-	}
-);
+pub trait Trait: system::Trait + staking_pool::Trait {}
 
 decl_error! {
 	/// Error for homa module.
 	pub enum Error for Module<T: Trait> {
-		AuctionNotExsits,
 	}
 }
 
@@ -48,14 +34,26 @@ decl_storage! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		fn deposit_event() = default;
+		type Error = Error<T>;
 
 		pub fn mint(origin, amount: StakingBalanceOf<T>) {
-
+			let who = ensure_signed(origin)?;
+			<staking_pool::Module<T>>::bond(&who, amount);
 		}
 
 		pub fn redeem(origin, amount: LiquidBalanceOf<T>, strategy: RedeemStrategy) {
-
+			let who = ensure_signed(origin)?;
+			match strategy {
+				RedeemStrategy::Immedately => {
+					<staking_pool::Module<T>>::redeem_by_free_pool(&who, amount)?;
+				},
+				RedeemStrategy::Target(target_era) => {
+					<staking_pool::Module<T>>::redeem_by_claim_unbonding(&who, amount, target_era)?;
+				},
+				RedeemStrategy::WaitForUnbonding => {
+					<staking_pool::Module<T>>::redeem_by_unbond(&who, amount)?;
+				},
+			}
 		}
 	}
 }
