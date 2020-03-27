@@ -102,11 +102,10 @@ pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
-	type NominateesCount: Get<u32>;
 	type MinBondThreshold: Get<BalanceOf<Self>>;
 	type BondingDuration: Get<EraIndex>;
 	type Bridge: PolkadotBridgeState<BalanceOf<Self>>;
-	type MaxNominations: Get<usize>;
+	type NominateesCount: Get<usize>;
 	type MaxUnlockingChunks: Get<usize>;
 }
 
@@ -145,9 +144,8 @@ decl_module! {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
-		const NominateesCount: u32 = T::NominateesCount::get();
 		const MinBondThreshold: BalanceOf<T> = T::MinBondThreshold::get();
-		const MaxNominations: u32 = T::MaxNominations::get() as u32;
+		const NominateesCount: u32 = T::NominateesCount::get() as u32;
 		const MaxUnlockingChunks: u32 = T::MaxUnlockingChunks::get() as u32;
 
 		pub fn bond(origin, #[compact] amount: BalanceOf<T>) {
@@ -232,7 +230,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				!targets.is_empty() &&
-				targets.len() < T::MaxNominations::get(),
+				targets.len() < T::NominateesCount::get(),
 				Error::<T>::InvalidTargetsLength,
 			);
 
@@ -300,7 +298,7 @@ impl<T: Trait> Module<T> {
 
 		let new_nominees = voters
 			.into_iter()
-			.take(T::NominateesCount::get() as usize)
+			.take(T::NominateesCount::get())
 			.map(|(nominee, _)| nominee)
 			.collect::<Vec<_>>();
 
