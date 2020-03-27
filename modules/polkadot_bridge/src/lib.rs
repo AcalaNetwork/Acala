@@ -39,8 +39,8 @@ decl_event!(
 decl_error! {
 	/// Error for polkadot bridge module.
 	pub enum Error for Module<T: Trait> {
-		DotNotEnough,
-		DotOverflow,
+		NotEnough,
+		Overflow,
 	}
 }
 
@@ -81,14 +81,14 @@ decl_module! {
 
 		pub fn simualte_receive(origin, to: T::AccountId, amount: BalanceOf<T>) {
 			ensure_root(origin)?;
-			let new_available = Self::available().checked_sub(&amount).ok_or(Error::<T>::DotNotEnough)?;
+			let new_available = Self::available().checked_sub(&amount).ok_or(Error::<T>::NotEnough)?;
 			T::DotCurrency::deposit(&to, amount)?;
 			<Available<T>>::put(new_available);
 		}
 
 		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: BalanceOf<T>) {
 			let from = ensure_signed(origin)?;
-			let new_available = Self::available().checked_add(&amount).ok_or(Error::<T>::DotOverflow)?;
+			let new_available = Self::available().checked_add(&amount).ok_or(Error::<T>::Overflow)?;
 			T::DotCurrency::withdraw(&from, amount)?;
 			<Available<T>>::put(new_available);
 		}
@@ -109,7 +109,7 @@ decl_module! {
 					false
 				}
 			});
-			let len = now.checked_sub(&Self::era_start_block_number()).unwrap_or(Zero::zero());
+			let len = now.checked_sub(&Self::era_start_block_number()).unwrap_or_default();
 
 			if len >= T::EraLength::get() || force_era {
 				Self::new_era(now);

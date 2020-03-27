@@ -15,8 +15,6 @@ use sp_runtime::{
 use support::{EraIndex, NomineesProvider, OnNewEra, PolkadotBridgeState};
 use system::{self as system, ensure_signed};
 
-const MAX_NOMINATIONS: usize = 16;
-const MAX_UNLOCKING_CHUNKS: usize = 32;
 const HOMA_COUNCIL_ID: LockIdentifier = *b"homacncl";
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
@@ -108,6 +106,8 @@ pub trait Trait: system::Trait {
 	type MinBondThreshold: Get<BalanceOf<Self>>;
 	type BondingDuration: Get<EraIndex>;
 	type Bridge: PolkadotBridgeState<BalanceOf<Self>>;
+	type MaxNominations: Get<usize>;
+	type MaxUnlockingChunks: Get<usize>;
 }
 
 decl_event!(
@@ -125,7 +125,7 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		BelowMinBondThreshold,
 		NoMoreChunks,
-		EmptyTargets,
+		InvalidTargetsLength,
 		NoBonded,
 		NoUnlockChunk,
 	}
@@ -147,6 +147,8 @@ decl_module! {
 
 		const NominateesCount: u32 = T::NominateesCount::get();
 		const MinBondThreshold: BalanceOf<T> = T::MinBondThreshold::get();
+		const MaxNominations: u32 = T::MaxNominations::get() as u32;
+		const MaxUnlockingChunks: u32 = T::MaxUnlockingChunks::get() as u32;
 
 		pub fn bond(origin, #[compact] amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
@@ -171,7 +173,7 @@ decl_module! {
 
 			let mut ledger = Self::ledger(&who);
 			ensure!(
-				ledger.unlocking.len() < MAX_UNLOCKING_CHUNKS,
+				ledger.unlocking.len() < T::MaxUnlockingChunks::get(),
 				Error::<T>::NoMoreChunks,
 			);
 
@@ -228,15 +230,16 @@ decl_module! {
 
 		pub fn nominate(origin, targets: Vec<T::PolkadotAccountId>) {
 			let who = ensure_signed(origin)?;
-			ensure!(!targets.is_empty(), Error::<T>::EmptyTargets);
+			ensure!(
+				!targets.is_empty() &&
+				targets.len() < T::MaxNominations::get(),
+				Error::<T>::InvalidTargetsLength,
+			);
 
 			let ledger = Self::ledger(&who);
 			ensure!(!ledger.total.is_zero(), Error::<T>::NoBonded);
 
-			let mut targets = targets.into_iter()
-				.take(MAX_NOMINATIONS)
-				.collect::<Vec<_>>();
-
+			let mut targets = targets.clone();
 			targets.sort();
 			targets.dedup();
 

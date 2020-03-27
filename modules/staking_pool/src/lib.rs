@@ -30,6 +30,7 @@ pub trait Trait: system::Trait {
 	type MaxBondRatio: Get<Ratio>;
 	type MinBondRatio: Get<Ratio>;
 	type MaxClaimFee: Get<Rate>;
+	type DefaultExchangeRate: Get<ExchangeRate>;
 }
 
 decl_event!(
@@ -46,8 +47,8 @@ decl_event!(
 decl_error! {
 	/// Error for staking pool module.
 	pub enum Error for Module<T: Trait> {
-		DOTNotEnough,
-		LDOTNotEnough,
+		StakingCurrencyNotEnough,
+		LiquidCurrencyNotEnough,
 		InvalidEra,
 	}
 }
@@ -72,6 +73,7 @@ decl_module! {
 		const MaxBondRatio: Ratio = T::MaxBondRatio::get();
 		const MinBondRatio: Ratio = T::MinBondRatio::get();
 		const MaxClaimFee: Rate = T::MaxClaimFee::get();
+		const DefaultExchangeRate: ExchangeRate = T::DefaultExchangeRate::get();
 
 		pub fn claim_payout(origin, amount: StakingBalanceOf<T>, proof: Vec<u8>) {
 			ensure_root(origin)?;
@@ -89,6 +91,7 @@ impl<T: Trait> Module<T> {
 		Self::total_bonded()
 			.saturating_add(Self::free_pool())
 			.saturating_add(Self::unbonding_to_free())
+			.saturating_sub(Self::next_era_unbond().1)
 	}
 
 	// bonded_ratio = total_bonded / total_balance
@@ -105,7 +108,7 @@ impl<T: Trait> Module<T> {
 		if !total_dot_amount.is_zero() && !total_ldot_amount.is_zero() {
 			ExchangeRate::from_rational(total_dot_amount, total_ldot_amount)
 		} else {
-			ExchangeRate::from_natural(1) // default exchange rate
+			T::DefaultExchangeRate::get()
 		}
 	}
 
@@ -123,7 +126,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn bond(who: &T::AccountId, amount: StakingBalanceOf<T>) -> DispatchResult {
 		// bond dot
-		T::StakingCurrency::ensure_can_withdraw(who, amount).map_err(|_| Error::<T>::DOTNotEnough)?;
+		T::StakingCurrency::ensure_can_withdraw(who, amount).map_err(|_| Error::<T>::StakingCurrencyNotEnough)?;
 		T::Bridge::transfer_to_bridge(who, amount);
 		T::Bridge::bond_extra(amount);
 		<TotalBonded<T>>::mutate(|bonded| *bonded += amount);
@@ -162,7 +165,8 @@ impl<T: Trait> Module<T> {
 			}
 
 			// burn who's ldot
-			T::LiquidCurrency::ensure_can_withdraw(who, ldot_to_redeem).map_err(|_| Error::<T>::LDOTNotEnough)?;
+			T::LiquidCurrency::ensure_can_withdraw(who, ldot_to_redeem)
+				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 			T::LiquidCurrency::withdraw(who, ldot_to_redeem).expect("never failed after balance check");
 
 			// start unbond at next era, and the unbond become unbonded after bonding duration
@@ -223,7 +227,8 @@ impl<T: Trait> Module<T> {
 				total_deduct = fee + ldot_to_redeem;
 			}
 
-			T::LiquidCurrency::ensure_can_withdraw(who, total_deduct).map_err(|_| Error::<T>::LDOTNotEnough)?;
+			T::LiquidCurrency::ensure_can_withdraw(who, total_deduct)
+				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 			T::StakingCurrency::transfer(&Self::account_id(), who, unbond_amount)?;
 			T::LiquidCurrency::withdraw(who, total_deduct).expect("never failed after balance check");
 			<FreePool<T>>::mutate(|balance| *balance -= unbond_amount);
@@ -274,7 +279,8 @@ impl<T: Trait> Module<T> {
 				total_deduct = fee + ldot_to_redeem;
 			}
 
-			T::LiquidCurrency::ensure_can_withdraw(who, total_deduct).map_err(|_| Error::<T>::LDOTNotEnough)?;
+			T::LiquidCurrency::ensure_can_withdraw(who, total_deduct)
+				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 			T::LiquidCurrency::withdraw(who, total_deduct).expect("never failed after balance check");
 			<FreePool<T>>::mutate(|balance| *balance -= unbond_amount);
 
