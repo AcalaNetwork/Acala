@@ -13,10 +13,13 @@ system = { package = "frame-system", version = "2.0.0-alpha.3", default-features
 rstd = { package = "sp-std", version = "2.0.0-alpha.3", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+pallet-balances = { package = "pallet-balances", version = "2.0.0-alpha.3", default-features = false }
 
 [dev-dependencies]
 primitives = { package = "sp-core",  version = "2.0.0-alpha.3", default-features = false }
 runtime-io = { package = "sp-io", version = "2.0.0-alpha.3", default-features = false }
+orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
+orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 
 [features]
 default = ["std"]
@@ -29,4 +32,6 @@ std = [
 	"rstd/std",
 	"support/std",
 	"orml-traits/std",
+	"orml-tokens/std",
+	"pallet-balances/std",
 ]

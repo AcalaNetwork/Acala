@@ -2,7 +2,7 @@
 
 use codec::{Decode, Encode, HasCompact};
 use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, ensure,
+	decl_error, decl_module, decl_storage, ensure,
 	traits::{Get, LockIdentifier},
 	Parameter,
 };
@@ -12,8 +12,11 @@ use sp_runtime::{
 	traits::{AtLeast32Bit, CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Saturating, Zero},
 	RuntimeDebug,
 };
-use support::{EraIndex, NomineesProvider, OnNewEra, PolkadotBridgeState};
+use support::{EraIndex, NomineesProvider, OnNewEra};
 use system::{self as system, ensure_signed};
+
+mod mock;
+mod tests;
 
 const HOMA_COUNCIL_ID: LockIdentifier = *b"homacncl";
 
@@ -99,32 +102,20 @@ where
 type BalanceOf<T> = <<T as Trait>::Currency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
 
 pub trait Trait: system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 	type MinBondThreshold: Get<BalanceOf<Self>>;
 	type BondingDuration: Get<EraIndex>;
-	type Bridge: PolkadotBridgeState<BalanceOf<Self>>;
 	type NominateesCount: Get<usize>;
 	type MaxUnlockingChunks: Get<usize>;
 }
-
-decl_event!(
-	pub enum Event<T>
-	where
-		<T as system::Trait>::AccountId,
-		Balance = BalanceOf<T>,
-	{
-		Mint(AccountId, Balance),
-	}
-);
 
 decl_error! {
 	/// Error for homa council module.
 	pub enum Error for Module<T: Trait> {
 		BelowMinBondThreshold,
-		NoMoreChunks,
 		InvalidTargetsLength,
+		TooManyChunks,
 		NoBonded,
 		NoUnlockChunk,
 	}
@@ -136,13 +127,13 @@ decl_storage! {
 		pub Ledger get(ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger<BalanceOf<T>>;
 		pub Votes get(votes): linked_map hasher(twox_64_concat) T::PolkadotAccountId => BalanceOf<T>;
 		pub Nominees get(nominees): Vec<T::PolkadotAccountId>;
+		pub CurrentEra get(current_era): EraIndex;
 	}
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
-		fn deposit_event() = default;
 
 		const MinBondThreshold: BalanceOf<T> = T::MinBondThreshold::get();
 		const NominateesCount: u32 = T::NominateesCount::get() as u32;
@@ -172,7 +163,7 @@ decl_module! {
 			let mut ledger = Self::ledger(&who);
 			ensure!(
 				ledger.unlocking.len() < T::MaxUnlockingChunks::get(),
-				Error::<T>::NoMoreChunks,
+				Error::<T>::TooManyChunks,
 			);
 
 			let amount = amount.min(ledger.active);
@@ -187,7 +178,7 @@ decl_module! {
 				);
 
 				// Note: in case there is no current era it is fine to bond one era more.
-				let era = T::Bridge::current_era() + T::BondingDuration::get();
+				let era = Self::current_era() + T::BondingDuration::get();
 				ledger.unlocking.push(UnlockChunk{
 					value: amount,
 					era: era,
@@ -216,7 +207,7 @@ decl_module! {
 
 		pub fn withdraw_unbonded(origin) {
 			let who = ensure_signed(origin)?;
-			let ledger = Self::ledger(&who).consolidate_unlocked(T::Bridge::current_era());
+			let ledger = Self::ledger(&who).consolidate_unlocked(Self::current_era());
 
 			if ledger.unlocking.is_empty() && ledger.active.is_zero() {
 				Self::remove_ledger(&who);
@@ -230,7 +221,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				!targets.is_empty() &&
-				targets.len() < T::NominateesCount::get(),
+				targets.len() <= T::NominateesCount::get(),
 				Error::<T>::InvalidTargetsLength,
 			);
 
@@ -309,12 +300,13 @@ impl<T: Trait> Module<T> {
 impl<T: Trait> NomineesProvider<T::PolkadotAccountId> for Module<T> {
 	fn nominees() -> Vec<T::PolkadotAccountId> {
 		Self::rebalance(); // can remove the operation by ensure homa_council::on_new_era execute before staking_pool::on_new_era
-		Self::nominees()
+		<Nominees<T>>::get()
 	}
 }
 
 impl<T: Trait> OnNewEra for Module<T> {
-	fn on_new_era(_era: EraIndex) {
+	fn on_new_era(era: EraIndex) {
+		CurrentEra::put(era);
 		Self::rebalance();
 	}
 }

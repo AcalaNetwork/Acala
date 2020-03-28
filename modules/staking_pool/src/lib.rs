@@ -11,7 +11,10 @@ use support::{
 	EraIndex, ExchangeRate, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall,
 	PolkadotBridgeState, PolkadotBridgeType, Rate, Ratio,
 };
-use system::{self as system, ensure_root};
+use system::{self as system};
+
+mod mock;
+mod tests;
 
 const MODULE_ID: ModuleId = ModuleId(*b"aca/stkp");
 
@@ -40,7 +43,10 @@ decl_event!(
 		StakingBalance = StakingBalanceOf<T>,
 		LiquidBalance = LiquidBalanceOf<T>,
 	{
-		Mint(AccountId, StakingBalance, LiquidBalance),
+		BondAndMint(AccountId, StakingBalance, LiquidBalance),
+		RedeemByUnbond(AccountId, LiquidBalance),
+		RedeemByFreePool(AccountId, LiquidBalance, LiquidBalance, StakingBalance),
+		RedeemByClaimUnbonding(AccountId, EraIndex, LiquidBalance, LiquidBalance, StakingBalance),
 	}
 );
 
@@ -55,6 +61,8 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as StakingPool {
+		pub CurrentEra get(current_era): EraIndex;
+
 		pub NextEraUnbond get(next_era_unbond): (StakingBalanceOf<T>, StakingBalanceOf<T>);
 		pub Unbonding get(unbonding): map hasher(twox_64_concat) EraIndex => (StakingBalanceOf<T>, StakingBalanceOf<T>); // (value, claimed), value - claimed = unbond to free pool
 		pub ClaimedUnbond get(claimed_unbond): double_map hasher(twox_64_concat) EraIndex, hasher(twox_64_concat) T::AccountId => StakingBalanceOf<T>;
@@ -74,10 +82,6 @@ decl_module! {
 		const MinBondRatio: Ratio = T::MinBondRatio::get();
 		const MaxClaimFee: Rate = T::MaxClaimFee::get();
 		const DefaultExchangeRate: ExchangeRate = T::DefaultExchangeRate::get();
-
-		pub fn claim_payout(origin, amount: StakingBalanceOf<T>, proof: Vec<u8>) {
-			ensure_root(origin)?;
-		}
 	}
 }
 
@@ -86,8 +90,8 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	// the total balance is all DOT that belong to all existing LDOT
-	pub fn get_total_balance() -> StakingBalanceOf<T> {
+	// the total unclaimed balance is all DOT that belong to all existing LDOT
+	pub fn get_total_unclaimed_balance() -> StakingBalanceOf<T> {
 		Self::total_bonded()
 			.saturating_add(Self::free_pool())
 			.saturating_add(Self::unbonding_to_free())
@@ -96,12 +100,12 @@ impl<T: Trait> Module<T> {
 
 	// bonded_ratio = total_bonded / total_balance
 	pub fn get_bonded_ratio() -> Ratio {
-		Ratio::from_rational(Self::total_bonded(), Self::get_total_balance())
+		Ratio::from_rational(Self::total_bonded(), Self::get_total_unclaimed_balance())
 	}
 
 	// LDOT/DOT = total DOT belong to Homa / total supply of LDOT
 	pub fn liquid_exchange_rate() -> ExchangeRate {
-		let total_dot_amount = Self::get_total_balance();
+		let total_dot_amount = Self::get_total_unclaimed_balance();
 		let total_ldot_amount: u128 = T::LiquidCurrency::total_issuance().unique_saturated_into();
 		let total_ldot_amount: StakingBalanceOf<T> = total_ldot_amount.unique_saturated_into();
 
@@ -114,7 +118,7 @@ impl<T: Trait> Module<T> {
 
 	// TODO: iterator all expired era, instead of specific era
 	pub fn withdraw_unbonded(who: &T::AccountId, era: EraIndex) -> DispatchResult {
-		ensure!(era <= T::Bridge::current_era(), Error::<T>::InvalidEra);
+		ensure!(era <= Self::current_era(), Error::<T>::InvalidEra);
 		let unbonded = Self::claimed_unbond(era, &who);
 		if !unbonded.is_zero() {
 			T::StakingCurrency::transfer(&Self::account_id(), who, unbonded)?;
@@ -135,11 +139,12 @@ impl<T: Trait> Module<T> {
 		let ldot_amount: u128 = ExchangeRate::from_natural(1)
 			.checked_div(&Self::liquid_exchange_rate())
 			.unwrap_or_default()
-			.saturating_mul_int(&Self::get_total_balance())
+			.saturating_mul_int(&Self::get_total_unclaimed_balance())
 			.unique_saturated_into();
 		let ldot_amount: LiquidBalanceOf<T> = ldot_amount.unique_saturated_into();
 		T::LiquidCurrency::deposit(who, ldot_amount)?;
 
+		<Module<T>>::deposit_event(RawEvent::BondAndMint(who.clone(), amount, ldot_amount));
 		Ok(())
 	}
 
@@ -170,7 +175,7 @@ impl<T: Trait> Module<T> {
 			T::LiquidCurrency::withdraw(who, ldot_to_redeem).expect("never failed after balance check");
 
 			// start unbond at next era, and the unbond become unbonded after bonding duration
-			let unbonded_era_index = T::Bridge::current_era()
+			let unbonded_era_index = Self::current_era()
 				+ 1 + <<T as Trait>::Bridge as PolkadotBridgeType<
 				<T as system::Trait>::BlockNumber,
 			>>::BondingDuration::get();
@@ -179,6 +184,7 @@ impl<T: Trait> Module<T> {
 				*claimed += unbond_amount;
 			});
 			<ClaimedUnbond<T>>::mutate(unbonded_era_index, who, |balance| *balance += unbond_amount);
+			<Module<T>>::deposit_event(RawEvent::RedeemByUnbond(who.clone(), ldot_to_redeem));
 		}
 
 		Ok(())
@@ -186,7 +192,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn claim_period_percent(era: EraIndex) -> Ratio {
 		Ratio::from_rational(
-			era.saturating_sub(T::Bridge::current_era()),
+			era.saturating_sub(Self::current_era()),
 			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get(),
 		)
 	}
@@ -199,7 +205,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn redeem_by_free_pool(who: &T::AccountId, amount: LiquidBalanceOf<T>) -> DispatchResult {
-		let current_era = T::Bridge::current_era();
+		let current_era = Self::current_era();
 		let mut total_deduct = amount;
 		let mut fee = Self::calculate_claim_fee(total_deduct, current_era);
 		let mut ldot_to_redeem = total_deduct.saturating_sub(fee);
@@ -233,6 +239,12 @@ impl<T: Trait> Module<T> {
 			T::LiquidCurrency::withdraw(who, total_deduct).expect("never failed after balance check");
 			<FreePool<T>>::mutate(|balance| *balance -= unbond_amount);
 			T::OnCommission::on_commission(fee);
+			<Module<T>>::deposit_event(RawEvent::RedeemByFreePool(
+				who.clone(),
+				fee,
+				ldot_to_redeem,
+				unbond_amount,
+			));
 		}
 
 		Ok(())
@@ -243,7 +255,7 @@ impl<T: Trait> Module<T> {
 		amount: LiquidBalanceOf<T>,
 		target_era: EraIndex,
 	) -> DispatchResult {
-		let current_era = T::Bridge::current_era();
+		let current_era = Self::current_era();
 		let bonding_duration =
 			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get();
 		ensure!(
@@ -282,12 +294,18 @@ impl<T: Trait> Module<T> {
 			T::LiquidCurrency::ensure_can_withdraw(who, total_deduct)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 			T::LiquidCurrency::withdraw(who, total_deduct).expect("never failed after balance check");
-			<FreePool<T>>::mutate(|balance| *balance -= unbond_amount);
 
 			<ClaimedUnbond<T>>::mutate(target_era, who, |balance| *balance += unbond_amount);
 			<Unbonding<T>>::mutate(target_era, |(_, claimed)| *claimed += unbond_amount);
 			<UnbondingToFree<T>>::mutate(|balance| *balance = balance.saturating_sub(unbond_amount));
 			T::OnCommission::on_commission(fee);
+			<Module<T>>::deposit_event(RawEvent::RedeemByClaimUnbonding(
+				who.clone(),
+				target_era,
+				fee,
+				ldot_to_redeem,
+				unbond_amount,
+			));
 		}
 
 		Ok(())
@@ -320,14 +338,14 @@ impl<T: Trait> Module<T> {
 		<Unbonding<T>>::remove(era);
 
 		// TODO: adjust the amount user unbond at this era by the slash amount in last era
-		let (mut total_to_unbond, claimed_to_unbond) = <NextEraUnbond<T>>::take();
+		let (mut total_to_unbond, claimed_to_unbond) = Self::next_era_unbond();
 
 		// #5: according to bonded_ratio, decide to
 		// bond extra amount to bridge or unbond system bonded to free pool at this era
 		let bonded_ratio = Self::get_bonded_ratio();
 		let max_bond_ratio = T::MaxBondRatio::get();
 		let min_bond_ratio = T::MinBondRatio::get();
-		let total_balance = Self::get_total_balance();
+		let total_balance = Self::get_total_unclaimed_balance();
 		if bonded_ratio > max_bond_ratio {
 			// unbond some
 			let unbond_to_free = bonded_ratio
@@ -348,6 +366,7 @@ impl<T: Trait> Module<T> {
 
 			T::Bridge::transfer_to_bridge(&Self::account_id(), bond_amount);
 			T::Bridge::bond_extra(bond_amount);
+			<FreePool<T>>::mutate(|balance| *balance -= bond_amount);
 		}
 
 		// #6: unbond and update
@@ -355,14 +374,17 @@ impl<T: Trait> Module<T> {
 			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get();
 		let unbonded_era_index = era + bonding_duration;
 		T::Bridge::unbond(total_to_unbond);
+		<NextEraUnbond<T>>::kill();
 		<Unbonding<T>>::insert(unbonded_era_index, (total_to_unbond, claimed_to_unbond));
 	}
 }
 
 impl<T: Trait> OnNewEra for Module<T> {
-	fn on_new_era(era: EraIndex) {
+	fn on_new_era(new_era: EraIndex) {
+		CurrentEra::put(new_era);
+
 		// rebalance first
-		Self::rebalance(era);
+		Self::rebalance(new_era);
 
 		// nominate
 		T::Bridge::nominate(T::Nominees::nominees());

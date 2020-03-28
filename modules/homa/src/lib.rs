@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
+use frame_support::{decl_error, decl_module, decl_storage};
 use orml_traits::BasicCurrency;
 use sp_runtime::RuntimeDebug;
 use support::EraIndex;
@@ -38,7 +38,7 @@ decl_module! {
 
 		pub fn mint(origin, amount: StakingBalanceOf<T>) {
 			let who = ensure_signed(origin)?;
-			<staking_pool::Module<T>>::bond(&who, amount);
+			<staking_pool::Module<T>>::bond(&who, amount)?;
 		}
 
 		pub fn redeem(origin, amount: LiquidBalanceOf<T>, strategy: RedeemStrategy) {
