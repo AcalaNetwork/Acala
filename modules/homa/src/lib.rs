@@ -1,14 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_module, decl_storage};
+use frame_support::decl_module;
 use orml_traits::BasicCurrency;
 use sp_runtime::RuntimeDebug;
 use support::EraIndex;
 use system::{self as system, ensure_signed};
 
-#[cfg_attr(feature = "std", derive(PartialEq, Eq))]
-#[derive(Encode, Decode, Clone, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub enum RedeemStrategy {
 	Immedately,
 	Target(EraIndex),
@@ -22,20 +21,8 @@ type LiquidBalanceOf<T> =
 
 pub trait Trait: system::Trait + staking_pool::Trait {}
 
-decl_error! {
-	/// Error for homa module.
-	pub enum Error for Module<T: Trait> {
-	}
-}
-
-decl_storage! {
-	trait Store for Module<T: Trait> as Homa {}
-}
-
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
-
 		pub fn mint(origin, amount: StakingBalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			<staking_pool::Module<T>>::bond(&who, amount)?;

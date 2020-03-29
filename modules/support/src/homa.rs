@@ -67,3 +67,7 @@ pub trait PolkadotBridge<BlockNumber, Balance, AccountId>:
 pub trait OnCommission<Balance> {
 	fn on_commission(amount: Balance);
 }
+
+impl<Balance> OnCommission<Balance> for () {
+	fn on_commission(_amount: Balance) {}
+}

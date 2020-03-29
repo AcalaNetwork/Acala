@@ -4,23 +4,19 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, traits::G
 use orml_traits::BasicCurrency;
 use rstd::fmt::Debug;
 use rstd::prelude::*;
-use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Saturating, Zero},
-	Permill,
-};
+use sp_runtime::traits::{CheckedAdd, CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Saturating, Zero};
 use support::{
 	EraIndex, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType,
 	PolkadotStakingLedger, PolkadotUnlockChunk, Rate,
 };
 use system::{self as system, ensure_root, ensure_signed};
 
-type BalanceOf<T> = <<T as Trait>::DotCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as Trait>::DOTCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type DotCurrency: BasicCurrency<Self::AccountId>;
+	type DOTCurrency: BasicCurrency<Self::AccountId>;
 	type OnNewEra: OnNewEra;
-	type MockRewardPercent: Get<Permill>;
 	type BondingDuration: Get<EraIndex>;
 	type EraLength: Get<Self::BlockNumber>;
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
@@ -52,7 +48,7 @@ decl_storage! {
 		pub CurrentEra get(current_era): EraIndex;
 		pub EraStartBlockNumber get(fn era_start_block_number): T::BlockNumber;
 		pub ForcedEra get(forced_era): Option<T::BlockNumber>;
-		pub InflationRate get(fn inflation_rate) config(): Option<Rate>;
+		pub MockRewardRate get(fn mock_reward_rate) config(): Option<Rate>;
 	}
 }
 
@@ -61,16 +57,15 @@ decl_module! {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
-		const MockRewardPercent: Permill = T::MockRewardPercent::get();
 		const BondingDuration: EraIndex = T::BondingDuration::get();
 		const EraLength: T::BlockNumber = T::EraLength::get();
 
-		pub fn set_inflation_rate(origin, inflation_rate: Option<Rate>) {
+		pub fn set_mock_reward_rate(origin, mock_reward_rate: Option<Rate>) {
 			ensure_root(origin)?;
-			if let Some(inflation_rate) = inflation_rate {
-				InflationRate::put(inflation_rate);
+			if let Some(mock_reward_rate) = mock_reward_rate {
+				MockRewardRate::put(mock_reward_rate);
 			} else {
-				InflationRate::kill();
+				MockRewardRate::kill();
 			}
 		}
 
@@ -82,14 +77,14 @@ decl_module! {
 		pub fn simualte_receive(origin, to: T::AccountId, amount: BalanceOf<T>) {
 			ensure_root(origin)?;
 			let new_available = Self::available().checked_sub(&amount).ok_or(Error::<T>::NotEnough)?;
-			T::DotCurrency::deposit(&to, amount)?;
+			T::DOTCurrency::deposit(&to, amount)?;
 			<Available<T>>::put(new_available);
 		}
 
 		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: BalanceOf<T>) {
 			let from = ensure_signed(origin)?;
 			let new_available = Self::available().checked_add(&amount).ok_or(Error::<T>::Overflow)?;
-			T::DotCurrency::withdraw(&from, amount)?;
+			T::DOTCurrency::withdraw(&from, amount)?;
 			<Available<T>>::put(new_available);
 		}
 
@@ -212,8 +207,8 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 
 	// simulate transfer dot from acala to parachain account in polkadot
 	fn transfer_to_bridge(from: &T::AccountId, amount: BalanceOf<T>) {
-		if T::DotCurrency::ensure_can_withdraw(from, amount).is_ok() {
-			T::DotCurrency::withdraw(from, amount).expect("never failed after check");
+		if T::DOTCurrency::ensure_can_withdraw(from, amount).is_ok() {
+			T::DOTCurrency::withdraw(from, amount).expect("never failed after check");
 			<Available<T>>::mutate(|balance| *balance = balance.saturating_add(amount));
 		}
 	}
@@ -222,14 +217,14 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 	fn receive_from_bridge(to: &T::AccountId, amount: BalanceOf<T>) {
 		if let Some(new_available) = Self::available().checked_sub(&amount) {
 			<Available<T>>::put(new_available);
-			T::DotCurrency::deposit(&to, amount).expect("shouldn't fail");
+			T::DOTCurrency::deposit(&to, amount).expect("shouldn't fail");
 		}
 	}
 
 	// simulate receive staking reward
 	fn payout_nominator() {
-		if let Some(inflation_rate) = Self::inflation_rate() {
-			let reward = inflation_rate.saturating_mul_int(&Self::bonded());
+		if let Some(mock_reward_rate) = Self::mock_reward_rate() {
+			let reward = mock_reward_rate.saturating_mul_int(&Self::bonded());
 			<Available<T>>::mutate(|balance| *balance = balance.saturating_add(reward));
 		}
 	}
