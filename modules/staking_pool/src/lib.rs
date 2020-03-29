@@ -311,6 +311,19 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
+	pub fn unbond_and_update(era: EraIndex) {
+		let (total_to_unbond, claimed_to_unbond) = <NextEraUnbond<T>>::take();
+		let bonding_duration =
+			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get();
+		let unbonded_era_index = era + bonding_duration;
+
+		if !total_to_unbond.is_zero() {
+			T::Bridge::unbond(total_to_unbond);
+			<Unbonding<T>>::insert(unbonded_era_index, (total_to_unbond, claimed_to_unbond));
+			<UnbondingToFree<T>>::mutate(|unbonding| *unbonding += total_to_unbond - claimed_to_unbond);
+		}
+	}
+
 	pub fn rebalance(era: EraIndex) {
 		// #1: bridge withdraw unbonded and withdraw payout
 		T::Bridge::withdraw_unbonded();
@@ -337,10 +350,9 @@ impl<T: Trait> Module<T> {
 		<UnbondingToFree<T>>::mutate(|balance| *balance = balance.saturating_sub(total_unbonded - claimed_unbonded));
 		<Unbonding<T>>::remove(era);
 
-		// TODO: adjust the amount user unbond at this era by the slash amount in last era
-		let (mut total_to_unbond, claimed_to_unbond) = Self::next_era_unbond();
+		// #5 TODO: adjust the amount user unbond at this era by the slash amount in last era
 
-		// #5: according to bonded_ratio, decide to
+		// #6: according to bonded_ratio, decide to
 		// bond extra amount to bridge or unbond system bonded to free pool at this era
 		let bonded_ratio = Self::get_bonded_ratio();
 		let max_bond_ratio = T::MaxBondRatio::get();
@@ -354,8 +366,7 @@ impl<T: Trait> Module<T> {
 				.min(Self::total_bonded());
 
 			if !unbond_to_free.is_zero() {
-				total_to_unbond += unbond_to_free;
-				<UnbondingToFree<T>>::mutate(|unbonding| *unbonding += unbond_to_free);
+				<NextEraUnbond<T>>::mutate(|(unbond, _)| *unbond += unbond_to_free);
 			}
 		} else if bonded_ratio < min_bond_ratio {
 			// bond more
@@ -369,13 +380,8 @@ impl<T: Trait> Module<T> {
 			<FreePool<T>>::mutate(|balance| *balance -= bond_amount);
 		}
 
-		// #6: unbond and update
-		let bonding_duration =
-			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get();
-		let unbonded_era_index = era + bonding_duration;
-		T::Bridge::unbond(total_to_unbond);
-		<NextEraUnbond<T>>::kill();
-		<Unbonding<T>>::insert(unbonded_era_index, (total_to_unbond, claimed_to_unbond));
+		// #7: unbond and update
+		Self::unbond_and_update(era);
 	}
 }
 
