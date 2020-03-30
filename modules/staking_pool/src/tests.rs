@@ -59,7 +59,7 @@ fn redeem_by_unbond_work() {
 		assert_ok!(StakingPoolModule::bond(&ALICE, 1000));
 		assert_ok!(StakingPoolModule::bond(&BOB, 1000));
 		assert_eq!(StakingPoolModule::total_bonded(), 2000);
-		assert_eq!(StakingPoolModule::get_total_unclaimed_balance(), 2000);
+		assert_eq!(StakingPoolModule::get_total_communal_balance(), 2000);
 		assert_eq!(LiquidCurrency::free_balance(&ALICE), 10000);
 		assert_eq!(StakingPoolModule::next_era_unbond(), (0, 0));
 		assert_eq!(
@@ -71,8 +71,8 @@ fn redeem_by_unbond_work() {
 			Error::<Runtime>::LiquidCurrencyNotEnough,
 		);
 		assert_ok!(StakingPoolModule::redeem_by_unbond(&ALICE, 5000));
-		assert_eq!(StakingPoolModule::total_bonded(), 2000);
-		assert_eq!(StakingPoolModule::get_total_unclaimed_balance(), 1500);
+		assert_eq!(StakingPoolModule::total_bonded(), 1500);
+		assert_eq!(StakingPoolModule::get_total_communal_balance(), 1000);
 		assert_eq!(LiquidCurrency::free_balance(&ALICE), 5000);
 		assert_eq!(StakingPoolModule::next_era_unbond(), (500, 500));
 		assert_eq!(
@@ -88,35 +88,36 @@ fn redeem_by_unbond_work() {
 }
 
 #[test]
-fn redeem_by_free_pool_work() {
+fn redeem_by_free_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(StakingPoolModule::bond(&ALICE, 1000));
 		assert_ok!(StakingPoolModule::bond(&BOB, 1000));
 		<TotalBonded<Runtime>>::mutate(|bonded| *bonded -= 1500);
-		<FreePool<Runtime>>::put(1500);
+		<FreeUnbonded<Runtime>>::put(1500);
 		assert_ok!(StakingCurrency::deposit(&StakingPoolModule::account_id(), 1500));
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
-		assert_eq!(StakingPoolModule::free_pool(), 1500);
+		assert_eq!(StakingPoolModule::free_unbonded(), 1500);
 		assert_eq!(StakingCurrency::free_balance(&ALICE), 0);
 		assert_eq!(LiquidCurrency::free_balance(&ALICE), 10000);
 		assert_eq!(StakingCurrency::free_balance(&StakingPoolModule::account_id()), 1500);
 
 		assert_noop!(
-			StakingPoolModule::redeem_by_free_pool(&ALICE, 15000),
+			StakingPoolModule::redeem_by_free_unbonded(&ALICE, 15000),
 			Error::<Runtime>::LiquidCurrencyNotEnough,
 		);
 
-		assert_ok!(StakingPoolModule::redeem_by_free_pool(&ALICE, 10000));
+		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&ALICE, 10000));
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
-		assert_eq!(StakingPoolModule::free_pool(), 600);
+		assert_eq!(StakingPoolModule::free_unbonded(), 600);
 		assert_eq!(StakingCurrency::free_balance(&ALICE), 900);
 		assert_eq!(LiquidCurrency::free_balance(&ALICE), 0);
 		assert_eq!(StakingCurrency::free_balance(&StakingPoolModule::account_id()), 600);
 
-		let redeem_by_free_pool_event = TestEvent::staking_pool(RawEvent::RedeemByFreePool(ALICE, 1000, 9000, 900));
+		let redeem_by_free_unbonded_event =
+			TestEvent::staking_pool(RawEvent::RedeemByFreeUnbonded(ALICE, 1000, 9000, 900));
 		assert!(System::events()
 			.iter()
-			.any(|record| record.event == redeem_by_free_pool_event));
+			.any(|record| record.event == redeem_by_free_unbonded_event));
 	});
 }
 
@@ -170,7 +171,7 @@ fn rebalance_work() {
 
 		assert_eq!(StakingPoolModule::current_era(), 0);
 		assert_eq!(StakingPoolModule::total_bonded(), 20000);
-		assert_eq!(StakingPoolModule::free_pool(), 0);
+		assert_eq!(StakingPoolModule::free_unbonded(), 0);
 		assert_eq!(StakingPoolModule::total_claimed_unbonded(), 0);
 		assert_eq!(StakingCurrency::free_balance(&StakingPoolModule::account_id()), 0);
 		assert_eq!(StakingPoolModule::unbonding(1), (20000, 10000));
@@ -181,24 +182,12 @@ fn rebalance_work() {
 		StakingPoolModule::rebalance(1);
 
 		assert_eq!(StakingPoolModule::current_era(), 1);
-		assert_eq!(StakingPoolModule::total_bonded(), 20000);
-		assert_eq!(StakingPoolModule::free_pool(), 10000);
+		assert_eq!(StakingPoolModule::total_bonded(), 15000);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10000);
 		assert_eq!(StakingPoolModule::total_claimed_unbonded(), 10000);
 		assert_eq!(StakingCurrency::free_balance(&StakingPoolModule::account_id()), 20000);
 		assert_eq!(StakingPoolModule::unbonding(1), (0, 0));
-		assert_eq!(StakingPoolModule::unbonding(1 + BondingDuration::get()), (10000, 5000));
+		assert_eq!(StakingPoolModule::unbonding(1 + BondingDuration::get()), (5000, 5000));
 		assert_eq!(StakingPoolModule::next_era_unbond(), (0, 0));
-		// 	#2  bonded = 20000
-		// 	#3  free_balance = 20000
-		// 	#4  free_pool = 10000
-		// 		total_claimed_unbonded  = 10000
-		// 		unbonding_to_free = 0
-		// 		next_era_unbond  (5000, 5000)
-		// 	#5  bonded_ratio = 20000 / (20000 + 10000 - 5000) = 80%   > 60%
-		// 		  extra_unbond_to_free = (80%-60%)*25000.min(20000) = 5000
-		// 		  unbonding_to_free = 5000
-		// 								  next_era_unbond  (10000, 5000)
-		// 	#6  unbonding(1+5) (10000, 5000)
-		// 		next_era_unbond(0, 0)
 	});
 }

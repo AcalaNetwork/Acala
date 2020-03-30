@@ -32,7 +32,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			match strategy {
 				RedeemStrategy::Immedately => {
-					<staking_pool::Module<T>>::redeem_by_free_pool(&who, amount)?;
+					<staking_pool::Module<T>>::redeem_by_free_unbonded(&who, amount)?;
 				},
 				RedeemStrategy::Target(target_era) => {
 					<staking_pool::Module<T>>::redeem_by_claim_unbonding(&who, amount, target_era)?;

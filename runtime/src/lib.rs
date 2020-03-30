@@ -602,7 +602,7 @@ impl module_airdrop::Trait for Runtime {
 parameter_types! {
 	pub const GetDOTCurrencyId: CurrencyId = CurrencyId::DOT;
 	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = 360;
+	pub const EraLength: BlockNumber = 10;
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
@@ -617,7 +617,7 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(60, 100);	// 60%
+	pub const MaxBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
 	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
 	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
 	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
@@ -639,7 +639,7 @@ impl module_staking_pool::Trait for Runtime {
 impl module_homa::Trait for Runtime {}
 
 parameter_types! {
-	pub const MinBondThreshold: Balance = 1 * DOLLARS;
+	pub const MinCouncilBondThreshold: Balance = 1 * DOLLARS;
 	pub const NominateesCount: usize = 7;
 	pub const MaxUnlockingChunks: usize = 7;
 	pub const HomaCouncilBondingDuration: EraIndex = 7;
@@ -648,7 +648,7 @@ parameter_types! {
 impl module_homa_council::Trait for Runtime {
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 	type PolkadotAccountId = AccountId;
-	type MinBondThreshold = MinBondThreshold;
+	type MinBondThreshold = MinCouncilBondThreshold;
 	type BondingDuration = HomaCouncilBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;

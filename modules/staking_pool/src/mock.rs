@@ -142,19 +142,30 @@ impl PolkadotBridgeType<BlockNumber> for MockBridge {
 }
 
 impl PolkadotBridgeCall<BlockNumber, Balance, AccountId> for MockBridge {
-	fn bond_extra(_amount: Balance) {}
-	fn unbond(_amount: Balance) {}
-	fn rebond(_amount: Balance) {}
-	fn withdraw_unbonded() {}
-	fn nominate(_targets: Vec<Self::PolkadotAccountId>) {}
-	fn payout_nominator() {}
-
-	fn transfer_to_bridge(from: &AccountId, amount: Balance) {
-		let _ = StakingCurrency::withdraw(from, amount);
+	fn bond_extra(_amount: Balance) -> DispatchResult {
+		Ok(())
 	}
 
-	fn receive_from_bridge(to: &AccountId, amount: Balance) {
-		let _ = StakingCurrency::deposit(to, amount);
+	fn unbond(_amount: Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn rebond(_amount: Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn withdraw_unbonded() {}
+
+	fn nominate(_targets: Vec<Self::PolkadotAccountId>) {}
+
+	fn payout_nominator() {}
+
+	fn transfer_to_bridge(from: &AccountId, amount: Balance) -> DispatchResult {
+		StakingCurrency::withdraw(from, amount)
+	}
+
+	fn receive_from_bridge(to: &AccountId, amount: Balance) -> DispatchResult {
+		StakingCurrency::deposit(to, amount)
 	}
 }
 

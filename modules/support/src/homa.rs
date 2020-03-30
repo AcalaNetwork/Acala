@@ -4,7 +4,7 @@ use rstd::fmt::Debug;
 use rstd::prelude::*;
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member},
-	RuntimeDebug,
+	DispatchResult, RuntimeDebug,
 };
 
 /// Counter for the number of eras that have passed.
@@ -43,13 +43,13 @@ pub trait PolkadotBridgeType<BlockNumber> {
 }
 
 pub trait PolkadotBridgeCall<BlockNumber, Balance, AccountId>: PolkadotBridgeType<BlockNumber> {
-	fn bond_extra(amount: Balance);
-	fn unbond(amount: Balance);
-	fn rebond(amount: Balance);
+	fn bond_extra(amount: Balance) -> DispatchResult;
+	fn unbond(amount: Balance) -> DispatchResult;
+	fn rebond(amount: Balance) -> DispatchResult;
 	fn withdraw_unbonded();
 	fn nominate(targets: Vec<Self::PolkadotAccountId>);
-	fn transfer_to_bridge(from: &AccountId, amount: Balance);
-	fn receive_from_bridge(to: &AccountId, amount: Balance);
+	fn transfer_to_bridge(from: &AccountId, amount: Balance) -> DispatchResult;
+	fn receive_from_bridge(to: &AccountId, amount: Balance) -> DispatchResult;
 	fn payout_nominator();
 }
 
