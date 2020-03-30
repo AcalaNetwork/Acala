@@ -404,9 +404,9 @@ impl<T: Trait> OnNewEra for Module<T> {
 		CurrentEra::put(new_era);
 
 		// rebalance first
-		Self::rebalance(new_era);
+		//Self::rebalance(new_era);
 
 		// nominate
-		T::Bridge::nominate(T::Nominees::nominees());
+		//T::Bridge::nominate(T::Nominees::nominees());
 	}
 }

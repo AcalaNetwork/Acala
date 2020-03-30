@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, HasCompact};
+use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_module, decl_storage, ensure,
 	traits::{Get, LockIdentifier},
@@ -22,24 +22,20 @@ const HOMA_COUNCIL_ID: LockIdentifier = *b"homacncl";
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct UnlockChunk<Balance: HasCompact> {
+pub struct UnlockChunk<Balance> {
 	/// Amount of funds to be unlocked.
-	#[codec(compact)]
 	value: Balance,
 	/// Era number at which point it'll be unlocked.
-	#[codec(compact)]
 	era: EraIndex,
 }
 
 /// The ledger of a (bonded) account.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
-pub struct BondingLedger<Balance: HasCompact> {
+pub struct BondingLedger<Balance> {
 	/// The total amount of the account's balance that we are currently accounting for.
 	/// It's just `active` plus all the `unlocking` balances.
-	#[codec(compact)]
 	pub total: Balance,
 	/// The total amount of the account's balance that will be at stake in any forthcoming rounds.
-	#[codec(compact)]
 	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be transferred out of the account.
 	pub unlocking: Vec<UnlockChunk<Balance>>,
@@ -47,7 +43,7 @@ pub struct BondingLedger<Balance: HasCompact> {
 
 impl<Balance> BondingLedger<Balance>
 where
-	Balance: HasCompact + Copy + Saturating + AtLeast32Bit,
+	Balance: Copy + Saturating + AtLeast32Bit,
 {
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
 	/// total by the sum of their balances.
@@ -270,15 +266,20 @@ impl<T: Trait> Module<T> {
 		new_nominations: &Vec<T::PolkadotAccountId>,
 	) {
 		if !old_active.is_zero() && !old_nominations.is_empty() {
-			old_nominations.into_iter().for_each(|account| {
-				<Votes<T>>::mutate(account, |balance| *balance = balance.saturating_sub(old_active))
-			});
+			for account in old_nominations {
+				let votes = Self::votes(account).saturating_sub(old_active);
+				if votes.is_zero() {
+					<Votes<T>>::remove(account);
+				} else {
+					<Votes<T>>::insert(account, votes);
+				}
+			}
 		}
 
 		if !new_active.is_zero() && !new_nominations.is_empty() {
-			new_nominations.into_iter().for_each(|account| {
-				<Votes<T>>::mutate(account, |balance| *balance = balance.saturating_add(old_active))
-			});
+			for account in new_nominations {
+				<Votes<T>>::mutate(account, |balance| *balance = balance.saturating_add(new_active));
+			}
 		}
 	}
 
