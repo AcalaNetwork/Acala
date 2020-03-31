@@ -42,6 +42,11 @@ decl_module! {
 				},
 			}
 		}
+
+		pub fn withdraw_redemption(origin, era: EraIndex) {
+			let who = ensure_signed(origin)?;
+			<staking_pool::Module<T>>::withdraw_unbonded(&who, era)?;
+		}
 	}
 }
 
