@@ -21,17 +21,13 @@ pub trait NomineesProvider<AccountId> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct PolkadotUnlockChunk<Balance> {
-	#[codec(compact)]
 	pub value: Balance,
-	#[codec(compact)]
 	pub era: EraIndex,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
 pub struct PolkadotStakingLedger<Balance> {
-	#[codec(compact)]
 	pub total: Balance,
-	#[codec(compact)]
 	pub active: Balance,
 	pub unlocking: Vec<PolkadotUnlockChunk<Balance>>,
 }
