@@ -519,7 +519,6 @@ pub type SubmitTransaction = TransactionSubmitter<(), Runtime, UncheckedExtrinsi
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
-	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
@@ -531,7 +530,6 @@ impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type PriceSource = module_prices::Module<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
-	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;

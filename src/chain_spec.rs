@@ -325,6 +325,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
+			global_stability_fee: FixedU128::from_rational(618850393, 100000000000000000u128), // 5% APR
 		}),
 	}
 }
@@ -419,6 +420,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
+			global_stability_fee: FixedU128::from_rational(618850393, 100000000000000000u128), // 5% APR
 		}),
 	}
 }
