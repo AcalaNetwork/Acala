@@ -12,11 +12,11 @@ use mock::{
 #[test]
 fn debits_key() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (0, None));
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), 0);
 		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 100, 100));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (100, Some((Y_TOKEN_ID, ALICE))));
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), 100);
 		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, -100, -100));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), (0, None));
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), 0);
 	});
 }
 
@@ -58,7 +58,7 @@ fn adjust_position_should_work() {
 		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 0);
 		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 0);
 		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 0);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 0);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 0);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 
@@ -68,7 +68,7 @@ fn adjust_position_should_work() {
 		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 500);
 		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 300);
 		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 500);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 300);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 300);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
 
@@ -86,7 +86,7 @@ fn update_loan_should_work() {
 		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &ALICE), 1000);
 		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 0);
 		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 0);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 0);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 0);
 
 		assert_ok!(LoansModule::update_loan(&ALICE, Y_TOKEN_ID, 3000, 2000));
@@ -94,7 +94,7 @@ fn update_loan_should_work() {
 		// just update records
 		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 2000);
 		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 3000);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 2000);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 2000);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 3000);
 
 		// dot not manipulate balance
@@ -108,15 +108,15 @@ fn transfer_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(LoansModule::update_loan(&ALICE, Y_TOKEN_ID, 400, 500));
 		assert_ok!(LoansModule::update_loan(&BOB, Y_TOKEN_ID, 100, 600));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 500);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 500);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 400);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &BOB).0, 600);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &BOB), 600);
 		assert_eq!(LoansModule::collaterals(&BOB, Y_TOKEN_ID), 100);
 
 		assert_ok!(LoansModule::transfer_loan(&ALICE, &BOB, Y_TOKEN_ID));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 0);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 0);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &BOB).0, 1100);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &BOB), 1100);
 		assert_eq!(LoansModule::collaterals(&BOB, Y_TOKEN_ID), 500);
 
 		let transfer_loan_event = TestEvent::loans(RawEvent::TransferLoan(ALICE, BOB, Y_TOKEN_ID));
@@ -140,14 +140,14 @@ fn confiscate_collateral_and_debit_work() {
 
 		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 500, 300));
 		assert_eq!(CDPTreasuryModule::get_total_collaterals(Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 300);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 300);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 500);
 
 		assert_ok!(LoansModule::confiscate_collateral_and_debit(
 			&ALICE, Y_TOKEN_ID, 300, 200
 		));
 		assert_eq!(CDPTreasuryModule::get_total_collaterals(Y_TOKEN_ID), 300);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE).0, 100);
+		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 100);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 200);
 
 		let confiscate_event = TestEvent::loans(RawEvent::ConfiscateCollateralAndDebit(ALICE, Y_TOKEN_ID, 300, 200));
