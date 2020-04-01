@@ -13,8 +13,8 @@ use sp_runtime::{
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager,
+	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, OffchainErr, Price, PriceProvider,
+	Rate, Ratio, RiskManager,
 };
 use system::{ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
 
@@ -129,32 +129,12 @@ decl_storage! {
 	}
 }
 
-/// Error which may occur while executing the off-chain code.
-#[cfg_attr(test, derive(PartialEq))]
-enum OffchainErr {
-	FailedToAcquireLock,
-	SubmitTransaction,
-	NotValidator,
-	LockStillInLocked,
-}
-
 // The lock to limit the number of offchain worker at the same time.
 // Before expire timestamp, can not start new offchain worker
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
 struct OffchainWorkerLock {
 	pub previous_position: u32,
 	pub expire_timestamp: Timestamp,
-}
-
-impl rstd::fmt::Debug for OffchainErr {
-	fn fmt(&self, fmt: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
-		match *self {
-			OffchainErr::FailedToAcquireLock => write!(fmt, "Failed to acquire lock"),
-			OffchainErr::SubmitTransaction => write!(fmt, "Failed to submit transaction"),
-			OffchainErr::NotValidator => write!(fmt, "Not validator"),
-			OffchainErr::LockStillInLocked => write!(fmt, "Liquidator lock is still in locked"),
-		}
-	}
 }
 
 decl_module! {

@@ -2,15 +2,25 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::{Header, TestXt},
+	traits::IdentityLookup,
+	Perbill,
+};
 use system::EnsureSignedBy;
 
 use super::*;
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+impl_outer_dispatch! {
+	pub enum Call for Runtime where origin: Origin {
+		auction_manager::AuctionManagerModule,
+	}
 }
 
 mod auction_manager {
@@ -121,6 +131,10 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 	fn unlock_price(currency_id: CurrencyId) {}
 }
 
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
@@ -133,6 +147,8 @@ impl Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = MockPriceSource;
+	type Call = Call;
+	type SubmitTransaction = SubmitTransaction;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 

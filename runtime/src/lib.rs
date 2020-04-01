@@ -519,6 +519,8 @@ impl module_auction_manager::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = Prices;
+	type Call = Call;
+	type SubmitTransaction = SubmitTransaction;
 }
 
 impl module_loans::Trait for Runtime {
@@ -706,7 +708,7 @@ construct_runtime!(
 		Prices: module_prices::{Module, Storage},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
-		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
+		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
 		Dex: module_dex::{Module, Storage, Call, Event<T>},
