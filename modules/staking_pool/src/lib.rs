@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IterableStorageDoubleMap};
 use orml_traits::BasicCurrency;
 use rstd::prelude::*;
 use sp_runtime::{
@@ -66,7 +66,7 @@ decl_storage! {
 		pub NextEraUnbond get(next_era_unbond): (StakingBalanceOf<T>, StakingBalanceOf<T>);
 		pub Unbonding get(unbonding): map hasher(twox_64_concat) EraIndex => (StakingBalanceOf<T>, StakingBalanceOf<T>); // (value, claimed), value - claimed = unbond to free
 
-		pub ClaimedUnbond get(claimed_unbond): double_map hasher(twox_64_concat) EraIndex, hasher(twox_64_concat) T::AccountId => StakingBalanceOf<T>;
+		pub ClaimedUnbond get(claimed_unbond): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) EraIndex => StakingBalanceOf<T>;
 		pub TotalClaimedUnbonded get(total_claimed_unbonded): StakingBalanceOf<T>;
 
 		pub TotalBonded get(total_bonded): StakingBalanceOf<T>;
@@ -123,14 +123,17 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	// TODO: iterator all expired era, instead of specific era
-	pub fn withdraw_unbonded(who: &T::AccountId, era: EraIndex) -> DispatchResult {
-		ensure!(era <= Self::current_era(), Error::<T>::InvalidEra);
-		let unbonded = Self::claimed_unbond(era, &who);
-		if !unbonded.is_zero() {
-			T::StakingCurrency::transfer(&Self::account_id(), who, unbonded)?;
-			<TotalClaimedUnbonded<T>>::mutate(|balance| *balance -= unbonded);
-			<ClaimedUnbond<T>>::remove(era, who);
+	pub fn withdraw_unbonded(who: &T::AccountId) -> DispatchResult {
+		let current_era = Self::current_era();
+		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, StakingBalanceOf<T>)>>();
+
+		for (era_index, claimed) in claimed_unbond {
+			if era_index <= current_era && !claimed.is_zero() {
+				if T::StakingCurrency::transfer(&Self::account_id(), who, claimed).is_ok() {
+					<TotalClaimedUnbonded<T>>::mutate(|balance| *balance -= claimed);
+					<ClaimedUnbond<T>>::remove(who, era_index);
+				}
+			}
 		}
 		Ok(())
 	}
@@ -191,7 +194,7 @@ impl<T: Trait> Module<T> {
 				*claimed += unbond_amount;
 			});
 			<TotalBonded<T>>::mutate(|bonded| *bonded -= unbond_amount);
-			<ClaimedUnbond<T>>::mutate(unbonded_era_index, who, |balance| *balance += unbond_amount);
+			<ClaimedUnbond<T>>::mutate(who, unbonded_era_index, |balance| *balance += unbond_amount);
 			<Module<T>>::deposit_event(RawEvent::RedeemByUnbond(who.clone(), ldot_to_redeem));
 		}
 
@@ -303,7 +306,7 @@ impl<T: Trait> Module<T> {
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 			T::LiquidCurrency::withdraw(who, total_deduct).expect("never failed after balance check");
 
-			<ClaimedUnbond<T>>::mutate(target_era, who, |balance| *balance += unbond_amount);
+			<ClaimedUnbond<T>>::mutate(who, target_era, |balance| *balance += unbond_amount);
 			<Unbonding<T>>::mutate(target_era, |(_, claimed)| *claimed += unbond_amount);
 			<UnbondingToFree<T>>::mutate(|balance| *balance = balance.saturating_sub(unbond_amount));
 			T::OnCommission::on_commission(fee);
