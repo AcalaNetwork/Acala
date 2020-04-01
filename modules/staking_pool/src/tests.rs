@@ -33,22 +33,18 @@ fn claim_period_percent_work() {
 #[test]
 fn withdraw_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			StakingPoolModule::withdraw_unbonded(&ALICE, 1),
-			Error::<Runtime>::InvalidEra,
-		);
 		<TotalClaimedUnbonded<Runtime>>::put(500);
-		<ClaimedUnbond<Runtime>>::insert(StakingPoolModule::current_era(), ALICE, 200);
+		<ClaimedUnbond<Runtime>>::insert(ALICE, StakingPoolModule::current_era(), 200);
 		assert_ok!(StakingCurrency::deposit(&StakingPoolModule::account_id(), 500));
 		assert_eq!(StakingCurrency::free_balance(&ALICE), 1000);
 		assert_eq!(StakingCurrency::free_balance(&StakingPoolModule::account_id()), 500);
-		assert_eq!(StakingPoolModule::claimed_unbond(0, &ALICE), 200);
+		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 0), 200);
 		assert_eq!(StakingPoolModule::total_claimed_unbonded(), 500);
 
-		assert_ok!(StakingPoolModule::withdraw_unbonded(&ALICE, 0));
+		assert_ok!(StakingPoolModule::withdraw_unbonded(&ALICE));
 		assert_eq!(StakingCurrency::free_balance(&ALICE), 1200);
 		assert_eq!(StakingCurrency::free_balance(&StakingPoolModule::account_id()), 300);
-		assert_eq!(StakingPoolModule::claimed_unbond(0, &ALICE), 0);
+		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 0), 0);
 		assert_eq!(StakingPoolModule::total_claimed_unbonded(), 300);
 	});
 }
@@ -63,7 +59,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(LiquidCurrency::free_balance(&ALICE), 10000);
 		assert_eq!(StakingPoolModule::next_era_unbond(), (0, 0));
 		assert_eq!(
-			StakingPoolModule::claimed_unbond(0 + 1 + BondingDuration::get(), &ALICE),
+			StakingPoolModule::claimed_unbond(&ALICE, 0 + 1 + BondingDuration::get()),
 			0
 		);
 		assert_noop!(
@@ -76,7 +72,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(LiquidCurrency::free_balance(&ALICE), 5000);
 		assert_eq!(StakingPoolModule::next_era_unbond(), (500, 500));
 		assert_eq!(
-			StakingPoolModule::claimed_unbond(0 + 1 + BondingDuration::get(), &ALICE),
+			StakingPoolModule::claimed_unbond(&ALICE, 0 + 1 + BondingDuration::get()),
 			500
 		);
 
@@ -133,7 +129,7 @@ fn redeem_by_claim_unbonding_work() {
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
 		assert_eq!(StakingPoolModule::unbonding(2), (1500, 0));
 		assert_eq!(StakingPoolModule::unbonding_to_free(), 1500);
-		assert_eq!(StakingPoolModule::claimed_unbond(2, &ALICE), 0);
+		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 2), 0);
 
 		assert_eq!(StakingPoolModule::current_era(), 0);
 		assert_noop!(
@@ -151,7 +147,7 @@ fn redeem_by_claim_unbonding_work() {
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
 		assert_eq!(StakingPoolModule::unbonding(2), (1500, 940));
 		assert_eq!(StakingPoolModule::unbonding_to_free(), 560);
-		assert_eq!(StakingPoolModule::claimed_unbond(2, &ALICE), 940);
+		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 2), 940);
 
 		let redeem_by_claim_unbonding_event =
 			TestEvent::staking_pool(RawEvent::RedeemByClaimUnbonding(ALICE, 2, 600, 9400, 940));
