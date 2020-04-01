@@ -8,6 +8,13 @@ use rstd::{
 };
 use sp_runtime::{DispatchError, DispatchResult};
 
+pub mod homa;
+
+pub use homa::{
+	EraIndex, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
+	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
+};
+
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
 pub type Ratio = FixedU128;

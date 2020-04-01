@@ -3,8 +3,8 @@ use orml_utilities::FixedU128;
 use runtime::{
 	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 	CurrencyId, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
-	IndicesConfig, OperatorMembershipConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-	SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
+	IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus,
+	StakingConfig, SudoConfig, SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service;
@@ -326,6 +326,9 @@ fn testnet_genesis(
 				),
 			],
 		}),
+		module_polkadot_bridge: Some(PolkadotBridgeConfig {
+			mock_reward_rate: FixedU128::from_natural(0),
+		}),
 	}
 }
 
@@ -419,6 +422,9 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
+		}),
+		module_polkadot_bridge: Some(PolkadotBridgeConfig {
+			mock_reward_rate: FixedU128::from_natural(0),
 		}),
 	}
 }

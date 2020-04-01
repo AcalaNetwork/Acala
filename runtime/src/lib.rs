@@ -24,6 +24,7 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_oracle::OperatorProvider;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
@@ -42,10 +43,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill};
-
-pub use module_primitives::{AirDropCurrencyId, CurrencyId};
-pub use module_support::{ExchangeRate, Price, Rate, Ratio};
-pub use orml_currencies::BasicCurrencyAdapter;
 
 pub use constants::{currency::*, time::*};
 pub use types::*;
@@ -195,7 +192,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
-	type Currency = pallet_balances::Module<Runtime>;
+	type Currency = Balances;
 	type OnTransactionPayment = ();
 	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
@@ -414,7 +411,7 @@ impl orml_auction::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
-	type Handler = module_auction_manager::Module<Runtime>;
+	type Handler = AuctionManager;
 }
 
 pub struct OperatorCollectiveProvider;
@@ -466,7 +463,7 @@ parameter_types! {
 
 impl module_prices::Trait for Runtime {
 	type CurrencyId = CurrencyId;
-	type Source = orml_oracle::Module<Runtime>;
+	type Source = Oracle;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
 }
@@ -478,8 +475,8 @@ parameter_types! {
 
 impl orml_currencies::Trait for Runtime {
 	type Event = Event;
-	type MultiCurrency = orml_tokens::Module<Runtime>;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance>;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Balance>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
@@ -492,26 +489,26 @@ parameter_types! {
 
 impl module_auction_manager::Trait for Runtime {
 	type Event = Event;
-	type Currency = orml_currencies::Module<Runtime>;
-	type Auction = orml_auction::Module<Runtime>;
+	type Currency = Currencies;
+	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = CdpTreasury;
 	type GetAmountAdjustment = GetAmountAdjustment;
-	type PriceSource = module_prices::Module<Runtime>;
+	type PriceSource = Prices;
 }
 
 impl module_loans::Trait for Runtime {
 	type Event = Event;
 	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
-	type Currency = orml_currencies::Module<Runtime>;
-	type RiskManager = module_cdp_engine::Module<Runtime>;
+	type Currency = Currencies;
+	type RiskManager = CdpEngine;
 	type DebitBalance = Balance;
 	type DebitAmount = Amount;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = CdpTreasury;
 }
 
 /// A runtime transaction submitter.
@@ -529,7 +526,7 @@ parameter_types! {
 
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
-	type PriceSource = module_prices::Module<Runtime>;
+	type PriceSource = Prices;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
@@ -537,11 +534,11 @@ impl module_cdp_engine::Trait for Runtime {
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type Currency = orml_currencies::Module<Runtime>;
-	type DEX = module_dex::Module<Runtime>;
+	type Currency = Currencies;
+	type DEX = Dex;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
 }
@@ -552,14 +549,10 @@ impl module_honzon::Trait for Runtime {
 
 impl module_emergency_shutdown::Trait for Runtime {
 	type Event = Event;
-	type PriceSource = module_prices::Module<Runtime>;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
-	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
-	type OnShutdown = (
-		module_cdp_treasury::Module<Runtime>,
-		module_cdp_engine::Module<Runtime>,
-		module_honzon::Module<Runtime>,
-	);
+	type PriceSource = Prices;
+	type CDPTreasury = CdpTreasury;
+	type AuctionManagerHandler = AuctionManager;
+	type OnShutdown = (CdpTreasury, CdpEngine, Honzon);
 	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
 }
 
@@ -569,7 +562,7 @@ parameter_types! {
 
 impl module_dex::Trait for Runtime {
 	type Event = Event;
-	type Currency = orml_currencies::Module<Runtime>;
+	type Currency = Currencies;
 	type Share = Share;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
@@ -577,11 +570,11 @@ impl module_dex::Trait for Runtime {
 
 impl module_cdp_treasury::Trait for Runtime {
 	type Event = Event;
-	type Currency = orml_currencies::Module<Runtime>;
+	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
+	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
-	type DEX = module_dex::Module<Runtime>;
+	type DEX = Dex;
 }
 
 parameter_types! {
@@ -595,7 +588,7 @@ impl module_accounts::Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type Time = Timestamp;
-	type Currency = orml_currencies::Module<Runtime>;
+	type Currency = Currencies;
 	type Call = Call;
 	type DepositCurrency = Balances;
 }
@@ -604,6 +597,61 @@ impl module_airdrop::Trait for Runtime {
 	type Event = Event;
 	type AirDropCurrencyId = AirDropCurrencyId;
 	type Balance = Balance;
+}
+
+parameter_types! {
+	pub const GetDOTCurrencyId: CurrencyId = CurrencyId::DOT;
+	pub const PolkadotBondingDuration: EraIndex = 7;
+	pub const EraLength: BlockNumber = 10;
+}
+
+impl module_polkadot_bridge::Trait for Runtime {
+	type Event = Event;
+	type DOTCurrency = Currency<Runtime, GetDOTCurrencyId>;
+	type OnNewEra = (HomaCouncil, StakingPool);
+	type BondingDuration = PolkadotBondingDuration;
+	type EraLength = EraLength;
+	type PolkadotAccountId = AccountId;
+}
+
+parameter_types! {
+	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
+	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
+	pub const MaxBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
+	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
+	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
+	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
+}
+
+impl module_staking_pool::Trait for Runtime {
+	type Event = Event;
+	type StakingCurrency = Currency<Runtime, GetStakingCurrencyId>;
+	type LiquidCurrency = Currency<Runtime, GetLiquidCurrencyId>;
+	type Nominees = HomaCouncil;
+	type OnCommission = ();
+	type Bridge = PolkadotBridge;
+	type MaxBondRatio = MaxBondRatio;
+	type MinBondRatio = MinBondRatio;
+	type MaxClaimFee = MaxClaimFee;
+	type DefaultExchangeRate = DefaultExchangeRate;
+}
+
+impl module_homa::Trait for Runtime {}
+
+parameter_types! {
+	pub const MinCouncilBondThreshold: Balance = 1 * DOLLARS;
+	pub const NominateesCount: usize = 7;
+	pub const MaxUnlockingChunks: usize = 7;
+	pub const HomaCouncilBondingDuration: EraIndex = 7;
+}
+
+impl module_homa_council::Trait for Runtime {
+	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
+	type PolkadotAccountId = AccountId;
+	type MinBondThreshold = MinCouncilBondThreshold;
+	type BondingDuration = HomaCouncilBondingDuration;
+	type NominateesCount = NominateesCount;
+	type MaxUnlockingChunks = MaxUnlockingChunks;
 }
 
 construct_runtime!(
@@ -647,6 +695,10 @@ construct_runtime!(
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>},
+		Homa: module_homa::{Module, Call},
+		HomaCouncil: module_homa_council::{Module, Call, Storage},
+		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
+		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
 	}
 );
 

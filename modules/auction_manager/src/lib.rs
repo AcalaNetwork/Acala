@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, HasCompact};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
 use rstd::cmp::{Eq, PartialEq};
@@ -15,25 +15,30 @@ mod tests;
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
-pub struct CollateralAuctionItem<AccountId, CurrencyId, Balance, BlockNumber> {
+pub struct CollateralAuctionItem<AccountId, CurrencyId, Balance: HasCompact, BlockNumber> {
 	owner: AccountId,
 	currency_id: CurrencyId,
+	#[codec(compact)]
 	amount: Balance,
+	#[codec(compact)]
 	target: Balance,
 	start_time: BlockNumber,
 }
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
-pub struct DebitAuctionItem<Balance, BlockNumber> {
+pub struct DebitAuctionItem<Balance: HasCompact, BlockNumber> {
+	#[codec(compact)]
 	amount: Balance,
+	#[codec(compact)]
 	fix: Balance,
 	start_time: BlockNumber,
 }
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
-pub struct SurplusAuctionItem<Balance, BlockNumber> {
+pub struct SurplusAuctionItem<Balance: HasCompact, BlockNumber> {
+	#[codec(compact)]
 	amount: Balance,
 	start_time: BlockNumber,
 }

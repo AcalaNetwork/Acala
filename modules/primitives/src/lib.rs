@@ -13,6 +13,7 @@ pub enum CurrencyId {
 	AUSD,
 	DOT,
 	XBTC,
+	LDOT,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

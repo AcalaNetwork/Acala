@@ -76,10 +76,14 @@ dependencies = [
  "module-dex",
  "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
+ "module-homa",
+ "module-homa-council",
  "module-honzon",
  "module-loans",
+ "module-polkadot-bridge",
  "module-prices",
  "module-primitives",
+ "module-staking-pool",
  "module-support",
  "orml-auction",
  "orml-currencies",
@@ -2846,6 +2850,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-homa"
+version = "0.3.4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-staking-pool",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-homa-council"
+version = "0.3.4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-honzon"
 version = "0.3.4"
 dependencies = [
@@ -2889,6 +2929,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-polkadot-bridge"
+version = "0.3.4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-prices"
 version = "0.3.4"
 dependencies = [
@@ -2914,9 +2970,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-staking-pool"
+version = "0.3.4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-support"
 version = "0.3.4"
 dependencies = [
+ "frame-support",
  "impl-trait-for-tuples",
  "orml-utilities",
  "parity-scale-codec",

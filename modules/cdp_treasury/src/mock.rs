@@ -34,7 +34,6 @@ parameter_types! {
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub const ExistentialDeposit: u64 = 1;
-	pub const CreationFee: u64 = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
@@ -182,10 +181,8 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			endowed_accounts: vec![
-				(ALICE, ACA, 1000),
 				(ALICE, AUSD, 1000),
 				(ALICE, BTC, 1000),
-				(BOB, ACA, 1000),
 				(BOB, AUSD, 1000),
 				(BOB, BTC, 1000),
 			],
