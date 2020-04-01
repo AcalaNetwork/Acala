@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, storage::PrefixIterator, Parameter};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter};
 use orml_traits::{
 	arithmetic::{self, Signed},
 	MultiCurrency, MultiCurrencyExtended,
@@ -43,7 +43,7 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Loans {
-		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => (T::DebitBalance, Option<(CurrencyIdOf<T>, T::AccountId)>);
+		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::DebitBalance;
 		pub Collaterals get(fn collaterals): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
 		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyIdOf<T> => T::DebitBalance;
 		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
@@ -86,12 +86,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn debits_iterator_with_collateral_prefix(
-		currency_id: CurrencyIdOf<T>,
-	) -> PrefixIterator<(T::DebitBalance, Option<(CurrencyIdOf<T>, T::AccountId)>)> {
-		<Debits<T>>::iter_prefix(currency_id)
-	}
-
 	pub fn account_id() -> T::AccountId {
 		MODULE_ID.into_account()
 	}
@@ -141,7 +135,7 @@ impl<T: Trait> Module<T> {
 
 		let module_account = Self::account_id();
 		let mut new_collateral_balance = Self::collaterals(who, currency_id);
-		let mut new_debit_balance = Self::debits(currency_id, who).0;
+		let mut new_debit_balance = Self::debits(currency_id, who);
 
 		if collateral_adjustment.is_positive() {
 			T::Currency::ensure_can_withdraw(currency_id, who, collateral_balance_adjustment)?;
@@ -196,10 +190,10 @@ impl<T: Trait> Module<T> {
 	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 		// get `from` position data
 		let collateral_balance = Self::collaterals(from, currency_id);
-		let debit_balance = Self::debits(currency_id, from).0;
+		let debit_balance = Self::debits(currency_id, from);
 
 		let new_to_collateral_balance = Self::collaterals(to, currency_id) + collateral_balance;
-		let new_to_debit_balance = Self::debits(currency_id, to).0 + debit_balance;
+		let new_to_debit_balance = Self::debits(currency_id, to) + debit_balance;
 
 		// check new position
 		T::RiskManager::check_position_valid(currency_id, new_to_collateral_balance, new_to_debit_balance)?;
@@ -245,7 +239,6 @@ impl<T: Trait> Module<T> {
 				.ok_or(Error::<T>::DebitOverflow)?;
 		} else if debit_adjustment.is_negative() {
 			Self::debits(currency_id, who)
-				.0
 				.checked_sub(&debit_balance)
 				.ok_or(Error::<T>::DebitTooLow)?;
 		}
@@ -290,20 +283,10 @@ impl<T: Trait> Module<T> {
 
 		// update debit record
 		if debit_adjustment.is_positive() {
-			<Debits<T>>::mutate(currency_id, who, |(balance, key)| {
-				if balance.is_zero() {
-					*key = Some((currency_id, (*who).clone()));
-				}
-				*balance += debit_balance;
-			});
+			<Debits<T>>::mutate(currency_id, who, |balance| *balance += debit_balance);
 			<TotalDebits<T>>::mutate(currency_id, |balance| *balance += debit_balance);
 		} else if debit_adjustment.is_negative() {
-			<Debits<T>>::mutate(currency_id, who, |(balance, key)| {
-				*balance -= debit_balance;
-				if balance.is_zero() {
-					*key = None;
-				}
-			});
+			<Debits<T>>::mutate(currency_id, who, |balance| *balance -= debit_balance);
 			<TotalDebits<T>>::mutate(currency_id, |balance| *balance -= debit_balance);
 		}
 

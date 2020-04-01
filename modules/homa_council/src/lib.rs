@@ -4,7 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_module, decl_storage, ensure,
 	traits::{Get, LockIdentifier},
-	Parameter,
+	IterableStorageMap, Parameter,
 };
 use orml_traits::{BasicCurrency, BasicLockableCurrency};
 use rstd::{fmt::Debug, prelude::*};
@@ -121,7 +121,7 @@ decl_storage! {
 	trait Store for Module<T: Trait> as HomaCouncil {
 		pub Nominations get(nominations): map hasher(twox_64_concat) T::AccountId => Vec<T::PolkadotAccountId>;
 		pub Ledger get(ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger<BalanceOf<T>>;
-		pub Votes get(votes): linked_map hasher(twox_64_concat) T::PolkadotAccountId => BalanceOf<T>;
+		pub Votes get(votes): map hasher(twox_64_concat) T::PolkadotAccountId => BalanceOf<T>;
 		pub Nominees get(nominees): Vec<T::PolkadotAccountId>;
 		pub CurrentEra get(current_era): EraIndex;
 	}
@@ -267,12 +267,7 @@ impl<T: Trait> Module<T> {
 	) {
 		if !old_active.is_zero() && !old_nominations.is_empty() {
 			for account in old_nominations {
-				let votes = Self::votes(account).saturating_sub(old_active);
-				if votes.is_zero() {
-					<Votes<T>>::remove(account);
-				} else {
-					<Votes<T>>::insert(account, votes);
-				}
+				<Votes<T>>::mutate(account, |balance| *balance = balance.saturating_sub(old_active));
 			}
 		}
 
@@ -284,7 +279,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn rebalance() {
-		let mut voters = <Votes<T>>::enumerate().collect::<Vec<(T::PolkadotAccountId, BalanceOf<T>)>>();
+		let mut voters = <Votes<T>>::iter().collect::<Vec<(T::PolkadotAccountId, BalanceOf<T>)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 

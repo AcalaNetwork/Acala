@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType};
+use frame_support::{
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType, IterableStorageDoubleMap,
+};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use rstd::{marker, prelude::*};
 use sp_runtime::{
@@ -367,22 +369,20 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn liquidate_specific_collateral(currency_id: CurrencyIdOf<T>) {
-		for (_, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
-			if let Some((_, account_id)) = key {
-				if Self::is_cdp_unsafe(currency_id, &account_id) {
-					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
-						debug::warn!(
-							target: "cdp-engine offchain worker",
-							"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
-							account_id, currency_id, e,
-						);
-					} else {
-						debug::debug!(
-							target: "cdp-engine offchain worker",
-							"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
-							account_id, currency_id,
-						);
-					}
+		for (account_id, _) in <loans::Debits<T>>::iter(currency_id) {
+			if Self::is_cdp_unsafe(currency_id, &account_id) {
+				if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
+					debug::warn!(
+						target: "cdp-engine offchain worker",
+						"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+						account_id, currency_id, e,
+					);
+				} else {
+					debug::debug!(
+						target: "cdp-engine offchain worker",
+						"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+						account_id, currency_id,
+					);
 				}
 			}
 
@@ -392,22 +392,20 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn settle_specific_collateral(currency_id: CurrencyIdOf<T>) {
-		for (debit, key) in <loans::Module<T>>::debits_iterator_with_collateral_prefix(currency_id) {
-			if let Some((_, account_id)) = key {
-				if !debit.is_zero() {
-					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
-						debug::warn!(
-							target: "cdp-engine offchain worker",
-							"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
-							account_id, currency_id, e,
-						);
-					} else {
-						debug::debug!(
-							target: "cdp-engine offchain worker",
-							"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
-							account_id, currency_id,
-						);
-					}
+		for (account_id, debit) in <loans::Debits<T>>::iter(currency_id) {
+			if !debit.is_zero() {
+				if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
+					debug::warn!(
+						target: "cdp-engine offchain worker",
+						"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+						account_id, currency_id, e,
+					);
+				} else {
+					debug::debug!(
+						target: "cdp-engine offchain worker",
+						"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+						account_id, currency_id,
+					);
 				}
 			}
 
@@ -467,7 +465,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn is_cdp_unsafe(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> bool {
-		let debit_balance = <loans::Module<T>>::debits(currency_id, who).0;
+		let debit_balance = <loans::Module<T>>::debits(currency_id, who);
 		let collateral_balance = <loans::Module<T>>::collaterals(who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
@@ -527,7 +525,7 @@ impl<T: Trait> Module<T> {
 
 	// settle cdp has debit when emergency shutdown
 	pub fn settle_cdp_has_debit(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <loans::Module<T>>::debits(currency_id, &who).0;
+		let debit_balance = <loans::Module<T>>::debits(currency_id, &who);
 		ensure!(!debit_balance.is_zero(), Error::<T>::AlreadyNoDebit);
 
 		// confiscate collateral in cdp to cdp treasury
@@ -554,7 +552,7 @@ impl<T: Trait> Module<T> {
 
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		let debit_balance = <loans::Module<T>>::debits(currency_id, &who).0;
+		let debit_balance = <loans::Module<T>>::debits(currency_id, &who);
 		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
@@ -690,7 +688,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 				})
 			}
 			Call::settle(currency_id, who) => {
-				let debit_balance = <loans::Module<T>>::debits(currency_id, who).0;
+				let debit_balance = <loans::Module<T>>::debits(currency_id, who);
 				if debit_balance.is_zero() || !Self::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}

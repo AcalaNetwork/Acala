@@ -205,11 +205,16 @@ impl pallet_sudo::Trait for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
+}
+
 type GeneralCouncilInstance = pallet_collective::Instance1;
 impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
+	type MotionDuration = GeneralCouncilMotionDuration;
 }
 
 type GeneralCouncilMembershipInstance = pallet_membership::Instance1;
@@ -219,8 +224,13 @@ impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
 	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
 	type MembershipInitialized = GeneralCouncil;
 	type MembershipChanged = GeneralCouncil;
+}
+
+parameter_types! {
+	pub const FinancialCouncilMotionDuration: BlockNumber = 0;
 }
 
 type FinancialCouncilInstance = pallet_collective::Instance2;
@@ -228,6 +238,7 @@ impl pallet_collective::Trait<FinancialCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
+	type MotionDuration = FinancialCouncilMotionDuration;
 }
 
 type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
@@ -237,8 +248,13 @@ impl pallet_membership::Trait<FinancialCouncilMembershipInstance> for Runtime {
 	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type MembershipInitialized = FinancialCouncil;
 	type MembershipChanged = FinancialCouncil;
+}
+
+parameter_types! {
+	pub const OperatorMotionDuration: BlockNumber = 0;
 }
 
 type OperatorCollectiveInstance = pallet_collective::Instance3;
@@ -246,6 +262,7 @@ impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
+	type MotionDuration = OperatorMotionDuration;
 }
 
 type OperatorMembershipInstance = pallet_membership::Instance3;
@@ -255,6 +272,7 @@ impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type MembershipInitialized = OperatorCollective;
 	type MembershipChanged = OperatorCollective;
 }
@@ -371,6 +389,7 @@ parameter_types! {
 	pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
 	pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+	pub const MaxNominatorRewardedPerValidator: u32 = 64;
 }
 
 impl pallet_staking::Trait for Runtime {
@@ -388,6 +407,7 @@ impl pallet_staking::Trait for Runtime {
 	type SlashCancelOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>;
 	type SessionInterface = Self;
 	type RewardCurve = RewardCurve;
+	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
 }
 
 parameter_types! {
@@ -754,10 +774,6 @@ impl_runtime_apis! {
 
 	impl sp_block_builder::BlockBuilder<Block> for Runtime {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
-			Executive::apply_extrinsic(extrinsic)
-		}
-
-		fn apply_trusted_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
 			Executive::apply_extrinsic(extrinsic)
 		}
 
