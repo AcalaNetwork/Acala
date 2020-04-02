@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "acala-runtime",
  "futures 0.3.4",
@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -2755,7 +2755,7 @@ dependencies = [
 
 [[package]]
 name = "module-accounts"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2776,7 +2776,7 @@ dependencies = [
 
 [[package]]
 name = "module-airdrop"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2790,7 +2790,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2810,7 +2810,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2833,7 +2833,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2854,7 +2854,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2874,7 +2874,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-rpc"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -2888,7 +2888,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-rpc-runtime-api"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -2896,7 +2896,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2920,7 +2920,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2937,7 +2937,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-council"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2956,7 +2956,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2978,7 +2978,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2999,7 +2999,7 @@ dependencies = [
 
 [[package]]
 name = "module-polkadot-bridge"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3015,7 +3015,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3031,7 +3031,7 @@ dependencies = [
 
 [[package]]
 name = "module-primitives"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -3040,7 +3040,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3059,7 +3059,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -3071,7 +3071,7 @@ dependencies = [
 
 [[package]]
 name = "module-template"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
