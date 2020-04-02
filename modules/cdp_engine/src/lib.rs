@@ -574,7 +574,13 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 				Ok(ValidTransaction {
 					priority: TransactionPriority::max_value(),
 					requires: vec![],
-					provides: vec![("CDPEngineOffchain", currency_id, who).encode()],
+					provides: vec![(
+						"CDPEngineOffchain",
+						<system::Module<T>>::block_number(),
+						currency_id,
+						who,
+					)
+						.encode()],
 					longevity: 64_u64,
 					propagate: true,
 				})
