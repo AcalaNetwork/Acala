@@ -9,13 +9,11 @@ use rstd::{
 use sp_runtime::{DispatchError, DispatchResult};
 
 pub mod homa;
-pub mod offchain_worker;
 
 pub use homa::{
 	EraIndex, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
 	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
 };
-pub use offchain_worker::OffchainErr;
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;

@@ -10,20 +10,17 @@ use rstd::{
 	prelude::*,
 };
 use sp_runtime::{
-	offchain::{storage::StorageValueRef, Duration, Timestamp},
 	traits::{BlakeTwo256, CheckedAdd, CheckedSub, Hash, Saturating, Zero},
 	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
-use support::{AuctionManager, CDPTreasury, EmergencyShutdown, OffchainErr, Price, PriceProvider, Rate};
+use support::{AuctionManager, CDPTreasury, EmergencyShutdown, Price, PriceProvider, Rate};
 use system::{ensure_none, offchain::SubmitUnsignedTransaction};
+use utilities::{OffchainErr, OffchainLock};
 
 mod mock;
 mod tests;
 
-// constant for offchain worker
-const LOCK_EXPIRE_DURATION: u64 = 300_000; // 5 min
-const LOCK_UPDATE_DURATION: u64 = 240_000; // 4 min
 const DB_PREFIX: &[u8] = b"acala/auction-manager-offchain-worker/";
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -142,7 +139,7 @@ decl_module! {
 
 		// Runs after every block.
 		fn offchain_worker(now: T::BlockNumber) {
-			if Self::is_shutdown() {
+			if Self::is_shutdown() && runtime_io::offchain::is_validator() {
 				if let Err(e) = Self::_offchain_worker(now) {
 					debug::info!(
 						target: "auction-manager offchain worker",
@@ -157,43 +154,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn acquire_offchain_worker_lock() -> Result<Timestamp, OffchainErr> {
-		let storage_key = DB_PREFIX.to_vec();
-		let storage = StorageValueRef::persistent(&storage_key);
-		let now = runtime_io::offchain::timestamp();
-
-		let acquire_lock = storage.mutate(|lock: Option<Option<Timestamp>>| match lock {
-			None => Ok(now.add(Duration::from_millis(LOCK_EXPIRE_DURATION))),
-			Some(Some(expire_timestamp)) if now >= expire_timestamp => {
-				Ok(now.add(Duration::from_millis(LOCK_EXPIRE_DURATION)))
-			}
-			_ => Err(OffchainErr::LockStillInLocked),
-		})?;
-
-		acquire_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
-	}
-
-	fn release_offchain_worker_lock() {
-		let storage_key = DB_PREFIX.to_vec();
-		let storage = StorageValueRef::persistent(&storage_key);
-
-		if let Some(Some(_)) = storage.get::<Timestamp>() {
-			storage.set(&runtime_io::offchain::timestamp());
-		}
-	}
-
-	fn extend_offchain_worker_lock_if_needed() {
-		let storage_key = DB_PREFIX.to_vec();
-		let storage = StorageValueRef::persistent(&storage_key);
-		let now = runtime_io::offchain::timestamp();
-
-		if let Some(Some(expire_timestamp)) = storage.get::<Timestamp>() {
-			if expire_timestamp <= now.add(Duration::from_millis(LOCK_UPDATE_DURATION)) {
-				storage.set(&now.add(Duration::from_millis(LOCK_EXPIRE_DURATION)));
-			}
-		}
-	}
-
 	fn submit_cancel_auction_tx(auction_id: AuctionIdOf<T>) {
 		let call = Call::<T>::cancel(auction_id);
 		if !T::SubmitTransaction::submit_unsigned(call).is_ok() {
@@ -212,14 +172,10 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
-		// check if we are a potential validator
-		if !runtime_io::offchain::is_validator() {
-			return Err(OffchainErr::NotValidator);
-		}
-
 		// Acquire offchain worker lock.
 		// If succeeded, update the lock, otherwise return error
-		Self::acquire_offchain_worker_lock()?;
+		let offchain_lock = OffchainLock::new(DB_PREFIX.to_vec());
+		offchain_lock.acquire_offchain_lock(|_: Option<()>| ())?;
 
 		let random_seed = runtime_io::offchain::random_seed();
 		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
@@ -227,13 +183,13 @@ impl<T: Trait> Module<T> {
 			0 => {
 				for (auction_id, _) in <DebitAuctions<T>>::iter() {
 					Self::submit_cancel_auction_tx(auction_id);
-					Self::extend_offchain_worker_lock_if_needed();
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
 				}
 			}
 			1 => {
 				for (auction_id, _) in <SurplusAuctions<T>>::iter() {
 					Self::submit_cancel_auction_tx(auction_id);
-					Self::extend_offchain_worker_lock_if_needed();
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
 				}
 			}
 			_ => {
@@ -241,13 +197,13 @@ impl<T: Trait> Module<T> {
 					if !Self::collateral_auction_in_reverse_stage(auction_id) {
 						Self::submit_cancel_auction_tx(auction_id);
 					}
-					Self::extend_offchain_worker_lock_if_needed();
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
 				}
 			}
 		}
 
 		// finally, reset the expire timestamp to now in order to release lock in advance.
-		Self::release_offchain_worker_lock();
+		offchain_lock.release_offchain_lock(|_: ()| true);
 		debug::debug!(
 			target: "auction-manager offchain worker",
 			"offchain worker start at block: {:?} already done!",
@@ -861,7 +817,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 			Ok(ValidTransaction {
 				priority: TransactionPriority::max_value(),
 				requires: vec![],
-				provides: vec![(<system::Module<T>>::block_number(), auction_id).encode()],
+				provides: vec![("AuctionManagerOffchain", auction_id).encode()],
 				longevity: 64_u64,
 				propagate: true,
 			})
