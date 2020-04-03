@@ -2806,6 +2806,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "utilities",
 ]
 
 [[package]]
@@ -2829,6 +2830,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "utilities",
 ]
 
 [[package]]
@@ -7077,6 +7079,17 @@ dependencies = [
  "idna 0.2.0",
  "matches",
  "percent-encoding 2.1.0",
+]
+
+[[package]]
+name = "utilities"
+version = "0.3.4"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

@@ -1,22 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::Encode;
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType, IterableStorageDoubleMap,
 };
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use rstd::{marker, prelude::*};
 use sp_runtime::{
-	offchain::{storage::StorageValueRef, Duration, Timestamp},
 	traits::{BlakeTwo256, Convert, EnsureOrigin, Hash, Saturating, UniqueSaturatedInto, Zero},
 	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
-	DispatchResult, RandomNumberGenerator, RuntimeDebug,
+	DispatchResult, RandomNumberGenerator,
 };
 use support::{
 	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
 use system::{ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
+use utilities::{LockItem, OffchainErr, OffchainLock};
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
@@ -24,9 +24,6 @@ pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 mod mock;
 mod tests;
 
-// constant for offchain worker
-const LOCK_EXPIRE_DURATION: u64 = 300_000; // 5 min
-const LOCK_UPDATE_DURATION: u64 = 240_000; // 4 min
 const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
 
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
@@ -126,34 +123,6 @@ decl_storage! {
 				<MaximumTotalDebitValue<T>>::insert(currency_id, maximum_total_debit_value);
 			});
 		});
-	}
-}
-
-/// Error which may occur while executing the off-chain code.
-#[cfg_attr(test, derive(PartialEq))]
-enum OffchainErr {
-	FailedToAcquireLock,
-	SubmitTransaction,
-	NotValidator,
-	LockStillInLocked,
-}
-
-// The lock to limit the number of offchain worker at the same time.
-// Before expire timestamp, can not start new offchain worker
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
-struct OffchainWorkerLock {
-	pub previous_position: u32,
-	pub expire_timestamp: Timestamp,
-}
-
-impl rstd::fmt::Debug for OffchainErr {
-	fn fmt(&self, fmt: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
-		match *self {
-			OffchainErr::FailedToAcquireLock => write!(fmt, "Failed to acquire lock"),
-			OffchainErr::SubmitTransaction => write!(fmt, "Failed to submit transaction"),
-			OffchainErr::NotValidator => write!(fmt, "Not validator"),
-			OffchainErr::LockStillInLocked => write!(fmt, "Liquidator lock is still in locked"),
-		}
 	}
 }
 
@@ -284,78 +253,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn acquire_offchain_worker_lock() -> Result<OffchainWorkerLock, OffchainErr> {
-		let storage_key = DB_PREFIX.to_vec();
-		let storage = StorageValueRef::persistent(&storage_key);
-		let collateral_currency_ids = T::CollateralCurrencyIds::get();
-
-		let acquire_lock = storage.mutate(|lock: Option<Option<OffchainWorkerLock>>| {
-			match lock {
-				None => {
-					//start with random collateral
-					let random_seed = runtime_io::offchain::random_seed();
-					let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
-					let expire_timestamp =
-						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
-
-					Ok(OffchainWorkerLock {
-						previous_position: rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32),
-						expire_timestamp: expire_timestamp,
-					})
-				}
-				Some(Some(lock)) if runtime_io::offchain::timestamp() >= lock.expire_timestamp => {
-					let execute_position =
-						if lock.previous_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
-							lock.previous_position + 1
-						} else {
-							0
-						};
-					let expire_timestamp =
-						runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_EXPIRE_DURATION));
-
-					Ok(OffchainWorkerLock {
-						previous_position: execute_position,
-						expire_timestamp: expire_timestamp,
-					})
-				}
-				_ => Err(OffchainErr::LockStillInLocked),
-			}
-		})?;
-
-		acquire_lock.map_err(|_| OffchainErr::FailedToAcquireLock)
-	}
-
-	fn release_offchain_worker_lock(previous_position: u32) {
-		let storage_key = DB_PREFIX.to_vec();
-		let storage = StorageValueRef::persistent(&storage_key);
-
-		if let Some(Some(lock)) = storage.get::<OffchainWorkerLock>() {
-			if lock.previous_position == previous_position {
-				storage.set(&OffchainWorkerLock {
-					previous_position: previous_position,
-					expire_timestamp: runtime_io::offchain::timestamp(),
-				});
-			}
-		}
-	}
-
-	fn extend_offchain_worker_lock_if_needed() {
-		let storage_key = DB_PREFIX.to_vec();
-		let storage = StorageValueRef::persistent(&storage_key);
-
-		if let Some(Some(lock)) = storage.get::<OffchainWorkerLock>() {
-			if lock.expire_timestamp
-				<= runtime_io::offchain::timestamp().add(Duration::from_millis(LOCK_UPDATE_DURATION))
-			{
-				storage.set(&OffchainWorkerLock {
-					previous_position: lock.previous_position,
-					expire_timestamp: runtime_io::offchain::timestamp()
-						.add(Duration::from_millis(LOCK_EXPIRE_DURATION)),
-				});
-			}
-		}
-	}
-
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
 		let call = Call::<T>::liquidate(currency_id, who);
 		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
@@ -366,52 +263,6 @@ impl<T: Trait> Module<T> {
 		let call = Call::<T>::settle(currency_id, who);
 		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
-	}
-
-	fn liquidate_specific_collateral(currency_id: CurrencyIdOf<T>) {
-		for (account_id, _) in <loans::Debits<T>>::iter(currency_id) {
-			if Self::is_cdp_unsafe(currency_id, &account_id) {
-				if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
-					debug::warn!(
-						target: "cdp-engine offchain worker",
-						"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
-						account_id, currency_id, e,
-					);
-				} else {
-					debug::debug!(
-						target: "cdp-engine offchain worker",
-						"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
-						account_id, currency_id,
-					);
-				}
-			}
-
-			// check the expire timestamp of lock that is needed to extend
-			Self::extend_offchain_worker_lock_if_needed();
-		}
-	}
-
-	fn settle_specific_collateral(currency_id: CurrencyIdOf<T>) {
-		for (account_id, debit) in <loans::Debits<T>>::iter(currency_id) {
-			if !debit.is_zero() {
-				if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
-					debug::warn!(
-						target: "cdp-engine offchain worker",
-						"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
-						account_id, currency_id, e,
-					);
-				} else {
-					debug::debug!(
-						target: "cdp-engine offchain worker",
-						"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
-						account_id, currency_id,
-					);
-				}
-			}
-
-			// check the expire timestamp of lock that is needed to extend
-			Self::extend_offchain_worker_lock_if_needed();
-		}
 	}
 
 	fn _offchain_worker(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
@@ -425,36 +276,77 @@ impl<T: Trait> Module<T> {
 			return Err(OffchainErr::NotValidator);
 		}
 
+		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+		let offchain_lock = OffchainLock::new(DB_PREFIX.to_vec());
+
 		// Acquire offchain worker lock.
 		// If succeeded, update the lock, otherwise return error
-		let OffchainWorkerLock {
-			previous_position,
+		let LockItem {
 			expire_timestamp: _,
-		} = Self::acquire_offchain_worker_lock()?;
+			extra_data: position,
+		} = offchain_lock.acquire_offchain_lock(|val: Option<u32>| {
+			if let Some(previous_position) = val {
+				if previous_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
+					previous_position + 1
+				} else {
+					0
+				}
+			} else {
+				let random_seed = runtime_io::offchain::random_seed();
+				let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
 
-		// start
-		let currency_id = collateral_currency_ids[(previous_position as usize)];
+				rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32)
+			}
+		})?;
+
+		let currency_id = collateral_currency_ids[(position as usize)];
 
 		if !Self::is_shutdown() {
-			debug::debug!(
-				target: "cdp-engine offchain worker",
-				"execute automatic liquidation at block: {:?} for collateral: {:?}",
-				block_number,
-				currency_id,
-			);
-			Self::liquidate_specific_collateral(currency_id);
+			for (account_id, _) in <loans::Debits<T>>::iter(currency_id) {
+				if Self::is_cdp_unsafe(currency_id, &account_id) {
+					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
+						debug::warn!(
+							target: "cdp-engine offchain worker",
+							"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+							account_id, currency_id, e,
+						);
+					} else {
+						debug::debug!(
+							target: "cdp-engine offchain worker",
+							"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+							account_id, currency_id,
+						);
+					}
+				}
+
+				// check the expire timestamp of lock that is needed to extend
+				offchain_lock.extend_offchain_lock_if_needed::<u32>();
+			}
 		} else {
-			debug::debug!(
-				target: "cdp-engine offchain worker",
-				"execute automatic settlement at block: {:?} for collateral: {:?}",
-				block_number,
-				currency_id,
-			);
-			Self::settle_specific_collateral(currency_id);
+			for (account_id, debit) in <loans::Debits<T>>::iter(currency_id) {
+				if !debit.is_zero() {
+					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
+						debug::warn!(
+							target: "cdp-engine offchain worker",
+							"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
+							account_id, currency_id, e,
+						);
+					} else {
+						debug::debug!(
+							target: "cdp-engine offchain worker",
+							"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
+							account_id, currency_id,
+						);
+					}
+				}
+
+				// check the expire timestamp of lock that is needed to extend
+				offchain_lock.extend_offchain_lock_if_needed::<u32>();
+			}
 		}
 
 		// finally, reset the expire timestamp to now in order to release lock in advance.
-		Self::release_offchain_worker_lock(previous_position);
+		offchain_lock.release_offchain_lock(|current_position: u32| current_position == position);
 		debug::debug!(
 			target: "cdp-engine offchain worker",
 			"offchain worker start at block: {:?} already done!",
@@ -682,7 +574,13 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 				Ok(ValidTransaction {
 					priority: TransactionPriority::max_value(),
 					requires: vec![],
-					provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
+					provides: vec![(
+						"CDPEngineOffchain",
+						<system::Module<T>>::block_number(),
+						currency_id,
+						who,
+					)
+						.encode()],
 					longevity: 64_u64,
 					propagate: true,
 				})
@@ -696,7 +594,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 				Ok(ValidTransaction {
 					priority: TransactionPriority::max_value(),
 					requires: vec![],
-					provides: vec![(<system::Module<T>>::block_number(), currency_id, who).encode()],
+					provides: vec![("CDPEngineOffchain", currency_id, who).encode()],
 					longevity: 64_u64,
 					propagate: true,
 				})

@@ -1,17 +1,27 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, HasCompact};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
-use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
-use rstd::cmp::{Eq, PartialEq};
-use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, Saturating, Zero},
-	DispatchResult, RuntimeDebug,
+use frame_support::{
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType, IterableStorageMap,
 };
-use support::{AuctionManager, CDPTreasury, Price, PriceProvider, Rate};
+use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
+use rstd::{
+	cmp::{Eq, PartialEq},
+	prelude::*,
+};
+use sp_runtime::{
+	traits::{BlakeTwo256, CheckedAdd, CheckedSub, Hash, Saturating, Zero},
+	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
+	DispatchResult, RandomNumberGenerator, RuntimeDebug,
+};
+use support::{AuctionManager, CDPTreasury, EmergencyShutdown, Price, PriceProvider, Rate};
+use system::{ensure_none, offchain::SubmitUnsignedTransaction};
+use utilities::{OffchainErr, OffchainLock};
 
 mod mock;
 mod tests;
+
+const DB_PREFIX: &[u8] = b"acala/auction-manager-offchain-worker/";
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
@@ -60,6 +70,12 @@ pub trait Trait: system::Trait {
 	type GetAmountAdjustment: Get<Rate>;
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
+
+	/// A dispatchable call type.
+	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
+
+	/// A transaction submitter.
+	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
 }
 
 decl_event!(
@@ -84,6 +100,7 @@ decl_error! {
 		InReservedStage,
 		BalanceNotEnough,
 		InvalidFeedPrice,
+		MustAfterShutdown,
 	}
 }
 
@@ -99,6 +116,7 @@ decl_storage! {
 		pub TotalTargetInAuction get(fn total_target_in_auction): BalanceOf<T>;
 		pub TotalDebitInAuction get(fn total_debit_in_auction): BalanceOf<T>;
 		pub TotalSurplusInAuction get(fn total_surplus_in_auction): BalanceOf<T>;
+		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -112,10 +130,93 @@ decl_module! {
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 		const GetNativeCurrencyId: CurrencyIdOf<T> = T::GetNativeCurrencyId::get();
 		const GetAmountAdjustment: Rate = T::GetAmountAdjustment::get();
+
+		pub fn cancel(origin, id: AuctionIdOf<T>) {
+			ensure_none(origin)?;
+			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+			<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
+		}
+
+		// Runs after every block.
+		fn offchain_worker(now: T::BlockNumber) {
+			if Self::is_shutdown() && runtime_io::offchain::is_validator() {
+				if let Err(e) = Self::_offchain_worker(now) {
+					debug::info!(
+						target: "auction-manager offchain worker",
+						"cannot run offchain worker at {:?}: {:?}",
+						now,
+						e,
+					);
+				}
+			}
+		}
 	}
 }
 
 impl<T: Trait> Module<T> {
+	fn submit_cancel_auction_tx(auction_id: AuctionIdOf<T>) {
+		let call = Call::<T>::cancel(auction_id);
+		if !T::SubmitTransaction::submit_unsigned(call).is_ok() {
+			debug::warn!(
+				target: "auction-manager offchain worker",
+				"submit unsigned auction cancel tx for \nAuctionId {:?} failed : {:?}",
+				auction_id, OffchainErr::SubmitTransaction,
+			);
+		} else {
+			debug::debug!(
+				target: "auction-manager offchain worker",
+				"successfully submit unsigned auction cancel tx for \nAuctionId {:?}",
+				auction_id,
+			);
+		}
+	}
+
+	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
+		// Acquire offchain worker lock.
+		// If succeeded, update the lock, otherwise return error
+		let offchain_lock = OffchainLock::new(DB_PREFIX.to_vec());
+		offchain_lock.acquire_offchain_lock(|_: Option<()>| ())?;
+
+		let random_seed = runtime_io::offchain::random_seed();
+		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+		match rng.pick_u32(2) {
+			0 => {
+				for (auction_id, _) in <DebitAuctions<T>>::iter() {
+					Self::submit_cancel_auction_tx(auction_id);
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
+				}
+			}
+			1 => {
+				for (auction_id, _) in <SurplusAuctions<T>>::iter() {
+					Self::submit_cancel_auction_tx(auction_id);
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
+				}
+			}
+			_ => {
+				for (auction_id, _) in <CollateralAuctions<T>>::iter() {
+					if !Self::collateral_auction_in_reverse_stage(auction_id) {
+						Self::submit_cancel_auction_tx(auction_id);
+					}
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
+				}
+			}
+		}
+
+		// finally, reset the expire timestamp to now in order to release lock in advance.
+		offchain_lock.release_offchain_lock(|_: ()| true);
+		debug::debug!(
+			target: "auction-manager offchain worker",
+			"offchain worker start at block: {:?} already done!",
+			now,
+		);
+
+		Ok(())
+	}
+
+	pub fn emergency_shutdown() {
+		<IsShutdown>::put(true);
+	}
+
 	pub fn cancel_surplus_auction(id: AuctionIdOf<T>) -> DispatchResult {
 		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 		if let Some(auction_info) = T::Auction::auction_info(id) {
@@ -687,6 +788,41 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			Self::cancel_surplus_auction(id)
 		} else {
 			Err(Error::<T>::AuctionNotExsits.into())
+		}
+	}
+}
+
+impl<T: Trait> EmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		Self::emergency_shutdown();
+	}
+}
+
+#[allow(deprecated)]
+impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+	type Call = Call<T>;
+
+	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
+		if let Call::cancel(auction_id) = call {
+			if !Self::is_shutdown() {
+				return InvalidTransaction::Stale.into();
+			} else if <CollateralAuctions<T>>::contains_key(auction_id) {
+				if !Self::collateral_auction_in_reverse_stage(*auction_id) {
+					return InvalidTransaction::Stale.into();
+				}
+			} else if !<SurplusAuctions<T>>::contains_key(auction_id) && !<DebitAuctions<T>>::contains_key(auction_id) {
+				return InvalidTransaction::Stale.into();
+			}
+
+			Ok(ValidTransaction {
+				priority: TransactionPriority::max_value(),
+				requires: vec![],
+				provides: vec![("AuctionManagerOffchain", auction_id).encode()],
+				longevity: 64_u64,
+				propagate: true,
+			})
+		} else {
+			InvalidTransaction::Call.into()
 		}
 	}
 }
