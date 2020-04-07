@@ -9,7 +9,7 @@ mod tests {
 	use frame_support::{assert_noop, assert_ok};
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
-	use sp_runtime::{traits::OnFinalize, DispatchResult};
+	use sp_runtime::{traits::OnFinalize, traits::OnInitialize, DispatchResult};
 
 	const ORACLE1: [u8; 32] = [0u8; 32];
 	const ORACLE2: [u8; 32] = [1u8; 32];
@@ -152,6 +152,9 @@ mod tests {
 				assert_eq!(DexModule::liquidity_pool(XBTC), (10002, 10002000));
 				assert_ok!(DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, 1, 1001));
 				assert_eq!(DexModule::liquidity_pool(XBTC), (10003, 10003000));
+				DexModule::on_initialize(0);
+				assert_eq!(DexModule::total_shares(XBTC), 10002998);
+				assert_eq!(DexModule::shares(XBTC, AccountId::from(BOB)), 2998);
 			});
 	}
 

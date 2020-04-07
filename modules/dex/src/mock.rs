@@ -5,6 +5,7 @@
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use support::Rate;
 
 use super::*;
 
@@ -34,6 +35,7 @@ parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
 	pub const ExistentialDeposit: u128 = 0;
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT, AUSD];
 }
 
 pub type AccountId = u64;
@@ -80,6 +82,7 @@ impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
 	type Share = Share;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 }
@@ -96,6 +99,7 @@ pub const ACA: CurrencyId = 4;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	liquidity_incentive_rate: Rate,
 }
 
 impl Default for ExtBuilder {
@@ -109,16 +113,27 @@ impl Default for ExtBuilder {
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
+			liquidity_incentive_rate: Rate::from_rational(1, 100),
 		}
 	}
 }
 
 impl ExtBuilder {
+	pub fn set_balance(mut self, who: AccountId, currency_id: CurrencyId, balance: Balance) -> Self {
+		self.endowed_accounts.push((who, currency_id, balance));
+		self
+	}
 	pub fn build(self) -> runtime_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			endowed_accounts: self.endowed_accounts,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		dex::GenesisConfig {
+			liquidity_incentive_rate: self.liquidity_incentive_rate,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
