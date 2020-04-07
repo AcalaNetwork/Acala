@@ -78,6 +78,7 @@ dependencies = [
  "module-emergency-shutdown",
  "module-homa",
  "module-homa-council",
+ "module-homa-treasury",
  "module-honzon",
  "module-loans",
  "module-polkadot-bridge",
@@ -2939,6 +2940,25 @@ dependencies = [
 
 [[package]]
 name = "module-homa-council"
+version = "0.4.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-homa-treasury"
 version = "0.4.0"
 dependencies = [
  "frame-support",

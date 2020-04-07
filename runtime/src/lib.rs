@@ -681,6 +681,12 @@ impl module_homa_council::Trait for Runtime {
 	type MaxUnlockingChunks = MaxUnlockingChunks;
 }
 
+impl module_homa_treasury::Trait for Runtime {
+	type Currency = Currencies;
+	type Homa = StakingPool;
+	type StakingCurrencyId = GetStakingCurrencyId;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -726,6 +732,7 @@ construct_runtime!(
 		HomaCouncil: module_homa_council::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
+		HomaTreasury: module_homa_treasury::{Module},
 	}
 );
 

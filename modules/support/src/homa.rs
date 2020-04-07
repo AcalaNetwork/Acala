@@ -4,7 +4,7 @@ use rstd::fmt::Debug;
 use rstd::prelude::*;
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member},
-	DispatchResult, RuntimeDebug,
+	DispatchError, DispatchResult, RuntimeDebug,
 };
 
 /// Counter for the number of eras that have passed.
@@ -71,9 +71,9 @@ impl<Balance, CurrencyId> OnCommission<Balance, CurrencyId> for () {
 pub trait HomaProtocol<AccountId> {
 	type Balance: Decode + Encode + Debug + Eq + PartialEq + Clone + HasCompact;
 
-	fn mint(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn mint(who: &AccountId, amount: Self::Balance) -> rstd::result::Result<Self::Balance, DispatchError>;
 	fn redeem_by_unbond(who: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn redeem_by_free_unbonded(who: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn redeem_by_claim_unbonding(who: &AccountId, amount: Self::Balance, target_era: EraIndex) -> DispatchResult;
-	fn withdraw_redemption(who: &AccountId) -> DispatchResult;
+	fn withdraw_redemption(who: &AccountId) -> rstd::result::Result<Self::Balance, DispatchError>;
 }

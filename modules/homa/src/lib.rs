@@ -15,7 +15,7 @@ pub enum RedeemStrategy {
 
 type BalanceOf<T> = <<T as Trait>::Homa as HomaProtocol<<T as system::Trait>::AccountId>>::Balance;
 
-pub trait Trait: system::Trait + staking_pool::Trait {
+pub trait Trait: system::Trait {
 	type Homa: HomaProtocol<Self::AccountId>;
 }
 

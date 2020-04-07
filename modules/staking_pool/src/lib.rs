@@ -5,7 +5,7 @@ use orml_traits::MultiCurrency;
 use rstd::prelude::*;
 use sp_runtime::{
 	traits::{AccountIdConversion, Saturating, UniqueSaturatedInto, Zero},
-	DispatchResult, ModuleId,
+	DispatchError, DispatchResult, ModuleId,
 };
 use support::{
 	EraIndex, ExchangeRate, HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall,
@@ -126,23 +126,25 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn withdraw_unbonded(who: &T::AccountId) -> DispatchResult {
+	pub fn withdraw_unbonded(who: &T::AccountId) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		let current_era = Self::current_era();
 		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, BalanceOf<T>)>>();
 		let staking_currency_id = T::StakingCurrencyId::get();
+		let mut withdrawn_amount: BalanceOf<T> = Zero::zero();
 
 		for (era_index, claimed) in claimed_unbond {
 			if era_index <= current_era && !claimed.is_zero() {
 				if T::Currency::transfer(staking_currency_id, &Self::account_id(), who, claimed).is_ok() {
+					withdrawn_amount += claimed;
 					<TotalClaimedUnbonded<T>>::mutate(|balance| *balance -= claimed);
 					<ClaimedUnbond<T>>::remove(who, era_index);
 				}
 			}
 		}
-		Ok(())
+		Ok(withdrawn_amount)
 	}
 
-	pub fn bond(who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+	pub fn bond(who: &T::AccountId, amount: BalanceOf<T>) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		// bond dot
 		T::Currency::ensure_can_withdraw(T::StakingCurrencyId::get(), who, amount)
 			.map_err(|_| Error::<T>::StakingCurrencyNotEnough)?;
@@ -158,7 +160,7 @@ impl<T: Trait> Module<T> {
 		T::Currency::deposit(T::LiquidCurrencyId::get(), who, ldot_amount)?;
 
 		<Module<T>>::deposit_event(RawEvent::BondAndMint(who.clone(), amount, ldot_amount));
-		Ok(())
+		Ok(ldot_amount)
 	}
 
 	pub fn redeem_by_unbond(who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
@@ -417,7 +419,7 @@ impl<T: Trait> OnNewEra for Module<T> {
 impl<T: Trait> HomaProtocol<T::AccountId> for Module<T> {
 	type Balance = BalanceOf<T>;
 
-	fn mint(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn mint(who: &T::AccountId, amount: Self::Balance) -> rstd::result::Result<Self::Balance, DispatchError> {
 		Self::bond(who, amount)
 	}
 
@@ -433,7 +435,7 @@ impl<T: Trait> HomaProtocol<T::AccountId> for Module<T> {
 		Self::redeem_by_claim_unbonding(who, amount, target_era)
 	}
 
-	fn withdraw_redemption(who: &T::AccountId) -> DispatchResult {
+	fn withdraw_redemption(who: &T::AccountId) -> rstd::result::Result<Self::Balance, DispatchError> {
 		Self::withdraw_unbonded(who)
 	}
 }

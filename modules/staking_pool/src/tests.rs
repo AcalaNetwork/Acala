@@ -17,7 +17,7 @@ fn claim_period_percent_work() {
 			Error::<Runtime>::StakingCurrencyNotEnough,
 		);
 		assert_eq!(StakingPoolModule::total_bonded(), 0);
-		assert_ok!(StakingPoolModule::bond(&ALICE, 500));
+		assert_eq!(StakingPoolModule::bond(&ALICE, 500), Ok(5000));
 		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 500);
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 5000);
@@ -43,7 +43,7 @@ fn withdraw_unbonded_work() {
 		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 0), 200);
 		assert_eq!(StakingPoolModule::total_claimed_unbonded(), 500);
 
-		assert_ok!(StakingPoolModule::withdraw_unbonded(&ALICE));
+		assert_eq!(StakingPoolModule::withdraw_unbonded(&ALICE), Ok(200));
 		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1200);
 		assert_eq!(
 			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
@@ -57,8 +57,8 @@ fn withdraw_unbonded_work() {
 #[test]
 fn redeem_by_unbond_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(StakingPoolModule::bond(&ALICE, 1000));
-		assert_ok!(StakingPoolModule::bond(&BOB, 1000));
+		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
+		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
 		assert_eq!(StakingPoolModule::total_bonded(), 2000);
 		assert_eq!(StakingPoolModule::get_total_communal_balance(), 2000);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 10000);
@@ -91,8 +91,8 @@ fn redeem_by_unbond_work() {
 #[test]
 fn redeem_by_free_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(StakingPoolModule::bond(&ALICE, 1000));
-		assert_ok!(StakingPoolModule::bond(&BOB, 1000));
+		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
+		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
 		<TotalBonded<Runtime>>::mutate(|bonded| *bonded -= 1500);
 		<FreeUnbonded<Runtime>>::put(1500);
 		assert_ok!(CurrenciesModule::deposit(DOT, &StakingPoolModule::account_id(), 1500));
@@ -131,8 +131,8 @@ fn redeem_by_free_unbonded_work() {
 #[test]
 fn redeem_by_claim_unbonding_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(StakingPoolModule::bond(&ALICE, 1000));
-		assert_ok!(StakingPoolModule::bond(&BOB, 1000));
+		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
+		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
 		<TotalBonded<Runtime>>::mutate(|bonded| *bonded -= 1500);
 		<Unbonding<Runtime>>::insert(2, (1500, 0));
 		<UnbondingToFree<Runtime>>::put(1500);
