@@ -55,7 +55,6 @@ decl_error! {
 	/// Error for dex module.
 	pub enum Error for Module<T: Trait> {
 		CurrencyIdNotAllowed,
-		BaseCurrencyIdNotAllowed,
 		TokenNotEnough,
 		ShareNotEnough,
 		InvalidBalance,
@@ -117,14 +116,10 @@ decl_module! {
 			#[compact] max_base_currency_amount: BalanceOf<T>
 		) {
 			let who = ensure_signed(origin)?;
+			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
 				T::EnabledCurrencyIds::get().contains(&other_currency_id),
 				Error::<T>::CurrencyIdNotAllowed,
-			);
-			let base_currency_id = T::GetBaseCurrencyId::get();
-			ensure!(
-				other_currency_id != base_currency_id,
-				Error::<T>::BaseCurrencyIdNotAllowed,
 			);
 			ensure!(
 				!max_other_currency_amount.is_zero() && !max_base_currency_amount.is_zero(),
@@ -192,8 +187,8 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
-				currency_id != base_currency_id,
-				Error::<T>::BaseCurrencyIdNotAllowed,
+				T::EnabledCurrencyIds::get().contains(&currency_id),
+				Error::<T>::CurrencyIdNotAllowed,
 			);
 			ensure!(
 				Self::shares(currency_id, &who) >= share_amount && !share_amount.is_zero(),

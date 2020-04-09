@@ -37,7 +37,7 @@ parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
 	pub const ExistentialDeposit: u128 = 0;
-	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT, AUSD];
+	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
 }
 
 pub type AccountId = u64;

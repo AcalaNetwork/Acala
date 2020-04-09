@@ -66,7 +66,7 @@ fn add_liquidity_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			DexModule::add_liquidity(Origin::signed(ALICE), AUSD, 10000, 2000),
-			Error::<Runtime>::BaseCurrencyIdNotAllowed,
+			Error::<Runtime>::CurrencyIdNotAllowed,
 		);
 		assert_eq!(DexModule::liquidity_pool(BTC), (0, 0));
 		assert_eq!(DexModule::total_shares(BTC), 0);
@@ -116,7 +116,7 @@ fn add_liquidity_and_calculate_interest() {
 			);
 			assert_noop!(
 				DexModule::add_liquidity(Origin::signed(ALICE), AUSD, 10000, 2000),
-				Error::<Runtime>::BaseCurrencyIdNotAllowed,
+				Error::<Runtime>::CurrencyIdNotAllowed,
 			);
 			assert_eq!(DexModule::liquidity_pool(BTC), (0, 0));
 			assert_eq!(DexModule::total_shares(BTC), 0);
