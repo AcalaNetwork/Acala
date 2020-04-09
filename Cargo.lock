@@ -20,6 +20,7 @@ dependencies = [
  "jsonrpc-core",
  "log",
  "module-dex-rpc",
+ "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "orml-utilities",
  "pallet-transaction-payment-rpc",
@@ -78,12 +79,14 @@ dependencies = [
  "module-emergency-shutdown",
  "module-homa",
  "module-homa-council",
+ "module-homa-treasury",
  "module-honzon",
  "module-loans",
  "module-polkadot-bridge",
  "module-prices",
  "module-primitives",
  "module-staking-pool",
+ "module-staking-pool-rpc-runtime-api",
  "module-support",
  "orml-auction",
  "orml-currencies",
@@ -2957,6 +2960,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-homa-treasury"
+version = "0.4.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-honzon"
 version = "0.4.0"
 dependencies = [
@@ -3057,6 +3079,28 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "module-staking-pool-rpc"
+version = "0.4.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "module-staking-pool-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "module-staking-pool-rpc-runtime-api"
+version = "0.4.0"
+dependencies = [
+ "parity-scale-codec",
+ "sp-api",
 ]
 
 [[package]]

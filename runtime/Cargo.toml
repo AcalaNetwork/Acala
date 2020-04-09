@@ -66,7 +66,9 @@ module-support = { path = "../modules/support", default-features = false }
 module-homa = { path = "../modules/homa", default-features = false }
 module-homa-council = { path = "../modules/homa_council", default-features = false }
 module-staking-pool = { path = "../modules/staking_pool", default-features = false }
+module-staking-pool-rpc-runtime-api = { path = "../modules/staking_pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../modules/polkadot_bridge", default-features = false }
+module-homa-treasury = { path = "../modules/homa_treasury", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.5" }
@@ -132,5 +134,7 @@ std = [
 	"module-homa/std",
 	"module-homa-council/std",
 	"module-staking-pool/std",
+	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
+	"module-homa-treasury/std",
 ]

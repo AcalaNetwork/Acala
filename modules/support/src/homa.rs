@@ -1,10 +1,10 @@
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, HasCompact};
 use frame_support::{traits::Get, Parameter};
 use rstd::fmt::Debug;
 use rstd::prelude::*;
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member},
-	DispatchResult, RuntimeDebug,
+	DispatchError, DispatchResult, RuntimeDebug,
 };
 
 /// Counter for the number of eras that have passed.
@@ -60,10 +60,20 @@ pub trait PolkadotBridge<BlockNumber, Balance, AccountId>:
 {
 }
 
-pub trait OnCommission<Balance> {
-	fn on_commission(amount: Balance);
+pub trait OnCommission<Balance, CurrencyId> {
+	fn on_commission(currency_id: CurrencyId, amount: Balance);
 }
 
-impl<Balance> OnCommission<Balance> for () {
-	fn on_commission(_amount: Balance) {}
+impl<Balance, CurrencyId> OnCommission<Balance, CurrencyId> for () {
+	fn on_commission(_currency_id: CurrencyId, _amount: Balance) {}
+}
+
+pub trait HomaProtocol<AccountId> {
+	type Balance: Decode + Encode + Debug + Eq + PartialEq + Clone + HasCompact;
+
+	fn mint(who: &AccountId, amount: Self::Balance) -> rstd::result::Result<Self::Balance, DispatchError>;
+	fn redeem_by_unbond(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn redeem_by_free_unbonded(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn redeem_by_claim_unbonding(who: &AccountId, amount: Self::Balance, target_era: EraIndex) -> DispatchResult;
+	fn withdraw_redemption(who: &AccountId) -> rstd::result::Result<Self::Balance, DispatchError>;
 }

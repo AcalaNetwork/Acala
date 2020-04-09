@@ -99,8 +99,6 @@ parameter_types! {
 }
 
 pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
-pub type StakingCurrency = orml_currencies::Currency<Runtime, GetStakingCurrencyId>;
-pub type LiquidCurrency = orml_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 
 impl orml_currencies::Trait for Runtime {
 	type Event = TestEvent;
@@ -108,12 +106,14 @@ impl orml_currencies::Trait for Runtime {
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
+pub type CurrenciesModule = orml_currencies::Module<Runtime>;
 
 parameter_types! {
 	pub const MaxBondRatio: Ratio = Ratio::from_rational(60, 100);	// 60%
 	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
 	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
 	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
 }
 
 pub struct MockNomineesProvider;
@@ -124,8 +124,8 @@ impl NomineesProvider<PolkadotAccountId> for MockNomineesProvider {
 }
 
 pub struct MockOnCommission;
-impl OnCommission<Balance> for MockOnCommission {
-	fn on_commission(_amount: Balance) {}
+impl OnCommission<Balance, CurrencyId> for MockOnCommission {
+	fn on_commission(_currency_id: CurrencyId, _amount: Balance) {}
 }
 
 pub struct MockBridge;
@@ -161,11 +161,11 @@ impl PolkadotBridgeCall<BlockNumber, Balance, AccountId> for MockBridge {
 	fn payout_nominator() {}
 
 	fn transfer_to_bridge(from: &AccountId, amount: Balance) -> DispatchResult {
-		StakingCurrency::withdraw(from, amount)
+		CurrenciesModule::withdraw(DOT, from, amount)
 	}
 
 	fn receive_from_bridge(to: &AccountId, amount: Balance) -> DispatchResult {
-		StakingCurrency::deposit(to, amount)
+		CurrenciesModule::deposit(DOT, to, amount)
 	}
 }
 
@@ -191,8 +191,9 @@ impl PolkadotBridge<BlockNumber, Balance, AccountId> for MockBridge {}
 
 impl Trait for Runtime {
 	type Event = TestEvent;
-	type StakingCurrency = StakingCurrency;
-	type LiquidCurrency = LiquidCurrency;
+	type Currency = CurrenciesModule;
+	type StakingCurrencyId = GetStakingCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type Nominees = MockNomineesProvider;
 	type OnCommission = MockOnCommission;
 	type Bridge = MockBridge;
@@ -200,6 +201,7 @@ impl Trait for Runtime {
 	type MinBondRatio = MinBondRatio;
 	type MaxClaimFee = MaxClaimFee;
 	type DefaultExchangeRate = DefaultExchangeRate;
+	type ClaimFeeReturnRatio = ClaimFeeReturnRatio;
 }
 pub type StakingPoolModule = Module<Runtime>;
 

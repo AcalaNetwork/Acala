@@ -643,12 +643,14 @@ parameter_types! {
 	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
 	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
 	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100); // 80%
 }
 
 impl module_staking_pool::Trait for Runtime {
 	type Event = Event;
-	type StakingCurrency = Currency<Runtime, GetStakingCurrencyId>;
-	type LiquidCurrency = Currency<Runtime, GetLiquidCurrencyId>;
+	type Currency = Currencies;
+	type StakingCurrencyId = GetStakingCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type Nominees = HomaCouncil;
 	type OnCommission = ();
 	type Bridge = PolkadotBridge;
@@ -656,9 +658,12 @@ impl module_staking_pool::Trait for Runtime {
 	type MinBondRatio = MinBondRatio;
 	type MaxClaimFee = MaxClaimFee;
 	type DefaultExchangeRate = DefaultExchangeRate;
+	type ClaimFeeReturnRatio = ClaimFeeReturnRatio;
 }
 
-impl module_homa::Trait for Runtime {}
+impl module_homa::Trait for Runtime {
+	type Homa = StakingPool;
+}
 
 parameter_types! {
 	pub const MinCouncilBondThreshold: Balance = 1 * DOLLARS;
@@ -674,6 +679,12 @@ impl module_homa_council::Trait for Runtime {
 	type BondingDuration = HomaCouncilBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
+}
+
+impl module_homa_treasury::Trait for Runtime {
+	type Currency = Currencies;
+	type Homa = StakingPool;
+	type StakingCurrencyId = GetStakingCurrencyId;
 }
 
 construct_runtime!(
@@ -721,6 +732,7 @@ construct_runtime!(
 		HomaCouncil: module_homa_council::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
+		HomaTreasury: module_homa_treasury::{Module},
 	}
 );
 
@@ -896,6 +908,18 @@ impl_runtime_apis! {
 			supply_currency_amount: Balance,
 		) -> Balance {
 			Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
+		}
+	}
+
+	impl module_staking_pool_rpc_runtime_api::StakingPoolApi<
+		Block,
+		AccountId,
+		Balance,
+	> for Runtime {
+		fn get_available_unbonded(
+			account: AccountId,
+		) -> Balance {
+			StakingPool::get_available_unbonded(&account)
 		}
 	}
 }
