@@ -78,10 +78,10 @@ dependencies = [
  "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
  "module-homa",
- "module-homa-council",
  "module-homa-treasury",
  "module-honzon",
  "module-loans",
+ "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
  "module-primitives",
@@ -2938,25 +2938,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-homa-council"
-version = "0.4.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "module-support",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "module-homa-treasury"
 version = "0.4.0"
 dependencies = [
@@ -3005,6 +2986,25 @@ dependencies = [
  "frame-system",
  "module-cdp-treasury",
  "module-primitives",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-nominees-election"
+version = "0.4.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
  "module-support",
  "orml-currencies",
  "orml-tokens",

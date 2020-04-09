@@ -1,4 +1,4 @@
-//! Mocks for homa council module.
+//! Mocks for nominees election module.
 
 #![cfg(test)]
 
@@ -105,7 +105,7 @@ impl Trait for Runtime {
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
 }
-pub type HomaCouncilModule = Module<Runtime>;
+pub type NomineesElectionModule = Module<Runtime>;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
