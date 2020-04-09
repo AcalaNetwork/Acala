@@ -36,6 +36,8 @@ pub trait Trait: system::Trait {
 	type MaxClaimFee: Get<Rate>;
 	type DefaultExchangeRate: Get<ExchangeRate>;
 	type ClaimFeeReturnRatio: Get<Ratio>;
+
+	// TODO: add RewardFeeRatio
 }
 
 decl_event!(
@@ -343,6 +345,9 @@ impl<T: Trait> Module<T> {
 	pub fn rebalance(era: EraIndex) {
 		// #1: bridge withdraw unbonded and withdraw payout
 		T::Bridge::withdraw_unbonded();
+
+		// TODO: record the balances of bridge before and after do payout_nominator,
+		// and oncommision to homa treasury according to RewardFeeRatio
 		T::Bridge::payout_nominator();
 
 		// #2: update staking pool by bridge ledger
