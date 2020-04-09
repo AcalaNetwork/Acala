@@ -30,6 +30,20 @@ pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult;
 }
 
+impl<AccountId, CurrencyId, Balance, DebitBalance> RiskManager<AccountId, CurrencyId, Balance, DebitBalance> for () {
+	fn check_position_valid(
+		_currency_id: CurrencyId,
+		_collateral_balance: Balance,
+		_debit_balance: DebitBalance,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn check_debit_cap(_currency_id: CurrencyId, _total_debit_balance: DebitBalance) -> DispatchResult {
+		Ok(())
+	}
+}
+
 pub trait AuctionManager<AccountId> {
 	type CurrencyId;
 	type Balance;
@@ -166,6 +180,6 @@ pub trait PriceProvider<CurrencyId, Price> {
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
-pub trait EmergencyShutdown {
+pub trait OnEmergencyShutdown {
 	fn on_emergency_shutdown();
 }

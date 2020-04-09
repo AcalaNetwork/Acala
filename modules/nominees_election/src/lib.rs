@@ -18,7 +18,7 @@ use system::{self as system, ensure_signed};
 mod mock;
 mod tests;
 
-const HOMA_COUNCIL_ID: LockIdentifier = *b"homacncl";
+const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
@@ -107,7 +107,7 @@ pub trait Trait: system::Trait {
 }
 
 decl_error! {
-	/// Error for homa council module.
+	/// Error for nominees election module.
 	pub enum Error for Module<T: Trait> {
 		BelowMinBondThreshold,
 		InvalidTargetsLength,
@@ -118,7 +118,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as HomaCouncil {
+	trait Store for Module<T: Trait> as NomineesElection {
 		pub Nominations get(nominations): map hasher(twox_64_concat) T::AccountId => Vec<T::PolkadotAccountId>;
 		pub Ledger get(ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger<BalanceOf<T>>;
 		pub Votes get(votes): map hasher(twox_64_concat) T::PolkadotAccountId => BalanceOf<T>;
@@ -249,12 +249,12 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger<BalanceOf<T>>) {
-		T::Currency::set_lock(HOMA_COUNCIL_ID, who, ledger.total);
+		T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
 		<Ledger<T>>::insert(who, ledger);
 	}
 
 	fn remove_ledger(who: &T::AccountId) {
-		T::Currency::remove_lock(HOMA_COUNCIL_ID, who);
+		T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
 		<Ledger<T>>::remove(who);
 		<Nominations<T>>::remove(who);
 	}
@@ -295,7 +295,7 @@ impl<T: Trait> Module<T> {
 
 impl<T: Trait> NomineesProvider<T::PolkadotAccountId> for Module<T> {
 	fn nominees() -> Vec<T::PolkadotAccountId> {
-		Self::rebalance(); // can remove the operation by ensure homa_council::on_new_era execute before staking_pool::on_new_era
+		Self::rebalance();
 		<Nominees<T>>::get()
 	}
 }

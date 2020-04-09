@@ -6,7 +6,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureOrigin, Saturating, Zero},
 	DispatchResult, ModuleId,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
 use system::ensure_root;
 
 mod mock;
@@ -344,7 +344,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 	}
 }
 
-impl<T: Trait> EmergencyShutdown for Module<T> {
+impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
 		Self::emergency_shutdown();
 	}

@@ -571,6 +571,7 @@ impl module_honzon::Trait for Runtime {
 
 impl module_emergency_shutdown::Trait for Runtime {
 	type Event = Event;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
@@ -622,15 +623,14 @@ impl module_airdrop::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const GetDOTCurrencyId: CurrencyId = CurrencyId::DOT;
 	pub const PolkadotBondingDuration: EraIndex = 7;
 	pub const EraLength: BlockNumber = 10;
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
 	type Event = Event;
-	type DOTCurrency = Currency<Runtime, GetDOTCurrencyId>;
-	type OnNewEra = (HomaCouncil, StakingPool);
+	type DOTCurrency = Currency<Runtime, GetStakingCurrencyId>;
+	type OnNewEra = (NomineesElection, StakingPool);
 	type BondingDuration = PolkadotBondingDuration;
 	type EraLength = EraLength;
 	type PolkadotAccountId = AccountId;
@@ -651,7 +651,7 @@ impl module_staking_pool::Trait for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
-	type Nominees = HomaCouncil;
+	type Nominees = NomineesElection;
 	type OnCommission = ();
 	type Bridge = PolkadotBridge;
 	type MaxBondRatio = MaxBondRatio;
@@ -669,14 +669,14 @@ parameter_types! {
 	pub const MinCouncilBondThreshold: Balance = 1 * DOLLARS;
 	pub const NominateesCount: usize = 7;
 	pub const MaxUnlockingChunks: usize = 7;
-	pub const HomaCouncilBondingDuration: EraIndex = 7;
+	pub const NomineesElectionBondingDuration: EraIndex = 7;
 }
 
-impl module_homa_council::Trait for Runtime {
+impl module_nominees_election::Trait for Runtime {
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 	type PolkadotAccountId = AccountId;
 	type MinBondThreshold = MinCouncilBondThreshold;
-	type BondingDuration = HomaCouncilBondingDuration;
+	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
 }
@@ -729,7 +729,7 @@ construct_runtime!(
 		Accounts: module_accounts::{Module, Call, Storage},
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>},
 		Homa: module_homa::{Module, Call},
-		HomaCouncil: module_homa_council::{Module, Call, Storage},
+		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
 		HomaTreasury: module_homa_treasury::{Module},

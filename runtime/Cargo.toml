@@ -64,7 +64,7 @@ module-prices = { path = "../modules/prices", default-features = false }
 module-primitives = { path = "../modules/primitives", default-features = false }
 module-support = { path = "../modules/support", default-features = false }
 module-homa = { path = "../modules/homa", default-features = false }
-module-homa-council = { path = "../modules/homa_council", default-features = false }
+module-nominees-election = { path = "../modules/nominees_election", default-features = false }
 module-staking-pool = { path = "../modules/staking_pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../modules/staking_pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../modules/polkadot_bridge", default-features = false }
@@ -132,7 +132,7 @@ std = [
 	"module-primitives/std",
 	"module-support/std",
 	"module-homa/std",
-	"module-homa-council/std",
+	"module-nominees-election/std",
 	"module-staking-pool/std",
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",

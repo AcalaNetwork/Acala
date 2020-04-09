@@ -14,10 +14,7 @@ rstd = { package = "sp-std", version = "2.0.0-alpha.5", default-features = false
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
-honzon = { package = "module-honzon", path = "../honzon", default-features = false }
 loans = { package = "module-loans", path = "../loans", default-features = false }
-cdp-engine = { package = "module-cdp-engine", path = "../cdp_engine", default-features = false }
-
 
 [dev-dependencies]
 primitives = { package = "sp-core",  version = "2.0.0-alpha.5", default-features = false }
@@ -25,7 +22,6 @@ runtime-io = { package = "sp-io", version = "2.0.0-alpha.5", default-features = 
 pallet-balances= { package = "pallet-balances", version = "2.0.0-alpha.5", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
-auction-manager = { package = "module-auction-manager", path = "../auction_manager", default-features = false }
 
 [features]
 default = ["std"]
@@ -39,7 +35,5 @@ std = [
 	"orml-traits/std",
 	"orml-tokens/std",
 	"support/std",
-	"cdp-engine/std",
-	"honzon/std",
 	"loans/std",
 ]

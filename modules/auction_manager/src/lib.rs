@@ -14,7 +14,7 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
-use support::{AuctionManager, CDPTreasury, EmergencyShutdown, Price, PriceProvider, Rate};
+use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, Price, PriceProvider, Rate};
 use system::{ensure_none, offchain::SubmitUnsignedTransaction};
 use utilities::{OffchainErr, OffchainLock};
 
@@ -792,7 +792,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	}
 }
 
-impl<T: Trait> EmergencyShutdown for Module<T> {
+impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
 		Self::emergency_shutdown();
 	}
