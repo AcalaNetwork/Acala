@@ -2905,10 +2905,7 @@ version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
- "module-auction-manager",
- "module-cdp-engine",
  "module-cdp-treasury",
- "module-honzon",
  "module-loans",
  "module-support",
  "orml-currencies",

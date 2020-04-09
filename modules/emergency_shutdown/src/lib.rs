@@ -2,8 +2,9 @@
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use orml_traits::MultiCurrency;
+use rstd::prelude::*;
 use sp_runtime::traits::{EnsureOrigin, Zero};
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, Price, PriceProvider, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, OnEmergencyShutdown, Price, PriceProvider, Ratio};
 use system::{ensure_root, ensure_signed};
 
 mod mock;
@@ -14,8 +15,9 @@ type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system
 type AuctionIdOf<T> =
 	<<T as Trait>::AuctionManagerHandler as AuctionManager<<T as system::Trait>::AccountId>>::AuctionId;
 
-pub trait Trait: system::Trait + cdp_engine::Trait {
+pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
 	type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 	type AuctionManagerHandler: AuctionManager<
@@ -23,7 +25,7 @@ pub trait Trait: system::Trait + cdp_engine::Trait {
 		Balance = BalanceOf<Self>,
 		CurrencyId = CurrencyIdOf<Self>,
 	>;
-	type OnShutdown: EmergencyShutdown;
+	type OnShutdown: OnEmergencyShutdown;
 	type ShutdownOrigin: EnsureOrigin<Self::Origin>;
 }
 
@@ -58,8 +60,9 @@ decl_storage! {
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
-
 		fn deposit_event() = default;
+
+		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
 
 		pub fn emergency_shutdown(origin) {
 			T::ShutdownOrigin::try_origin(origin)
@@ -71,7 +74,7 @@ decl_module! {
 			T::OnShutdown::on_emergency_shutdown();
 
 			// get all collateral types
-			let collateral_currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
+			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
 			// lock price for every collateral
 			for currency_id in collateral_currency_ids {
@@ -99,7 +102,7 @@ decl_module! {
 			// Ensure all debits of CDPs have been settled, and all collateral auction has been done or canceled.
 			// Settle all collaterals type CDPs which have debit, cancel all collateral auctions in forward stage and
 			// wait for all collateral auctions in reverse stage to be ended.
-			let collateral_currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
+			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 			for currency_id in collateral_currency_ids {
 				// these's no collateral auction
 				ensure!(
@@ -123,7 +126,7 @@ decl_module! {
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
 			let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_stable_currency_ratio(amount);
-			let collateral_currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
+			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
 			// burn caller's stable currency by cdp treasury
 			<T as Trait>::CDPTreasury::withdraw_backed_debit(&who, amount)?;

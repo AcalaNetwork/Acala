@@ -2,14 +2,14 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{
-	testing::{Header, TestXt},
-	traits::IdentityLookup,
+	testing::Header,
+	traits::{Convert, IdentityLookup},
 	DispatchResult, Perbill,
 };
-use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+use support::{AuctionManager, Price, PriceProvider};
 use system::EnsureSignedBy;
 
 use super::*;
@@ -18,22 +18,14 @@ mod emergency_shutdown {
 	pub use super::super::*;
 }
 
-impl_outer_dispatch! {
-	pub enum Call for Runtime where origin: Origin {
-		cdp_engine::CDPEngineModule,
-	}
-}
-
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
 		system<T>,
 		emergency_shutdown<T>,
-		cdp_engine<T>,
 		orml_tokens<T>,
 		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
-		honzon<T>,
 		cdp_treasury<T>,
 	}
 }
@@ -49,12 +41,6 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub const ExistentialDeposit: u64 = 1;
 	pub const CreationFee: u64 = 2;
-	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub const GlobalStabilityFee: Rate = Rate::from_parts(0);
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
-	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
-	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(10, 100);
-	pub const MinimumDebitValue: Balance = 2;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
@@ -131,11 +117,19 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
+// mock convert
+pub struct MockConvert;
+impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
+	fn convert(a: (CurrencyId, DebitBalance)) -> Balance {
+		a.1.into()
+	}
+}
+
 impl loans::Trait for Runtime {
 	type Event = TestEvent;
-	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
+	type Convert = MockConvert;
 	type Currency = Tokens;
-	type RiskManager = CDPEngineModule;
+	type RiskManager = ();
 	type DebitBalance = DebitBalance;
 	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
@@ -208,45 +202,17 @@ impl cdp_treasury::Trait for Runtime {
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
-type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
-
-parameter_types! {
-	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
+ord_parameter_types! {
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 }
-
-impl cdp_engine::Trait for Runtime {
-	type Event = TestEvent;
-	type PriceSource = MockPriceSource;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
-	type GlobalStabilityFee = GlobalStabilityFee;
-	type DefaultLiquidationRatio = DefaultLiquidationRatio;
-	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
-	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
-	type MinimumDebitValue = MinimumDebitValue;
-	type GetStableCurrencyId = GetStableCurrencyId;
-	type CDPTreasury = CDPTreasuryModule;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type Currency = Currencies;
-	type DEX = ();
-	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
-}
-pub type CDPEngineModule = cdp_engine::Module<Runtime>;
-
-impl honzon::Trait for Runtime {
-	type Event = TestEvent;
-}
-pub type HonzonModule = honzon::Module<Runtime>;
 
 impl Trait for Runtime {
 	type Event = TestEvent;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type PriceSource = MockPriceSource;
 	type CDPTreasury = CDPTreasuryModule;
 	type AuctionManagerHandler = MockAuctionManager;
-	type OnShutdown = (CDPTreasuryModule, CDPEngineModule, HonzonModule);
+	type OnShutdown = CDPTreasuryModule;
 	type ShutdownOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type EmergencyShutdownModule = Module<Runtime>;

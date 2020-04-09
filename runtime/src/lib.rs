@@ -571,6 +571,7 @@ impl module_honzon::Trait for Runtime {
 
 impl module_emergency_shutdown::Trait for Runtime {
 	type Event = Event;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
