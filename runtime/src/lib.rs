@@ -910,4 +910,16 @@ impl_runtime_apis! {
 			Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
 		}
 	}
+
+	impl module_staking_pool_rpc_runtime_api::StakingPoolApi<
+		Block,
+		AccountId,
+		Balance,
+	> for Runtime {
+		fn get_available_unbonded(
+			account: AccountId,
+		) -> Balance {
+			StakingPool::get_available_unbonded(&account)
+		}
+	}
 }

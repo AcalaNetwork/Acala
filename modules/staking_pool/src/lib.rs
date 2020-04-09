@@ -128,6 +128,20 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
+	pub fn get_available_unbonded(who: &T::AccountId) -> BalanceOf<T> {
+		let current_era = Self::current_era();
+		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, BalanceOf<T>)>>();
+		let mut available_unbonded: BalanceOf<T> = Zero::zero();
+
+		for (era_index, claimed) in claimed_unbond {
+			if era_index <= current_era && !claimed.is_zero() {
+				available_unbonded += claimed;
+			}
+		}
+
+		available_unbonded
+	}
+
 	pub fn withdraw_unbonded(who: &T::AccountId) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		let current_era = Self::current_era();
 		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, BalanceOf<T>)>>();
