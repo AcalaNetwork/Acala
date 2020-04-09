@@ -74,7 +74,6 @@ decl_storage! {
 		TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
 		Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::Share;
 		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
-		Withdrawn get(fn withdrawn): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::Share;
 	}
 }
 
@@ -566,9 +565,6 @@ impl<T: Trait> Module<T> {
 		<TotalInterest<T>>::mutate(currency_id, |interest| {
 			*interest = interest.saturating_sub(proportion.saturating_mul_int(interest));
 		});
-		<Withdrawn<T>>::mutate(currency_id, who, |withdrawn| {
-			*withdrawn = withdrawn.saturating_add(withdrawn_interest);
-		});
 		Ok(())
 	}
 
@@ -583,9 +579,6 @@ impl<T: Trait> Module<T> {
 		});
 		<TotalDebits<T>>::mutate(currency_id, |debits| {
 			*debits = debits.saturating_add(withdrawn_interest);
-		});
-		<Withdrawn<T>>::mutate(currency_id, who, |withdrawn| {
-			*withdrawn = withdrawn.saturating_add(withdrawn_interest);
 		});
 		T::CDPTreasury::deposit_unbacked_debit(who, withdrawn_interest.into())
 	}
@@ -603,20 +596,6 @@ impl<T: Trait> Module<T> {
 		<TotalInterest<T>>::mutate(currency_id, |interest| {
 			*interest = interest.saturating_add(new_interest.unique_saturated_into());
 		});
-	}
-
-	fn _get_net_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> T::Share {
-		let shares = Self::shares(currency_id, who);
-		let debits = Self::debits(currency_id, who);
-		let proportion = Ratio::from_rational(shares, Self::total_shares(currency_id));
-		let total_interest = Self::total_interest(currency_id);
-		let withdrawn = Self::withdrawn(currency_id, who);
-		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
-		let base: T::Share = proportion.saturating_mul_int(&base_currency_pool.into());
-		let interest: T::Share = proportion.saturating_mul_int(&total_interest);
-		base.saturating_add(interest)
-			.saturating_sub(debits)
-			.saturating_add(withdrawn)
 	}
 }
 
