@@ -133,7 +133,7 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, ALICE), 0);
 			assert_eq!(DexModule::total_debits(BTC), 0);
 			assert_eq!(DexModule::total_interest(BTC), 0);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8000);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8000);
 
 			// BOB add_liquidity 2000
 			assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC, 200, 2000));
@@ -142,8 +142,8 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, BOB), 0);
 			assert_eq!(DexModule::total_debits(BTC), 0);
 			assert_eq!(DexModule::total_interest(BTC), 0);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2000);
-			assert_eq!(DexModule::_get_net_interest(BTC, CAROL), 0);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2000);
+			assert_eq!(DexModule::_get_net_interest(BTC, &CAROL), 0);
 
 			// accumulate interest
 			<DexModule as OnInitialize<u64>>::on_initialize(1);
@@ -154,8 +154,8 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, BOB), 0);
 			assert_eq!(DexModule::total_debits(BTC), 0);
 			assert_eq!(DexModule::total_interest(BTC), 100);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8080);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2020);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8080);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2020);
 
 			// CAROL add_liquidity 500
 			assert_ok!(DexModule::add_liquidity(Origin::signed(CAROL), BTC, 500, 10000));
@@ -168,12 +168,12 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, CAROL), 50);
 			assert_eq!(DexModule::total_debits(BTC), 50);
 			assert_eq!(DexModule::total_interest(BTC), 150);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8078);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2018);
-			assert_eq!(DexModule::_get_net_interest(BTC, CAROL), 4998);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8078);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2018);
+			assert_eq!(DexModule::_get_net_interest(BTC, &CAROL), 4998);
 
 			// claim interest
-			DexModule::claim_interest(BTC, ALICE);
+			assert_ok!(DexModule::claim_interest(BTC, &ALICE));
 			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
@@ -183,9 +183,9 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, CAROL), 50);
 			assert_eq!(DexModule::total_debits(BTC), 129);
 			assert_eq!(DexModule::total_interest(BTC), 150);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8078);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2018);
-			assert_eq!(DexModule::_get_net_interest(BTC, CAROL), 4998);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8078);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2018);
+			assert_eq!(DexModule::_get_net_interest(BTC, &CAROL), 4998);
 
 			// accumulate interest
 			<DexModule as OnInitialize<u64>>::on_initialize(1);
@@ -198,12 +198,12 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, CAROL), 50);
 			assert_eq!(DexModule::total_debits(BTC), 129);
 			assert_eq!(DexModule::total_interest(BTC), 300);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8158);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2038);
-			assert_eq!(DexModule::_get_net_interest(BTC, CAROL), 5048);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8158);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2038);
+			assert_eq!(DexModule::_get_net_interest(BTC, &CAROL), 5048);
 
 			// claim interest
-			DexModule::claim_interest(BTC, ALICE);
+			assert_ok!(DexModule::claim_interest(BTC, &ALICE));
 			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
@@ -213,9 +213,9 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, CAROL), 50);
 			assert_eq!(DexModule::total_debits(BTC), 209);
 			assert_eq!(DexModule::total_interest(BTC), 300);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8158);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2038);
-			assert_eq!(DexModule::_get_net_interest(BTC, CAROL), 5048);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8158);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2038);
+			assert_eq!(DexModule::_get_net_interest(BTC, &CAROL), 5048);
 
 			// ALICE withdraw liquidity 5000
 			assert_ok!(DexModule::withdraw_liquidity(Origin::signed(ALICE), BTC, 5000));
@@ -228,9 +228,9 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, CAROL), 50);
 			assert_eq!(DexModule::total_debits(BTC), 110);
 			assert_eq!(DexModule::total_interest(BTC), 201);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8158);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2040);
-			assert_eq!(DexModule::_get_net_interest(BTC, CAROL), 5050);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8158);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2040);
+			assert_eq!(DexModule::_get_net_interest(BTC, &CAROL), 5050);
 
 			// accumulate interest
 			<DexModule as OnInitialize<u64>>::on_initialize(1);
@@ -243,9 +243,9 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::debits(BTC, CAROL), 50);
 			assert_eq!(DexModule::total_debits(BTC), 110);
 			assert_eq!(DexModule::total_interest(BTC), 301);
-			assert_eq!(DexModule::_get_net_interest(BTC, ALICE), 8188);
-			assert_eq!(DexModule::_get_net_interest(BTC, BOB), 2060);
-			assert_eq!(DexModule::_get_net_interest(BTC, CAROL), 5100);
+			assert_eq!(DexModule::_get_net_interest(BTC, &ALICE), 8188);
+			assert_eq!(DexModule::_get_net_interest(BTC, &BOB), 2060);
+			assert_eq!(DexModule::_get_net_interest(BTC, &CAROL), 5100);
 		});
 }
 

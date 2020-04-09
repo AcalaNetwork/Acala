@@ -2,10 +2,11 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-use support::Rate;
+use support::{AuctionManager, Rate};
+use system::EnsureSignedBy;
 
 use super::*;
 
@@ -18,6 +19,7 @@ impl_outer_event! {
 		system<T>,
 		dex<T>,
 		orml_tokens<T>,
+		cdp_treasury<T>,
 	}
 }
 impl_outer_origin! {
@@ -35,7 +37,7 @@ parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
 	pub const ExistentialDeposit: u128 = 0;
-	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT, AUSD];
+	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT, AUSD];
 }
 
 pub type AccountId = u64;
@@ -44,6 +46,7 @@ pub type CurrencyId = u32;
 pub type Share = u128;
 pub type Balance = u128;
 pub type Amount = i128;
+pub type AuctionId = u64;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -78,13 +81,64 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
+ord_parameter_types! {
+	pub const One: AccountId = 1;
+}
+impl cdp_treasury::Trait for Runtime {
+	type Event = TestEvent;
+	type Currency = Tokens;
+	type GetStableCurrencyId = ();
+	type AuctionManagerHandler = MockAuctionManagerHandler;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type DEX = ();
+}
+pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
+
+pub struct MockAuctionManagerHandler;
+impl AuctionManager<AccountId> for MockAuctionManagerHandler {
+	type CurrencyId = CurrencyId;
+	type Balance = Balance;
+	type AuctionId = AuctionId;
+	fn new_collateral_auction(
+		_who: &AccountId,
+		_currency_id: Self::CurrencyId,
+		_amount: Self::Balance,
+		_target: Self::Balance,
+	) {
+		unimplemented!()
+	}
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {
+		unimplemented!()
+	}
+	fn new_surplus_auction(_amount: Self::Balance) {
+		unimplemented!()
+	}
+	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
+		unimplemented!()
+	}
+	fn get_total_surplus_in_auction() -> Self::Balance {
+		unimplemented!()
+	}
+	fn get_total_debit_in_auction() -> Self::Balance {
+		unimplemented!()
+	}
+	fn get_total_target_in_auction() -> Self::Balance {
+		unimplemented!()
+	}
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
 	type Share = Share;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type EnabledCurrencyIds = EnabledCurrencyIds;
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CDPTreasuryModule;
 }
 pub type DexModule = Module<Runtime>;
 

@@ -8,9 +8,9 @@ use sp_runtime::{
 		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating,
 		UniqueSaturatedInto, Zero,
 	},
-	DispatchError, ModuleId,
+	DispatchError, DispatchResult, ModuleId,
 };
-use support::{DEXManager, Price, Rate, Ratio};
+use support::{CDPTreasury, DEXManager, Price, Rate, Ratio};
 use system::{self as system, ensure_signed};
 
 mod mock;
@@ -32,9 +32,10 @@ pub trait Trait: system::Trait {
 		+ Default
 		+ Copy
 		+ MaybeSerializeDeserialize;
-	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
+	type EnabledCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GetBaseCurrencyId: Get<CurrencyIdOf<Self>>;
 	type GetExchangeFee: Get<Rate>;
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 }
 
 decl_event!(
@@ -83,7 +84,7 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
+		const EnabledCurrencyIds: Vec<CurrencyIdOf<T>> = T::EnabledCurrencyIds::get();
 		const GetBaseCurrencyId: CurrencyIdOf<T> = T::GetBaseCurrencyId::get();
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
@@ -118,7 +119,7 @@ decl_module! {
 		) {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::CollateralCurrencyIds::get().contains(&other_currency_id),
+				T::EnabledCurrencyIds::get().contains(&other_currency_id),
 				Error::<T>::CurrencyIdNotAllowed,
 			);
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -213,7 +214,7 @@ decl_module! {
 				.expect("never failed because after checks");
 			}
 
-			Self::withdraw_calculate_interest(currency_id, &who, share_amount);
+			Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
 			<TotalShares<T>>::mutate(currency_id, |share| *share = share.saturating_sub(share_amount));
 			<Shares<T>>::mutate(currency_id, &who, |share| *share = share.saturating_sub(share_amount));
 			<LiquidityPool<T>>::mutate(currency_id, |pool| {
@@ -230,7 +231,7 @@ decl_module! {
 		}
 
 		fn on_initialize(_n: T::BlockNumber) {
-			for currency_id in T::CollateralCurrencyIds::get() {
+			for currency_id in T::EnabledCurrencyIds::get() {
 				Self::accumulate_interest(currency_id);
 			}
 		}
@@ -532,7 +533,7 @@ impl<T: Trait> Module<T> {
 			return;
 		}
 		let new_debits = proportion.saturating_mul_int(&total_interest);
-		<Debits<T>>::mutate(currency_id, &who, |debits| {
+		<Debits<T>>::mutate(currency_id, who, |debits| {
 			*debits = debits.saturating_add(new_debits);
 		});
 		<TotalDebits<T>>::mutate(currency_id, |total_debits| {
@@ -543,16 +544,20 @@ impl<T: Trait> Module<T> {
 		});
 	}
 
-	fn withdraw_calculate_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId, share_amount: T::Share) {
-		Self::claim_interest(currency_id, who.clone());
-		let shares = Self::shares(currency_id, who.clone());
-		let debits = Self::debits(currency_id, who.clone());
+	fn withdraw_calculate_interest(
+		currency_id: CurrencyIdOf<T>,
+		who: &T::AccountId,
+		share_amount: T::Share,
+	) -> DispatchResult {
+		Self::claim_interest(currency_id, who)?;
+		let shares = Self::shares(currency_id, who);
+		let debits = Self::debits(currency_id, who);
 		let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
 		let remove_debits = Ratio::from_rational(share_amount, shares).saturating_mul_int(&debits);
 		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
-		let withdrawn_interest: T::Share = proportion.saturating_mul_int(&base_currency_pool).into();
+		let withdrawn_interest: T::Share = proportion.saturating_mul_int(&base_currency_pool.into());
 
-		<Debits<T>>::mutate(currency_id, &who, |debits| {
+		<Debits<T>>::mutate(currency_id, who, |debits| {
 			*debits = debits.saturating_sub(remove_debits);
 		});
 		<TotalDebits<T>>::mutate(currency_id, |total_debits| {
@@ -561,26 +566,28 @@ impl<T: Trait> Module<T> {
 		<TotalInterest<T>>::mutate(currency_id, |interest| {
 			*interest = interest.saturating_sub(proportion.saturating_mul_int(interest));
 		});
-		<Withdrawn<T>>::mutate(currency_id, &who, |withdrawn| {
+		<Withdrawn<T>>::mutate(currency_id, who, |withdrawn| {
 			*withdrawn = withdrawn.saturating_add(withdrawn_interest);
 		});
+		Ok(())
 	}
 
-	fn claim_interest(currency_id: CurrencyIdOf<T>, who: T::AccountId) {
-		let shares = Self::shares(currency_id, who.clone());
-		let debits = Self::debits(currency_id, who.clone());
+	fn claim_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> DispatchResult {
+		let shares = Self::shares(currency_id, who);
+		let debits = Self::debits(currency_id, who);
 		let proportion = Ratio::from_rational(shares, Self::total_shares(currency_id));
 		let total_interest = Self::total_interest(currency_id);
 		let withdrawn_interest = proportion.saturating_mul_int(&total_interest).saturating_sub(debits);
-		<Debits<T>>::mutate(currency_id, &who, |debits| {
+		<Debits<T>>::mutate(currency_id, who, |debits| {
 			*debits = debits.saturating_add(withdrawn_interest);
 		});
 		<TotalDebits<T>>::mutate(currency_id, |debits| {
 			*debits = debits.saturating_add(withdrawn_interest);
 		});
-		<Withdrawn<T>>::mutate(currency_id, &who, |withdrawn| {
+		<Withdrawn<T>>::mutate(currency_id, who, |withdrawn| {
 			*withdrawn = withdrawn.saturating_add(withdrawn_interest);
 		});
+		T::CDPTreasury::deposit_unbacked_debit(who, withdrawn_interest.into())
 	}
 
 	fn accumulate_interest(currency_id: CurrencyIdOf<T>) {
@@ -598,19 +605,18 @@ impl<T: Trait> Module<T> {
 		});
 	}
 
-	fn _get_net_interest(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> T::Share {
-		let shares = Self::shares(currency_id, who.clone());
-		let debits = Self::debits(currency_id, who.clone());
+	fn _get_net_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> T::Share {
+		let shares = Self::shares(currency_id, who);
+		let debits = Self::debits(currency_id, who);
 		let proportion = Ratio::from_rational(shares, Self::total_shares(currency_id));
 		let total_interest = Self::total_interest(currency_id);
-		let withdrawn = Self::withdrawn(currency_id, who.clone());
+		let withdrawn = Self::withdrawn(currency_id, who);
 		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
-		return proportion
-			.saturating_mul_int(&base_currency_pool)
-			.saturating_add(proportion.saturating_mul_int(&total_interest.into()))
-			.saturating_sub(debits.into())
-			.saturating_add(withdrawn.into())
-			.into();
+		let base: T::Share = proportion.saturating_mul_int(&base_currency_pool.into());
+		let interest: T::Share = proportion.saturating_mul_int(&total_interest);
+		base.saturating_add(interest)
+			.saturating_sub(debits)
+			.saturating_add(withdrawn)
 	}
 }
 

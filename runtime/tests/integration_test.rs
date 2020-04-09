@@ -56,6 +56,12 @@ mod tests {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
+			module_dex::GenesisConfig {
+				liquidity_incentive_rate: Rate::from_rational(1, 100),
+			}
+			.assimilate_storage(&mut t)
+			.unwrap();
+
 			pallet_collective::GenesisConfig::<Runtime, pallet_collective::Instance3> {
 				members: vec![
 					AccountId::from(ORACLE1),
@@ -152,9 +158,13 @@ mod tests {
 				assert_eq!(DexModule::liquidity_pool(XBTC), (10002, 10002000));
 				assert_ok!(DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, 1, 1001));
 				assert_eq!(DexModule::liquidity_pool(XBTC), (10003, 10003000));
-				DexModule::on_initialize(0);
+
 				assert_eq!(DexModule::total_shares(XBTC), 10002998);
-				assert_eq!(DexModule::shares(XBTC, AccountId::from(BOB)), 2998);
+				assert_eq!(DexModule::total_interest(XBTC), 0);
+				DexModule::on_initialize(0);
+				assert_eq!(DexModule::total_interest(XBTC), 100030);
+				DexModule::on_initialize(0);
+				assert_eq!(DexModule::total_interest(XBTC), 201060);
 			});
 	}
 

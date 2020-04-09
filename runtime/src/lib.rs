@@ -538,6 +538,7 @@ pub type SubmitTransaction = TransactionSubmitter<(), Runtime, UncheckedExtrinsi
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
+	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
 	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
@@ -586,9 +587,10 @@ impl module_dex::Trait for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type Share = Share;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type EnabledCurrencyIds = EnabledCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CdpTreasury;
 }
 
 impl module_cdp_treasury::Trait for Runtime {
