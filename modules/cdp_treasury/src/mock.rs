@@ -116,9 +116,10 @@ impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
 	type Share = Share;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type EnabledCurrencyIds = CollateralCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CDPTreasuryModule;
 }
 pub type DEXModule = dex::Module<Runtime>;
 
