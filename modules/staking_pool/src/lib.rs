@@ -1,14 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IterableStorageDoubleMap};
-use orml_traits::BasicCurrency;
+use orml_traits::MultiCurrency;
 use rstd::prelude::*;
 use sp_runtime::{
 	traits::{AccountIdConversion, Saturating, UniqueSaturatedInto, Zero},
-	DispatchResult, ModuleId,
+	DispatchError, DispatchResult, ModuleId,
 };
 use support::{
-	EraIndex, ExchangeRate, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall,
+	EraIndex, ExchangeRate, HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall,
 	PolkadotBridgeState, PolkadotBridgeType, Rate, Ratio,
 };
 use system::{self as system};
@@ -18,35 +18,38 @@ mod tests;
 
 const MODULE_ID: ModuleId = ModuleId(*b"aca/stkp");
 
-type StakingBalanceOf<T> = <<T as Trait>::StakingCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
-type LiquidBalanceOf<T> = <<T as Trait>::LiquidCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
+type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
+type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
 type PolkadotAccountIdOf<T> =
 	<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::PolkadotAccountId;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type StakingCurrency: BasicCurrency<Self::AccountId>;
-	type LiquidCurrency: BasicCurrency<Self::AccountId>;
+	type Currency: MultiCurrency<Self::AccountId>;
+	type StakingCurrencyId: Get<CurrencyIdOf<Self>>;
+	type LiquidCurrencyId: Get<CurrencyIdOf<Self>>;
 	type Nominees: NomineesProvider<PolkadotAccountIdOf<Self>>;
-	type OnCommission: OnCommission<LiquidBalanceOf<Self>>;
-	type Bridge: PolkadotBridge<Self::BlockNumber, StakingBalanceOf<Self>, Self::AccountId>;
+	type OnCommission: OnCommission<BalanceOf<Self>, CurrencyIdOf<Self>>;
+	type Bridge: PolkadotBridge<Self::BlockNumber, BalanceOf<Self>, Self::AccountId>;
 	type MaxBondRatio: Get<Ratio>;
 	type MinBondRatio: Get<Ratio>;
 	type MaxClaimFee: Get<Rate>;
 	type DefaultExchangeRate: Get<ExchangeRate>;
+	type ClaimFeeReturnRatio: Get<Ratio>;
+
+	// TODO: add RewardFeeRatio
 }
 
 decl_event!(
 	pub enum Event<T>
 	where
 		<T as system::Trait>::AccountId,
-		StakingBalance = StakingBalanceOf<T>,
-		LiquidBalance = LiquidBalanceOf<T>,
+		Balance = BalanceOf<T>,
 	{
-		BondAndMint(AccountId, StakingBalance, LiquidBalance),
-		RedeemByUnbond(AccountId, LiquidBalance),
-		RedeemByFreeUnbonded(AccountId, LiquidBalance, LiquidBalance, StakingBalance),
-		RedeemByClaimUnbonding(AccountId, EraIndex, LiquidBalance, LiquidBalance, StakingBalance),
+		BondAndMint(AccountId, Balance, Balance),
+		RedeemByUnbond(AccountId, Balance),
+		RedeemByFreeUnbonded(AccountId, Balance, Balance, Balance),
+		RedeemByClaimUnbonding(AccountId, EraIndex, Balance, Balance, Balance),
 	}
 );
 
@@ -63,15 +66,15 @@ decl_storage! {
 	trait Store for Module<T: Trait> as StakingPool {
 		pub CurrentEra get(current_era): EraIndex;
 
-		pub NextEraUnbond get(next_era_unbond): (StakingBalanceOf<T>, StakingBalanceOf<T>);
-		pub Unbonding get(unbonding): map hasher(twox_64_concat) EraIndex => (StakingBalanceOf<T>, StakingBalanceOf<T>); // (value, claimed), value - claimed = unbond to free
+		pub NextEraUnbond get(next_era_unbond): (BalanceOf<T>, BalanceOf<T>);
+		pub Unbonding get(unbonding): map hasher(twox_64_concat) EraIndex => (BalanceOf<T>, BalanceOf<T>); // (value, claimed), value - claimed = unbond to free
 
-		pub ClaimedUnbond get(claimed_unbond): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) EraIndex => StakingBalanceOf<T>;
-		pub TotalClaimedUnbonded get(total_claimed_unbonded): StakingBalanceOf<T>;
+		pub ClaimedUnbond get(claimed_unbond): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) EraIndex => BalanceOf<T>;
+		pub TotalClaimedUnbonded get(total_claimed_unbonded): BalanceOf<T>;
 
-		pub TotalBonded get(total_bonded): StakingBalanceOf<T>;
-		pub UnbondingToFree get(unbonding_to_free): StakingBalanceOf<T>;
-		pub FreeUnbonded get(free_unbonded): StakingBalanceOf<T>;
+		pub TotalBonded get(total_bonded): BalanceOf<T>;
+		pub UnbondingToFree get(unbonding_to_free): BalanceOf<T>;
+		pub FreeUnbonded get(free_unbonded): BalanceOf<T>;
 	}
 }
 
@@ -79,10 +82,13 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
+		const StakingCurrencyId: CurrencyIdOf<T> = T::StakingCurrencyId::get();
+		const LiquidCurrencyId: CurrencyIdOf<T> = T::LiquidCurrencyId::get();
 		const MaxBondRatio: Ratio = T::MaxBondRatio::get();
 		const MinBondRatio: Ratio = T::MinBondRatio::get();
 		const MaxClaimFee: Rate = T::MaxClaimFee::get();
 		const DefaultExchangeRate: ExchangeRate = T::DefaultExchangeRate::get();
+		const ClaimFeeReturnRatio: Ratio = T::ClaimFeeReturnRatio::get();
 	}
 }
 
@@ -93,13 +99,13 @@ impl<T: Trait> Module<T> {
 
 	// it represent how much bonded DOT is belong to LDOT holders
 	// use it in operation checks
-	pub fn get_communal_bonded() -> StakingBalanceOf<T> {
+	pub fn get_communal_bonded() -> BalanceOf<T> {
 		Self::total_bonded().saturating_sub(Self::next_era_unbond().1)
 	}
 
 	// it represent how much bonded DOT(include bonded, unbonded, unbonding) is belong to LDOT holders
 	// use it in exchange rate calculation
-	pub fn get_total_communal_balance() -> StakingBalanceOf<T> {
+	pub fn get_total_communal_balance() -> BalanceOf<T> {
 		Self::get_communal_bonded()
 			.saturating_add(Self::free_unbonded())
 			.saturating_add(Self::unbonding_to_free())
@@ -113,8 +119,7 @@ impl<T: Trait> Module<T> {
 	// LDOT/DOT = total communal DOT / total supply of LDOT
 	pub fn liquid_exchange_rate() -> ExchangeRate {
 		let total_dot_amount = Self::get_total_communal_balance();
-		let total_ldot_amount: u128 = T::LiquidCurrency::total_issuance().unique_saturated_into();
-		let total_ldot_amount: StakingBalanceOf<T> = total_ldot_amount.unique_saturated_into();
+		let total_ldot_amount = T::Currency::total_issuance(T::LiquidCurrencyId::get());
 
 		if !total_dot_amount.is_zero() && !total_ldot_amount.is_zero() {
 			ExchangeRate::from_rational(total_dot_amount, total_ldot_amount)
@@ -123,48 +128,61 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn withdraw_unbonded(who: &T::AccountId) -> DispatchResult {
+	pub fn get_available_unbonded(who: &T::AccountId) -> BalanceOf<T> {
 		let current_era = Self::current_era();
-		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, StakingBalanceOf<T>)>>();
+		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, BalanceOf<T>)>>();
+		let mut available_unbonded: BalanceOf<T> = Zero::zero();
 
 		for (era_index, claimed) in claimed_unbond {
 			if era_index <= current_era && !claimed.is_zero() {
-				if T::StakingCurrency::transfer(&Self::account_id(), who, claimed).is_ok() {
+				available_unbonded += claimed;
+			}
+		}
+
+		available_unbonded
+	}
+
+	pub fn withdraw_unbonded(who: &T::AccountId) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		let current_era = Self::current_era();
+		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, BalanceOf<T>)>>();
+		let staking_currency_id = T::StakingCurrencyId::get();
+		let mut withdrawn_amount: BalanceOf<T> = Zero::zero();
+
+		for (era_index, claimed) in claimed_unbond {
+			if era_index <= current_era && !claimed.is_zero() {
+				if T::Currency::transfer(staking_currency_id, &Self::account_id(), who, claimed).is_ok() {
+					withdrawn_amount += claimed;
 					<TotalClaimedUnbonded<T>>::mutate(|balance| *balance -= claimed);
 					<ClaimedUnbond<T>>::remove(who, era_index);
 				}
 			}
 		}
-		Ok(())
+		Ok(withdrawn_amount)
 	}
 
-	pub fn bond(who: &T::AccountId, amount: StakingBalanceOf<T>) -> DispatchResult {
+	pub fn bond(who: &T::AccountId, amount: BalanceOf<T>) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
 		// bond dot
-		T::StakingCurrency::ensure_can_withdraw(who, amount).map_err(|_| Error::<T>::StakingCurrencyNotEnough)?;
+		T::Currency::ensure_can_withdraw(T::StakingCurrencyId::get(), who, amount)
+			.map_err(|_| Error::<T>::StakingCurrencyNotEnough)?;
 		T::Bridge::transfer_to_bridge(who, amount)?;
 		T::Bridge::bond_extra(amount)?;
 		<TotalBonded<T>>::mutate(|bonded| *bonded += amount);
 
 		// issue ldot to who
-		let ldot_amount: u128 = ExchangeRate::from_natural(1)
+		let ldot_amount = ExchangeRate::from_natural(1)
 			.checked_div(&Self::liquid_exchange_rate())
 			.unwrap_or_default()
-			.saturating_mul_int(&Self::get_total_communal_balance())
-			.unique_saturated_into();
-		let ldot_amount: LiquidBalanceOf<T> = ldot_amount.unique_saturated_into();
-		T::LiquidCurrency::deposit(who, ldot_amount)?;
+			.saturating_mul_int(&Self::get_total_communal_balance());
+		T::Currency::deposit(T::LiquidCurrencyId::get(), who, ldot_amount)?;
 
 		<Module<T>>::deposit_event(RawEvent::BondAndMint(who.clone(), amount, ldot_amount));
-		Ok(())
+		Ok(ldot_amount)
 	}
 
-	pub fn redeem_by_unbond(who: &T::AccountId, amount: LiquidBalanceOf<T>) -> DispatchResult {
+	pub fn redeem_by_unbond(who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
 		let mut ldot_to_redeem = amount;
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
-		let unbond_value: u128 = liquid_exchange_rate
-			.saturating_mul_int(&ldot_to_redeem)
-			.unique_saturated_into();
-		let mut unbond_amount: StakingBalanceOf<T> = unbond_value.unique_saturated_into();
+		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(&ldot_to_redeem);
 		let communal_bonded = Self::get_communal_bonded();
 
 		if !unbond_amount.is_zero() && !communal_bonded.is_zero() {
@@ -180,9 +198,10 @@ impl<T: Trait> Module<T> {
 			}
 
 			// burn who's ldot
-			T::LiquidCurrency::ensure_can_withdraw(who, ldot_to_redeem)
+			let liquid_currency_id = T::LiquidCurrencyId::get();
+			T::Currency::ensure_can_withdraw(liquid_currency_id, who, ldot_to_redeem)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
-			T::LiquidCurrency::withdraw(who, ldot_to_redeem).expect("never failed after balance check");
+			T::Currency::withdraw(liquid_currency_id, who, ldot_to_redeem).expect("never failed after balance check");
 
 			// start unbond at next era, and the unbond become unbonded after bonding duration
 			let unbonded_era_index = Self::current_era()
@@ -208,34 +227,29 @@ impl<T: Trait> Module<T> {
 		)
 	}
 
-	pub fn calculate_claim_fee(amount: LiquidBalanceOf<T>, era: EraIndex) -> LiquidBalanceOf<T> {
+	pub fn calculate_claim_fee(amount: BalanceOf<T>, era: EraIndex) -> BalanceOf<T> {
 		Ratio::from_natural(1)
 			.saturating_sub(Self::claim_period_percent(era))
 			.saturating_mul(T::MaxClaimFee::get())
 			.saturating_mul_int(&amount)
 	}
 
-	pub fn redeem_by_free_unbonded(who: &T::AccountId, amount: LiquidBalanceOf<T>) -> DispatchResult {
+	pub fn redeem_by_free_unbonded(who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
 		let current_era = Self::current_era();
 		let mut total_deduct = amount;
 		let mut fee = Self::calculate_claim_fee(total_deduct, current_era);
 		let mut ldot_to_redeem = total_deduct.saturating_sub(fee);
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
-		let unbond_value: u128 = liquid_exchange_rate
-			.saturating_mul_int(&ldot_to_redeem)
-			.unique_saturated_into();
-		let mut unbond_amount: StakingBalanceOf<T> = unbond_value.unique_saturated_into();
+		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(&ldot_to_redeem);
 		let free_unbonded = Self::free_unbonded();
 
 		if !unbond_amount.is_zero() && !free_unbonded.is_zero() {
 			if unbond_amount > free_unbonded {
 				// free_unbonded is not enough, re-calculate actual redeem ldot
-				let new_ldot_to_redeem: u128 = ExchangeRate::from_natural(1)
+				let new_ldot_to_redeem = ExchangeRate::from_natural(1)
 					.checked_div(&liquid_exchange_rate)
 					.unwrap_or_default()
-					.saturating_mul_int(&free_unbonded)
-					.unique_saturated_into();
-				let new_ldot_to_redeem: LiquidBalanceOf<T> = new_ldot_to_redeem.unique_saturated_into();
+					.saturating_mul_int(&free_unbonded);
 
 				// re-assign
 				fee = Ratio::from_rational(new_ldot_to_redeem, ldot_to_redeem).saturating_mul_int(&fee);
@@ -244,12 +258,19 @@ impl<T: Trait> Module<T> {
 				total_deduct = fee + ldot_to_redeem;
 			}
 
-			T::LiquidCurrency::ensure_can_withdraw(who, total_deduct)
+			let liquid_currency_id = T::LiquidCurrencyId::get();
+			let staking_currency_id = T::StakingCurrencyId::get();
+			T::Currency::ensure_can_withdraw(liquid_currency_id, who, total_deduct)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
-			T::StakingCurrency::transfer(&Self::account_id(), who, unbond_amount)?;
-			T::LiquidCurrency::withdraw(who, total_deduct).expect("never failed after balance check");
+			T::Currency::transfer(staking_currency_id, &Self::account_id(), who, unbond_amount)?;
 			<FreeUnbonded<T>>::mutate(|balance| *balance -= unbond_amount);
-			T::OnCommission::on_commission(fee);
+			T::Currency::withdraw(liquid_currency_id, who, total_deduct).expect("never failed after balance check");
+
+			let commission_fee = Ratio::from_natural(1)
+				.saturating_sub(T::ClaimFeeReturnRatio::get())
+				.saturating_mul_int(&fee);
+			T::OnCommission::on_commission(liquid_currency_id, commission_fee);
+
 			<Module<T>>::deposit_event(RawEvent::RedeemByFreeUnbonded(
 				who.clone(),
 				fee,
@@ -261,11 +282,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	pub fn redeem_by_claim_unbonding(
-		who: &T::AccountId,
-		amount: LiquidBalanceOf<T>,
-		target_era: EraIndex,
-	) -> DispatchResult {
+	pub fn redeem_by_claim_unbonding(who: &T::AccountId, amount: BalanceOf<T>, target_era: EraIndex) -> DispatchResult {
 		let current_era = Self::current_era();
 		let bonding_duration =
 			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get();
@@ -278,22 +295,17 @@ impl<T: Trait> Module<T> {
 		let mut fee = Self::calculate_claim_fee(total_deduct, target_era);
 		let mut ldot_to_redeem = total_deduct.saturating_sub(fee);
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
-		let unbond_value: u128 = liquid_exchange_rate
-			.saturating_mul_int(&ldot_to_redeem)
-			.unique_saturated_into();
-		let mut unbond_amount: StakingBalanceOf<T> = unbond_value.unique_saturated_into();
+		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(&ldot_to_redeem);
 		let target_era_unbonding = Self::unbonding(target_era);
 		let target_era_unclaimed = target_era_unbonding.0.saturating_sub(target_era_unbonding.1);
 
 		if !unbond_amount.is_zero() && !target_era_unclaimed.is_zero() {
 			if unbond_amount > target_era_unclaimed {
 				// target_era_unclaimed is not enough, re-calculate actual redeem ldot
-				let new_ldot_to_redeem: u128 = ExchangeRate::from_natural(1)
+				let new_ldot_to_redeem = ExchangeRate::from_natural(1)
 					.checked_div(&liquid_exchange_rate)
 					.unwrap_or_default()
-					.saturating_mul_int(&target_era_unclaimed)
-					.unique_saturated_into();
-				let new_ldot_to_redeem: LiquidBalanceOf<T> = new_ldot_to_redeem.unique_saturated_into();
+					.saturating_mul_int(&target_era_unclaimed);
 
 				// re-assign
 				fee = Ratio::from_rational(new_ldot_to_redeem, ldot_to_redeem).saturating_mul_int(&fee);
@@ -302,14 +314,20 @@ impl<T: Trait> Module<T> {
 				total_deduct = fee + ldot_to_redeem;
 			}
 
-			T::LiquidCurrency::ensure_can_withdraw(who, total_deduct)
+			let liquid_currency_id = T::LiquidCurrencyId::get();
+			T::Currency::ensure_can_withdraw(liquid_currency_id, who, total_deduct)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
-			T::LiquidCurrency::withdraw(who, total_deduct).expect("never failed after balance check");
+			T::Currency::withdraw(liquid_currency_id, who, total_deduct).expect("never failed after balance check");
 
 			<ClaimedUnbond<T>>::mutate(who, target_era, |balance| *balance += unbond_amount);
 			<Unbonding<T>>::mutate(target_era, |(_, claimed)| *claimed += unbond_amount);
 			<UnbondingToFree<T>>::mutate(|balance| *balance = balance.saturating_sub(unbond_amount));
-			T::OnCommission::on_commission(fee);
+
+			let commission_fee = Ratio::from_natural(1)
+				.saturating_sub(T::ClaimFeeReturnRatio::get())
+				.saturating_mul_int(&fee);
+			T::OnCommission::on_commission(liquid_currency_id, commission_fee);
+
 			<Module<T>>::deposit_event(RawEvent::RedeemByClaimUnbonding(
 				who.clone(),
 				target_era,
@@ -341,6 +359,9 @@ impl<T: Trait> Module<T> {
 	pub fn rebalance(era: EraIndex) {
 		// #1: bridge withdraw unbonded and withdraw payout
 		T::Bridge::withdraw_unbonded();
+
+		// TODO: record the balances of bridge before and after do payout_nominator,
+		// and oncommision to homa treasury according to RewardFeeRatio
 		T::Bridge::payout_nominator();
 
 		// #2: update staking pool by bridge ledger
@@ -411,5 +432,29 @@ impl<T: Trait> OnNewEra for Module<T> {
 
 		// nominate
 		T::Bridge::nominate(T::Nominees::nominees());
+	}
+}
+
+impl<T: Trait> HomaProtocol<T::AccountId> for Module<T> {
+	type Balance = BalanceOf<T>;
+
+	fn mint(who: &T::AccountId, amount: Self::Balance) -> rstd::result::Result<Self::Balance, DispatchError> {
+		Self::bond(who, amount)
+	}
+
+	fn redeem_by_unbond(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		Self::redeem_by_unbond(who, amount)
+	}
+
+	fn redeem_by_free_unbonded(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		Self::redeem_by_free_unbonded(who, amount)
+	}
+
+	fn redeem_by_claim_unbonding(who: &T::AccountId, amount: Self::Balance, target_era: EraIndex) -> DispatchResult {
+		Self::redeem_by_claim_unbonding(who, amount, target_era)
+	}
+
+	fn withdraw_redemption(who: &T::AccountId) -> rstd::result::Result<Self::Balance, DispatchError> {
+		Self::withdraw_unbonded(who)
 	}
 }

@@ -553,8 +553,6 @@ impl<T: Trait> Module<T> {
 		let debits = Self::debits(currency_id, who);
 		let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
 		let remove_debits = Ratio::from_rational(share_amount, shares).saturating_mul_int(&debits);
-		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
-		let withdrawn_interest: T::Share = proportion.saturating_mul_int(&base_currency_pool.into());
 
 		<Debits<T>>::mutate(currency_id, who, |debits| {
 			*debits = debits.saturating_sub(remove_debits);

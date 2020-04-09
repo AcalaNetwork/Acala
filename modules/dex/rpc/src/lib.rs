@@ -1,12 +1,13 @@
-pub use self::gen_client::Client as DexClient;
 use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
-pub use module_dex_rpc_runtime_api::DexApi as DexRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
+
+pub use self::gen_client::Client as DexClient;
+pub use module_dex_rpc_runtime_api::DexApi as DexRuntimeApi;
 
 #[rpc]
 pub trait DexApi<BlockHash, CurrencyId, Balance> {
