@@ -23,7 +23,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
 		at: Option<BlockHash>,
-	) -> Result<Option<Balance>>;
+	) -> Result<Balance>;
 
 	#[rpc(name = "dex_getTargetAmount")]
 	fn get_target_amount(
@@ -32,7 +32,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
 		at: Option<BlockHash>,
-	) -> Result<Option<Balance>>;
+	) -> Result<Balance>;
 }
 
 /// A struct that implements the [`DexApi`].
@@ -78,7 +78,7 @@ where
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<Option<Balance>> {
+	) -> Result<Balance> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
@@ -99,7 +99,7 @@ where
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<Option<Balance>> {
+	) -> Result<Balance> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.

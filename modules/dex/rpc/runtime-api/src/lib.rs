@@ -3,7 +3,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Codec;
-use rstd::prelude::*;
 
 sp_api::decl_runtime_apis! {
 	pub trait DexApi<CurrencyId, Balance> where
@@ -14,12 +13,12 @@ sp_api::decl_runtime_apis! {
 			supply_currency_id: CurrencyId,
 			target_currency_id: CurrencyId,
 			target_currency_amount: Balance,
-		) -> Option<Balance>;
+		) -> Balance;
 
 		fn get_target_amount(
 			supply_currency_id: CurrencyId,
 			target_currency_id: CurrencyId,
 			supply_currency_amount: Balance,
-		) -> Option<Balance>;
+		) -> Balance;
 	}
 }
