@@ -5,7 +5,10 @@ use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::{
+	generic::BlockId,
+	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+};
 use std::sync::Arc;
 
 pub use self::gen_client::Client as DexClient;
@@ -20,7 +23,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
 		at: Option<BlockHash>,
-	) -> Result<Balance>;
+	) -> Result<Option<Balance>>;
 
 	#[rpc(name = "dex_getTargetAmount")]
 	fn get_target_amount(
@@ -29,7 +32,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
 		at: Option<BlockHash>,
-	) -> Result<Balance>;
+	) -> Result<Option<Balance>>;
 }
 
 /// A struct that implements the [`DexApi`].
@@ -67,7 +70,7 @@ where
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
 	C::Api: DexRuntimeApi<Block, CurrencyId, Balance>,
 	CurrencyId: Codec,
-	Balance: Codec,
+	Balance: Codec + MaybeDisplay + MaybeFromStr,
 {
 	fn get_supply_amount(
 		&self,
@@ -75,7 +78,7 @@ where
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<Balance> {
+	) -> Result<Option<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
@@ -96,7 +99,7 @@ where
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<Balance> {
+	) -> Result<Option<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
