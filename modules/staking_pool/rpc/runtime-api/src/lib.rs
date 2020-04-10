@@ -3,6 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Codec;
+use rstd::prelude::*;
 
 sp_api::decl_runtime_apis! {
 	pub trait StakingPoolApi<AccountId, Balance> where

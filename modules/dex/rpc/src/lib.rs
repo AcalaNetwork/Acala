@@ -1,3 +1,5 @@
+//! RPC interface for the dex module.
+
 use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
@@ -47,6 +49,7 @@ impl<C, B> Dex<C, B> {
 }
 
 pub enum Error {
+	/// The call to runtime failed.
 	RuntimeError,
 }
 
@@ -77,6 +80,7 @@ where
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
+
 		api.get_supply_amount(&at, supply_currency_id, target_currency_id, target_currency_amount)
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(Error::RuntimeError.into()),
@@ -97,12 +101,12 @@ where
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
+
 		api.get_target_amount(&at, supply_currency_id, target_currency_id, supply_currency_amount)
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(Error::RuntimeError.into()),
 				message: "Unable to get target amount.".into(),
 				data: Some(format!("{:?}", e).into()),
 			})
-			.into()
 	}
 }

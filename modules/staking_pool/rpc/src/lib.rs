@@ -56,12 +56,11 @@ where
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
-		api.get_available_unbonded(&at, account)
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(Error::RuntimeError.into()),
-				message: "Unable to get available unbonded.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})
-			.into()
+
+		api.get_available_unbonded(&at, account).map_err(|e| RpcError {
+			code: ErrorCode::ServerError(Error::RuntimeError.into()),
+			message: "Unable to get available unbonded.".into(),
+			data: Some(format!("{:?}", e).into()),
+		})
 	}
 }

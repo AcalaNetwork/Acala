@@ -2886,6 +2886,7 @@ dependencies = [
  "jsonrpc-derive",
  "module-dex-rpc-runtime-api",
  "parity-scale-codec",
+ "serde",
  "sp-api",
  "sp-blockchain",
  "sp-runtime",
@@ -2895,8 +2896,13 @@ dependencies = [
 name = "module-dex-rpc-runtime-api"
 version = "0.4.0"
 dependencies = [
+ "frame-support",
  "parity-scale-codec",
+ "serde",
+ "serde_json",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -3096,8 +3102,12 @@ dependencies = [
 name = "module-staking-pool-rpc-runtime-api"
 version = "0.4.0"
 dependencies = [
+ "frame-support",
  "parity-scale-codec",
+ "serde",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
