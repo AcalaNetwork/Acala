@@ -3,6 +3,7 @@
 use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
+use module_dex_rpc_runtime_api::BalanceInfo;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{
@@ -15,7 +16,7 @@ pub use self::gen_client::Client as DexClient;
 pub use module_dex_rpc_runtime_api::DexApi as DexRuntimeApi;
 
 #[rpc]
-pub trait DexApi<BlockHash, CurrencyId, Balance> {
+pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType> {
 	#[rpc(name = "dex_getSupplyAmount")]
 	fn get_supply_amount(
 		&self,
@@ -23,7 +24,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
 		at: Option<BlockHash>,
-	) -> Result<Balance>;
+	) -> Result<ResponseType>;
 
 	#[rpc(name = "dex_getTargetAmount")]
 	fn get_target_amount(
@@ -32,7 +33,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
 		at: Option<BlockHash>,
-	) -> Result<Balance>;
+	) -> Result<ResponseType>;
 }
 
 /// A struct that implements the [`DexApi`].
@@ -64,7 +65,8 @@ impl From<Error> for i64 {
 	}
 }
 
-impl<C, Block, CurrencyId, Balance> DexApi<<Block as BlockT>::Hash, CurrencyId, Balance> for Dex<C, Block>
+impl<C, Block, CurrencyId, Balance> DexApi<<Block as BlockT>::Hash, CurrencyId, Balance, BalanceInfo<Balance>>
+	for Dex<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
@@ -78,7 +80,7 @@ where
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<Balance> {
+	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
@@ -90,7 +92,6 @@ where
 				message: "Unable to get supply amount.".into(),
 				data: Some(format!("{:?}", e).into()),
 			})
-			.into()
 	}
 
 	fn get_target_amount(
@@ -99,7 +100,7 @@ where
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<Balance> {
+	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.

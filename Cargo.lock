@@ -2870,7 +2870,6 @@ dependencies = [
  "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
- "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -2897,7 +2896,10 @@ name = "module-dex-rpc-runtime-api"
 version = "0.4.0"
 dependencies = [
  "parity-scale-codec",
+ "serde",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
