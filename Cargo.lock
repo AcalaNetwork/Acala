@@ -2870,7 +2870,6 @@ dependencies = [
  "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
- "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -2886,6 +2885,7 @@ dependencies = [
  "jsonrpc-derive",
  "module-dex-rpc-runtime-api",
  "parity-scale-codec",
+ "serde",
  "sp-api",
  "sp-blockchain",
  "sp-runtime",
@@ -2896,7 +2896,10 @@ name = "module-dex-rpc-runtime-api"
 version = "0.4.0"
 dependencies = [
  "parity-scale-codec",
+ "serde",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -3071,7 +3074,6 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -3087,6 +3089,7 @@ dependencies = [
  "jsonrpc-derive",
  "module-staking-pool-rpc-runtime-api",
  "parity-scale-codec",
+ "serde",
  "sp-api",
  "sp-blockchain",
  "sp-runtime",
@@ -3097,7 +3100,10 @@ name = "module-staking-pool-rpc-runtime-api"
 version = "0.4.0"
 dependencies = [
  "parity-scale-codec",
+ "serde",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

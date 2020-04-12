@@ -1,18 +1,24 @@
+//! RPC interface for the staking pool module.
+
 use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
+use module_staking_pool_rpc_runtime_api::BalanceInfo;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::{
+	generic::BlockId,
+	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+};
 use std::sync::Arc;
 
 pub use self::gen_client::Client as StakingPoolClient;
 pub use module_staking_pool_rpc_runtime_api::StakingPoolApi as StakingPoolRuntimeApi;
 
 #[rpc]
-pub trait StakingPoolApi<BlockHash, AccountId, Balance> {
+pub trait StakingPoolApi<BlockHash, AccountId, ResponseType> {
 	#[rpc(name = "stakingPool_getAvailableUnbonded")]
-	fn get_available_unbonded(&self, account: AccountId, at: Option<BlockHash>) -> Result<Balance>;
+	fn get_available_unbonded(&self, account: AccountId, at: Option<BlockHash>) -> Result<ResponseType>;
 }
 
 /// A struct that implements the [`StakingPoolApi`].
@@ -43,25 +49,29 @@ impl From<Error> for i64 {
 	}
 }
 
-impl<C, Block, AccountId, Balance> StakingPoolApi<<Block as BlockT>::Hash, AccountId, Balance> for StakingPool<C, Block>
+impl<C, Block, AccountId, Balance> StakingPoolApi<<Block as BlockT>::Hash, AccountId, BalanceInfo<Balance>>
+	for StakingPool<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
 	C::Api: StakingPoolRuntimeApi<Block, AccountId, Balance>,
 	AccountId: Codec,
-	Balance: Codec,
+	Balance: Codec + MaybeDisplay + MaybeFromStr,
 {
-	fn get_available_unbonded(&self, account: AccountId, at: Option<<Block as BlockT>::Hash>) -> Result<Balance> {
+	fn get_available_unbonded(
+		&self,
+		account: AccountId,
+		at: Option<<Block as BlockT>::Hash>,
+	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
-		api.get_available_unbonded(&at, account)
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(Error::RuntimeError.into()),
-				message: "Unable to get available unbonded.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})
-			.into()
+
+		api.get_available_unbonded(&at, account).map_err(|e| RpcError {
+			code: ErrorCode::ServerError(Error::RuntimeError.into()),
+			message: "Unable to get available unbonded.".into(),
+			data: Some(format!("{:?}", e).into()),
+		})
 	}
 }
