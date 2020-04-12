@@ -59,7 +59,7 @@ where
 	C::Api: BabeApi<Block>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, TimeStampedPrice>,
 	C::Api: module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>,
-	//C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
+	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
 	<C::Api as sp_api::ApiErrorExt>::Error: fmt::Debug,
 	P: TransactionPool + 'static,
 	M: jsonrpc_core::Metadata + Default,
@@ -96,8 +96,8 @@ where
 		select_chain,
 	)));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
-	io.extend_with(DexApi::to_delegate(Dex::new(client)));
-	//io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client)));
+	io.extend_with(DexApi::to_delegate(Dex::new(client.clone())));
+	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client)));
 
 	io
 }

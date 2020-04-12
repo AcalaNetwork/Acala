@@ -8,7 +8,7 @@ use system::{self as system, ensure_signed};
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub enum RedeemStrategy {
-	Immedately,
+	Immediately,
 	Target(EraIndex),
 	WaitForUnbonding,
 }
@@ -29,7 +29,7 @@ decl_module! {
 		pub fn redeem(origin, #[compact] amount: BalanceOf<T>, strategy: RedeemStrategy) {
 			let who = ensure_signed(origin)?;
 			match strategy {
-				RedeemStrategy::Immedately => {
+				RedeemStrategy::Immediately => {
 					T::Homa::redeem_by_free_unbonded(&who, amount)?;
 				},
 				RedeemStrategy::Target(target_era) => {

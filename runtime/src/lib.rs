@@ -899,10 +899,8 @@ impl_runtime_apis! {
 			target_currency_id: CurrencyId,
 			target_currency_amount: Balance,
 		) -> module_dex_rpc_runtime_api::BalanceInfo<Balance> {
-			//Some(Dex::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount))
-			//Default::default()
 			module_dex_rpc_runtime_api::BalanceInfo{
-				amount: Default::default()
+				amount: Dex::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
 			}
 		}
 
@@ -911,9 +909,8 @@ impl_runtime_apis! {
 			target_currency_id: CurrencyId,
 			supply_currency_amount: Balance,
 		) -> module_dex_rpc_runtime_api::BalanceInfo<Balance> {
-			//Some(Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount))
 			module_dex_rpc_runtime_api::BalanceInfo{
-				amount: Default::default()
+				amount: Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
 			}
 		}
 	}
@@ -923,10 +920,10 @@ impl_runtime_apis! {
 		AccountId,
 		Balance,
 	> for Runtime {
-		fn get_available_unbonded(
-			account: AccountId,
-		) -> Balance {
-			StakingPool::get_available_unbonded(&account)
+		fn get_available_unbonded(account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
+			module_staking_pool_rpc_runtime_api::BalanceInfo{
+				amount: StakingPool::get_available_unbonded(&account)
+			}
 		}
 	}
 }
