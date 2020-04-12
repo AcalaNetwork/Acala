@@ -4,6 +4,7 @@ use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use module_dex_rpc_runtime_api::BalanceInfo;
+use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{
@@ -15,6 +16,13 @@ use std::sync::Arc;
 pub use self::gen_client::Client as DexClient;
 pub use module_dex_rpc_runtime_api::DexApi as DexRuntimeApi;
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct BalanceRequest<Balance> {
+	amount: Balance,
+}
+
 #[rpc]
 pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType> {
 	#[rpc(name = "dex_getSupplyAmount")]
@@ -22,7 +30,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType> {
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		target_currency_amount: Balance,
+		target_currency_amount: BalanceRequest<Balance>,
 		at: Option<BlockHash>,
 	) -> Result<ResponseType>;
 
@@ -31,7 +39,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType> {
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		supply_currency_amount: Balance,
+		supply_currency_amount: BalanceRequest<Balance>,
 		at: Option<BlockHash>,
 	) -> Result<ResponseType>;
 }
@@ -78,15 +86,16 @@ where
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		target_currency_amount: Balance,
+		target_currency_amount: BalanceRequest<Balance>,
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
+		let BalanceRequest { amount } = target_currency_amount;
 
-		api.get_supply_amount(&at, supply_currency_id, target_currency_id, target_currency_amount)
+		api.get_supply_amount(&at, supply_currency_id, target_currency_id, amount)
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(Error::RuntimeError.into()),
 				message: "Unable to get supply amount.".into(),
@@ -98,15 +107,16 @@ where
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		supply_currency_amount: Balance,
+		supply_currency_amount: BalanceRequest<Balance>,
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
+		let BalanceRequest { amount } = supply_currency_amount;
 
-		api.get_target_amount(&at, supply_currency_id, target_currency_id, supply_currency_amount)
+		api.get_target_amount(&at, supply_currency_id, target_currency_id, amount)
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(Error::RuntimeError.into()),
 				message: "Unable to get target amount.".into(),
