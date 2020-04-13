@@ -547,15 +547,15 @@ impl<T: Trait> Module<T> {
 		if total_interest.is_zero() {
 			return;
 		}
-		let new_debits = proportion.saturating_mul_int(&total_interest);
+		let interest_to_expand = proportion.saturating_mul_int(&total_interest);
 		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
-			*val = val.saturating_add(new_debits);
+			*val = val.saturating_add(interest_to_expand);
 		});
 		<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
-			*val = val.saturating_add(new_debits);
+			*val = val.saturating_add(interest_to_expand);
 		});
 		<TotalInterest<T>>::mutate(currency_id, |interest| {
-			*interest = interest.saturating_add(new_debits);
+			*interest = interest.saturating_add(interest_to_expand);
 		});
 	}
 
@@ -592,14 +592,18 @@ impl<T: Trait> Module<T> {
 
 		if !interest_to_withdraw.is_zero() {
 			// withdraw interest to share holder
-			if T::Currency::transfer(currency_id, &Self::account_id(), &who, interest_to_withdraw).is_ok() {
-				<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
-					*val = val.saturating_add(interest_to_withdraw);
-				});
-				<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
-					*val = val.saturating_add(interest_to_withdraw);
-				});
-			}
+			T::Currency::transfer(
+				T::GetBaseCurrencyId::get(),
+				&Self::account_id(),
+				&who,
+				interest_to_withdraw,
+			)?;
+			<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
+				*val = val.saturating_add(interest_to_withdraw);
+			});
+			<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+				*val = val.saturating_add(interest_to_withdraw);
+			});
 		}
 
 		Ok(())
