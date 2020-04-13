@@ -54,6 +54,7 @@ sp-transaction-pool = { version = "2.0.0-alpha.5" }
 substrate-frame-rpc-system = { version = "2.0.0-alpha.5" }
 
 module-dex-rpc = { path = "modules/dex/rpc" }
+module-support = { path = "modules/support" }
 module-staking-pool-rpc = { path = "modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "orml/oracle/rpc" }
 orml-utilities = { path = "orml/utilities" }

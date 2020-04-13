@@ -1,10 +1,11 @@
 use hex_literal::hex;
+use module_support::Rate;
 use orml_utilities::FixedU128;
 use runtime::{
 	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-	CurrencyId, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
-	IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus,
-	StakingConfig, SudoConfig, SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
+	CurrencyId, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig,
+	GrandpaConfig, IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig, Signature,
+	StakerStatus, StakingConfig, SudoConfig, SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service;
@@ -325,6 +326,9 @@ fn testnet_genesis(
 				),
 			],
 		}),
+		module_dex: Some(DexConfig {
+			liquidity_incentive_rate: Rate::from_rational(1, 100),
+		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::from_natural(0),
 		}),
@@ -420,6 +424,9 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
+		}),
+		module_dex: Some(DexConfig {
+			liquidity_incentive_rate: Rate::from_rational(1, 100),
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::from_natural(0),

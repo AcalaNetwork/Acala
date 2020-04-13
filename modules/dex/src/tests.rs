@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL, DOT};
+use sp_runtime::traits::OnInitialize;
 
 #[test]
 fn calculate_swap_target_amount_work() {
@@ -65,7 +66,7 @@ fn add_liquidity_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			DexModule::add_liquidity(Origin::signed(ALICE), AUSD, 10000, 2000),
-			Error::<Runtime>::BaseCurrencyIdNotAllowed,
+			Error::<Runtime>::CurrencyIdNotAllowed,
 		);
 		assert_eq!(DexModule::liquidity_pool(BTC), (0, 0));
 		assert_eq!(DexModule::total_shares(BTC), 0);
@@ -100,6 +101,129 @@ fn add_liquidity_work() {
 		assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC, 1, 1001));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10003, 10003000));
 	});
+}
+
+#[test]
+fn add_liquidity_and_calculate_interest() {
+	ExtBuilder::default()
+		.set_balance(CAROL, AUSD, 1_000_000_000_000_000_000u128)
+		.set_balance(CAROL, BTC, 1_000_000_000_000_000_000u128)
+		.build()
+		.execute_with(|| {
+			assert_noop!(
+				DexModule::add_liquidity(Origin::signed(ALICE), ACA, 10000, 2000),
+				Error::<Runtime>::CurrencyIdNotAllowed,
+			);
+			assert_noop!(
+				DexModule::add_liquidity(Origin::signed(ALICE), AUSD, 10000, 2000),
+				Error::<Runtime>::CurrencyIdNotAllowed,
+			);
+			assert_eq!(DexModule::liquidity_pool(BTC), (0, 0));
+			assert_eq!(DexModule::total_shares(BTC), 0);
+			assert_eq!(DexModule::shares(BTC, ALICE), 0);
+			assert_noop!(
+				DexModule::add_liquidity(Origin::signed(ALICE), BTC, 0, 10000000),
+				Error::<Runtime>::InvalidBalance,
+			);
+
+			// ALICE add_liquidity 8000
+			assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 800, 8000));
+			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
+			assert_eq!(DexModule::total_shares(BTC), 8000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 0);
+			assert_eq!(DexModule::total_debits(BTC), 0);
+			assert_eq!(DexModule::total_interest(BTC), 0);
+
+			// BOB add_liquidity 2000
+			assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC, 200, 2000));
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::total_shares(BTC), 10000);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::total_debits(BTC), 0);
+			assert_eq!(DexModule::total_interest(BTC), 0);
+
+			// accumulate interest
+			<DexModule as OnInitialize<u64>>::on_initialize(1);
+			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::total_shares(BTC), 10000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 0);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::total_debits(BTC), 0);
+			assert_eq!(DexModule::total_interest(BTC), 100);
+
+			// CAROL add_liquidity 500
+			assert_ok!(DexModule::add_liquidity(Origin::signed(CAROL), BTC, 500, 10000));
+			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
+			assert_eq!(DexModule::total_shares(BTC), 15000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 0);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::debits(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_debits(BTC), 50);
+			assert_eq!(DexModule::total_interest(BTC), 150);
+
+			// claim interest
+			assert_ok!(DexModule::claim_interest(BTC, &ALICE));
+			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
+			assert_eq!(DexModule::total_shares(BTC), 15000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 79);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::debits(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_debits(BTC), 129);
+			assert_eq!(DexModule::total_interest(BTC), 150);
+
+			// accumulate interest
+			<DexModule as OnInitialize<u64>>::on_initialize(1);
+			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
+			assert_eq!(DexModule::total_shares(BTC), 15000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 79);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::debits(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_debits(BTC), 129);
+			assert_eq!(DexModule::total_interest(BTC), 300);
+
+			// claim interest
+			assert_ok!(DexModule::claim_interest(BTC, &ALICE));
+			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
+			assert_eq!(DexModule::total_shares(BTC), 15000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 159);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::debits(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_debits(BTC), 209);
+			assert_eq!(DexModule::total_interest(BTC), 300);
+
+			// ALICE withdraw liquidity 5000
+			assert_ok!(DexModule::withdraw_liquidity(Origin::signed(ALICE), BTC, 5000));
+			assert_eq!(DexModule::shares(BTC, ALICE), 3000);
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
+			assert_eq!(DexModule::total_shares(BTC), 10000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 60);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::debits(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_debits(BTC), 110);
+			assert_eq!(DexModule::total_interest(BTC), 201);
+
+			// accumulate interest
+			<DexModule as OnInitialize<u64>>::on_initialize(1);
+			assert_eq!(DexModule::shares(BTC, ALICE), 3000);
+			assert_eq!(DexModule::shares(BTC, BOB), 2000);
+			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
+			assert_eq!(DexModule::total_shares(BTC), 10000);
+			assert_eq!(DexModule::debits(BTC, ALICE), 60);
+			assert_eq!(DexModule::debits(BTC, BOB), 0);
+			assert_eq!(DexModule::debits(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_debits(BTC), 110);
+			assert_eq!(DexModule::total_interest(BTC), 301);
+		});
 }
 
 #[test]

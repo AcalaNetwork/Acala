@@ -36,6 +36,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC];
 }
 
 pub type AccountId = u64;
@@ -115,8 +116,10 @@ impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
 	type Share = Share;
+	type EnabledCurrencyIds = CollateralCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CDPTreasuryModule;
 }
 pub type DEXModule = dex::Module<Runtime>;
 

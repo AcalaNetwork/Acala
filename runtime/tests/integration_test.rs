@@ -9,7 +9,7 @@ mod tests {
 	use frame_support::{assert_noop, assert_ok};
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
-	use sp_runtime::{traits::OnFinalize, DispatchResult};
+	use sp_runtime::{traits::OnFinalize, traits::OnInitialize, DispatchResult};
 
 	const ORACLE1: [u8; 32] = [0u8; 32];
 	const ORACLE2: [u8; 32] = [1u8; 32];
@@ -52,6 +52,12 @@ mod tests {
 
 			orml_tokens::GenesisConfig::<Runtime> {
 				endowed_accounts: self.endowed_accounts,
+			}
+			.assimilate_storage(&mut t)
+			.unwrap();
+
+			module_dex::GenesisConfig {
+				liquidity_incentive_rate: Rate::from_rational(1, 100),
 			}
 			.assimilate_storage(&mut t)
 			.unwrap();
@@ -152,6 +158,13 @@ mod tests {
 				assert_eq!(DexModule::liquidity_pool(XBTC), (10002, 10002000));
 				assert_ok!(DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, 1, 1001));
 				assert_eq!(DexModule::liquidity_pool(XBTC), (10003, 10003000));
+
+				assert_eq!(DexModule::total_shares(XBTC), 10002998);
+				assert_eq!(DexModule::total_interest(XBTC), 0);
+				DexModule::on_initialize(0);
+				assert_eq!(DexModule::total_interest(XBTC), 100030);
+				DexModule::on_initialize(0);
+				assert_eq!(DexModule::total_interest(XBTC), 201060);
 			});
 	}
 

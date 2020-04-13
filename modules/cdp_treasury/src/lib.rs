@@ -224,6 +224,11 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount)
 	}
 
+	fn deposit_unbacked_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		Self::on_system_debit(amount)?;
+		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount)
+	}
+
 	fn withdraw_backed_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, amount)
 	}

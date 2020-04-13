@@ -20,6 +20,7 @@ pallet-balances = { package = "pallet-balances", version = "2.0.0-alpha.5", defa
 primitives = { package = "sp-core",  version = "2.0.0-alpha.5", default-features = false }
 runtime-io = { package = "sp-io", version = "2.0.0-alpha.5", default-features = false }
 orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
+cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
 
 [features]
 default = ["std"]

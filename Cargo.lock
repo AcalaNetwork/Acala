@@ -21,6 +21,7 @@ dependencies = [
  "log",
  "module-dex-rpc",
  "module-staking-pool-rpc",
+ "module-support",
  "orml-oracle-rpc",
  "orml-utilities",
  "pallet-transaction-payment-rpc",
@@ -2863,6 +2864,7 @@ version = "0.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-cdp-treasury",
  "module-support",
  "orml-currencies",
  "orml-tokens",

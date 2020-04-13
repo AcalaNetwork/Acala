@@ -143,6 +143,7 @@ pub trait CDPTreasury<AccountId> {
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult;
 	fn on_system_surplus(amount: Self::Balance) -> DispatchResult;
 	fn deposit_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_unbacked_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn withdraw_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn transfer_system_surplus(to: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn transfer_surplus_from(from: &AccountId, amount: Self::Balance) -> DispatchResult;
