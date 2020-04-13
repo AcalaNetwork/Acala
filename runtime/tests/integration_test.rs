@@ -56,8 +56,8 @@ mod tests {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
-			module_dex::GenesisConfig {
-				liquidity_incentive_rate: Rate::from_rational(1, 100),
+			module_dex::GenesisConfig::<Runtime> {
+				liquidity_incentive_rate: vec![(XBTC, Rate::from_rational(1, 100))],
 			}
 			.assimilate_storage(&mut t)
 			.unwrap();
@@ -164,7 +164,7 @@ mod tests {
 				DexModule::on_initialize(0);
 				assert_eq!(DexModule::total_interest(XBTC), 100030);
 				DexModule::on_initialize(0);
-				assert_eq!(DexModule::total_interest(XBTC), 201060);
+				assert_eq!(DexModule::total_interest(XBTC), 200060);
 			});
 	}
 

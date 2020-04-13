@@ -130,16 +130,16 @@ fn add_liquidity_and_calculate_interest() {
 			assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 800, 8000));
 			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
 			assert_eq!(DexModule::total_shares(BTC), 8000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 0);
-			assert_eq!(DexModule::total_debits(BTC), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 0);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 0);
 			assert_eq!(DexModule::total_interest(BTC), 0);
 
 			// BOB add_liquidity 2000
 			assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC, 200, 2000));
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::total_shares(BTC), 10000);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::total_debits(BTC), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 0);
 			assert_eq!(DexModule::total_interest(BTC), 0);
 
 			// accumulate interest
@@ -147,9 +147,9 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, ALICE), 8000);
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::total_shares(BTC), 10000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 0);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::total_debits(BTC), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 0);
 			assert_eq!(DexModule::total_interest(BTC), 100);
 
 			// CAROL add_liquidity 500
@@ -158,10 +158,10 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
 			assert_eq!(DexModule::total_shares(BTC), 15000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 0);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::debits(BTC, CAROL), 50);
-			assert_eq!(DexModule::total_debits(BTC), 50);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 50);
 			assert_eq!(DexModule::total_interest(BTC), 150);
 
 			// claim interest
@@ -170,10 +170,10 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
 			assert_eq!(DexModule::total_shares(BTC), 15000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 79);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::debits(BTC, CAROL), 50);
-			assert_eq!(DexModule::total_debits(BTC), 129);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 79);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 129);
 			assert_eq!(DexModule::total_interest(BTC), 150);
 
 			// accumulate interest
@@ -182,10 +182,10 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
 			assert_eq!(DexModule::total_shares(BTC), 15000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 79);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::debits(BTC, CAROL), 50);
-			assert_eq!(DexModule::total_debits(BTC), 129);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 79);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 129);
 			assert_eq!(DexModule::total_interest(BTC), 300);
 
 			// claim interest
@@ -194,10 +194,10 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
 			assert_eq!(DexModule::total_shares(BTC), 15000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 159);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::debits(BTC, CAROL), 50);
-			assert_eq!(DexModule::total_debits(BTC), 209);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 159);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 209);
 			assert_eq!(DexModule::total_interest(BTC), 300);
 
 			// ALICE withdraw liquidity 5000
@@ -206,10 +206,10 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
 			assert_eq!(DexModule::total_shares(BTC), 10000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 60);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::debits(BTC, CAROL), 50);
-			assert_eq!(DexModule::total_debits(BTC), 110);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 60);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 110);
 			assert_eq!(DexModule::total_interest(BTC), 201);
 
 			// accumulate interest
@@ -218,10 +218,10 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, BOB), 2000);
 			assert_eq!(DexModule::shares(BTC, CAROL), 5000);
 			assert_eq!(DexModule::total_shares(BTC), 10000);
-			assert_eq!(DexModule::debits(BTC, ALICE), 60);
-			assert_eq!(DexModule::debits(BTC, BOB), 0);
-			assert_eq!(DexModule::debits(BTC, CAROL), 50);
-			assert_eq!(DexModule::total_debits(BTC), 110);
+			assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 60);
+			assert_eq!(DexModule::withdrawn_interest(BTC, BOB), 0);
+			assert_eq!(DexModule::withdrawn_interest(BTC, CAROL), 50);
+			assert_eq!(DexModule::total_withdrawn_interest(BTC), 110);
 			assert_eq!(DexModule::total_interest(BTC), 301);
 		});
 }
