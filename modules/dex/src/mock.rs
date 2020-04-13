@@ -83,11 +83,12 @@ pub type Tokens = orml_tokens::Module<Runtime>;
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 impl cdp_treasury::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type GetStableCurrencyId = ();
+	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManagerHandler;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();

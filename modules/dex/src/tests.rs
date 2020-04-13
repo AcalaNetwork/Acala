@@ -5,7 +5,86 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL, DOT};
-use sp_runtime::traits::OnInitialize;
+use sp_runtime::traits::{BadOrigin, OnInitialize};
+
+#[test]
+fn set_liquidity_incentive_rate_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(DexModule::liquidity_incentive_rate(BTC), Rate::from_rational(1, 100));
+		assert_noop!(
+			DexModule::set_liquidity_incentive_rate(Origin::signed(5), BTC, Rate::from_rational(5, 100)),
+			BadOrigin
+		);
+		assert_ok!(DexModule::set_liquidity_incentive_rate(
+			Origin::signed(1),
+			BTC,
+			Rate::from_rational(5, 100)
+		));
+		assert_ok!(DexModule::set_liquidity_incentive_rate(
+			Origin::signed(1),
+			BTC,
+			Rate::from_rational(8, 100)
+		));
+		assert_eq!(DexModule::liquidity_incentive_rate(BTC), Rate::from_rational(8, 100));
+	});
+}
+
+#[test]
+fn accumulate_interest_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		<LiquidityPool<Runtime>>::insert(BTC, (100, 10000));
+		assert_eq!(DexModule::total_interest(BTC), 0);
+		DexModule::accumulate_interest(BTC);
+		assert_eq!(DexModule::total_interest(BTC), 100);
+	});
+}
+
+#[test]
+fn claim_interest_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		<Shares<Runtime>>::insert(BTC, ALICE, 2000);
+		<TotalShares<Runtime>>::insert(BTC, 10000);
+		<TotalInterest<Runtime>>::insert(BTC, 25000);
+		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 20000);
+		<WithdrawnInterest<Runtime>>::insert(BTC, ALICE, 2000);
+		assert_ok!(Tokens::deposit(AUSD, &DexModule::account_id(), 5000));
+		let alice_former_balance = Tokens::free_balance(AUSD, &ALICE);
+		assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 5000);
+		assert_ok!(DexModule::claim_interest(BTC, &ALICE));
+		assert_eq!(DexModule::total_withdrawn_interest(BTC), 23000);
+		assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 5000);
+		assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 2000);
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), alice_former_balance + 3000);
+	});
+}
+
+#[test]
+fn withdraw_calculate_interest_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		<Shares<Runtime>>::insert(BTC, ALICE, 2000);
+		<TotalShares<Runtime>>::insert(BTC, 10000);
+		<TotalInterest<Runtime>>::insert(BTC, 25000);
+		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 25000);
+		<WithdrawnInterest<Runtime>>::insert(BTC, ALICE, 10000);
+		assert_ok!(DexModule::withdraw_calculate_interest(BTC, &ALICE, 1000));
+		assert_eq!(DexModule::total_withdrawn_interest(BTC), 20000);
+		assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 5000);
+		assert_eq!(DexModule::total_interest(BTC), 22500);
+	});
+}
+
+#[test]
+fn deposit_calculate_interest_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		<TotalShares<Runtime>>::insert(BTC, 5000);
+		<TotalInterest<Runtime>>::insert(BTC, 10000);
+		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 2000);
+		DexModule::deposit_calculate_interest(BTC, &ALICE, 4000);
+		assert_eq!(DexModule::total_interest(BTC), 18000);
+		assert_eq!(DexModule::total_withdrawn_interest(BTC), 10000);
+		assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 8000);
+	});
+}
 
 #[test]
 fn calculate_swap_target_amount_work() {
