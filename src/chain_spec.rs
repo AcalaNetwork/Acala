@@ -327,7 +327,10 @@ fn testnet_genesis(
 			],
 		}),
 		module_dex: Some(DexConfig {
-			liquidity_incentive_rate: Rate::from_rational(1, 100),
+			liquidity_incentive_rate: vec![
+				(CurrencyId::DOT, Rate::from_rational(1, 100)),
+				(CurrencyId::XBTC, Rate::from_rational(1, 100)),
+			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::from_natural(0),
@@ -426,7 +429,10 @@ fn mandala_genesis(
 			],
 		}),
 		module_dex: Some(DexConfig {
-			liquidity_incentive_rate: Rate::from_rational(1, 100),
+			liquidity_incentive_rate: vec![
+				(CurrencyId::DOT, Rate::from_rational(1, 100)),
+				(CurrencyId::XBTC, Rate::from_rational(1, 100)),
+			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::from_natural(0),

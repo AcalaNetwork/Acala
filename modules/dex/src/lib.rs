@@ -5,13 +5,13 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use rstd::prelude::Vec;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating,
-		UniqueSaturatedInto, Zero,
+		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, EnsureOrigin, MaybeSerializeDeserialize, Member,
+		Saturating, UniqueSaturatedInto, Zero,
 	},
 	DispatchError, DispatchResult, ModuleId,
 };
 use support::{CDPTreasury, DEXManager, Price, Rate, Ratio};
-use system::{self as system, ensure_signed};
+use system::{self as system, ensure_root, ensure_signed};
 
 mod mock;
 mod tests;
@@ -24,18 +24,12 @@ type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Tr
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
-	type Share: Into<BalanceOf<Self>>
-		+ From<BalanceOf<Self>>
-		+ Parameter
-		+ Member
-		+ AtLeast32Bit
-		+ Default
-		+ Copy
-		+ MaybeSerializeDeserialize;
+	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
 	type EnabledCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GetBaseCurrencyId: Get<CurrencyIdOf<Self>>;
 	type GetExchangeFee: Get<Rate>;
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event!(
@@ -66,13 +60,23 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
-		LiquidityIncentiveRate get(fn liquidity_incentive_rate) config(): Rate;
 		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyIdOf<T> => (BalanceOf<T>, BalanceOf<T>);
 		TotalShares get(fn total_shares): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
 		Shares get(fn shares): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::Share;
-		TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
-		Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::Share;
-		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
+
+		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyIdOf<T> => Rate;
+		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => BalanceOf<T>;
+		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+	}
+
+	add_extra_genesis {
+		config(liquidity_incentive_rate): Vec<(CurrencyIdOf<T>, Rate)>;
+		build(|config: &GenesisConfig<T>| {
+			config.liquidity_incentive_rate.iter().for_each(| (currency_id, liquidity_incentive_rate) | {
+				<LiquidityIncentiveRate<T>>::insert(currency_id, liquidity_incentive_rate);
+			});
+		});
 	}
 }
 
@@ -85,6 +89,23 @@ decl_module! {
 		const EnabledCurrencyIds: Vec<CurrencyIdOf<T>> = T::EnabledCurrencyIds::get();
 		const GetBaseCurrencyId: CurrencyIdOf<T> = T::GetBaseCurrencyId::get();
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
+
+		pub fn set_liquidity_incentive_rate(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			liquidity_incentive_rate: Rate,
+		) {
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
+
+			<LiquidityIncentiveRate<T>>::insert(currency_id, liquidity_incentive_rate);
+		}
+
+		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyIdOf<T>) {
+			let who = ensure_signed(origin)?;
+			Self::claim_interest(currency_id, &who)?;
+		}
 
 		pub fn swap_currency(
 			origin,
@@ -527,11 +548,11 @@ impl<T: Trait> Module<T> {
 			return;
 		}
 		let new_debits = proportion.saturating_mul_int(&total_interest);
-		<Debits<T>>::mutate(currency_id, who, |debits| {
-			*debits = debits.saturating_add(new_debits);
+		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
+			*val = val.saturating_add(new_debits);
 		});
-		<TotalDebits<T>>::mutate(currency_id, |total_debits| {
-			*total_debits = total_debits.saturating_add(new_debits);
+		<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+			*val = val.saturating_add(new_debits);
 		});
 		<TotalInterest<T>>::mutate(currency_id, |interest| {
 			*interest = interest.saturating_add(new_debits);
@@ -543,52 +564,59 @@ impl<T: Trait> Module<T> {
 		who: &T::AccountId,
 		share_amount: T::Share,
 	) -> DispatchResult {
+		// claim interest first
 		Self::claim_interest(currency_id, who)?;
-		let shares = Self::shares(currency_id, who);
-		let debits = Self::debits(currency_id, who);
-		let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
-		let remove_debits = Ratio::from_rational(share_amount, shares).saturating_mul_int(&debits);
 
-		<Debits<T>>::mutate(currency_id, who, |debits| {
-			*debits = debits.saturating_sub(remove_debits);
+		let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
+		let withdrawn_interest_to_remove = Ratio::from_rational(share_amount, Self::shares(currency_id, who))
+			.saturating_mul_int(&Self::withdrawn_interest(currency_id, who));
+
+		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
+			*val = val.saturating_sub(withdrawn_interest_to_remove);
 		});
-		<TotalDebits<T>>::mutate(currency_id, |total_debits| {
-			*total_debits = total_debits.saturating_sub(remove_debits);
+		<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+			*val = val.saturating_sub(withdrawn_interest_to_remove);
 		});
-		<TotalInterest<T>>::mutate(currency_id, |interest| {
-			*interest = interest.saturating_sub(proportion.saturating_mul_int(interest));
+		<TotalInterest<T>>::mutate(currency_id, |val| {
+			*val = val.saturating_sub(proportion.saturating_mul_int(val));
 		});
+
 		Ok(())
 	}
 
 	fn claim_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> DispatchResult {
-		let shares = Self::shares(currency_id, who);
-		let debits = Self::debits(currency_id, who);
-		let proportion = Ratio::from_rational(shares, Self::total_shares(currency_id));
-		let total_interest = Self::total_interest(currency_id);
-		let withdrawn_interest = proportion.saturating_mul_int(&total_interest).saturating_sub(debits);
-		<Debits<T>>::mutate(currency_id, who, |debits| {
-			*debits = debits.saturating_add(withdrawn_interest);
-		});
-		<TotalDebits<T>>::mutate(currency_id, |debits| {
-			*debits = debits.saturating_add(withdrawn_interest);
-		});
-		T::CDPTreasury::deposit_unbacked_debit(who, withdrawn_interest.into())
+		let proportion = Ratio::from_rational(Self::shares(currency_id, who), Self::total_shares(currency_id));
+		let interest_to_withdraw = proportion
+			.saturating_mul_int(&Self::total_interest(currency_id))
+			.saturating_sub(Self::withdrawn_interest(currency_id, who));
+
+		if !interest_to_withdraw.is_zero() {
+			// withdraw interest to share holder
+			if T::Currency::transfer(currency_id, &Self::account_id(), &who, interest_to_withdraw).is_ok() {
+				<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
+					*val = val.saturating_add(interest_to_withdraw);
+				});
+				<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+					*val = val.saturating_add(interest_to_withdraw);
+				});
+			}
+		}
+
+		Ok(())
 	}
 
 	fn accumulate_interest(currency_id: CurrencyIdOf<T>) {
 		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
-		let total_debits = Self::total_debits(currency_id);
-		let total_interest = Self::total_interest(currency_id);
-		let total = base_currency_pool
-			.unique_saturated_into()
-			.saturating_add(total_interest.unique_saturated_into())
-			.saturating_sub(total_debits.unique_saturated_into());
+		let interest_to_increase = Self::liquidity_incentive_rate(currency_id).saturating_mul_int(&base_currency_pool);
 
-		let new_interest = Self::liquidity_incentive_rate().saturating_mul_int(&total);
-		<TotalInterest<T>>::mutate(currency_id, |interest| {
-			*interest = interest.saturating_add(new_interest.unique_saturated_into());
-		});
+		if !interest_to_increase.is_zero() {
+			// issue aUSD as interest
+			if T::CDPTreasury::deposit_unbacked_debit(&Self::account_id(), interest_to_increase).is_ok() {
+				<TotalInterest<T>>::mutate(currency_id, |val| {
+					*val = val.saturating_add(interest_to_increase);
+				});
+			}
+		}
 	}
 }
 

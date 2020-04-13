@@ -220,6 +220,7 @@ impl dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type DEXModule = dex::Module<Runtime>;
 

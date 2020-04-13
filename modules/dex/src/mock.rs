@@ -139,6 +139,7 @@ impl Trait for Runtime {
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type DexModule = Module<Runtime>;
 
@@ -153,7 +154,7 @@ pub const ACA: CurrencyId = 4;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
-	liquidity_incentive_rate: Rate,
+	liquidity_incentive_rate: Vec<(CurrencyId, Rate)>,
 }
 
 impl Default for ExtBuilder {
@@ -167,7 +168,7 @@ impl Default for ExtBuilder {
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
-			liquidity_incentive_rate: Rate::from_rational(1, 100),
+			liquidity_incentive_rate: vec![(BTC, Rate::from_rational(1, 100)), (DOT, Rate::from_rational(1, 100))],
 		}
 	}
 }
@@ -186,7 +187,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		dex::GenesisConfig {
+		dex::GenesisConfig::<Runtime> {
 			liquidity_incentive_rate: self.liquidity_incentive_rate,
 		}
 		.assimilate_storage(&mut t)
