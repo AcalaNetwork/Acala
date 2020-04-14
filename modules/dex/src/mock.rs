@@ -22,6 +22,7 @@ impl_outer_event! {
 		cdp_treasury<T>,
 	}
 }
+
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
 }
@@ -83,8 +84,12 @@ pub type Tokens = orml_tokens::Module<Runtime>;
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
+}
+
+parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
+
 impl cdp_treasury::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;

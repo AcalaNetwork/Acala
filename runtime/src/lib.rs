@@ -482,10 +482,22 @@ parameter_types! {
 }
 
 impl module_prices::Trait for Runtime {
+	type Event = Event;
 	type CurrencyId = CurrencyId;
 	type Source = Oracle;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
+	type GetStakingCurrencyId = GetStakingCurrencyId;
+	type GetLiquidCurrencyId = GetLiquidCurrencyId;
+	type LockOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+}
+
+pub struct LiquidStakingExchangeRateProvider;
+impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider {
+	fn get_exchange_rate() -> ExchangeRate {
+		StakingPool::liquid_exchange_rate()
+	}
 }
 
 parameter_types! {
@@ -577,7 +589,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
 	type OnShutdown = (CdpTreasury, CdpEngine, Honzon);
-	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 }
 
 parameter_types! {
@@ -720,7 +732,7 @@ construct_runtime!(
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
-		Prices: module_prices::{Module, Storage},
+		Prices: module_prices::{Module, Storage, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},

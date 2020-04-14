@@ -174,10 +174,15 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 	);
 }
 
-pub trait PriceProvider<CurrencyId, Price> {
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
+pub trait PriceProvider<CurrencyId> {
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
+	fn get_price(currency_id: CurrencyId) -> Option<Price>;
 	fn lock_price(currency_id: CurrencyId);
 	fn unlock_price(currency_id: CurrencyId);
+}
+
+pub trait ExchangeRateProvider {
+	fn get_exchange_rate() -> ExchangeRate;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]

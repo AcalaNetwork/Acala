@@ -4,7 +4,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, t
 use orml_traits::MultiCurrency;
 use rstd::prelude::*;
 use sp_runtime::traits::{EnsureOrigin, Zero};
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, OnEmergencyShutdown, Price, PriceProvider, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, OnEmergencyShutdown, PriceProvider, Ratio};
 use system::{ensure_root, ensure_signed};
 
 mod mock;
@@ -18,7 +18,7 @@ type AuctionIdOf<T> =
 pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
 	type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 	type AuctionManagerHandler: AuctionManager<
 		Self::AccountId,
