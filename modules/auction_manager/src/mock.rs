@@ -9,6 +9,7 @@ use sp_runtime::{
 	traits::IdentityLookup,
 	Perbill,
 };
+use support::Price;
 use system::EnsureSignedBy;
 
 use super::*;
@@ -118,17 +119,18 @@ impl cdp_treasury::Trait for Runtime {
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 pub struct MockPriceSource;
-impl PriceProvider<CurrencyId, Price> for MockPriceSource {
-	#[allow(unused_variables)]
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(_base: CurrencyId, _quota: CurrencyId) -> Option<Price> {
 		Some(Price::from_natural(1))
 	}
 
-	#[allow(unused_variables)]
-	fn lock_price(currency_id: CurrencyId) {}
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		Some(Price::from_natural(1))
+	}
 
-	#[allow(unused_variables)]
-	fn unlock_price(currency_id: CurrencyId) {}
+	fn lock_price(_currency_id: CurrencyId) {}
+
+	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 /// An extrinsic type used for tests.

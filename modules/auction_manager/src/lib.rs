@@ -14,7 +14,7 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
-use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, Price, PriceProvider, Rate};
+use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Rate};
 use system::{ensure_none, offchain::SubmitUnsignedTransaction};
 use utilities::{OffchainErr, OffchainLock};
 
@@ -69,7 +69,7 @@ pub trait Trait: system::Trait {
 	type GetNativeCurrencyId: Get<CurrencyIdOf<Self>>;
 	type GetAmountAdjustment: Get<Rate>;
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
 
 	/// A dispatchable call type.
 	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
@@ -283,7 +283,7 @@ impl<T: Trait> Module<T> {
 		// calculate which amount of collateral to offset target
 		// in settle price
 		let stable_currency_id = T::GetStableCurrencyId::get();
-		let settle_price = T::PriceSource::get_price(collateral_auction.currency_id, stable_currency_id)
+		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let confiscate_collateral_amount = rstd::cmp::min(
 			settle_price.saturating_mul_int(&collateral_auction.target),

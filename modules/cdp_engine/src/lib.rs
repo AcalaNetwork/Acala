@@ -32,7 +32,7 @@ type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as
 
 pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GlobalStabilityFee: Get<Rate>;
 	type DefaultLiquidationRatio: Get<Ratio>;
@@ -363,7 +363,7 @@ impl<T: Trait> Module<T> {
 
 		if debit_balance.is_zero() {
 			false
-		} else if let Some(feed_price) = T::PriceSource::get_price(stable_currency_id, currency_id) {
+		} else if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 			collateral_ratio < Self::get_liquidation_ratio(currency_id)
@@ -423,7 +423,7 @@ impl<T: Trait> Module<T> {
 		// confiscate collateral in cdp to cdp treasury
 		// and decrease cdp's debit to zero
 		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
-		let settle_price: Price = T::PriceSource::get_price(currency_id, T::GetStableCurrencyId::get())
+		let settle_price: Price = T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let bad_debt_value = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
 		let confiscate_collateral_amount =
@@ -515,7 +515,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>, T::Debit
 		let debit_value = DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance));
 
 		if !debit_value.is_zero() {
-			let feed_price = <T as Trait>::PriceSource::get_price(T::GetStableCurrencyId::get(), currency_id)
+			let feed_price = <T as Trait>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
 				.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);

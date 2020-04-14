@@ -21,7 +21,7 @@ fn set_liquidity_incentive_rate_work() {
 			Rate::from_rational(5, 100)
 		));
 		assert_ok!(DexModule::set_liquidity_incentive_rate(
-			Origin::signed(1),
+			Origin::ROOT,
 			BTC,
 			Rate::from_rational(8, 100)
 		));
