@@ -549,8 +549,7 @@ impl module_loans::Trait for Runtime {
 pub type SubmitTransaction = TransactionSubmitter<(), Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
-	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
-	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
 	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
@@ -594,6 +593,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 
 parameter_types! {
 	pub const GetExchangeFee: Rate = Rate::from_rational(1, 1000);
+	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
 }
 
 impl module_dex::Trait for Runtime {
@@ -937,9 +937,13 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn get_available_unbonded(account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
-			module_staking_pool_rpc_runtime_api::BalanceInfo{
+			module_staking_pool_rpc_runtime_api::BalanceInfo {
 				amount: StakingPool::get_available_unbonded(&account)
 			}
+		}
+
+		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
+			StakingPool::liquid_exchange_rate()
 		}
 	}
 }

@@ -39,5 +39,7 @@ sp_api::decl_runtime_apis! {
 		fn get_available_unbonded(
 			account: AccountId
 		) -> BalanceInfo<Balance>;
+
+		fn get_liquid_staking_exchange_rate() -> support::ExchangeRate;
 	}
 }
