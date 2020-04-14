@@ -10,6 +10,7 @@ codec = { package = "parity-scale-codec", version = "1.3.0", default-features = 
 sp-api = { version = "2.0.0-alpha.5", default-features = false }
 sp-runtime = { version = "2.0.0-alpha.5", default-features = false }
 rstd = { package = "sp-std", version = "2.0.0-alpha.5", default-features = false }
+support = { package = "module-support", path = "../../../support", default-features = false }
 
 [features]
 default = ["std"]
@@ -19,4 +20,5 @@ std = [
 	"sp-api/std",
 	"sp-runtime/std",
 	"rstd/std",
+	"support/std",
 ]

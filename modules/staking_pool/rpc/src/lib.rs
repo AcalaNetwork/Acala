@@ -4,6 +4,7 @@ use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use module_staking_pool_rpc_runtime_api::BalanceInfo;
+use module_support::ExchangeRate;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{
@@ -19,6 +20,9 @@ pub use module_staking_pool_rpc_runtime_api::StakingPoolApi as StakingPoolRuntim
 pub trait StakingPoolApi<BlockHash, AccountId, ResponseType> {
 	#[rpc(name = "stakingPool_getAvailableUnbonded")]
 	fn get_available_unbonded(&self, account: AccountId, at: Option<BlockHash>) -> Result<ResponseType>;
+
+	#[rpc(name = "stakingPool_getLiquidStakingExchangeRate")]
+	fn get_liquid_staking_exchange_rate(&self, at: Option<BlockHash>) -> Result<ExchangeRate>;
 }
 
 /// A struct that implements the [`StakingPoolApi`].
@@ -71,6 +75,19 @@ where
 		api.get_available_unbonded(&at, account).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),
 			message: "Unable to get available unbonded.".into(),
+			data: Some(format!("{:?}", e).into()),
+		})
+	}
+
+	fn get_liquid_staking_exchange_rate(&self, at: Option<<Block as BlockT>::Hash>) -> Result<ExchangeRate> {
+		let api = self.client.runtime_api();
+		let at = BlockId::hash(at.unwrap_or_else(||
+			// If the block hash is not supplied assume the best block.
+			self.client.info().best_hash));
+
+		api.get_liquid_staking_exchange_rate(&at).map_err(|e| RpcError {
+			code: ErrorCode::ServerError(Error::RuntimeError.into()),
+			message: "Unable to get liquid staking exchange rate.".into(),
 			data: Some(format!("{:?}", e).into()),
 		})
 	}

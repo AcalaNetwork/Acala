@@ -937,9 +937,13 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn get_available_unbonded(account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
-			module_staking_pool_rpc_runtime_api::BalanceInfo{
+			module_staking_pool_rpc_runtime_api::BalanceInfo {
 				amount: StakingPool::get_available_unbonded(&account)
 			}
+		}
+
+		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
+			StakingPool::liquid_exchange_rate()
 		}
 	}
 }
