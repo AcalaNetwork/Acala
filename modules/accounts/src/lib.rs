@@ -53,7 +53,7 @@ decl_error! {
 decl_storage! {
 	trait Store for Module<T: Trait> as Accounts {
 		LastFreeTransfers get(fn last_free_transfers): map hasher(twox_64_concat) T::AccountId => Vec<MomentOf<T>>;
-		FreeTransferEnabledAccounts get(fn free_transfer_enabled_accounts): map hasher(twox_64_concat) T::AccountId => Option<()>;
+		FreeTransferEnabledAccounts get(fn free_transfer_enabled_accounts): map hasher(twox_64_concat) T::AccountId => Option<bool>;
 	}
 }
 
@@ -71,7 +71,7 @@ decl_module! {
 			ensure!(T::DepositCurrency::free_balance(&who) > T::FreeTransferDeposit::get(), Error::<T>::NotEnoughBalance);
 
 			T::DepositCurrency::set_lock(ACCOUNTS_ID, &who, T::FreeTransferDeposit::get(), WithdrawReasons::all());
-			<FreeTransferEnabledAccounts<T>>::insert(who, ());
+			<FreeTransferEnabledAccounts<T>>::insert(who, true);
 		}
 
 		fn disable_free_transfers(origin) {
