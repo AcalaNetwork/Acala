@@ -24,7 +24,7 @@ fn enable_free_transfer_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(()));
+		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(true));
 	});
 }
 
@@ -32,7 +32,7 @@ fn enable_free_transfer_work() {
 fn disable_free_transfers_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(()));
+		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(true));
 		assert_ok!(Accounts::disable_free_transfers(Origin::signed(ALICE)));
 		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
 	});
