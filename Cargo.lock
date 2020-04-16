@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "acala-runtime",
  "futures 0.3.4",
@@ -26,7 +26,7 @@ dependencies = [
  "orml-utilities",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
- "parity-util-mem 0.5.2",
+ "parity-util-mem",
  "sc-authority-discovery",
  "sc-basic-authorship",
  "sc-chain-spec",
@@ -65,7 +65,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -2073,7 +2073,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cad096c6849b2ef027fabe35c4aed356d0e3d3f586d0a8361e5e17f1e50a7ce5"
 dependencies = [
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "smallvec 1.2.0",
 ]
 
@@ -2084,7 +2084,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4aa954d12cfac958822dfd77aab34f3eec71f103b918c4ab79ab59a36ee594ea"
 dependencies = [
  "kvdb",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parking_lot 0.10.0",
 ]
 
@@ -2100,7 +2100,7 @@ dependencies = [
  "log",
  "num_cpus",
  "owning_ref",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parking_lot 0.10.0",
  "regex",
  "rocksdb",
@@ -2603,7 +2603,7 @@ dependencies = [
  "ahash",
  "hash-db",
  "hashbrown",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
 ]
 
 [[package]]
@@ -2689,7 +2689,7 @@ dependencies = [
 
 [[package]]
 name = "module-accounts"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2709,7 +2709,7 @@ dependencies = [
 
 [[package]]
 name = "module-airdrop"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2723,7 +2723,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2744,7 +2744,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2768,7 +2768,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2789,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2810,7 +2810,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-rpc"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-rpc-runtime-api"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -2836,7 +2836,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2857,7 +2857,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2874,7 +2874,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-treasury"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2890,7 +2890,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2912,7 +2912,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2933,7 +2933,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2952,7 +2952,7 @@ dependencies = [
 
 [[package]]
 name = "module-polkadot-bridge"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2968,7 +2968,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2984,7 +2984,7 @@ dependencies = [
 
 [[package]]
 name = "module-primitives"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -2993,7 +2993,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3011,7 +3011,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -3027,7 +3027,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc-runtime-api"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "module-support",
  "parity-scale-codec",
@@ -3039,7 +3039,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -3051,7 +3051,7 @@ dependencies = [
 
 [[package]]
 name = "module-template"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3905,27 +3905,15 @@ checksum = "aa9777aa91b8ad9dd5aaa04a9b6bcb02c7f1deb952fca5a66034d5e63afc5c6f"
 
 [[package]]
 name = "parity-util-mem"
-version = "0.5.2"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9344bc978467339b9ae688f9dcf279d1aaa0ccfc88e9a780c729b765a82d57d5"
-dependencies = [
- "cfg-if",
- "impl-trait-for-tuples",
- "jemallocator",
- "parity-util-mem-derive",
- "winapi 0.3.8",
-]
-
-[[package]]
-name = "parity-util-mem"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e42755f26e5ea21a6a819d9e63cbd70713e9867a2b767ec2cc65ca7659532c5"
+checksum = "2c6e2583649a3ca84894d1d71da249abcfda54d5aca24733d72ca10d0f02361c"
 dependencies = [
  "cfg-if",
  "ethereum-types",
  "hashbrown",
  "impl-trait-for-tuples",
+ "jemallocator",
  "lru",
  "parity-util-mem-derive",
  "parking_lot 0.10.0",
@@ -4809,7 +4797,7 @@ dependencies = [
  "log",
  "names",
  "nix",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "regex",
  "rpassword",
  "sc-client-api",
@@ -4917,7 +4905,7 @@ dependencies = [
  "linked-hash-map",
  "log",
  "parity-scale-codec",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parking_lot 0.10.0",
  "sc-client",
  "sc-client-api",
@@ -5156,7 +5144,7 @@ dependencies = [
  "ansi_term 0.12.1",
  "futures 0.3.4",
  "log",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "sc-client-api",
  "sc-network",
  "sc-service",
@@ -5385,7 +5373,7 @@ dependencies = [
  "netstat2",
  "parity-multiaddr 0.7.3",
  "parity-scale-codec",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parking_lot 0.10.0",
  "procfs",
  "sc-chain-spec",
@@ -5428,7 +5416,7 @@ checksum = "f31877c85414ed8e19a480940d7ae340832e7616208072cb43982fdcdd176021"
 dependencies = [
  "log",
  "parity-scale-codec",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parity-util-mem-derive",
  "parking_lot 0.10.0",
  "sc-client-api",
@@ -5484,7 +5472,7 @@ dependencies = [
  "futures 0.3.4",
  "linked-hash-map",
  "log",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parking_lot 0.10.0",
  "serde",
  "sp-blockchain",
@@ -5507,7 +5495,7 @@ dependencies = [
  "intervalier",
  "log",
  "parity-scale-codec",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parking_lot 0.10.0",
  "sc-client-api",
  "sc-transaction-graph",
@@ -6020,7 +6008,7 @@ dependencies = [
  "log",
  "num-traits 0.2.11",
  "parity-scale-codec",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "parking_lot 0.10.0",
  "primitive-types",
  "rand 0.7.3",
@@ -6197,7 +6185,7 @@ dependencies = [
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
- "parity-util-mem 0.6.0",
+ "parity-util-mem",
  "paste",
  "rand 0.7.3",
  "serde",
