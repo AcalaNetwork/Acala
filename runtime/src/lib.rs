@@ -16,7 +16,10 @@ use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Convert, ConvertInto, OpaqueKeys, StaticLookup};
 use sp_runtime::{
-	create_runtime_str, curve::PiecewiseLinear, generic, impl_opaque_keys, transaction_validity::TransactionValidity,
+	create_runtime_str,
+	curve::PiecewiseLinear,
+	generic, impl_opaque_keys,
+	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
 use sp_std::prelude::*;
@@ -72,7 +75,6 @@ pub fn native_version() -> NativeVersion {
 /// to even the core datastructures.
 pub mod opaque {
 	use super::*;
-
 	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
 	/// Opaque block header type.
@@ -344,6 +346,7 @@ impl pallet_session::Trait for Runtime {
 	type ValidatorId = <Self as system::Trait>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
 	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type NextSessionRotation = Babe;
 }
 
 impl pallet_session::historical::Trait for Runtime {
@@ -390,11 +393,13 @@ parameter_types! {
 	pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 	pub const MaxNominatorRewardedPerValidator: u32 = 64;
+	pub const ElectionLookahead: BlockNumber = 25;
+	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
 }
 
 impl pallet_staking::Trait for Runtime {
 	type Currency = Balances;
-	type Time = Timestamp;
+	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVoteHandler;
 	type RewardRemainder = PalletTreasury;
 	type Event = Event;
@@ -407,7 +412,12 @@ impl pallet_staking::Trait for Runtime {
 	type SlashCancelOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>;
 	type SessionInterface = Self;
 	type RewardCurve = RewardCurve;
+	type NextNewSession = Session;
+	type ElectionLookahead = ElectionLookahead;
+	type Call = Call;
 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+	type SubmitTransaction = TransactionSubmitterOf<()>;
+	type UnsignedPriority = StakingUnsignedPriority;
 }
 
 parameter_types! {
@@ -517,6 +527,7 @@ parameter_types! {
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
 	pub const GetAmountAdjustment: Rate = Rate::from_rational(20, 100);
+	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_auction_manager::Trait for Runtime {
@@ -532,7 +543,8 @@ impl module_auction_manager::Trait for Runtime {
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = Prices;
 	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
+	type SubmitTransaction = TransactionSubmitterOf<()>;
+	type UnsignedPriority = AuctionManagerUnsignedPriority;
 }
 
 impl module_loans::Trait for Runtime {
@@ -545,8 +557,8 @@ impl module_loans::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 }
 
-/// A runtime transaction submitter.
-pub type SubmitTransaction = TransactionSubmitter<(), Runtime, UncheckedExtrinsic>;
+/// A transaction submitter with the given key type.
+pub type TransactionSubmitterOf<KeyType> = TransactionSubmitter<KeyType, Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
@@ -556,6 +568,7 @@ parameter_types! {
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
 	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(5, 100);
+	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_cdp_engine::Trait for Runtime {
@@ -574,7 +587,8 @@ impl module_cdp_engine::Trait for Runtime {
 	type Currency = Currencies;
 	type DEX = Dex;
 	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
+	type SubmitTransaction = TransactionSubmitterOf<()>;
+	type UnsignedPriority = CdpEngineUnsignedPriority;
 }
 
 impl module_honzon::Trait for Runtime {
@@ -628,7 +642,6 @@ impl module_accounts::Trait for Runtime {
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type Time = Timestamp;
 	type Currency = Currencies;
-	type Call = Call;
 	type DepositCurrency = Balances;
 }
 
@@ -828,8 +841,11 @@ impl_runtime_apis! {
 	}
 
 	impl sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> for Runtime {
-		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			Executive::validate_transaction(tx)
+		fn validate_transaction(
+			source: TransactionSource,
+			tx: <Block as BlockT>::Extrinsic,
+		) -> TransactionValidity {
+			Executive::validate_transaction(source, tx)
 		}
 	}
 

@@ -6,10 +6,13 @@ mod tests {
 		CurrencyId::{AUSD, XBTC},
 		Runtime,
 	};
-	use frame_support::{assert_noop, assert_ok};
+	use frame_support::{
+		assert_noop, assert_ok,
+		traits::{OnFinalize, OnInitialize},
+	};
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
-	use sp_runtime::{traits::OnFinalize, traits::OnInitialize, DispatchResult};
+	use sp_runtime::DispatchResult;
 
 	const ORACLE1: [u8; 32] = [0u8; 32];
 	const ORACLE2: [u8; 32] = [1u8; 32];
@@ -110,6 +113,7 @@ mod tests {
 			])
 			.build()
 			.execute_with(|| {
+				SystemModule::set_block_number(1);
 				assert_eq!(DexModule::calculate_swap_target_amount(10000, 10000, 10000), 4995);
 				assert!(DexModule::calculate_swap_supply_amount(10000, 10000, 4995) >= 9996);
 
@@ -230,6 +234,7 @@ mod tests {
 			])
 			.build()
 			.execute_with(|| {
+				SystemModule::set_block_number(1);
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as system::Trait>::Origin::ROOT,
 					XBTC,

@@ -1,14 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Encode;
 use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType, IterableStorageDoubleMap,
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+	IsSubType, IterableStorageDoubleMap,
 };
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use rstd::{marker, prelude::*};
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert, EnsureOrigin, Hash, Saturating, UniqueSaturatedInto, Zero},
-	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
+	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
+	transaction_validity::{
+		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
+	},
 	DispatchResult, RandomNumberGenerator,
 };
 use support::{
@@ -51,6 +54,12 @@ pub trait Trait: system::Trait + loans::Trait {
 
 	/// A transaction submitter.
 	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
+
+	/// A configuration for base priority of unsigned transactions.
+	///
+	/// This is exposed so that it can be tuned for particular runtime, when
+	/// multiple modules send unsigned transactions.
+	type UnsignedPriority: Get<TransactionPriority>;
 }
 
 decl_event!(
@@ -139,6 +148,7 @@ decl_module! {
 		const MaxSlippageSwapWithDEX: Ratio = T::MaxSlippageSwapWithDEX::get();
 		const DefaultLiquidationPenalty: Rate = T::DefaultLiquidationPenalty::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -217,6 +227,7 @@ decl_module! {
 		}
 
 		// unsigned tx to liquidate unsafe cdp, submitted by offchain worker
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -228,6 +239,7 @@ decl_module! {
 		}
 
 		// unsigned tx to settle cdp which has debit, submitted by offchain worker
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -564,26 +576,19 @@ impl<T: Trait> OnEmergencyShutdown for Module<T> {
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
-	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
+	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		match call {
 			Call::liquidate(currency_id, who) => {
 				if !Self::is_cdp_unsafe(*currency_id, &who) || Self::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}
 
-				Ok(ValidTransaction {
-					priority: TransactionPriority::max_value(),
-					requires: vec![],
-					provides: vec![(
-						"CDPEngineOffchain",
-						<system::Module<T>>::block_number(),
-						currency_id,
-						who,
-					)
-						.encode()],
-					longevity: 64_u64,
-					propagate: true,
-				})
+				ValidTransaction::with_tag_prefix("CDPEngineOffchainWorker")
+					.priority(T::UnsignedPriority::get())
+					.and_provides((<system::Module<T>>::block_number(), currency_id, who))
+					.longevity(64_u64)
+					.propagate(true)
+					.build()
 			}
 			Call::settle(currency_id, who) => {
 				let debit_balance = <loans::Module<T>>::debits(currency_id, who);
@@ -591,13 +596,12 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 					return InvalidTransaction::Stale.into();
 				}
 
-				Ok(ValidTransaction {
-					priority: TransactionPriority::max_value(),
-					requires: vec![],
-					provides: vec![("CDPEngineOffchain", currency_id, who).encode()],
-					longevity: 64_u64,
-					propagate: true,
-				})
+				ValidTransaction::with_tag_prefix("CDPEngineOffchainWorker")
+					.priority(T::UnsignedPriority::get())
+					.and_provides((currency_id, who))
+					.longevity(64_u64)
+					.propagate(true)
+					.build()
 			}
 			_ => InvalidTransaction::Call.into(),
 		}

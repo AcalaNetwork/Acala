@@ -10,6 +10,7 @@ use sp_runtime::traits::BadOrigin;
 #[test]
 fn airdrop_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(Airdrop::airdrop(Origin::signed(BOB), ALICE, KAR, 10000), BadOrigin,);
 		assert_ok!(Airdrop::airdrop(Origin::ROOT, ALICE, KAR, 10000));
 		let airdrop_event = TestEvent::airdrop(RawEvent::Airdrop(ALICE, KAR, 10000));
@@ -21,6 +22,7 @@ fn airdrop_work() {
 #[test]
 fn update_airdrop_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(Airdrop::airdrop(Origin::ROOT, ALICE, ACA, 10000));
 		assert_ok!(Airdrop::airdrop(Origin::ROOT, ALICE, ACA, 10000));
 		assert_eq!(Airdrop::airdrops(ALICE, ACA), 20000);

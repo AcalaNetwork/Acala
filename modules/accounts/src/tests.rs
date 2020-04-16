@@ -99,7 +99,7 @@ fn charges_fee() {
 		let fee = 42 + 23 * 2 + 1000; // base + len * byte + weight
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL, INFO, 23)
+				.validate(&ALICE, CALL, &INFO, 23)
 				.unwrap()
 				.priority,
 			fee
@@ -109,7 +109,7 @@ fn charges_fee() {
 		let fee2 = 42 + 18 * 2 + 1000; // base + len * byte + weight
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL2, INFO, 18)
+				.validate(&ALICE, CALL2, &INFO, 18)
 				.unwrap()
 				.priority,
 			fee2
@@ -125,7 +125,7 @@ fn enabled_free_transaction_not_charges_fee() {
 
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL, INFO, 23)
+				.validate(&ALICE, CALL, &INFO, 23)
 				.unwrap()
 				.priority,
 			0
@@ -141,7 +141,7 @@ fn enabled_free_transaction_charges_tip() {
 
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(100)
-				.validate(&ALICE, CALL, INFO, 23)
+				.validate(&ALICE, CALL, &INFO, 23)
 				.unwrap()
 				.priority,
 			100
@@ -158,7 +158,7 @@ fn enabled_free_transaction_charges_other_call() {
 		let fee = 42 + 23 * 2 + 1000; // base + len * byte + weight
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL2, INFO, 23)
+				.validate(&ALICE, CALL2, &INFO, 23)
 				.unwrap()
 				.priority,
 			fee
@@ -175,7 +175,7 @@ fn enabled_free_transaction_charges_other_call_with_tip() {
 		let fee = 42 + 23 * 2 + 1000 + 100; // base + len * byte + weight + tip
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(100)
-				.validate(&ALICE, CALL2, INFO, 23)
+				.validate(&ALICE, CALL2, &INFO, 23)
 				.unwrap()
 				.priority,
 			fee

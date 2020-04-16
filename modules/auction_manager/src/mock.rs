@@ -41,19 +41,12 @@ impl_outer_event! {
 // Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
+
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 1;
-	pub const CreationFee: u64 = 2;
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
-	pub const AuctionTimeToClose: u64 = 100;
-	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 pub type AccountId = u64;
@@ -86,6 +79,10 @@ impl system::Trait for Runtime {
 }
 pub type System = system::Module<Runtime>;
 
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
@@ -106,6 +103,10 @@ pub type Auction = orml_auction::Module<Runtime>;
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
+}
+
+parameter_types! {
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
 
 impl cdp_treasury::Trait for Runtime {
@@ -137,6 +138,15 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 pub type Extrinsic = TestXt<Call, ()>;
 type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
 
+parameter_types! {
+	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const AuctionTimeToClose: u64 = 100;
+	pub const AuctionDurationSoftCap: u64 = 2000;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const UnsignedPriority: u64 = 1 << 20;
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
@@ -151,6 +161,7 @@ impl Trait for Runtime {
 	type PriceSource = MockPriceSource;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 

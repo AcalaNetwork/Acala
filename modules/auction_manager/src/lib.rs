@@ -11,7 +11,9 @@ use rstd::{
 };
 use sp_runtime::{
 	traits::{BlakeTwo256, CheckedAdd, CheckedSub, Hash, Saturating, Zero},
-	transaction_validity::{InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction},
+	transaction_validity::{
+		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
+	},
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
 use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Rate};
@@ -76,6 +78,12 @@ pub trait Trait: system::Trait {
 
 	/// A transaction submitter.
 	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
+
+	/// A configuration for base priority of unsigned transactions.
+	///
+	/// This is exposed so that it can be tuned for particular runtime, when
+	/// multiple modules send unsigned transactions.
+	type UnsignedPriority: Get<TransactionPriority>;
 }
 
 decl_event!(
@@ -131,6 +139,7 @@ decl_module! {
 		const GetNativeCurrencyId: CurrencyIdOf<T> = T::GetNativeCurrencyId::get();
 		const GetAmountAdjustment: Rate = T::GetAmountAdjustment::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
 			ensure_none(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
@@ -802,7 +811,7 @@ impl<T: Trait> OnEmergencyShutdown for Module<T> {
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
-	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
+	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		if let Call::cancel(auction_id) = call {
 			if !Self::is_shutdown() {
 				return InvalidTransaction::Stale.into();
@@ -814,13 +823,12 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 				return InvalidTransaction::Stale.into();
 			}
 
-			Ok(ValidTransaction {
-				priority: TransactionPriority::max_value(),
-				requires: vec![],
-				provides: vec![("AuctionManagerOffchain", auction_id).encode()],
-				longevity: 64_u64,
-				propagate: true,
-			})
+			ValidTransaction::with_tag_prefix("AuctionManagerOffchainWorker")
+				.priority(T::UnsignedPriority::get())
+				.and_provides(auction_id)
+				.longevity(64_u64)
+				.propagate(true)
+				.build()
 		} else {
 			InvalidTransaction::Call.into()
 		}

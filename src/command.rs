@@ -1,24 +1,66 @@
-use crate::chain_spec;
-use crate::cli::Cli;
-use crate::service;
-use sc_cli::VersionInfo;
+use crate::{
+	chain_spec,
+	cli::{Cli, Subcommand},
+	service,
+};
+use sc_cli::{Result, SubstrateCli};
 
-/// Parse and run command line arguments
-pub fn run(version: VersionInfo) -> sc_cli::Result<()> {
-	let opt = sc_cli::from_args::<Cli>(&version);
+impl SubstrateCli for Cli {
+	fn impl_name() -> &'static str {
+		"Acala Node"
+	}
 
-	let mut config = sc_service::Configuration::from_version(&version);
+	fn impl_version() -> &'static str {
+		env!("CARGO_PKG_VERSION")
+	}
 
-	match opt.subcommand {
-		Some(subcommand) => {
-			subcommand.init(&version)?;
-			subcommand.update_config(&mut config, chain_spec::load_spec, &version)?;
-			subcommand.run(config, |config: _| Ok(new_full_start!(config).0))
-		}
+	fn description() -> &'static str {
+		env!("CARGO_PKG_DESCRIPTION")
+	}
+
+	fn author() -> &'static str {
+		"Acala Developers"
+	}
+
+	fn support_url() -> &'static str {
+		"https://github.com/AcalaNetwork/Acala/issues"
+	}
+
+	fn copyright_start_year() -> i32 {
+		2020
+	}
+
+	fn executable_name() -> &'static str {
+		"acala"
+	}
+
+	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
+		Ok(match id {
+			"dev" => Box::new(chain_spec::development_testnet_config()),
+			"local" => Box::new(chain_spec::local_testnet_config()),
+			"" | "mandala" => Box::new(chain_spec::mandala_testnet_config()?),
+			"mandala-latest" => Box::new(chain_spec::latest_mandala_testnet_config()),
+			path => Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
+		})
+	}
+}
+
+/// Parse command line arguments into service configuration.
+pub fn run() -> Result<()> {
+	sc_cli::reset_signal_pipe_handler()?;
+
+	let cli = Cli::from_args();
+
+	match &cli.subcommand {
 		None => {
-			opt.run.init(&version)?;
-			opt.run.update_config(&mut config, chain_spec::load_spec, &version)?;
-			opt.run.run(config, service::new_light, service::new_full, &version)
+			let runner = cli.create_runner(&cli.run)?;
+			runner.run_node(service::new_light, service::new_full, runtime::VERSION)
+		}
+
+		Some(Subcommand::Base(subcommand)) => {
+			let runner = cli.create_runner(subcommand)?;
+
+			runner.run_subcommand(subcommand, |config| Ok(new_full_start!(config).0))
 		}
 	}
 }

@@ -51,6 +51,7 @@ decl_module! {
 
 		fn deposit_event() = default;
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn liquidate_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
 			let _ = ensure_signed(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
@@ -58,6 +59,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn settle_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
 			let _ = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
@@ -65,6 +67,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -77,6 +80,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn adjust_collateral_after_shutdown(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -87,6 +91,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, -collateral_adjustment, Zero::zero())?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -102,6 +107,7 @@ decl_module! {
 		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` loan
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -116,6 +122,7 @@ decl_module! {
 		}
 
 		/// `origin` refuse `to` to manipulate the loan  of `currency_id`
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -130,6 +137,7 @@ decl_module! {
 		}
 
 		/// `origin` refuse anyone to manipulate its loan
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
 

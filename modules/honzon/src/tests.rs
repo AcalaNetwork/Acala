@@ -51,6 +51,7 @@ fn liquidate_unsafe_cdp_work() {
 #[test]
 fn authorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 
 		let authorization_event = TestEvent::honzon(RawEvent::Authorization(ALICE, BOB, BTC));
@@ -65,6 +66,7 @@ fn authorize_should_work() {
 #[test]
 fn unauthorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
@@ -84,6 +86,7 @@ fn unauthorize_should_work() {
 #[test]
 fn unauthorize_all_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, CAROL));
 		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));

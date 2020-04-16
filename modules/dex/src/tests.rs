@@ -3,9 +3,9 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
 use mock::{DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL, DOT};
-use sp_runtime::traits::{BadOrigin, OnInitialize};
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn set_liquidity_incentive_rate_work() {
@@ -143,6 +143,7 @@ fn make_sure_get_supply_amount_needed_can_affort_target() {
 #[test]
 fn add_liquidity_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(
 			DexModule::add_liquidity(Origin::signed(ALICE), AUSD, 10000, 2000),
 			Error::<Runtime>::CurrencyIdNotAllowed,
@@ -308,6 +309,7 @@ fn add_liquidity_and_calculate_interest() {
 #[test]
 fn withdraw_liquidity_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(DexModule::liquidity_pool(BTC), (0, 0));
 		assert_eq!(DexModule::total_shares(BTC), 0);
 		assert_eq!(DexModule::shares(BTC, ALICE), 0);
@@ -334,6 +336,7 @@ fn withdraw_liquidity_work() {
 #[test]
 fn swap_other_to_base_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10000, 10000000));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, BTC, 10000));
@@ -361,6 +364,7 @@ fn swap_other_to_base_work() {
 #[test]
 fn swap_base_to_other_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10000, 10000));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, AUSD, 10000));
@@ -388,6 +392,7 @@ fn swap_base_to_other_work() {
 #[test]
 fn swap_other_to_other_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 100, 10000));
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 1000, 10000));
 		assert_eq!(DexModule::liquidity_pool(BTC), (100, 10000));

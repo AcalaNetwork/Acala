@@ -3,12 +3,12 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
 use mock::{
 	CDPEngineModule, CDPTreasuryModule, Currencies, DefaultDebitExchangeRate, DefaultLiquidationPenalty,
 	DefaultLiquidationRatio, ExtBuilder, LoansModule, Origin, Runtime, System, TestEvent, ACA, ALICE, AUSD, BTC, DOT,
 };
-use sp_runtime::traits::{BadOrigin, OnFinalize};
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn is_cdp_unsafe_work() {
@@ -94,6 +94,7 @@ fn get_liquidation_ratio_work() {
 #[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(
 			CDPEngineModule::set_collateral_params(
 				Origin::signed(5),
@@ -323,6 +324,7 @@ fn remain_debit_value_too_small_check() {
 #[test]
 fn liquidate_unsafe_cdp_by_collateral_auction() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
@@ -448,6 +450,7 @@ fn emergency_shutdown_work() {
 #[test]
 fn settle_cdp_has_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,

@@ -218,6 +218,7 @@ type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrin
 
 parameter_types! {
 	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
+	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
 impl cdp_engine::Trait for Runtime {
@@ -237,6 +238,7 @@ impl cdp_engine::Trait for Runtime {
 	type DEX = ();
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = cdp_engine::Module<Runtime>;
 
