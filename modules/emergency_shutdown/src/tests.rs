@@ -10,6 +10,7 @@ use sp_runtime::traits::BadOrigin;
 #[test]
 fn emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), false);
 		assert_eq!(CDPTreasuryModule::is_shutdown(), false);
 		assert_noop!(
@@ -45,6 +46,7 @@ fn open_collateral_refund_fail() {
 #[test]
 fn open_collateral_refund_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(EmergencyShutdownModule::can_refund(), false);
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::ROOT));
 		assert_noop!(

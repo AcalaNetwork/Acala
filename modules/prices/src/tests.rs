@@ -67,6 +67,7 @@ fn lock_price_work() {
 #[test]
 fn lock_price_call_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(PricesModule::lock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::lock_price(Origin::ROOT, BTC));
 
@@ -80,6 +81,7 @@ fn lock_price_call_work() {
 #[test]
 fn unlock_price_call_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		<LockedPrice<Runtime>>::insert(BTC, Price::from_natural(8000));
 		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));

@@ -12,8 +12,8 @@ use mock::{
 #[test]
 fn new_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
-
 		let new_collateral_auction_event = TestEvent::auction_manager(RawEvent::NewCollateralAuction(0, BTC, 10, 100));
 		assert!(System::events()
 			.iter()
@@ -28,8 +28,8 @@ fn new_collateral_auction_work() {
 #[test]
 fn new_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		AuctionManagerModule::new_debit_auction(200, 100);
-
 		let new_debit_auction_event = TestEvent::auction_manager(RawEvent::NewDebitAuction(0, 200, 100));
 		assert!(System::events()
 			.iter()
@@ -43,8 +43,8 @@ fn new_debit_auction_work() {
 #[test]
 fn new_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		AuctionManagerModule::new_surplus_auction(100);
-
 		let new_surplus_auction_event = TestEvent::auction_manager(RawEvent::NewSurplusAuction(0, 100));
 		assert!(System::events()
 			.iter()
@@ -288,6 +288,7 @@ fn on_auction_ended_for_surplus_auction_work() {
 #[test]
 fn cancel_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(
 			AuctionManagerModule::cancel_surplus_auction(0),
 			Error::<Runtime>::AuctionNotExsits
@@ -316,6 +317,7 @@ fn cancel_surplus_auction_work() {
 #[test]
 fn cancel_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(
 			AuctionManagerModule::cancel_debit_auction(0),
 			Error::<Runtime>::AuctionNotExsits
@@ -374,6 +376,7 @@ fn cancel_collateral_auction_fail() {
 #[test]
 fn cancel_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
 		assert_ok!(CDPTreasuryModule::transfer_collateral_from(BTC, &CAROL, 10));

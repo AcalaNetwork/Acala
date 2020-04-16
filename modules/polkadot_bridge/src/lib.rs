@@ -63,6 +63,7 @@ decl_module! {
 		const BondingDuration: EraIndex = T::BondingDuration::get();
 		const EraLength: T::BlockNumber = T::EraLength::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_mock_reward_rate(origin, mock_reward_rate: Option<Rate>) {
 			ensure_root(origin)?;
 			if let Some(mock_reward_rate) = mock_reward_rate {
@@ -72,26 +73,31 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn simulate_bond(origin, amount: BalanceOf<T>) {
 			ensure_root(origin)?;
 			Self::bond_extra(amount)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn simulate_unbond(origin, amount: BalanceOf<T>) {
 			ensure_root(origin)?;
 			Self::unbond(amount)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn simulate_withdraw_unbonded(origin) {
 			let _ = ensure_signed(origin)?;
 			Self::withdraw_unbonded();
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn simulate_slash(origin, amount: BalanceOf<T>) {
 			ensure_root(origin)?;
 			<Bonded<T>>::mutate(|balance| *balance = balance.saturating_sub(amount));
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn simualte_receive(origin, to: T::AccountId, amount: BalanceOf<T>) {
 			ensure_root(origin)?;
 			let new_available = Self::available().checked_sub(&amount).ok_or(Error::<T>::NotEnough)?;
@@ -99,6 +105,7 @@ decl_module! {
 			<Available<T>>::put(new_available);
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: BalanceOf<T>) {
 			let from = ensure_signed(origin)?;
 			let new_available = Self::available().checked_add(&amount).ok_or(Error::<T>::Overflow)?;
@@ -106,6 +113,7 @@ decl_module! {
 			<Available<T>>::put(new_available);
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn force_era(origin, at: T::BlockNumber) {
 			ensure_root(origin)?;
 			if at > <system::Module<T>>::block_number() {

@@ -135,6 +135,7 @@ decl_module! {
 		const NominateesCount: u32 = T::NominateesCount::get() as u32;
 		const MaxUnlockingChunks: u32 = T::MaxUnlockingChunks::get() as u32;
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn bond(origin, #[compact] amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 
@@ -153,6 +154,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn unbond(origin, amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 
@@ -186,6 +188,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn rebond(origin, amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			let ledger = Self::ledger(&who);
@@ -201,6 +204,7 @@ decl_module! {
 			Self::update_ledger(&who, &ledger);
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn withdraw_unbonded(origin) {
 			let who = ensure_signed(origin)?;
 			let ledger = Self::ledger(&who).consolidate_unlocked(Self::current_era());
@@ -213,6 +217,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn nominate(origin, targets: Vec<T::PolkadotAccountId>) {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -235,6 +240,7 @@ decl_module! {
 			<Nominations<T>>::insert(&who, &targets);
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn chill(origin) {
 			let who = ensure_signed(origin)?;
 

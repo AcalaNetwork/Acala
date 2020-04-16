@@ -1,9 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureOrigin, Saturating, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
 	DispatchResult, ModuleId,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
@@ -87,6 +90,7 @@ decl_module! {
 		// module constant
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<BalanceOf<T>>,
@@ -115,6 +119,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())

@@ -1,12 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+	weights::{SimpleDispatchInfo, WeighData, Weight},
+	Parameter,
+};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use rstd::prelude::Vec;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, EnsureOrigin, MaybeSerializeDeserialize, Member,
-		Saturating, UniqueSaturatedInto, Zero,
+		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating,
+		UniqueSaturatedInto, Zero,
 	},
 	DispatchError, DispatchResult, ModuleId,
 };
@@ -90,6 +95,7 @@ decl_module! {
 		const GetBaseCurrencyId: CurrencyIdOf<T> = T::GetBaseCurrencyId::get();
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_liquidity_incentive_rate(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -102,11 +108,13 @@ decl_module! {
 			<LiquidityIncentiveRate<T>>::insert(currency_id, liquidity_incentive_rate);
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyIdOf<T>) {
 			let who = ensure_signed(origin)?;
 			Self::claim_interest(currency_id, &who)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyIdOf<T>,
@@ -130,6 +138,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyIdOf<T>,
@@ -204,6 +213,7 @@ decl_module! {
 			));
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyIdOf<T>, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -245,10 +255,12 @@ decl_module! {
 			));
 		}
 
-		fn on_initialize(_n: T::BlockNumber) {
+		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			for currency_id in T::EnabledCurrencyIds::get() {
 				Self::accumulate_interest(currency_id);
 			}
+
+			SimpleDispatchInfo::default().weigh_data(())
 		}
 	}
 }

@@ -1,8 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_event, decl_module, decl_storage, traits::Get, Parameter};
+use frame_support::{
+	decl_event, decl_module, decl_storage,
+	traits::{EnsureOrigin, Get},
+	Parameter,
+};
 use orml_traits::DataProvider;
-use sp_runtime::traits::{EnsureOrigin, MaybeSerializeDeserialize, Member};
+use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use support::{ExchangeRateProvider, Price, PriceProvider};
 use system::ensure_root;
 
@@ -43,6 +47,7 @@ decl_module! {
 		const GetStableCurrencyId: T::CurrencyId = T::GetStableCurrencyId::get();
 		const StableCurrencyFixedPrice: Price = T::StableCurrencyFixedPrice::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		fn lock_price(origin, currency_id: T::CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())
@@ -51,6 +56,7 @@ decl_module! {
 			<Module<T> as PriceProvider<T::CurrencyId>>::lock_price(currency_id);
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		fn unlock_price(origin, currency_id: T::CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())

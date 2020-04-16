@@ -21,11 +21,13 @@ pub trait Trait: system::Trait {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn mint(origin, #[compact] amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			T::Homa::mint(&who, amount)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn redeem(origin, #[compact] amount: BalanceOf<T>, strategy: RedeemStrategy) {
 			let who = ensure_signed(origin)?;
 			match strategy {
@@ -41,6 +43,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn withdraw_redemption(origin) {
 			let who = ensure_signed(origin)?;
 			T::Homa::withdraw_redemption(&who)?;

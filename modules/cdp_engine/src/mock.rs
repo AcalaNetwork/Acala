@@ -235,6 +235,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
+	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
 impl Trait for Runtime {
@@ -254,6 +255,7 @@ impl Trait for Runtime {
 	type DEX = DEXModule;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = Module<Runtime>;
 

@@ -11,6 +11,7 @@ use mock::{
 #[test]
 fn claim_period_percent_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1000);
 		assert_noop!(
 			StakingPoolModule::bond(&ALICE, 1001),
@@ -57,6 +58,7 @@ fn withdraw_unbonded_work() {
 #[test]
 fn redeem_by_unbond_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
 		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
 		assert_eq!(StakingPoolModule::total_bonded(), 2000);
@@ -91,6 +93,7 @@ fn redeem_by_unbond_work() {
 #[test]
 fn redeem_by_free_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
 		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
 		<TotalBonded<Runtime>>::mutate(|bonded| *bonded -= 1500);
@@ -131,6 +134,7 @@ fn redeem_by_free_unbonded_work() {
 #[test]
 fn redeem_by_claim_unbonding_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
 		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
 		<TotalBonded<Runtime>>::mutate(|bonded| *bonded -= 1500);

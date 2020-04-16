@@ -1,14 +1,15 @@
+//! Acala chain configurations.
+
 use hex_literal::hex;
-use module_support::Rate;
 use orml_utilities::FixedU128;
 use runtime::{
-	opaque::Block, opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-	CurrencyId, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig,
-	GrandpaConfig, IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig, Signature,
-	StakerStatus, StakingConfig, SudoConfig, SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
+	opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, Block, CdpEngineConfig, CdpTreasuryConfig, CurrencyId,
+	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
+	IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus,
+	StakingConfig, SudoConfig, SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
-use sc_service;
+use sc_service::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde::{Deserialize, Serialize};
 use serde_json::map::Map;
@@ -19,7 +20,9 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::Perbill;
 
 // Note this is the URL for the telemetry server
-//const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
+const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
+
+type AccountPublic = <Signature as Verify>::Signer;
 
 /// Node `ChainSpec` extensions.
 ///
@@ -34,23 +37,12 @@ pub struct Extensions {
 	pub bad_blocks: sc_client::BadBlocks<Block>,
 }
 
-/// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
+/// Specialized `ChainSpec`.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
 
-/// The chain specification option. This is expected to come in from the CLI and
-/// is little more than one of a number of alternatives which can easily be converted
-/// from a string (`--chain=...`) into a `ChainSpec`.
-#[derive(Clone, Debug)]
-pub enum Alternative {
-	/// Whatever the current runtime is, with just Alice as an auth.
-	Development,
-	/// Whatever the current runtime is, with simple Alice/Bob auths.
-	LocalTestnet,
-	MandalaTestnet,
-	MandalaTestnetLatest,
+fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
+	SessionKeys { grandpa, babe }
 }
-
-type AccountPublic = <Signature as Verify>::Signer;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -77,155 +69,157 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 	)
 }
 
-impl Alternative {
-	/// Get an actual chain config from one of the alternatives.
-	pub(crate) fn load(self) -> Result<ChainSpec, String> {
-		let mut properties = Map::new();
-		properties.insert("tokenSymbol".into(), "ACA".into());
-		properties.insert("tokenDecimals".into(), 18.into());
+// let mut properties = Map::new();
+// properties.insert("tokenSymbol".into(), "ACA".into());
+// properties.insert("tokenDecimals".into(), 18.into());
 
-		Ok(match self {
-			Alternative::Development => ChainSpec::from_genesis(
-				"Development",
-				"dev",
-				|| {
-					testnet_genesis(
-						vec![get_authority_keys_from_seed("Alice")],
-						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						vec![
-							get_account_id_from_seed::<sr25519::Public>("Alice"),
-							get_account_id_from_seed::<sr25519::Public>("Bob"),
-							get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-							get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-						],
-					)
-				},
-				vec![],
-				None,
-				None,
-				Some(properties),
-				Default::default(),
-			),
-			Alternative::LocalTestnet => ChainSpec::from_genesis(
-				"Local Testnet",
-				"local_testnet",
-				|| {
-					testnet_genesis(
-						vec![
-							get_authority_keys_from_seed("Alice"),
-							get_authority_keys_from_seed("Bob"),
-						],
-						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						vec![
-							get_account_id_from_seed::<sr25519::Public>("Alice"),
-							get_account_id_from_seed::<sr25519::Public>("Bob"),
-							get_account_id_from_seed::<sr25519::Public>("Charlie"),
-							get_account_id_from_seed::<sr25519::Public>("Dave"),
-							get_account_id_from_seed::<sr25519::Public>("Eve"),
-							get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-							get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-							get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-							get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-							get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-							get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-							get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-						],
-					)
-				},
-				vec![],
-				None,
-				None,
-				Some(properties),
-				Default::default(),
-			),
-			Alternative::MandalaTestnet => {
-				ChainSpec::from_json_bytes(&include_bytes!("../resources/mandala-dist.json")[..])?
-			}
-			Alternative::MandalaTestnetLatest => {
-				ChainSpec::from_genesis(
-					"Acala Mandala TC2",
-					"mandala22",
-					|| {
-						// SECRET="..."
-						// ./target/debug/subkey inspect "$SECRET//acala//root"
-						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//oracle"
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//validator"
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//babe"
-						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//1//grandpa"
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//validator"
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//babe"
-						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//2//grandpa"
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//validator"
-						// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//babe"
-						// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
-						mandala_genesis(
-							vec![
-								(
-									// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
-									hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
-									hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
-									hex!["21b5a771b99ef0f059c476502c018c4b817fb0e48858e95a238850d2b7828556"]
-										.unchecked_into(),
-									hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
-										.unchecked_into(),
-								),
-								(
-									// 5FnLzAUmXeTZg5J9Ao5psKU68oA5PBekXqhrZCKDbhSCQi88
-									hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
-									hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
-									hex!["77f3c27e98da7849ed0749e1dea449321a4a5a36a1dccf3f08fc0ab3af24c62e"]
-										.unchecked_into(),
-									hex!["b4f5713322656d29930aa89efa5509554a36c40fb50a226eae0f38fc1a6ceb25"]
-										.unchecked_into(),
-								),
-								(
-									// 5Gn5LuLuWNcY21Vue4QcFFD3hLvjQY3weMHXuEyejUbUnArt
-									hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
-									hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
-									hex!["c5dfcf68ccf1a64ed4145383e4bbbb8bbcc50f654d87187c39df2b88a9683b7f"]
-										.unchecked_into(),
-									hex!["4cc54799f38715771605a21e8272a7a1344667e4681611988a913412755a8a04"]
-										.unchecked_into(),
-								),
-							],
-							// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-							hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-							vec![
-								// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-								hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-								// 5GeTpaLR637ztQqFvwCZocZhLp1QqHURKH6Gj7CZteRCAhMs
-								hex!["cab00722883a824e7fc368ff2ad53ffcce3fa3b794080311218bee8e902929df"].into(),
-							],
-						)
-					},
-					vec![
-						"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA".into(),
-					],
-					Some(TelemetryEndpoints::new(vec![(
-						"wss://telemetry.polkadot.io/submit/".into(),
-						0,
-					)])),
-					Some("mandala2"),
-					Some(properties),
-					Default::default(),
-				)
-			}
-		})
-	}
+/// Development config (single validator Alice)
+pub fn development_testnet_config() -> ChainSpec {
+	let mut properties = Map::new();
+	properties.insert("tokenSymbol".into(), "ACA".into());
+	properties.insert("tokenDecimals".into(), 18.into());
 
-	pub(crate) fn from(s: &str) -> Option<Self> {
-		match s {
-			"dev" => Some(Alternative::Development),
-			"local" => Some(Alternative::LocalTestnet),
-			"" | "mandala" => Some(Alternative::MandalaTestnet),
-			"mandala-latest" => Some(Alternative::MandalaTestnetLatest),
-			_ => None,
-		}
-	}
+	ChainSpec::from_genesis(
+		"Development",
+		"dev",
+		ChainType::Development,
+		|| {
+			testnet_genesis(
+				vec![get_authority_keys_from_seed("Alice")],
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+				],
+			)
+		},
+		vec![],
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
 }
 
-fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
-	SessionKeys { grandpa, babe }
+/// Local testnet config (multivalidator Alice + Bob)
+pub fn local_testnet_config() -> ChainSpec {
+	let mut properties = Map::new();
+	properties.insert("tokenSymbol".into(), "ACA".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	ChainSpec::from_genesis(
+		"Local",
+		"local",
+		ChainType::Local,
+		|| {
+			testnet_genesis(
+				vec![
+					get_authority_keys_from_seed("Alice"),
+					get_authority_keys_from_seed("Bob"),
+				],
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+				],
+			)
+		},
+		vec![],
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+/// Mandala testnet generator
+pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../resources/mandala-dist.json")[..])
+}
+
+/// latest Mandala testnet config
+pub fn latest_mandala_testnet_config() -> ChainSpec {
+	let mut properties = Map::new();
+	properties.insert("tokenSymbol".into(), "ACA".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	ChainSpec::from_genesis(
+		"Acala Mandala TC2",
+		"mandala22",
+		ChainType::Live,
+		|| // SECRET="..."
+		// ./target/debug/subkey inspect "$SECRET//acala//root"
+		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//oracle"
+		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//validator"
+		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//babe"
+		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//1//grandpa"
+		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//validator"
+		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//babe"
+		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//2//grandpa"
+		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//validator"
+		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//babe"
+		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
+		mandala_genesis(
+			vec![
+				(
+					// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
+					hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
+					hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
+					hex!["21b5a771b99ef0f059c476502c018c4b817fb0e48858e95a238850d2b7828556"]
+						.unchecked_into(),
+					hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
+						.unchecked_into(),
+				),
+				(
+					// 5FnLzAUmXeTZg5J9Ao5psKU68oA5PBekXqhrZCKDbhSCQi88
+					hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
+					hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
+					hex!["77f3c27e98da7849ed0749e1dea449321a4a5a36a1dccf3f08fc0ab3af24c62e"]
+						.unchecked_into(),
+					hex!["b4f5713322656d29930aa89efa5509554a36c40fb50a226eae0f38fc1a6ceb25"]
+						.unchecked_into(),
+				),
+				(
+					// 5Gn5LuLuWNcY21Vue4QcFFD3hLvjQY3weMHXuEyejUbUnArt
+					hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
+					hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
+					hex!["c5dfcf68ccf1a64ed4145383e4bbbb8bbcc50f654d87187c39df2b88a9683b7f"]
+						.unchecked_into(),
+					hex!["4cc54799f38715771605a21e8272a7a1344667e4681611988a913412755a8a04"]
+						.unchecked_into(),
+				),
+			],
+			// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+			hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+			vec![
+				// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+				hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+				// 5GeTpaLR637ztQqFvwCZocZhLp1QqHURKH6Gj7CZteRCAhMs
+				hex!["cab00722883a824e7fc368ff2ad53ffcce3fa3b794080311218bee8e902929df"].into(),
+			],
+		),
+		vec![
+			"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA"
+				.parse()
+				.unwrap(),
+		],
+		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
+		Some("mandala2"),
+		Some(properties),
+		Default::default(),
+	)
 }
 
 const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
@@ -336,9 +330,9 @@ fn testnet_genesis(
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
-				(CurrencyId::DOT, Rate::from_natural(0)),
-				(CurrencyId::XBTC, Rate::from_natural(0)),
-				(CurrencyId::LDOT, Rate::from_natural(0)),
+				(CurrencyId::DOT, FixedU128::from_natural(0)),
+				(CurrencyId::XBTC, FixedU128::from_natural(0)),
+				(CurrencyId::LDOT, FixedU128::from_natural(0)),
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
@@ -447,20 +441,13 @@ fn mandala_genesis(
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
-				(CurrencyId::DOT, Rate::from_natural(0)),
-				(CurrencyId::XBTC, Rate::from_natural(0)),
-				(CurrencyId::LDOT, Rate::from_natural(0)),
+				(CurrencyId::DOT, FixedU128::from_natural(0)),
+				(CurrencyId::XBTC, FixedU128::from_natural(0)),
+				(CurrencyId::LDOT, FixedU128::from_natural(0)),
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::from_natural(0),
 		}),
 	}
-}
-
-pub fn load_spec(id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-	Ok(match Alternative::from(id) {
-		Some(spec) => Box::new(spec.load()?),
-		None => Box::new(ChainSpec::from_json_file(std::path::PathBuf::from(id))?),
-	})
 }

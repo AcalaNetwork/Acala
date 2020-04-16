@@ -9,13 +9,13 @@ use frame_support::{
 		Currency, ExistenceRequirement, Get, LockIdentifier, LockableCurrency, OnKilledAccount, OnUnbalanced, Time,
 		WithdrawReason, WithdrawReasons,
 	},
-	weights::DispatchInfo,
-	IsSubType, Parameter,
+	weights::{DispatchInfo, PostDispatchInfo},
+	IsSubType,
 };
 use orml_traits::MultiCurrency;
 use rstd::prelude::*;
 use sp_runtime::{
-	traits::{SaturatedConversion, Saturating, SignedExtension, Zero},
+	traits::{DispatchInfoOf, SaturatedConversion, Saturating, SignedExtension, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
@@ -38,9 +38,6 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	type FreeTransferDeposit: Get<DepositBalanceOf<Self>>;
 	type Time: Time;
 	type Currency: MultiCurrency<Self::AccountId> + Send + Sync;
-	type Call: Parameter
-		+ Dispatchable<Origin = <Self as system::Trait>::Origin>
-		+ IsSubType<orml_currencies::Module<Self>, Self>;
 	type DepositCurrency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 }
 
@@ -65,6 +62,7 @@ decl_module! {
 		const FreeTransferPeriod: MomentOf<T> = T::FreeTransferPeriod::get();
 		const FreeTransferDeposit: DepositBalanceOf<T> = T::FreeTransferDeposit::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		fn enable_free_transfer(origin) {
 			let who = ensure_signed(origin)?;
 
@@ -74,6 +72,7 @@ decl_module! {
 			<FreeTransferEnabledAccounts<T>>::insert(who, true);
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		fn disable_free_transfers(origin) {
 			let who = ensure_signed(origin)?;
 
@@ -83,7 +82,10 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Trait> Module<T>
+where
+	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+{
 	pub fn try_free_transfer(who: &T::AccountId) -> bool {
 		let mut last_free_transfer = Self::last_free_transfers(who);
 		let now = T::Time::now();
@@ -138,13 +140,14 @@ impl<T: Trait + Send + Sync> rstd::fmt::Debug for ChargeTransactionPayment<T> {
 impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync,
+	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Module<T>, T>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
-	type Call = <T as Trait>::Call;
+	type Call = T::Call;
 	type AdditionalSigned = ();
-	type DispatchInfo = DispatchInfo;
 	type Pre = ();
+
 	fn additional_signed(&self) -> rstd::result::Result<(), TransactionValidityError> {
 		Ok(())
 	}
@@ -153,7 +156,7 @@ where
 		&self,
 		who: &Self::AccountId,
 		call: &Self::Call,
-		info: Self::DispatchInfo,
+		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
 		// pay any fees.

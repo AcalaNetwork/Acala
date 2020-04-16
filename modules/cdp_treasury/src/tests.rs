@@ -3,15 +3,16 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
 use mock::{
 	CDPTreasuryModule, Currencies, DEXModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE, AUSD, BOB, BTC,
 };
-use sp_runtime::traits::{BadOrigin, OnFinalize};
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn set_collateral_auction_maximum_size_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(CDPTreasuryModule::collateral_auction_maximum_size(BTC), 0);
 		assert_noop!(
 			CDPTreasuryModule::set_collateral_auction_maximum_size(Origin::signed(5), BTC, 200),
@@ -41,6 +42,7 @@ fn set_collateral_auction_maximum_size_work() {
 #[test]
 fn set_debit_and_surplus_handle_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(
 			CDPTreasuryModule::set_debit_and_surplus_handle_params(
 				Origin::signed(5),

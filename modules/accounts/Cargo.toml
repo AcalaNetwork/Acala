@@ -7,21 +7,21 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.101", optional = true }
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
-sp-runtime = { version = "2.0.0-alpha.5", default-features = false }
-frame-support = { package = "frame-support", version = "2.0.0-alpha.5", default-features = false }
-system = { package = "frame-system", version = "2.0.0-alpha.5", default-features = false }
-rstd = { package = "sp-std", version = "2.0.0-alpha.5", default-features = false }
-orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
-orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
-orml-currencies = { package = "orml-currencies", path = "../../orml/currencies", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
-pallet-transaction-payment = { version = "2.0.0-alpha.5", default-features = false }
-pallet-balances = { package = "pallet-balances", version = "2.0.0-alpha.5", default-features = false }
-pallet-timestamp = { package = "pallet-timestamp", version = "2.0.0-alpha.5", default-features = false }
+sp-runtime = { version = "2.0.0-alpha.6", default-features = false }
+frame-support = { version = "2.0.0-alpha.6", default-features = false }
+system = { package = "frame-system", version = "2.0.0-alpha.6", default-features = false }
+rstd = { package = "sp-std", version = "2.0.0-alpha.6", default-features = false }
+pallet-transaction-payment = { version = "2.0.0-alpha.6", default-features = false }
+pallet-balances = { version = "2.0.0-alpha.6", default-features = false }
+pallet-timestamp = { version = "2.0.0-alpha.6", default-features = false }
+
+orml-traits = { path = "../../orml/traits", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-currencies = { path = "../../orml/currencies", default-features = false }
 
 [dev-dependencies]
-primitives = { package = "sp-core",  version = "2.0.0-alpha.5", default-features = false }
-runtime-io = { package = "sp-io", version = "2.0.0-alpha.5", default-features = false }
+primitives = { package = "sp-core",  version = "2.0.0-alpha.6", default-features = false }
+runtime-io = { package = "sp-io", version = "2.0.0-alpha.6", default-features = false }
 
 [features]
 default = ["std"]
@@ -35,7 +35,6 @@ std = [
 	"orml-traits/std",
 	"orml-tokens/std",
 	"orml-currencies/std",
-	"support/std",
 	"pallet-transaction-payment/std",
 	"pallet-balances/std",
 	"pallet-timestamp/std",

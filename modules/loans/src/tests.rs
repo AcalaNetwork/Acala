@@ -40,6 +40,7 @@ fn check_update_loan_overflow_work() {
 #[test]
 fn adjust_position_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &ALICE), 1000);
 
 		// balance too low
@@ -106,6 +107,7 @@ fn update_loan_should_work() {
 #[test]
 fn transfer_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(LoansModule::update_loan(&ALICE, Y_TOKEN_ID, 400, 500));
 		assert_ok!(LoansModule::update_loan(&BOB, Y_TOKEN_ID, 100, 600));
 		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 500);
@@ -129,6 +131,7 @@ fn transfer_loan_should_work() {
 #[test]
 fn confiscate_collateral_and_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(LoansModule::update_loan(&BOB, Y_TOKEN_ID, 5000, 1000));
 		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 0);
 

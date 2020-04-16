@@ -1,9 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+};
 use orml_traits::MultiCurrency;
 use rstd::prelude::*;
-use sp_runtime::traits::{EnsureOrigin, Zero};
+use sp_runtime::traits::Zero;
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, OnEmergencyShutdown, PriceProvider, Ratio};
 use system::{ensure_root, ensure_signed};
 
@@ -64,6 +67,7 @@ decl_module! {
 
 		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn emergency_shutdown(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
@@ -85,6 +89,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Shutdown(<system::Module<T>>::block_number()));
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn open_collateral_refund(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
@@ -121,6 +126,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn refund_collaterals(origin, #[compact] amount: BalanceOf<T>) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
@@ -144,6 +150,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Refund(amount));
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn cancel_auction(origin, id: AuctionIdOf<T>) {
 			let _ = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
