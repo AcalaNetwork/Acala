@@ -15,7 +15,7 @@ use sp_runtime::{
 	},
 	DispatchError, DispatchResult, ModuleId,
 };
-use support::{CDPTreasury, DEXManager, Price, Rate, Ratio};
+use support::{CDPTreasury, DEXManager, OnEmergencyShutdown, Price, Rate, Ratio};
 use system::{self as system, ensure_root, ensure_signed};
 
 mod mock;
@@ -73,6 +73,8 @@ decl_storage! {
 		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
 		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => BalanceOf<T>;
 		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+
+		IsShutdown get(fn is_shutdown): bool;
 	}
 
 	add_extra_genesis {
@@ -256,8 +258,10 @@ decl_module! {
 		}
 
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
-			for currency_id in T::EnabledCurrencyIds::get() {
-				Self::accumulate_interest(currency_id);
+			if !Self::is_shutdown() {
+				for currency_id in T::EnabledCurrencyIds::get() {
+					Self::accumulate_interest(currency_id);
+				}
 			}
 
 			SimpleDispatchInfo::default().weigh_data(())
@@ -730,5 +734,11 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 
 			Some(final_slippage)
 		}
+	}
+}
+
+impl<T: Trait> OnEmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		<IsShutdown>::put(true);
 	}
 }
