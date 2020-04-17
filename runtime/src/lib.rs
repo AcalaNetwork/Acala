@@ -601,7 +601,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
-	type OnShutdown = (CdpTreasury, CdpEngine, Honzon);
+	type OnShutdown = (CdpTreasury, CdpEngine, Honzon, Dex);
 	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 }
 
