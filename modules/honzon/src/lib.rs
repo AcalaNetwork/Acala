@@ -52,22 +52,6 @@ decl_module! {
 		fn deposit_event() = default;
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn liquidate_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
-			let _ = ensure_signed(origin)?;
-			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
-
-			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id)?;
-		}
-
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn settle_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
-			let _ = ensure_signed(origin)?;
-			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
-
-			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;
-		}
-
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyIdOf<T>,

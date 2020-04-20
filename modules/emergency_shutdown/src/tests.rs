@@ -71,13 +71,3 @@ fn refund_collaterals_fail() {
 		);
 	});
 }
-
-#[test]
-fn cancel_auction_fail() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			EmergencyShutdownModule::cancel_auction(Origin::signed(ALICE), 0),
-			Error::<Runtime>::MustAfterShutdown,
-		);
-	});
-}
