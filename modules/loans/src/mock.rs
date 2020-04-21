@@ -182,6 +182,10 @@ impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
 // mock risk manager
 pub struct MockRiskManager;
 impl RiskManager<AccountId, CurrencyId, Balance, DebitBalance> for MockRiskManager {
+	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance {
+		MockConvert::convert((currency_id, debit_balance))
+	}
+
 	fn check_position_valid(
 		currency_id: CurrencyId,
 		_collateral_balance: Balance,
