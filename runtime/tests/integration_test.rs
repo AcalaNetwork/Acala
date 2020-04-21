@@ -63,7 +63,7 @@ mod tests {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
-			pallet_collective::GenesisConfig::<Runtime, pallet_collective::Instance3> {
+			pallet_collective::GenesisConfig::<Runtime, pallet_collective::Instance5> {
 				members: vec![
 					AccountId::from(ORACLE1),
 					AccountId::from(ORACLE2),

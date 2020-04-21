@@ -4,9 +4,10 @@ use hex_literal::hex;
 use orml_utilities::FixedU128;
 use runtime::{
 	opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, Block, CdpEngineConfig, CdpTreasuryConfig, CurrencyId,
-	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig,
-	IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus,
-	StakingConfig, SudoConfig, SystemConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
+	DexConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig, HomaCouncilMembershipConfig,
+	HonzonCouncilMembershipConfig, IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig,
+	Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig,
+	CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -269,12 +270,22 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance2: Some(Default::default()),
-		pallet_membership_Instance2: Some(FinancialCouncilMembershipConfig {
+		pallet_membership_Instance2: Some(HonzonCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance3: Some(Default::default()),
-		pallet_membership_Instance3: Some(OperatorMembershipConfig {
+		pallet_membership_Instance3: Some(HomaCouncilMembershipConfig {
+			members: vec![root_key.clone()],
+			phantom: Default::default(),
+		}),
+		pallet_collective_Instance4: Some(Default::default()),
+		pallet_membership_Instance4: Some(TechnicalCouncilMembershipConfig {
+			members: vec![root_key.clone()],
+			phantom: Default::default(),
+		}),
+		pallet_collective_Instance5: Some(Default::default()),
+		pallet_membership_Instance5: Some(OperatorMembershipConfig {
 			members: vec![root_key],
 			phantom: Default::default(),
 		}),
@@ -385,12 +396,22 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance2: Some(Default::default()),
-		pallet_membership_Instance2: Some(FinancialCouncilMembershipConfig {
+		pallet_membership_Instance2: Some(HonzonCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance3: Some(Default::default()),
-		pallet_membership_Instance3: Some(OperatorMembershipConfig {
+		pallet_membership_Instance3: Some(HomaCouncilMembershipConfig {
+			members: vec![root_key.clone()],
+			phantom: Default::default(),
+		}),
+		pallet_collective_Instance4: Some(Default::default()),
+		pallet_membership_Instance4: Some(TechnicalCouncilMembershipConfig {
+			members: vec![root_key.clone()],
+			phantom: Default::default(),
+		}),
+		pallet_collective_Instance5: Some(Default::default()),
+		pallet_membership_Instance5: Some(OperatorMembershipConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
 		}),

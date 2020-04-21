@@ -232,34 +232,82 @@ impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const FinancialCouncilMotionDuration: BlockNumber = 0;
+	pub const HonzonCouncilMotionDuration: BlockNumber = 0;
 }
 
-type FinancialCouncilInstance = pallet_collective::Instance2;
-impl pallet_collective::Trait<FinancialCouncilInstance> for Runtime {
+type HonzonCouncilInstance = pallet_collective::Instance2;
+impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
-	type MotionDuration = FinancialCouncilMotionDuration;
+	type MotionDuration = HonzonCouncilMotionDuration;
 }
 
-type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
-impl pallet_membership::Trait<FinancialCouncilMembershipInstance> for Runtime {
+type HonzonCouncilMembershipInstance = pallet_membership::Instance2;
+impl pallet_membership::Trait<HonzonCouncilMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
-	type MembershipInitialized = FinancialCouncil;
-	type MembershipChanged = FinancialCouncil;
+	type MembershipInitialized = HonzonCouncil;
+	type MembershipChanged = HonzonCouncil;
+}
+
+parameter_types! {
+	pub const HomaCouncilMotionDuration: BlockNumber = 0;
+}
+
+type HomaCouncilInstance = pallet_collective::Instance3;
+impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = HomaCouncilMotionDuration;
+}
+
+type HomaCouncilMembershipInstance = pallet_membership::Instance3;
+impl pallet_membership::Trait<HomaCouncilMembershipInstance> for Runtime {
+	type Event = Event;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type MembershipInitialized = HomaCouncil;
+	type MembershipChanged = HomaCouncil;
+}
+
+parameter_types! {
+	pub const TechnicalCouncilMotionDuration: BlockNumber = 0;
+}
+
+type TechnicalCouncilInstance = pallet_collective::Instance4;
+impl pallet_collective::Trait<TechnicalCouncilInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = TechnicalCouncilMotionDuration;
+}
+
+type TechnicalCouncilMembershipInstance = pallet_membership::Instance4;
+impl pallet_membership::Trait<TechnicalCouncilMembershipInstance> for Runtime {
+	type Event = Event;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type MembershipInitialized = TechnicalCouncil;
+	type MembershipChanged = TechnicalCouncil;
 }
 
 parameter_types! {
 	pub const OperatorMotionDuration: BlockNumber = 0;
 }
 
-type OperatorCollectiveInstance = pallet_collective::Instance3;
+type OperatorCollectiveInstance = pallet_collective::Instance5;
 impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
@@ -267,7 +315,7 @@ impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
 	type MotionDuration = OperatorMotionDuration;
 }
 
-type OperatorMembershipInstance = pallet_membership::Instance3;
+type OperatorMembershipInstance = pallet_membership::Instance5;
 impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
@@ -582,7 +630,7 @@ impl module_cdp_engine::Trait for Runtime {
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
-	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type Currency = Currencies;
 	type DEX = Dex;
@@ -618,7 +666,7 @@ impl module_dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CdpTreasury;
-	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 }
 
 impl module_cdp_treasury::Trait for Runtime {
@@ -626,7 +674,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManager;
-	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type DEX = Dex;
 }
 
@@ -722,6 +770,7 @@ construct_runtime!(
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
+		// srml modules
 		System: system::{Module, Call, Storage, Config, Event<T>},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
@@ -731,18 +780,25 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		GeneralCouncilMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
-		FinancialCouncil: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		FinancialCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
-		OperatorCollective: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		OperatorMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
 		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 		PalletTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 
+		// governance
+		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		GeneralCouncilMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+		HonzonCouncil: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		HonzonCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
+		HomaCouncil: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
+		TechnicalCouncil: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		TechnicalCouncilMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
+		OperatorCollective: pallet_collective::<Instance5>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		OperatorMembership: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
+
+		// acala modules
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
 		Prices: module_prices::{Module, Storage, Call, Event<T>},
