@@ -21,6 +21,8 @@ pub type Ratio = FixedU128;
 pub type Rate = FixedU128;
 
 pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
+	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance;
+
 	fn check_position_valid(
 		currency_id: CurrencyId,
 		collateral_balance: Balance,
@@ -30,7 +32,13 @@ pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult;
 }
 
-impl<AccountId, CurrencyId, Balance, DebitBalance> RiskManager<AccountId, CurrencyId, Balance, DebitBalance> for () {
+impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountId, CurrencyId, Balance, DebitBalance>
+	for ()
+{
+	fn get_bad_debt_value(_currency_id: CurrencyId, _debit_balance: DebitBalance) -> Balance {
+		Default::default()
+	}
+
 	fn check_position_valid(
 		_currency_id: CurrencyId,
 		_collateral_balance: Balance,

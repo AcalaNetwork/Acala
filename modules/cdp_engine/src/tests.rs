@@ -354,7 +354,13 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		));
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
 
-		let liquidate_unsafe_cdp_event = TestEvent::cdp_engine(RawEvent::LiquidateUnsafeCDP(BTC, ALICE, 100, 50));
+		let liquidate_unsafe_cdp_event = TestEvent::cdp_engine(RawEvent::LiquidateUnsafeCDP(
+			BTC,
+			ALICE,
+			100,
+			50,
+			LiquidationStrategy::Auction,
+		));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == liquidate_unsafe_cdp_event));
@@ -419,7 +425,7 @@ fn on_finalize_work() {
 }
 
 #[test]
-fn emergency_shutdown_work() {
+fn on_emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
@@ -437,7 +443,7 @@ fn emergency_shutdown_work() {
 			Some(ExchangeRate::from_rational(101, 100))
 		);
 		assert_eq!(CDPEngineModule::is_shutdown(), false);
-		CDPEngineModule::emergency_shutdown();
+		CDPEngineModule::on_emergency_shutdown();
 		assert_eq!(CDPEngineModule::is_shutdown(), true);
 		CDPEngineModule::on_finalize(2);
 		assert_eq!(
