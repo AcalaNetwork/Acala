@@ -90,7 +90,7 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	// confiscate collateral to cdp treasury and decrease debit
+	// confiscate collateral and debit to cdp treasury
 	pub fn confiscate_collateral_and_debit(
 		who: &T::AccountId,
 		currency_id: CurrencyIdOf<T>,
@@ -103,10 +103,17 @@ impl<T: Trait> Module<T> {
 		let debit_adjustment =
 			TryInto::<T::DebitAmount>::try_into(debit_decrease).map_err(|_| Error::<T>::AmountConvertFailed)?;
 
-		// check overflow
+		// check update overflow
 		Self::check_update_loan_overflow(who, currency_id, -collateral_adjustment, -debit_adjustment)?;
 
+		// transfer collateral to cdp treasury
 		T::CDPTreasury::transfer_collateral_from(currency_id, &Self::account_id(), collateral_confiscate)?;
+
+		// deposit debit to cdp treasury
+		let bad_debt_value = T::RiskManager::get_bad_debt_value(currency_id, debit_decrease);
+		T::CDPTreasury::on_system_debit(bad_debt_value)?;
+
+		// update loan
 		Self::update_loan(&who, currency_id, -collateral_adjustment, -debit_adjustment)
 			.expect("never failed ensured by overflow check");
 

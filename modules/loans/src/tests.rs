@@ -143,6 +143,7 @@ fn confiscate_collateral_and_debit_work() {
 
 		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 500, 300));
 		assert_eq!(CDPTreasuryModule::get_total_collaterals(Y_TOKEN_ID), 0);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 300);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 500);
 
@@ -150,6 +151,7 @@ fn confiscate_collateral_and_debit_work() {
 			&ALICE, Y_TOKEN_ID, 300, 200
 		));
 		assert_eq!(CDPTreasuryModule::get_total_collaterals(Y_TOKEN_ID), 300);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 100);
 		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 200);
 
