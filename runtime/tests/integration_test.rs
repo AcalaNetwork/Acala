@@ -3,13 +3,14 @@
 mod tests {
 	use acala_runtime::{
 		AccountId, Balance, CurrencyId,
-		CurrencyId::{AUSD, XBTC},
+		CurrencyId::{AUSD, DOT, LDOT, XBTC},
 		Runtime,
 	};
 	use frame_support::{
 		assert_noop, assert_ok,
 		traits::{OnFinalize, OnInitialize},
 	};
+	use module_support::{CDPTreasury, CDPTreasuryExtended};
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
 	use sp_runtime::DispatchResult;
@@ -27,7 +28,7 @@ mod tests {
 	pub type LoansModule = module_loans::Module<Runtime>;
 	pub type CdpTreasuryModule = module_cdp_treasury::Module<Runtime>;
 	pub type SystemModule = system::Module<Runtime>;
-
+	pub type EmergencyShutdownModule = module_emergency_shutdown::Module<Runtime>;
 	pub type Currencies = orml_currencies::Module<Runtime>;
 
 	pub struct ExtBuilder {
@@ -99,6 +100,78 @@ mod tests {
 	fn amount(amount: u128) -> u128 {
 		amount.saturating_mul(Price::accuracy())
 	}
+
+	#[test]
+	fn emergency_shutdown_and_cdp_treasury() {
+		ExtBuilder::default()
+			.balances(vec![
+				(AccountId::from(ALICE), AUSD, (2_000_000u128)),
+				(AccountId::from(BOB), AUSD, (8_000_000u128)),
+				(AccountId::from(BOB), XBTC, (1_000_000u128)),
+				(AccountId::from(BOB), DOT, (200_000_000u128)),
+				(AccountId::from(BOB), LDOT, (40_000_000u128)),
+			])
+			.build()
+			.execute_with(|| {
+				assert_ok!(CdpTreasuryModule::transfer_collateral_from(
+					XBTC,
+					&AccountId::from(BOB),
+					1_000_000
+				));
+				assert_ok!(CdpTreasuryModule::transfer_collateral_from(
+					DOT,
+					&AccountId::from(BOB),
+					200_000_000
+				));
+				assert_ok!(CdpTreasuryModule::transfer_collateral_from(
+					LDOT,
+					&AccountId::from(BOB),
+					40_000_000
+				));
+				assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 1_000_000);
+				assert_eq!(CdpTreasuryModule::total_collaterals(DOT), 200_000_000);
+				assert_eq!(CdpTreasuryModule::total_collaterals(LDOT), 40_000_000);
+
+				assert_noop!(
+					EmergencyShutdownModule::refund_collaterals(origin_of(AccountId::from(ALICE)), 1_000_000),
+					module_emergency_shutdown::Error::<Runtime>::CanNotRefund,
+				);
+				assert_ok!(EmergencyShutdownModule::emergency_shutdown(
+					<acala_runtime::Runtime as system::Trait>::Origin::ROOT
+				));
+				assert_ok!(EmergencyShutdownModule::open_collateral_refund(
+					<acala_runtime::Runtime as system::Trait>::Origin::ROOT
+				));
+				assert_ok!(EmergencyShutdownModule::refund_collaterals(
+					origin_of(AccountId::from(ALICE)),
+					1_000_000
+				));
+
+				assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 900_000);
+				assert_eq!(CdpTreasuryModule::total_collaterals(DOT), 180_000_000);
+				assert_eq!(CdpTreasuryModule::total_collaterals(LDOT), 36_000_000);
+				assert_eq!(Currencies::free_balance(AUSD, &AccountId::from(ALICE)), 1_000_000);
+				assert_eq!(Currencies::free_balance(XBTC, &AccountId::from(ALICE)), 100_000);
+				assert_eq!(Currencies::free_balance(DOT, &AccountId::from(ALICE)), 20_000_000);
+				assert_eq!(Currencies::free_balance(LDOT, &AccountId::from(ALICE)), 4_000_000);
+			});
+	}
+
+	// #[test]
+	// fn liquidate_cdp() {
+	// 	ExtBuilder::default()
+	// 	.balances(vec![
+	// 		(AccountId::from(ALICE), AUSD, (2_000_000u128)),
+	// 		(AccountId::from(BOB), AUSD, (8_000_000u128)),
+	// 		(AccountId::from(BOB), XBTC, (1_000_000u128)),
+	// 		(AccountId::from(BOB), DOT, (200_000_000u128)),
+	// 		(AccountId::from(BOB), LDOT, (40_000_000u128)),
+	// 	])
+	// 	.build()
+	// 	.execute_with(|| {
+	// 		assert_ok!(set_oracle_price(vec![(XBTC, Price::from_rational(1, 1))]));
+	// 	});
+	// }
 
 	#[test]
 	fn test_dex_module() {
