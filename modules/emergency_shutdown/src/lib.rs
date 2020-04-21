@@ -15,8 +15,6 @@ mod tests;
 
 type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
 type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-type AuctionIdOf<T> =
-	<<T as Trait>::AuctionManagerHandler as AuctionManager<<T as system::Trait>::AccountId>>::AuctionId;
 
 pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -148,13 +146,6 @@ decl_module! {
 			}
 
 			Self::deposit_event(RawEvent::Refund(amount));
-		}
-
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn cancel_auction(origin, id: AuctionIdOf<T>) {
-			let _ = ensure_signed(origin)?;
-			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
-			<T as Trait>::AuctionManagerHandler::cancel_auction(id)?;
 		}
 	}
 }

@@ -461,7 +461,7 @@ impl<T: Trait> Module<T> {
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		// ensure the cdp is unsafe
-		ensure!(Self::is_cdp_unsafe(currency_id, &who), Error::<T>::MustBeUnsafe,);
+		ensure!(Self::is_cdp_unsafe(currency_id, &who), Error::<T>::MustBeUnsafe);
 
 		// confiscate all collateral and all debit from unsafe cdp
 		<loans::Module<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral_balance, debit_balance)?;
