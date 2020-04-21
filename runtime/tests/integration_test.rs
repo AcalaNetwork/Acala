@@ -10,7 +10,8 @@ mod tests {
 		assert_noop, assert_ok,
 		traits::{OnFinalize, OnInitialize},
 	};
-	use module_support::{CDPTreasury, CDPTreasuryExtended};
+	use module_cdp_engine::LiquidationStrategy;
+	use module_support::CDPTreasury;
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
 	use sp_runtime::DispatchResult;
@@ -29,6 +30,7 @@ mod tests {
 	pub type CdpTreasuryModule = module_cdp_treasury::Module<Runtime>;
 	pub type SystemModule = system::Module<Runtime>;
 	pub type EmergencyShutdownModule = module_emergency_shutdown::Module<Runtime>;
+	pub type AuctionManagerModule = module_auction_manager::Module<Runtime>;
 	pub type Currencies = orml_currencies::Module<Runtime>;
 
 	pub struct ExtBuilder {
@@ -105,11 +107,11 @@ mod tests {
 	fn emergency_shutdown_and_cdp_treasury() {
 		ExtBuilder::default()
 			.balances(vec![
-				(AccountId::from(ALICE), AUSD, (2_000_000u128)),
-				(AccountId::from(BOB), AUSD, (8_000_000u128)),
-				(AccountId::from(BOB), XBTC, (1_000_000u128)),
-				(AccountId::from(BOB), DOT, (200_000_000u128)),
-				(AccountId::from(BOB), LDOT, (40_000_000u128)),
+				(AccountId::from(ALICE), AUSD, 2_000_000u128),
+				(AccountId::from(BOB), AUSD, 8_000_000u128),
+				(AccountId::from(BOB), XBTC, 1_000_000u128),
+				(AccountId::from(BOB), DOT, 200_000_000u128),
+				(AccountId::from(BOB), LDOT, 40_000_000u128),
 			])
 			.build()
 			.execute_with(|| {
@@ -157,21 +159,106 @@ mod tests {
 			});
 	}
 
-	// #[test]
-	// fn liquidate_cdp() {
-	// 	ExtBuilder::default()
-	// 	.balances(vec![
-	// 		(AccountId::from(ALICE), AUSD, (2_000_000u128)),
-	// 		(AccountId::from(BOB), AUSD, (8_000_000u128)),
-	// 		(AccountId::from(BOB), XBTC, (1_000_000u128)),
-	// 		(AccountId::from(BOB), DOT, (200_000_000u128)),
-	// 		(AccountId::from(BOB), LDOT, (40_000_000u128)),
-	// 	])
-	// 	.build()
-	// 	.execute_with(|| {
-	// 		assert_ok!(set_oracle_price(vec![(XBTC, Price::from_rational(1, 1))]));
-	// 	});
-	// }
+	#[test]
+	fn liquidate_cdp() {
+		ExtBuilder::default()
+			.balances(vec![
+				(AccountId::from(BOB), AUSD, amount(1_000_000)),
+				(AccountId::from(ALICE), XBTC, amount(10)),
+				(AccountId::from(BOB), XBTC, amount(101)),
+			])
+			.build()
+			.execute_with(|| {
+				SystemModule::set_block_number(1);
+				assert_ok!(set_oracle_price(vec![(XBTC, Price::from_rational(10000, 1))])); // 10000 usd
+
+				assert_ok!(DexModule::add_liquidity(
+					origin_of(AccountId::from(BOB)),
+					XBTC,
+					amount(100),
+					amount(1_000_000)
+				));
+
+				assert_ok!(CdpEngineModule::set_collateral_params(
+					<acala_runtime::Runtime as system::Trait>::Origin::ROOT,
+					XBTC,
+					Some(Some(Rate::from_natural(0))),
+					Some(Some(Ratio::from_rational(200, 100))),
+					Some(Some(Rate::from_rational(20, 100))),
+					Some(Some(Ratio::from_rational(200, 100))),
+					Some(amount(1000000)),
+				));
+
+				assert_ok!(CdpEngineModule::adjust_position(
+					&AccountId::from(ALICE),
+					XBTC,
+					amount(10) as i128,
+					amount(500_000) as i128
+				));
+
+				assert_ok!(CdpEngineModule::adjust_position(
+					&AccountId::from(BOB),
+					XBTC,
+					amount(1) as i128,
+					amount(50_000) as i128
+				));
+
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)), amount(500_000));
+				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), amount(10));
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(BOB)), amount(50_000));
+				assert_eq!(LoansModule::collaterals(AccountId::from(BOB), XBTC), amount(1));
+				assert_eq!(CdpTreasuryModule::debit_pool(), 0);
+				assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
+
+				assert_ok!(CdpEngineModule::set_collateral_params(
+					<acala_runtime::Runtime as system::Trait>::Origin::ROOT,
+					XBTC,
+					None,
+					Some(Some(Ratio::from_rational(400, 100))),
+					None,
+					Some(Some(Ratio::from_rational(400, 100))),
+					None,
+				));
+
+				assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(ALICE), XBTC));
+
+				let liquidate_alice_xbtc_cdp_event =
+					acala_runtime::Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
+						XBTC,
+						AccountId::from(ALICE),
+						amount(10),
+						amount(50_000),
+						LiquidationStrategy::Auction,
+					));
+				assert!(SystemModule::events()
+					.iter()
+					.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
+
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(ALICE)), 0);
+				assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), XBTC), 0);
+				assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
+				assert_eq!(CdpTreasuryModule::debit_pool(), amount(50_000));
+
+				assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(BOB), XBTC));
+
+				let liquidate_bob_xbtc_cdp_event =
+					acala_runtime::Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
+						XBTC,
+						AccountId::from(BOB),
+						amount(1),
+						amount(5_000),
+						LiquidationStrategy::Exchange,
+					));
+				assert!(SystemModule::events()
+					.iter()
+					.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
+
+				assert_eq!(LoansModule::debits(XBTC, AccountId::from(BOB)), 0);
+				assert_eq!(LoansModule::collaterals(AccountId::from(BOB), XBTC), 0);
+				assert_eq!(CdpTreasuryModule::debit_pool(), amount(55_000));
+				assert!(CdpTreasuryModule::surplus_pool() >= amount(5_000));
+			});
+	}
 
 	#[test]
 	fn test_dex_module() {
