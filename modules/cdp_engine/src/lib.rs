@@ -504,12 +504,8 @@ impl<T: Trait> Module<T> {
 					// refund remain collateral to CDP owner
 					let refund_collateral_amount = collateral_balance - supply_collateral_amount;
 					if !refund_collateral_amount.is_zero() {
-						<T as Trait>::CDPTreasury::transfer_system_collateral(
-							currency_id,
-							&who,
-							refund_collateral_amount,
-						)
-						.expect("never failed");
+						<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_collateral_amount)
+							.expect("never failed");
 					}
 				}
 			}

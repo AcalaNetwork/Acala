@@ -133,7 +133,7 @@ decl_module! {
 			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
 			// burn caller's stable currency by cdp treasury
-			<T as Trait>::CDPTreasury::withdraw_backed_debit(&who, amount)?;
+			<T as Trait>::CDPTreasury::withdraw_backed_debit_from(&who, amount)?;
 
 			// refund collaterals to caller by cdp treasury
 			for currency_id in collateral_currency_ids {
@@ -141,7 +141,7 @@ decl_module! {
 					.saturating_mul_int(&<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
 
 				if !refund_amount.is_zero() {
-					<T as Trait>::CDPTreasury::transfer_system_collateral(currency_id, &who, refund_amount)?;
+					<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_amount)?;
 				}
 			}
 
