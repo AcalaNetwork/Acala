@@ -226,10 +226,10 @@ fn get_surplus_pool_work() {
 }
 
 #[test]
-fn get_stable_currency_ratio_work() {
+fn get_debit_proportion_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			CDPTreasuryModule::get_stable_currency_ratio(100),
+			CDPTreasuryModule::get_debit_proportion(100),
 			Ratio::from_rational(100, Currencies::total_issuance(AUSD))
 		);
 	});

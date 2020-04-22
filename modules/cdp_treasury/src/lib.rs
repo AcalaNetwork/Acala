@@ -270,14 +270,14 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		<TotalCollaterals<T>>::insert(currency_id, new_total_collateral);
 		Ok(())
 	}
-}
 
-impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
-	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio {
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
 		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
 		Ratio::from_rational(amount, stable_total_supply)
 	}
+}
 
+impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 	fn swap_collateral_to_stable(
 		currency_id: CurrencyIdOf<T>,
 		supply_amount: BalanceOf<T>,

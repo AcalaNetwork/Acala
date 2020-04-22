@@ -162,10 +162,11 @@ pub trait CDPTreasury<AccountId> {
 		from: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
+
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio;
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio;
 	fn swap_collateral_to_stable(
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
