@@ -261,11 +261,7 @@ impl<T: Trait> Module<T> {
 		if let Some(auction_info) = T::Auction::auction_info(id) {
 			// if these's bid, refund stable token to the bidder
 			if let Some((bidder, _)) = auction_info.bid {
-				if T::CDPTreasury::on_system_debit(debit_auction.fix).is_ok() {
-					// return stablecoin to bidder, ignore Err
-					let _ = T::CDPTreasury::deposit_backed_debit(&bidder, debit_auction.fix);
-				}
-
+				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, debit_auction.fix)?;
 				// decrease account ref of bidder
 				system::Module::<T>::dec_ref(&bidder);
 			}
@@ -300,9 +296,9 @@ impl<T: Trait> Module<T> {
 		);
 		let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
 
-		// refund remain collateral from cdp treasury to auction owner
+		// refund remain collateral to auction owner from cdp treasury
 		if !refund_collateral_amount.is_zero() {
-			T::CDPTreasury::transfer_system_collateral(
+			T::CDPTreasury::transfer_collateral_to(
 				collateral_auction.currency_id,
 				&collateral_auction.owner,
 				refund_collateral_amount,
@@ -312,11 +308,7 @@ impl<T: Trait> Module<T> {
 		if let Some(auction_info) = T::Auction::auction_info(id) {
 			// if these's bid, refund stable token to the bidder
 			if let Some((bidder, bid_price)) = auction_info.bid {
-				if T::CDPTreasury::on_system_debit(bid_price).is_ok() {
-					// return stablecoin to bidder, ignore Err
-					let _ = T::CDPTreasury::deposit_backed_debit(&bidder, bid_price);
-				}
-
+				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price)?;
 				// decrease account ref of bidder
 				system::Module::<T>::dec_ref(&bidder);
 			}
@@ -435,7 +427,7 @@ impl<T: Trait> Module<T> {
 							.unwrap_or(collateral_auction.amount);
 					let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
-					if T::CDPTreasury::transfer_system_collateral(
+					if T::CDPTreasury::transfer_collateral_to(
 						collateral_auction.currency_id,
 						&(collateral_auction.owner),
 						deduct_collateral_amount,
@@ -591,7 +583,7 @@ impl<T: Trait> Module<T> {
 				Self::total_collateral_in_auction(collateral_auction.currency_id),
 			);
 
-			T::CDPTreasury::transfer_system_collateral(collateral_auction.currency_id, &bidder, amount)
+			T::CDPTreasury::transfer_collateral_to(collateral_auction.currency_id, &bidder, amount)
 				.expect("never failed after overflow check");
 
 			// decrease account ref of winner
@@ -659,8 +651,8 @@ impl<T: Trait> Module<T> {
 
 	pub fn surplus_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
 		if let (Some(surplus_auction), Some((bidder, _))) = (Self::surplus_auctions(id), winner) {
-			// transfer stable token from cdp treasury to winner, ignore Err
-			let _ = T::CDPTreasury::transfer_system_surplus(&bidder, surplus_auction.amount);
+			// deposit unbacked stable token to winner by cdp treasury, ignore Err
+			let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, surplus_auction.amount);
 
 			// decrease account ref of winner
 			system::Module::<T>::dec_ref(&bidder);

@@ -7,7 +7,7 @@ use frame_support::{
 use orml_traits::MultiCurrency;
 use rstd::prelude::*;
 use sp_runtime::traits::Zero;
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, OnEmergencyShutdown, PriceProvider, Ratio};
+use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Ratio};
 use system::{ensure_root, ensure_signed};
 
 mod mock;
@@ -20,7 +20,7 @@ pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
-	type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
 	type AuctionManagerHandler: AuctionManager<
 		Self::AccountId,
 		Balance = BalanceOf<Self>,
@@ -129,11 +129,11 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
-			let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_stable_currency_ratio(amount);
+			let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_debit_proportion(amount);
 			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
 			// burn caller's stable currency by cdp treasury
-			<T as Trait>::CDPTreasury::withdraw_backed_debit(&who, amount)?;
+			<T as Trait>::CDPTreasury::withdraw_backed_debit_from(&who, amount)?;
 
 			// refund collaterals to caller by cdp treasury
 			for currency_id in collateral_currency_ids {
@@ -141,7 +141,7 @@ decl_module! {
 					.saturating_mul_int(&<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
 
 				if !refund_amount.is_zero() {
-					<T as Trait>::CDPTreasury::transfer_system_collateral(currency_id, &who, refund_amount)?;
+					<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_amount)?;
 				}
 			}
 

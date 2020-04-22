@@ -166,9 +166,12 @@ impl<T: Trait> Module<T> {
 
 		// update stable coin by Treasury
 		if debit_adjustment.is_positive() {
-			T::CDPTreasury::deposit_backed_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
+			T::CDPTreasury::deposit_backed_debit_to(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
 		} else if debit_adjustment.is_negative() {
-			T::CDPTreasury::withdraw_backed_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
+			T::CDPTreasury::withdraw_backed_debit_from(
+				who,
+				T::Convert::convert((currency_id, debit_balance_adjustment)),
+			)?;
 		}
 
 		// update collateral asset

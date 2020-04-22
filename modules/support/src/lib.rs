@@ -150,25 +150,23 @@ pub trait CDPTreasury<AccountId> {
 
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult;
 	fn on_system_surplus(amount: Self::Balance) -> DispatchResult;
-	fn deposit_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn deposit_unbacked_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn withdraw_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn transfer_system_surplus(to: &AccountId, amount: Self::Balance) -> DispatchResult;
+
+	fn deposit_backed_debit_to(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_unbacked_debit_to(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn withdraw_backed_debit_from(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+
 	fn transfer_surplus_from(from: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn transfer_system_collateral(
-		currency_id: Self::CurrencyId,
-		to: &AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult;
+	fn transfer_collateral_to(currency_id: Self::CurrencyId, to: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn transfer_collateral_from(
 		currency_id: Self::CurrencyId,
 		from: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
+
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio;
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio;
 	fn swap_collateral_to_stable(
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,

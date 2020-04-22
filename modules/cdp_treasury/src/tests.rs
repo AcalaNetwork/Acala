@@ -143,22 +143,22 @@ fn offset_debit_and_surplus_on_finalize_work() {
 }
 
 #[test]
-fn deposit_backed_debit_work() {
+fn deposit_backed_debit_to_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 1000);
-		assert_ok!(CDPTreasuryModule::deposit_backed_debit(&ALICE, 1000));
+		assert_ok!(CDPTreasuryModule::deposit_backed_debit_to(&ALICE, 1000));
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 2000);
 	});
 }
 
 #[test]
-fn withdraw_backed_debit_work() {
+fn withdraw_backed_debit_from_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 1000);
-		assert_ok!(CDPTreasuryModule::withdraw_backed_debit(&ALICE, 1000));
+		assert_ok!(CDPTreasuryModule::withdraw_backed_debit_from(&ALICE, 1000));
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 		assert_noop!(
-			CDPTreasuryModule::withdraw_backed_debit(&ALICE, 1000),
+			CDPTreasuryModule::withdraw_backed_debit_from(&ALICE, 1000),
 			orml_tokens::Error::<Runtime>::BalanceTooLow,
 		);
 	});
@@ -170,25 +170,6 @@ fn emergency_shutdown_work() {
 		assert_eq!(CDPTreasuryModule::is_shutdown(), false);
 		CDPTreasuryModule::emergency_shutdown();
 		assert_eq!(CDPTreasuryModule::is_shutdown(), true);
-	});
-}
-
-#[test]
-fn transfer_system_surplus_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
-		assert_noop!(
-			CDPTreasuryModule::transfer_system_surplus(&ALICE, 500),
-			Error::<Runtime>::SurplusPoolNotEnough,
-		);
-		assert_ok!(CDPTreasuryModule::on_system_surplus(1000));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 1000);
-		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 1000);
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 1000);
-		assert_ok!(CDPTreasuryModule::transfer_system_surplus(&ALICE, 500));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 500);
-		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 500);
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 1500);
 	});
 }
 
@@ -210,17 +191,17 @@ fn transfer_collateral_from_work() {
 }
 
 #[test]
-fn transfer_system_collateral_work() {
+fn transfer_collateral_to_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPTreasuryModule::transfer_collateral_from(BTC, &ALICE, 500));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 500);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 500);
 		assert_eq!(Currencies::free_balance(BTC, &BOB), 1000);
 		assert_noop!(
-			CDPTreasuryModule::transfer_system_collateral(BTC, &BOB, 501),
+			CDPTreasuryModule::transfer_collateral_to(BTC, &BOB, 501),
 			Error::<Runtime>::CollateralNotEnough,
 		);
-		assert_ok!(CDPTreasuryModule::transfer_system_collateral(BTC, &BOB, 400));
+		assert_ok!(CDPTreasuryModule::transfer_collateral_to(BTC, &BOB, 400));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 100);
 		assert_eq!(Currencies::free_balance(BTC, &BOB), 1400);
@@ -245,10 +226,10 @@ fn get_surplus_pool_work() {
 }
 
 #[test]
-fn get_stable_currency_ratio_work() {
+fn get_debit_proportion_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			CDPTreasuryModule::get_stable_currency_ratio(100),
+			CDPTreasuryModule::get_debit_proportion(100),
 			Ratio::from_rational(100, Currencies::total_issuance(AUSD))
 		);
 	});

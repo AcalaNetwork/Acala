@@ -266,7 +266,7 @@ fn on_auction_ended_for_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPTreasuryModule::on_system_surplus(100));
 		AuctionManagerModule::new_surplus_auction(100);
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
@@ -279,7 +279,7 @@ fn on_auction_ended_for_surplus_auction_work() {
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 500);
 		assert_eq!(Tokens::total_issuance(ACA), 2500);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 500)));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1100);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
 	});
