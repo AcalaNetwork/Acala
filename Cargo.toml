@@ -53,6 +53,7 @@ sp-io = { version = "2.0.0-alpha.6" }
 sp-runtime = { version = "2.0.0-alpha.6" }
 sp-transaction-pool = { version = "2.0.0-alpha.6" }
 substrate-frame-rpc-system = { version = "2.0.0-alpha.6" }
+frame-benchmarking-cli = { version = "2.0.0-alpha.6" }
 
 module-dex-rpc = { path = "modules/dex/rpc" }
 module-support = { path = "modules/support" }
@@ -60,6 +61,7 @@ module-staking-pool-rpc = { path = "modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "orml/oracle/rpc" }
 orml-utilities = { path = "orml/utilities" }
 runtime = { package = "acala-runtime", path = "runtime" }
+inspect = { package = "acala-inspect", path = "inspect" }
 
 [build-dependencies]
 vergen = "3.0.4"
@@ -80,5 +82,6 @@ members = [
 	"orml/utilities",
 	"orml/vesting",
 	"runtime",
+	"inspect",
 ]
 exclude = [ "runtime/wasm" ]

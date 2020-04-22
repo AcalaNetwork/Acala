@@ -1,8 +1,10 @@
+use crate::executor::Executor;
 use crate::{
 	chain_spec,
 	cli::{Cli, Subcommand},
 	service,
 };
+use runtime::{Block, RuntimeApi};
 use sc_cli::{Result, SubstrateCli};
 
 impl SubstrateCli for Cli {
@@ -61,6 +63,26 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(subcommand)?;
 
 			runner.run_subcommand(subcommand, |config| Ok(new_full_start!(config).0))
+		}
+
+		Some(Subcommand::Inspect(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+
+			runner.sync_run(|config| cmd.run::<Block, RuntimeApi, Executor>(config))
+		}
+
+		Some(Subcommand::Benchmark(cmd)) => {
+			if cfg!(feature = "runtime-benchmarks") {
+				let runner = cli.create_runner(cmd)?;
+
+				runner.sync_run(|config| cmd.run::<Block, Executor>(config))
+			} else {
+				println!(
+					"Benchmarking wasn't enabled when building the node. \
+				You can enable it with `--features runtime-benchmarks`."
+				);
+				Ok(())
+			}
 		}
 	}
 }
