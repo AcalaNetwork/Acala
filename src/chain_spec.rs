@@ -3,11 +3,11 @@
 use hex_literal::hex;
 use orml_utilities::FixedU128;
 use runtime::{
-	opaque::SessionKeys, AccountId, BabeConfig, BalancesConfig, Block, CdpEngineConfig, CdpTreasuryConfig, CurrencyId,
-	DexConfig, GeneralCouncilMembershipConfig, GenesisConfig, GrandpaConfig, HomaCouncilMembershipConfig,
-	HonzonCouncilMembershipConfig, IndicesConfig, OperatorMembershipConfig, PolkadotBridgeConfig, SessionConfig,
-	Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig,
-	CENTS, DOLLARS, WASM_BINARY,
+	opaque::SessionKeys, AccountId, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig, Block,
+	CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GenesisConfig,
+	GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, OperatorMembershipConfig,
+	PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+	TechnicalCouncilMembershipConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -347,7 +347,10 @@ fn testnet_genesis(
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::from_natural(0),
+			mock_reward_rate: FixedU128::from_rational(1, 100000000),
+		}),
+		module_airdrop: Some(AirDropConfig {
+			airdrop_accounts: vec![],
 		}),
 	}
 }
@@ -468,7 +471,15 @@ fn mandala_genesis(
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::from_natural(0),
+			mock_reward_rate: FixedU128::from_rational(1, 100000000),
+		}),
+		module_airdrop: Some(AirDropConfig {
+			airdrop_accounts: {
+				let airdrop_accounts_json = &include_bytes!("../resources/mandala-airdrop-accounts.json")[..];
+				let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
+					serde_json::from_slice(airdrop_accounts_json).unwrap();
+				airdrop_accounts
+			},
 		}),
 	}
 }
