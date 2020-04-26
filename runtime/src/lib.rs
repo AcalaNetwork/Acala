@@ -1018,4 +1018,27 @@ impl_runtime_apis! {
 			StakingPool::liquid_exchange_rate()
 		}
 	}
+
+	// benchmarks for acala modules
+	#[cfg(feature = "runtime-benchmarks")]
+	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn dispatch_benchmark(
+			module: Vec<u8>,
+			benchmark: Vec<u8>,
+			lowest_range_values: Vec<u32>,
+			highest_range_values: Vec<u32>,
+			steps: Vec<u32>,
+			repeat: u32,
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark};
+
+			let mut batches = Vec::<BenchmarkBatch>::new();
+			let params = (&module, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
+
+			add_benchmark!(params, batches, b"honzon", Honzon);
+
+			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
+			Ok(batches)
+		}
+	}
 }

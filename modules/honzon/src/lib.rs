@@ -6,6 +6,7 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{traits::Zero, DispatchResult};
 use support::OnEmergencyShutdown;
 
+mod benchmarking;
 mod mock;
 mod tests;
 

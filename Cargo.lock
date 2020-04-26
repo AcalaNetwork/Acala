@@ -85,6 +85,7 @@ dependencies = [
 name = "acala-runtime"
 version = "0.4.1"
 dependencies = [
+ "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
@@ -2930,6 +2931,7 @@ dependencies = [
 name = "module-honzon"
 version = "0.4.1"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-cdp-engine",

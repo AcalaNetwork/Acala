@@ -66,6 +66,12 @@ inspect = { package = "acala-inspect", path = "inspect" }
 [build-dependencies]
 vergen = "3.0.4"
 build-script-utils = { package = "substrate-build-script-utils", version = "2.0.0-alpha.6" }
+frame-benchmarking-cli = { version = "2.0.0-alpha.6" }
+
+[features]
+runtime-benchmarks = [
+	"runtime/runtime-benchmarks",
+]
 
 [workspace]
 members = [
