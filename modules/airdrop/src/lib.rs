@@ -17,6 +17,16 @@ decl_storage! {
 	trait Store for Module<T: Trait> as AirDrop {
 		AirDrops get(fn airdrops): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) T::AirDropCurrencyId => T::Balance;
 	}
+
+	add_extra_genesis {
+		config(airdrop_accounts): Vec<(T::AccountId, T::AirDropCurrencyId, T::Balance)>;
+
+		build(|config: &GenesisConfig<T>| {
+			config.airdrop_accounts.iter().for_each(|(account_id, airdrop_currency_id, initial_balance)| {
+				<AirDrops<T>>::mutate(account_id, airdrop_currency_id, | amount | *amount = *initial_balance)
+			})
+		})
+	}
 }
 
 decl_event!(

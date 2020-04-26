@@ -812,7 +812,7 @@ construct_runtime!(
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
-		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>},
+		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
 		Homa: module_homa::{Module, Call},
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
