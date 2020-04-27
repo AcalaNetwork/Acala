@@ -2,15 +2,26 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use primitives::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::{Header, TestXt},
+	traits::IdentityLookup,
+	Perbill,
+};
+use support::Price;
 use system::EnsureSignedBy;
 
 use super::*;
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+impl_outer_dispatch! {
+	pub enum Call for Runtime where origin: Origin {
+		auction_manager::AuctionManagerModule,
+	}
 }
 
 mod auction_manager {
@@ -30,19 +41,12 @@ impl_outer_event! {
 // Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
+
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 1;
-	pub const CreationFee: u64 = 2;
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
-	pub const AuctionTimeToClose: u64 = 100;
-	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
 }
 
 pub type AccountId = u64;
@@ -75,6 +79,10 @@ impl system::Trait for Runtime {
 }
 pub type System = system::Module<Runtime>;
 
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
@@ -97,6 +105,10 @@ ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
 
+parameter_types! {
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+}
+
 impl cdp_treasury::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
@@ -108,17 +120,31 @@ impl cdp_treasury::Trait for Runtime {
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 pub struct MockPriceSource;
-impl PriceProvider<CurrencyId, Price> for MockPriceSource {
-	#[allow(unused_variables)]
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(_base: CurrencyId, _quota: CurrencyId) -> Option<Price> {
 		Some(Price::from_natural(1))
 	}
 
-	#[allow(unused_variables)]
-	fn lock_price(currency_id: CurrencyId) {}
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		Some(Price::from_natural(1))
+	}
 
-	#[allow(unused_variables)]
-	fn unlock_price(currency_id: CurrencyId) {}
+	fn lock_price(_currency_id: CurrencyId) {}
+
+	fn unlock_price(_currency_id: CurrencyId) {}
+}
+
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
+
+parameter_types! {
+	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const AuctionTimeToClose: u64 = 100;
+	pub const AuctionDurationSoftCap: u64 = 2000;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
 impl Trait for Runtime {
@@ -133,6 +159,9 @@ impl Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = MockPriceSource;
+	type Call = Call;
+	type SubmitTransaction = SubmitTransaction;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 

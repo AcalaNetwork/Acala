@@ -2,22 +2,50 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Codec;
+use codec::{Codec, Decode, Encode};
+use rstd::prelude::*;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
+
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+pub struct BalanceInfo<Balance> {
+	#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+	#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+	#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+	#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+	pub amount: Balance,
+}
+
+#[cfg(feature = "std")]
+fn serialize_as_string<S: Serializer, T: std::fmt::Display>(t: &T, serializer: S) -> Result<S::Ok, S::Error> {
+	serializer.serialize_str(&t.to_string())
+}
+
+#[cfg(feature = "std")]
+fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(deserializer: D) -> Result<T, D::Error> {
+	let s = String::deserialize(deserializer)?;
+	s.parse::<T>()
+		.map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
 
 sp_api::decl_runtime_apis! {
 	pub trait DexApi<CurrencyId, Balance> where
 		CurrencyId: Codec,
-		Balance: Codec,
+		Balance: Codec + MaybeDisplay + MaybeFromStr,
 	{
 		fn get_supply_amount(
 			supply_currency_id: CurrencyId,
 			target_currency_id: CurrencyId,
 			target_currency_amount: Balance,
-		) -> Balance;
+		) -> BalanceInfo<Balance>;
+
 		fn get_target_amount(
 			supply_currency_id: CurrencyId,
 			target_currency_id: CurrencyId,
 			supply_currency_amount: Balance,
-		) -> Balance;
+		) -> BalanceInfo<Balance>;
 	}
 }

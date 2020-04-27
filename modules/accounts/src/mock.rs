@@ -134,7 +134,6 @@ impl Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type Time = TimeModule;
 	type Currency = Currencies;
-	type Call = Call;
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type DepositCurrency = pallet_balances::Module<Self>;
 }

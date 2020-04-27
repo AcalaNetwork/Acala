@@ -1,39 +1,56 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
-use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
-use rstd::cmp::{Eq, PartialEq};
-use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, Saturating, Zero},
-	DispatchResult, RuntimeDebug,
+use codec::{Decode, Encode, HasCompact};
+use frame_support::{
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType, IterableStorageMap,
 };
-use support::{AuctionManager, CDPTreasury, Price, PriceProvider, Rate};
+use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
+use rstd::{
+	cmp::{Eq, PartialEq},
+	prelude::*,
+};
+use sp_runtime::{
+	traits::{BlakeTwo256, CheckedAdd, CheckedSub, Hash, Saturating, Zero},
+	transaction_validity::{
+		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
+	},
+	DispatchResult, RandomNumberGenerator, RuntimeDebug,
+};
+use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Rate};
+use system::{ensure_none, offchain::SubmitUnsignedTransaction};
+use utilities::{OffchainErr, OffchainLock};
 
 mod mock;
 mod tests;
 
+const DB_PREFIX: &[u8] = b"acala/auction-manager-offchain-worker/";
+
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
-pub struct CollateralAuctionItem<AccountId, CurrencyId, Balance, BlockNumber> {
+pub struct CollateralAuctionItem<AccountId, CurrencyId, Balance: HasCompact, BlockNumber> {
 	owner: AccountId,
 	currency_id: CurrencyId,
+	#[codec(compact)]
 	amount: Balance,
+	#[codec(compact)]
 	target: Balance,
 	start_time: BlockNumber,
 }
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
-pub struct DebitAuctionItem<Balance, BlockNumber> {
+pub struct DebitAuctionItem<Balance: HasCompact, BlockNumber> {
+	#[codec(compact)]
 	amount: Balance,
+	#[codec(compact)]
 	fix: Balance,
 	start_time: BlockNumber,
 }
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
-pub struct SurplusAuctionItem<Balance, BlockNumber> {
+pub struct SurplusAuctionItem<Balance: HasCompact, BlockNumber> {
+	#[codec(compact)]
 	amount: Balance,
 	start_time: BlockNumber,
 }
@@ -54,7 +71,19 @@ pub trait Trait: system::Trait {
 	type GetNativeCurrencyId: Get<CurrencyIdOf<Self>>;
 	type GetAmountAdjustment: Get<Rate>;
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>, Price>;
+	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
+
+	/// A dispatchable call type.
+	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
+
+	/// A transaction submitter.
+	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
+
+	/// A configuration for base priority of unsigned transactions.
+	///
+	/// This is exposed so that it can be tuned for particular runtime, when
+	/// multiple modules send unsigned transactions.
+	type UnsignedPriority: Get<TransactionPriority>;
 }
 
 decl_event!(
@@ -79,6 +108,7 @@ decl_error! {
 		InReservedStage,
 		BalanceNotEnough,
 		InvalidFeedPrice,
+		MustAfterShutdown,
 	}
 }
 
@@ -94,6 +124,7 @@ decl_storage! {
 		pub TotalTargetInAuction get(fn total_target_in_auction): BalanceOf<T>;
 		pub TotalDebitInAuction get(fn total_debit_in_auction): BalanceOf<T>;
 		pub TotalSurplusInAuction get(fn total_surplus_in_auction): BalanceOf<T>;
+		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -107,10 +138,94 @@ decl_module! {
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 		const GetNativeCurrencyId: CurrencyIdOf<T> = T::GetNativeCurrencyId::get();
 		const GetAmountAdjustment: Rate = T::GetAmountAdjustment::get();
+
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		pub fn cancel(origin, id: AuctionIdOf<T>) {
+			ensure_none(origin)?;
+			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+			<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
+		}
+
+		// Runs after every block.
+		fn offchain_worker(now: T::BlockNumber) {
+			if Self::is_shutdown() && runtime_io::offchain::is_validator() {
+				if let Err(e) = Self::_offchain_worker(now) {
+					debug::info!(
+						target: "auction-manager offchain worker",
+						"cannot run offchain worker at {:?}: {:?}",
+						now,
+						e,
+					);
+				}
+			}
+		}
 	}
 }
 
 impl<T: Trait> Module<T> {
+	fn submit_cancel_auction_tx(auction_id: AuctionIdOf<T>) {
+		let call = Call::<T>::cancel(auction_id);
+		if !T::SubmitTransaction::submit_unsigned(call).is_ok() {
+			debug::warn!(
+				target: "auction-manager offchain worker",
+				"submit unsigned auction cancel tx for \nAuctionId {:?} failed : {:?}",
+				auction_id, OffchainErr::SubmitTransaction,
+			);
+		} else {
+			debug::debug!(
+				target: "auction-manager offchain worker",
+				"successfully submit unsigned auction cancel tx for \nAuctionId {:?}",
+				auction_id,
+			);
+		}
+	}
+
+	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
+		// Acquire offchain worker lock.
+		// If succeeded, update the lock, otherwise return error
+		let offchain_lock = OffchainLock::new(DB_PREFIX.to_vec());
+		offchain_lock.acquire_offchain_lock(|_: Option<()>| ())?;
+
+		let random_seed = runtime_io::offchain::random_seed();
+		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+		match rng.pick_u32(2) {
+			0 => {
+				for (auction_id, _) in <DebitAuctions<T>>::iter() {
+					Self::submit_cancel_auction_tx(auction_id);
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
+				}
+			}
+			1 => {
+				for (auction_id, _) in <SurplusAuctions<T>>::iter() {
+					Self::submit_cancel_auction_tx(auction_id);
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
+				}
+			}
+			_ => {
+				for (auction_id, _) in <CollateralAuctions<T>>::iter() {
+					if !Self::collateral_auction_in_reverse_stage(auction_id) {
+						Self::submit_cancel_auction_tx(auction_id);
+					}
+					offchain_lock.extend_offchain_lock_if_needed::<()>();
+				}
+			}
+		}
+
+		// finally, reset the expire timestamp to now in order to release lock in advance.
+		offchain_lock.release_offchain_lock(|_: ()| true);
+		debug::debug!(
+			target: "auction-manager offchain worker",
+			"offchain worker start at block: {:?} already done!",
+			now,
+		);
+
+		Ok(())
+	}
+
+	pub fn emergency_shutdown() {
+		<IsShutdown>::put(true);
+	}
+
 	pub fn cancel_surplus_auction(id: AuctionIdOf<T>) -> DispatchResult {
 		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 		if let Some(auction_info) = T::Auction::auction_info(id) {
@@ -146,11 +261,7 @@ impl<T: Trait> Module<T> {
 		if let Some(auction_info) = T::Auction::auction_info(id) {
 			// if these's bid, refund stable token to the bidder
 			if let Some((bidder, _)) = auction_info.bid {
-				if T::CDPTreasury::on_system_debit(debit_auction.fix).is_ok() {
-					// return stablecoin to bidder, ignore Err
-					let _ = T::CDPTreasury::deposit_backed_debit(&bidder, debit_auction.fix);
-				}
-
+				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, debit_auction.fix)?;
 				// decrease account ref of bidder
 				system::Module::<T>::dec_ref(&bidder);
 			}
@@ -177,7 +288,7 @@ impl<T: Trait> Module<T> {
 		// calculate which amount of collateral to offset target
 		// in settle price
 		let stable_currency_id = T::GetStableCurrencyId::get();
-		let settle_price = T::PriceSource::get_price(collateral_auction.currency_id, stable_currency_id)
+		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let confiscate_collateral_amount = rstd::cmp::min(
 			settle_price.saturating_mul_int(&collateral_auction.target),
@@ -185,9 +296,9 @@ impl<T: Trait> Module<T> {
 		);
 		let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
 
-		// refund remain collateral from cdp treasury to auction owner
+		// refund remain collateral to auction owner from cdp treasury
 		if !refund_collateral_amount.is_zero() {
-			T::CDPTreasury::transfer_system_collateral(
+			T::CDPTreasury::transfer_collateral_to(
 				collateral_auction.currency_id,
 				&collateral_auction.owner,
 				refund_collateral_amount,
@@ -197,11 +308,7 @@ impl<T: Trait> Module<T> {
 		if let Some(auction_info) = T::Auction::auction_info(id) {
 			// if these's bid, refund stable token to the bidder
 			if let Some((bidder, bid_price)) = auction_info.bid {
-				if T::CDPTreasury::on_system_debit(bid_price).is_ok() {
-					// return stablecoin to bidder, ignore Err
-					let _ = T::CDPTreasury::deposit_backed_debit(&bidder, bid_price);
-				}
-
+				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price)?;
 				// decrease account ref of bidder
 				system::Module::<T>::dec_ref(&bidder);
 			}
@@ -320,7 +427,7 @@ impl<T: Trait> Module<T> {
 							.unwrap_or(collateral_auction.amount);
 					let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
-					if T::CDPTreasury::transfer_system_collateral(
+					if T::CDPTreasury::transfer_collateral_to(
 						collateral_auction.currency_id,
 						&(collateral_auction.owner),
 						deduct_collateral_amount,
@@ -476,7 +583,7 @@ impl<T: Trait> Module<T> {
 				Self::total_collateral_in_auction(collateral_auction.currency_id),
 			);
 
-			T::CDPTreasury::transfer_system_collateral(collateral_auction.currency_id, &bidder, amount)
+			T::CDPTreasury::transfer_collateral_to(collateral_auction.currency_id, &bidder, amount)
 				.expect("never failed after overflow check");
 
 			// decrease account ref of winner
@@ -544,8 +651,8 @@ impl<T: Trait> Module<T> {
 
 	pub fn surplus_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, BalanceOf<T>)>) {
 		if let (Some(surplus_auction), Some((bidder, _))) = (Self::surplus_auctions(id), winner) {
-			// transfer stable token from cdp treasury to winner, ignore Err
-			let _ = T::CDPTreasury::transfer_system_surplus(&bidder, surplus_auction.amount);
+			// deposit unbacked stable token to winner by cdp treasury, ignore Err
+			let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, surplus_auction.amount);
 
 			// decrease account ref of winner
 			system::Module::<T>::dec_ref(&bidder);
@@ -682,6 +789,40 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			Self::cancel_surplus_auction(id)
 		} else {
 			Err(Error::<T>::AuctionNotExsits.into())
+		}
+	}
+}
+
+impl<T: Trait> OnEmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		Self::emergency_shutdown();
+	}
+}
+
+#[allow(deprecated)]
+impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+	type Call = Call<T>;
+
+	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+		if let Call::cancel(auction_id) = call {
+			if !Self::is_shutdown() {
+				return InvalidTransaction::Stale.into();
+			} else if <CollateralAuctions<T>>::contains_key(auction_id) {
+				if !Self::collateral_auction_in_reverse_stage(*auction_id) {
+					return InvalidTransaction::Stale.into();
+				}
+			} else if !<SurplusAuctions<T>>::contains_key(auction_id) && !<DebitAuctions<T>>::contains_key(auction_id) {
+				return InvalidTransaction::Stale.into();
+			}
+
+			ValidTransaction::with_tag_prefix("AuctionManagerOffchainWorker")
+				.priority(T::UnsignedPriority::get())
+				.and_provides(auction_id)
+				.longevity(64_u64)
+				.propagate(true)
+				.build()
+		} else {
+			InvalidTransaction::Call.into()
 		}
 	}
 }

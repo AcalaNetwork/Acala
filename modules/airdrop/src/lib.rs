@@ -17,6 +17,16 @@ decl_storage! {
 	trait Store for Module<T: Trait> as AirDrop {
 		AirDrops get(fn airdrops): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) T::AirDropCurrencyId => T::Balance;
 	}
+
+	add_extra_genesis {
+		config(airdrop_accounts): Vec<(T::AccountId, T::AirDropCurrencyId, T::Balance)>;
+
+		build(|config: &GenesisConfig<T>| {
+			config.airdrop_accounts.iter().for_each(|(account_id, airdrop_currency_id, initial_balance)| {
+				<AirDrops<T>>::mutate(account_id, airdrop_currency_id, | amount | *amount = *initial_balance)
+			})
+		})
+	}
 }
 
 decl_event!(
@@ -34,6 +44,7 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn airdrop(
 			origin,
 			to: T::AccountId,
@@ -45,6 +56,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Airdrop(to, currency_id, amount));
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn update_airdrop(
 			origin,
 			to: T::AccountId,

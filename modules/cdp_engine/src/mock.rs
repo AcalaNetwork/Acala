@@ -141,9 +141,8 @@ impl loans::Trait for Runtime {
 pub type LoansModule = loans::Module<Runtime>;
 
 pub struct MockPriceSource;
-impl PriceProvider<CurrencyId, Price> for MockPriceSource {
-	#[allow(unused_variables)]
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
 		match (base, quote) {
 			(AUSD, BTC) => Some(Price::from_natural(1)),
 			(BTC, AUSD) => Some(Price::from_natural(1)),
@@ -151,11 +150,13 @@ impl PriceProvider<CurrencyId, Price> for MockPriceSource {
 		}
 	}
 
-	#[allow(unused_variables)]
-	fn lock_price(currency_id: CurrencyId) {}
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		Some(Price::from_natural(1))
+	}
 
-	#[allow(unused_variables)]
-	fn unlock_price(currency_id: CurrencyId) {}
+	fn lock_price(_currency_id: CurrencyId) {}
+
+	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
@@ -214,9 +215,12 @@ parameter_types! {
 impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
+	type EnabledCurrencyIds = CollateralCurrencyIds;
 	type Share = Share;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CDPTreasuryModule;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type DEXModule = dex::Module<Runtime>;
 
@@ -230,6 +234,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
+	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
 impl Trait for Runtime {
@@ -248,6 +253,7 @@ impl Trait for Runtime {
 	type DEX = DEXModule;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = Module<Runtime>;
 
@@ -259,8 +265,6 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			endowed_accounts: vec![
-				(ALICE, ACA, 1000),
-				(BOB, ACA, 1000),
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
 				(CAROL, BTC, 100),

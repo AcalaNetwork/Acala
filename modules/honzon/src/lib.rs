@@ -4,7 +4,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{traits::Zero, DispatchResult};
-use support::EmergencyShutdown;
+use support::OnEmergencyShutdown;
 
 mod mock;
 mod tests;
@@ -51,20 +51,7 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		pub fn liquidate_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
-			let _ = ensure_signed(origin)?;
-			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
-
-			<cdp_engine::Module<T>>::liquidate_unsafe_cdp(who.clone(), currency_id)?;
-		}
-
-		pub fn settle_cdp(origin, who: T::AccountId, currency_id: CurrencyIdOf<T>) {
-			let _ = ensure_signed(origin)?;
-			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
-
-			<cdp_engine::Module<T>>::settle_cdp_has_debit(who, currency_id)?;
-		}
-
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -77,6 +64,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn adjust_collateral_after_shutdown(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -87,6 +75,7 @@ decl_module! {
 			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, -collateral_adjustment, Zero::zero())?;
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -102,6 +91,7 @@ decl_module! {
 		}
 
 		/// `origin` allow `to` to manipulate the `currency_id` loan
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -116,6 +106,7 @@ decl_module! {
 		}
 
 		/// `origin` refuse `to` to manipulate the loan  of `currency_id`
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyIdOf<T>,
@@ -130,6 +121,7 @@ decl_module! {
 		}
 
 		/// `origin` refuse anyone to manipulate its loan
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
 
@@ -156,7 +148,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> EmergencyShutdown for Module<T> {
+impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
 		Self::emergency_shutdown();
 	}

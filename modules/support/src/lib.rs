@@ -8,12 +8,21 @@ use rstd::{
 };
 use sp_runtime::{DispatchError, DispatchResult};
 
+pub mod homa;
+
+pub use homa::{
+	EraIndex, HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall,
+	PolkadotBridgeState, PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
+};
+
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
 pub type Ratio = FixedU128;
 pub type Rate = FixedU128;
 
 pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
+	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance;
+
 	fn check_position_valid(
 		currency_id: CurrencyId,
 		collateral_balance: Balance,
@@ -21,6 +30,26 @@ pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 	) -> DispatchResult;
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult;
+}
+
+impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountId, CurrencyId, Balance, DebitBalance>
+	for ()
+{
+	fn get_bad_debt_value(_currency_id: CurrencyId, _debit_balance: DebitBalance) -> Balance {
+		Default::default()
+	}
+
+	fn check_position_valid(
+		_currency_id: CurrencyId,
+		_collateral_balance: Balance,
+		_debit_balance: DebitBalance,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn check_debit_cap(_currency_id: CurrencyId, _total_debit_balance: DebitBalance) -> DispatchResult {
+		Ok(())
+	}
 }
 
 pub trait AuctionManager<AccountId> {
@@ -121,24 +150,23 @@ pub trait CDPTreasury<AccountId> {
 
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult;
 	fn on_system_surplus(amount: Self::Balance) -> DispatchResult;
-	fn deposit_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn withdraw_backed_debit(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn transfer_system_surplus(to: &AccountId, amount: Self::Balance) -> DispatchResult;
+
+	fn deposit_backed_debit_to(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn deposit_unbacked_debit_to(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn withdraw_backed_debit_from(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+
 	fn transfer_surplus_from(from: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn transfer_system_collateral(
-		currency_id: Self::CurrencyId,
-		to: &AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult;
+	fn transfer_collateral_to(currency_id: Self::CurrencyId, to: &AccountId, amount: Self::Balance) -> DispatchResult;
 	fn transfer_collateral_from(
 		currency_id: Self::CurrencyId,
 		from: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
+
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio;
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio;
 	fn swap_collateral_to_stable(
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
@@ -152,13 +180,18 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 	);
 }
 
-pub trait PriceProvider<CurrencyId, Price> {
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
+pub trait PriceProvider<CurrencyId> {
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
+	fn get_price(currency_id: CurrencyId) -> Option<Price>;
 	fn lock_price(currency_id: CurrencyId);
 	fn unlock_price(currency_id: CurrencyId);
 }
 
+pub trait ExchangeRateProvider {
+	fn get_exchange_rate() -> ExchangeRate;
+}
+
 #[impl_trait_for_tuples::impl_for_tuples(30)]
-pub trait EmergencyShutdown {
+pub trait OnEmergencyShutdown {
 	fn on_emergency_shutdown();
 }

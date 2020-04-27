@@ -1,12 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureOrigin, Saturating, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Zero},
 	DispatchResult, ModuleId,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
 use system::ensure_root;
 
 mod mock;
@@ -87,6 +90,7 @@ decl_module! {
 		// module constant
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<BalanceOf<T>>,
@@ -115,6 +119,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyIdOf<T>, size: BalanceOf<T>) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
@@ -125,20 +130,20 @@ decl_module! {
 
 		fn on_finalize(_now: T::BlockNumber) {
 			// offset the same amount between debit pool and surplus pool
-			Self::offset_unlocked_surplus_and_debit();
+			Self::offset_surplus_and_debit();
 
 			// Stop to create surplus auction and debit auction after emergency shutdown happend.
 			if !Self::is_shutdown() {
 				let surplus_auction_fixed_size = Self::surplus_auction_fixed_size();
 				if !surplus_auction_fixed_size.is_zero() {
-					let mut remain_surplus_pool = Self::get_unlocked_surplus();
+					let mut remain_surplus_pool = Self::surplus_pool();
 					let surplus_buffer_size = Self::surplus_buffer_size();
+					let total_surplus_in_auction = T::AuctionManagerHandler::get_total_surplus_in_auction();
 
 					// create surplus auction requires:
-					// surplus_pool > surplus_buffer_size + surplus_auction_fixed_size
-					while remain_surplus_pool >= surplus_buffer_size + surplus_auction_fixed_size {
+					// surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size
+					while remain_surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size {
 						T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
-						<SurplusPool<T>>::mutate(|surplus| *surplus -= surplus_auction_fixed_size);
 						remain_surplus_pool -= surplus_auction_fixed_size;
 					}
 				}
@@ -151,10 +156,10 @@ decl_module! {
 					let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
 
 					// create debit auction requires:
-					// surplus_pool > surplus_buffer_size + surplus_auction_fixed_size
+					// debit_pool > total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
 					while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
 						T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
-						<DebitPool<T>>::mutate(|debit| *debit -= debit_auction_fixed_size);
+						//<DebitPool<T>>::mutate(|debit| *debit -= debit_auction_fixed_size);
 						remain_debit_pool -= debit_auction_fixed_size;
 					}
 				}
@@ -168,12 +173,8 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	pub fn get_unlocked_surplus() -> BalanceOf<T> {
-		Self::surplus_pool().saturating_sub(T::AuctionManagerHandler::get_total_surplus_in_auction())
-	}
-
-	pub fn offset_unlocked_surplus_and_debit() {
-		let offset_amount = rstd::cmp::min(Self::debit_pool(), Self::get_unlocked_surplus());
+	pub fn offset_surplus_and_debit() {
+		let offset_amount = rstd::cmp::min(Self::debit_pool(), Self::surplus_pool());
 		if !offset_amount.is_zero()
 			&& T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount).is_ok()
 		{
@@ -220,21 +221,17 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		Ok(())
 	}
 
-	fn deposit_backed_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn deposit_backed_debit_to(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount)
 	}
 
-	fn withdraw_backed_debit(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, amount)
+	fn deposit_unbacked_debit_to(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		Self::on_system_debit(amount)?;
+		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount)
 	}
 
-	fn transfer_system_surplus(to: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		let new_surplus_pool = Self::surplus_pool()
-			.checked_sub(&amount)
-			.ok_or(Error::<T>::SurplusPoolNotEnough)?;
-		T::Currency::transfer(T::GetStableCurrencyId::get(), &Self::account_id(), to, amount)?;
-		<SurplusPool<T>>::put(new_surplus_pool);
-		Ok(())
+	fn withdraw_backed_debit_from(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, amount)
 	}
 
 	fn transfer_surplus_from(from: &T::AccountId, amount: Self::Balance) -> DispatchResult {
@@ -246,7 +243,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		Ok(())
 	}
 
-	fn transfer_system_collateral(
+	fn transfer_collateral_to(
 		currency_id: Self::CurrencyId,
 		to: &T::AccountId,
 		amount: Self::Balance,
@@ -273,14 +270,14 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		<TotalCollaterals<T>>::insert(currency_id, new_total_collateral);
 		Ok(())
 	}
-}
 
-impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
-	fn get_stable_currency_ratio(amount: Self::Balance) -> Ratio {
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
 		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
 		Ratio::from_rational(amount, stable_total_supply)
 	}
+}
 
+impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 	fn swap_collateral_to_stable(
 		currency_id: CurrencyIdOf<T>,
 		supply_amount: BalanceOf<T>,
@@ -344,7 +341,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 	}
 }
 
-impl<T: Trait> EmergencyShutdown for Module<T> {
+impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
 		Self::emergency_shutdown();
 	}

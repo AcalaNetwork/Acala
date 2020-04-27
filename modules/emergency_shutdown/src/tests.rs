@@ -4,18 +4,14 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{
-	CDPEngineModule, CDPTreasuryModule, EmergencyShutdownModule, ExtBuilder, HonzonModule, Origin, Runtime, System,
-	TestEvent, ALICE,
-};
+use mock::{CDPTreasuryModule, EmergencyShutdownModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE};
 use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), false);
-		assert_eq!(HonzonModule::is_shutdown(), false);
-		assert_eq!(CDPEngineModule::is_shutdown(), false);
 		assert_eq!(CDPTreasuryModule::is_shutdown(), false);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(5)),
@@ -27,8 +23,6 @@ fn emergency_shutdown_work() {
 		assert!(System::events().iter().any(|record| record.event == shutdown_event));
 
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), true);
-		assert_eq!(HonzonModule::is_shutdown(), true);
-		assert_eq!(CDPEngineModule::is_shutdown(), true);
 		assert_eq!(CDPTreasuryModule::is_shutdown(), true);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::ROOT),
@@ -52,6 +46,7 @@ fn open_collateral_refund_fail() {
 #[test]
 fn open_collateral_refund_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(EmergencyShutdownModule::can_refund(), false);
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::ROOT));
 		assert_noop!(
@@ -73,16 +68,6 @@ fn refund_collaterals_fail() {
 		assert_noop!(
 			EmergencyShutdownModule::refund_collaterals(Origin::signed(ALICE), 10),
 			Error::<Runtime>::CanNotRefund,
-		);
-	});
-}
-
-#[test]
-fn cancel_auction_fail() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			EmergencyShutdownModule::cancel_auction(Origin::signed(ALICE), 0),
-			Error::<Runtime>::MustAfterShutdown,
 		);
 	});
 }

@@ -4,6 +4,9 @@ use sp_runtime::{
 	MultiSignature,
 };
 
+pub use module_primitives::{AirDropCurrencyId, CurrencyId};
+pub use module_support::{EraIndex, ExchangeRate, Price, Rate, Ratio};
+
 /// An index to a block.
 pub type BlockNumber = u32;
 

@@ -34,9 +34,9 @@ parameter_types! {
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub const ExistentialDeposit: u64 = 1;
-	pub const CreationFee: u64 = 2;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC];
 }
 
 pub type AccountId = u64;
@@ -116,8 +116,11 @@ impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
 	type Share = Share;
+	type EnabledCurrencyIds = CollateralCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CDPTreasuryModule;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type DEXModule = dex::Module<Runtime>;
 
@@ -182,10 +185,8 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			endowed_accounts: vec![
-				(ALICE, ACA, 1000),
 				(ALICE, AUSD, 1000),
 				(ALICE, BTC, 1000),
-				(BOB, ACA, 1000),
 				(BOB, AUSD, 1000),
 				(BOB, BTC, 1000),
 			],

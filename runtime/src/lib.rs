@@ -16,7 +16,10 @@ use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Convert, ConvertInto, OpaqueKeys, StaticLookup};
 use sp_runtime::{
-	create_runtime_str, curve::PiecewiseLinear, generic, impl_opaque_keys, transaction_validity::TransactionValidity,
+	create_runtime_str,
+	curve::PiecewiseLinear,
+	generic, impl_opaque_keys,
+	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
 use sp_std::prelude::*;
@@ -24,6 +27,7 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_oracle::OperatorProvider;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
@@ -43,10 +47,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill};
 
-pub use module_primitives::{AirDropCurrencyId, CurrencyId};
-pub use module_support::{ExchangeRate, Price, Rate, Ratio};
-pub use orml_currencies::BasicCurrencyAdapter;
-
 pub use constants::{currency::*, time::*};
 pub use types::*;
 
@@ -55,7 +55,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 305,
+	spec_version: 401,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 };
@@ -75,7 +75,6 @@ pub fn native_version() -> NativeVersion {
 /// to even the core datastructures.
 pub mod opaque {
 	use super::*;
-
 	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
 	/// Opaque block header type.
@@ -195,7 +194,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
-	type Currency = pallet_balances::Module<Runtime>;
+	type Currency = Balances;
 	type OnTransactionPayment = ();
 	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
@@ -208,11 +207,16 @@ impl pallet_sudo::Trait for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
+}
+
 type GeneralCouncilInstance = pallet_collective::Instance1;
 impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
+	type MotionDuration = GeneralCouncilMotionDuration;
 }
 
 type GeneralCouncilMembershipInstance = pallet_membership::Instance1;
@@ -222,42 +226,103 @@ impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
 	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>;
 	type MembershipInitialized = GeneralCouncil;
 	type MembershipChanged = GeneralCouncil;
 }
 
-type FinancialCouncilInstance = pallet_collective::Instance2;
-impl pallet_collective::Trait<FinancialCouncilInstance> for Runtime {
+parameter_types! {
+	pub const HonzonCouncilMotionDuration: BlockNumber = 0;
+}
+
+type HonzonCouncilInstance = pallet_collective::Instance2;
+impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
+	type MotionDuration = HonzonCouncilMotionDuration;
 }
 
-type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
-impl pallet_membership::Trait<FinancialCouncilMembershipInstance> for Runtime {
+type HonzonCouncilMembershipInstance = pallet_membership::Instance2;
+impl pallet_membership::Trait<HonzonCouncilMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
-	type MembershipInitialized = FinancialCouncil;
-	type MembershipChanged = FinancialCouncil;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type MembershipInitialized = HonzonCouncil;
+	type MembershipChanged = HonzonCouncil;
 }
 
-type OperatorCollectiveInstance = pallet_collective::Instance3;
+parameter_types! {
+	pub const HomaCouncilMotionDuration: BlockNumber = 0;
+}
+
+type HomaCouncilInstance = pallet_collective::Instance3;
+impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = HomaCouncilMotionDuration;
+}
+
+type HomaCouncilMembershipInstance = pallet_membership::Instance3;
+impl pallet_membership::Trait<HomaCouncilMembershipInstance> for Runtime {
+	type Event = Event;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type MembershipInitialized = HomaCouncil;
+	type MembershipChanged = HomaCouncil;
+}
+
+parameter_types! {
+	pub const TechnicalCouncilMotionDuration: BlockNumber = 0;
+}
+
+type TechnicalCouncilInstance = pallet_collective::Instance4;
+impl pallet_collective::Trait<TechnicalCouncilInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = TechnicalCouncilMotionDuration;
+}
+
+type TechnicalCouncilMembershipInstance = pallet_membership::Instance4;
+impl pallet_membership::Trait<TechnicalCouncilMembershipInstance> for Runtime {
+	type Event = Event;
+	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type MembershipInitialized = TechnicalCouncil;
+	type MembershipChanged = TechnicalCouncil;
+}
+
+parameter_types! {
+	pub const OperatorMotionDuration: BlockNumber = 0;
+}
+
+type OperatorCollectiveInstance = pallet_collective::Instance5;
 impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
+	type MotionDuration = OperatorMotionDuration;
 }
 
-type OperatorMembershipInstance = pallet_membership::Instance3;
+type OperatorMembershipInstance = pallet_membership::Instance5;
 impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type RemoveOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
+	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type MembershipInitialized = OperatorCollective;
 	type MembershipChanged = OperatorCollective;
 }
@@ -329,6 +394,7 @@ impl pallet_session::Trait for Runtime {
 	type ValidatorId = <Self as system::Trait>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
 	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type NextSessionRotation = Babe;
 }
 
 impl pallet_session::historical::Trait for Runtime {
@@ -374,11 +440,14 @@ parameter_types! {
 	pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
 	pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+	pub const MaxNominatorRewardedPerValidator: u32 = 64;
+	pub const ElectionLookahead: BlockNumber = 25;
+	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
 }
 
 impl pallet_staking::Trait for Runtime {
 	type Currency = Balances;
-	type Time = Timestamp;
+	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVoteHandler;
 	type RewardRemainder = PalletTreasury;
 	type Event = Event;
@@ -391,6 +460,12 @@ impl pallet_staking::Trait for Runtime {
 	type SlashCancelOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>;
 	type SessionInterface = Self;
 	type RewardCurve = RewardCurve;
+	type NextNewSession = Session;
+	type ElectionLookahead = ElectionLookahead;
+	type Call = Call;
+	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+	type SubmitTransaction = TransactionSubmitterOf<()>;
+	type UnsignedPriority = StakingUnsignedPriority;
 }
 
 parameter_types! {
@@ -414,7 +489,7 @@ impl orml_auction::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
-	type Handler = module_auction_manager::Module<Runtime>;
+	type Handler = AuctionManager;
 }
 
 pub struct OperatorCollectiveProvider;
@@ -465,10 +540,22 @@ parameter_types! {
 }
 
 impl module_prices::Trait for Runtime {
+	type Event = Event;
 	type CurrencyId = CurrencyId;
-	type Source = orml_oracle::Module<Runtime>;
+	type Source = Oracle;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
+	type GetStakingCurrencyId = GetStakingCurrencyId;
+	type GetLiquidCurrencyId = GetLiquidCurrencyId;
+	type LockOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
+	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+}
+
+pub struct LiquidStakingExchangeRateProvider;
+impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider {
+	fn get_exchange_rate() -> ExchangeRate {
+		StakingPool::liquid_exchange_rate()
+	}
 }
 
 parameter_types! {
@@ -478,8 +565,8 @@ parameter_types! {
 
 impl orml_currencies::Trait for Runtime {
 	type Event = Event;
-	type MultiCurrency = orml_tokens::Module<Runtime>;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Balance>;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Balance>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
@@ -488,60 +575,71 @@ parameter_types! {
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
 	pub const GetAmountAdjustment: Rate = Rate::from_rational(20, 100);
+	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_auction_manager::Trait for Runtime {
 	type Event = Event;
-	type Currency = orml_currencies::Module<Runtime>;
-	type Auction = orml_auction::Module<Runtime>;
+	type Currency = Currencies;
+	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = CdpTreasury;
 	type GetAmountAdjustment = GetAmountAdjustment;
-	type PriceSource = module_prices::Module<Runtime>;
+	type PriceSource = Prices;
+	type Call = Call;
+	type SubmitTransaction = TransactionSubmitterOf<()>;
+	type UnsignedPriority = AuctionManagerUnsignedPriority;
 }
 
 impl module_loans::Trait for Runtime {
 	type Event = Event;
 	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
-	type Currency = orml_currencies::Module<Runtime>;
-	type RiskManager = module_cdp_engine::Module<Runtime>;
+	type Currency = Currencies;
+	type RiskManager = CdpEngine;
 	type DebitBalance = Balance;
 	type DebitAmount = Amount;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
+	type CDPTreasury = CdpTreasury;
 }
 
-/// A runtime transaction submitter.
-pub type SubmitTransaction = TransactionSubmitter<(), Runtime, UncheckedExtrinsic>;
+/// A transaction submitter with the given key type.
+pub type TransactionSubmitterOf<KeyType> = TransactionSubmitter<KeyType, Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
+<<<<<<< HEAD
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
+=======
+	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
+	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
+>>>>>>> origin/master
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
 	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(5, 100);
+	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
-	type PriceSource = module_prices::Module<Runtime>;
+	type PriceSource = Prices;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
-	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type CDPTreasury = CdpTreasury;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type Currency = orml_currencies::Module<Runtime>;
-	type DEX = module_dex::Module<Runtime>;
+	type Currency = Currencies;
+	type DEX = Dex;
 	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
+	type SubmitTransaction = TransactionSubmitterOf<()>;
+	type UnsignedPriority = CdpEngineUnsignedPriority;
 }
 
 impl module_honzon::Trait for Runtime {
@@ -550,36 +648,37 @@ impl module_honzon::Trait for Runtime {
 
 impl module_emergency_shutdown::Trait for Runtime {
 	type Event = Event;
-	type PriceSource = module_prices::Module<Runtime>;
-	type CDPTreasury = module_cdp_treasury::Module<Runtime>;
-	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
-	type OnShutdown = (
-		module_cdp_treasury::Module<Runtime>,
-		module_cdp_engine::Module<Runtime>,
-		module_honzon::Module<Runtime>,
-	);
-	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type PriceSource = Prices;
+	type CDPTreasury = CdpTreasury;
+	type AuctionManagerHandler = AuctionManager;
+	type OnShutdown = (CdpTreasury, CdpEngine, Honzon, Dex);
+	type ShutdownOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>;
 }
 
 parameter_types! {
 	pub const GetExchangeFee: Rate = Rate::from_rational(1, 1000);
+	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
 }
 
 impl module_dex::Trait for Runtime {
 	type Event = Event;
-	type Currency = orml_currencies::Module<Runtime>;
+	type Currency = Currencies;
 	type Share = Share;
+	type EnabledCurrencyIds = EnabledCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CdpTreasury;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 }
 
 impl module_cdp_treasury::Trait for Runtime {
 	type Event = Event;
-	type Currency = orml_currencies::Module<Runtime>;
+	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type AuctionManagerHandler = module_auction_manager::Module<Runtime>;
-	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>;
-	type DEX = module_dex::Module<Runtime>;
+	type AuctionManagerHandler = AuctionManager;
+	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
+	type DEX = Dex;
 }
 
 parameter_types! {
@@ -593,8 +692,7 @@ impl module_accounts::Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type Time = Timestamp;
-	type Currency = orml_currencies::Module<Runtime>;
-	type Call = Call;
+	type Currency = Currencies;
 	type DepositCurrency = Balances;
 }
 
@@ -604,12 +702,78 @@ impl module_airdrop::Trait for Runtime {
 	type Balance = Balance;
 }
 
+parameter_types! {
+	pub const PolkadotBondingDuration: EraIndex = 7;
+	pub const EraLength: BlockNumber = 10;
+}
+
+impl module_polkadot_bridge::Trait for Runtime {
+	type Event = Event;
+	type DOTCurrency = Currency<Runtime, GetStakingCurrencyId>;
+	type OnNewEra = (NomineesElection, StakingPool);
+	type BondingDuration = PolkadotBondingDuration;
+	type EraLength = EraLength;
+	type PolkadotAccountId = AccountId;
+}
+
+parameter_types! {
+	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
+	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
+	pub const MaxBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
+	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
+	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
+	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100); // 80%
+}
+
+impl module_staking_pool::Trait for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type StakingCurrencyId = GetStakingCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
+	type Nominees = NomineesElection;
+	type OnCommission = ();
+	type Bridge = PolkadotBridge;
+	type MaxBondRatio = MaxBondRatio;
+	type MinBondRatio = MinBondRatio;
+	type MaxClaimFee = MaxClaimFee;
+	type DefaultExchangeRate = DefaultExchangeRate;
+	type ClaimFeeReturnRatio = ClaimFeeReturnRatio;
+}
+
+impl module_homa::Trait for Runtime {
+	type Homa = StakingPool;
+}
+
+parameter_types! {
+	pub const MinCouncilBondThreshold: Balance = 1 * DOLLARS;
+	pub const NominateesCount: usize = 7;
+	pub const MaxUnlockingChunks: usize = 7;
+	pub const NomineesElectionBondingDuration: EraIndex = 7;
+}
+
+impl module_nominees_election::Trait for Runtime {
+	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
+	type PolkadotAccountId = AccountId;
+	type MinBondThreshold = MinCouncilBondThreshold;
+	type BondingDuration = NomineesElectionBondingDuration;
+	type NominateesCount = NominateesCount;
+	type MaxUnlockingChunks = MaxUnlockingChunks;
+}
+
+impl module_homa_treasury::Trait for Runtime {
+	type Currency = Currencies;
+	type Homa = StakingPool;
+	type StakingCurrencyId = GetStakingCurrencyId;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
+		// srml modules
 		System: system::{Module, Call, Storage, Config, Event<T>},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
@@ -619,32 +783,44 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		GeneralCouncilMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
-		FinancialCouncil: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		FinancialCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
-		OperatorCollective: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		OperatorMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
 		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 		PalletTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 
+		// governance
+		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		GeneralCouncilMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+		HonzonCouncil: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		HonzonCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
+		HomaCouncil: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
+		TechnicalCouncil: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		TechnicalCouncilMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
+		OperatorCollective: pallet_collective::<Instance5>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		OperatorMembership: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
+
+		// acala modules
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
-		Prices: module_prices::{Module, Storage},
+		Prices: module_prices::{Module, Storage, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
-		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>},
+		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-		Dex: module_dex::{Module, Storage, Call, Event<T>},
+		Dex: module_dex::{Module, Storage, Call, Config<T>, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
-		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>},
+		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
+		Homa: module_homa::{Module, Call},
+		NomineesElection: module_nominees_election::{Module, Call, Storage},
+		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
+		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
+		HomaTreasury: module_homa_treasury::{Module},
 	}
 );
 
@@ -703,10 +879,6 @@ impl_runtime_apis! {
 			Executive::apply_extrinsic(extrinsic)
 		}
 
-		fn apply_trusted_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
-			Executive::apply_extrinsic(extrinsic)
-		}
-
 		fn finalize_block() -> <Block as BlockT>::Header {
 			Executive::finalize_block()
 		}
@@ -728,8 +900,11 @@ impl_runtime_apis! {
 	}
 
 	impl sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> for Runtime {
-		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			Executive::validate_transaction(tx)
+		fn validate_transaction(
+			source: TransactionSource,
+			tx: <Block as BlockT>::Extrinsic,
+		) -> TransactionValidity {
+			Executive::validate_transaction(source, tx)
 		}
 	}
 
@@ -814,16 +989,36 @@ impl_runtime_apis! {
 			supply_currency_id: CurrencyId,
 			target_currency_id: CurrencyId,
 			target_currency_amount: Balance,
-		) -> Balance {
-			Dex::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
+		) -> module_dex_rpc_runtime_api::BalanceInfo<Balance> {
+			module_dex_rpc_runtime_api::BalanceInfo{
+				amount: Dex::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
+			}
 		}
 
 		fn get_target_amount(
 			supply_currency_id: CurrencyId,
 			target_currency_id: CurrencyId,
 			supply_currency_amount: Balance,
-		) -> Balance {
-			Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
+		) -> module_dex_rpc_runtime_api::BalanceInfo<Balance> {
+			module_dex_rpc_runtime_api::BalanceInfo{
+				amount: Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
+			}
+		}
+	}
+
+	impl module_staking_pool_rpc_runtime_api::StakingPoolApi<
+		Block,
+		AccountId,
+		Balance,
+	> for Runtime {
+		fn get_available_unbonded(account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
+			module_staking_pool_rpc_runtime_api::BalanceInfo {
+				amount: StakingPool::get_available_unbonded(&account)
+			}
+		}
+
+		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
+			StakingPool::liquid_exchange_rate()
 		}
 	}
 }

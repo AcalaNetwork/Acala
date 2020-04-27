@@ -1,16 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+	weights::{SimpleDispatchInfo, WeighData, Weight},
+	Parameter,
+};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use rstd::prelude::Vec;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating,
 		UniqueSaturatedInto, Zero,
 	},
-	DispatchError, ModuleId,
+	DispatchError, DispatchResult, ModuleId,
 };
-use support::{DEXManager, Price, Rate, Ratio};
-use system::{self as system, ensure_signed};
+use support::{CDPTreasury, DEXManager, OnEmergencyShutdown, Price, Rate, Ratio};
+use system::{self as system, ensure_root, ensure_signed};
 
 mod mock;
 mod tests;
@@ -24,8 +30,11 @@ pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: MultiCurrencyExtended<Self::AccountId>;
 	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
+	type EnabledCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
 	type GetBaseCurrencyId: Get<CurrencyIdOf<Self>>;
 	type GetExchangeFee: Get<Rate>;
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event!(
@@ -44,7 +53,7 @@ decl_event!(
 decl_error! {
 	/// Error for dex module.
 	pub enum Error for Module<T: Trait> {
-		BaseCurrencyIdNotAllowed,
+		CurrencyIdNotAllowed,
 		TokenNotEnough,
 		ShareNotEnough,
 		InvalidBalance,
@@ -59,6 +68,22 @@ decl_storage! {
 		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyIdOf<T> => (BalanceOf<T>, BalanceOf<T>);
 		TotalShares get(fn total_shares): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
 		Shares get(fn shares): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::Share;
+
+		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyIdOf<T> => Rate;
+		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => BalanceOf<T>;
+		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+
+		IsShutdown get(fn is_shutdown): bool;
+	}
+
+	add_extra_genesis {
+		config(liquidity_incentive_rate): Vec<(CurrencyIdOf<T>, Rate)>;
+		build(|config: &GenesisConfig<T>| {
+			config.liquidity_incentive_rate.iter().for_each(| (currency_id, liquidity_incentive_rate) | {
+				<LiquidityIncentiveRate<T>>::insert(currency_id, liquidity_incentive_rate);
+			});
+		});
 	}
 }
 
@@ -68,9 +93,30 @@ decl_module! {
 
 		fn deposit_event() = default;
 
+		const EnabledCurrencyIds: Vec<CurrencyIdOf<T>> = T::EnabledCurrencyIds::get();
 		const GetBaseCurrencyId: CurrencyIdOf<T> = T::GetBaseCurrencyId::get();
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		pub fn set_liquidity_incentive_rate(
+			origin,
+			currency_id: CurrencyIdOf<T>,
+			liquidity_incentive_rate: Rate,
+		) {
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
+
+			<LiquidityIncentiveRate<T>>::insert(currency_id, liquidity_incentive_rate);
+		}
+
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyIdOf<T>) {
+			let who = ensure_signed(origin)?;
+			Self::claim_interest(currency_id, &who)?;
+		}
+
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyIdOf<T>,
@@ -94,6 +140,7 @@ decl_module! {
 			}
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyIdOf<T>,
@@ -103,8 +150,8 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
-				other_currency_id != base_currency_id,
-				Error::<T>::BaseCurrencyIdNotAllowed,
+				T::EnabledCurrencyIds::get().contains(&other_currency_id),
+				Error::<T>::CurrencyIdNotAllowed,
 			);
 			ensure!(
 				!max_other_currency_amount.is_zero() && !max_base_currency_amount.is_zero(),
@@ -152,6 +199,8 @@ decl_module! {
 			.expect("never failed because after checks");
 			T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_increment)
 			.expect("never failed because after checks");
+
+			Self::deposit_calculate_interest(other_currency_id, &who, share_increment);
 			<TotalShares<T>>::mutate(other_currency_id, |share| *share = share.saturating_add(share_increment));
 			<Shares<T>>::mutate(other_currency_id, &who, |share| *share = share.saturating_add(share_increment));
 			<LiquidityPool<T>>::mutate(other_currency_id, |pool| {
@@ -166,12 +215,13 @@ decl_module! {
 			));
 		}
 
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyIdOf<T>, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
-				currency_id != base_currency_id,
-				Error::<T>::BaseCurrencyIdNotAllowed,
+				T::EnabledCurrencyIds::get().contains(&currency_id),
+				Error::<T>::CurrencyIdNotAllowed,
 			);
 			ensure!(
 				Self::shares(currency_id, &who) >= share_amount && !share_amount.is_zero(),
@@ -190,6 +240,8 @@ decl_module! {
 				T::Currency::transfer(base_currency_id, &Self::account_id(), &who, withdraw_base_currency_amount)
 				.expect("never failed because after checks");
 			}
+
+			Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
 			<TotalShares<T>>::mutate(currency_id, |share| *share = share.saturating_sub(share_amount));
 			<Shares<T>>::mutate(currency_id, &who, |share| *share = share.saturating_sub(share_amount));
 			<LiquidityPool<T>>::mutate(currency_id, |pool| {
@@ -203,6 +255,16 @@ decl_module! {
 				withdraw_base_currency_amount,
 				share_amount,
 			));
+		}
+
+		fn on_initialize(_n: T::BlockNumber) -> Weight {
+			if !Self::is_shutdown() {
+				for currency_id in T::EnabledCurrencyIds::get() {
+					Self::accumulate_interest(currency_id);
+				}
+			}
+
+			SimpleDispatchInfo::default().weigh_data(())
 		}
 	}
 }
@@ -490,6 +552,92 @@ impl<T: Trait> Module<T> {
 			)
 		}
 	}
+
+	pub fn deposit_calculate_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId, share_amount: T::Share) {
+		let total_shares = Self::total_shares(currency_id);
+		if total_shares.is_zero() {
+			return;
+		}
+		let proportion = Ratio::from_rational(share_amount, total_shares);
+		let total_interest = Self::total_interest(currency_id);
+		if total_interest.is_zero() {
+			return;
+		}
+		let interest_to_expand = proportion.saturating_mul_int(&total_interest);
+		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
+			*val = val.saturating_add(interest_to_expand);
+		});
+		<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+			*val = val.saturating_add(interest_to_expand);
+		});
+		<TotalInterest<T>>::mutate(currency_id, |interest| {
+			*interest = interest.saturating_add(interest_to_expand);
+		});
+	}
+
+	fn withdraw_calculate_interest(
+		currency_id: CurrencyIdOf<T>,
+		who: &T::AccountId,
+		share_amount: T::Share,
+	) -> DispatchResult {
+		// claim interest first
+		Self::claim_interest(currency_id, who)?;
+
+		let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
+		let withdrawn_interest_to_remove = Ratio::from_rational(share_amount, Self::shares(currency_id, who))
+			.saturating_mul_int(&Self::withdrawn_interest(currency_id, who));
+
+		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
+			*val = val.saturating_sub(withdrawn_interest_to_remove);
+		});
+		<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+			*val = val.saturating_sub(withdrawn_interest_to_remove);
+		});
+		<TotalInterest<T>>::mutate(currency_id, |val| {
+			*val = val.saturating_sub(proportion.saturating_mul_int(val));
+		});
+
+		Ok(())
+	}
+
+	fn claim_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> DispatchResult {
+		let proportion = Ratio::from_rational(Self::shares(currency_id, who), Self::total_shares(currency_id));
+		let interest_to_withdraw = proportion
+			.saturating_mul_int(&Self::total_interest(currency_id))
+			.saturating_sub(Self::withdrawn_interest(currency_id, who));
+
+		if !interest_to_withdraw.is_zero() {
+			// withdraw interest to share holder
+			T::Currency::transfer(
+				T::GetBaseCurrencyId::get(),
+				&Self::account_id(),
+				&who,
+				interest_to_withdraw,
+			)?;
+			<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
+				*val = val.saturating_add(interest_to_withdraw);
+			});
+			<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+				*val = val.saturating_add(interest_to_withdraw);
+			});
+		}
+
+		Ok(())
+	}
+
+	fn accumulate_interest(currency_id: CurrencyIdOf<T>) {
+		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
+		let interest_to_increase = Self::liquidity_incentive_rate(currency_id).saturating_mul_int(&base_currency_pool);
+
+		if !interest_to_increase.is_zero() {
+			// issue aUSD as interest
+			if T::CDPTreasury::deposit_unbacked_debit_to(&Self::account_id(), interest_to_increase).is_ok() {
+				<TotalInterest<T>>::mutate(currency_id, |val| {
+					*val = val.saturating_add(interest_to_increase);
+				});
+			}
+		}
+	}
 }
 
 impl<T: Trait> DEXManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
@@ -586,5 +734,11 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 
 			Some(final_slippage)
 		}
+	}
+}
+
+impl<T: Trait> OnEmergencyShutdown for Module<T> {
+	fn on_emergency_shutdown() {
+		<IsShutdown>::put(true);
 	}
 }

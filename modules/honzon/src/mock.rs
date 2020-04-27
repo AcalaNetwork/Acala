@@ -144,17 +144,18 @@ impl loans::Trait for Runtime {
 pub type LoansModule = loans::Module<Runtime>;
 
 pub struct MockPriceSource;
-impl PriceProvider<CurrencyId, Price> for MockPriceSource {
-	#[allow(unused_variables)]
-	fn get_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
 		Some(Price::from_natural(1))
 	}
 
-	#[allow(unused_variables)]
-	fn lock_price(currency_id: CurrencyId) {}
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		Some(Price::from_natural(1))
+	}
 
-	#[allow(unused_variables)]
-	fn unlock_price(currency_id: CurrencyId) {}
+	fn lock_price(_currency_id: CurrencyId) {}
+
+	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
@@ -216,6 +217,7 @@ type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrin
 
 parameter_types! {
 	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
+	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
 impl cdp_engine::Trait for Runtime {
@@ -234,6 +236,7 @@ impl cdp_engine::Trait for Runtime {
 	type DEX = ();
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = cdp_engine::Module<Runtime>;
 
