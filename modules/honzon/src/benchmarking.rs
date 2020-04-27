@@ -103,3 +103,22 @@ benchmarks! {
 		)?;
 	}: _(RawOrigin::Signed(receiver), currency_id, sender)
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::mock::{ExtBuilder, Runtime};
+	use frame_support::assert_ok;
+
+	#[test]
+	fn test_benchmarks() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_authorize::<Runtime>());
+			assert_ok!(test_benchmark_unauthorize::<Runtime>());
+			assert_ok!(test_benchmark_unauthorize_all::<Runtime>());
+			assert_ok!(test_benchmark_adjust_loan::<Runtime>());
+			assert_ok!(test_benchmark_adjust_collateral_after_shutdown::<Runtime>());
+			assert_ok!(test_benchmark_transfer_loan_from::<Runtime>());
+		});
+	}
+}
