@@ -38,7 +38,6 @@ pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
 	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
-	type GlobalStabilityFee: Get<Rate>;
 	type DefaultLiquidationRatio: Get<Ratio>;
 	type DefaultDebitExchangeRate: Get<ExchangeRate>;
 	type DefaultLiquidationPenalty: Get<Rate>;
@@ -111,6 +110,7 @@ decl_storage! {
 		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<ExchangeRate>;
 		pub IsShutdown get(fn is_shutdown): bool;
+		pub GlobalStabilityFee get(fn global_stability_fee) config(): Rate;
 	}
 
 	add_extra_genesis {
@@ -147,13 +147,23 @@ decl_module! {
 		fn deposit_event() = default;
 
 		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
-		const GlobalStabilityFee: Rate = T::GlobalStabilityFee::get();
 		const DefaultLiquidationRatio: Ratio = T::DefaultLiquidationRatio::get();
 		const DefaultDebitExchangeRate: ExchangeRate = T::DefaultDebitExchangeRate::get();
 		const MinimumDebitValue: BalanceOf<T> = T::MinimumDebitValue::get();
 		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
 		const MaxSlippageSwapWithDEX: Ratio = T::MaxSlippageSwapWithDEX::get();
 		const DefaultLiquidationPenalty: Rate = T::DefaultLiquidationPenalty::get();
+
+		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		pub fn set_global_params(
+			origin,
+			global_stability_fee: Rate,
+		) {
+			T::UpdateOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
+			GlobalStabilityFee::put(global_stability_fee);
+		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_collateral_params(
@@ -209,7 +219,7 @@ decl_module! {
 		fn on_finalize(_now: T::BlockNumber) {
 			// collect stability fee for all types of collateral
 			if !Self::is_shutdown() {
-				let global_stability_fee = T::GlobalStabilityFee::get();
+				let global_stability_fee = Self::global_stability_fee();
 
 				for currency_id in T::CollateralCurrencyIds::get() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);

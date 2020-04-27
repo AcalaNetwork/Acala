@@ -331,13 +331,14 @@ fn testnet_genesis(
 				),
 				(
 					CurrencyId::LDOT,
-					None,
+					Some(FixedU128::from_natural(0)),
 					Some(FixedU128::from_rational(150, 100)),
 					Some(FixedU128::from_rational(10, 100)),
 					Some(FixedU128::from_rational(180, 100)),
 					10_000_000 * DOLLARS,
 				),
 			],
+			global_stability_fee: FixedU128::from_rational(618850393, 100000000000000000u128), // 5% APR
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
@@ -439,7 +440,7 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					None,                                     // stability fee for this collateral
+					Some(FixedU128::from_natural(0)),         // stability fee for this collateral
 					Some(FixedU128::from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::from_rational(110, 100)), // required liquidation ratio
@@ -447,7 +448,7 @@ fn mandala_genesis(
 				),
 				(
 					CurrencyId::XBTC,
-					None,
+					Some(FixedU128::from_natural(0)),
 					Some(FixedU128::from_rational(110, 100)),
 					Some(FixedU128::from_rational(4, 100)),
 					Some(FixedU128::from_rational(115, 100)),
@@ -455,13 +456,14 @@ fn mandala_genesis(
 				),
 				(
 					CurrencyId::LDOT,
-					None,
+					Some(FixedU128::from_natural(0)),
 					Some(FixedU128::from_rational(120, 100)),
 					Some(FixedU128::from_rational(10, 100)),
 					Some(FixedU128::from_rational(130, 100)),
 					10_000_000 * DOLLARS,
 				),
 			],
+			global_stability_fee: FixedU128::from_rational(618850393, 100000000000000000u128), // 5% APR
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![

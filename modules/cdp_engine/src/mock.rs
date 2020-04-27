@@ -48,7 +48,6 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 	pub const CreationFee: u64 = 2;
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub const GlobalStabilityFee: Rate = Rate::from_parts(0);
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(10, 100);
@@ -242,7 +241,6 @@ impl Trait for Runtime {
 	type Event = TestEvent;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
-	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;

@@ -610,7 +610,6 @@ pub type TransactionSubmitterOf<KeyType> = TransactionSubmitter<KeyType, Runtime
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
-	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
@@ -623,7 +622,6 @@ impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type PriceSource = Prices;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
-	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
@@ -974,6 +972,10 @@ impl_runtime_apis! {
 	> for Runtime {
 		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
 			Oracle::get_no_op(&key)
+		}
+
+		fn get_all_values() -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
+			Oracle::get_all_values()
 		}
 	}
 
