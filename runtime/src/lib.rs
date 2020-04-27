@@ -609,12 +609,7 @@ impl module_loans::Trait for Runtime {
 pub type TransactionSubmitterOf<KeyType> = TransactionSubmitter<KeyType, Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
-<<<<<<< HEAD
-	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC];
-=======
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
-	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
->>>>>>> origin/master
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
