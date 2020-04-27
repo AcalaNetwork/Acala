@@ -73,7 +73,7 @@ decl_module! {
 		) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
-			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, -collateral_adjustment, Zero::zero())?;
+			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, Zero::zero())?;
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
@@ -126,7 +126,7 @@ decl_module! {
 		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
 
-			// update authorization
+			//update authorization
 			<Authorization<T>>::remove_prefix(&from);
 
 			Self::deposit_event(RawEvent::UnAuthorizationAll(from));
@@ -143,14 +143,10 @@ impl<T: Trait> Module<T> {
 		);
 		Ok(())
 	}
-
-	pub fn emergency_shutdown() {
-		<IsShutdown>::put(true);
-	}
 }
 
 impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
-		Self::emergency_shutdown();
+		<IsShutdown>::put(true);
 	}
 }

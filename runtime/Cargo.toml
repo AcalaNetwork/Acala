@@ -142,5 +142,6 @@ std = [
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
+	"pallet-balances/runtime-benchmarks",
 	"module-honzon/runtime-benchmarks",
 ]

@@ -16,6 +16,7 @@ version = "0.4.1"
 dependencies = [
  "acala-inspect",
  "acala-runtime",
+ "frame-benchmarking",
  "frame-benchmarking-cli",
  "futures 0.3.4",
  "hex-literal",

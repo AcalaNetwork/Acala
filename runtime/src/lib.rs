@@ -1023,7 +1023,7 @@ impl_runtime_apis! {
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn dispatch_benchmark(
-			module: Vec<u8>,
+			pallet: Vec<u8>,
 			benchmark: Vec<u8>,
 			lowest_range_values: Vec<u32>,
 			highest_range_values: Vec<u32>,
@@ -1033,9 +1033,10 @@ impl_runtime_apis! {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark};
 
 			let mut batches = Vec::<BenchmarkBatch>::new();
-			let params = (&module, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
+			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
 
 			add_benchmark!(params, batches, b"honzon", Honzon);
+			add_benchmark!(params, batches, b"balances", Balances);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

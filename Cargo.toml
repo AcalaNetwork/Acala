@@ -54,6 +54,7 @@ sp-runtime = { version = "2.0.0-alpha.6" }
 sp-transaction-pool = { version = "2.0.0-alpha.6" }
 substrate-frame-rpc-system = { version = "2.0.0-alpha.6" }
 frame-benchmarking-cli = { version = "2.0.0-alpha.6" }
+frame-benchmarking = { version = "2.0.0-alpha.6" }
 
 module-dex-rpc = { path = "modules/dex/rpc" }
 module-support = { path = "modules/support" }
