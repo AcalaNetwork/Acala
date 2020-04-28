@@ -699,7 +699,7 @@ impl module_airdrop::Trait for Runtime {
 
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = 10;
+	pub const EraLength: BlockNumber = 1 * DAYS;
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
