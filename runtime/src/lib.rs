@@ -714,11 +714,11 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
-	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
-	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
+	pub const MaxBondRatio: Ratio = Ratio::from_rational(95, 100);	// 95%
+	pub const MinBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
+	pub const MaxClaimFee: Rate = Rate::from_rational(5, 100);	// 5%
 	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100); // 80%
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(98, 100); // 98%
 }
 
 impl module_staking_pool::Trait for Runtime {
