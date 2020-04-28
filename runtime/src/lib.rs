@@ -55,7 +55,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 401,
+	spec_version: 402,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 };
@@ -699,7 +699,7 @@ impl module_airdrop::Trait for Runtime {
 
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = 10;
+	pub const EraLength: BlockNumber = 1 * DAYS;
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
@@ -714,11 +714,11 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
-	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
-	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
+	pub const MaxBondRatio: Ratio = Ratio::from_rational(95, 100);	// 95%
+	pub const MinBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
+	pub const MaxClaimFee: Rate = Rate::from_rational(5, 100);	// 5%
 	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100); // 80%
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(98, 100); // 98%
 }
 
 impl module_staking_pool::Trait for Runtime {

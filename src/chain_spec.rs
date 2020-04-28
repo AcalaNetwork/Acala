@@ -157,10 +157,10 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	ChainSpec::from_genesis(
-		"Acala Mandala TC2",
-		"mandala22",
+		"Acala Mandala TC3",
+		"mandala3",
 		ChainType::Live,
-		|| // SECRET="..."
+		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
 		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//oracle"
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//validator"
@@ -172,45 +172,41 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//validator"
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//babe"
 		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
-		mandala_genesis(
-			vec![
-				(
-					// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
-					hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
-					hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
-					hex!["21b5a771b99ef0f059c476502c018c4b817fb0e48858e95a238850d2b7828556"]
-						.unchecked_into(),
-					hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"]
-						.unchecked_into(),
-				),
-				(
-					// 5FnLzAUmXeTZg5J9Ao5psKU68oA5PBekXqhrZCKDbhSCQi88
-					hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
-					hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
-					hex!["77f3c27e98da7849ed0749e1dea449321a4a5a36a1dccf3f08fc0ab3af24c62e"]
-						.unchecked_into(),
-					hex!["b4f5713322656d29930aa89efa5509554a36c40fb50a226eae0f38fc1a6ceb25"]
-						.unchecked_into(),
-				),
-				(
-					// 5Gn5LuLuWNcY21Vue4QcFFD3hLvjQY3weMHXuEyejUbUnArt
-					hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
-					hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
-					hex!["c5dfcf68ccf1a64ed4145383e4bbbb8bbcc50f654d87187c39df2b88a9683b7f"]
-						.unchecked_into(),
-					hex!["4cc54799f38715771605a21e8272a7a1344667e4681611988a913412755a8a04"]
-						.unchecked_into(),
-				),
-			],
-			// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-			hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-			vec![
+		|| {
+			mandala_genesis(
+				vec![
+					(
+						// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
+						hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
+						hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
+						hex!["21b5a771b99ef0f059c476502c018c4b817fb0e48858e95a238850d2b7828556"].unchecked_into(),
+						hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"].unchecked_into(),
+					),
+					(
+						// 5FnLzAUmXeTZg5J9Ao5psKU68oA5PBekXqhrZCKDbhSCQi88
+						hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
+						hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
+						hex!["77f3c27e98da7849ed0749e1dea449321a4a5a36a1dccf3f08fc0ab3af24c62e"].unchecked_into(),
+						hex!["b4f5713322656d29930aa89efa5509554a36c40fb50a226eae0f38fc1a6ceb25"].unchecked_into(),
+					),
+					(
+						// 5Gn5LuLuWNcY21Vue4QcFFD3hLvjQY3weMHXuEyejUbUnArt
+						hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
+						hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
+						hex!["c5dfcf68ccf1a64ed4145383e4bbbb8bbcc50f654d87187c39df2b88a9683b7f"].unchecked_into(),
+						hex!["4cc54799f38715771605a21e8272a7a1344667e4681611988a913412755a8a04"].unchecked_into(),
+					),
+				],
 				// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
 				hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-				// 5GeTpaLR637ztQqFvwCZocZhLp1QqHURKH6Gj7CZteRCAhMs
-				hex!["cab00722883a824e7fc368ff2ad53ffcce3fa3b794080311218bee8e902929df"].into(),
-			],
-		),
+				vec![
+					// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+					hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+					// 5GeTpaLR637ztQqFvwCZocZhLp1QqHURKH6Gj7CZteRCAhMs
+					hex!["cab00722883a824e7fc368ff2ad53ffcce3fa3b794080311218bee8e902929df"].into(),
+				],
+			)
+		},
 		vec![
 			"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA"
 				.parse()
@@ -467,13 +463,13 @@ fn mandala_genesis(
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
-				(CurrencyId::DOT, FixedU128::from_natural(0)),
-				(CurrencyId::XBTC, FixedU128::from_natural(0)),
-				(CurrencyId::LDOT, FixedU128::from_natural(0)),
+				(CurrencyId::DOT, FixedU128::from_rational(4975, 10000000000000u128)), // 4% APR
+				(CurrencyId::XBTC, FixedU128::from_rational(4975, 10000000000000u128)), // 4% APR
+				(CurrencyId::LDOT, FixedU128::from_rational(4975, 10000000000000u128)), // 4% APR
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::from_rational(1, 100000000),
+			mock_reward_rate: FixedU128::from_rational(5, 10000), // 20% APR
 		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: {
