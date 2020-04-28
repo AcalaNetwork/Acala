@@ -161,6 +161,8 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn bond(who: &T::AccountId, amount: BalanceOf<T>) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		let liquid_exchange_rate = Self::liquid_exchange_rate();
+
 		// bond dot
 		T::Currency::ensure_can_withdraw(T::StakingCurrencyId::get(), who, amount)
 			.map_err(|_| Error::<T>::StakingCurrencyNotEnough)?;
@@ -170,9 +172,9 @@ impl<T: Trait> Module<T> {
 
 		// issue ldot to who
 		let ldot_amount = ExchangeRate::from_natural(1)
-			.checked_div(&Self::liquid_exchange_rate())
+			.checked_div(&liquid_exchange_rate)
 			.unwrap_or_default()
-			.saturating_mul_int(&Self::get_total_communal_balance());
+			.saturating_mul_int(&amount);
 		T::Currency::deposit(T::LiquidCurrencyId::get(), who, ldot_amount)?;
 
 		<Module<T>>::deposit_event(RawEvent::BondAndMint(who.clone(), amount, ldot_amount));
