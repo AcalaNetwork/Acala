@@ -653,7 +653,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 
 parameter_types! {
 	pub const GetExchangeFee: Rate = Rate::from_rational(1, 1000);
-	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
+	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA];
 }
 
 impl module_dex::Trait for Runtime {
