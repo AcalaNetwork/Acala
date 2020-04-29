@@ -55,7 +55,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 401,
+	spec_version: 402,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 };
@@ -610,7 +610,6 @@ pub type TransactionSubmitterOf<KeyType> = TransactionSubmitter<KeyType, Runtime
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
-	pub const GlobalStabilityFee: Rate = Rate::from_rational(618850393, 100000000000000000u128); // 5% APR
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
@@ -623,7 +622,6 @@ impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type PriceSource = Prices;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
-	type GlobalStabilityFee = GlobalStabilityFee;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
@@ -701,7 +699,7 @@ impl module_airdrop::Trait for Runtime {
 
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = 10;
+	pub const EraLength: BlockNumber = 1 * DAYS;
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
@@ -716,11 +714,11 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
-	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
-	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
+	pub const MaxBondRatio: Ratio = Ratio::from_rational(95, 100);	// 95%
+	pub const MinBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
+	pub const MaxClaimFee: Rate = Rate::from_rational(5, 100);	// 5%
 	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100); // 80%
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(98, 100); // 98%
 }
 
 impl module_staking_pool::Trait for Runtime {
@@ -974,6 +972,10 @@ impl_runtime_apis! {
 	> for Runtime {
 		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
 			Oracle::get_no_op(&key)
+		}
+
+		fn get_all_values() -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
+			Oracle::get_all_values()
 		}
 	}
 
