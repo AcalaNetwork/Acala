@@ -1,6 +1,6 @@
 [package]
 name = "module-homa-treasury"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Acala Developers"]
 edition = "2018"
 

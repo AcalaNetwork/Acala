@@ -1,6 +1,6 @@
 [package]
 name = "module-staking-pool-rpc-runtime-api"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Acala Developers"]
 edition = "2018"
 
