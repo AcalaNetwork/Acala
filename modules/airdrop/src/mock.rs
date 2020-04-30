@@ -29,6 +29,7 @@ pub type AirDropCurrencyId = u32;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
+pub const CHARLIE: AccountId = 2;
 pub const KAR: AirDropCurrencyId = 0;
 pub const ACA: AirDropCurrencyId = 1;
 
@@ -83,7 +84,13 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> runtime_io::TestExternalities {
-		let t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
+		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
+
+		GenesisConfig::<Runtime> {
+			airdrop_accounts: vec![(CHARLIE, KAR, 100), (CHARLIE, KAR, 50), (CHARLIE, ACA, 80)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 		t.into()
 	}
 }
