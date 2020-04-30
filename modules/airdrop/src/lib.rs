@@ -23,7 +23,7 @@ decl_storage! {
 
 		build(|config: &GenesisConfig<T>| {
 			config.airdrop_accounts.iter().for_each(|(account_id, airdrop_currency_id, initial_balance)| {
-				<AirDrops<T>>::mutate(account_id, airdrop_currency_id, | amount | *amount = *initial_balance)
+				<AirDrops<T>>::mutate(account_id, airdrop_currency_id, | amount | *amount += *initial_balance)
 			})
 		})
 	}
