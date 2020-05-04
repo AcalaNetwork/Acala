@@ -67,6 +67,10 @@ inspect = { package = "acala-inspect", path = "inspect" }
 vergen = "3.0.4"
 build-script-utils = { package = "substrate-build-script-utils", version = "2.0.0-alpha.6" }
 
+[features]
+default = ["wasmtime"]
+wasmtime = [ "sc-cli/wasmtime" ]
+
 [workspace]
 members = [
 	"modules/*",
