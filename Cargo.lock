@@ -2952,6 +2952,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-honzon-benchmarking"
+version = "0.4.2"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-loans"
 version = "0.4.2"
 dependencies = [
