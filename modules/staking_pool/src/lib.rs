@@ -4,7 +4,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, t
 use orml_traits::MultiCurrency;
 use rstd::prelude::*;
 use sp_runtime::{
-	traits::{AccountIdConversion, Saturating, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, One, Saturating, UniqueSaturatedInto, Zero},
 	DispatchError, DispatchResult, ModuleId,
 };
 use support::{
@@ -225,7 +225,8 @@ impl<T: Trait> Module<T> {
 	pub fn claim_period_percent(era: EraIndex) -> Ratio {
 		Ratio::from_rational(
 			era.saturating_sub(Self::current_era()),
-			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get(),
+			<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber>>::BondingDuration::get()
+				+ EraIndex::one(),
 		)
 	}
 

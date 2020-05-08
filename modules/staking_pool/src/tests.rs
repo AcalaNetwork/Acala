@@ -155,7 +155,10 @@ fn redeem_by_claim_unbonding_work() {
 			StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 15000, 2),
 			Error::<Runtime>::LiquidCurrencyNotEnough,
 		);
-		assert_eq!(StakingPoolModule::claim_period_percent(2), Ratio::from_rational(2, 5));
+		assert_eq!(
+			StakingPoolModule::claim_period_percent(2),
+			Ratio::from_rational(2, 4 + 1)
+		);
 		assert_eq!(StakingPoolModule::calculate_claim_fee(10000, 2), 600);
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 10000, 2));
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 0);
