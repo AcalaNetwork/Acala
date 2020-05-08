@@ -22,3 +22,6 @@ pub enum AirDropCurrencyId {
 	KAR = 0,
 	ACA,
 }
+
+/// Counter for the number of eras that have passed.
+pub type EraIndex = u32;
