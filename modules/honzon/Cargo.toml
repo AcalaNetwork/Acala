@@ -11,7 +11,6 @@ sp-runtime = { version = "2.0.0-alpha.6", default-features = false }
 frame-support = { version = "2.0.0-alpha.6", default-features = false }
 frame-system = { version = "2.0.0-alpha.6", default-features = false }
 sp-std = { version = "2.0.0-alpha.6", default-features = false }
-frame-benchmarking = { version = "2.0.0-alpha.6", default-features = false, optional = true }
 
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
@@ -25,7 +24,6 @@ primitives = { package = "sp-core",  version = "2.0.0-alpha.6", default-features
 pallet-balances = { version = "2.0.0-alpha.6", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
-frame-benchmarking = { version = "2.0.0-alpha.6" }
 
 [features]
 default = ["std"]
@@ -41,8 +39,4 @@ std = [
 	"loans/std",
 	"cdp-engine/std",
 	"support/std",
-	"frame-benchmarking/std",
-]
-runtime-benchmarks = [
-    "frame-benchmarking",
 ]

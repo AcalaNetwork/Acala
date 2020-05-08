@@ -181,6 +181,8 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 }
 
 pub trait PriceProvider<CurrencyId> {
+	type TestCurrencyId;
+
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
 	fn get_price(currency_id: CurrencyId) -> Option<Price>;
 	fn lock_price(currency_id: CurrencyId);

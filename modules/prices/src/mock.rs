@@ -71,7 +71,7 @@ impl system::Trait for Runtime {
 pub type System = system::Module<Runtime>;
 
 pub struct MockDataProvider;
-impl DataProvider<CurrencyId, Price> for MockDataProvider {
+impl DataProvider<CurrencyId, Price, AccountId> for MockDataProvider {
 	fn get(currency: &CurrencyId) -> Option<Price> {
 		match currency {
 			&AUSD => Some(Price::from_rational(99, 100)),
@@ -80,6 +80,10 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 			&OTHER => Some(Price::from_natural(0)),
 			_ => None,
 		}
+	}
+
+	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> sp_runtime::DispatchResult {
+		Ok(())
 	}
 }
 

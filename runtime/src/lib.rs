@@ -351,6 +351,11 @@ impl Contains<AccountId> for GeneralCouncilProvider {
 	fn sorted_members() -> Vec<AccountId> {
 		GeneralCouncil::members()
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add(_: &AccountId) {
+		todo!()
+	}
 }
 
 parameter_types! {
@@ -1034,11 +1039,14 @@ impl_runtime_apis! {
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark};
 
+			use module_honzon_benchmarking::Module as HonzonBench;
+			impl module_honzon_benchmarking::Trait for Runtime {}
+
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
 
-			add_benchmark!(params, batches, b"honzon", Honzon);
 			add_benchmark!(params, batches, b"balances", Balances);
+			add_benchmark!(params, batches, b"honzon", HonzonBench::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

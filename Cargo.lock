@@ -102,6 +102,7 @@ dependencies = [
  "module-homa",
  "module-homa-treasury",
  "module-honzon",
+ "module-honzon-benchmarking",
  "module-loans",
  "module-nominees-election",
  "module-polkadot-bridge",
@@ -2932,7 +2933,6 @@ dependencies = [
 name = "module-honzon"
 version = "0.4.2"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-cdp-engine",
@@ -2958,8 +2958,22 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-cdp-engine",
+ "module-cdp-treasury",
+ "module-honzon",
+ "module-loans",
+ "module-prices",
+ "module-support",
+ "orml-currencies",
+ "orml-oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "serde",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -3043,6 +3057,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -3604,6 +3619,7 @@ version = "2.0.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74c02dc177c032c7198d5c3a31dfd27067312c9ff74a2ee227ba76aea6f3cb1d"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",

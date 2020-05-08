@@ -6,6 +6,7 @@ use frame_support::{
 	Parameter,
 };
 use orml_traits::DataProvider;
+use rstd::convert::TryFrom;
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use support::{ExchangeRateProvider, Price, PriceProvider};
 use system::ensure_root;
@@ -13,10 +14,12 @@ use system::ensure_root;
 mod mock;
 mod tests;
 
+type CurrencyIdOf<T> = <Module<T> as PriceProvider<<T as Trait>::CurrencyId>>::TestCurrencyId;
+
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize;
-	type Source: DataProvider<Self::CurrencyId, Price>;
+	type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + TryFrom<u16>;
+	type Source: DataProvider<Self::CurrencyId, Price, Self::AccountId>;
 	type GetStableCurrencyId: Get<Self::CurrencyId>;
 	type StableCurrencyFixedPrice: Get<Price>;
 	type GetStakingCurrencyId: Get<Self::CurrencyId>;
@@ -70,6 +73,8 @@ decl_module! {
 impl<T: Trait> Module<T> {}
 
 impl<T: Trait> PriceProvider<T::CurrencyId> for Module<T> {
+	type TestCurrencyId = T::CurrencyId;
+
 	fn get_relative_price(base_currency_id: T::CurrencyId, quote_currency_id: T::CurrencyId) -> Option<Price> {
 		if let (Some(base_price), Some(quote_price)) =
 			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))

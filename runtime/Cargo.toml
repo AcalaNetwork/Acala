@@ -33,7 +33,6 @@ sp-block-builder = { version = "2.0.0-alpha.6", default-features = false }
 sp-consensus-babe = { version = "0.8.0-alpha.6", default-features = false }
 sp-core = { version = "2.0.0-alpha.6", default-features = false }
 sp-inherents = { version = "2.0.0-alpha.6", default-features = false }
-sp-io = { version = "2.0.0-alpha.6", default-features = false }
 sp-offchain = { version = "2.0.0-alpha.6", default-features = false }
 sp-runtime = { version = "2.0.0-alpha.6", default-features = false }
 sp-session = { version = "2.0.0-alpha.6", default-features = false }
@@ -70,9 +69,13 @@ module-staking-pool-rpc-runtime-api = { path = "../modules/staking_pool/rpc/runt
 module-polkadot-bridge = { path = "../modules/polkadot_bridge", default-features = false }
 module-homa-treasury = { path = "../modules/homa_treasury", default-features = false }
 frame-benchmarking = { version = "2.0.0-alpha.6", default-features = false, optional = true }
+module-honzon-benchmarking = { path = "../modules/honzon/benchmarking", default-features = false, optional = true }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.5" }
+
+[dev-dependencies]
+sp-io = { version = "2.0.0-alpha.6" }
 
 [features]
 default = ["std"]
@@ -104,7 +107,6 @@ std = [
 	"sp-block-builder/std",
 	"sp-consensus-babe/std",
 	"sp-core/std",
-	"sp-io/std",
 	"sp-offchain/std",
 	"sp-runtime/std",
 	"sp-session/std",
@@ -142,6 +144,9 @@ std = [
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
+	"frame-support/runtime-benchmarks",
+	"system/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
-	"module-honzon/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
+	"module-honzon-benchmarking",
 ]
