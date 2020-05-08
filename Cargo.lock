@@ -3310,6 +3310,7 @@ version = "0.4.3"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
+ "module-primitives",
  "orml-utilities",
  "parity-scale-codec",
  "sp-runtime",

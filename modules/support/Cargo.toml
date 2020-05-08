@@ -12,6 +12,7 @@ frame-support = { version = "2.0.0-alpha.6", default-features = false }
 rstd = { package = "sp-std", version = "2.0.0-alpha.6", default-features = false }
 
 orml-utilities = { path = "../../orml/utilities", default-features = false }
+primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 
 [features]
 default = ["std"]
@@ -19,4 +20,5 @@ std = [
 	"orml-utilities/std",
 	"sp-runtime/std",
 	"frame-support/std",
+	"primitives/std",
 ]

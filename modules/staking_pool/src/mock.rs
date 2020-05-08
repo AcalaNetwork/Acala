@@ -131,7 +131,7 @@ impl OnCommission<Balance, CurrencyId> for MockOnCommission {
 pub struct MockBridge;
 
 parameter_types! {
-	pub const BondingDuration: EraIndex = 5;
+	pub const BondingDuration: EraIndex = 4;
 	pub const EraLength: BlockNumber = 10;
 }
 
