@@ -71,7 +71,7 @@ module-polkadot-bridge = { path = "../modules/polkadot_bridge", default-features
 module-homa-treasury = { path = "../modules/homa_treasury", default-features = false }
 
 [build-dependencies]
-wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.5" }
+wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
 
 [features]
 default = ["std"]
