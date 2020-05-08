@@ -12,15 +12,14 @@ use frame_support::{
 	weights::{DispatchInfo, PostDispatchInfo},
 	IsSubType,
 };
-use orml_traits::MultiCurrency;
-use rstd::prelude::*;
+use frame_system::{self as system, ensure_signed};
 use sp_runtime::{
 	traits::{DispatchInfoOf, SaturatedConversion, Saturating, SignedExtension, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
 };
-use system::ensure_signed;
+use sp_std::prelude::*;
 
 mod mock;
 mod tests;
@@ -37,7 +36,6 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	type FreeTransferPeriod: Get<MomentOf<Self>>;
 	type FreeTransferDeposit: Get<DepositBalanceOf<Self>>;
 	type Time: Time;
-	type Currency: MultiCurrency<Self::AccountId> + Send + Sync;
 	type DepositCurrency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 }
 
@@ -126,13 +124,13 @@ impl<T: Trait + Send + Sync> ChargeTransactionPayment<T> {
 	}
 }
 
-impl<T: Trait + Send + Sync> rstd::fmt::Debug for ChargeTransactionPayment<T> {
+impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 	#[cfg(feature = "std")]
-	fn fmt(&self, f: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		write!(f, "ChargeTransactionPayment<{:?}>", self.0)
 	}
 	#[cfg(not(feature = "std"))]
-	fn fmt(&self, _: &mut rstd::fmt::Formatter) -> rstd::fmt::Result {
+	fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		Ok(())
 	}
 }
@@ -148,7 +146,7 @@ where
 	type AdditionalSigned = ();
 	type Pre = ();
 
-	fn additional_signed(&self) -> rstd::result::Result<(), TransactionValidityError> {
+	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
 		Ok(())
 	}
 
@@ -195,7 +193,7 @@ where
 			<T as pallet_transaction_payment::Trait>::OnTransactionPayment::on_unbalanced(imbalance);
 			fee
 		} else {
-			0.into()
+			Zero::zero()
 		};
 
 		let mut r = ValidTransaction::default();

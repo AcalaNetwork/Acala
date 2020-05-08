@@ -2960,6 +2960,7 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -2980,12 +2981,12 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "parity-scale-codec",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -2995,6 +2996,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
+ "module-primitives",
  "module-support",
  "orml-auction",
  "orml-tokens",
@@ -3018,6 +3020,7 @@ dependencies = [
  "module-cdp-treasury",
  "module-dex",
  "module-loans",
+ "module-primitives",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -3040,6 +3043,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-dex",
+ "module-primitives",
  "module-support",
  "orml-auction",
  "orml-currencies",
@@ -3061,6 +3065,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
+ "module-primitives",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -3109,10 +3114,10 @@ dependencies = [
  "frame-system",
  "module-cdp-treasury",
  "module-loans",
+ "module-primitives",
  "module-support",
  "orml-currencies",
  "orml-tokens",
- "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -3128,15 +3133,12 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "module-staking-pool",
  "module-support",
- "orml-traits",
  "parity-scale-codec",
  "serde",
- "sp-core",
- "sp-io",
  "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -3145,6 +3147,7 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "module-support",
  "orml-traits",
  "parity-scale-codec",
@@ -3164,10 +3167,10 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-treasury",
  "module-loans",
+ "module-primitives",
  "module-support",
  "orml-currencies",
  "orml-tokens",
- "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -3204,6 +3207,7 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -3223,6 +3227,7 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "module-support",
  "orml-traits",
  "parity-scale-codec",
@@ -3239,6 +3244,7 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "module-support",
  "orml-traits",
  "parity-scale-codec",
@@ -3264,6 +3270,7 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-primitives",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -3310,7 +3317,6 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
- "module-primitives",
  "orml-utilities",
  "parity-scale-codec",
  "sp-runtime",

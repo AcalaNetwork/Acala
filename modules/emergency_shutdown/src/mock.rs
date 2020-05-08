@@ -2,17 +2,33 @@
 
 #![cfg(test)]
 
+use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
-use primitives::H256;
+use frame_system::EnsureSignedBy;
+use primitives::Amount;
+use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{Convert, IdentityLookup},
 	DispatchResult, Perbill,
 };
 use support::{AuctionManager, Price, PriceProvider};
-use system::EnsureSignedBy;
 
-use super::*;
+pub type AccountId = u64;
+pub type AuctionId = u64;
+pub type BlockNumber = u64;
+pub type DebitBalance = Balance;
+pub type DebitAmount = Amount;
+
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
+pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const AUSD: CurrencyId = CurrencyId::AUSD;
+pub const BTC: CurrencyId = CurrencyId::XBTC;
+pub const DOT: CurrencyId = CurrencyId::DOT;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 mod emergency_shutdown {
 	pub use super::super::*;
@@ -26,7 +42,7 @@ impl_outer_event! {
 		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
-		cdp_treasury<T>,
+		cdp_treasury,
 	}
 }
 
@@ -39,31 +55,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 1;
-	pub const CreationFee: u64 = 2;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
 }
-
-pub type AccountId = u64;
-pub type BlockNumber = u64;
-pub type Balance = u64;
-pub type Amount = i64;
-pub type DebitBalance = u64;
-pub type DebitAmount = i64;
-pub type CurrencyId = u32;
-pub type AuctionId = u64;
-
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-
-pub const ACA: CurrencyId = 0;
-pub const AUSD: CurrencyId = 1;
-pub const BTC: CurrencyId = 2;
-pub const DOT: CurrencyId = 3;
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -88,6 +80,10 @@ impl system::Trait for Runtime {
 }
 pub type System = system::Module<Runtime>;
 
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
@@ -106,8 +102,11 @@ impl pallet_balances::Trait for Runtime {
 	type AccountStore = system::Module<Runtime>;
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+}
 
 impl orml_currencies::Trait for Runtime {
 	type Event = TestEvent;
@@ -193,6 +192,10 @@ ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
 
+parameter_types! {
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+}
+
 impl cdp_treasury::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
@@ -236,7 +239,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {

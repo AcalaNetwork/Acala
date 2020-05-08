@@ -4,9 +4,23 @@
 
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
-use primitives::H256;
+use primitives::Amount;
+use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::PolkadotStakingLedger;
+
+pub type AccountId = u64;
+pub type BlockNumber = u64;
+pub type PolkadotAccountId = u64;
+
+pub const ALICE: AccountId = 0;
+pub const BOB: AccountId = 1;
+pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const DOT: CurrencyId = CurrencyId::DOT;
+pub const LDOT: CurrencyId = CurrencyId::LDOT;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 mod staking_pool {
 	pub use super::super::*;
@@ -31,24 +45,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 1;
 }
-
-pub type AccountId = u64;
-pub type PolkadotAccountId = u64;
-pub type BlockNumber = u64;
-pub type Balance = u64;
-pub type Amount = i64;
-pub type CurrencyId = u32;
-
-pub const ALICE: AccountId = 0;
-pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = 0;
-pub const DOT: CurrencyId = 1;
-pub const LDOT: CurrencyId = 2;
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -73,6 +70,10 @@ impl system::Trait for Runtime {
 }
 pub type System = system::Module<Runtime>;
 
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
@@ -91,14 +92,11 @@ impl pallet_balances::Trait for Runtime {
 	type AccountStore = System;
 }
 type PalletBalances = pallet_balances::Module<Runtime>;
+pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetStakingCurrencyId: CurrencyId = DOT;
-	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 }
-
-pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 impl orml_currencies::Trait for Runtime {
 	type Event = TestEvent;
@@ -107,14 +105,6 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 pub type CurrenciesModule = orml_currencies::Module<Runtime>;
-
-parameter_types! {
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(60, 100);	// 60%
-	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
-	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
-	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
-}
 
 pub struct MockNomineesProvider;
 impl NomineesProvider<PolkadotAccountId> for MockNomineesProvider {
@@ -135,13 +125,13 @@ parameter_types! {
 	pub const EraLength: BlockNumber = 10;
 }
 
-impl PolkadotBridgeType<BlockNumber> for MockBridge {
+impl PolkadotBridgeType<BlockNumber, EraIndex> for MockBridge {
 	type BondingDuration = BondingDuration;
 	type EraLength = EraLength;
 	type PolkadotAccountId = PolkadotAccountId;
 }
 
-impl PolkadotBridgeCall<BlockNumber, Balance, AccountId> for MockBridge {
+impl PolkadotBridgeCall<AccountId, BlockNumber, Balance, EraIndex> for MockBridge {
 	fn bond_extra(_amount: Balance) -> DispatchResult {
 		Ok(())
 	}
@@ -169,8 +159,8 @@ impl PolkadotBridgeCall<BlockNumber, Balance, AccountId> for MockBridge {
 	}
 }
 
-impl PolkadotBridgeState<Balance> for MockBridge {
-	fn ledger() -> PolkadotStakingLedger<Balance> {
+impl PolkadotBridgeState<Balance, EraIndex> for MockBridge {
+	fn ledger() -> PolkadotStakingLedger<Balance, EraIndex> {
 		PolkadotStakingLedger {
 			total: StakingPoolModule::total_bonded(),
 			active: StakingPoolModule::total_bonded(),
@@ -187,7 +177,17 @@ impl PolkadotBridgeState<Balance> for MockBridge {
 	}
 }
 
-impl PolkadotBridge<BlockNumber, Balance, AccountId> for MockBridge {}
+impl PolkadotBridge<AccountId, BlockNumber, Balance, EraIndex> for MockBridge {}
+
+parameter_types! {
+	pub const GetStakingCurrencyId: CurrencyId = DOT;
+	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
+	pub const MaxBondRatio: Ratio = Ratio::from_rational(60, 100);	// 60%
+	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
+	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
+	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
+}
 
 impl Trait for Runtime {
 	type Event = TestEvent;
@@ -218,7 +218,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {

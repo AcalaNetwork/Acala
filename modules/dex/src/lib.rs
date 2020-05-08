@@ -6,34 +6,32 @@ use frame_support::{
 	weights::{SimpleDispatchInfo, WeighData, Weight},
 	Parameter,
 };
+use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use rstd::prelude::Vec;
+use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating,
-		UniqueSaturatedInto, Zero,
+		AccountIdConversion, AtLeast32Bit, MaybeSerializeDeserialize, Member, One, Saturating, UniqueSaturatedInto,
+		Zero,
 	},
 	DispatchError, DispatchResult, ModuleId,
 };
+use sp_std::prelude::Vec;
 use support::{CDPTreasury, DEXManager, OnEmergencyShutdown, Price, Rate, Ratio};
-use system::{self as system, ensure_root, ensure_signed};
 
 mod mock;
 mod tests;
 
 const MODULE_ID: ModuleId = ModuleId(*b"aca/dexm");
 
-type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type Currency: MultiCurrencyExtended<Self::AccountId>;
+	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
-	type EnabledCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
-	type GetBaseCurrencyId: Get<CurrencyIdOf<Self>>;
+	type EnabledCurrencyIds: Get<Vec<CurrencyId>>;
+	type GetBaseCurrencyId: Get<CurrencyId>;
 	type GetExchangeFee: Get<Rate>;
-	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 }
 
@@ -41,8 +39,8 @@ decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
 		<T as Trait>::Share,
-		Balance = BalanceOf<T>,
-		CurrencyId = CurrencyIdOf<T>,
+		Balance = Balance,
+		CurrencyId = CurrencyId,
 	{
 		AddLiquidity(AccountId, CurrencyId, Balance, Balance, Share),
 		WithdrawLiquidity(AccountId, CurrencyId, Balance, Balance, Share),
@@ -65,23 +63,23 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
-		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyIdOf<T> => (BalanceOf<T>, BalanceOf<T>);
-		TotalShares get(fn total_shares): map hasher(twox_64_concat) CurrencyIdOf<T> => T::Share;
-		Shares get(fn shares): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::Share;
+		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
+		TotalShares get(fn total_shares): map hasher(twox_64_concat) CurrencyId => T::Share;
+		Shares get(fn shares): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => T::Share;
 
-		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyIdOf<T> => Rate;
-		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
-		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => BalanceOf<T>;
-		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyId => Rate;
+		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyId => Balance;
+		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
+		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => Balance;
 
 		IsShutdown get(fn is_shutdown): bool;
 	}
 
 	add_extra_genesis {
-		config(liquidity_incentive_rate): Vec<(CurrencyIdOf<T>, Rate)>;
-		build(|config: &GenesisConfig<T>| {
+		config(liquidity_incentive_rate): Vec<(CurrencyId, Rate)>;
+		build(|config: &GenesisConfig| {
 			config.liquidity_incentive_rate.iter().for_each(| (currency_id, liquidity_incentive_rate) | {
-				<LiquidityIncentiveRate<T>>::insert(currency_id, liquidity_incentive_rate);
+				LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
 			});
 		});
 	}
@@ -93,25 +91,25 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		const EnabledCurrencyIds: Vec<CurrencyIdOf<T>> = T::EnabledCurrencyIds::get();
-		const GetBaseCurrencyId: CurrencyIdOf<T> = T::GetBaseCurrencyId::get();
+		const EnabledCurrencyIds: Vec<CurrencyId> = T::EnabledCurrencyIds::get();
+		const GetBaseCurrencyId: CurrencyId = T::GetBaseCurrencyId::get();
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_liquidity_incentive_rate(
 			origin,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: CurrencyId,
 			liquidity_incentive_rate: Rate,
 		) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
 
-			<LiquidityIncentiveRate<T>>::insert(currency_id, liquidity_incentive_rate);
+			LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyIdOf<T>) {
+		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			let who = ensure_signed(origin)?;
 			Self::claim_interest(currency_id, &who)?;
 		}
@@ -119,10 +117,10 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn swap_currency(
 			origin,
-			supply_currency_id: CurrencyIdOf<T>,
-			#[compact] supply_amount: BalanceOf<T>,
-			target_currency_id: CurrencyIdOf<T>,
-			#[compact] acceptable_target_amount: BalanceOf<T>,
+			supply_currency_id: CurrencyId,
+			#[compact] supply_amount: Balance,
+			target_currency_id: CurrencyId,
+			#[compact] acceptable_target_amount: Balance,
 		) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -143,9 +141,9 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn add_liquidity(
 			origin,
-			other_currency_id: CurrencyIdOf<T>,
-			#[compact] max_other_currency_amount: BalanceOf<T>,
-			#[compact] max_base_currency_amount: BalanceOf<T>
+			other_currency_id: CurrencyId,
+			#[compact] max_other_currency_amount: Balance,
+			#[compact] max_base_currency_amount: Balance,
 		) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -159,15 +157,15 @@ decl_module! {
 			);
 
 			let total_shares = Self::total_shares(other_currency_id);
-			let (other_currency_increment, base_currency_increment, share_increment): (BalanceOf<T>, BalanceOf<T>, T::Share) =
+			let (other_currency_increment, base_currency_increment, share_increment): (Balance, Balance, T::Share) =
 			if total_shares.is_zero() {
 				// initialize this liquidity pool, the initial share is equal to the max value between base currency amount and other currency amount
-				let initial_share: u128 = rstd::cmp::max(max_other_currency_amount, max_base_currency_amount).unique_saturated_into();
+				let initial_share: u128 = sp_std::cmp::max(max_other_currency_amount, max_base_currency_amount).unique_saturated_into();
 				let initial_share: T::Share = initial_share.unique_saturated_into();
 
 				(max_other_currency_amount, max_base_currency_amount, initial_share)
 			} else {
-				let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(other_currency_id);
+				let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(other_currency_id);
 				let other_base_price = Price::from_rational(base_currency_pool, other_currency_pool);
 				let input_other_base_price = Price::from_rational(max_base_currency_amount, max_other_currency_amount);
 
@@ -203,7 +201,7 @@ decl_module! {
 			Self::deposit_calculate_interest(other_currency_id, &who, share_increment);
 			<TotalShares<T>>::mutate(other_currency_id, |share| *share = share.saturating_add(share_increment));
 			<Shares<T>>::mutate(other_currency_id, &who, |share| *share = share.saturating_add(share_increment));
-			<LiquidityPool<T>>::mutate(other_currency_id, |pool| {
+			LiquidityPool::mutate(other_currency_id, |pool| {
 				*pool = (pool.0.saturating_add(other_currency_increment), pool.1.saturating_add(base_currency_increment));
 			});
 			Self::deposit_event(RawEvent::AddLiquidity(
@@ -216,7 +214,7 @@ decl_module! {
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn withdraw_liquidity(origin, currency_id: CurrencyIdOf<T>, #[compact] share_amount: T::Share) {
+		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
 			ensure!(
@@ -228,7 +226,7 @@ decl_module! {
 				Error::<T>::ShareNotEnough,
 			);
 
-			let (other_currency_pool, base_currency_pool): (BalanceOf<T>, BalanceOf<T>) = Self::liquidity_pool(currency_id);
+			let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(currency_id);
 			let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
 			let withdraw_other_currency_amount = proportion.saturating_mul_int(&other_currency_pool);
 			let withdraw_base_currency_amount = proportion.saturating_mul_int(&base_currency_pool);
@@ -244,7 +242,7 @@ decl_module! {
 			Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
 			<TotalShares<T>>::mutate(currency_id, |share| *share = share.saturating_sub(share_amount));
 			<Shares<T>>::mutate(currency_id, &who, |share| *share = share.saturating_sub(share_amount));
-			<LiquidityPool<T>>::mutate(currency_id, |pool| {
+			LiquidityPool::mutate(currency_id, |pool| {
 				*pool = (pool.0.saturating_sub(withdraw_other_currency_amount), pool.1.saturating_sub(withdraw_base_currency_amount));
 			});
 
@@ -274,14 +272,10 @@ impl<T: Trait> Module<T> {
 		MODULE_ID.into_account()
 	}
 
-	pub fn calculate_swap_target_amount(
-		supply_pool: BalanceOf<T>,
-		target_pool: BalanceOf<T>,
-		supply_amount: BalanceOf<T>,
-	) -> BalanceOf<T> {
+	pub fn calculate_swap_target_amount(supply_pool: Balance, target_pool: Balance, supply_amount: Balance) -> Balance {
 		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
 		let new_target_pool = supply_pool
-			.checked_add(&supply_amount)
+			.checked_add(supply_amount)
 			.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.unwrap_or_default();
@@ -290,19 +284,15 @@ impl<T: Trait> Module<T> {
 		if !new_target_pool.is_zero() {
 			// actual can get = (target_pool - new_target_pool) * (1 - GetExchangeFee)
 			target_pool
-				.checked_sub(&new_target_pool)
-				.and_then(|n| n.checked_sub(&T::GetExchangeFee::get().saturating_mul_int(&n)))
+				.checked_sub(new_target_pool)
+				.and_then(|n| n.checked_sub(T::GetExchangeFee::get().saturating_mul_int(&n)))
 				.unwrap_or_default()
 		} else {
-			0.into()
+			Zero::zero()
 		}
 	}
 
-	pub fn calculate_swap_supply_amount(
-		supply_pool: BalanceOf<T>,
-		target_pool: BalanceOf<T>,
-		target_amount: BalanceOf<T>,
-	) -> BalanceOf<T> {
+	pub fn calculate_swap_supply_amount(supply_pool: Balance, target_pool: Balance, target_amount: Balance) -> Balance {
 		// formular:
 		// new_target_pool = target_pool - target_amount / (1 - GetExchangeFee)
 		// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
@@ -317,13 +307,13 @@ impl<T: Trait> Module<T> {
 				.and_then(|n| Ratio::from_natural(1).checked_div(&n))
 				.and_then(|n| Ratio::from_parts(1).checked_add(&n)) // add Ratio::from_parts(1) to correct the possible losses caused by discarding the remainder in inner division
 				.and_then(|n| n.checked_mul_int(&target_amount))
-				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
-				.and_then(|n| target_pool.checked_sub(&n))
+				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| target_pool.checked_sub(n))
 				.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
 				.and_then(|n| Ratio::from_parts(1).checked_add(&n)) // add Ratio::from_parts(1) to correct the possible losses caused by discarding the remainder in inner division
 				.and_then(|n| n.checked_mul_int(&target_pool))
-				.and_then(|n| n.checked_add(&1.into())) // add 1 to correct the possible losses caused by discarding the remainder in division
-				.and_then(|n| n.checked_sub(&supply_pool))
+				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| n.checked_sub(supply_pool))
 				.unwrap_or_default()
 		}
 	}
@@ -331,10 +321,10 @@ impl<T: Trait> Module<T> {
 	// use other currency to swap base currency
 	pub fn swap_other_to_base(
 		who: T::AccountId,
-		other_currency_id: CurrencyIdOf<T>,
-		other_currency_amount: BalanceOf<T>,
-		acceptable_base_currency_amount: BalanceOf<T>,
-	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		other_currency_id: CurrencyId,
+		other_currency_amount: Balance,
+		acceptable_base_currency_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		// 1. ensure supply amount must > 0 and account has sufficient balance
 		ensure!(
 			!other_currency_amount.is_zero()
@@ -359,7 +349,7 @@ impl<T: Trait> Module<T> {
 			.expect("never failed because after checks");
 		T::Currency::transfer(base_currency_id, &Self::account_id(), &who, base_currency_amount)
 			.expect("never failed because after checks");
-		<LiquidityPool<T>>::mutate(other_currency_id, |pool| {
+		LiquidityPool::mutate(other_currency_id, |pool| {
 			*pool = (
 				pool.0.saturating_add(other_currency_amount),
 				pool.1.saturating_sub(base_currency_amount),
@@ -379,10 +369,10 @@ impl<T: Trait> Module<T> {
 	// use base currency to swap other currency
 	pub fn swap_base_to_other(
 		who: T::AccountId,
-		other_currency_id: CurrencyIdOf<T>,
-		base_currency_amount: BalanceOf<T>,
-		acceptable_other_currency_amount: BalanceOf<T>,
-	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		other_currency_id: CurrencyId,
+		base_currency_amount: Balance,
+		acceptable_other_currency_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		ensure!(
 			!base_currency_amount.is_zero()
@@ -402,7 +392,7 @@ impl<T: Trait> Module<T> {
 			.expect("never failed because after checks");
 		T::Currency::transfer(other_currency_id, &Self::account_id(), &who, other_currency_amount)
 			.expect("never failed because after checks");
-		<LiquidityPool<T>>::mutate(other_currency_id, |pool| {
+		LiquidityPool::mutate(other_currency_id, |pool| {
 			*pool = (
 				pool.0.saturating_sub(other_currency_amount),
 				pool.1.saturating_add(base_currency_amount),
@@ -422,11 +412,11 @@ impl<T: Trait> Module<T> {
 	// use other currency to swap another other currency
 	pub fn swap_other_to_other(
 		who: T::AccountId,
-		supply_other_currency_id: CurrencyIdOf<T>,
-		supply_other_currency_amount: BalanceOf<T>,
-		target_other_currency_id: CurrencyIdOf<T>,
-		acceptable_target_other_currency_amount: BalanceOf<T>,
-	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		supply_other_currency_id: CurrencyId,
+		supply_other_currency_amount: Balance,
+		target_other_currency_id: CurrencyId,
+		acceptable_target_other_currency_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		ensure!(
 			!supply_other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(supply_other_currency_id, &who, supply_other_currency_amount)
@@ -466,13 +456,13 @@ impl<T: Trait> Module<T> {
 			target_other_currency_amount,
 		)
 		.expect("never failed because after checks");
-		<LiquidityPool<T>>::mutate(supply_other_currency_id, |pool| {
+		LiquidityPool::mutate(supply_other_currency_id, |pool| {
 			*pool = (
 				pool.0.saturating_add(supply_other_currency_amount),
 				pool.1.saturating_sub(intermediate_base_currency_amount),
 			);
 		});
-		<LiquidityPool<T>>::mutate(target_other_currency_id, |pool| {
+		LiquidityPool::mutate(target_other_currency_id, |pool| {
 			*pool = (
 				pool.0.saturating_sub(target_other_currency_amount),
 				pool.1.saturating_add(intermediate_base_currency_amount),
@@ -492,13 +482,13 @@ impl<T: Trait> Module<T> {
 	// get the minimum amount of supply currency needed for the target currency amount
 	// return 0 means cannot exchange
 	pub fn get_supply_amount_needed(
-		supply_currency_id: CurrencyIdOf<T>,
-		target_currency_id: CurrencyIdOf<T>,
-		target_currency_amount: BalanceOf<T>,
-	) -> BalanceOf<T> {
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		target_currency_amount: Balance,
+	) -> Balance {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		if supply_currency_id == target_currency_id {
-			0.into()
+			Zero::zero()
 		} else if target_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(supply_currency_id);
 			Self::calculate_swap_supply_amount(other_currency_pool, base_currency_pool, target_currency_amount)
@@ -524,13 +514,13 @@ impl<T: Trait> Module<T> {
 	// get the maximum amount of target currency you can get for the supply currency amount
 	// return 0 means cannot exchange
 	pub fn get_target_amount_available(
-		supply_currency_id: CurrencyIdOf<T>,
-		target_currency_id: CurrencyIdOf<T>,
-		supply_currency_amount: BalanceOf<T>,
-	) -> BalanceOf<T> {
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		supply_currency_amount: Balance,
+	) -> Balance {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		if supply_currency_id == target_currency_id {
-			0.into()
+			Zero::zero()
 		} else if target_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(supply_currency_id);
 			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, supply_currency_amount)
@@ -553,7 +543,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn deposit_calculate_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId, share_amount: T::Share) {
+	pub fn deposit_calculate_interest(currency_id: CurrencyId, who: &T::AccountId, share_amount: T::Share) {
 		let total_shares = Self::total_shares(currency_id);
 		if total_shares.is_zero() {
 			return;
@@ -567,16 +557,16 @@ impl<T: Trait> Module<T> {
 		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 			*val = val.saturating_add(interest_to_expand);
 		});
-		<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+		TotalWithdrawnInterest::mutate(currency_id, |val| {
 			*val = val.saturating_add(interest_to_expand);
 		});
-		<TotalInterest<T>>::mutate(currency_id, |interest| {
+		TotalInterest::mutate(currency_id, |interest| {
 			*interest = interest.saturating_add(interest_to_expand);
 		});
 	}
 
 	fn withdraw_calculate_interest(
-		currency_id: CurrencyIdOf<T>,
+		currency_id: CurrencyId,
 		who: &T::AccountId,
 		share_amount: T::Share,
 	) -> DispatchResult {
@@ -590,17 +580,17 @@ impl<T: Trait> Module<T> {
 		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 			*val = val.saturating_sub(withdrawn_interest_to_remove);
 		});
-		<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+		TotalWithdrawnInterest::mutate(currency_id, |val| {
 			*val = val.saturating_sub(withdrawn_interest_to_remove);
 		});
-		<TotalInterest<T>>::mutate(currency_id, |val| {
+		TotalInterest::mutate(currency_id, |val| {
 			*val = val.saturating_sub(proportion.saturating_mul_int(val));
 		});
 
 		Ok(())
 	}
 
-	fn claim_interest(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> DispatchResult {
+	fn claim_interest(currency_id: CurrencyId, who: &T::AccountId) -> DispatchResult {
 		let proportion = Ratio::from_rational(Self::shares(currency_id, who), Self::total_shares(currency_id));
 		let interest_to_withdraw = proportion
 			.saturating_mul_int(&Self::total_interest(currency_id))
@@ -617,7 +607,7 @@ impl<T: Trait> Module<T> {
 			<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 				*val = val.saturating_add(interest_to_withdraw);
 			});
-			<TotalWithdrawnInterest<T>>::mutate(currency_id, |val| {
+			TotalWithdrawnInterest::mutate(currency_id, |val| {
 				*val = val.saturating_add(interest_to_withdraw);
 			});
 		}
@@ -625,14 +615,14 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn accumulate_interest(currency_id: CurrencyIdOf<T>) {
+	fn accumulate_interest(currency_id: CurrencyId) {
 		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
 		let interest_to_increase = Self::liquidity_incentive_rate(currency_id).saturating_mul_int(&base_currency_pool);
 
 		if !interest_to_increase.is_zero() {
 			// issue aUSD as interest
 			if T::CDPTreasury::deposit_unbacked_debit_to(&Self::account_id(), interest_to_increase).is_ok() {
-				<TotalInterest<T>>::mutate(currency_id, |val| {
+				TotalInterest::mutate(currency_id, |val| {
 					*val = val.saturating_add(interest_to_increase);
 				});
 			}
@@ -640,30 +630,30 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> DEXManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Module<T> {
+impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 	fn get_target_amount(
-		supply_currency_id: CurrencyIdOf<T>,
-		target_currency_id: CurrencyIdOf<T>,
-		supply_currency_amount: BalanceOf<T>,
-	) -> BalanceOf<T> {
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		supply_currency_amount: Balance,
+	) -> Balance {
 		Self::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
 	}
 
 	fn get_supply_amount(
-		supply_currency_id: CurrencyIdOf<T>,
-		target_currency_id: CurrencyIdOf<T>,
-		target_currency_amount: BalanceOf<T>,
-	) -> BalanceOf<T> {
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		target_currency_amount: Balance,
+	) -> Balance {
 		Self::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
 	}
 
 	fn exchange_currency(
 		who: T::AccountId,
-		supply_currency_id: CurrencyIdOf<T>,
-		supply_amount: BalanceOf<T>,
-		target_currency_id: CurrencyIdOf<T>,
-		acceptable_target_amount: BalanceOf<T>,
-	) -> rstd::result::Result<BalanceOf<T>, DispatchError> {
+		supply_currency_id: CurrencyId,
+		supply_amount: Balance,
+		target_currency_id: CurrencyId,
+		acceptable_target_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		ensure!(target_currency_id != supply_currency_id, Error::<T>::CanNotSwapItself);
 		if target_currency_id == base_currency_id {
@@ -682,9 +672,9 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for Modul
 	}
 
 	fn get_exchange_slippage(
-		supply_currency_id: CurrencyIdOf<T>,
-		target_currency_id: CurrencyIdOf<T>,
-		supply_amount: BalanceOf<T>,
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		supply_amount: Balance,
 	) -> Option<Ratio> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 

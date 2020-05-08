@@ -25,3 +25,9 @@ pub enum AirDropCurrencyId {
 
 /// Counter for the number of eras that have passed.
 pub type EraIndex = u32;
+
+/// Balance of an account.
+pub type Balance = u128;
+
+/// Signed version of Balance
+pub type Amount = i128;

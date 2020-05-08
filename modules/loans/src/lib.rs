@@ -1,17 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter};
+use frame_system::{self as system};
 use orml_traits::{
 	arithmetic::{self, Signed},
 	MultiCurrency, MultiCurrencyExtended,
 };
-use rstd::convert::{TryFrom, TryInto};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Member, Zero,
 	},
 	DispatchResult, ModuleId,
 };
+use sp_std::convert::{TryFrom, TryInto};
 use support::{CDPTreasury, RiskManager};
 
 mod mock;
@@ -19,15 +21,11 @@ mod tests;
 
 const MODULE_ID: ModuleId = ModuleId(*b"aca/loan");
 
-type CurrencyIdOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type BalanceOf<T> = <<T as Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-type AmountOf<T> = <<T as Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
-
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type Convert: Convert<(CurrencyIdOf<Self>, Self::DebitBalance), BalanceOf<Self>>;
-	type Currency: MultiCurrencyExtended<Self::AccountId>;
-	type RiskManager: RiskManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>, Self::DebitBalance>;
+	type Convert: Convert<(CurrencyId, Self::DebitBalance), Balance>;
+	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance, Amount = Amount>;
+	type RiskManager: RiskManager<Self::AccountId, CurrencyId, Balance, Self::DebitBalance>;
 	type DebitBalance: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
 	type DebitAmount: Signed
 		+ TryInto<Self::DebitBalance>
@@ -38,26 +36,26 @@ pub trait Trait: system::Trait {
 		+ Default
 		+ Copy
 		+ MaybeSerializeDeserialize;
-	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Loans {
-		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyIdOf<T>, hasher(twox_64_concat) T::AccountId => T::DebitBalance;
-		pub Collaterals get(fn collaterals): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
-		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyIdOf<T> => T::DebitBalance;
-		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
+		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => T::DebitBalance;
+		pub Collaterals get(fn collaterals): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) CurrencyId => Balance;
+		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyId => T::DebitBalance;
+		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyId => Balance;
 	}
 }
 
 decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
-		CurrencyId = CurrencyIdOf<T>,
 		<T as Trait>::DebitAmount,
-		Amount = AmountOf<T>,
 		<T as Trait>::DebitBalance,
-		Balance = BalanceOf<T>,
+		Amount = Amount,
+		Balance = Balance,
+		CurrencyId = CurrencyId,
 	{
 		/// Update Position success (account, currency_id, collaterals, debits)
 		UpdatePosition(AccountId, CurrencyId, Amount, DebitAmount),
@@ -93,13 +91,13 @@ impl<T: Trait> Module<T> {
 	// confiscate collateral and debit to cdp treasury
 	pub fn confiscate_collateral_and_debit(
 		who: &T::AccountId,
-		currency_id: CurrencyIdOf<T>,
-		collateral_confiscate: BalanceOf<T>,
+		currency_id: CurrencyId,
+		collateral_confiscate: Balance,
 		debit_decrease: T::DebitBalance,
 	) -> DispatchResult {
 		// balance -> amount
 		let collateral_adjustment =
-			TryInto::<AmountOf<T>>::try_into(collateral_confiscate).map_err(|_| Error::<T>::AmountConvertFailed)?;
+			TryInto::<Amount>::try_into(collateral_confiscate).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let debit_adjustment =
 			TryInto::<T::DebitAmount>::try_into(debit_decrease).map_err(|_| Error::<T>::AmountConvertFailed)?;
 
@@ -129,14 +127,14 @@ impl<T: Trait> Module<T> {
 	// mutate collaterals and debits and then mutate stable coin
 	pub fn adjust_position(
 		who: &T::AccountId,
-		currency_id: CurrencyIdOf<T>,
-		collateral_adjustment: AmountOf<T>,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
 		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
 		Self::check_update_loan_overflow(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		let collateral_balance_adjustment = TryInto::<BalanceOf<T>>::try_into(collateral_adjustment.abs())
-			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let collateral_balance_adjustment =
+			TryInto::<Balance>::try_into(collateral_adjustment.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let debit_balance_adjustment = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
 			.map_err(|_| Error::<T>::AmountConvertFailed)?;
 
@@ -197,7 +195,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	// transfer whole loan of `from` to `to`
-	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		// get `from` position data
 		let collateral_balance = Self::collaterals(from, currency_id);
 		let debit_balance = Self::debits(currency_id, from);
@@ -210,7 +208,7 @@ impl<T: Trait> Module<T> {
 
 		// balance -> amount
 		let collateral_adjustment =
-			TryInto::<AmountOf<T>>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
+			TryInto::<Amount>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let debit_adjustment =
 			TryInto::<T::DebitAmount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
 
@@ -224,22 +222,22 @@ impl<T: Trait> Module<T> {
 	// check overflow for update_loan function
 	pub fn check_update_loan_overflow(
 		who: &T::AccountId,
-		currency_id: CurrencyIdOf<T>,
-		collateral_adjustment: AmountOf<T>,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
 		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
-		let collateral_balance = TryInto::<BalanceOf<T>>::try_into(collateral_adjustment.abs())
-			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let collateral_balance =
+			TryInto::<Balance>::try_into(collateral_adjustment.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let debit_balance = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
 			.map_err(|_| Error::<T>::AmountConvertFailed)?;
 
 		if collateral_adjustment.is_positive() {
 			Self::total_collaterals(currency_id)
-				.checked_add(&collateral_balance)
+				.checked_add(collateral_balance)
 				.ok_or(Error::<T>::CollateralOverflow)?;
 		} else if collateral_adjustment.is_negative() {
 			Self::collaterals(who, currency_id)
-				.checked_sub(&collateral_balance)
+				.checked_sub(collateral_balance)
 				.ok_or(Error::<T>::CollateralTooLow)?;
 		}
 
@@ -258,15 +256,15 @@ impl<T: Trait> Module<T> {
 
 	fn update_loan(
 		who: &T::AccountId,
-		currency_id: CurrencyIdOf<T>,
-		collateral_adjustment: AmountOf<T>,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
 		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
 		// check overflow first
 		Self::check_update_loan_overflow(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		let collateral_balance = TryInto::<BalanceOf<T>>::try_into(collateral_adjustment.abs())
-			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let collateral_balance =
+			TryInto::<Balance>::try_into(collateral_adjustment.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
 		let debit_balance = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
 			.map_err(|_| Error::<T>::AmountConvertFailed)?;
 
@@ -279,7 +277,7 @@ impl<T: Trait> Module<T> {
 				}
 				*balance += collateral_balance;
 			});
-			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance += collateral_balance);
+			TotalCollaterals::mutate(currency_id, |balance| *balance += collateral_balance);
 		} else if collateral_adjustment.is_negative() {
 			<Collaterals<T>>::mutate(who, currency_id, |balance| {
 				*balance -= collateral_balance;
@@ -288,7 +286,7 @@ impl<T: Trait> Module<T> {
 					system::Module::<T>::dec_ref(who);
 				}
 			});
-			<TotalCollaterals<T>>::mutate(currency_id, |balance| *balance -= collateral_balance);
+			TotalCollaterals::mutate(currency_id, |balance| *balance -= collateral_balance);
 		}
 
 		// update debit record

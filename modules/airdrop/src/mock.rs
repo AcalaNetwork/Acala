@@ -4,8 +4,20 @@
 
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
-use primitives::H256;
+use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+
+pub type AccountId = u64;
+pub type BlockNumber = u64;
+
+pub const ALICE: AccountId = 0;
+pub const BOB: AccountId = 1;
+pub const CHARLIE: AccountId = 2;
+pub const ACA: AirDropCurrencyId = AirDropCurrencyId::ACA;
+pub const KAR: AirDropCurrencyId = AirDropCurrencyId::KAR;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 mod airdrop {
 	pub use super::super::*;
@@ -22,26 +34,11 @@ impl_outer_event! {
 	}
 }
 
-pub type AccountId = u64;
-pub type BlockNumber = u64;
-pub type Balance = u64;
-pub type AirDropCurrencyId = u32;
-
-pub const ALICE: AccountId = 0;
-pub const BOB: AccountId = 1;
-pub const CHARLIE: AccountId = 2;
-pub const KAR: AirDropCurrencyId = 0;
-pub const ACA: AirDropCurrencyId = 1;
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
-
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const CreationFee: u64 = 2;
 }
 
 impl system::Trait for Runtime {
@@ -69,8 +66,6 @@ pub type System = system::Module<Runtime>;
 
 impl Trait for Runtime {
 	type Event = TestEvent;
-	type AirDropCurrencyId = AirDropCurrencyId;
-	type Balance = Balance;
 }
 pub type Airdrop = Module<Runtime>;
 
@@ -83,7 +78,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		GenesisConfig::<Runtime> {

@@ -1,18 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::FullCodec;
+use codec::{Decode, Encode, FullCodec, HasCompact};
 use orml_utilities::FixedU128;
-use rstd::{
+use sp_runtime::{DispatchError, DispatchResult};
+use sp_std::{
 	cmp::{Eq, PartialEq},
 	fmt::Debug,
+	prelude::*,
 };
-use sp_runtime::{DispatchError, DispatchResult};
 
 pub mod homa;
-
 pub use homa::{
-	EraIndex, HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall,
-	PolkadotBridgeState, PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
+	HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
+	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
 };
 
 pub type Price = FixedU128;
@@ -92,7 +92,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		supply_amount: Balance,
 		target_currency_id: CurrencyId,
 		acceptable_target_amount: Balance,
-	) -> rstd::result::Result<Balance, DispatchError>;
+	) -> sp_std::result::Result<Balance, DispatchError>;
 
 	fn get_exchange_slippage(
 		supply_currency_id: CurrencyId,
@@ -127,7 +127,7 @@ where
 		_supply_amount: Balance,
 		_target_currency_id: CurrencyId,
 		_acceptable_target_amount: Balance,
-	) -> rstd::result::Result<Balance, DispatchError> {
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 

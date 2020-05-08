@@ -6,14 +6,15 @@ use frame_support::{
 	traits::{Get, LockIdentifier},
 	IterableStorageMap, Parameter,
 };
+use frame_system::{self as system, ensure_signed};
 use orml_traits::{BasicCurrency, BasicLockableCurrency};
-use rstd::{fmt::Debug, prelude::*};
+use primitives::{Balance, EraIndex};
 use sp_runtime::{
-	traits::{AtLeast32Bit, CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Saturating, Zero},
+	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	RuntimeDebug,
 };
-use support::{EraIndex, NomineesProvider, OnNewEra};
-use system::{self as system, ensure_signed};
+use sp_std::{fmt::Debug, prelude::*};
+use support::{NomineesProvider, OnNewEra};
 
 mod mock;
 mod tests;
@@ -22,7 +23,7 @@ const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct UnlockChunk<Balance> {
+pub struct UnlockChunk {
 	/// Amount of funds to be unlocked.
 	value: Balance,
 	/// Era number at which point it'll be unlocked.
@@ -31,20 +32,17 @@ pub struct UnlockChunk<Balance> {
 
 /// The ledger of a (bonded) account.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
-pub struct BondingLedger<Balance> {
+pub struct BondingLedger {
 	/// The total amount of the account's balance that we are currently accounting for.
 	/// It's just `active` plus all the `unlocking` balances.
 	pub total: Balance,
 	/// The total amount of the account's balance that will be at stake in any forthcoming rounds.
 	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be transferred out of the account.
-	pub unlocking: Vec<UnlockChunk<Balance>>,
+	pub unlocking: Vec<UnlockChunk>,
 }
 
-impl<Balance> BondingLedger<Balance>
-where
-	Balance: Copy + Saturating + AtLeast32Bit,
-{
+impl BondingLedger {
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
 	/// total by the sum of their balances.
 	fn consolidate_unlocked(self, current_era: EraIndex) -> Self {
@@ -95,12 +93,10 @@ where
 	}
 }
 
-type BalanceOf<T> = <<T as Trait>::Currency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
-
 pub trait Trait: system::Trait {
-	type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+	type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
-	type MinBondThreshold: Get<BalanceOf<Self>>;
+	type MinBondThreshold: Get<Balance>;
 	type BondingDuration: Get<EraIndex>;
 	type NominateesCount: Get<usize>;
 	type MaxUnlockingChunks: Get<usize>;
@@ -120,8 +116,8 @@ decl_error! {
 decl_storage! {
 	trait Store for Module<T: Trait> as NomineesElection {
 		pub Nominations get(nominations): map hasher(twox_64_concat) T::AccountId => Vec<T::PolkadotAccountId>;
-		pub Ledger get(ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger<BalanceOf<T>>;
-		pub Votes get(votes): map hasher(twox_64_concat) T::PolkadotAccountId => BalanceOf<T>;
+		pub Ledger get(ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger;
+		pub Votes get(votes): map hasher(twox_64_concat) T::PolkadotAccountId => Balance;
 		pub Nominees get(nominees): Vec<T::PolkadotAccountId>;
 		pub CurrentEra get(current_era): EraIndex;
 	}
@@ -131,17 +127,17 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
-		const MinBondThreshold: BalanceOf<T> = T::MinBondThreshold::get();
+		const MinBondThreshold: Balance = T::MinBondThreshold::get();
 		const NominateesCount: u32 = T::NominateesCount::get() as u32;
 		const MaxUnlockingChunks: u32 = T::MaxUnlockingChunks::get() as u32;
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn bond(origin, #[compact] amount: BalanceOf<T>) {
+		pub fn bond(origin, #[compact] amount: Balance) {
 			let who = ensure_signed(origin)?;
 
 			let mut ledger = Self::ledger(&who);
 			let free_balance = T::Currency::free_balance(&who);
-			if let Some(extra) = free_balance.checked_sub(&ledger.total) {
+			if let Some(extra) = free_balance.checked_sub(ledger.total) {
 				let extra = extra.min(amount);
 				let old_active = ledger.active;
 				ledger.active += extra;
@@ -155,7 +151,7 @@ decl_module! {
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn unbond(origin, amount: BalanceOf<T>) {
+		pub fn unbond(origin, amount: Balance) {
 			let who = ensure_signed(origin)?;
 
 			let mut ledger = Self::ledger(&who);
@@ -189,7 +185,7 @@ decl_module! {
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn rebond(origin, amount: BalanceOf<T>) {
+		pub fn rebond(origin, amount: Balance) {
 			let who = ensure_signed(origin)?;
 			let ledger = Self::ledger(&who);
 			ensure!(
@@ -254,7 +250,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger<BalanceOf<T>>) {
+	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
 		T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
 		<Ledger<T>>::insert(who, ledger);
 	}
@@ -266,9 +262,9 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn update_votes(
-		old_active: BalanceOf<T>,
+		old_active: Balance,
 		old_nominations: &Vec<T::PolkadotAccountId>,
-		new_active: BalanceOf<T>,
+		new_active: Balance,
 		new_nominations: &Vec<T::PolkadotAccountId>,
 	) {
 		if !old_active.is_zero() && !old_nominations.is_empty() {
@@ -285,7 +281,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn rebalance() {
-		let mut voters = <Votes<T>>::iter().collect::<Vec<(T::PolkadotAccountId, BalanceOf<T>)>>();
+		let mut voters = <Votes<T>>::iter().collect::<Vec<(T::PolkadotAccountId, Balance)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 
@@ -306,7 +302,7 @@ impl<T: Trait> NomineesProvider<T::PolkadotAccountId> for Module<T> {
 	}
 }
 
-impl<T: Trait> OnNewEra for Module<T> {
+impl<T: Trait> OnNewEra<EraIndex> for Module<T> {
 	fn on_new_era(era: EraIndex) {
 		CurrentEra::put(era);
 		Self::rebalance();
