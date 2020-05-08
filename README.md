@@ -78,7 +78,7 @@ Note: This section is still work in progress, we will update more information as
 
 To connect on the "Mandala TC3" network, you will want the version `~0.4.2` code which is in this repo.
 
-- **Mandala TC3** is in this [Acala](https://github.com/AcalaNetwork/Acala/tree/master) repo branch `master`.
+- **Mandala TC3** is in this [Acala](https://github.com/AcalaNetwork/Acala/tree/mandala-tc3) repo branch `mandala-tc3`.
 
 - **Mandala TC2** is in this [Acala](https://github.com/AcalaNetwork/Acala/tree/mandala) repo branch `mandala`.
 
