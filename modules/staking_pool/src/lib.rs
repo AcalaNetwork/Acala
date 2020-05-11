@@ -79,6 +79,7 @@ decl_storage! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+		type Error = Error<T>;
 		fn deposit_event() = default;
 
 		const StakingCurrencyId: CurrencyId = T::StakingCurrencyId::get();
