@@ -5,18 +5,17 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	CDPTreasuryModule, Currencies, ExtBuilder, LoansModule, Runtime, System, TestEvent, ALICE, AUSD, BOB, X_TOKEN_ID,
-	Y_TOKEN_ID,
+	CDPTreasuryModule, Currencies, ExtBuilder, LoansModule, Runtime, System, TestEvent, ALICE, AUSD, BOB, BTC, DOT,
 };
 
 #[test]
 fn debits_key() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), 0);
-		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 100, 100));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), 100);
-		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, -100, -100));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, ALICE), 0);
+		assert_eq!(LoansModule::debits(BTC, ALICE), 0);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 100, 100));
+		assert_eq!(LoansModule::debits(BTC, ALICE), 100);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -100, -100));
+		assert_eq!(LoansModule::debits(BTC, ALICE), 0);
 	});
 }
 
@@ -25,13 +24,13 @@ fn check_update_loan_overflow_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		// collateral underflow
 		assert_noop!(
-			LoansModule::check_update_loan_overflow(&ALICE, Y_TOKEN_ID, -100, 0),
+			LoansModule::check_update_loan_overflow(&ALICE, BTC, -100, 0),
 			Error::<Runtime>::CollateralTooLow,
 		);
 
 		// debit underflow
 		assert_noop!(
-			LoansModule::check_update_loan_overflow(&ALICE, Y_TOKEN_ID, 0, -100),
+			LoansModule::check_update_loan_overflow(&ALICE, BTC, 0, -100),
 			Error::<Runtime>::DebitTooLow,
 		);
 	});
@@ -41,39 +40,36 @@ fn check_update_loan_overflow_work() {
 fn adjust_position_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 
 		// balance too low
-		assert_eq!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 2000, 0).is_ok(), false);
+		assert_eq!(LoansModule::adjust_position(&ALICE, BTC, 2000, 0).is_ok(), false);
 
 		// mock can't pass position valid check
-		assert_eq!(LoansModule::adjust_position(&ALICE, X_TOKEN_ID, 500, 0).is_ok(), false);
+		assert_eq!(LoansModule::adjust_position(&ALICE, DOT, 500, 0).is_ok(), false);
 
 		// mock exceed debit value cap
-		assert_eq!(
-			LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 1000, 1000).is_ok(),
-			false
-		);
+		assert_eq!(LoansModule::adjust_position(&ALICE, BTC, 1000, 1000).is_ok(), false);
 
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &ALICE), 1000);
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 0);
-		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 0);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 0);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
+		assert_eq!(LoansModule::total_debits(BTC), 0);
+		assert_eq!(LoansModule::total_collaterals(BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 0);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 0);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 
 		// success
-		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 500, 300));
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &ALICE), 500);
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 500);
-		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 300);
-		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 500);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 300);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 500);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 500, 300));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 500);
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 500);
+		assert_eq!(LoansModule::total_debits(BTC), 300);
+		assert_eq!(LoansModule::total_collaterals(BTC), 500);
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 300);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
 
-		let update_position_event = TestEvent::loans(RawEvent::UpdatePosition(ALICE, Y_TOKEN_ID, 500, 300));
+		let update_position_event = TestEvent::loans(RawEvent::UpdatePosition(ALICE, BTC, 500, 300));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_position_event));
@@ -83,24 +79,24 @@ fn adjust_position_should_work() {
 #[test]
 fn update_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 0);
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &ALICE), 1000);
-		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 0);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 0);
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
+		assert_eq!(LoansModule::total_debits(BTC), 0);
+		assert_eq!(LoansModule::total_collaterals(BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 0);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 0);
 
-		assert_ok!(LoansModule::update_loan(&ALICE, Y_TOKEN_ID, 3000, 2000));
+		assert_ok!(LoansModule::update_loan(&ALICE, BTC, 3000, 2000));
 
 		// just update records
-		assert_eq!(LoansModule::total_debits(Y_TOKEN_ID), 2000);
-		assert_eq!(LoansModule::total_collaterals(Y_TOKEN_ID), 3000);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 2000);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 3000);
+		assert_eq!(LoansModule::total_debits(BTC), 2000);
+		assert_eq!(LoansModule::total_collaterals(BTC), 3000);
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 2000);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 3000);
 
 		// dot not manipulate balance
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 0);
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 	});
 }
 
@@ -108,20 +104,20 @@ fn update_loan_should_work() {
 fn transfer_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(LoansModule::update_loan(&ALICE, Y_TOKEN_ID, 400, 500));
-		assert_ok!(LoansModule::update_loan(&BOB, Y_TOKEN_ID, 100, 600));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 500);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 400);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &BOB), 600);
-		assert_eq!(LoansModule::collaterals(&BOB, Y_TOKEN_ID), 100);
+		assert_ok!(LoansModule::update_loan(&ALICE, BTC, 400, 500));
+		assert_ok!(LoansModule::update_loan(&BOB, BTC, 100, 600));
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 500);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 400);
+		assert_eq!(LoansModule::debits(BTC, &BOB), 600);
+		assert_eq!(LoansModule::collaterals(&BOB, BTC), 100);
 
-		assert_ok!(LoansModule::transfer_loan(&ALICE, &BOB, Y_TOKEN_ID));
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 0);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &BOB), 1100);
-		assert_eq!(LoansModule::collaterals(&BOB, Y_TOKEN_ID), 500);
+		assert_ok!(LoansModule::transfer_loan(&ALICE, &BOB, BTC));
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 0);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 0);
+		assert_eq!(LoansModule::debits(BTC, &BOB), 1100);
+		assert_eq!(LoansModule::collaterals(&BOB, BTC), 500);
 
-		let transfer_loan_event = TestEvent::loans(RawEvent::TransferLoan(ALICE, BOB, Y_TOKEN_ID));
+		let transfer_loan_event = TestEvent::loans(RawEvent::TransferLoan(ALICE, BOB, BTC));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == transfer_loan_event));
@@ -132,30 +128,28 @@ fn transfer_loan_should_work() {
 fn confiscate_collateral_and_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(LoansModule::update_loan(&BOB, Y_TOKEN_ID, 5000, 1000));
-		assert_eq!(Currencies::free_balance(Y_TOKEN_ID, &LoansModule::account_id()), 0);
+		assert_ok!(LoansModule::update_loan(&BOB, BTC, 5000, 1000));
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 
 		// have no sufficient balance
 		assert_eq!(
-			LoansModule::confiscate_collateral_and_debit(&BOB, Y_TOKEN_ID, 5000, 1000).is_ok(),
+			LoansModule::confiscate_collateral_and_debit(&BOB, BTC, 5000, 1000).is_ok(),
 			false,
 		);
 
-		assert_ok!(LoansModule::adjust_position(&ALICE, Y_TOKEN_ID, 500, 300));
-		assert_eq!(CDPTreasuryModule::get_total_collaterals(Y_TOKEN_ID), 0);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 500, 300));
+		assert_eq!(CDPTreasuryModule::get_total_collaterals(BTC), 0);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 300);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 500);
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 300);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 500);
 
-		assert_ok!(LoansModule::confiscate_collateral_and_debit(
-			&ALICE, Y_TOKEN_ID, 300, 200
-		));
-		assert_eq!(CDPTreasuryModule::get_total_collaterals(Y_TOKEN_ID), 300);
+		assert_ok!(LoansModule::confiscate_collateral_and_debit(&ALICE, BTC, 300, 200));
+		assert_eq!(CDPTreasuryModule::get_total_collaterals(BTC), 300);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
-		assert_eq!(LoansModule::debits(Y_TOKEN_ID, &ALICE), 100);
-		assert_eq!(LoansModule::collaterals(&ALICE, Y_TOKEN_ID), 200);
+		assert_eq!(LoansModule::debits(BTC, &ALICE), 100);
+		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 200);
 
-		let confiscate_event = TestEvent::loans(RawEvent::ConfiscateCollateralAndDebit(ALICE, Y_TOKEN_ID, 300, 200));
+		let confiscate_event = TestEvent::loans(RawEvent::ConfiscateCollateralAndDebit(ALICE, BTC, 300, 200));
 		assert!(System::events().iter().any(|record| record.event == confiscate_event));
 	});
 }

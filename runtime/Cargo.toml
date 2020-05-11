@@ -41,7 +41,7 @@ sp-staking = { version = "2.0.0-alpha.6", default-features = false }
 sp-std = { version = "2.0.0-alpha.6", default-features = false }
 sp-transaction-pool = { version = "2.0.0-alpha.6", default-features = false }
 sp-version = { version = "2.0.0-alpha.6", default-features = false }
-system = { package = "frame-system", version = "2.0.0-alpha.6", default-features = false }
+frame-system = { version = "2.0.0-alpha.6", default-features = false }
 
 orml-auction = { path = "../orml/auction", default-features = false }
 orml-currencies = { path = "../orml/currencies", default-features = false }
@@ -83,6 +83,7 @@ std = [
 	"frame-executive/std",
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
+	"frame-system/std",
 	"pallet-babe/std",
 	"pallet-balances/std",
 	"pallet-collective/std",

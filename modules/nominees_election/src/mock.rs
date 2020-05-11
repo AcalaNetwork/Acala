@@ -4,8 +4,20 @@
 
 use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
-use primitives::H256;
+use primitives::{Amount, CurrencyId};
+use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+
+pub type AccountId = u64;
+pub type BlockNumber = u64;
+
+pub const ALICE: AccountId = 0;
+pub const BOB: AccountId = 1;
+pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const LDOT: CurrencyId = CurrencyId::LDOT;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
@@ -16,22 +28,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 1;
 }
-
-pub type AccountId = u64;
-pub type BlockNumber = u64;
-pub type Balance = u64;
-pub type Amount = i64;
-pub type CurrencyId = u32;
-
-pub const ALICE: AccountId = 0;
-pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = 0;
-pub const LDOT: CurrencyId = 1;
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -55,6 +52,10 @@ impl system::Trait for Runtime {
 	type OnKilledAccount = ();
 }
 pub type System = system::Module<Runtime>;
+
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
 
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
@@ -120,7 +121,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {

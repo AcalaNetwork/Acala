@@ -25,7 +25,7 @@ fn set_collateral_auction_maximum_size_work() {
 		));
 
 		let update_collateral_auction_maximum_size_event =
-			TestEvent::cdp_treasury(RawEvent::UpdateCollateralAuctionMaximumSize(BTC, 200));
+			TestEvent::cdp_treasury(Event::UpdateCollateralAuctionMaximumSize(BTC, 200));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_collateral_auction_maximum_size_event));
@@ -62,20 +62,20 @@ fn set_debit_and_surplus_handle_params_work() {
 		));
 
 		let update_surplus_auction_fixed_size_event =
-			TestEvent::cdp_treasury(RawEvent::UpdateSurplusAuctionFixedSize(100));
+			TestEvent::cdp_treasury(Event::UpdateSurplusAuctionFixedSize(100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_surplus_auction_fixed_size_event));
-		let update_surplus_buffer_size_event = TestEvent::cdp_treasury(RawEvent::UpdateSurplusBufferSize(1000));
+		let update_surplus_buffer_size_event = TestEvent::cdp_treasury(Event::UpdateSurplusBufferSize(1000));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_surplus_buffer_size_event));
 		let update_initial_amount_per_debit_auction_event =
-			TestEvent::cdp_treasury(RawEvent::UpdateInitialAmountPerDebitAuction(200));
+			TestEvent::cdp_treasury(Event::UpdateInitialAmountPerDebitAuction(200));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_initial_amount_per_debit_auction_event));
-		let update_debit_auction_fixed_size_event = TestEvent::cdp_treasury(RawEvent::UpdateDebitAuctionFixedSize(100));
+		let update_debit_auction_fixed_size_event = TestEvent::cdp_treasury(Event::UpdateDebitAuctionFixedSize(100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_debit_auction_fixed_size_event));

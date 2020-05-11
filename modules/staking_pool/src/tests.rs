@@ -33,7 +33,7 @@ fn claim_period_percent_work() {
 #[test]
 fn withdraw_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		<TotalClaimedUnbonded<Runtime>>::put(500);
+		TotalClaimedUnbonded::put(500);
 		<ClaimedUnbond<Runtime>>::insert(ALICE, StakingPoolModule::current_era(), 200);
 		assert_ok!(CurrenciesModule::deposit(DOT, &StakingPoolModule::account_id(), 500));
 		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1000);
@@ -96,8 +96,8 @@ fn redeem_by_free_unbonded_work() {
 		System::set_block_number(1);
 		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
 		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
-		<TotalBonded<Runtime>>::mutate(|bonded| *bonded -= 1500);
-		<FreeUnbonded<Runtime>>::put(1500);
+		TotalBonded::mutate(|bonded| *bonded -= 1500);
+		FreeUnbonded::put(1500);
 		assert_ok!(CurrenciesModule::deposit(DOT, &StakingPoolModule::account_id(), 1500));
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
 		assert_eq!(StakingPoolModule::free_unbonded(), 1500);
@@ -137,9 +137,9 @@ fn redeem_by_claim_unbonding_work() {
 		System::set_block_number(1);
 		assert_eq!(StakingPoolModule::bond(&ALICE, 1000), Ok(10000));
 		assert_eq!(StakingPoolModule::bond(&BOB, 1000), Ok(10000));
-		<TotalBonded<Runtime>>::mutate(|bonded| *bonded -= 1500);
-		<Unbonding<Runtime>>::insert(2, (1500, 0));
-		<UnbondingToFree<Runtime>>::put(1500);
+		TotalBonded::mutate(|bonded| *bonded -= 1500);
+		Unbonding::insert(2, (1500, 0));
+		UnbondingToFree::put(1500);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 10000);
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
 		assert_eq!(StakingPoolModule::unbonding(2), (1500, 0));
@@ -178,10 +178,10 @@ fn redeem_by_claim_unbonding_work() {
 #[test]
 fn rebalance_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		<TotalBonded<Runtime>>::put(20000);
-		<Unbonding<Runtime>>::insert(1, (20000, 10000));
-		<UnbondingToFree<Runtime>>::put(10000);
-		<NextEraUnbond<Runtime>>::put((5000, 5000));
+		TotalBonded::put(20000);
+		Unbonding::insert(1, (20000, 10000));
+		UnbondingToFree::put(10000);
+		NextEraUnbond::put((5000, 5000));
 
 		assert_eq!(StakingPoolModule::current_era(), 0);
 		assert_eq!(StakingPoolModule::total_bonded(), 20000);

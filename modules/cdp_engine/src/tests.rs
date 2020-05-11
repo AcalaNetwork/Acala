@@ -8,6 +8,7 @@ use mock::{
 	CDPEngineModule, CDPTreasuryModule, Currencies, DefaultDebitExchangeRate, DefaultLiquidationPenalty,
 	DefaultLiquidationRatio, ExtBuilder, LoansModule, Origin, Runtime, System, TestEvent, ACA, ALICE, AUSD, BTC, DOT,
 };
+use orml_traits::MultiCurrency;
 use sp_runtime::traits::BadOrigin;
 
 #[test]

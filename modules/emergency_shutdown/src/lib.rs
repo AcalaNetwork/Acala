@@ -4,28 +4,21 @@ use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
 };
-use orml_traits::MultiCurrency;
-use rstd::prelude::*;
+use frame_system::{self as system, ensure_root, ensure_signed};
+use primitives::{Balance, CurrencyId};
 use sp_runtime::traits::Zero;
+use sp_std::prelude::*;
 use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Ratio};
-use system::{ensure_root, ensure_signed};
 
 mod mock;
 mod tests;
 
-type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-
 pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
-	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
-	type AuctionManagerHandler: AuctionManager<
-		Self::AccountId,
-		Balance = BalanceOf<Self>,
-		CurrencyId = CurrencyIdOf<Self>,
-	>;
+	type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
+	type PriceSource: PriceProvider<CurrencyId>;
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+	type AuctionManagerHandler: AuctionManager<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 	type OnShutdown: OnEmergencyShutdown;
 	type ShutdownOrigin: EnsureOrigin<Self::Origin>;
 }
@@ -33,7 +26,7 @@ pub trait Trait: system::Trait + loans::Trait {
 decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::BlockNumber,
-		Balance = BalanceOf<T>,
+		Balance = Balance,
 	{
 		Shutdown(BlockNumber),
 		OpenRefund(BlockNumber),
@@ -63,7 +56,7 @@ decl_module! {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
-		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
+		const CollateralCurrencyIds: Vec<CurrencyId> = T::CollateralCurrencyIds::get();
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn emergency_shutdown(origin) {
@@ -125,7 +118,7 @@ decl_module! {
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn refund_collaterals(origin, #[compact] amount: BalanceOf<T>) {
+		pub fn refund_collaterals(origin, #[compact] amount: Balance) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 

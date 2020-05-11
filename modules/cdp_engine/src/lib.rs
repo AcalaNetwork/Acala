@@ -6,8 +6,8 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 	IsSubType, IterableStorageDoubleMap,
 };
-use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use rstd::{marker, prelude::*};
+use frame_system::{self as system, ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
 	transaction_validity::{
@@ -15,11 +15,11 @@ use sp_runtime::{
 	},
 	DispatchResult, RandomNumberGenerator, RuntimeDebug,
 };
+use sp_std::{marker, prelude::*};
 use support::{
 	CDPTreasury, CDPTreasuryExtended, DEXManager, ExchangeRate, OnEmergencyShutdown, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
-use system::{ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
 use utilities::{LockItem, OffchainErr, OffchainLock};
 
 mod debit_exchange_rate_convertor;
@@ -30,24 +30,19 @@ mod tests;
 
 const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
 
-type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
-
 pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
-	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
+	type PriceSource: PriceProvider<CurrencyId>;
+	type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
 	type DefaultLiquidationRatio: Get<Ratio>;
 	type DefaultDebitExchangeRate: Get<ExchangeRate>;
 	type DefaultLiquidationPenalty: Get<Rate>;
-	type MinimumDebitValue: Get<BalanceOf<Self>>;
-	type GetStableCurrencyId: Get<CurrencyIdOf<Self>>;
-	type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
+	type MinimumDebitValue: Get<Balance>;
+	type GetStableCurrencyId: Get<CurrencyId>;
+	type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 	type MaxSlippageSwapWithDEX: Get<Ratio>;
-	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyIdOf<Self>, Balance = BalanceOf<Self>>;
-	type DEX: DEXManager<Self::AccountId, CurrencyIdOf<Self>, BalanceOf<Self>>;
+	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
 	/// A dispatchable call type.
 	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
@@ -72,8 +67,8 @@ decl_event!(
 	pub enum Event<T>
 	where
 		<T as system::Trait>::AccountId,
-		CurrencyId = CurrencyIdOf<T>,
-		Balance = BalanceOf<T>,
+		CurrencyId = CurrencyId,
+		Balance = Balance,
 	{
 		LiquidateUnsafeCDP(CurrencyId, AccountId, Balance, Balance, LiquidationStrategy),
 		SettleCDPInDebit(CurrencyId, AccountId),
@@ -103,19 +98,19 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPEngine {
-		pub StabilityFee get(fn stability_fee): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Rate>;
-		pub LiquidationRatio get(fn liquidation_ratio): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Ratio>;
-		pub LiquidationPenalty get(fn liquidation_penalty): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Rate>;
-		pub RequiredCollateralRatio get(fn required_collateral_ratio): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<Ratio>;
-		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(twox_64_concat) CurrencyIdOf<T> => BalanceOf<T>;
-		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyIdOf<T> => Option<ExchangeRate>;
+		pub StabilityFee get(fn stability_fee): map hasher(twox_64_concat) CurrencyId => Option<Rate>;
+		pub LiquidationRatio get(fn liquidation_ratio): map hasher(twox_64_concat) CurrencyId => Option<Ratio>;
+		pub LiquidationPenalty get(fn liquidation_penalty): map hasher(twox_64_concat) CurrencyId => Option<Rate>;
+		pub RequiredCollateralRatio get(fn required_collateral_ratio): map hasher(twox_64_concat) CurrencyId => Option<Ratio>;
+		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(twox_64_concat) CurrencyId => Balance;
+		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyId => Option<ExchangeRate>;
 		pub IsShutdown get(fn is_shutdown): bool;
 		pub GlobalStabilityFee get(fn global_stability_fee) config(): Rate;
 	}
 
 	add_extra_genesis {
-		config(collaterals_params): Vec<(CurrencyIdOf<T>, Option<Rate>, Option<Ratio>, Option<Rate>, Option<Ratio>, BalanceOf<T>)>;
-		build(|config: &GenesisConfig<T>| {
+		config(collaterals_params): Vec<(CurrencyId, Option<Rate>, Option<Ratio>, Option<Rate>, Option<Ratio>, Balance)>;
+		build(|config: &GenesisConfig| {
 			config.collaterals_params.iter().for_each(|(
 				currency_id,
 				stability_fee,
@@ -125,18 +120,18 @@ decl_storage! {
 				maximum_total_debit_value,
 			)| {
 				if let Some(val) = stability_fee {
-					<StabilityFee<T>>::insert(currency_id, val);
+					StabilityFee::insert(currency_id, val);
 				}
 				if let Some(val) = liquidation_ratio {
-					<LiquidationRatio<T>>::insert(currency_id, val);
+					LiquidationRatio::insert(currency_id, val);
 				}
 				if let Some(val) = liquidation_penalty {
-					<LiquidationPenalty<T>>::insert(currency_id, val);
+					LiquidationPenalty::insert(currency_id, val);
 				}
 				if let Some(val) = required_collateral_ratio {
-					<RequiredCollateralRatio<T>>::insert(currency_id, val);
+					RequiredCollateralRatio::insert(currency_id, val);
 				}
-				<MaximumTotalDebitValue<T>>::insert(currency_id, maximum_total_debit_value);
+				MaximumTotalDebitValue::insert(currency_id, maximum_total_debit_value);
 			});
 		});
 	}
@@ -146,11 +141,11 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
+		const CollateralCurrencyIds: Vec<CurrencyId> = T::CollateralCurrencyIds::get();
 		const DefaultLiquidationRatio: Ratio = T::DefaultLiquidationRatio::get();
 		const DefaultDebitExchangeRate: ExchangeRate = T::DefaultDebitExchangeRate::get();
-		const MinimumDebitValue: BalanceOf<T> = T::MinimumDebitValue::get();
-		const GetStableCurrencyId: CurrencyIdOf<T> = T::GetStableCurrencyId::get();
+		const MinimumDebitValue: Balance = T::MinimumDebitValue::get();
+		const GetStableCurrencyId: CurrencyId = T::GetStableCurrencyId::get();
 		const MaxSlippageSwapWithDEX: Ratio = T::MaxSlippageSwapWithDEX::get();
 		const DefaultLiquidationPenalty: Rate = T::DefaultLiquidationPenalty::get();
 
@@ -168,50 +163,50 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_collateral_params(
 			origin,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: CurrencyId,
 			stability_fee: Option<Option<Rate>>,
 			liquidation_ratio: Option<Option<Ratio>>,
 			liquidation_penalty: Option<Option<Rate>>,
 			required_collateral_ratio: Option<Option<Ratio>>,
-			maximum_total_debit_value: Option<BalanceOf<T>>,
+			maximum_total_debit_value: Option<Balance>,
 		) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
 			if let Some(update) = stability_fee {
 				if let Some(val) = update {
-					<StabilityFee<T>>::insert(currency_id, val);
+					StabilityFee::insert(currency_id, val);
 				} else {
-					<StabilityFee<T>>::remove(currency_id);
+					StabilityFee::remove(currency_id);
 				}
 				Self::deposit_event(RawEvent::UpdateStabilityFee(currency_id, update));
 			}
 			if let Some(update) = liquidation_ratio {
 				if let Some(val) = update {
-					<LiquidationRatio<T>>::insert(currency_id, val);
+					LiquidationRatio::insert(currency_id, val);
 				} else {
-					<LiquidationRatio<T>>::remove(currency_id);
+					LiquidationRatio::remove(currency_id);
 				}
 				Self::deposit_event(RawEvent::UpdateLiquidationRatio(currency_id, update));
 			}
 			if let Some(update) = liquidation_penalty {
 				if let Some(val) = update {
-					<LiquidationPenalty<T>>::insert(currency_id, val);
+					LiquidationPenalty::insert(currency_id, val);
 				} else {
-					<LiquidationPenalty<T>>::remove(currency_id);
+					LiquidationPenalty::remove(currency_id);
 				}
 				Self::deposit_event(RawEvent::UpdateLiquidationPenalty(currency_id, update));
 			}
 			if let Some(update) = required_collateral_ratio {
 				if let Some(val) = update {
-					<RequiredCollateralRatio<T>>::insert(currency_id, val);
+					RequiredCollateralRatio::insert(currency_id, val);
 				} else {
-					<RequiredCollateralRatio<T>>::remove(currency_id);
+					RequiredCollateralRatio::remove(currency_id);
 				}
 				Self::deposit_event(RawEvent::UpdateRequiredCollateralRatio(currency_id, update));
 			}
 			if let Some(val) = maximum_total_debit_value {
-				<MaximumTotalDebitValue<T>>::insert(currency_id, val);
+				MaximumTotalDebitValue::insert(currency_id, val);
 				Self::deposit_event(RawEvent::UpdateMaximumTotalDebitValue(currency_id, val));
 			}
 		}
@@ -236,7 +231,7 @@ decl_module! {
 						if <T as Trait>::CDPTreasury::on_system_surplus(issued_stable_coin_balance).is_ok() {
 							// update exchange rate when issue success
 							let new_debit_exchange_rate = debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
-							<DebitExchangeRate<T>>::insert(currency_id, new_debit_exchange_rate);
+							DebitExchangeRate::insert(currency_id, new_debit_exchange_rate);
 						}
 					}
 				}
@@ -247,7 +242,7 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn liquidate(
 			origin,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: CurrencyId,
 			who: T::AccountId,
 		) {
 			ensure_none(origin)?;
@@ -259,7 +254,7 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn settle(
 			origin,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: CurrencyId,
 			who: T::AccountId,
 		) {
 			ensure_none(origin)?;
@@ -282,13 +277,13 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn submit_unsigned_liquidation_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
+	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) -> Result<(), OffchainErr> {
 		let call = Call::<T>::liquidate(currency_id, who);
 		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
 	}
 
-	fn submit_unsigned_settle_tx(currency_id: CurrencyIdOf<T>, who: T::AccountId) -> Result<(), OffchainErr> {
+	fn submit_unsigned_settle_tx(currency_id: CurrencyId, who: T::AccountId) -> Result<(), OffchainErr> {
 		let call = Call::<T>::settle(currency_id, who);
 		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
@@ -301,7 +296,7 @@ impl<T: Trait> Module<T> {
 		}
 
 		// check if we are a potential validator
-		if !runtime_io::offchain::is_validator() {
+		if !sp_io::offchain::is_validator() {
 			return Err(OffchainErr::NotValidator);
 		}
 
@@ -321,7 +316,7 @@ impl<T: Trait> Module<T> {
 					0
 				}
 			} else {
-				let random_seed = runtime_io::offchain::random_seed();
+				let random_seed = sp_io::offchain::random_seed();
 				let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
 
 				rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32)
@@ -385,7 +380,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	pub fn is_cdp_unsafe(currency_id: CurrencyIdOf<T>, who: &T::AccountId) -> bool {
+	pub fn is_cdp_unsafe(currency_id: CurrencyId, who: &T::AccountId) -> bool {
 		let debit_balance = <loans::Module<T>>::debits(currency_id, who);
 		let collateral_balance = <loans::Module<T>>::collaterals(who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
@@ -402,25 +397,25 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn get_liquidation_ratio(currency_id: CurrencyIdOf<T>) -> Ratio {
+	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Ratio {
 		Self::liquidation_ratio(currency_id).unwrap_or_else(T::DefaultLiquidationRatio::get)
 	}
 
-	pub fn get_debit_exchange_rate(currency_id: CurrencyIdOf<T>) -> ExchangeRate {
+	pub fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {
 		Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaultDebitExchangeRate::get)
 	}
 
-	pub fn get_liquidation_penalty(currency_id: CurrencyIdOf<T>) -> Rate {
+	pub fn get_liquidation_penalty(currency_id: CurrencyId) -> Rate {
 		Self::liquidation_penalty(currency_id).unwrap_or_else(T::DefaultLiquidationPenalty::get)
 	}
 
-	pub fn get_debit_value(currency_id: CurrencyIdOf<T>, debit_balance: T::DebitBalance) -> BalanceOf<T> {
+	pub fn get_debit_value(currency_id: CurrencyId, debit_balance: T::DebitBalance) -> Balance {
 		DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance))
 	}
 
 	pub fn calculate_collateral_ratio(
-		currency_id: CurrencyIdOf<T>,
-		collateral_balance: BalanceOf<T>,
+		currency_id: CurrencyId,
+		collateral_balance: Balance,
 		debit_balance: T::DebitBalance,
 		price: Price,
 	) -> Ratio {
@@ -432,8 +427,8 @@ impl<T: Trait> Module<T> {
 
 	pub fn adjust_position(
 		who: &T::AccountId,
-		currency_id: CurrencyIdOf<T>,
-		collateral_adjustment: AmountOf<T>,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
 		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
 		ensure!(
@@ -445,7 +440,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	// settle cdp has debit when emergency shutdown
-	pub fn settle_cdp_has_debit(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+	pub fn settle_cdp_has_debit(who: T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		let debit_balance = <loans::Module<T>>::debits(currency_id, &who);
 		ensure!(!debit_balance.is_zero(), Error::<T>::AlreadyNoDebit);
 
@@ -456,7 +451,7 @@ impl<T: Trait> Module<T> {
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let bad_debt_value = Self::get_debit_value(currency_id, debit_balance);
 		let confiscate_collateral_amount =
-			rstd::cmp::min(settle_price.saturating_mul_int(&bad_debt_value), collateral_balance);
+			sp_std::cmp::min(settle_price.saturating_mul_int(&bad_debt_value), collateral_balance);
 
 		// confiscate collateral and all debit
 		<loans::Module<T>>::confiscate_collateral_and_debit(
@@ -471,7 +466,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	// liquidate unsafe cdp
-	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		let debit_balance = <loans::Module<T>>::debits(currency_id, &who);
 		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
@@ -541,14 +536,14 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>, T::DebitBalance> for Module<T> {
-	fn get_bad_debt_value(currency_id: CurrencyIdOf<T>, debit_balance: T::DebitBalance) -> BalanceOf<T> {
+impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, T::DebitBalance> for Module<T> {
+	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: T::DebitBalance) -> Balance {
 		Self::get_debit_value(currency_id, debit_balance)
 	}
 
 	fn check_position_valid(
-		currency_id: CurrencyIdOf<T>,
-		collateral_balance: BalanceOf<T>,
+		currency_id: CurrencyId,
+		collateral_balance: Balance,
 		debit_balance: T::DebitBalance,
 	) -> DispatchResult {
 		let debit_value = Self::get_debit_value(currency_id, debit_balance);
@@ -583,7 +578,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>, T::Debit
 		Ok(())
 	}
 
-	fn check_debit_cap(currency_id: CurrencyIdOf<T>, total_debit_balance: T::DebitBalance) -> DispatchResult {
+	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: T::DebitBalance) -> DispatchResult {
 		let hard_cap = Self::maximum_total_debit_value(currency_id);
 		let total_debit_value = Self::get_debit_value(currency_id, total_debit_balance);
 

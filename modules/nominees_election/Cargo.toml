@@ -9,16 +9,16 @@ serde = { version = "1.0.101", optional = true }
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
 sp-runtime = { version = "2.0.0-alpha.6", default-features = false }
 frame-support = { version = "2.0.0-alpha.6", default-features = false }
-system = { package = "frame-system", version = "2.0.0-alpha.6", default-features = false }
-rstd = { package = "sp-std", version = "2.0.0-alpha.6", default-features = false }
-
+frame-system = { version = "2.0.0-alpha.6", default-features = false }
+sp-std = { version = "2.0.0-alpha.6", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
+primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 
 [dev-dependencies]
-primitives = { package = "sp-core",  version = "2.0.0-alpha.6", default-features = false }
-runtime-io = { package = "sp-io", version = "2.0.0-alpha.6", default-features = false }
+sp-core = { version = "2.0.0-alpha.6", default-features = false }
+sp-io = { version = "2.0.0-alpha.6", default-features = false }
 pallet-balances = { version = "2.0.0-alpha.6", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 
@@ -29,9 +29,10 @@ std = [
 	"codec/std",
 	"sp-runtime/std",
 	"frame-support/std",
-	"system/std",
-	"rstd/std",
+	"frame-system/std",
+	"sp-std/std",
 	"support/std",
 	"orml-traits/std",
 	"orml-tokens/std",
+	"primitives/std",
 ]

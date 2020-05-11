@@ -32,7 +32,7 @@ fn set_liquidity_incentive_rate_work() {
 #[test]
 fn accumulate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		<LiquidityPool<Runtime>>::insert(BTC, (100, 10000));
+		LiquidityPool::insert(BTC, (100, 10000));
 		assert_eq!(DexModule::total_interest(BTC), 0);
 		DexModule::accumulate_interest(BTC);
 		assert_eq!(DexModule::total_interest(BTC), 100);
@@ -44,8 +44,8 @@ fn claim_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		<Shares<Runtime>>::insert(BTC, ALICE, 2000);
 		<TotalShares<Runtime>>::insert(BTC, 10000);
-		<TotalInterest<Runtime>>::insert(BTC, 25000);
-		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 20000);
+		TotalInterest::insert(BTC, 25000);
+		TotalWithdrawnInterest::insert(BTC, 20000);
 		<WithdrawnInterest<Runtime>>::insert(BTC, ALICE, 2000);
 		assert_ok!(Tokens::deposit(AUSD, &DexModule::account_id(), 5000));
 		let alice_former_balance = Tokens::free_balance(AUSD, &ALICE);
@@ -63,8 +63,8 @@ fn withdraw_calculate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		<Shares<Runtime>>::insert(BTC, ALICE, 2000);
 		<TotalShares<Runtime>>::insert(BTC, 10000);
-		<TotalInterest<Runtime>>::insert(BTC, 25000);
-		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 25000);
+		TotalInterest::insert(BTC, 25000);
+		TotalWithdrawnInterest::insert(BTC, 25000);
 		<WithdrawnInterest<Runtime>>::insert(BTC, ALICE, 10000);
 		assert_ok!(DexModule::withdraw_calculate_interest(BTC, &ALICE, 1000));
 		assert_eq!(DexModule::total_withdrawn_interest(BTC), 20000);
@@ -77,8 +77,8 @@ fn withdraw_calculate_interest_work() {
 fn deposit_calculate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		<TotalShares<Runtime>>::insert(BTC, 5000);
-		<TotalInterest<Runtime>>::insert(BTC, 10000);
-		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 2000);
+		TotalInterest::insert(BTC, 10000);
+		TotalWithdrawnInterest::insert(BTC, 2000);
 		DexModule::deposit_calculate_interest(BTC, &ALICE, 4000);
 		assert_eq!(DexModule::total_interest(BTC), 18000);
 		assert_eq!(DexModule::total_withdrawn_interest(BTC), 10000);

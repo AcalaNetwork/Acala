@@ -2,13 +2,24 @@
 
 #![cfg(test)]
 
+use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
-use primitives::H256;
+use frame_system::EnsureSignedBy;
+use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::ExchangeRate;
-use system::EnsureSignedBy;
 
-use super::*;
+pub type AccountId = u64;
+pub type BlockNumber = u64;
+
+pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const AUSD: CurrencyId = CurrencyId::AUSD;
+pub const BTC: CurrencyId = CurrencyId::XBTC;
+pub const DOT: CurrencyId = CurrencyId::DOT;
+pub const LDOT: CurrencyId = CurrencyId::LDOT;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 mod prices {
 	pub use super::super::*;
@@ -17,28 +28,13 @@ mod prices {
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
 		system<T>,
-		prices<T>,
+		prices,
 	}
 }
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
 }
-
-pub type AccountId = u64;
-pub type BlockNumber = u64;
-pub type CurrencyId = u32;
-
-pub const AUSD: CurrencyId = 1;
-pub const BTC: CurrencyId = 2;
-pub const DOT: CurrencyId = 3;
-pub const OTHER: CurrencyId = 4;
-pub const ETH: CurrencyId = 5;
-pub const LDOT: CurrencyId = 6;
-
-// Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -72,12 +68,12 @@ pub type System = system::Module<Runtime>;
 
 pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
-	fn get(currency: &CurrencyId) -> Option<Price> {
-		match currency {
+	fn get(currency_id: &CurrencyId) -> Option<Price> {
+		match currency_id {
 			&AUSD => Some(Price::from_rational(99, 100)),
 			&BTC => Some(Price::from_natural(5000)),
 			&DOT => Some(Price::from_natural(100)),
-			&OTHER => Some(Price::from_natural(0)),
+			&ACA => Some(Price::from_natural(0)),
 			_ => None,
 		}
 	}
@@ -103,7 +99,6 @@ parameter_types! {
 
 impl Trait for Runtime {
 	type Event = TestEvent;
-	type CurrencyId = CurrencyId;
 	type Source = MockDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
@@ -123,7 +118,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		t.into()

@@ -2,7 +2,7 @@
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::{self as system, ensure_signed};
-use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use primitives::{Amount, CurrencyId};
 use sp_runtime::{traits::Zero, DispatchResult};
 use support::OnEmergencyShutdown;
 
@@ -13,12 +13,9 @@ pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
-type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
-
 decl_storage! {
 	trait Store for Module<T: Trait> as Honzon {
-		pub Authorization get(fn authorization): double_map hasher(twox_64_concat) T::AccountId, hasher(blake2_128_concat) (CurrencyIdOf<T>, T::AccountId) => bool;
+		pub Authorization get(fn authorization): double_map hasher(twox_64_concat) T::AccountId, hasher(blake2_128_concat) (CurrencyId, T::AccountId) => bool;
 		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
@@ -26,7 +23,7 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
-		CurrencyId = CurrencyIdOf<T>,
+		CurrencyId = CurrencyId,
 	{
 		/// authorization (from, to, currency_id)
 		Authorization(AccountId, AccountId, CurrencyId),
@@ -54,8 +51,8 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn adjust_loan(
 			origin,
-			currency_id: CurrencyIdOf<T>,
-			collateral_adjustment: AmountOf<T>,
+			currency_id: CurrencyId,
+			collateral_adjustment: Amount,
 			debit_adjustment: T::DebitAmount,
 		) {
 			let who = ensure_signed(origin)?;
@@ -67,8 +64,8 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn adjust_collateral_after_shutdown(
 			origin,
-			currency_id: CurrencyIdOf<T>,
-			collateral_adjustment: AmountOf<T>,
+			currency_id: CurrencyId,
+			collateral_adjustment: Amount,
 		) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
@@ -78,7 +75,7 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn transfer_loan_from(
 			origin,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: CurrencyId,
 			from: T::AccountId,
 		) {
 			let to = ensure_signed(origin)?;
@@ -94,7 +91,7 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn authorize(
 			origin,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: CurrencyId,
 			to: T::AccountId,
 		) {
 			let from = ensure_signed(origin)?;
@@ -109,7 +106,7 @@ decl_module! {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn unauthorize(
 			origin,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: CurrencyId,
 			to: T::AccountId,
 		) {
 			let from = ensure_signed(origin)?;
@@ -135,7 +132,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	/// check if `from` allow `to` to manipulate its loan
-	pub fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+	pub fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		ensure!(
 			from == to || Self::authorization(from, (currency_id, to)),
 			Error::<T>::NoAuthorization

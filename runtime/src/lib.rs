@@ -27,11 +27,11 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use frame_system::{self as system, offchain::TransactionSubmitter};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_oracle::OperatorProvider;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
-use system::offchain::TransactionSubmitter;
 
 // A few exports that help ease life for downstream crates.
 
@@ -541,7 +541,6 @@ parameter_types! {
 
 impl module_prices::Trait for Runtime {
 	type Event = Event;
-	type CurrencyId = CurrencyId;
 	type Source = Oracle;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
@@ -630,7 +629,6 @@ impl module_cdp_engine::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type Currency = Currencies;
 	type DEX = Dex;
 	type Call = Call;
 	type SubmitTransaction = TransactionSubmitterOf<()>;
@@ -687,14 +685,11 @@ impl module_accounts::Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type Time = Timestamp;
-	type Currency = Currencies;
 	type DepositCurrency = Balances;
 }
 
 impl module_airdrop::Trait for Runtime {
 	type Event = Event;
-	type AirDropCurrencyId = AirDropCurrencyId;
-	type Balance = Balance;
 }
 
 parameter_types! {
@@ -799,15 +794,15 @@ construct_runtime!(
 		// acala modules
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
-		Prices: module_prices::{Module, Storage, Call, Event<T>},
+		Prices: module_prices::{Module, Storage, Call, Event},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-		Dex: module_dex::{Module, Storage, Call, Config<T>, Event<T>},
-		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config<T>, Event<T>},
-		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config<T>, ValidateUnsigned},
+		Dex: module_dex::{Module, Storage, Call, Config, Event<T>},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},

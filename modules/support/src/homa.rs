@@ -1,17 +1,12 @@
-use codec::{Decode, Encode, HasCompact};
+use super::*;
 use frame_support::{traits::Get, Parameter};
-use rstd::fmt::Debug;
-use rstd::prelude::*;
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member},
-	DispatchError, DispatchResult, RuntimeDebug,
+	RuntimeDebug,
 };
 
-/// Counter for the number of eras that have passed.
-pub type EraIndex = u32;
-
 #[impl_trait_for_tuples::impl_for_tuples(30)]
-pub trait OnNewEra {
+pub trait OnNewEra<EraIndex> {
 	fn on_new_era(era: EraIndex);
 }
 
@@ -20,25 +15,27 @@ pub trait NomineesProvider<AccountId> {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct PolkadotUnlockChunk<Balance> {
+pub struct PolkadotUnlockChunk<Balance, EraIndex> {
 	pub value: Balance,
 	pub era: EraIndex,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
-pub struct PolkadotStakingLedger<Balance> {
+pub struct PolkadotStakingLedger<Balance, EraIndex> {
 	pub total: Balance,
 	pub active: Balance,
-	pub unlocking: Vec<PolkadotUnlockChunk<Balance>>,
+	pub unlocking: Vec<PolkadotUnlockChunk<Balance, EraIndex>>,
 }
 
-pub trait PolkadotBridgeType<BlockNumber> {
+pub trait PolkadotBridgeType<BlockNumber, EraIndex> {
 	type BondingDuration: Get<EraIndex>;
 	type EraLength: Get<BlockNumber>;
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 }
 
-pub trait PolkadotBridgeCall<BlockNumber, Balance, AccountId>: PolkadotBridgeType<BlockNumber> {
+pub trait PolkadotBridgeCall<AccountId, BlockNumber, Balance, EraIndex>:
+	PolkadotBridgeType<BlockNumber, EraIndex>
+{
 	fn bond_extra(amount: Balance) -> DispatchResult;
 	fn unbond(amount: Balance) -> DispatchResult;
 	fn rebond(amount: Balance) -> DispatchResult;
@@ -49,14 +46,14 @@ pub trait PolkadotBridgeCall<BlockNumber, Balance, AccountId>: PolkadotBridgeTyp
 	fn payout_nominator();
 }
 
-pub trait PolkadotBridgeState<Balance> {
-	fn ledger() -> PolkadotStakingLedger<Balance>;
+pub trait PolkadotBridgeState<Balance, EraIndex> {
+	fn ledger() -> PolkadotStakingLedger<Balance, EraIndex>;
 	fn balance() -> Balance;
 	fn current_era() -> EraIndex;
 }
 
-pub trait PolkadotBridge<BlockNumber, Balance, AccountId>:
-	PolkadotBridgeCall<BlockNumber, Balance, AccountId> + PolkadotBridgeState<Balance>
+pub trait PolkadotBridge<AccountId, BlockNumber, Balance, EraIndex>:
+	PolkadotBridgeCall<AccountId, BlockNumber, Balance, EraIndex> + PolkadotBridgeState<Balance, EraIndex>
 {
 }
 
@@ -68,12 +65,12 @@ impl<Balance, CurrencyId> OnCommission<Balance, CurrencyId> for () {
 	fn on_commission(_currency_id: CurrencyId, _amount: Balance) {}
 }
 
-pub trait HomaProtocol<AccountId> {
+pub trait HomaProtocol<AccountId, Balance, EraIndex> {
 	type Balance: Decode + Encode + Debug + Eq + PartialEq + Clone + HasCompact;
 
-	fn mint(who: &AccountId, amount: Self::Balance) -> rstd::result::Result<Self::Balance, DispatchError>;
-	fn redeem_by_unbond(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn redeem_by_free_unbonded(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn redeem_by_claim_unbonding(who: &AccountId, amount: Self::Balance, target_era: EraIndex) -> DispatchResult;
-	fn withdraw_redemption(who: &AccountId) -> rstd::result::Result<Self::Balance, DispatchError>;
+	fn mint(who: &AccountId, amount: Balance) -> sp_std::result::Result<Balance, DispatchError>;
+	fn redeem_by_unbond(who: &AccountId, amount: Balance) -> DispatchResult;
+	fn redeem_by_free_unbonded(who: &AccountId, amount: Balance) -> DispatchResult;
+	fn redeem_by_claim_unbonding(who: &AccountId, amount: Balance, target_era: EraIndex) -> DispatchResult;
+	fn withdraw_redemption(who: &AccountId) -> sp_std::result::Result<Balance, DispatchError>;
 }
