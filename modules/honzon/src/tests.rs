@@ -118,10 +118,10 @@ fn adjust_loan_should_work() {
 }
 
 #[test]
-fn emergency_shutdown_should_work() {
+fn on_emergency_shutdown_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(HonzonModule::is_shutdown(), false);
-		HonzonModule::emergency_shutdown();
+		HonzonModule::on_emergency_shutdown();
 		assert_eq!(HonzonModule::is_shutdown(), true);
 		assert_noop!(
 			HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50),
@@ -131,22 +131,5 @@ fn emergency_shutdown_should_work() {
 			HonzonModule::transfer_loan_from(Origin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::AlreadyShutdown,
 		);
-	});
-}
-
-#[test]
-fn adjust_collateral_after_shutdown_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 0));
-		assert_noop!(
-			HonzonModule::adjust_collateral_after_shutdown(Origin::signed(ALICE), BTC, -100),
-			Error::<Runtime>::MustAfterShutdown,
-		);
-		HonzonModule::emergency_shutdown();
-		assert_ok!(HonzonModule::adjust_collateral_after_shutdown(
-			Origin::signed(ALICE),
-			BTC,
-			-100
-		));
 	});
 }
