@@ -530,7 +530,7 @@ mod tests {
 
 				assert_noop!(
 					CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), CurrencyId::XBTC),
-					module_cdp_engine::Error::<Runtime>::AlreadyNoDebit,
+					module_cdp_engine::Error::<Runtime>::NoDebitValue,
 				);
 
 				assert_ok!(set_oracle_price(vec![
