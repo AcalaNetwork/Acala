@@ -93,6 +93,29 @@ fn get_liquidation_ratio_work() {
 }
 
 #[test]
+fn set_global_params_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_noop!(
+			CDPEngineModule::set_global_params(Origin::signed(5), Rate::from_rational(1, 10000),),
+			BadOrigin
+		);
+		assert_ok!(CDPEngineModule::set_global_params(
+			Origin::signed(1),
+			Rate::from_rational(1, 10000),
+		));
+
+		let update_global_stability_fee_event =
+			TestEvent::cdp_engine(RawEvent::GlobalStabilityFeeUpdated(Rate::from_rational(1, 10000)));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_global_stability_fee_event));
+
+		assert_eq!(CDPEngineModule::global_stability_fee(), Rate::from_rational(1, 10000));
+	});
+}
+
+#[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
@@ -119,23 +142,23 @@ fn set_collateral_params_work() {
 		));
 
 		let update_stability_fee_event =
-			TestEvent::cdp_engine(RawEvent::UpdateStabilityFee(BTC, Some(Rate::from_rational(1, 100000))));
+			TestEvent::cdp_engine(RawEvent::StabilityFeeUpdated(BTC, Some(Rate::from_rational(1, 100000))));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_stability_fee_event));
 		let update_liquidation_ratio_event =
-			TestEvent::cdp_engine(RawEvent::UpdateLiquidationRatio(BTC, Some(Ratio::from_rational(3, 2))));
+			TestEvent::cdp_engine(RawEvent::LiquidationRatioUpdated(BTC, Some(Ratio::from_rational(3, 2))));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_liquidation_ratio_event));
-		let update_liquidation_penalty_event = TestEvent::cdp_engine(RawEvent::UpdateLiquidationPenalty(
+		let update_liquidation_penalty_event = TestEvent::cdp_engine(RawEvent::LiquidationPenaltyUpdated(
 			BTC,
 			Some(Rate::from_rational(2, 10)),
 		));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_liquidation_penalty_event));
-		let update_required_collateral_ratio_event = TestEvent::cdp_engine(RawEvent::UpdateRequiredCollateralRatio(
+		let update_required_collateral_ratio_event = TestEvent::cdp_engine(RawEvent::RequiredCollateralRatioUpdated(
 			BTC,
 			Some(Ratio::from_rational(9, 5)),
 		));
@@ -143,7 +166,7 @@ fn set_collateral_params_work() {
 			.iter()
 			.any(|record| record.event == update_required_collateral_ratio_event));
 		let update_maximum_total_debit_value_event =
-			TestEvent::cdp_engine(RawEvent::UpdateMaximumTotalDebitValue(BTC, 10000));
+			TestEvent::cdp_engine(RawEvent::MaximumTotalDebitValueUpdated(BTC, 10000));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_maximum_total_debit_value_event));
@@ -284,7 +307,7 @@ fn adjust_position_work() {
 		));
 		assert_noop!(
 			CDPEngineModule::adjust_position(&ALICE, ACA, 100, 50),
-			Error::<Runtime>::InvalidCurrencyId,
+			Error::<Runtime>::InvalidCollateralType,
 		);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
@@ -473,7 +496,7 @@ fn settle_cdp_has_debit_work() {
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
 		assert_noop!(
 			CDPEngineModule::settle_cdp_has_debit(ALICE, BTC),
-			Error::<Runtime>::AlreadyNoDebit,
+			Error::<Runtime>::NoDebitValue,
 		);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 50));
 		assert_eq!(LoansModule::debits(BTC, ALICE), 50);
