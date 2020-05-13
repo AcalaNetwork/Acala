@@ -69,7 +69,7 @@ fn adjust_position_should_work() {
 		assert_eq!(LoansModule::collaterals(&ALICE, BTC), 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
 
-		let update_position_event = TestEvent::loans(RawEvent::UpdatePosition(ALICE, BTC, 500, 300));
+		let update_position_event = TestEvent::loans(RawEvent::PositionUpdated(ALICE, BTC, 500, 300));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_position_event));

@@ -320,7 +320,7 @@ mod tests {
 
 				assert_noop!(
 					DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), CurrencyId::XBTC, 0, 10000000),
-					module_dex::Error::<Runtime>::InvalidBalance,
+					module_dex::Error::<Runtime>::InvalidAmount,
 				);
 
 				assert_ok!(DexModule::add_liquidity(
@@ -530,7 +530,7 @@ mod tests {
 
 				assert_noop!(
 					CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), CurrencyId::XBTC),
-					module_cdp_engine::Error::<Runtime>::AlreadyNoDebit,
+					module_cdp_engine::Error::<Runtime>::NoDebitValue,
 				);
 
 				assert_ok!(set_oracle_price(vec![

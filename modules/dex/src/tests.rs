@@ -153,7 +153,7 @@ fn add_liquidity_work() {
 		assert_eq!(DexModule::shares(BTC, ALICE), 0);
 		assert_noop!(
 			DexModule::add_liquidity(Origin::signed(ALICE), BTC, 0, 10000000),
-			Error::<Runtime>::InvalidBalance,
+			Error::<Runtime>::InvalidAmount,
 		);
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
 
@@ -203,7 +203,7 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, ALICE), 0);
 			assert_noop!(
 				DexModule::add_liquidity(Origin::signed(ALICE), BTC, 0, 10000000),
-				Error::<Runtime>::InvalidBalance,
+				Error::<Runtime>::InvalidAmount,
 			);
 
 			// ALICE add_liquidity 8000
@@ -344,7 +344,7 @@ fn swap_other_to_base_work() {
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 0);
 		assert_noop!(
 			DexModule::swap_other_to_base(CAROL, BTC, 10001, 0),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_noop!(
 			DexModule::swap_other_to_base(CAROL, BTC, 10000, 5000000),
@@ -372,7 +372,7 @@ fn swap_base_to_other_work() {
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 10000);
 		assert_noop!(
 			DexModule::swap_base_to_other(CAROL, BTC, 10001, 0),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_noop!(
 			DexModule::swap_base_to_other(CAROL, BTC, 10000, 5000),
@@ -402,7 +402,7 @@ fn swap_other_to_other_work() {
 		assert_eq!(Tokens::free_balance(DOT, &CAROL), 1000);
 		assert_noop!(
 			DexModule::swap_other_to_other(CAROL, DOT, 1001, BTC, 0),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_noop!(
 			DexModule::swap_other_to_other(CAROL, DOT, 1000, BTC, 35),
@@ -432,7 +432,7 @@ fn swap_currency_work() {
 		);
 		assert_noop!(
 			DexModule::swap_currency(Origin::signed(CAROL), BTC, 101, DOT, 1000),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), BTC, 100, AUSD, 4950));
 		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), AUSD, 4950, BTC, 90));
@@ -452,7 +452,7 @@ fn exchange_currency_work() {
 		);
 		assert_noop!(
 			DexModule::exchange_currency(CAROL, BTC, 101, DOT, 1000),
-			Error::<Runtime>::TokenNotEnough
+			Error::<Runtime>::AmountNotEnough
 		);
 		assert_eq!(DexModule::exchange_currency(CAROL, BTC, 100, AUSD, 4950).is_ok(), true);
 		assert_eq!(DexModule::exchange_currency(CAROL, AUSD, 4950, BTC, 90).is_ok(), true);

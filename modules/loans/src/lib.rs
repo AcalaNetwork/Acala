@@ -1,3 +1,9 @@
+//! # Loans Module
+//!
+//! ## Overview
+//!
+//! Loans module manages CDP's collateral assets and the debits backed by these assets.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter};
@@ -23,10 +29,20 @@ const MODULE_ID: ModuleId = ModuleId(*b"aca/loan");
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+	/// Convert debit amount under specific collateral type to debit value(stable coin)
 	type Convert: Convert<(CurrencyId, Self::DebitBalance), Balance>;
+
+	/// Currency type for deposit/withdraw collateral assets to/from loans module
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance, Amount = Amount>;
+
+	/// Risk manager is used to limit the debit size of CDP
 	type RiskManager: RiskManager<Self::AccountId, CurrencyId, Balance, Self::DebitBalance>;
+
+	/// Association type for debit amount
 	type DebitBalance: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
+
+	/// Signed debit amount
 	type DebitAmount: Signed
 		+ TryInto<Self::DebitBalance>
 		+ TryFrom<Self::DebitBalance>
@@ -36,14 +52,27 @@ pub trait Trait: system::Trait {
 		+ Default
 		+ Copy
 		+ MaybeSerializeDeserialize;
+
+	/// CDP treasury for issuing/burning stable coin adjust debit value adjustment
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Loans {
+		/// The debit amount records of CDPs, map from
+		/// CollateralType -> Owner -> DebitAmount
 		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => T::DebitBalance;
+
+		/// The collateral asset amount of CDPs, map from
+		/// Owner -> CollateralType -> CollateralAmount
 		pub Collaterals get(fn collaterals): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) CurrencyId => Balance;
+
+		/// The total debit amount, map from
+		/// CollateralType -> TotalDebitAmount
 		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyId => T::DebitBalance;
+
+		/// The total collateral asset amount, map from
+		/// CollateralType -> TotalCollateralAmount
 		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyId => Balance;
 	}
 }
@@ -57,9 +86,9 @@ decl_event!(
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
-		/// Update Position success (account, currency_id, collaterals, debits)
-		UpdatePosition(AccountId, CurrencyId, Amount, DebitAmount),
-		/// confiscate collateral and deduct debit
+		/// Position updated (owner, collateral_type, collateral_adjustment, debit_adjustment)
+		PositionUpdated(AccountId, CurrencyId, Amount, DebitAmount),
+		/// Confiscate CDP's collateral assets and eliminate its debit (owner, collateral_type, confiscated_collateral_amount, deduct_debit_amount)
 		ConfiscateCollateralAndDebit(AccountId, CurrencyId, Balance, DebitBalance),
 		/// Transfer loan (from, to)
 		TransferLoan(AccountId, AccountId, CurrencyId),
@@ -186,7 +215,7 @@ impl<T: Trait> Module<T> {
 		Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)
 			.expect("Will never fail ensured by overflow check");
 
-		Self::deposit_event(RawEvent::UpdatePosition(
+		Self::deposit_event(RawEvent::PositionUpdated(
 			who.clone(),
 			currency_id,
 			collateral_adjustment,
