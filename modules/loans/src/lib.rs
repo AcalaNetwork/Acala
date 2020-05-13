@@ -2,7 +2,7 @@
 //!
 //! ## Overview
 //!
-//! Loans module escrows CDP's collateral assets and record debits.
+//! Loans module manages CDP's collateral assets and the debits backed by these assets.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
