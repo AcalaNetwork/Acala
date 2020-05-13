@@ -320,7 +320,7 @@ mod tests {
 
 				assert_noop!(
 					DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), CurrencyId::XBTC, 0, 10000000),
-					module_dex::Error::<Runtime>::InvalidBalance,
+					module_dex::Error::<Runtime>::InvalidAmount,
 				);
 
 				assert_ok!(DexModule::add_liquidity(

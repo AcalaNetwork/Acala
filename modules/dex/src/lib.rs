@@ -1,3 +1,12 @@
+//! # DEX Module
+//!
+//! ## Overview
+//!
+//! Built-in decentralized exchange modules in Acala network, the core currency type of trading pairs is stable coin (aUSD),
+//! the trading mechanism refers to the design of Uniswap. In addition to being used for trading, DEX also participates
+//! in CDP liquidation, which is faster than liquidation by auction when the liquidity is sufficient. And providing market
+//! making liquidity for DEX will also receive stable coin as additional reward for its participation in the CDP liquidation.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
@@ -26,13 +35,27 @@ const MODULE_ID: ModuleId = ModuleId(*b"aca/dexm");
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+	/// Associate type for measuring liquidity contribution of specific trading pairs
 	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
-	type EnabledCurrencyIds: Get<Vec<CurrencyId>>;
-	type GetBaseCurrencyId: Get<CurrencyId>;
-	type GetExchangeFee: Get<Rate>;
-	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+
+	/// The origin which may update parameters of dex. Root can always do this.
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
+
+	/// Currency for transfer currencies
+	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+	/// CDP treasury for depositing additional liquidity reward to DEX
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+
+	/// Allowed trading currency type list, each currency type forms a trading pair with the base currency
+	type EnabledCurrencyIds: Get<Vec<CurrencyId>>;
+
+	/// The base currency as the core currency in all trading pairs
+	type GetBaseCurrencyId: Get<CurrencyId>;
+
+	/// Trading fee rate
+	type GetExchangeFee: Get<Rate>;
 }
 
 decl_event!(
@@ -42,8 +65,11 @@ decl_event!(
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
+		/// Add liquidity success (who, currency_type, added_currency_amount, added_base_currency_amount, increment_share_amount)
 		AddLiquidity(AccountId, CurrencyId, Balance, Balance, Share),
+		/// Withdraw liquidity from the trading pool success (who, currency_type, withdrawn_currency_amount, withdrawn_base_currency_amount, burned_share_amount)
 		WithdrawLiquidity(AccountId, CurrencyId, Balance, Balance, Share),
+		/// Use supply currency to swap target currency (trader, supply_currency_type, supply_currency_amount, target_currency_type, target_currency_amount)
 		Swap(AccountId, CurrencyId, Balance, CurrencyId, Balance),
 	}
 );
@@ -51,27 +77,55 @@ decl_event!(
 decl_error! {
 	/// Error for dex module.
 	pub enum Error for Module<T: Trait> {
+		/// Not the tradable currency type
 		CurrencyIdNotAllowed,
-		TokenNotEnough,
+		/// Currency amount is not enough
+		AmountNotEnough,
+		/// Share amount is not enough
 		ShareNotEnough,
-		InvalidBalance,
+		/// Currency amount is invalid
+		InvalidAmount,
+		/// Can not trading with self currency type
 		CanNotSwapItself,
+		/// The actual transaction price will be lower than the acceptable price
 		InacceptablePrice,
+		/// The increament of liquidity is invalid
 		InvalidLiquidityIncrement,
 	}
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
+		/// Liquidity pool, which is the trading pair for specific currency type to base currency type.
+		/// CurrencyType -> (CurrencyAmount, BaseCurrencyAmount)
 		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
+
+		/// Total shares amount of liquidity pool specificed by currency type
+		/// CurrencyType -> TotalSharesAmount
 		TotalShares get(fn total_shares): map hasher(twox_64_concat) CurrencyId => T::Share;
+
+		/// Shares records indexed by currency type and account id
+		/// CurrencyType -> Owner -> ShareAmount
 		Shares get(fn shares): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => T::Share;
 
+		/// Incentive reward rate for different currency type
+		/// CurrencyType -> IncentiveRate
 		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyId => Rate;
-		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyId => Balance;
-		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
+
+		/// Total incentive interest for different currency type
+		/// CurrencyType -> TotalInterest
 		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => Balance;
 
+		/// Total withdrawn incentive interest for different currency type
+		/// CurrencyType -> TotalWithdrawnInterest
+		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyId => Balance;
+
+		/// Withdrawn interest indexed by currency type and account id
+		/// CurrencyType -> Owner -> WithdrawnInterest
+		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
+
+
+		/// System shutdown flag
 		IsShutdown get(fn is_shutdown): bool;
 	}
 
@@ -91,10 +145,21 @@ decl_module! {
 
 		fn deposit_event() = default;
 
+		/// Tradable currency type list
 		const EnabledCurrencyIds: Vec<CurrencyId> = T::EnabledCurrencyIds::get();
+
+		/// Base currency type id
 		const GetBaseCurrencyId: CurrencyId = T::GetBaseCurrencyId::get();
+
+		/// Trading fee rate
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
+		/// Update liquidity incentive rate of specific liquidity pool
+		///
+		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
+		///
+		/// - `currency_id`: currency type to determine the type of liquidity pool.
+		/// - `liquidity_incentive_rate`: liquidity incentive rate.
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn set_liquidity_incentive_rate(
 			origin,
@@ -108,12 +173,21 @@ decl_module! {
 			LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
 		}
 
+		/// Just withdraw liquidity incentive interest as the additional reward for liquidity contribution
+		///
+		/// - `currency_id`: currency type to determine the type of liquidity pool.
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			let who = ensure_signed(origin)?;
 			Self::claim_interest(currency_id, &who)?;
 		}
 
+		/// Trading with DEX, swap supply currency to target currency
+		///
+		/// - `supply_currency_id`: supply currency type.
+		/// - `supply_amount`: supply currency amount.
+		/// - `target_currency_id`: target currency type.
+		/// - `acceptable_target_amount`: acceptable target amount, if actual amount is under it, swap will not happen
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn swap_currency(
 			origin,
@@ -138,6 +212,13 @@ decl_module! {
 			}
 		}
 
+		/// Injecting liquidity to specific liquidity pool in the form of depositing currencies in trading pairs
+		/// into liquidity pool, and issue shares in proportion to the caller. Shares are temporarily not
+		/// allowed to transfer and trade, it represents the proportion of assets in liquidity pool.
+		///
+		/// - `other_currency_id`: currency type to determine the type of liquidity pool.
+		/// - `max_other_currency_amount`: maximum currency amount allowed to inject to liquidity pool.
+		/// - `max_base_currency_amount`: maximum base currency(stable coin) amount allowed to inject to liquidity pool.
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn add_liquidity(
 			origin,
@@ -153,7 +234,7 @@ decl_module! {
 			);
 			ensure!(
 				!max_other_currency_amount.is_zero() && !max_base_currency_amount.is_zero(),
-				Error::<T>::InvalidBalance,
+				Error::<T>::InvalidAmount,
 			);
 
 			let total_shares = Self::total_shares(other_currency_id);
@@ -191,7 +272,7 @@ decl_module! {
 				T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_increment).is_ok()
 				&&
 				T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_increment).is_ok(),
-				Error::<T>::TokenNotEnough,
+				Error::<T>::AmountNotEnough,
 			);
 			T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)
 			.expect("never failed because after checks");
@@ -213,6 +294,11 @@ decl_module! {
 			));
 		}
 
+		/// Withdraw liquidity from specific liquidity pool in the form of burning shares, and withdrawing currencies in trading pairs
+		/// from liquidity pool in proportion, and withdraw liquidity incentive interest.
+		///
+		/// - `currency_id`: currency type to determine the type of liquidity pool.
+		/// - `share_amount`: share amount to burn.
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
@@ -255,6 +341,7 @@ decl_module! {
 			));
 		}
 
+		/// Accumalte liquidity incentive interest to respective reward pool when block end
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			if !Self::is_shutdown() {
 				for currency_id in T::EnabledCurrencyIds::get() {
@@ -329,7 +416,7 @@ impl<T: Trait> Module<T> {
 		ensure!(
 			!other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_amount).is_ok(),
-			Error::<T>::TokenNotEnough,
+			Error::<T>::AmountNotEnough,
 		);
 
 		// 2. calculate the base currency amount can get
@@ -377,7 +464,7 @@ impl<T: Trait> Module<T> {
 		ensure!(
 			!base_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_amount).is_ok(),
-			Error::<T>::TokenNotEnough,
+			Error::<T>::AmountNotEnough,
 		);
 
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
@@ -421,7 +508,7 @@ impl<T: Trait> Module<T> {
 			!supply_other_currency_amount.is_zero()
 				&& T::Currency::ensure_can_withdraw(supply_other_currency_id, &who, supply_other_currency_amount)
 					.is_ok(),
-			Error::<T>::TokenNotEnough,
+			Error::<T>::AmountNotEnough,
 		);
 
 		let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_other_currency_id);
