@@ -86,9 +86,12 @@ pub trait Trait: system::Trait + loans::Trait {
 	type UnsignedPriority: Get<TransactionPriority>;
 }
 
+/// Liquidation strategy available
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub enum LiquidationStrategy {
+	/// Liquidation CDP's collateral by create collateral auction
 	Auction,
+	/// Liquidation CDP's collateral by swap with DEX
 	Exchange,
 }
 
