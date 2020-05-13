@@ -88,15 +88,25 @@ pub trait Trait: system::Trait {
 decl_event!(
 	pub enum Event<T>
 	where
+		<T as system::Trait>::AccountId,
 		AuctionId = AuctionIdOf<T>,
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
+		/// create a collateral auction (auction_id, collateral_type, collateral_amount, target_bid_price)
 		NewCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
+		/// create a debit auction (auction_id, initial_supply_amount, fix_payment_amount)
 		NewDebitAuction(AuctionId, Balance, Balance),
+		/// create a surplus auction (auction_id, fix_surplus_amount)
 		NewSurplusAuction(AuctionId, Balance),
+		/// cancel a specific active auction (auction_id)
 		CancelAuction(AuctionId),
-		AuctionDealed(AuctionId),
+		/// collateral auction dealed (auction_id, collateral_type, collateral_amount, winner, payment_amount).
+		CollateralAuctionDealed(AuctionId, CurrencyId, Balance, AccountId, Balance),
+		/// surplus auction dealed (auction_id, surplus_amount, winner, payment_amount).
+		SurplusAuctionDealed(AuctionId, Balance, AccountId, Balance),
+		/// debit auction dealed (auction_id, debit_currency_amount, winner, payment_amount).
+		DebitAuctionDealed(AuctionId, Balance, AccountId, Balance),
 	}
 );
 
@@ -576,34 +586,42 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn collateral_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
-		if let (Some(collateral_auction), Some((bidder, _))) = (Self::collateral_auctions(id), winner) {
-			let amount = sp_std::cmp::min(
+	pub fn collateral_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
+		if let (Some(collateral_auction), Some((bidder, bid_price))) = (Self::collateral_auctions(auction_id), winner) {
+			// transfer collateral to winner from cdp treasury
+			if T::CDPTreasury::transfer_collateral_to(
+				collateral_auction.currency_id,
+				&bidder,
 				collateral_auction.amount,
-				Self::total_collateral_in_auction(collateral_auction.currency_id),
-			);
+			)
+			.is_ok()
+			{
+				// decrease account ref of winner
+				system::Module::<T>::dec_ref(&bidder);
 
-			T::CDPTreasury::transfer_collateral_to(collateral_auction.currency_id, &bidder, amount)
-				.expect("never failed after overflow check");
+				// decrease account ref of collateral auction owner
+				system::Module::<T>::dec_ref(&collateral_auction.owner);
 
-			// decrease account ref of winner
-			system::Module::<T>::dec_ref(&bidder);
+				// update auction records
+				TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
+					*balance = balance.saturating_sub(collateral_auction.amount)
+				});
+				TotalTargetInAuction::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
+				<CollateralAuctions<T>>::remove(auction_id);
 
-			// decrease account ref of collateral auction owner
-			system::Module::<T>::dec_ref(&collateral_auction.owner);
-
-			TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
-				*balance = balance.saturating_sub(amount)
-			});
-			TotalTargetInAuction::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
-			<CollateralAuctions<T>>::remove(id);
-
-			<Module<T>>::deposit_event(RawEvent::AuctionDealed(id));
+				<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealed(
+					auction_id,
+					collateral_auction.currency_id,
+					collateral_auction.amount,
+					bidder,
+					sp_std::cmp::min(collateral_auction.target, bid_price),
+				));
+			}
 		}
 	}
 
-	pub fn debit_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
-		if let Some(debit_auction) = Self::debit_auctions(id) {
+	pub fn debit_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
+		if let Some(debit_auction) = Self::debit_auctions(auction_id) {
 			if let Some((bidder, _)) = winner {
 				// issue the amount of native token to winner
 				if T::Currency::free_balance(T::GetNativeCurrencyId::get(), &bidder)
@@ -620,9 +638,14 @@ impl<T: Trait> Module<T> {
 
 				// decrease debit in auction and delete auction
 				TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
-				<DebitAuctions<T>>::remove(id);
+				<DebitAuctions<T>>::remove(auction_id);
 
-				<Module<T>>::deposit_event(RawEvent::AuctionDealed(id));
+				<Module<T>>::deposit_event(RawEvent::DebitAuctionDealed(
+					auction_id,
+					debit_auction.amount,
+					bidder,
+					debit_auction.fix,
+				));
 			} else {
 				// there's no bidder until auction closed, adjust the native token amount
 				let start_block = <system::Module<T>>::block_number();
@@ -637,9 +660,9 @@ impl<T: Trait> Module<T> {
 					start_time: start_block,
 				};
 				<DebitAuctions<T>>::insert(new_debit_auction_id, new_debit_auction.clone());
-				<DebitAuctions<T>>::remove(id);
+				<DebitAuctions<T>>::remove(auction_id);
 
-				<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
+				<Module<T>>::deposit_event(RawEvent::CancelAuction(auction_id));
 				<Module<T>>::deposit_event(RawEvent::NewDebitAuction(
 					new_debit_auction_id,
 					new_debit_auction.amount,
@@ -649,8 +672,8 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	pub fn surplus_auction_end_handler(id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
-		if let (Some(surplus_auction), Some((bidder, _))) = (Self::surplus_auctions(id), winner) {
+	pub fn surplus_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
+		if let (Some(surplus_auction), Some((bidder, bidder_price))) = (Self::surplus_auctions(auction_id), winner) {
 			// deposit unbacked stable token to winner by cdp treasury, ignore Err
 			let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, surplus_auction.amount);
 
@@ -659,9 +682,14 @@ impl<T: Trait> Module<T> {
 
 			// decrease surplus in auction
 			TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
-			<SurplusAuctions<T>>::remove(id);
+			<SurplusAuctions<T>>::remove(auction_id);
 
-			<Module<T>>::deposit_event(RawEvent::AuctionDealed(id));
+			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealed(
+				auction_id,
+				surplus_auction.amount,
+				bidder,
+				bidder_price,
+			));
 		}
 	}
 }
