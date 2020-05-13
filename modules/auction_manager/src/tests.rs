@@ -217,6 +217,7 @@ fn reverse_collateral_auction_work() {
 #[test]
 fn on_auction_ended_for_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::transfer_collateral_from(BTC, &CAROL, 100));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200);
@@ -231,6 +232,13 @@ fn on_auction_ended_for_collateral_auction_work() {
 		);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 800);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 200)));
+
+		let collateral_auction_deal_event =
+			TestEvent::auction_manager(RawEvent::CollateralAuctionDealed(0, BTC, 100, BOB, 200));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == collateral_auction_deal_event));
+
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
@@ -241,6 +249,7 @@ fn on_auction_ended_for_collateral_auction_work() {
 #[test]
 fn on_auction_ended_for_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		AuctionManagerModule::new_debit_auction(200, 100);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
@@ -255,6 +264,12 @@ fn on_auction_ended_for_debit_auction_work() {
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
 		AuctionManagerModule::on_auction_ended(1, Some((BOB, 100)));
+
+		let debit_auction_deal_event = TestEvent::auction_manager(RawEvent::DebitAuctionDealed(1, 300, BOB, 100));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == debit_auction_deal_event));
+
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1300);
 		assert_eq!(Tokens::total_issuance(ACA), 3300);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
@@ -264,6 +279,7 @@ fn on_auction_ended_for_debit_auction_work() {
 #[test]
 fn on_auction_ended_for_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::on_system_surplus(100));
 		AuctionManagerModule::new_surplus_auction(100);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
@@ -279,6 +295,12 @@ fn on_auction_ended_for_surplus_auction_work() {
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 500);
 		assert_eq!(Tokens::total_issuance(ACA), 2500);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 500)));
+
+		let surplus_auction_deal_event = TestEvent::auction_manager(RawEvent::SurplusAuctionDealed(0, 100, BOB, 500));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == surplus_auction_deal_event));
+
 		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1100);
 		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
