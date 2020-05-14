@@ -2,9 +2,11 @@
 
 #![cfg(test)]
 
+use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_oracle::{DefaultCombineData, OperatorProvider};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
@@ -26,23 +28,20 @@ impl_outer_origin! {
 
 pub type AccountIndex = u32;
 pub type AccountId = u64;
-pub type BlockNumber = u64;
-pub type Balance = u64;
-pub type Amount = i64;
-pub type DebitBalance = u64;
-pub type DebitAmount = i64;
-pub type CurrencyId = u32;
 pub type AuctionId = u64;
+pub type BlockNumber = u64;
+pub type DebitBalance = Balance;
+pub type DebitAmount = Amount;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CAROL: AccountId = 3;
 
-pub const ACA: CurrencyId = 0;
-pub const AUSD: CurrencyId = 1;
-pub const BTC: CurrencyId = 2;
-pub const DOT: CurrencyId = 3;
-pub const LDOT: CurrencyId = 4;
+pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const AUSD: CurrencyId = CurrencyId::AUSD;
+pub const BTC: CurrencyId = CurrencyId::XBTC;
+pub const DOT: CurrencyId = CurrencyId::DOT;
+pub const LDOT: CurrencyId = CurrencyId::LDOT;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -201,7 +200,6 @@ impl cdp_engine::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type Currency = Currencies;
 	type DEX = ();
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
@@ -269,7 +267,6 @@ parameter_types! {
 
 impl prices::Trait for Runtime {
 	type Event = ();
-	type CurrencyId = CurrencyId;
 	type Source = orml_oracle::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;

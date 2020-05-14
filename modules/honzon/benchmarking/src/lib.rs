@@ -6,7 +6,7 @@
 mod mock;
 
 use sp_std::prelude::*;
-use sp_std::{convert::TryInto, vec};
+use sp_std::vec;
 
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
@@ -17,17 +17,13 @@ use cdp_engine::Module as CdpEngine;
 use honzon::Module as Honzon;
 use honzon::*;
 use orml_oracle::OperatorProvider;
-use orml_traits::{DataProvider, MultiCurrency, MultiCurrencyExtended};
-use support::{OnEmergencyShutdown, Price, Rate, Ratio};
+use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
+use primitives::{Amount, CurrencyId};
+use support::{Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(honzon::Module<T>);
 
 pub trait Trait: honzon::Trait + orml_oracle::Trait + prices::Trait {}
-
-type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type PriceCurrencyIdOf<T> = <T as prices::Trait>::CurrencyId;
-
-type AmountOf<T> = <<T as loans::Trait>::Currency as MultiCurrencyExtended<<T as system::Trait>::AccountId>>::Amount;
 
 const SEED: u32 = 0;
 
@@ -37,7 +33,7 @@ benchmarks! {
 	authorize {
 		let u in 0 .. 1000;
 
-		let currency_id: CurrencyIdOf<T> = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
 		let caller: T::AccountId = account("caller", u, SEED);
 		let to: T::AccountId = account("to", u, SEED);
 	}: _(RawOrigin::Signed(caller), currency_id, to)
@@ -45,7 +41,7 @@ benchmarks! {
 	unauthorize {
 		let u in 0 .. 1000;
 
-		let currency_id: CurrencyIdOf<T> = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
 		let caller: T::AccountId = account("caller", u, SEED);
 		let to: T::AccountId = account("to", u, SEED);
 		Honzon::<T>::authorize(
@@ -60,7 +56,7 @@ benchmarks! {
 		let v in 0 .. 100;
 
 		let caller: T::AccountId = account("caller", u, SEED);
-		let currency_id: CurrencyIdOf<T> = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
 		for i in 0 .. v {
 			let to: T::AccountId = account("to", i, SEED);
 			Honzon::<T>::authorize(
@@ -75,23 +71,20 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let caller: T::AccountId = account("caller", u, SEED);
-		let currency_id: CurrencyIdOf<T> = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
 
 		// set balance
 		let min_debt_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
-		let amount: u128 = (min_debt_value * 100.into()).unique_saturated_into();
-		let amount: AmountOf<T> = amount.unique_saturated_into();
+		let amount = min_debt_value * 100;
+		let amount: Amount = amount.unique_saturated_into();
 		<T as loans::Trait>::Currency::update_balance(currency_id, &caller, amount)?;
 
 		// feed price
 		let oracle_operators = <T as orml_oracle::Trait>::OperatorProvider::operators();
-		let currency: u16 = currency_id.try_into().map_err(|_| sp_runtime::DispatchError::Other("error"))?;
-		let currency: PriceCurrencyIdOf<T> = currency.try_into().map_err(|_| sp_runtime::DispatchError::Other("error"))?;
-		//let price: OracleValueOf<T> = Price::from_natural(1).deconstruct().try_into().map_err(|_| sp_runtime::DispatchError::Other("error"))?;
 
 		<T as prices::Trait>::Source::feed_value(
 			oracle_operators[0].clone(),
-			currency,
+			currency_id,
 			Price::from_natural(1),
 		)?;
 
@@ -109,35 +102,17 @@ benchmarks! {
 			Some(Some(Ratio::from_rational(150, 100))),
 			Some(Some(Rate::from_rational(10, 100))),
 			Some(Some(Ratio::from_rational(150, 100))),
-			Some(min_debt_value * 100.into()),
+			Some(min_debt_value * 100),
 		)?;
 	}: _(RawOrigin::Signed(caller), currency_id, amount, Zero::zero())
-
-	adjust_collateral_after_shutdown {
-		let u in 0 .. 1000;
-
-		let caller: T::AccountId = account("caller", u, SEED);
-		let currency_id: CurrencyIdOf<T> = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
-		let amount: AmountOf<T> = 100_000_000_000_000_000.unique_saturated_into();
-		let amount: AmountOf<T> = amount * u.unique_saturated_into();
-		<T as loans::Trait>::Currency::update_balance(currency_id, &caller, amount)?;
-		Honzon::<T>::adjust_loan(
-			RawOrigin::Signed(caller.clone()).into(),
-			currency_id,
-			amount,
-			Zero::zero()
-		)?;
-		Honzon::<T>::on_emergency_shutdown();
-	}: _(RawOrigin::Signed(caller), currency_id, -amount)
 
 	transfer_loan_from {
 		let u in 0 .. 1000;
 
-		let currency_id: CurrencyIdOf<T> = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
 		let sender: T::AccountId = account("sender", u, SEED);
 		let receiver: T::AccountId = account("receiver", u, SEED);
-		let amount: AmountOf<T> = 100_000_000_000_000_000.unique_saturated_into();
-		let amount: AmountOf<T> = amount * u.unique_saturated_into();
+		let amount: Amount = (100_000_000_000_000_000u64 * u as u64).into();
 		<T as loans::Trait>::Currency::update_balance(currency_id, &sender, amount)?;
 		Honzon::<T>::adjust_loan(
 			RawOrigin::Signed(sender.clone()).into(),

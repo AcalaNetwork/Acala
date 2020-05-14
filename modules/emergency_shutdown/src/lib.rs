@@ -1,59 +1,88 @@
+//! # Emergency Shutdown Module
+//!
+//! ## Overview
+//!
+//! When a black swan occurs such as price plunge or fatal bug, the highest priority is
+//! to minimize user losses as much as possible. When the decision to shutdown system is made,
+//! emergency shutdown module needs to trigger all related module to halt, and start a series of
+//! operations including close some user entry, freeze feed prices, run offchain worker to settle
+//! CDPs has debit, cancel all active auctions module, when debits and gaps are settled,
+//! the stable coin holder are allowed to refund a basket of remaining collateral assets.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
 };
-use orml_traits::MultiCurrency;
-use rstd::prelude::*;
+use frame_system::{self as system, ensure_root, ensure_signed};
+use primitives::{Balance, CurrencyId};
 use sp_runtime::traits::Zero;
+use sp_std::prelude::*;
 use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Ratio};
-use system::{ensure_root, ensure_signed};
 
 mod mock;
 mod tests;
 
-type CurrencyIdOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::CurrencyId;
-type BalanceOf<T> = <<T as loans::Trait>::Currency as MultiCurrency<<T as system::Trait>::AccountId>>::Balance;
-
 pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type CollateralCurrencyIds: Get<Vec<CurrencyIdOf<Self>>>;
-	type PriceSource: PriceProvider<CurrencyIdOf<Self>>;
-	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = BalanceOf<Self>, CurrencyId = CurrencyIdOf<Self>>;
-	type AuctionManagerHandler: AuctionManager<
-		Self::AccountId,
-		Balance = BalanceOf<Self>,
-		CurrencyId = CurrencyIdOf<Self>,
-	>;
+
+	/// The list of valid collateral currency types
+	type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
+
+	/// Price source to freeze currencies' price
+	type PriceSource: PriceProvider<CurrencyId>;
+
+	/// CDP treasury to escrow collateral assets after settlement
+	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+
+	/// Check the auction cancellation to decide whether to open the final redemption
+	type AuctionManagerHandler: AuctionManager<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+
+	/// Handler to trigger other operations
 	type OnShutdown: OnEmergencyShutdown;
+
+	/// The origin which may trigger emergency shutdown. Root can always do this.
 	type ShutdownOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event!(
 	pub enum Event<T> where
+		<T as system::Trait>::AccountId,
 		<T as system::Trait>::BlockNumber,
-		Balance = BalanceOf<T>,
+		Balance = Balance,
+		CurrencyId = CurrencyId,
 	{
+		/// Emergency shutdown occurs (block_number)
 		Shutdown(BlockNumber),
+		/// The final redemption opened (block_number)
 		OpenRefund(BlockNumber),
-		Refund(Balance),
+		/// Refund info (caller, stable_coin_amount, refund_list)
+		Refund(AccountId, Balance, Vec<(CurrencyId, Balance)>),
 	}
 );
 
 decl_error! {
+	/// Error for emergency shutdown module.
 	pub enum Error for Module<T: Trait> {
+		/// System has already been shutdown
 		AlreadyShutdown,
+		/// Must after system shutdown
 		MustAfterShutdown,
+		/// Final redeption is still not opened
 		CanNotRefund,
+		/// Exist optential surplus, means settlement has not been completed
 		ExistPotentialSurplus,
+		/// Exist unhandled debit, means settlement has not been completed
 		ExistUnhandleDebit,
 	}
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EmergencyShutdown {
+		/// Emergency shutdown flag
 		pub IsShutdown get(fn is_shutdown): bool;
+		/// Open final redemption flag
 		pub CanRefund get(fn can_refund): bool;
 	}
 }
@@ -63,8 +92,12 @@ decl_module! {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
-		const CollateralCurrencyIds: Vec<CurrencyIdOf<T>> = T::CollateralCurrencyIds::get();
+		/// The list of valid collateral currency types
+		const CollateralCurrencyIds: Vec<CurrencyId> = T::CollateralCurrencyIds::get();
 
+		/// Start emergency shutdown
+		///
+		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn emergency_shutdown(origin) {
 			T::ShutdownOrigin::try_origin(origin)
@@ -87,6 +120,9 @@ decl_module! {
 			Self::deposit_event(RawEvent::Shutdown(<system::Module<T>>::block_number()));
 		}
 
+		/// Open final redemption if settlement is completed.
+		///
+		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
 		pub fn open_collateral_refund(origin) {
 			T::ShutdownOrigin::try_origin(origin)
@@ -124,8 +160,11 @@ decl_module! {
 			Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
 		}
 
+		/// Refund a basket of remaining collateral assets to caller
+		///
+		/// - `amount`: stable coin amount used to refund.
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn refund_collaterals(origin, #[compact] amount: BalanceOf<T>) {
+		pub fn refund_collaterals(origin, #[compact] amount: Balance) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
@@ -135,6 +174,7 @@ decl_module! {
 			// burn caller's stable currency by cdp treasury
 			<T as Trait>::CDPTreasury::withdraw_backed_debit_from(&who, amount)?;
 
+			let mut refund_assets: Vec<(CurrencyId, Balance)> = vec![];
 			// refund collaterals to caller by cdp treasury
 			for currency_id in collateral_currency_ids {
 				let refund_amount = refund_ratio
@@ -142,10 +182,11 @@ decl_module! {
 
 				if !refund_amount.is_zero() {
 					<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_amount)?;
+					refund_assets.push((currency_id, refund_amount));
 				}
 			}
 
-			Self::deposit_event(RawEvent::Refund(amount));
+			Self::deposit_event(RawEvent::Refund(who, amount, refund_assets));
 		}
 	}
 }

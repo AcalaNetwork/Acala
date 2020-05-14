@@ -4,32 +4,12 @@
 
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, parameter_types};
-use primitives::H256;
+use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{ConvertInto, IdentityLookup},
 	Perbill,
 };
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
-impl_outer_dispatch! {
-	pub enum Call for Runtime where origin: Origin {
-		orml_currencies::Currencies,
-	}
-}
-
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: u32 = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const ExistentialDeposit: u64 = 1;
-	pub const CreationFee: u64 = 2;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
-}
 
 pub type AccountId = u64;
 pub type BlockNumber = u64;
@@ -46,6 +26,23 @@ pub const BTC: CurrencyId = 2;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
+
+impl_outer_origin! {
+	pub enum Origin for Runtime {}
+}
+
+impl_outer_dispatch! {
+	pub enum Call for Runtime where origin: Origin {
+		orml_currencies::Currencies,
+	}
+}
+
+parameter_types! {
+	pub const BlockHashCount: u64 = 250;
+	pub const MaximumBlockWeight: u32 = 1024;
+	pub const MaximumBlockLength: u32 = 2 * 1024;
+	pub const AvailableBlockRatio: Perbill = Perbill::one();
+}
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -69,6 +66,10 @@ impl system::Trait for Runtime {
 	type OnKilledAccount = ();
 }
 
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
 	type Balance = Balance;
@@ -89,6 +90,10 @@ impl pallet_balances::Trait for Runtime {
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+}
 
 impl orml_currencies::Trait for Runtime {
 	type Event = ();
@@ -133,7 +138,6 @@ impl Trait for Runtime {
 	type FreeTransferCount = FreeTransferCount;
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type Time = TimeModule;
-	type Currency = Currencies;
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type DepositCurrency = pallet_balances::Module<Self>;
 }
@@ -152,7 +156,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {

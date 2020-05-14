@@ -2,13 +2,28 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-use su_primitives::H256;
-use support::{AuctionManager, RiskManager};
-use system::EnsureSignedBy;
-
 use super::*;
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_system::EnsureSignedBy;
+use sp_core::H256;
+use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use support::{AuctionManager, RiskManager};
+
+pub type AccountId = u32;
+pub type AuctionId = u64;
+pub type BlockNumber = u64;
+pub type DebitBalance = Balance;
+pub type DebitAmount = Amount;
+
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
+pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const AUSD: CurrencyId = CurrencyId::AUSD;
+pub const DOT: CurrencyId = CurrencyId::DOT;
+pub const BTC: CurrencyId = CurrencyId::XBTC;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 mod loans {
 	pub use super::super::*;
@@ -21,7 +36,7 @@ impl_outer_event! {
 		orml_tokens<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
-		cdp_treasury<T>,
+		cdp_treasury,
 	}
 }
 
@@ -29,30 +44,12 @@ impl_outer_origin! {
 	pub enum Origin for Runtime {}
 }
 
-// Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
-
-pub type AccountId = u32;
-pub type BlockNumber = u64;
-pub type Balance = u64;
-pub type DebitBalance = u64;
-pub type Amount = i64;
-pub type DebitAmount = i64;
-pub type CurrencyId = u32;
-pub type AuctionId = u64;
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const NATIVE_CURRENCY_ID: CurrencyId = 0;
-pub const AUSD: CurrencyId = 1;
-pub const X_TOKEN_ID: CurrencyId = 2;
-pub const Y_TOKEN_ID: CurrencyId = 3;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -77,7 +74,10 @@ impl system::Trait for Runtime {
 }
 pub type System = system::Module<Runtime>;
 
-// tokens module
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
@@ -88,17 +88,6 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-// currencies module
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-	pub const CreationFee: u64 = 2;
-}
-
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -106,9 +95,11 @@ impl pallet_balances::Trait for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = system::Module<Runtime>;
 }
-
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+}
 
 impl orml_currencies::Trait for Runtime {
 	type Event = TestEvent;
@@ -117,6 +108,7 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
 
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
@@ -161,6 +153,10 @@ ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
 
+parameter_types! {
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+}
+
 impl cdp_treasury::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
@@ -192,16 +188,16 @@ impl RiskManager<AccountId, CurrencyId, Balance, DebitBalance> for MockRiskManag
 		_debit_balance: DebitBalance,
 	) -> DispatchResult {
 		match currency_id {
-			X_TOKEN_ID => Err(sp_runtime::DispatchError::Other("mock error")),
-			Y_TOKEN_ID => Ok(()),
+			DOT => Err(sp_runtime::DispatchError::Other("mock error")),
+			BTC => Ok(()),
 			_ => Err(sp_runtime::DispatchError::Other("mock error")),
 		}
 	}
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult {
 		match (currency_id, total_debit_balance) {
-			(X_TOKEN_ID, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
-			(Y_TOKEN_ID, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(DOT, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(BTC, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
 			(_, _) => Ok(()),
 		}
 	}
@@ -226,17 +222,17 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			endowed_accounts: vec![
-				(ALICE, X_TOKEN_ID, 1000),
-				(ALICE, Y_TOKEN_ID, 1000),
-				(BOB, X_TOKEN_ID, 1000),
-				(BOB, Y_TOKEN_ID, 1000),
+				(ALICE, DOT, 1000),
+				(ALICE, BTC, 1000),
+				(BOB, DOT, 1000),
+				(BOB, BTC, 1000),
 			],
 		}
 	}
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 		orml_tokens::GenesisConfig::<Runtime> {
 			endowed_accounts: self.endowed_accounts,

@@ -4,8 +4,8 @@ use sp_runtime::{
 	MultiSignature,
 };
 
-pub use module_primitives::{AirDropCurrencyId, CurrencyId};
-pub use module_support::{EraIndex, ExchangeRate, Price, Rate, Ratio};
+pub use module_primitives::{AirDropCurrencyId, Amount, Balance, CurrencyId, EraIndex};
+pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -20,12 +20,6 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 /// The type for looking up accounts. We don't expect more than 4 billion of them, but you
 /// never know...
 pub type AccountIndex = u32;
-
-/// Balance of an account.
-pub type Balance = u128;
-
-/// Signed version of Balance
-pub type Amount = i128;
 
 /// Index of a transaction in the chain.
 pub type Index = u32;

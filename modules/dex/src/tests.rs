@@ -32,7 +32,7 @@ fn set_liquidity_incentive_rate_work() {
 #[test]
 fn accumulate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		<LiquidityPool<Runtime>>::insert(BTC, (100, 10000));
+		LiquidityPool::insert(BTC, (100, 10000));
 		assert_eq!(DexModule::total_interest(BTC), 0);
 		DexModule::accumulate_interest(BTC);
 		assert_eq!(DexModule::total_interest(BTC), 100);
@@ -44,8 +44,8 @@ fn claim_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		<Shares<Runtime>>::insert(BTC, ALICE, 2000);
 		<TotalShares<Runtime>>::insert(BTC, 10000);
-		<TotalInterest<Runtime>>::insert(BTC, 25000);
-		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 20000);
+		TotalInterest::insert(BTC, 25000);
+		TotalWithdrawnInterest::insert(BTC, 20000);
 		<WithdrawnInterest<Runtime>>::insert(BTC, ALICE, 2000);
 		assert_ok!(Tokens::deposit(AUSD, &DexModule::account_id(), 5000));
 		let alice_former_balance = Tokens::free_balance(AUSD, &ALICE);
@@ -63,8 +63,8 @@ fn withdraw_calculate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		<Shares<Runtime>>::insert(BTC, ALICE, 2000);
 		<TotalShares<Runtime>>::insert(BTC, 10000);
-		<TotalInterest<Runtime>>::insert(BTC, 25000);
-		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 25000);
+		TotalInterest::insert(BTC, 25000);
+		TotalWithdrawnInterest::insert(BTC, 25000);
 		<WithdrawnInterest<Runtime>>::insert(BTC, ALICE, 10000);
 		assert_ok!(DexModule::withdraw_calculate_interest(BTC, &ALICE, 1000));
 		assert_eq!(DexModule::total_withdrawn_interest(BTC), 20000);
@@ -77,8 +77,8 @@ fn withdraw_calculate_interest_work() {
 fn deposit_calculate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		<TotalShares<Runtime>>::insert(BTC, 5000);
-		<TotalInterest<Runtime>>::insert(BTC, 10000);
-		<TotalWithdrawnInterest<Runtime>>::insert(BTC, 2000);
+		TotalInterest::insert(BTC, 10000);
+		TotalWithdrawnInterest::insert(BTC, 2000);
 		DexModule::deposit_calculate_interest(BTC, &ALICE, 4000);
 		assert_eq!(DexModule::total_interest(BTC), 18000);
 		assert_eq!(DexModule::total_withdrawn_interest(BTC), 10000);
@@ -153,7 +153,7 @@ fn add_liquidity_work() {
 		assert_eq!(DexModule::shares(BTC, ALICE), 0);
 		assert_noop!(
 			DexModule::add_liquidity(Origin::signed(ALICE), BTC, 0, 10000000),
-			Error::<Runtime>::InvalidBalance,
+			Error::<Runtime>::InvalidAmount,
 		);
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
 
@@ -203,7 +203,7 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, ALICE), 0);
 			assert_noop!(
 				DexModule::add_liquidity(Origin::signed(ALICE), BTC, 0, 10000000),
-				Error::<Runtime>::InvalidBalance,
+				Error::<Runtime>::InvalidAmount,
 			);
 
 			// ALICE add_liquidity 8000
@@ -344,7 +344,7 @@ fn swap_other_to_base_work() {
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 0);
 		assert_noop!(
 			DexModule::swap_other_to_base(CAROL, BTC, 10001, 0),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_noop!(
 			DexModule::swap_other_to_base(CAROL, BTC, 10000, 5000000),
@@ -372,7 +372,7 @@ fn swap_base_to_other_work() {
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 10000);
 		assert_noop!(
 			DexModule::swap_base_to_other(CAROL, BTC, 10001, 0),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_noop!(
 			DexModule::swap_base_to_other(CAROL, BTC, 10000, 5000),
@@ -402,7 +402,7 @@ fn swap_other_to_other_work() {
 		assert_eq!(Tokens::free_balance(DOT, &CAROL), 1000);
 		assert_noop!(
 			DexModule::swap_other_to_other(CAROL, DOT, 1001, BTC, 0),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_noop!(
 			DexModule::swap_other_to_other(CAROL, DOT, 1000, BTC, 35),
@@ -432,7 +432,7 @@ fn swap_currency_work() {
 		);
 		assert_noop!(
 			DexModule::swap_currency(Origin::signed(CAROL), BTC, 101, DOT, 1000),
-			Error::<Runtime>::TokenNotEnough,
+			Error::<Runtime>::AmountNotEnough,
 		);
 		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), BTC, 100, AUSD, 4950));
 		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), AUSD, 4950, BTC, 90));
@@ -452,7 +452,7 @@ fn exchange_currency_work() {
 		);
 		assert_noop!(
 			DexModule::exchange_currency(CAROL, BTC, 101, DOT, 1000),
-			Error::<Runtime>::TokenNotEnough
+			Error::<Runtime>::AmountNotEnough
 		);
 		assert_eq!(DexModule::exchange_currency(CAROL, BTC, 100, AUSD, 4950).is_ok(), true);
 		assert_eq!(DexModule::exchange_currency(CAROL, AUSD, 4950, BTC, 90).is_ok(), true);

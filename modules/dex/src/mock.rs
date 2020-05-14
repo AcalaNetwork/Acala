@@ -2,13 +2,29 @@
 
 #![cfg(test)]
 
+use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
-use primitives::H256;
+use frame_system::EnsureSignedBy;
+use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::{AuctionManager, Rate};
-use system::EnsureSignedBy;
 
-use super::*;
+pub type AccountId = u64;
+pub type BlockNumber = u64;
+pub type Share = u128;
+pub type Amount = i128;
+pub type AuctionId = u64;
+
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
+pub const CAROL: AccountId = 3;
+pub const AUSD: CurrencyId = CurrencyId::AUSD;
+pub const BTC: CurrencyId = CurrencyId::XBTC;
+pub const DOT: CurrencyId = CurrencyId::DOT;
+pub const ACA: CurrencyId = CurrencyId::ACA;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Runtime;
 
 mod dex {
 	pub use super::super::*;
@@ -19,7 +35,7 @@ impl_outer_event! {
 		system<T>,
 		dex<T>,
 		orml_tokens<T>,
-		cdp_treasury<T>,
+		cdp_treasury,
 	}
 }
 
@@ -27,27 +43,12 @@ impl_outer_origin! {
 	pub enum Origin for Runtime {}
 }
 
-// Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
-	pub const ExistentialDeposit: u128 = 0;
-	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
 }
-
-pub type AccountId = u64;
-pub type BlockNumber = u64;
-pub type CurrencyId = u32;
-pub type Share = u128;
-pub type Balance = u128;
-pub type Amount = i128;
-pub type AuctionId = u64;
 
 impl system::Trait for Runtime {
 	type Origin = Origin;
@@ -71,6 +72,10 @@ impl system::Trait for Runtime {
 	type OnKilledAccount = ();
 }
 pub type System = system::Module<Runtime>;
+
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 0;
+}
 
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
@@ -137,6 +142,12 @@ impl AuctionManager<AccountId> for MockAuctionManagerHandler {
 	}
 }
 
+parameter_types! {
+	pub const GetBaseCurrencyId: CurrencyId = AUSD;
+	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
+	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
@@ -148,15 +159,6 @@ impl Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 }
 pub type DexModule = Module<Runtime>;
-
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CAROL: AccountId = 3;
-
-pub const AUSD: CurrencyId = 1;
-pub const BTC: CurrencyId = 2;
-pub const DOT: CurrencyId = 3;
-pub const ACA: CurrencyId = 4;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
@@ -184,7 +186,7 @@ impl ExtBuilder {
 		self.endowed_accounts.push((who, currency_id, balance));
 		self
 	}
-	pub fn build(self) -> runtime_io::TestExternalities {
+	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
@@ -193,7 +195,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		dex::GenesisConfig::<Runtime> {
+		dex::GenesisConfig {
 			liquidity_incentive_rate: self.liquidity_incentive_rate,
 		}
 		.assimilate_storage(&mut t)

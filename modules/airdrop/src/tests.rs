@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Airdrop, ExtBuilder, Origin, System, TestEvent, ACA, ALICE, BOB, KAR};
+use mock::{Airdrop, ExtBuilder, Origin, System, TestEvent, ACA, ALICE, BOB, CHARLIE, KAR};
 use sp_runtime::traits::BadOrigin;
 
 #[test]
@@ -33,5 +33,13 @@ fn update_airdrop_work() {
 			.iter()
 			.any(|record| record.event == update_airdrop_event));
 		assert_eq!(Airdrop::airdrops(ALICE, ACA), 0);
+	});
+}
+
+#[test]
+fn genesis_config_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Airdrop::airdrops(CHARLIE, KAR), 150);
+		assert_eq!(Airdrop::airdrops(CHARLIE, ACA), 80);
 	});
 }

@@ -8,6 +8,7 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo},
 };
 use mock::{Accounts, Call, Currencies, ExtBuilder, Origin, Runtime, TimeModule, ACA, ALICE, AUSD, BOB};
+use orml_traits::MultiCurrency;
 
 #[test]
 fn enable_free_transfer_require_deposit() {

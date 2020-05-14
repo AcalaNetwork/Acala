@@ -2,7 +2,6 @@
 
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
-use sp_std::convert::{TryFrom, TryInto};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -24,25 +23,11 @@ pub enum AirDropCurrencyId {
 	ACA,
 }
 
-impl TryFrom<u16> for CurrencyId {
-	type Error = ();
+/// Counter for the number of eras that have passed.
+pub type EraIndex = u32;
 
-	fn try_from(a: u16) -> Result<Self, Self::Error> {
-		match a {
-			0u16 => Ok(CurrencyId::ACA),
-			1u16 => Ok(CurrencyId::AUSD),
-			2u16 => Ok(CurrencyId::DOT),
-			3u16 => Ok(CurrencyId::XBTC),
-			4u16 => Ok(CurrencyId::LDOT),
-			_ => Err(()),
-		}
-	}
-}
+/// Balance of an account.
+pub type Balance = u128;
 
-impl TryInto<u16> for CurrencyId {
-	type Error = ();
-
-	fn try_into(self) -> Result<u16, Self::Error> {
-		Ok(self as u16)
-	}
-}
+/// Signed version of Balance
+pub type Amount = i128;

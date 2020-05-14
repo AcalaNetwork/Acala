@@ -2,9 +2,10 @@
 
 use codec::{Decode, Encode};
 use frame_support::decl_module;
+use frame_system::{self as system, ensure_signed};
+use primitives::{Balance, EraIndex};
 use sp_runtime::RuntimeDebug;
-use support::{EraIndex, HomaProtocol};
-use system::{self as system, ensure_signed};
+use support::HomaProtocol;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub enum RedeemStrategy {
@@ -13,22 +14,20 @@ pub enum RedeemStrategy {
 	WaitForUnbonding,
 }
 
-type BalanceOf<T> = <<T as Trait>::Homa as HomaProtocol<<T as system::Trait>::AccountId>>::Balance;
-
 pub trait Trait: system::Trait {
-	type Homa: HomaProtocol<Self::AccountId>;
+	type Homa: HomaProtocol<Self::AccountId, Balance, EraIndex>;
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn mint(origin, #[compact] amount: BalanceOf<T>) {
+		pub fn mint(origin, #[compact] amount: Balance) {
 			let who = ensure_signed(origin)?;
 			T::Homa::mint(&who, amount)?;
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn redeem(origin, #[compact] amount: BalanceOf<T>, strategy: RedeemStrategy) {
+		pub fn redeem(origin, #[compact] amount: Balance, strategy: RedeemStrategy) {
 			let who = ensure_signed(origin)?;
 			match strategy {
 				RedeemStrategy::Immediately => {

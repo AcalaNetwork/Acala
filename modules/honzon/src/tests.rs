@@ -133,20 +133,3 @@ fn on_emergency_shutdown_should_work() {
 		);
 	});
 }
-
-#[test]
-fn adjust_collateral_after_shutdown_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 0));
-		assert_noop!(
-			HonzonModule::adjust_collateral_after_shutdown(Origin::signed(ALICE), BTC, -100),
-			Error::<Runtime>::MustAfterShutdown,
-		);
-		HonzonModule::on_emergency_shutdown();
-		assert_ok!(HonzonModule::adjust_collateral_after_shutdown(
-			Origin::signed(ALICE),
-			BTC,
-			-100
-		));
-	});
-}

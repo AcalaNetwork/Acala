@@ -1,25 +1,23 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
+use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::BasicCurrency;
-use rstd::fmt::Debug;
-use rstd::prelude::*;
+use primitives::{Balance, EraIndex};
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Saturating, Zero},
+	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	DispatchResult,
 };
+use sp_std::{fmt::Debug, prelude::*};
 use support::{
-	EraIndex, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType,
-	PolkadotStakingLedger, PolkadotUnlockChunk, Rate,
+	OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType, PolkadotStakingLedger,
+	PolkadotUnlockChunk, Rate,
 };
-use system::{self as system, ensure_root, ensure_signed};
-
-type BalanceOf<T> = <<T as Trait>::DOTCurrency as BasicCurrency<<T as system::Trait>::AccountId>>::Balance;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type DOTCurrency: BasicCurrency<Self::AccountId>;
-	type OnNewEra: OnNewEra;
+	type DOTCurrency: BasicCurrency<Self::AccountId, Balance = Balance>;
+	type OnNewEra: OnNewEra<EraIndex>;
 	type BondingDuration: Get<EraIndex>;
 	type EraLength: Get<Self::BlockNumber>;
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
@@ -29,7 +27,7 @@ decl_event!(
 	pub enum Event<T>
 	where
 		<T as system::Trait>::AccountId,
-		Balance = BalanceOf<T>,
+		Balance = Balance,
 	{
 		Mint(AccountId, Balance),
 	}
@@ -45,9 +43,9 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as PolkadotBridge {
-		pub Bonded get(bonded): BalanceOf<T>;	// active
-		pub Available get(available): BalanceOf<T>; // balance - bonded
-		pub Unbonding get(unbonding): Vec<(BalanceOf<T>, EraIndex)>;
+		pub Bonded get(bonded): Balance;	// active
+		pub Available get(available): Balance; // balance - bonded
+		pub Unbonding get(unbonding): Vec<(Balance, EraIndex)>;
 		pub CurrentEra get(current_era): EraIndex;
 		pub EraStartBlockNumber get(fn era_start_block_number): T::BlockNumber;
 		pub ForcedEra get(forced_era): Option<T::BlockNumber>;
@@ -74,13 +72,13 @@ decl_module! {
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn simulate_bond(origin, amount: BalanceOf<T>) {
+		pub fn simulate_bond(origin, amount: Balance) {
 			ensure_root(origin)?;
 			Self::bond_extra(amount)?;
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn simulate_unbond(origin, amount: BalanceOf<T>) {
+		pub fn simulate_unbond(origin, amount: Balance) {
 			ensure_root(origin)?;
 			Self::unbond(amount)?;
 		}
@@ -92,25 +90,25 @@ decl_module! {
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn simulate_slash(origin, amount: BalanceOf<T>) {
+		pub fn simulate_slash(origin, amount: Balance) {
 			ensure_root(origin)?;
-			<Bonded<T>>::mutate(|balance| *balance = balance.saturating_sub(amount));
+			Bonded::mutate(|balance| *balance = balance.saturating_sub(amount));
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn simualte_receive(origin, to: T::AccountId, amount: BalanceOf<T>) {
+		pub fn simualte_receive(origin, to: T::AccountId, amount: Balance) {
 			ensure_root(origin)?;
-			let new_available = Self::available().checked_sub(&amount).ok_or(Error::<T>::NotEnough)?;
+			let new_available = Self::available().checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
 			T::DOTCurrency::deposit(&to, amount)?;
-			<Available<T>>::put(new_available);
+			Available::put(new_available);
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: BalanceOf<T>) {
+		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: Balance) {
 			let from = ensure_signed(origin)?;
-			let new_available = Self::available().checked_add(&amount).ok_or(Error::<T>::Overflow)?;
+			let new_available = Self::available().checked_add(amount).ok_or(Error::<T>::Overflow)?;
 			T::DOTCurrency::withdraw(&from, amount)?;
-			<Available<T>>::put(new_available);
+			Available::put(new_available);
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
@@ -150,21 +148,21 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> PolkadotBridgeType<T::BlockNumber> for Module<T> {
+impl<T: Trait> PolkadotBridgeType<T::BlockNumber, EraIndex> for Module<T> {
 	type BondingDuration = T::BondingDuration;
 	type EraLength = T::EraLength;
 	type PolkadotAccountId = T::PolkadotAccountId;
 }
 
-impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> for Module<T> {
+impl<T: Trait> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraIndex> for Module<T> {
 	// simulate bond extra
-	fn bond_extra(amount: BalanceOf<T>) -> DispatchResult {
+	fn bond_extra(amount: Balance) -> DispatchResult {
 		let free_balance = Self::available();
 
 		if !amount.is_zero() {
 			ensure!(free_balance >= amount, Error::<T>::NotEnough);
-			<Bonded<T>>::mutate(|balance| *balance += amount);
-			<Available<T>>::mutate(|balance| *balance -= amount);
+			Bonded::mutate(|balance| *balance += amount);
+			Available::mutate(|balance| *balance -= amount);
 
 			debug::debug!(
 				target: "polkadot bridge simulator",
@@ -177,7 +175,7 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 	}
 
 	// simulate unbond
-	fn unbond(amount: BalanceOf<T>) -> DispatchResult {
+	fn unbond(amount: Balance) -> DispatchResult {
 		let bonded = Self::bonded();
 
 		if !amount.is_zero() {
@@ -187,8 +185,8 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 			let unbonded_era_index = current_era + T::BondingDuration::get();
 			unbonding.push((amount, unbonded_era_index));
 
-			<Bonded<T>>::mutate(|bonded| *bonded -= amount);
-			<Unbonding<T>>::put(unbonding);
+			Bonded::mutate(|bonded| *bonded -= amount);
+			Unbonding::put(unbonding);
 
 			debug::debug!(
 				target: "polkadot bridge simulator",
@@ -201,10 +199,10 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 	}
 
 	// simulate rebond
-	fn rebond(amount: BalanceOf<T>) -> DispatchResult {
+	fn rebond(amount: Balance) -> DispatchResult {
 		let mut unbonding = Self::unbonding();
 		let mut bonded = Self::bonded();
-		let mut rebond_balance: BalanceOf<T> = Zero::zero();
+		let mut rebond_balance: Balance = Zero::zero();
 
 		while let Some(last) = unbonding.last_mut() {
 			if rebond_balance + last.0 <= amount {
@@ -225,8 +223,8 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 		}
 		ensure!(rebond_balance >= amount, Error::<T>::NotEnough);
 		if !rebond_balance.is_zero() {
-			<Bonded<T>>::put(bonded);
-			<Unbonding<T>>::put(unbonding);
+			Bonded::put(bonded);
+			Unbonding::put(unbonding);
 
 			debug::debug!(
 				target: "polkadot bridge simulator",
@@ -253,15 +251,15 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 			})
 			.collect::<Vec<_>>();
 
-		<Available<T>>::put(available);
-		<Unbonding<T>>::put(unbonding);
+		Available::put(available);
+		Unbonding::put(unbonding);
 	}
 
 	// simulate receive staking reward
 	fn payout_nominator() {
 		if let Some(mock_reward_rate) = Self::mock_reward_rate() {
 			let reward = mock_reward_rate.saturating_mul_int(&Self::bonded());
-			<Available<T>>::mutate(|balance| *balance = balance.saturating_add(reward));
+			Available::mutate(|balance| *balance = balance.saturating_add(reward));
 
 			debug::debug!(
 				target: "polkadot bridge simulator",
@@ -274,23 +272,23 @@ impl<T: Trait> PolkadotBridgeCall<T::BlockNumber, BalanceOf<T>, T::AccountId> fo
 	fn nominate(_targets: Vec<Self::PolkadotAccountId>) {}
 
 	// simulate transfer dot from acala to parachain account in polkadot
-	fn transfer_to_bridge(from: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+	fn transfer_to_bridge(from: &T::AccountId, amount: Balance) -> DispatchResult {
 		T::DOTCurrency::withdraw(from, amount)?;
-		<Available<T>>::mutate(|balance| *balance = balance.saturating_add(amount));
+		Available::mutate(|balance| *balance = balance.saturating_add(amount));
 		Ok(())
 	}
 
 	// simulate receive dot from parachain account in polkadot to acala
-	fn receive_from_bridge(to: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
-		let new_available = Self::available().checked_sub(&amount).ok_or(Error::<T>::NotEnough)?;
-		<Available<T>>::put(new_available);
+	fn receive_from_bridge(to: &T::AccountId, amount: Balance) -> DispatchResult {
+		let new_available = Self::available().checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
+		Available::put(new_available);
 		T::DOTCurrency::deposit(&to, amount)?;
 		Ok(())
 	}
 }
 
-impl<T: Trait> PolkadotBridgeState<BalanceOf<T>> for Module<T> {
-	fn ledger() -> PolkadotStakingLedger<BalanceOf<T>> {
+impl<T: Trait> PolkadotBridgeState<Balance, EraIndex> for Module<T> {
+	fn ledger() -> PolkadotStakingLedger<Balance, EraIndex> {
 		let active = Self::bonded();
 		let mut total = active;
 		let unlocking = Self::unbonding()
@@ -311,7 +309,7 @@ impl<T: Trait> PolkadotBridgeState<BalanceOf<T>> for Module<T> {
 		}
 	}
 
-	fn balance() -> BalanceOf<T> {
+	fn balance() -> Balance {
 		// bonded + total_unlocking + available
 		let mut total = Self::bonded().saturating_add(Self::available());
 
@@ -327,4 +325,4 @@ impl<T: Trait> PolkadotBridgeState<BalanceOf<T>> for Module<T> {
 	}
 }
 
-impl<T: Trait> PolkadotBridge<T::BlockNumber, BalanceOf<T>, T::AccountId> for Module<T> {}
+impl<T: Trait> PolkadotBridge<T::AccountId, T::BlockNumber, Balance, EraIndex> for Module<T> {}

@@ -1,6 +1,6 @@
 [package]
 name = "acala"
-version = "0.4.2"
+version = "0.4.4"
 authors = ["Acala Developers"]
 build = "build.rs"
 edition = "2018"
@@ -70,6 +70,8 @@ build-script-utils = { package = "substrate-build-script-utils", version = "2.0.
 frame-benchmarking-cli = { version = "2.0.0-alpha.6" }
 
 [features]
+default = ["wasmtime"]
+wasmtime = [ "sc-cli/wasmtime" ]
 runtime-benchmarks = [
 	"runtime/runtime-benchmarks",
 ]

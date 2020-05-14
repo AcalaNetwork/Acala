@@ -3,35 +3,28 @@
 use frame_support::{
 	decl_event, decl_module, decl_storage,
 	traits::{EnsureOrigin, Get},
-	Parameter,
 };
-use orml_traits::DataProvider;
-use rstd::convert::TryFrom;
-use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
+use frame_system::{self as system, ensure_root};
+use orml_traits::{DataProvider, DataProviderExtended};
+use primitives::CurrencyId;
 use support::{ExchangeRateProvider, Price, PriceProvider};
-use system::ensure_root;
 
 mod mock;
 mod tests;
 
-type CurrencyIdOf<T> = <Module<T> as PriceProvider<<T as Trait>::CurrencyId>>::TestCurrencyId;
-
 pub trait Trait: system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + TryFrom<u16>;
-	type Source: DataProvider<Self::CurrencyId, Price, Self::AccountId>;
-	type GetStableCurrencyId: Get<Self::CurrencyId>;
+	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
+	type Source: DataProviderExtended<CurrencyId, Price, Self::AccountId>;
+	type GetStableCurrencyId: Get<CurrencyId>;
 	type StableCurrencyFixedPrice: Get<Price>;
-	type GetStakingCurrencyId: Get<Self::CurrencyId>;
-	type GetLiquidCurrencyId: Get<Self::CurrencyId>;
+	type GetStakingCurrencyId: Get<CurrencyId>;
+	type GetLiquidCurrencyId: Get<CurrencyId>;
 	type LockOrigin: EnsureOrigin<Self::Origin>;
 	type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
 }
 
 decl_event!(
-	pub enum Event<T> where
-		<T as Trait>::CurrencyId,
-	{
+	pub enum Event {
 		LockPrice(CurrencyId, Price),
 		UnlockPrice(CurrencyId),
 	}
@@ -39,7 +32,7 @@ decl_event!(
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Prices {
-		LockedPrice get(fn locked_price): map hasher(twox_64_concat) T::CurrencyId => Option<Price>;
+		LockedPrice get(fn locked_price): map hasher(twox_64_concat) CurrencyId => Option<Price>;
 	}
 }
 
@@ -47,35 +40,33 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		const GetStableCurrencyId: T::CurrencyId = T::GetStableCurrencyId::get();
+		const GetStableCurrencyId: CurrencyId = T::GetStableCurrencyId::get();
 		const StableCurrencyFixedPrice: Price = T::StableCurrencyFixedPrice::get();
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		fn lock_price(origin, currency_id: T::CurrencyId) {
+		fn lock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
 
-			<Module<T> as PriceProvider<T::CurrencyId>>::lock_price(currency_id);
+			<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
 		}
 
 		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
-		fn unlock_price(origin, currency_id: T::CurrencyId) {
+		fn unlock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
 
-			<Module<T> as PriceProvider<T::CurrencyId>>::unlock_price(currency_id);
+			<Module<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {}
 
-impl<T: Trait> PriceProvider<T::CurrencyId> for Module<T> {
-	type TestCurrencyId = T::CurrencyId;
-
-	fn get_relative_price(base_currency_id: T::CurrencyId, quote_currency_id: T::CurrencyId) -> Option<Price> {
+impl<T: Trait> PriceProvider<CurrencyId> for Module<T> {
+	fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
 		if let (Some(base_price), Some(quote_price)) =
 			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
 		{
@@ -85,7 +76,7 @@ impl<T: Trait> PriceProvider<T::CurrencyId> for Module<T> {
 		}
 	}
 
-	fn get_price(currency_id: T::CurrencyId) -> Option<Price> {
+	fn get_price(currency_id: CurrencyId) -> Option<Price> {
 		if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, return fix price
 			Some(T::StableCurrencyFixedPrice::get())
@@ -111,16 +102,16 @@ impl<T: Trait> PriceProvider<T::CurrencyId> for Module<T> {
 		}
 	}
 
-	fn lock_price(currency_id: T::CurrencyId) {
+	fn lock_price(currency_id: CurrencyId) {
 		// lock price when get valid price from source
 		if let Some(val) = T::Source::get(&currency_id) {
-			<LockedPrice<T>>::insert(currency_id, val);
-			<Module<T>>::deposit_event(RawEvent::LockPrice(currency_id, val));
+			LockedPrice::insert(currency_id, val);
+			<Module<T>>::deposit_event(Event::LockPrice(currency_id, val));
 		}
 	}
 
-	fn unlock_price(currency_id: T::CurrencyId) {
-		<LockedPrice<T>>::remove(currency_id);
-		<Module<T>>::deposit_event(RawEvent::UnlockPrice(currency_id));
+	fn unlock_price(currency_id: CurrencyId) {
+		LockedPrice::remove(currency_id);
+		<Module<T>>::deposit_event(Event::UnlockPrice(currency_id));
 	}
 }
