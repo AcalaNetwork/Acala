@@ -10,15 +10,15 @@ use sp_std::vec;
 
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
-use frame_system::{self as system, RawOrigin};
-use sp_runtime::traits::UniqueSaturatedInto;
+use frame_system::RawOrigin;
+use sp_runtime::traits::{Saturating, UniqueSaturatedInto};
 
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use orml_oracle::OperatorProvider;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
-use primitives::{Amount, Balance, CurrencyId};
-use support::{Price, Rate, Ratio};
+use primitives::{Balance, CurrencyId};
+use support::{ExchangeRate, OnEmergencyShutdown, Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(cdp_engine::Module<T>);
 
@@ -26,9 +26,17 @@ pub trait Trait: cdp_engine::Trait + orml_oracle::Trait + prices::Trait {}
 
 const SEED: u32 = 0;
 
-pub fn dollar(d: u32) -> Balance {
+fn dollar(d: u32) -> Balance {
 	let d: Balance = d.into();
 	d.saturating_mul(1_000_000_000_000_000_000)
+}
+
+fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
+	let oracle_operators = <T as orml_oracle::Trait>::OperatorProvider::operators();
+	for operator in oracle_operators {
+		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
+	}
+	Ok(())
 }
 
 benchmarks! {
@@ -49,19 +57,89 @@ benchmarks! {
 	set_global_params {
 		let u in 0 .. 1000;
 	}: _(RawOrigin::Root, Rate::from_rational(1, 1000000))
+
+	liquidate_by_auction {
+		let u in 0 .. 1000;
+
+		let owner: T::AccountId = account("owner", u, SEED);
+		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
+		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
+		let collateral_price = Price::from_natural(1);		// 1 USD
+		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_parts(1)).saturating_mul_int(&min_debit_value);
+		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
+		let debit_amount = min_debit_amount * 10.into();
+		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
+
+		// set balance
+		<T as loans::Trait>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
+
+		// feed price
+		feed_price::<T>(currency_id, collateral_price)?;
+
+		// set risk params
+		CdpEngine::<T>::set_collateral_params(
+			RawOrigin::Root.into(),
+			currency_id,
+			None,
+			Some(Some(Ratio::from_rational(200, 100))),
+			Some(Some(Rate::from_rational(10, 100))),
+			Some(Some(Ratio::from_rational(200, 100))),
+			Some(min_debit_value * 100),
+		)?;
+
+		// adjust position
+		CdpEngine::<T>::adjust_position(&owner, currency_id, collateral_amount, debit_amount)?;
+
+		// modify liquidation rate to make the cdp unsafe
+		CdpEngine::<T>::set_collateral_params(
+			RawOrigin::Root.into(),
+			currency_id,
+			None,
+			Some(Some(Ratio::from_rational(1000, 100))),
+			None,
+			None,
+			None,
+		)?;
+	}: liquidate(RawOrigin::None, currency_id, owner)
+
+	settle {
+		let u in 0 .. 1000;
+
+		let owner: T::AccountId = account("owner", u, SEED);
+		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
+		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
+		let collateral_price = Price::from_natural(1);		// 1 USD
+		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_parts(1)).saturating_mul_int(&min_debit_value);
+		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
+		let debit_amount = min_debit_amount * 10.into();
+		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
+
+		// set balance
+		<T as loans::Trait>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
+
+		// feed price
+		feed_price::<T>(currency_id, collateral_price)?;
+
+		// set risk params
+		CdpEngine::<T>::set_collateral_params(
+			RawOrigin::Root.into(),
+			currency_id,
+			None,
+			Some(Some(Ratio::from_rational(200, 100))),
+			Some(Some(Rate::from_rational(10, 100))),
+			Some(Some(Ratio::from_rational(200, 100))),
+			Some(min_debit_value * 100),
+		)?;
+
+		// adjust position
+		CdpEngine::<T>::adjust_position(&owner, currency_id, collateral_amount, debit_amount)?;
+
+		// shutdown
+		CdpEngine::<T>::on_emergency_shutdown();
+	}: _(RawOrigin::None, currency_id, owner)
 }
-
-// pub fn liquidate(
-// 	origin,
-// 	currency_id: CurrencyId,
-// 	who: T::AccountId,
-// ) {
-
-// 	pub fn settle(
-// 		origin,
-// 		currency_id: CurrencyId,
-// 		who: T::AccountId,
-// 	) {
 
 #[cfg(test)]
 mod tests {
@@ -74,6 +152,8 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_set_collateral_params::<Runtime>());
 			assert_ok!(test_benchmark_set_global_params::<Runtime>());
+			assert_ok!(test_benchmark_liquidate_by_auction::<Runtime>());
+			assert_ok!(test_benchmark_settle::<Runtime>());
 		});
 	}
 }

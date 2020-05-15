@@ -1035,13 +1035,20 @@ impl_runtime_apis! {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark};
 
 			use module_honzon_benchmarking::Module as HonzonBench;
+			use module_cdp_engine_benchmarking::Module as CdpEngineBench;
+			use module_emergency_shutdown_benchmarking::Module as EmergencyShutdownBench;
 			impl module_honzon_benchmarking::Trait for Runtime {}
+			impl module_cdp_engine_benchmarking::Trait for Runtime {}
+			impl module_emergency_shutdown_benchmarking::Trait for Runtime {}
 
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
 
-			add_benchmark!(params, batches, b"balances", Balances);
+			add_benchmark!(params, batches, b"dex", Dex);
+			add_benchmark!(params, batches, b"cdp-treasury", CdpTreasury);
 			add_benchmark!(params, batches, b"honzon", HonzonBench::<Runtime>);
+			add_benchmark!(params, batches, b"cdp-engine", CdpEngineBench::<Runtime>);
+			add_benchmark!(params, batches, b"emergency-shutdown", EmergencyShutdownBench::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

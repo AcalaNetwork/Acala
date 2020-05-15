@@ -10,28 +10,66 @@ use sp_std::vec;
 
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
-use frame_system::{self as system, RawOrigin};
+use frame_system::RawOrigin;
 use sp_runtime::traits::UniqueSaturatedInto;
 
 use emergency_shutdown::Module as EmergencyShutdown;
 use emergency_shutdown::*;
 use orml_oracle::OperatorProvider;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
-use primitives::{Amount, Balance, CurrencyId};
-use support::{Price, Rate, Ratio};
+use primitives::Balance;
+use support::{CDPTreasury, Price};
 
 pub struct Module<T: Trait>(emergency_shutdown::Module<T>);
 
-pub trait Trait: emergency_shutdown::Trait + orml_oracle::Trait + prices::Trait {}
+pub trait Trait: emergency_shutdown::Trait + orml_oracle::Trait + prices::Trait + loans::Trait {}
 
 const SEED: u32 = 0;
+
+fn dollar(d: u32) -> Balance {
+	let d: Balance = d.into();
+	d.saturating_mul(1_000_000_000_000_000_000)
+}
 
 benchmarks! {
 	_ { }
 
 	call_emergency_shutdown {
 		let u in 0 .. 1000;
+
+		let currency_id = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get()[0];
+		let oracle_operators = <T as orml_oracle::Trait>::OperatorProvider::operators();
+		for operator in oracle_operators {
+			<T as prices::Trait>::Source::feed_value(
+				operator.clone(),
+				currency_id,
+				Price::from_natural(1),
+			)?;
+		}
 	}: emergency_shutdown(RawOrigin::Root)
+
+	open_collateral_refund {
+		let u in 0 .. 1000;
+
+		EmergencyShutdown::<T>::emergency_shutdown(RawOrigin::Root.into())?;
+	}: _(RawOrigin::Root)
+
+	refund_collaterals {
+		let u in 0 .. 1000;
+
+		let funder: T::AccountId = account("funder", u, SEED);
+		let caller: T::AccountId = account("caller", u, SEED);
+		let currency_ids = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get();
+		for currency_id in currency_ids {
+			<T as loans::Trait>::Currency::update_balance(currency_id, &funder, dollar(100).unique_saturated_into())?;
+			<T as emergency_shutdown::Trait>::CDPTreasury::transfer_collateral_from(currency_id, &funder, dollar(100))?;
+		}
+		<T as emergency_shutdown::Trait>::CDPTreasury::deposit_backed_debit_to(&caller, dollar(1000))?;
+		<T as emergency_shutdown::Trait>::CDPTreasury::deposit_backed_debit_to(&funder, dollar(9000))?;
+
+		EmergencyShutdown::<T>::emergency_shutdown(RawOrigin::Root.into())?;
+		EmergencyShutdown::<T>::open_collateral_refund(RawOrigin::Root.into())?;
+	}: _(RawOrigin::Signed(caller),  dollar(1000))
 }
 
 #[cfg(test)]
@@ -44,6 +82,8 @@ mod tests {
 	fn test_benchmarks() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_call_emergency_shutdown::<Runtime>());
+			assert_ok!(test_benchmark_open_collateral_refund::<Runtime>());
+			assert_ok!(test_benchmark_refund_collaterals::<Runtime>());
 		});
 	}
 }

@@ -13,7 +13,7 @@ use sp_runtime::{
 	DispatchResult,
 };
 use sp_std::vec;
-use support::{AuctionManager, ExchangeRate, ExchangeRateProvider, Price, PriceProvider, Rate, Ratio};
+use support::{AuctionManager, ExchangeRate, ExchangeRateProvider, Price, Rate, Ratio};
 
 impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
@@ -32,10 +32,6 @@ pub type AuctionId = u64;
 pub type BlockNumber = u64;
 pub type DebitBalance = Balance;
 pub type DebitAmount = Amount;
-
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CAROL: AccountId = 3;
 
 pub const ACA: CurrencyId = CurrencyId::ACA;
 pub const AUSD: CurrencyId = CurrencyId::AUSD;
@@ -67,7 +63,6 @@ impl frame_system::Trait for Runtime {
 	type OnNewAccount = ();
 	type OnKilledAccount = (PalletBalances,);
 }
-pub type System = frame_system::Module<Runtime>;
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
@@ -109,13 +104,12 @@ pub type Currencies = orml_currencies::Module<Runtime>;
 impl loans::Trait for Runtime {
 	type Event = ();
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
-	type Currency = Tokens;
+	type Currency = Currencies;
 	type RiskManager = CDPEngineModule;
 	type DebitBalance = DebitBalance;
 	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
 }
-pub type LoansModule = loans::Module<Runtime>;
 
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
@@ -216,7 +210,6 @@ impl emergency_shutdown::Trait for Runtime {
 	type OnShutdown = CDPTreasuryModule;
 	type ShutdownOrigin = EnsureSignedBy<One, AccountId>;
 }
-pub type EmergencyShutdownModule = Module<Runtime>;
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 5;
@@ -281,13 +274,8 @@ impl prices::Trait for Runtime {
 	type LockOrigin = EnsureSignedBy<One, AccountId>;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 }
-pub type PricesModule = prices::Module<Runtime>;
 
 impl crate::Trait for Runtime {}
-
-pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
-}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let t = frame_system::GenesisConfig::default()

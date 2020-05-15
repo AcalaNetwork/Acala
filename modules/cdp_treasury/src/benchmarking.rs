@@ -3,9 +3,9 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
+use sp_std::prelude::*;
 
 pub fn dollar(d: u32) -> Balance {
 	let d: Balance = d.into();
