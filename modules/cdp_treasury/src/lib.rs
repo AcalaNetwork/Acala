@@ -21,6 +21,7 @@ use sp_runtime::{
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
 
+mod benchmarking;
 mod mock;
 mod tests;
 

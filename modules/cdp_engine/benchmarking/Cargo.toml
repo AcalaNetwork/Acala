@@ -1,5 +1,5 @@
 [package]
-name = "module-honzon-benchmarking"
+name = "module-cdp-engine-benchmarking"
 version = "0.4.4"
 authors = ["Acala Developers"]
 edition = "2018"
@@ -12,7 +12,6 @@ frame-system = { version = "2.0.0-alpha.6", default-features = false }
 frame-benchmarking = { version = "2.0.0-alpha.6", default-features = false }
 orml-oracle = { path = "../../../orml/oracle", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
-honzon = { package = "module-honzon", path = "../../honzon", default-features = false }
 prices = { package = "module-prices", path = "../../prices", default-features = false }
 primitives = { package = "module-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../../support", default-features = false }
@@ -38,7 +37,6 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"frame-benchmarking/std",
-	"honzon/std",
 	"cdp-engine/std",
 	"loans/std",
 	"support/std",

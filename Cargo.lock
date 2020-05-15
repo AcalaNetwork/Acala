@@ -95,10 +95,12 @@ dependencies = [
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
+ "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
  "module-dex",
  "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
+ "module-emergency-shutdown-benchmarking",
  "module-homa",
  "module-homa-treasury",
  "module-honzon",
@@ -3040,9 +3042,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-cdp-engine-benchmarking"
+version = "0.4.4"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-cdp-engine",
+ "module-cdp-treasury",
+ "module-loans",
+ "module-prices",
+ "module-primitives",
+ "module-support",
+ "orml-currencies",
+ "orml-oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-cdp-treasury"
 version = "0.4.4"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-dex",
@@ -3065,6 +3095,7 @@ dependencies = [
 name = "module-dex"
 version = "0.4.4"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
@@ -3131,6 +3162,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-emergency-shutdown-benchmarking"
+version = "0.4.4"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-cdp-engine",
+ "module-cdp-treasury",
+ "module-emergency-shutdown",
+ "module-loans",
+ "module-prices",
+ "module-primitives",
+ "module-support",
+ "orml-currencies",
+ "orml-oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-homa"
 version = "0.4.4"
 dependencies = [
@@ -3185,7 +3244,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon-benchmarking"
-version = "0.4.2"
+version = "0.4.4"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
