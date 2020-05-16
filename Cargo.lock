@@ -94,6 +94,7 @@ dependencies = [
  "module-accounts",
  "module-airdrop",
  "module-auction-manager",
+ "module-auction-manager-benchmarking",
  "module-cdp-engine",
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
@@ -3014,6 +3015,33 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "utilities",
+]
+
+[[package]]
+name = "module-auction-manager-benchmarking"
+version = "0.4.4"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-auction-manager",
+ "module-cdp-treasury",
+ "module-prices",
+ "module-primitives",
+ "module-support",
+ "orml-auction",
+ "orml-currencies",
+ "orml-oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

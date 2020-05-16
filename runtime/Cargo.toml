@@ -72,6 +72,7 @@ frame-benchmarking = { version = "2.0.0-alpha.6", default-features = false, opti
 module-honzon-benchmarking = { path = "../modules/honzon/benchmarking", default-features = false, optional = true }
 module-cdp-engine-benchmarking = { path = "../modules/cdp_engine/benchmarking", default-features = false, optional = true }
 module-emergency-shutdown-benchmarking = { path = "../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
+module-auction-manager-benchmarking = { path = "../modules/auction_manager/benchmarking", default-features = false, optional = true }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
@@ -155,4 +156,5 @@ runtime-benchmarks = [
 	"module-honzon-benchmarking",
 	"module-cdp-engine-benchmarking",
 	"module-emergency-shutdown-benchmarking",
+	"module-auction-manager-benchmarking",
 ]
