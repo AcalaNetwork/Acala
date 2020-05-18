@@ -69,7 +69,7 @@ decl_module! {
 		///			negative means withdraw collateral currency from CDP.
 		/// - `debit_adjustment`: signed amount, positive means to issue some amount of stablecoin to caller according to the debit adjustment,
 		///			negative means caller will payback some amount of stablecoin to CDP according to to the debit adjustment.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyId,
@@ -90,7 +90,7 @@ decl_module! {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `from`: authorizer account
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyId,
@@ -106,7 +106,7 @@ decl_module! {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `to`: authorizee account
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyId,
@@ -121,7 +121,7 @@ decl_module! {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `to`: authorizee account
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyId,
@@ -133,7 +133,7 @@ decl_module! {
 		}
 
 		/// Cancel all authorization of caller
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
 			<Authorization<T>>::remove_prefix(&from);

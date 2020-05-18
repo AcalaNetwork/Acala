@@ -8,37 +8,42 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-mod constants;
-mod types;
-
+use codec::Encode;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4};
-use sp_core::OpaqueMetadata;
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Convert, ConvertInto, OpaqueKeys, StaticLookup};
+use sp_core::{
+	crypto::KeyTypeId,
+	u32_trait::{_1, _2, _3, _4},
+	OpaqueMetadata,
+};
+use sp_runtime::traits::{
+	BlakeTwo256, Block as BlockT, Convert, ConvertInto, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
+};
 use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult,
+	ApplyExtrinsicResult, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use frame_system::{self as system, offchain::TransactionSubmitter};
+use frame_system::{self as system};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_oracle::OperatorProvider;
 use pallet_grandpa::fg_primitives;
-use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
-
-// A few exports that help ease life for downstream crates.
+use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
+use pallet_session::historical as pallet_session_historical;
 
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
-	traits::{Contains, Randomness},
-	weights::Weight,
+	traits::{Contains, ContainsLengthBound, KeyOwnerProofSystem, Randomness},
+	weights::{
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
+		Weight,
+	},
 	StorageValue,
 };
 pub use pallet_staking::StakerStatus;
@@ -50,6 +55,9 @@ pub use sp_runtime::{Perbill, Percent, Permill};
 pub use constants::{currency::*, time::*};
 pub use types::*;
 
+mod constants;
+mod types;
+
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
@@ -58,6 +66,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_version: 404,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
+	transaction_version: 1,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -100,43 +109,29 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 }
 
-// FIXME: `pallet/frame-` prefix should be used for all pallet modules, but currently `frame_system`
-// would cause compiling error in `construct_runtime!` https://github.com/paritytech/substrate/issues/3295
 impl system::Trait for Runtime {
-	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
-	/// The aggregated dispatch type that is available for extrinsics.
 	type Call = Call;
-	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = Indices;
-	/// The index type for storing how many extrinsics an account has signed.
 	type Index = Index;
-	/// The index type for blocks.
 	type BlockNumber = BlockNumber;
-	/// The type for hashing blocks and tries.
 	type Hash = Hash;
-	/// The hashing algorithm used.
 	type Hashing = BlakeTwo256;
-	/// The header type.
 	type Header = generic::Header<BlockNumber, BlakeTwo256>;
-	/// The ubiquitous event type.
 	type Event = Event;
-	/// The ubiquitous origin type.
 	type Origin = Origin;
-	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
 	type BlockHashCount = BlockHashCount;
-	/// Maximum weight of each block.
 	type MaximumBlockWeight = MaximumBlockWeight;
-	/// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
 	type MaximumBlockLength = MaximumBlockLength;
-	/// Portion of the block weight that is available to all normal transactions.
 	type AvailableBlockRatio = AvailableBlockRatio;
-	/// Version of the runtime.
 	type Version = Version;
 	type ModuleToIndex = ModuleToIndex;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type DbWeight = RocksDbWeight;
+	type BlockExecutionWeight = BlockExecutionWeight;
+	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
 }
 
 parameter_types! {
@@ -152,6 +147,21 @@ impl pallet_babe::Trait for Runtime {
 
 impl pallet_grandpa::Trait for Runtime {
 	type Event = Event;
+	type Call = Call;
+
+	type KeyOwnerProofSystem = Historical;
+
+	type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+
+	type KeyOwnerIdentification =
+		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::IdentificationTuple;
+
+	type HandleEquivocation = pallet_grandpa::EquivocationHandler<
+		Self::KeyOwnerIdentification,
+		report::ReporterAppCrypto,
+		Runtime,
+		(), //Offences,
+	>;
 }
 
 parameter_types! {
@@ -189,14 +199,12 @@ impl pallet_balances::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const TransactionBaseFee: Balance = 200 * MILLICENTS;
 	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
 	type OnTransactionPayment = ();
-	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = ConvertInto;
 	type FeeMultiplierUpdate = ();
@@ -209,6 +217,7 @@ impl pallet_sudo::Trait for Runtime {
 
 parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
+	pub const GeneralCouncilMaxProposals: u32 = 100;
 }
 
 type GeneralCouncilInstance = pallet_collective::Instance1;
@@ -217,6 +226,7 @@ impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = GeneralCouncilMotionDuration;
+	type MaxProposals = GeneralCouncilMaxProposals;
 }
 
 type GeneralCouncilMembershipInstance = pallet_membership::Instance1;
@@ -233,6 +243,7 @@ impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
 
 parameter_types! {
 	pub const HonzonCouncilMotionDuration: BlockNumber = 0;
+	pub const HonzonCouncilMaxProposals: u32 = 100;
 }
 
 type HonzonCouncilInstance = pallet_collective::Instance2;
@@ -241,6 +252,7 @@ impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = HonzonCouncilMotionDuration;
+	type MaxProposals = HonzonCouncilMaxProposals;
 }
 
 type HonzonCouncilMembershipInstance = pallet_membership::Instance2;
@@ -257,6 +269,7 @@ impl pallet_membership::Trait<HonzonCouncilMembershipInstance> for Runtime {
 
 parameter_types! {
 	pub const HomaCouncilMotionDuration: BlockNumber = 0;
+	pub const HomaCouncilMaxProposals: u32 = 100;
 }
 
 type HomaCouncilInstance = pallet_collective::Instance3;
@@ -265,6 +278,7 @@ impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = HomaCouncilMotionDuration;
+	type MaxProposals = HomaCouncilMaxProposals;
 }
 
 type HomaCouncilMembershipInstance = pallet_membership::Instance3;
@@ -281,6 +295,7 @@ impl pallet_membership::Trait<HomaCouncilMembershipInstance> for Runtime {
 
 parameter_types! {
 	pub const TechnicalCouncilMotionDuration: BlockNumber = 0;
+	pub const TechnicalCouncilMaxProposals: u32 = 100;
 }
 
 type TechnicalCouncilInstance = pallet_collective::Instance4;
@@ -289,6 +304,7 @@ impl pallet_collective::Trait<TechnicalCouncilInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = TechnicalCouncilMotionDuration;
+	type MaxProposals = TechnicalCouncilMaxProposals;
 }
 
 type TechnicalCouncilMembershipInstance = pallet_membership::Instance4;
@@ -305,6 +321,7 @@ impl pallet_membership::Trait<TechnicalCouncilMembershipInstance> for Runtime {
 
 parameter_types! {
 	pub const OperatorMotionDuration: BlockNumber = 0;
+	pub const OperatorMaxProposals: u32 = 100;
 }
 
 type OperatorCollectiveInstance = pallet_collective::Instance5;
@@ -313,6 +330,7 @@ impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = OperatorMotionDuration;
+	type MaxProposals = OperatorMaxProposals;
 }
 
 type OperatorMembershipInstance = pallet_membership::Instance5;
@@ -353,6 +371,15 @@ impl Contains<AccountId> for GeneralCouncilProvider {
 	}
 }
 
+impl ContainsLengthBound for GeneralCouncilProvider {
+	fn max_len() -> usize {
+		100
+	}
+	fn min_len() -> usize {
+		0
+	}
+}
+
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
@@ -362,6 +389,7 @@ parameter_types! {
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
 	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
 	pub const TipReportDepositPerByte: Balance = 1 * CENTS;
+	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 }
 
 impl pallet_treasury::Trait for Runtime {
@@ -379,6 +407,7 @@ impl pallet_treasury::Trait for Runtime {
 	type TipFindersFee = TipFindersFee;
 	type TipReportDepositBase = TipReportDepositBase;
 	type TipReportDepositPerByte = TipReportDepositPerByte;
+	type ModuleId = TreasuryModuleId;
 }
 
 parameter_types! {
@@ -386,13 +415,13 @@ parameter_types! {
 }
 
 impl pallet_session::Trait for Runtime {
-	type SessionManager = Staking;
-	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type ShouldEndSession = Babe;
 	type Event = Event;
-	type Keys = opaque::SessionKeys;
 	type ValidatorId = <Self as system::Trait>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
+	type ShouldEndSession = Babe;
+	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = opaque::SessionKeys;
 	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 	type NextSessionRotation = Babe;
 }
@@ -443,6 +472,7 @@ parameter_types! {
 	pub const MaxNominatorRewardedPerValidator: u32 = 64;
 	pub const ElectionLookahead: BlockNumber = 25;
 	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
+	pub const MaxIterations: u32 = 5;
 }
 
 impl pallet_staking::Trait for Runtime {
@@ -463,8 +493,8 @@ impl pallet_staking::Trait for Runtime {
 	type NextNewSession = Session;
 	type ElectionLookahead = ElectionLookahead;
 	type Call = Call;
+	type MaxIterations = MaxIterations;
 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-	type SubmitTransaction = TransactionSubmitterOf<()>;
 	type UnsignedPriority = StakingUnsignedPriority;
 }
 
@@ -589,8 +619,6 @@ impl module_auction_manager::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = Prices;
-	type Call = Call;
-	type SubmitTransaction = TransactionSubmitterOf<()>;
 	type UnsignedPriority = AuctionManagerUnsignedPriority;
 }
 
@@ -604,8 +632,64 @@ impl module_loans::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 }
 
-/// A transaction submitter with the given key type.
-pub type TransactionSubmitterOf<KeyType> = TransactionSubmitter<KeyType, Runtime, UncheckedExtrinsic>;
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+		call: Call,
+		public: <Signature as sp_runtime::traits::Verify>::Signer,
+		account: AccountId,
+		nonce: Index,
+	) -> Option<(
+		Call,
+		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
+	)> {
+		// take the biggest period possible.
+		let period = BlockHashCount::get()
+			.checked_next_power_of_two()
+			.map(|c| c / 2)
+			.unwrap_or(2) as u64;
+		let current_block = System::block_number()
+			.saturated_into::<u64>()
+			// The `System::block_number` is initialized with `n+1`,
+			// so the actual block number is `n`.
+			.saturating_sub(1);
+		let tip = 0;
+		let extra: SignedExtra = (
+			system::CheckSpecVersion::<Runtime>::new(),
+			system::CheckTxVersion::<Runtime>::new(),
+			system::CheckGenesis::<Runtime>::new(),
+			system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			system::CheckNonce::<Runtime>::from(nonce),
+			system::CheckWeight::<Runtime>::new(),
+			orml_oracle::CheckOperator::<Runtime>::new(),
+			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
+		);
+		let raw_payload = SignedPayload::new(call, extra)
+			.map_err(|e| {
+				debug::warn!("Unable to create signed payload: {:?}", e);
+			})
+			.ok()?;
+		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
+		let address = Indices::unlookup(account);
+		let (call, extra, _) = raw_payload.deconstruct();
+		Some((call, (address, signature.into(), extra)))
+	}
+}
+
+impl frame_system::offchain::SigningTypes for Runtime {
+	type Public = <Signature as sp_runtime::traits::Verify>::Signer;
+	type Signature = Signature;
+}
+
+impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+where
+	Call: From<C>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = UncheckedExtrinsic;
+}
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
@@ -630,8 +714,6 @@ impl module_cdp_engine::Trait for Runtime {
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = Dex;
-	type Call = Call;
-	type SubmitTransaction = TransactionSubmitterOf<()>;
 	type UnsignedPriority = CdpEngineUnsignedPriority;
 }
 
@@ -778,6 +860,7 @@ construct_runtime!(
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
+		Historical: pallet_session_historical::{Module},
 
 		// governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
@@ -826,7 +909,8 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
-	system::CheckVersion<Runtime>,
+	system::CheckSpecVersion<Runtime>,
+	system::CheckTxVersion<Runtime>,
 	system::CheckGenesis<Runtime>,
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
@@ -905,19 +989,14 @@ impl_runtime_apis! {
 	}
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
-		fn configuration() -> sp_consensus_babe::BabeConfiguration {
-			// The choice of `c` parameter (where `1 - c` represents the
-			// probability of a slot being empty), is done in accordance to the
-			// slot duration and expected target block time, for safely
-			// resisting network delays of maximum two seconds.
-			// <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-			sp_consensus_babe::BabeConfiguration {
+		fn configuration() -> sp_consensus_babe::BabeGenesisConfiguration {
+			sp_consensus_babe::BabeGenesisConfiguration {
 				slot_duration: Babe::slot_duration(),
 				epoch_length: EpochDuration::get(),
 				c: PRIMARY_PROBABILITY,
 				genesis_authorities: Babe::authorities(),
 				randomness: Babe::randomness(),
-				secondary_slots: true,
+				allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
 			}
 		}
 
@@ -933,7 +1012,7 @@ impl_runtime_apis! {
 
 		fn decode_session_keys(
 			encoded: Vec<u8>,
-		) -> Option<Vec<(Vec<u8>, sp_core::crypto::KeyTypeId)>> {
+		) -> Option<Vec<(Vec<u8>, KeyTypeId)>> {
 			opaque::SessionKeys::decode_into_raw_public_keys(&encoded)
 		}
 	}
@@ -941,6 +1020,32 @@ impl_runtime_apis! {
 	impl fg_primitives::GrandpaApi<Block> for Runtime {
 		fn grandpa_authorities() -> GrandpaAuthorityList {
 			Grandpa::grandpa_authorities()
+		}
+
+		fn submit_report_equivocation_extrinsic(
+			equivocation_proof: fg_primitives::EquivocationProof<
+				<Block as BlockT>::Hash,
+				NumberFor<Block>,
+			>,
+			key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
+		) -> Option<()> {
+			let key_owner_proof = key_owner_proof.decode()?;
+
+			Grandpa::submit_report_equivocation_extrinsic(
+				equivocation_proof,
+				key_owner_proof,
+			)
+		}
+
+		fn generate_key_ownership_proof(
+			_set_id: fg_primitives::SetId,
+			authority_id: GrandpaId,
+		) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
+			use codec::Encode;
+
+			Historical::prove((fg_primitives::KEY_TYPE, authority_id))
+				.map(|p| p.encode())
+				.map(fg_primitives::OpaqueKeyOwnershipProof::new)
 		}
 	}
 
@@ -1014,5 +1119,22 @@ impl_runtime_apis! {
 		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
 			StakingPool::liquid_exchange_rate()
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use frame_system::offchain::CreateSignedTransaction;
+
+	#[test]
+	fn validate_transaction_submitter_bounds() {
+		fn is_submit_signed_transaction<T>()
+		where
+			T: CreateSignedTransaction<Call>,
+		{
+		}
+
+		is_submit_signed_transaction::<Runtime>();
 	}
 }

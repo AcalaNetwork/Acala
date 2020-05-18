@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
+use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use primitives::Balance;
 use sp_core::H256;
 use sp_runtime::{
@@ -85,6 +85,9 @@ impl system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 pub type System = system::Module<Runtime>;
 
@@ -207,10 +210,6 @@ impl cdp_treasury::Trait for Runtime {
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
-type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
-
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
@@ -234,11 +233,20 @@ impl cdp_engine::Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = ();
-	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = cdp_engine::Module<Runtime>;
+
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 impl Trait for Runtime {
 	type Event = TestEvent;

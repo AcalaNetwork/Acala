@@ -42,7 +42,7 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn airdrop(
 			origin,
 			to: T::AccountId,
@@ -54,7 +54,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Airdrop(to, currency_id, amount));
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn update_airdrop(
 			origin,
 			to: T::AccountId,

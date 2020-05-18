@@ -98,7 +98,7 @@ decl_module! {
 		/// Start emergency shutdown
 		///
 		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn emergency_shutdown(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
@@ -123,7 +123,7 @@ decl_module! {
 		/// Open final redemption if settlement is completed.
 		///
 		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn open_collateral_refund(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
@@ -163,7 +163,7 @@ decl_module! {
 		/// Refund a basket of remaining collateral assets to caller
 		///
 		/// - `amount`: stable coin amount used to refund.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn refund_collaterals(origin, #[compact] amount: Balance) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);

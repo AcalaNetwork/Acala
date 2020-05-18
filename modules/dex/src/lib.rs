@@ -12,7 +12,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{SimpleDispatchInfo, WeighData, Weight},
+	weights::Weight,
 	Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
@@ -160,7 +160,7 @@ decl_module! {
 		///
 		/// - `currency_id`: currency type to determine the type of liquidity pool.
 		/// - `liquidity_incentive_rate`: liquidity incentive rate.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn set_liquidity_incentive_rate(
 			origin,
 			currency_id: CurrencyId,
@@ -176,7 +176,7 @@ decl_module! {
 		/// Just withdraw liquidity incentive interest as the additional reward for liquidity contribution
 		///
 		/// - `currency_id`: currency type to determine the type of liquidity pool.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			let who = ensure_signed(origin)?;
 			Self::claim_interest(currency_id, &who)?;
@@ -188,7 +188,7 @@ decl_module! {
 		/// - `supply_amount`: supply currency amount.
 		/// - `target_currency_id`: target currency type.
 		/// - `acceptable_target_amount`: acceptable target amount, if actual amount is under it, swap will not happen
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyId,
@@ -219,7 +219,7 @@ decl_module! {
 		/// - `other_currency_id`: currency type to determine the type of liquidity pool.
 		/// - `max_other_currency_amount`: maximum currency amount allowed to inject to liquidity pool.
 		/// - `max_base_currency_amount`: maximum base currency(stable coin) amount allowed to inject to liquidity pool.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyId,
@@ -299,7 +299,7 @@ decl_module! {
 		///
 		/// - `currency_id`: currency type to determine the type of liquidity pool.
 		/// - `share_amount`: share amount to burn.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -349,7 +349,7 @@ decl_module! {
 				}
 			}
 
-			SimpleDispatchInfo::default().weigh_data(())
+			0
 		}
 	}
 }
