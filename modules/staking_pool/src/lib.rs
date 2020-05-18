@@ -63,17 +63,17 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as StakingPool {
-		pub CurrentEra get(current_era): EraIndex;
+		pub CurrentEra get(fn current_era): EraIndex;
 
-		pub NextEraUnbond get(next_era_unbond): (Balance, Balance);
-		pub Unbonding get(unbonding): map hasher(twox_64_concat) EraIndex => (Balance, Balance); // (value, claimed), value - claimed = unbond to free
+		pub NextEraUnbond get(fn next_era_unbond): (Balance, Balance);
+		pub Unbonding get(fn unbonding): map hasher(twox_64_concat) EraIndex => (Balance, Balance); // (value, claimed), value - claimed = unbond to free
 
-		pub ClaimedUnbond get(claimed_unbond): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) EraIndex => Balance;
-		pub TotalClaimedUnbonded get(total_claimed_unbonded): Balance;
+		pub ClaimedUnbond get(fn claimed_unbond): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) EraIndex => Balance;
+		pub TotalClaimedUnbonded get(fn total_claimed_unbonded): Balance;
 
-		pub TotalBonded get(total_bonded): Balance;
-		pub UnbondingToFree get(unbonding_to_free): Balance;
-		pub FreeUnbonded get(free_unbonded): Balance;
+		pub TotalBonded get(fn total_bonded): Balance;
+		pub UnbondingToFree get(fn unbonding_to_free): Balance;
+		pub FreeUnbonded get(fn free_unbonded): Balance;
 	}
 }
 
@@ -130,7 +130,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn get_available_unbonded(who: &T::AccountId) -> Balance {
 		let current_era = Self::current_era();
-		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, Balance)>>();
+		let claimed_unbond = <ClaimedUnbond<T>>::iter_prefix(who).collect::<Vec<(EraIndex, Balance)>>();
 		let mut available_unbonded: Balance = Zero::zero();
 
 		for (era_index, claimed) in claimed_unbond {
@@ -144,7 +144,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn withdraw_unbonded(who: &T::AccountId) -> sp_std::result::Result<Balance, DispatchError> {
 		let current_era = Self::current_era();
-		let claimed_unbond = <ClaimedUnbond<T>>::iter(who).collect::<Vec<(EraIndex, Balance)>>();
+		let claimed_unbond = <ClaimedUnbond<T>>::iter_prefix(who).collect::<Vec<(EraIndex, Balance)>>();
 		let staking_currency_id = T::StakingCurrencyId::get();
 		let mut withdrawn_amount: Balance = Zero::zero();
 

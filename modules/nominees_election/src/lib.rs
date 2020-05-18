@@ -115,11 +115,11 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as NomineesElection {
-		pub Nominations get(nominations): map hasher(twox_64_concat) T::AccountId => Vec<T::PolkadotAccountId>;
-		pub Ledger get(ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger;
-		pub Votes get(votes): map hasher(twox_64_concat) T::PolkadotAccountId => Balance;
-		pub Nominees get(nominees): Vec<T::PolkadotAccountId>;
-		pub CurrentEra get(current_era): EraIndex;
+		pub Nominations get(fn nominations): map hasher(twox_64_concat) T::AccountId => Vec<T::PolkadotAccountId>;
+		pub Ledger get(fn ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger;
+		pub Votes get(fn votes): map hasher(twox_64_concat) T::PolkadotAccountId => Balance;
+		pub Nominees get(fn nominees): Vec<T::PolkadotAccountId>;
+		pub CurrentEra get(fn current_era): EraIndex;
 	}
 }
 
@@ -131,7 +131,7 @@ decl_module! {
 		const NominateesCount: u32 = T::NominateesCount::get() as u32;
 		const MaxUnlockingChunks: u32 = T::MaxUnlockingChunks::get() as u32;
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn bond(origin, #[compact] amount: Balance) {
 			let who = ensure_signed(origin)?;
 
@@ -150,7 +150,7 @@ decl_module! {
 			}
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn unbond(origin, amount: Balance) {
 			let who = ensure_signed(origin)?;
 
@@ -184,7 +184,7 @@ decl_module! {
 			}
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn rebond(origin, amount: Balance) {
 			let who = ensure_signed(origin)?;
 			let ledger = Self::ledger(&who);
@@ -200,7 +200,7 @@ decl_module! {
 			Self::update_ledger(&who, &ledger);
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn withdraw_unbonded(origin) {
 			let who = ensure_signed(origin)?;
 			let ledger = Self::ledger(&who).consolidate_unlocked(Self::current_era());
@@ -213,7 +213,7 @@ decl_module! {
 			}
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn nominate(origin, targets: Vec<T::PolkadotAccountId>) {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -236,7 +236,7 @@ decl_module! {
 			<Nominations<T>>::insert(&who, &targets);
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn chill(origin) {
 			let who = ensure_signed(origin)?;
 

@@ -61,6 +61,9 @@ impl system::Trait for Runtime {
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 pub type System = system::Module<Runtime>;
 

@@ -64,6 +64,9 @@ impl system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 
 parameter_types! {
@@ -115,14 +118,12 @@ impl pallet_timestamp::Trait for Runtime {
 pub type TimeModule = pallet_timestamp::Module<Runtime>;
 
 parameter_types! {
-	pub const TransactionBaseFee: Balance = 42;
 	pub const TransactionByteFee: Balance = 2;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = PalletBalances;
 	type OnTransactionPayment = ();
-	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = ConvertInto;
 	type FeeMultiplierUpdate = ();
