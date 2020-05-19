@@ -73,19 +73,18 @@ impl system::Trait for Runtime {
 }
 pub type System = system::Module<Runtime>;
 
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
-}
-
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type DustRemoval = ();
 }
 pub type TokensModule = orml_tokens::Module<Runtime>;
+
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
