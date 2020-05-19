@@ -7,7 +7,7 @@ use runtime::{
 	CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GenesisConfig,
 	GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, OperatorMembershipConfig,
 	PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-	TechnicalCouncilMembershipConfig, TokensConfig, CENTS, DOLLARS, WASM_BINARY,
+	TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -297,6 +297,7 @@ fn testnet_genesis(
 				})
 				.collect(),
 		}),
+		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
 			surplus_buffer_size: 10_000 * DOLLARS,       // cache amount, exceed this will create surplus auction
@@ -422,6 +423,7 @@ fn mandala_genesis(
 				(root_key.clone(), CurrencyId::XBTC, INITIAL_BALANCE),
 			],
 		}),
+		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			surplus_auction_fixed_size: 100 * DOLLARS, // amount in aUSD of per surplus auction
 			surplus_buffer_size: 1_000 * DOLLARS,      // cache amount, exceed this will create surplus auction
