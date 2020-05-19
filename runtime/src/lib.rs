@@ -599,6 +599,11 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
+impl orml_vesting::Trait for Runtime {
+	type Event = Event;
+	type Currency = pallet_balances::Module<Runtime>;
+}
+
 parameter_types! {
 	pub const MinimumIncrementSize: Rate = Rate::from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
@@ -879,6 +884,7 @@ construct_runtime!(
 		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
 		Prices: module_prices::{Module, Storage, Call, Event},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},

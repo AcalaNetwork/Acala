@@ -115,6 +115,7 @@ dependencies = [
  "orml-oracle-rpc-runtime-api",
  "orml-tokens",
  "orml-traits",
+ "orml-vesting",
  "pallet-babe",
  "pallet-balances",
  "pallet-collective",
