@@ -605,6 +605,16 @@ impl orml_vesting::Trait for Runtime {
 }
 
 parameter_types! {
+	pub const MaxScheduleDispatchWeight: Weight = 100_000_000;
+}
+
+impl orml_schedule_update::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type MaxScheduleDispatchWeight = MaxScheduleDispatchWeight;
+}
+
+parameter_types! {
 	pub const MinimumIncrementSize: Rate = Rate::from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
@@ -885,6 +895,7 @@ construct_runtime!(
 		Prices: module_prices::{Module, Storage, Call, Event},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
+		ScheduleUpdate: orml_schedule_update::{Module, Storage, Call, Event<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
