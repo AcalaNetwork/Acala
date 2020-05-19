@@ -11,6 +11,7 @@ serde = { version = "1.0.101", optional = true }
 frame-executive = { version = "2.0.0-alpha.8", default-features = false }
 frame-support = { version = "2.0.0-alpha.8", default-features = false }
 frame-system-rpc-runtime-api = { version = "2.0.0-alpha.8", default-features = false }
+frame-benchmarking = { version = "2.0.0-alpha.8", default-features = false, optional = true }
 pallet-babe = { version = "2.0.0-alpha.8", default-features = false }
 pallet-balances = { version = "2.0.0-alpha.8", default-features = false }
 pallet-collective = { version = "2.0.0-alpha.8", default-features = false }
@@ -50,6 +51,7 @@ orml-oracle = { path = "../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
 orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-traits = { path = "../orml/traits", default-features = false }
+orml-benchmarking = { path = "../orml/benchmarking", default-features = false }
 
 module-accounts = { path = "../modules/accounts", default-features = false }
 module-airdrop = { path = "../modules/airdrop", default-features = false }
@@ -85,6 +87,7 @@ std = [
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
+	"frame-benchmarking/std",
 	"pallet-babe/std",
 	"pallet-balances/std",
 	"pallet-collective/std",
@@ -119,6 +122,7 @@ std = [
 	"orml-oracle/std",
 	"orml-tokens/std",
 	"orml-traits/std",
+	"orml-benchmarking/std",
 
 	"module-accounts/std",
 	"module-airdrop/std",
@@ -139,4 +143,11 @@ std = [
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
 	"module-homa-treasury/std",
+]
+runtime-benchmarks = [
+    "sp-runtime/runtime-benchmarks",
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "pallet-collective/runtime-benchmarks",
 ]
