@@ -552,16 +552,11 @@ impl orml_oracle::Trait for Runtime {
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
 
-parameter_types! {
-	pub const TokenExistentialDeposit: Balance = 0;
-}
-
 impl orml_tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = TokenExistentialDeposit;
 	type DustRemoval = ();
 }
 
