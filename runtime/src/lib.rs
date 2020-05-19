@@ -55,6 +55,7 @@ pub use sp_runtime::{Perbill, Percent, Permill};
 pub use constants::{currency::*, time::*};
 pub use types::*;
 
+mod benchmarking;
 mod constants;
 mod types;
 
@@ -553,7 +554,7 @@ impl orml_oracle::Trait for Runtime {
 pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
 
 parameter_types! {
-	pub const TokenExistentialDeposit: Balance = 0;
+	pub const TokenExistentialDeposit: Balance = 10 * MICROCENTS;
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -1118,6 +1119,29 @@ impl_runtime_apis! {
 
 		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
 			StakingPool::liquid_exchange_rate()
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn dispatch_benchmark(
+			pallet: Vec<u8>,
+			benchmark: Vec<u8>,
+			lowest_range_values: Vec<u32>,
+			highest_range_values: Vec<u32>,
+			steps: Vec<u32>,
+			repeat: u32,
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch};
+			use orml_benchmarking::add_benchmark;
+
+			let mut batches = Vec::<BenchmarkBatch>::new();
+			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
+
+			add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
+
+			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
+			Ok(batches)
 		}
 	}
 }

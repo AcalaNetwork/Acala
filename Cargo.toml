@@ -71,6 +71,9 @@ build-script-utils = { package = "substrate-build-script-utils", version = "2.0.
 [features]
 default = ["wasmtime"]
 wasmtime = [ "sc-cli/wasmtime" ]
+runtime-benchmarks = [
+	"runtime/runtime-benchmarks",
+]
 
 [workspace]
 members = [
@@ -86,6 +89,7 @@ members = [
 	"orml/traits",
 	"orml/utilities",
 	"orml/vesting",
+	"orml/benchmarking",
 	"runtime",
 	"inspect",
 ]
