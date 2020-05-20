@@ -1151,6 +1151,7 @@ impl_runtime_apis! {
 			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
 
 			add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
+			add_benchmark!(params, batches, b"vesting", benchmarking::vesting);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
