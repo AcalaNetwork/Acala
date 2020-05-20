@@ -15,6 +15,7 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
+frame-benchmarking = { version = "2.0.0-alpha.8", default-features = false, optional = true }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0-alpha.8", default-features = false }
@@ -37,4 +38,8 @@ std = [
 	"orml-tokens/std",
 	"support/std",
 	"primitives/std",
+	"frame-benchmarking/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking",
 ]

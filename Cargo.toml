@@ -55,6 +55,7 @@ sp-transaction-pool = { version = "2.0.0-alpha.8" }
 substrate-frame-rpc-system = { version = "2.0.0-alpha.8" }
 frame-benchmarking-cli = { version = "2.0.0-alpha.8" }
 sp-blockchain = { version = "2.0.0-alpha.8" }
+frame-benchmarking = { version = "2.0.0-alpha.8" }
 
 module-dex-rpc = { path = "modules/dex/rpc" }
 module-support = { path = "modules/support" }
@@ -67,6 +68,7 @@ inspect = { package = "acala-inspect", path = "inspect" }
 [build-dependencies]
 vergen = "3.0.4"
 build-script-utils = { package = "substrate-build-script-utils", version = "2.0.0-alpha.8" }
+frame-benchmarking-cli = { version = "2.0.0-alpha.8" }
 
 [features]
 default = ["wasmtime"]

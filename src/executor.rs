@@ -10,4 +10,5 @@ native_executor_instance!(
 	pub Executor,
 	runtime::api::dispatch,
 	runtime::native_version,
+	frame_benchmarking::benchmarking::HostFunctions,
 );

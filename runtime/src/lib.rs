@@ -370,6 +370,11 @@ impl Contains<AccountId> for GeneralCouncilProvider {
 	fn sorted_members() -> Vec<AccountId> {
 		GeneralCouncil::members()
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add(_: &AccountId) {
+		todo!()
+	}
 }
 
 impl ContainsLengthBound for GeneralCouncilProvider {
@@ -1134,6 +1139,7 @@ impl_runtime_apis! {
 		}
 	}
 
+	// benchmarks for acala modules
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn dispatch_benchmark(
@@ -1144,14 +1150,30 @@ impl_runtime_apis! {
 			steps: Vec<u32>,
 			repeat: u32,
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch};
-			use orml_benchmarking::add_benchmark;
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark};
+			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
+
+			use module_honzon_benchmarking::Module as HonzonBench;
+			use module_cdp_engine_benchmarking::Module as CdpEngineBench;
+			use module_emergency_shutdown_benchmarking::Module as EmergencyShutdownBench;
+			use module_auction_manager_benchmarking::Module as AuctionManagerBench;
+
+			impl module_honzon_benchmarking::Trait for Runtime {}
+			impl module_cdp_engine_benchmarking::Trait for Runtime {}
+			impl module_emergency_shutdown_benchmarking::Trait for Runtime {}
+			impl module_auction_manager_benchmarking::Trait for Runtime {}
 
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat);
 
-			add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
-			add_benchmark!(params, batches, b"vesting", benchmarking::vesting);
+			add_benchmark!(params, batches, b"dex", Dex);
+			add_benchmark!(params, batches, b"cdp-treasury", CdpTreasury);
+			add_benchmark!(params, batches, b"honzon", HonzonBench::<Runtime>);
+			add_benchmark!(params, batches, b"cdp-engine", CdpEngineBench::<Runtime>);
+			add_benchmark!(params, batches, b"emergency-shutdown", EmergencyShutdownBench::<Runtime>);
+			add_benchmark!(params, batches, b"auction-manager", AuctionManagerBench::<Runtime>);
+			orml_add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
+			orml_add_benchmark!(params, batches, b"vesting", benchmarking::vesting);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

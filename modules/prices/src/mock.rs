@@ -82,6 +82,12 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	}
 }
 
+impl DataProviderExtended<CurrencyId, Price, AccountId> for MockDataProvider {
+	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> sp_runtime::DispatchResult {
+		Ok(())
+	}
+}
+
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {

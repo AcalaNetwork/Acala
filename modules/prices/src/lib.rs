@@ -5,7 +5,7 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 };
 use frame_system::{self as system, ensure_root};
-use orml_traits::DataProvider;
+use orml_traits::{DataProvider, DataProviderExtended};
 use primitives::CurrencyId;
 use support::{ExchangeRateProvider, Price, PriceProvider};
 
@@ -14,7 +14,7 @@ mod tests;
 
 pub trait Trait: system::Trait {
 	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
-	type Source: DataProvider<CurrencyId, Price>;
+	type Source: DataProviderExtended<CurrencyId, Price, Self::AccountId>;
 	type GetStableCurrencyId: Get<CurrencyId>;
 	type StableCurrencyFixedPrice: Get<Price>;
 	type GetStakingCurrencyId: Get<CurrencyId>;
