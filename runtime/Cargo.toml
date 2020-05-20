@@ -83,7 +83,7 @@ module-auction-manager-benchmarking = { path = "../modules/auction_manager/bench
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
 
 [dev-dependencies]
-sp-io = { version = "2.0.0-alpha.6" }
+sp-io = { version = "2.0.0-alpha.8" }
 
 [features]
 default = ["std"]
