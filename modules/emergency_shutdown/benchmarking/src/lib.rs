@@ -17,7 +17,7 @@ use emergency_shutdown::Module as EmergencyShutdown;
 use emergency_shutdown::*;
 use orml_oracle::OperatorProvider;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
-use primitives::Balance;
+use primitives::{Balance, CurrencyId};
 use support::{CDPTreasury, Price};
 
 pub struct Module<T: Trait>(emergency_shutdown::Module<T>);
@@ -31,6 +31,14 @@ fn dollar(d: u32) -> Balance {
 	d.saturating_mul(1_000_000_000_000_000_000)
 }
 
+fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
+	let oracle_operators = <T as orml_oracle::Trait>::OperatorProvider::operators();
+	for operator in oracle_operators {
+		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
+	}
+	Ok(())
+}
+
 benchmarks! {
 	_ { }
 
@@ -38,14 +46,7 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let currency_id = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get()[0];
-		let oracle_operators = <T as orml_oracle::Trait>::OperatorProvider::operators();
-		for operator in oracle_operators {
-			<T as prices::Trait>::Source::feed_value(
-				operator.clone(),
-				currency_id,
-				Price::from_natural(1),
-			)?;
-		}
+		feed_price::<T>(currency_id, Price::from_natural(1))?;
 	}: emergency_shutdown(RawOrigin::Root)
 
 	open_collateral_refund {

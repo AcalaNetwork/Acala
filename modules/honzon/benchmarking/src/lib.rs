@@ -62,16 +62,23 @@ benchmarks! {
 		let v in 0 .. 100;
 
 		let caller: T::AccountId = account("caller", u, SEED);
+		let currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
+
 		for i in 0 .. v {
 			let to: T::AccountId = account("to", i, SEED);
-			Honzon::<T>::authorize(
-				RawOrigin::Signed(caller.clone()).into(),
-				CurrencyId::DOT,
-				to
-			)?;
+
+			for currency_id in &currency_ids {
+				Honzon::<T>::authorize(
+					RawOrigin::Signed(caller.clone()).into(),
+					*currency_id,
+					to.clone(),
+				)?;
+			}
 		}
 	}: _(RawOrigin::Signed(caller))
 
+	// `adjust_loan`, best case:
+	// adjust both collateral and debit
 	adjust_loan {
 		let u in 0 .. 1000;
 

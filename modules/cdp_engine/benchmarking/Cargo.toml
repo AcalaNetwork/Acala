@@ -17,6 +17,7 @@ primitives = { package = "module-primitives", path = "../../primitives", default
 support = { package = "module-support", path = "../../support", default-features = false }
 cdp-engine = { package = "module-cdp-engine", path = "../../cdp_engine", default-features = false }
 loans = { package = "module-loans", path = "../../loans", default-features = false }
+dex = { package = "module-dex", path = "../../dex", default-features = false }
 
 [dev-dependencies]
 serde = { version = "1.0.101" }
@@ -43,4 +44,5 @@ std = [
 	"orml-oracle/std",
 	"orml-traits/std",
 	"prices/std",
+	"dex/std",
 ]
