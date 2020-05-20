@@ -45,6 +45,8 @@ fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'s
 benchmarks! {
 	_ { }
 
+	// `cancel` a surplus auction, worst case:
+	// auction have been already bid
 	cancel_surplus_auction {
 		let u in 0 .. 1000;
 
@@ -65,6 +67,8 @@ benchmarks! {
 		AuctionManager::<T>::on_emergency_shutdown();
 	}: cancel(RawOrigin::None, auction_id)
 
+	// `cancel` a debit auction, worst case:
+	// auction have been already bid
 	cancel_debit_auction {
 		let u in 0 .. 1000;
 
@@ -85,6 +89,8 @@ benchmarks! {
 		AuctionManager::<T>::on_emergency_shutdown();
 	}: cancel(RawOrigin::None, auction_id)
 
+	// `cancel` a collateral auction, worst case:
+	// auction have been already bid
 	cancel_collateral_auction {
 		let u in 0 .. 1000;
 

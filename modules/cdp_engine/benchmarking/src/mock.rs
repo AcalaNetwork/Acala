@@ -30,6 +30,7 @@ pub type AccountIndex = u32;
 pub type AccountId = u64;
 pub type AuctionId = u64;
 pub type BlockNumber = u64;
+pub type Share = u64;
 pub type DebitBalance = Balance;
 pub type DebitAmount = Amount;
 
@@ -166,9 +167,26 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type DEX = ();
+	type DEX = DexModule;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
+
+parameter_types! {
+	pub const GetBaseCurrencyId: CurrencyId = AUSD;
+	pub const GetExchangeFee: Rate = Rate::from_rational(1, 1000);
+}
+
+impl dex::Trait for Runtime {
+	type Event = ();
+	type Currency = Currencies;
+	type Share = Share;
+	type EnabledCurrencyIds = CollateralCurrencyIds;
+	type GetBaseCurrencyId = GetBaseCurrencyId;
+	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CDPTreasuryModule;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+}
+pub type DexModule = dex::Module<Runtime>;
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
@@ -192,7 +210,7 @@ impl cdp_engine::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type DEX = ();
+	type DEX = DexModule;
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = cdp_engine::Module<Runtime>;
