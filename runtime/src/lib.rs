@@ -1173,6 +1173,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, b"emergency-shutdown", EmergencyShutdownBench::<Runtime>);
 			add_benchmark!(params, batches, b"auction-manager", AuctionManagerBench::<Runtime>);
 			orml_add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
+			orml_add_benchmark!(params, batches, b"vesting", benchmarking::vesting);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
