@@ -11,9 +11,13 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	IsSubType, IterableStorageDoubleMap,
+	weights::DispatchClass,
+	IterableStorageDoubleMap,
 };
-use frame_system::{self as system, ensure_none, ensure_root, offchain::SubmitUnsignedTransaction};
+use frame_system::{
+	self as system, ensure_none, ensure_root,
+	offchain::{SendTransactionTypes, SubmitTransaction},
+};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
@@ -37,7 +41,7 @@ mod tests;
 
 const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
 
-pub trait Trait: system::Trait + loans::Trait {
+pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
 	/// The origin which may update risk management parameters. Root can always do this.
@@ -72,12 +76,6 @@ pub trait Trait: system::Trait + loans::Trait {
 
 	/// The DEX participating in liquidation
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
-
-	/// A dispatchable call type.
-	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
-
-	/// A transaction submitter.
-	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
 
 	/// A configuration for base priority of unsigned transactions.
 	///
@@ -247,7 +245,7 @@ decl_module! {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = (10_000, DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -264,7 +262,7 @@ decl_module! {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = (10_000, DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -280,7 +278,7 @@ decl_module! {
 		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
 		///
 		/// - `global_stability_fee`: global stability fee rate.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -302,7 +300,7 @@ decl_module! {
 		/// - `liquidation_penalty`: liquidation penalty, `None` means do not update, `Some(None)` means update it to `None`.
 		/// - `required_collateral_ratio`: required collateral ratio, `None` means do not update, `Some(None)` means update it to `None`.
 		/// - `maximum_total_debit_value`: maximum total debit value.
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
@@ -400,13 +398,15 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) -> Result<(), OffchainErr> {
 		let call = Call::<T>::liquidate(currency_id, who);
-		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
+		SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+			.map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
 	}
 
 	fn submit_unsigned_settle_tx(currency_id: CurrencyId, who: T::AccountId) -> Result<(), OffchainErr> {
 		let call = Call::<T>::settle(currency_id, who);
-		T::SubmitTransaction::submit_unsigned(call).map_err(|_| OffchainErr::SubmitTransaction)?;
+		SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+			.map_err(|_| OffchainErr::SubmitTransaction)?;
 		Ok(())
 	}
 
@@ -447,7 +447,7 @@ impl<T: Trait> Module<T> {
 		let currency_id = collateral_currency_ids[(position as usize)];
 
 		if !Self::is_shutdown() {
-			for (account_id, _) in <loans::Debits<T>>::iter(currency_id) {
+			for (account_id, _) in <loans::Debits<T>>::iter_prefix(currency_id) {
 				if Self::is_cdp_unsafe(currency_id, &account_id) {
 					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
 						debug::warn!(
@@ -468,7 +468,7 @@ impl<T: Trait> Module<T> {
 				offchain_lock.extend_offchain_lock_if_needed::<u32>();
 			}
 		} else {
-			for (account_id, debit) in <loans::Debits<T>>::iter(currency_id) {
+			for (account_id, debit) in <loans::Debits<T>>::iter_prefix(currency_id) {
 				if !debit.is_zero() {
 					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
 						debug::warn!(

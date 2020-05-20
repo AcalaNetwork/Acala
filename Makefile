@@ -49,7 +49,7 @@ submodule:
 	git submodule update --init --recursive
 
 update-orml:
-	cd orml && git checkout alpha-6 && git pull
+	cd orml && git checkout master && git pull
 	git add orml
 
 update: update-orml

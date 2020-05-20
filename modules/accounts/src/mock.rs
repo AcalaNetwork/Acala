@@ -64,10 +64,9 @@ impl system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -75,10 +74,13 @@ impl orml_tokens::Trait for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type DustRemoval = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
+
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
@@ -115,14 +117,12 @@ impl pallet_timestamp::Trait for Runtime {
 pub type TimeModule = pallet_timestamp::Module<Runtime>;
 
 parameter_types! {
-	pub const TransactionBaseFee: Balance = 42;
 	pub const TransactionByteFee: Balance = 2;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = PalletBalances;
 	type OnTransactionPayment = ();
-	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = ConvertInto;
 	type FeeMultiplierUpdate = ();

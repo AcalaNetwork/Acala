@@ -43,12 +43,12 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as PolkadotBridge {
-		pub Bonded get(bonded): Balance;	// active
-		pub Available get(available): Balance; // balance - bonded
-		pub Unbonding get(unbonding): Vec<(Balance, EraIndex)>;
-		pub CurrentEra get(current_era): EraIndex;
+		pub Bonded get(fn bonded): Balance;	// active
+		pub Available get(fn available): Balance; // balance - bonded
+		pub Unbonding get(fn unbonding): Vec<(Balance, EraIndex)>;
+		pub CurrentEra get(fn current_era): EraIndex;
 		pub EraStartBlockNumber get(fn era_start_block_number): T::BlockNumber;
-		pub ForcedEra get(forced_era): Option<T::BlockNumber>;
+		pub ForcedEra get(fn forced_era): Option<T::BlockNumber>;
 		pub MockRewardRate get(fn mock_reward_rate) config(): Option<Rate>;
 	}
 }
@@ -61,7 +61,7 @@ decl_module! {
 		const BondingDuration: EraIndex = T::BondingDuration::get();
 		const EraLength: T::BlockNumber = T::EraLength::get();
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn set_mock_reward_rate(origin, mock_reward_rate: Option<Rate>) {
 			ensure_root(origin)?;
 			if let Some(mock_reward_rate) = mock_reward_rate {
@@ -71,31 +71,31 @@ decl_module! {
 			}
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn simulate_bond(origin, amount: Balance) {
 			ensure_root(origin)?;
 			Self::bond_extra(amount)?;
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn simulate_unbond(origin, amount: Balance) {
 			ensure_root(origin)?;
 			Self::unbond(amount)?;
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn simulate_withdraw_unbonded(origin) {
 			let _ = ensure_signed(origin)?;
 			Self::withdraw_unbonded();
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn simulate_slash(origin, amount: Balance) {
 			ensure_root(origin)?;
 			Bonded::mutate(|balance| *balance = balance.saturating_sub(amount));
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn simualte_receive(origin, to: T::AccountId, amount: Balance) {
 			ensure_root(origin)?;
 			let new_available = Self::available().checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
@@ -103,7 +103,7 @@ decl_module! {
 			Available::put(new_available);
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: Balance) {
 			let from = ensure_signed(origin)?;
 			let new_available = Self::available().checked_add(amount).ok_or(Error::<T>::Overflow)?;
@@ -111,7 +111,7 @@ decl_module! {
 			Available::put(new_available);
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		pub fn force_era(origin, at: T::BlockNumber) {
 			ensure_root(origin)?;
 			if at > <system::Module<T>>::block_number() {

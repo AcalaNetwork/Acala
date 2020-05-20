@@ -43,7 +43,7 @@ decl_module! {
 		const GetStableCurrencyId: CurrencyId = T::GetStableCurrencyId::get();
 		const StableCurrencyFixedPrice: Price = T::StableCurrencyFixedPrice::get();
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		fn lock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())
@@ -52,7 +52,7 @@ decl_module! {
 			<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		fn unlock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())

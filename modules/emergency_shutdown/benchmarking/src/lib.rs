@@ -79,10 +79,22 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_benchmarks() {
+	fn call_emergency_shutdown() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_call_emergency_shutdown::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn open_collateral_refund() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_open_collateral_refund::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn refund_collaterals() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_refund_collaterals::<Runtime>());
 		});
 	}

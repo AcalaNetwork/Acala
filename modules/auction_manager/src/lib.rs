@@ -12,9 +12,13 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IsSubType, IterableStorageMap,
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchClass,
+	IterableStorageMap,
 };
-use frame_system::{self as system, ensure_none, offchain::SubmitUnsignedTransaction};
+use frame_system::{
+	self as system, ensure_none,
+	offchain::{SendTransactionTypes, SubmitTransaction},
+};
 use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -82,7 +86,7 @@ pub struct SurplusAuctionItem<BlockNumber> {
 type AuctionIdOf<T> =
 	<<T as Trait>::Auction as Auction<<T as system::Trait>::AccountId, <T as system::Trait>::BlockNumber>>::AuctionId;
 
-pub trait Trait: system::Trait {
+pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
 	/// The minimum increment size of each bid compared to the previous one
@@ -114,12 +118,6 @@ pub trait Trait: system::Trait {
 
 	/// The price source of currencies
 	type PriceSource: PriceProvider<CurrencyId>;
-
-	/// A dispatchable call type.
-	type Call: From<Call<Self>> + IsSubType<Module<Self>, Self>;
-
-	/// A transaction submitter.
-	type SubmitTransaction: SubmitUnsignedTransaction<Self, <Self as Trait>::Call>;
 
 	/// A configuration for base priority of unsigned transactions.
 	///
@@ -228,7 +226,7 @@ decl_module! {
 		/// The dispatch origin of this call must be _None_.
 		///
 		/// - `auction_id`: auction id
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = (10_000, DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
 			ensure_none(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
@@ -255,7 +253,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	fn submit_cancel_auction_tx(auction_id: AuctionIdOf<T>) {
 		let call = Call::<T>::cancel(auction_id);
-		if !T::SubmitTransaction::submit_unsigned(call).is_ok() {
+		if !SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_ok() {
 			debug::warn!(
 				target: "auction-manager offchain worker",
 				"submit unsigned auction cancel tx for \nAuctionId {:?} failed : {:?}",

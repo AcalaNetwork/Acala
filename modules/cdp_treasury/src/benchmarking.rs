@@ -31,9 +31,15 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_benchmarks() {
+	fn set_debit_and_surplus_handle_params() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_set_debit_and_surplus_handle_params::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn set_collateral_auction_maximum_size() {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_set_collateral_auction_maximum_size::<Runtime>());
 		});
 	}

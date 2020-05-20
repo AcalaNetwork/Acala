@@ -11,7 +11,7 @@ use sp_std::vec;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::{Saturating, UniqueSaturatedInto};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
@@ -66,10 +66,9 @@ benchmarks! {
 		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::from_natural(1);		// 1 USD
-		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_parts(1)).saturating_mul_int(&min_debit_value);
+		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_mul_int(&min_debit_value);
 		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
-		let debit_amount = min_debit_amount * 10.into();
-		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
+		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		// set balance
 		<T as loans::Trait>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
@@ -82,14 +81,14 @@ benchmarks! {
 			RawOrigin::Root.into(),
 			currency_id,
 			None,
-			Some(Some(Ratio::from_rational(200, 100))),
+			Some(Some(Ratio::from_rational(150, 100))),
 			Some(Some(Rate::from_rational(10, 100))),
-			Some(Some(Ratio::from_rational(200, 100))),
+			Some(Some(Ratio::from_rational(150, 100))),
 			Some(min_debit_value * 100),
 		)?;
 
 		// adjust position
-		CdpEngine::<T>::adjust_position(&owner, currency_id, collateral_amount, debit_amount)?;
+		CdpEngine::<T>::adjust_position(&owner, currency_id, collateral_amount, min_debit_amount)?;
 
 		// modify liquidation rate to make the cdp unsafe
 		CdpEngine::<T>::set_collateral_params(
@@ -111,10 +110,9 @@ benchmarks! {
 		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::from_natural(1);		// 1 USD
-		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_parts(1)).saturating_mul_int(&min_debit_value);
+		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_mul_int(&min_debit_value);
 		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
-		let debit_amount = min_debit_amount * 10.into();
-		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
+		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		// set balance
 		<T as loans::Trait>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
@@ -127,14 +125,14 @@ benchmarks! {
 			RawOrigin::Root.into(),
 			currency_id,
 			None,
-			Some(Some(Ratio::from_rational(200, 100))),
+			Some(Some(Ratio::from_rational(150, 100))),
 			Some(Some(Rate::from_rational(10, 100))),
-			Some(Some(Ratio::from_rational(200, 100))),
+			Some(Some(Ratio::from_rational(150, 100))),
 			Some(min_debit_value * 100),
 		)?;
 
 		// adjust position
-		CdpEngine::<T>::adjust_position(&owner, currency_id, collateral_amount, debit_amount)?;
+		CdpEngine::<T>::adjust_position(&owner, currency_id, collateral_amount, min_debit_amount)?;
 
 		// shutdown
 		CdpEngine::<T>::on_emergency_shutdown();
@@ -148,11 +146,29 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_benchmarks() {
+	fn set_collateral_params() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_set_collateral_params::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn set_global_params() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_set_global_params::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn liquidate_by_auction() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_liquidate_by_auction::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn settle() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_settle::<Runtime>());
 		});
 	}

@@ -158,11 +158,29 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_benchmarks() {
+	fn authorize() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_authorize::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn unauthorize() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_unauthorize::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn unauthorize_all() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_unauthorize_all::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn adjust_loan() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_adjust_loan::<Runtime>());
 		});
 	}

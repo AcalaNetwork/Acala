@@ -62,10 +62,9 @@ impl frame_system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = (PalletBalances,);
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -73,10 +72,13 @@ impl orml_tokens::Trait for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type DustRemoval = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
+
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
@@ -168,10 +170,6 @@ impl cdp_treasury::Trait for Runtime {
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
-type SubmitTransaction = frame_system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
-
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
@@ -195,11 +193,20 @@ impl cdp_engine::Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = ();
-	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = cdp_engine::Module<Runtime>;
+
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 impl emergency_shutdown::Trait for Runtime {
 	type Event = ();

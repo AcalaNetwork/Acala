@@ -85,22 +85,24 @@ impl system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 pub type System = system::Module<Runtime>;
-
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
-}
 
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type DustRemoval = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
+
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+}
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
@@ -224,10 +226,6 @@ impl dex::Trait for Runtime {
 }
 pub type DEXModule = dex::Module<Runtime>;
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
-type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
-
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -254,11 +252,20 @@ impl Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = DEXModule;
-	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type CDPEngineModule = Module<Runtime>;
+
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

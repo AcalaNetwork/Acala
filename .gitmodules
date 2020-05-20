@@ -1,4 +1,3 @@
 [submodule "orml"]
 	path = orml
 	url = https://github.com/open-web3-stack/open-runtime-module-library.git
-	branch = alpha-6

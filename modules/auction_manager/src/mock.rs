@@ -79,19 +79,17 @@ impl system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 pub type System = system::Module<Runtime>;
-
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
-}
 
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type DustRemoval = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
@@ -137,10 +135,6 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
-type SubmitTransaction = system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
-
 parameter_types! {
 	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
@@ -162,11 +156,20 @@ impl Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = MockPriceSource;
-	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type AuctionManagerModule = Module<Runtime>;
+
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

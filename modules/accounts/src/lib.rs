@@ -60,7 +60,7 @@ decl_module! {
 		const FreeTransferPeriod: MomentOf<T> = T::FreeTransferPeriod::get();
 		const FreeTransferDeposit: DepositBalanceOf<T> = T::FreeTransferDeposit::get();
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		fn enable_free_transfer(origin) {
 			let who = ensure_signed(origin)?;
 
@@ -70,7 +70,7 @@ decl_module! {
 			<FreeTransferEnabledAccounts<T>>::insert(who, true);
 		}
 
-		#[weight = frame_support::weights::SimpleDispatchInfo::default()]
+		#[weight = 10_000]
 		fn disable_free_transfers(origin) {
 			let who = ensure_signed(origin)?;
 
@@ -174,7 +174,8 @@ where
 			let mut reason = WithdrawReasons::none();
 			let fee = if pay_fee {
 				reason.set(WithdrawReason::TransactionPayment);
-				pallet_transaction_payment::ChargeTransactionPayment::<T>::compute_fee(len as u32, info, tip)
+				<pallet_transaction_payment::Module<T>>::compute_fee(len as u32, info, tip)
+			//pallet_transaction_payment::ChargeTransactionPayment::<T>::compute_fee(len as u32, info, tip)
 			} else {
 				tip
 			};

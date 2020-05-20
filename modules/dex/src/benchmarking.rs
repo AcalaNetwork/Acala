@@ -112,12 +112,36 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_benchmarks() {
+	fn set_liquidity_incentive_rate() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_set_liquidity_incentive_rate::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn add_liquidity() {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_add_liquidity::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn withdraw_liquidity_without_interest() {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_withdraw_liquidity_without_interest::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn swap_currency() {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_swap_currency::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn withdraw_incentive_interest() {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_withdraw_incentive_interest::<Runtime>());
 		});
 	}

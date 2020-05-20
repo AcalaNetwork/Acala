@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{
 	assert_noop, assert_ok,
-	weights::{DispatchClass, DispatchInfo},
+	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{Accounts, Call, Currencies, ExtBuilder, Origin, Runtime, TimeModule, ACA, ALICE, AUSD, BOB};
 use orml_traits::MultiCurrency;
@@ -91,13 +91,13 @@ const CALL2: &<Runtime as system::Trait>::Call =
 const INFO: DispatchInfo = DispatchInfo {
 	weight: 1000,
 	class: DispatchClass::Normal,
-	pays_fee: true,
+	pays_fee: Pays::Yes,
 };
 
 #[test]
 fn charges_fee() {
 	ExtBuilder::default().build().execute_with(|| {
-		let fee = 42 + 23 * 2 + 1000; // base + len * byte + weight
+		let fee = 23 * 2 + 1000; // len * byte + weight
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
 				.validate(&ALICE, CALL, &INFO, 23)
@@ -107,7 +107,7 @@ fn charges_fee() {
 		);
 		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee);
 
-		let fee2 = 42 + 18 * 2 + 1000; // base + len * byte + weight
+		let fee2 = 18 * 2 + 1000; // len * byte + weight
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
 				.validate(&ALICE, CALL2, &INFO, 18)
@@ -156,7 +156,7 @@ fn enabled_free_transaction_charges_other_call() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
 
-		let fee = 42 + 23 * 2 + 1000; // base + len * byte + weight
+		let fee = 23 * 2 + 1000; // len * byte + weight
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
 				.validate(&ALICE, CALL2, &INFO, 23)
@@ -173,7 +173,7 @@ fn enabled_free_transaction_charges_other_call_with_tip() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
 
-		let fee = 42 + 23 * 2 + 1000 + 100; // base + len * byte + weight + tip
+		let fee = 23 * 2 + 1000 + 100; // len * byte + weight + tip
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(100)
 				.validate(&ALICE, CALL2, &INFO, 23)

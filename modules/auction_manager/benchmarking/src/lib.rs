@@ -119,10 +119,22 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_benchmarks() {
+	fn cancel_surplus_auction() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_cancel_surplus_auction::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn cancel_debit_auction() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_cancel_debit_auction::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn cancel_collateral_auction() {
+		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_cancel_collateral_auction::<Runtime>());
 		});
 	}

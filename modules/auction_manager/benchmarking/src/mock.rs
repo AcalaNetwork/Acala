@@ -58,10 +58,9 @@ impl frame_system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = (PalletBalances,);
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -69,10 +68,13 @@ impl orml_tokens::Trait for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type DustRemoval = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
+
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
@@ -126,11 +128,20 @@ impl auction_manager::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
 	type PriceSource = prices::Module<Runtime>;
-	type Call = Call;
-	type SubmitTransaction = SubmitTransaction;
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type AuctionManagerModule = auction_manager::Module<Runtime>;
+
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
@@ -145,10 +156,6 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
-
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
-type SubmitTransaction = frame_system::offchain::TransactionSubmitter<(), Call, Extrinsic>;
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 5;
