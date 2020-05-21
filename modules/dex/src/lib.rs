@@ -161,7 +161,15 @@ decl_module! {
 		///
 		/// - `currency_id`: currency type to determine the type of liquidity pool.
 		/// - `liquidity_incentive_rate`: liquidity incentive rate.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		/// - Db writes: LiquidityIncentiveRate
+		/// -------------------
+		/// Base Weight: 3.591 µs
+		/// # </weight>
+		#[weight = 4_000_000 + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn set_liquidity_incentive_rate(
 			origin,
 			currency_id: CurrencyId,
@@ -177,7 +185,18 @@ decl_module! {
 		/// Just withdraw liquidity incentive interest as the additional reward for liquidity contribution
 		///
 		/// - `currency_id`: currency type to determine the type of liquidity pool.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		///		- T::CDPTreasury is module_cdp_treasury
+		/// - Complexity: `O(1)`
+		/// - Db reads: `WithdrawnInterest`, `TotalWithdrawnInterest`, 2 items of orml_currencies
+		/// - Db writes: `WithdrawnInterest`, `TotalWithdrawnInterest`, 2 items of orml_currencies
+		/// -------------------
+		/// Base Weight: 38.4 µs
+		/// # </weight>
+		#[weight = 39_000_000 + T::DbWeight::get().reads_writes(4, 4)]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			let who = ensure_signed(origin)?;
 			Self::claim_interest(currency_id, &who)?;
@@ -189,7 +208,26 @@ decl_module! {
 		/// - `supply_amount`: supply currency amount.
 		/// - `target_currency_id`: target currency type.
 		/// - `acceptable_target_amount`: acceptable target amount, if actual amount is under it, swap will not happen
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		///		- swap other to base: 1 * `LiquidityPool`, 4 items of orml_currencies
+		///		- swap base to other: 1 * `LiquidityPool`, 4 items of orml_currencies
+		///		- swap other to other: 2 * `LiquidityPool`, 4 items of orml_currencies
+		/// - Db writes:
+		///		- swap other to base: 1 * `LiquidityPool`, 4 items of orml_currencies
+		///		- swap base to other: 1 * `LiquidityPool`, 4 items of orml_currencies
+		///		- swap other to other: 2 * `LiquidityPool`, 4 items of orml_currencies
+		/// -------------------
+		/// Base Weight:
+		///		- swap base to other: 47.81 µs
+		///		- swap other to base: 42.57 µs
+		///		- swap other to other: 54.77 µs
+		/// # </weight>
+		#[weight = 55_000_000 + T::DbWeight::get().reads_writes(6, 6)]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyId,
@@ -220,7 +258,23 @@ decl_module! {
 		/// - `other_currency_id`: currency type to determine the type of liquidity pool.
 		/// - `max_other_currency_amount`: maximum currency amount allowed to inject to liquidity pool.
 		/// - `max_base_currency_amount`: maximum base currency(stable coin) amount allowed to inject to liquidity pool.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
+		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// - Db writes:
+		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
+		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// -------------------
+		/// Base Weight:
+		///		- best case: 49.04 µs
+		///		- worst case: 57.72 µs
+		/// # </weight>
+		#[weight = 58_000_000 + T::DbWeight::get().reads_writes(8, 8)]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyId,
@@ -300,7 +354,19 @@ decl_module! {
 		///
 		/// - `currency_id`: currency type to determine the type of liquidity pool.
 		/// - `share_amount`: share amount to burn.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// - Db writes: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// -------------------
+		/// Base Weight:
+		///		- best case: 66.59 µs
+		///		- worst case: 71.18 µs
+		/// # </weight>
+		#[weight = 72_000_000 + T::DbWeight::get().reads_writes(10, 10)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();

@@ -136,7 +136,15 @@ decl_module! {
 		/// - `surplus_buffer_size`: new buffer size of surplus pool, `None` means do not update
 		/// - `initial_amount_per_debit_auction`: initial amount of native token for sale per debit auction, `None` means do not update
 		/// - `debit_auction_fixed_size`: the fixed amount of stable coin per collateral auction wants to get, `None` means do not update
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		/// - Db writes: `SurplusAuctionFixedSize`, `SurplusBufferSize`, `InitialAmountPerDebitAuction`, `DebitAuctionFixedSize`
+		/// -------------------
+		/// Base Weight: 20.18 µs
+		/// # </weight>
+		#[weight = 20_000_000 + T::DbWeight::get().reads_writes(0, 4)]
 		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<Balance>,
@@ -171,7 +179,15 @@ decl_module! {
 		///
 		/// - `currency_id`: collateral type
 		/// - `surplus_buffer_size`: collateral auction maximum size
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		/// - Db writes: `CollateralAuctionMaximumSize`
+		/// -------------------
+		/// Base Weight: 15.59 µs
+		/// # </weight>
+		#[weight = 16_000_000 + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())

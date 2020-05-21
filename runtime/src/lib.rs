@@ -1175,6 +1175,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
 			orml_add_benchmark!(params, batches, b"vesting", benchmarking::vesting);
 			orml_add_benchmark!(params, batches, b"auction", benchmarking::auction);
+			orml_add_benchmark!(params, batches, b"currencies", benchmarking::currencies);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

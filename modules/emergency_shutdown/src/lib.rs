@@ -98,7 +98,22 @@ decl_module! {
 		/// Start emergency shutdown
 		///
 		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::CDPTreasury is module_cdp_treasury
+		/// 	- T::AuctionManagerHandler is module_auction_manager
+		/// 	- T::OnShutdown is (module_cdp_treasury, module_cdp_engine, module_honzon, module_dex)
+		/// - Complexity: `O(1)`
+		/// - Db reads: `IsShutdown`, (length of collateral_ids) items in modules related to module_emergency_shutdown
+		/// - Db writes: `IsShutdown`, (4 + length of collateral_ids) items in modules related to module_emergency_shutdown
+		/// -------------------
+		/// Base Weight: 47.4 µs
+		/// # </weight>
+		#[weight = 48_000_000 + T::DbWeight::get().reads_writes(
+			1 + (T::CollateralCurrencyIds::get().len() as u64),
+			5 + (T::CollateralCurrencyIds::get().len() as u64)
+		)]
 		pub fn emergency_shutdown(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
@@ -123,7 +138,22 @@ decl_module! {
 		/// Open final redemption if settlement is completed.
 		///
 		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::CDPTreasury is module_cdp_treasury
+		/// 	- T::AuctionManagerHandler is module_auction_manager
+		/// 	- T::OnShutdown is (module_cdp_treasury, module_cdp_engine, module_honzon, module_dex)
+		/// - Complexity: `O(1)`
+		/// - Db reads: `IsShutdown`, (2 + 2 * length of collateral_ids) items in modules related to module_emergency_shutdown
+		/// - Db writes: `CanRefund`
+		/// -------------------
+		/// Base Weight: 47.4 µs
+		/// # </weight>
+		#[weight = 48_000_000 + T::DbWeight::get().reads_writes(
+			2 + 2 * (T::CollateralCurrencyIds::get().len() as u64),
+			1
+		)]
 		pub fn open_collateral_refund(origin) {
 			T::ShutdownOrigin::try_origin(origin)
 				.map(|_| ())
@@ -163,7 +193,22 @@ decl_module! {
 		/// Refund a basket of remaining collateral assets to caller
 		///
 		/// - `amount`: stable coin amount used to refund.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::CDPTreasury is module_cdp_treasury
+		/// 	- T::AuctionManagerHandler is module_auction_manager
+		/// 	- T::OnShutdown is (module_cdp_treasury, module_cdp_engine, module_honzon, module_dex)
+		/// - Complexity: `O(1)`
+		/// - Db reads: `CanRefund`, (2 + 3 * length of collateral_ids) items in modules related to module_emergency_shutdown
+		/// - Db writes: (3 * length of collateral_ids) items in modules related to module_emergency_shutdown
+		/// -------------------
+		/// Base Weight: 95.86 µs
+		/// # </weight>
+		#[weight = 96_000_000 + T::DbWeight::get().reads_writes(
+			3 + 3 * (T::CollateralCurrencyIds::get().len() as u64),
+			3 * (T::CollateralCurrencyIds::get().len() as u64)
+		)]
 		pub fn refund_collaterals(origin, #[compact] amount: Balance) {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);

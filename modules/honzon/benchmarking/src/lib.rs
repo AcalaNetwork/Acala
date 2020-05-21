@@ -60,6 +60,7 @@ benchmarks! {
 	unauthorize_all {
 		let u in 0 .. 1000;
 		let v in 0 .. 100;
+		let c in 0 .. <T as cdp_engine::Trait>::CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 
 		let caller: T::AccountId = account("caller", u, SEED);
 		let currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
@@ -67,10 +68,10 @@ benchmarks! {
 		for i in 0 .. v {
 			let to: T::AccountId = account("to", i, SEED);
 
-			for currency_id in &currency_ids {
+			for j in 0 .. c {
 				Honzon::<T>::authorize(
 					RawOrigin::Signed(caller.clone()).into(),
-					*currency_id,
+					currency_ids[j as usize],
 					to.clone(),
 				)?;
 			}
