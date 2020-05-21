@@ -5,10 +5,10 @@
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use orml_oracle::{DefaultCombineData, OperatorProvider};
+use orml_oracle::DefaultCombineData;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
-	testing::{Header, TestXt},
+	testing::{Header, TestXt, UintAuthorityId},
 	traits::IdentityLookup,
 	DispatchResult,
 };
@@ -236,18 +236,6 @@ impl pallet_timestamp::Trait for Runtime {
 	type MinimumPeriod = MinimumPeriod;
 }
 
-pub struct MockOperatorProvider;
-
-impl OperatorProvider<AccountId> for MockOperatorProvider {
-	fn can_feed_data(who: &AccountId) -> bool {
-		Self::operators().contains(who)
-	}
-
-	fn operators() -> Vec<AccountId> {
-		vec![1, 2, 3]
-	}
-}
-
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 1000 * 60 * 30; // 30 mins
@@ -257,12 +245,12 @@ impl orml_oracle::Trait for Runtime {
 	type Event = ();
 	type Call = Call;
 	type OnNewData = ();
-	type OnRedundantCall = ();
-	type OperatorProvider = MockOperatorProvider;
 	type CombineData = DefaultCombineData<Self, MinimumCount, ExpiresIn>;
 	type Time = pallet_timestamp::Module<Self>;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
+	type UnsignedPriority = UnsignedPriority;
+	type AuthorityId = UintAuthorityId;
 }
 pub type ModuleOracle = orml_oracle::Module<Runtime>;
 

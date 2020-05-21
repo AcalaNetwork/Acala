@@ -13,7 +13,6 @@ use auction_manager::*;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use orml_oracle::OperatorProvider;
 use orml_traits::{Auction, DataProviderExtended, MultiCurrency};
 use primitives::{Balance, CurrencyId};
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, OnEmergencyShutdown, Price};
@@ -35,7 +34,7 @@ fn dollar(d: u32) -> Balance {
 }
 
 fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
-	let oracle_operators = <T as orml_oracle::Trait>::OperatorProvider::operators();
+	let oracle_operators = orml_oracle::Module::<T>::members().0;
 	for operator in oracle_operators {
 		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}
