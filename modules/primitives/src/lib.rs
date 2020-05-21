@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	ACA = 0,
-	AUSD,
-	DOT,
-	XBTC,
-	LDOT,
+	AUSD = 1,
+	DOT = 2,
+	XBTC = 3,
+	LDOT = 4,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

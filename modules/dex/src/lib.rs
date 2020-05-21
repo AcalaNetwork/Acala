@@ -28,6 +28,7 @@ use sp_runtime::{
 use sp_std::prelude::Vec;
 use support::{CDPTreasury, DEXManager, OnEmergencyShutdown, Price, Rate, Ratio};
 
+mod benchmarking;
 mod mock;
 mod tests;
 

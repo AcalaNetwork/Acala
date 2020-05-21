@@ -74,9 +74,16 @@ module-staking-pool = { path = "../modules/staking_pool", default-features = fal
 module-staking-pool-rpc-runtime-api = { path = "../modules/staking_pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../modules/polkadot_bridge", default-features = false }
 module-homa-treasury = { path = "../modules/homa_treasury", default-features = false }
+module-honzon-benchmarking = { path = "../modules/honzon/benchmarking", default-features = false, optional = true }
+module-cdp-engine-benchmarking = { path = "../modules/cdp_engine/benchmarking", default-features = false, optional = true }
+module-emergency-shutdown-benchmarking = { path = "../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
+module-auction-manager-benchmarking = { path = "../modules/auction_manager/benchmarking", default-features = false, optional = true }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
+
+[dev-dependencies]
+sp-io = { version = "2.0.0-alpha.8" }
 
 [features]
 default = ["std"]
@@ -110,7 +117,6 @@ std = [
 	"sp-block-builder/std",
 	"sp-consensus-babe/std",
 	"sp-core/std",
-	"sp-io/std",
 	"sp-offchain/std",
 	"sp-runtime/std",
 	"sp-session/std",
@@ -149,9 +155,15 @@ std = [
 	"module-homa-treasury/std",
 ]
 runtime-benchmarks = [
-    "sp-runtime/runtime-benchmarks",
     "frame-benchmarking",
-    "frame-system/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "pallet-collective/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
+	"module-dex/runtime-benchmarks",
+	"module-cdp-treasury/runtime-benchmarks",
+	"module-honzon-benchmarking",
+	"module-cdp-engine-benchmarking",
+	"module-emergency-shutdown-benchmarking",
+	"module-auction-manager-benchmarking",
 ]
