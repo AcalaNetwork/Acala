@@ -243,7 +243,6 @@ parameter_types! {
 
 impl orml_oracle::Trait for Runtime {
 	type Event = ();
-	type Call = Call;
 	type OnNewData = ();
 	type CombineData = DefaultCombineData<Self, MinimumCount, ExpiresIn>;
 	type Time = pallet_timestamp::Module<Self>;

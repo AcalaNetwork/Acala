@@ -522,7 +522,6 @@ parameter_types! {
 
 impl orml_oracle::Trait for Runtime {
 	type Event = Event;
-	type Call = Call;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
@@ -656,7 +655,6 @@ where
 			system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			system::CheckNonce::<Runtime>::from(nonce),
 			system::CheckWeight::<Runtime>::new(),
-			orml_oracle::CheckOperator::<Runtime>::new(),
 			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
@@ -864,11 +862,14 @@ construct_runtime!(
 		HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
 		TechnicalCouncil: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		TechnicalCouncilMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
+
+		// oracle
+		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
+		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		OperatorMembership: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
 
 		// acala modules
 		Currencies: orml_currencies::{Module, Call, Event<T>},
-		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>},
 		Prices: module_prices::{Module, Storage, Call, Event},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
@@ -909,7 +910,6 @@ pub type SignedExtra = (
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
 	system::CheckWeight<Runtime>,
-	orml_oracle::CheckOperator<Runtime>,
 	module_accounts::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
