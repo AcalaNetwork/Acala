@@ -64,7 +64,7 @@ mod tests {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
-			pallet_collective::GenesisConfig::<Runtime, pallet_collective::Instance5> {
+			pallet_membership::GenesisConfig::<Runtime, pallet_membership::Instance5> {
 				members: vec![
 					AccountId::from(ORACLE1),
 					AccountId::from(ORACLE2),
@@ -86,14 +86,23 @@ mod tests {
 	fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 		OracleModule::on_finalize(0);
 		assert_ok!(OracleModule::feed_values(
-			origin_of(AccountId::from(ORACLE1)),
-			prices.clone()
+			<acala_runtime::Runtime as frame_system::Trait>::Origin::NONE,
+			prices.clone(),
+			0,
+			Default::default()
 		));
 		assert_ok!(OracleModule::feed_values(
-			origin_of(AccountId::from(ORACLE2)),
-			prices.clone()
+			<acala_runtime::Runtime as frame_system::Trait>::Origin::NONE,
+			prices.clone(),
+			1,
+			Default::default()
 		));
-		assert_ok!(OracleModule::feed_values(origin_of(AccountId::from(ORACLE3)), prices));
+		assert_ok!(OracleModule::feed_values(
+			<acala_runtime::Runtime as frame_system::Trait>::Origin::NONE,
+			prices,
+			2,
+			Default::default()
+		));
 		Ok(())
 	}
 

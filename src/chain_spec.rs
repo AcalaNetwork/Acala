@@ -280,7 +280,6 @@ fn testnet_genesis(
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
-		pallet_collective_Instance5: Some(Default::default()),
 		pallet_membership_Instance5: Some(OperatorMembershipConfig {
 			members: vec![root_key],
 			phantom: Default::default(),
@@ -411,7 +410,6 @@ fn mandala_genesis(
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
-		pallet_collective_Instance5: Some(Default::default()),
 		pallet_membership_Instance5: Some(OperatorMembershipConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
