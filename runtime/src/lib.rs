@@ -45,6 +45,7 @@ pub use frame_support::{
 	},
 	StorageValue,
 };
+pub use orml_oracle::AuthorityId as OracleId;
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
@@ -862,7 +863,7 @@ construct_runtime!(
 
 		// acala modules
 		Currencies: orml_currencies::{Module, Call, Event<T>},
-		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
+		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>},
 		Prices: module_prices::{Module, Storage, Call, Event},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
