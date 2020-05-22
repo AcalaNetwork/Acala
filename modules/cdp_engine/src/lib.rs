@@ -245,7 +245,24 @@ decl_module! {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[weight = (10_000, DispatchClass::Operational)]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::CDPTreasury is module_cdp_treasury
+		/// 	- T::DEX is module_dex
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		///		- liquidate by auction: `IsShutdown`, (4 + 2 + 3 + 2 + 1 + 3 + 2) items of modules related to module_cdp_engine
+		///		- liquidate by dex: `IsShutdown`, (4 + 5 + 3 + 2 + 2 + 0 + 2) items of modules related to module_cdp_engine
+		/// - Db writes:
+		///		- liquidate by auction: (4 + 2 + 0 + 2 + 0 + 5) items of modules related to module_cdp_engine
+		///		- liquidate by dex: (4 + 5 + 0 + 2 + 1 + 0) items of modules related to module_cdp_engine
+		/// -------------------
+		/// Base Weight:
+		///		- liquidate by auction: 119.4 µs
+		///		- liquidate by dex: 125.1 µs
+		/// # </weight>
+		#[weight = (125_000_000 + T::DbWeight::get().reads_writes(18, 13), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -262,7 +279,18 @@ decl_module! {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[weight = (10_000, DispatchClass::Operational)]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::CDPTreasury is module_cdp_treasury
+		/// 	- T::DEX is module_dex
+		/// - Complexity: `O(1)`
+		/// - Db reads: `IsShutdown`, 10 items of modules related to module_cdp_engine
+		/// - Db writes: 8 items of modules related to module_cdp_engine
+		/// -------------------
+		/// Base Weight: 76.54 µs
+		/// # </weight>
+		#[weight = (77_000_000 + T::DbWeight::get().reads_writes(11, 8), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -278,7 +306,15 @@ decl_module! {
 		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
 		///
 		/// - `global_stability_fee`: global stability fee rate.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		/// - Db writes: `GlobalStabilityFee`
+		/// -------------------
+		/// Base Weight: 21.04 µs
+		/// # </weight>
+		#[weight = 21_000_000 + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -300,7 +336,15 @@ decl_module! {
 		/// - `liquidation_penalty`: liquidation penalty, `None` means do not update, `Some(None)` means update it to `None`.
 		/// - `required_collateral_ratio`: required collateral ratio, `None` means do not update, `Some(None)` means update it to `None`.
 		/// - `maximum_total_debit_value`: maximum total debit value.
-		#[weight = 10_000]
+		///
+		/// # <weight>
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		/// - Db writes: `StabilityFee`, `LiquidationRatio`, `LiquidationPenalty`, `RequiredCollateralRatio`, `MaximumTotalDebitValue`
+		/// -------------------
+		/// Base Weight: 32.81 µs
+		/// # </weight>
+		#[weight = 33_000_000 + T::DbWeight::get().reads_writes(0, 5)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,

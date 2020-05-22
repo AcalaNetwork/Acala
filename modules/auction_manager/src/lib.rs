@@ -226,7 +226,28 @@ decl_module! {
 		/// The dispatch origin of this call must be _None_.
 		///
 		/// - `auction_id`: auction id
-		#[weight = (10_000, DispatchClass::Operational)]
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// 	- T::CDPTreasury is module_cdp_treasury
+		/// 	- T::Auction is orml_auction
+		/// - Complexity: `O(1)`
+		/// - Db reads:
+		///		- surplus auction worst case: `SurplusAuctions`, `TotalSurplusInAuction`, 1 item in orml_auction, 1 item in orml_currencies
+		///		- debit auction worst case: `DebitAuctions`, `TotalDebitInAuction`, 1 item in orml_auction, 1 item in orml_currencies, 1 item in cdp_treasury
+		///		- collateral auction worst case: `CollateralAuctions`, `TotalCollateralInAuction`, `TotalTargetInAuction`, 1 item in orml_auction, 3 item in orml_currencies, 2 item in cdp_treasury
+		/// - Db writes:
+		///		- surplus auction worst case: `SurplusAuctions`, `TotalSurplusInAuction`, 1 item in orml_auction, 1 item in orml_currencies
+		///		- debit auction worst case: `DebitAuctions`, `TotalDebitInAuction`, 1 item in orml_auction, 1 item in orml_currencies, 1 item in cdp_treasury
+		///		- collateral auction worst case: `CollateralAuctions`, `TotalCollateralInAuction`, `TotalTargetInAuction`, 1 item in orml_auction, 3 item in orml_currencies, 2 item in cdp_treasury
+		/// -------------------
+		/// Base Weight:
+		///		- surplus auction worst case: 33.72 µs
+		///		- debit auction worst case: 27.63 µs
+		///		- collateral auction worst case: 80.13 µs
+		/// # </weight>
+		#[weight = (80_000_000 + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
 			ensure_none(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
