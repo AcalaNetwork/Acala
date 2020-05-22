@@ -15,7 +15,6 @@ use sp_runtime::traits::UniqueSaturatedInto;
 
 use emergency_shutdown::Module as EmergencyShutdown;
 use emergency_shutdown::*;
-use orml_oracle::OperatorProvider;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use support::{CDPTreasury, Price};
@@ -32,7 +31,7 @@ fn dollar(d: u32) -> Balance {
 }
 
 fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
-	let oracle_operators = <T as orml_oracle::Trait>::OperatorProvider::operators();
+	let oracle_operators = orml_oracle::Module::<T>::members().0;
 	for operator in oracle_operators {
 		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}

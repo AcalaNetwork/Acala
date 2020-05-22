@@ -6,8 +6,8 @@ use runtime::{
 	opaque::SessionKeys, AccountId, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig, Block,
 	CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GenesisConfig,
 	GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, OperatorMembershipConfig,
-	PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-	TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
+	OracleConfig, OracleId, PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
+	SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -70,9 +70,12 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 	)
 }
 
-// let mut properties = Map::new();
-// properties.insert("tokenSymbol".into(), "ACA".into());
-// properties.insert("tokenDecimals".into(), 18.into());
+pub fn get_oracle_keys_from_seed(seed: &str) -> (AccountId, OracleId) {
+	(
+		get_account_id_from_seed::<sr25519::Public>(seed),
+		get_from_seed::<OracleId>(seed),
+	)
+}
 
 /// Development config (single validator Alice)
 pub fn development_testnet_config() -> ChainSpec {
@@ -94,6 +97,7 @@ pub fn development_testnet_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 				],
+				vec![get_oracle_keys_from_seed("Alice")],
 			)
 		},
 		vec![],
@@ -135,6 +139,7 @@ pub fn local_testnet_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
+				vec![get_oracle_keys_from_seed("Alice")],
 			)
 		},
 		vec![],
@@ -162,7 +167,7 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
-		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//oracle"
+		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//oracle"
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//validator"
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//babe"
 		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//1//grandpa"
@@ -205,6 +210,11 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 					// 5GeTpaLR637ztQqFvwCZocZhLp1QqHURKH6Gj7CZteRCAhMs
 					hex!["cab00722883a824e7fc368ff2ad53ffcce3fa3b794080311218bee8e902929df"].into(),
 				],
+				vec![(
+					// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
+					hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
+					hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].unchecked_into(),
+				)],
 			)
 		},
 		vec![
@@ -213,7 +223,7 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala2"),
+		Some("mandala3"),
 		Some(properties),
 		Default::default(),
 	)
@@ -226,6 +236,7 @@ fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
+	oracle_session_keys: Vec<(AccountId, OracleId)>,
 ) -> GenesisConfig {
 	GenesisConfig {
 		system: Some(SystemConfig {
@@ -280,7 +291,6 @@ fn testnet_genesis(
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
-		pallet_collective_Instance5: Some(Default::default()),
 		pallet_membership_Instance5: Some(OperatorMembershipConfig {
 			members: vec![root_key],
 			phantom: Default::default(),
@@ -350,6 +360,10 @@ fn testnet_genesis(
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: vec![],
 		}),
+		orml_oracle: Some(OracleConfig {
+			members: Default::default(), // initialized by OperatorMembership
+			session_keys: oracle_session_keys,
+		}),
 	}
 }
 
@@ -357,6 +371,7 @@ fn mandala_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
+	oracle_session_keys: Vec<(AccountId, OracleId)>,
 ) -> GenesisConfig {
 	GenesisConfig {
 		system: Some(SystemConfig {
@@ -411,7 +426,6 @@ fn mandala_genesis(
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
-		pallet_collective_Instance5: Some(Default::default()),
 		pallet_membership_Instance5: Some(OperatorMembershipConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
@@ -480,6 +494,10 @@ fn mandala_genesis(
 					serde_json::from_slice(airdrop_accounts_json).unwrap();
 				airdrop_accounts
 			},
+		}),
+		orml_oracle: Some(OracleConfig {
+			members: Default::default(), // initialized by OperatorMembership
+			session_keys: oracle_session_keys,
 		}),
 	}
 }

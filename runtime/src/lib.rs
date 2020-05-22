@@ -32,7 +32,6 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{self as system};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
-use orml_oracle::OperatorProvider;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -46,6 +45,7 @@ pub use frame_support::{
 	},
 	StorageValue,
 };
+pub use orml_oracle::AuthorityId as OracleId;
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
@@ -320,20 +320,6 @@ impl pallet_membership::Trait<TechnicalCouncilMembershipInstance> for Runtime {
 	type MembershipChanged = TechnicalCouncil;
 }
 
-parameter_types! {
-	pub const OperatorMotionDuration: BlockNumber = 0;
-	pub const OperatorMaxProposals: u32 = 100;
-}
-
-type OperatorCollectiveInstance = pallet_collective::Instance5;
-impl pallet_collective::Trait<OperatorCollectiveInstance> for Runtime {
-	type Origin = Origin;
-	type Proposal = Call;
-	type Event = Event;
-	type MotionDuration = OperatorMotionDuration;
-	type MaxProposals = OperatorMaxProposals;
-}
-
 type OperatorMembershipInstance = pallet_membership::Instance5;
 impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type Event = Event;
@@ -342,8 +328,8 @@ impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type SwapOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type ResetOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
 	type PrimeOrigin = pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>;
-	type MembershipInitialized = OperatorCollective;
-	type MembershipChanged = OperatorCollective;
+	type MembershipInitialized = Oracle;
+	type MembershipChanged = Oracle;
 }
 
 parameter_types! {
@@ -528,32 +514,21 @@ impl orml_auction::Trait for Runtime {
 	type Handler = AuctionManager;
 }
 
-pub struct OperatorCollectiveProvider;
-impl OperatorProvider<AccountId> for OperatorCollectiveProvider {
-	fn can_feed_data(who: &AccountId) -> bool {
-		OperatorCollective::is_member(who)
-	}
-
-	fn operators() -> Vec<AccountId> {
-		OperatorCollective::members()
-	}
-}
-
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 30; // 30 mins
+	pub const OracleUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
 }
 
 impl orml_oracle::Trait for Runtime {
 	type Event = Event;
-	type Call = Call;
 	type OnNewData = ();
-	type OnRedundantCall = ();
-	type OperatorProvider = OperatorCollectiveProvider;
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
+	type UnsignedPriority = OracleUnsignedPriority;
+	type AuthorityId = orml_oracle::AuthorityId;
 }
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
@@ -613,6 +588,7 @@ impl orml_schedule_update::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type MaxScheduleDispatchWeight = MaxScheduleDispatchWeight;
+	type DispatchOrigin = system::EnsureRoot<AccountId>;
 }
 
 parameter_types! {
@@ -679,7 +655,6 @@ where
 			system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			system::CheckNonce::<Runtime>::from(nonce),
 			system::CheckWeight::<Runtime>::new(),
-			orml_oracle::CheckOperator::<Runtime>::new(),
 			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
@@ -887,12 +862,14 @@ construct_runtime!(
 		HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
 		TechnicalCouncil: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		TechnicalCouncilMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
-		OperatorCollective: pallet_collective::<Instance5>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+
+		// oracle
+		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
+		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		OperatorMembership: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
 
 		// acala modules
 		Currencies: orml_currencies::{Module, Call, Event<T>},
-		Oracle: orml_oracle::{Module, Storage, Call, Event<T>},
 		Prices: module_prices::{Module, Storage, Call, Event},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
@@ -933,7 +910,6 @@ pub type SignedExtra = (
 	system::CheckEra<Runtime>,
 	system::CheckNonce<Runtime>,
 	system::CheckWeight<Runtime>,
-	orml_oracle::CheckOperator<Runtime>,
 	module_accounts::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
