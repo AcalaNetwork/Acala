@@ -280,8 +280,15 @@ impl prices::Trait for Runtime {
 impl crate::Trait for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let t = frame_system::GenesisConfig::default()
+	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
 		.unwrap();
-	sp_io::TestExternalities::new(t)
+
+	let _ = orml_oracle::GenesisConfig::<Runtime> {
+		members: vec![1, 2, 3].into(),
+		session_keys: vec![(1, 10.into()), (2, 20.into()), (3, 30.into())],
+	}
+	.assimilate_storage(&mut storage);
+
+	storage.into()
 }
