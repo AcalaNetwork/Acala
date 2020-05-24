@@ -412,9 +412,9 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(N)` where `N` is the number of currency_ids
-		/// - Db reads: `IsShutdown`
-		/// - Db reads per currency_id: `TotalInterest`, `LiquidityPool`, `LiquidityIncentiveRate`, 2 items in cdp_treasury
-		///	- Db writes per currency_id: `TotalInterest`, 2 items in cdp_treasury
+		/// - Db reads: `IsShutdown`, `TotalInterest`, 2 items in cdp_treasury
+		///	- Db writes: `TotalInterest`, 2 items in cdp_treasury
+		/// - Db reads per currency_id: , `LiquidityPool`, `LiquidityIncentiveRate`
 		/// -------------------
 		/// Base Weight: 35.45 * N µs
 		/// # </weight>
@@ -426,10 +426,10 @@ decl_module! {
 			};
 
 			if !Self::is_shutdown() {
-				add_weight(1, 0, 0);
+				add_weight(4, 3, 0);
 				for currency_id in T::EnabledCurrencyIds::get() {
 					Self::accumulate_interest(currency_id);
-					add_weight(5, 3, 36_000_000);
+					add_weight(2, 0, 36_000_000);
 				}
 			}
 			consumed_weight
