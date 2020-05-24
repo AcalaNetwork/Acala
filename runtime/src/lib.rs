@@ -739,6 +739,10 @@ impl module_dex::Trait for Runtime {
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 }
 
+parameter_types! {
+	pub const AuctionLotsCap: u32 = 10;
+}
+
 impl module_cdp_treasury::Trait for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
@@ -746,6 +750,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type DEX = Dex;
+	type AuctionLotsCap = AuctionLotsCap;
 }
 
 parameter_types! {

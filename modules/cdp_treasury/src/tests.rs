@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
 use mock::{
 	CDPTreasuryModule, Currencies, DEXModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE, AUSD, BOB, BTC,
+	TOTAL_COLLATERAL_AUCTION, TOTAL_DEBIT_AUCTION, TOTAL_SURPLUS_AUCTION,
 };
 use sp_runtime::traits::BadOrigin;
 
@@ -246,5 +247,78 @@ fn swap_collateral_to_stable_work() {
 		assert_ok!(CDPTreasuryModule::swap_collateral_to_stable(BTC, 100, 500));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 500);
+	});
+}
+
+#[test]
+fn create_collateral_auctions_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		TotalCollaterals::mutate(BTC, |balance| *balance += 10000);
+		assert_eq!(CDPTreasuryModule::collateral_auction_maximum_size(BTC), 0);
+
+		// without collateral auction maximum size
+		CDPTreasuryModule::create_collateral_auctions(BTC, 1000, 1000, ALICE);
+		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 1);
+
+		// set collateral auction maximum size
+		assert_ok!(CDPTreasuryModule::set_collateral_auction_maximum_size(
+			Origin::signed(1),
+			BTC,
+			300
+		));
+
+		// not exceed lots cap
+		CDPTreasuryModule::create_collateral_auctions(BTC, 1000, 1000, ALICE);
+		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 5);
+
+		// exceed lots cap
+		CDPTreasuryModule::create_collateral_auctions(BTC, 2000, 1000, ALICE);
+		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 11);
+	});
+}
+
+#[test]
+fn create_surplus_auction_when_on_finalize() {
+	ExtBuilder::default().build().execute_with(|| {
+		SurplusPool::put(1000);
+		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
+			Origin::ROOT,
+			Some(300),
+			None,
+			None,
+			None,
+		));
+
+		// not exceed lots cap
+		CDPTreasuryModule::on_finalize(1);
+		assert_eq!(TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut()), 3);
+
+		// exceed lots cap
+		SurplusPool::put(2000);
+		CDPTreasuryModule::on_finalize(1);
+		assert_eq!(TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut()), 8);
+	});
+}
+
+#[test]
+fn create_debit_auction_when_on_finalize() {
+	ExtBuilder::default().build().execute_with(|| {
+		DebitPool::put(1000);
+		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
+			Origin::ROOT,
+			None,
+			None,
+			Some(100),
+			Some(300),
+		));
+
+		// not exceed lots cap
+		CDPTreasuryModule::on_finalize(1);
+		assert_eq!(TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut()), 3);
+
+		// exceed lots cap
+		DebitPool::put(2000);
+		CDPTreasuryModule::on_finalize(1);
+		assert_eq!(TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut()), 8);
 	});
 }
