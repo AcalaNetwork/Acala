@@ -409,14 +409,30 @@ decl_module! {
 		}
 
 		/// Accumalte liquidity incentive interest to respective reward pool when block end
+		///
+		/// # <weight>
+		/// - Complexity: `O(N)` where `N` is the number of currency_ids
+		/// - Db reads: `IsShutdown`
+		/// - Db reads per currency_id: `TotalInterest`, `LiquidityPool`, `LiquidityIncentiveRate`, 2 items in cdp_treasury
+		///	- Db writes per currency_id: `TotalInterest`, 2 items in cdp_treasury
+		/// -------------------
+		/// Base Weight: 35.45 * N µs
+		/// # </weight>
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
+			let mut consumed_weight = 0;
+			let mut add_weight = |reads, writes, weight| {
+				consumed_weight += T::DbWeight::get().reads_writes(reads, writes);
+				consumed_weight += weight;
+			};
+
 			if !Self::is_shutdown() {
+				add_weight(1, 0, 0);
 				for currency_id in T::EnabledCurrencyIds::get() {
 					Self::accumulate_interest(currency_id);
+					add_weight(5, 3, 36_000_000);
 				}
 			}
-
-			0
+			consumed_weight
 		}
 	}
 }

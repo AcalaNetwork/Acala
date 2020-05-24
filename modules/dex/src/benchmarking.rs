@@ -147,6 +147,23 @@ benchmarks! {
 
 	}: _(RawOrigin::Signed(maker), currency_id)
 
+	accumulate_interest {
+		let u in 0 .. 1000;
+
+		let maker: T::AccountId = account("maker", u, SEED);
+		let currency_id = T::EnabledCurrencyIds::get()[0];
+		inject_liquidity::<T>(maker.clone(), currency_id, dollar(100), dollar(10000))?;
+
+		// set incentive rate
+		Dex::<T>::set_liquidity_incentive_rate(
+			RawOrigin::Root.into(),
+			currency_id,
+			Rate::from_rational(1, 10),
+		)?;
+	}: {
+		Dex::<T>::accumulate_interest(currency_id);
+	}
+
 	// `swap_currency`, best case:
 	// swap other currency to base currency
 	swap_other_to_base {
