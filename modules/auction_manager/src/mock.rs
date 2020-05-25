@@ -108,7 +108,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const AuctionLotsCap: u32 = 10_000;
+	pub const MaxAuctionsCount: u32 = 10_000;
 }
 
 impl cdp_treasury::Trait for Runtime {
@@ -118,7 +118,7 @@ impl cdp_treasury::Trait for Runtime {
 	type AuctionManagerHandler = AuctionManagerModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
-	type AuctionLotsCap = AuctionLotsCap;
+	type MaxAuctionsCount = MaxAuctionsCount;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 

@@ -48,7 +48,7 @@ pub trait Trait: system::Trait {
 	/// the cap of lots number when create collateral auction on a liquidation
 	/// or to create debit/surplus auction on block end.
 	/// If set to 0, does not work.
-	type AuctionLotsCap: Get<u32>;
+	type MaxAuctionsCount: Get<u32>;
 }
 
 decl_event!(
@@ -134,7 +134,7 @@ decl_module! {
 		const GetStableCurrencyId: CurrencyId = T::GetStableCurrencyId::get();
 
 		/// Lots cap when create auction
-		const AuctionLotsCap: u32 = T::AuctionLotsCap::get();
+		const MaxAuctionsCount: u32 = T::MaxAuctionsCount::get();
 
 		/// Update parameters related to surplus and debit auction
 		///
@@ -211,7 +211,7 @@ decl_module! {
 
 			// Stop to create surplus auction and debit auction after emergency shutdown happend.
 			if !Self::is_shutdown() {
-				let auction_lots_cap: u32 = T::AuctionLotsCap::get();
+				let max_auctions_count: u32 = T::MaxAuctionsCount::get();
 				let mut created_lots: u32 = 0;
 
 				let surplus_auction_fixed_size = Self::surplus_auction_fixed_size();
@@ -223,7 +223,7 @@ decl_module! {
 					// create surplus auction requires:
 					// surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size
 					while remain_surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size {
-						if auction_lots_cap != 0 && created_lots >= auction_lots_cap {
+						if max_auctions_count != 0 && created_lots >= max_auctions_count {
 							break
 						}
 						T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
@@ -242,7 +242,7 @@ decl_module! {
 					// create debit auction requires:
 					// debit_pool > total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
 					while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
-						if auction_lots_cap != 0 && created_lots >= auction_lots_cap {
+						if max_auctions_count != 0 && created_lots >= max_auctions_count {
 							break
 						}
 						T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
@@ -404,7 +404,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 			let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
 			let mut unhandled_collateral_amount = amount;
 			let mut unhandled_target = target;
-			let auction_lots_cap: u32 = T::AuctionLotsCap::get();
+			let max_auctions_count: u32 = T::MaxAuctionsCount::get();
 			let mut created_lots: u32 = 0;
 
 			while !unhandled_collateral_amount.is_zero() {
@@ -412,7 +412,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 					> collateral_auction_maximum_size
 					&& !collateral_auction_maximum_size.is_zero()
 				{
-					if auction_lots_cap != 0 && created_lots >= auction_lots_cap {
+					if max_auctions_count != 0 && created_lots >= max_auctions_count {
 						(unhandled_collateral_amount, unhandled_target)
 					} else {
 						created_lots += 1;

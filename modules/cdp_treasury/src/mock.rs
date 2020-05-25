@@ -182,7 +182,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
-	pub const AuctionLotsCap: u32 = 5;
+	pub const MaxAuctionsCount: u32 = 5;
 }
 
 impl Trait for Runtime {
@@ -192,7 +192,7 @@ impl Trait for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = DEXModule;
-	type AuctionLotsCap = AuctionLotsCap;
+	type MaxAuctionsCount = MaxAuctionsCount;
 }
 pub type CDPTreasuryModule = Module<Runtime>;
 
