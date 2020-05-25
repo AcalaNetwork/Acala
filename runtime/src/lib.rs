@@ -740,7 +740,7 @@ impl module_dex::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MaxAuctionsCount: u32 = 10;
+	pub const MaxAuctionsCount: u32 = 100;
 }
 
 impl module_cdp_treasury::Trait for Runtime {
