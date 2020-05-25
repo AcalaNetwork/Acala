@@ -147,6 +147,10 @@ ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
 
+parameter_types! {
+	pub const MaxAuctionsCount: u32 = 10_000;
+}
+
 impl cdp_treasury::Trait for Runtime {
 	type Event = ();
 	type Currency = Currencies;
@@ -154,6 +158,7 @@ impl cdp_treasury::Trait for Runtime {
 	type AuctionManagerHandler = AuctionManagerModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
+	type MaxAuctionsCount = MaxAuctionsCount;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 

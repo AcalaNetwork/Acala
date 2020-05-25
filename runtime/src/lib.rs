@@ -104,7 +104,8 @@ pub mod opaque {
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
-	pub const MaximumBlockWeight: Weight = 1_000_000_000;
+	/// We allow for 2 seconds of compute with a 4 second average block time.
+	pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	pub const Version: RuntimeVersion = VERSION;
@@ -738,6 +739,10 @@ impl module_dex::Trait for Runtime {
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 }
 
+parameter_types! {
+	pub const MaxAuctionsCount: u32 = 100;
+}
+
 impl module_cdp_treasury::Trait for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
@@ -745,6 +750,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type DEX = Dex;
+	type MaxAuctionsCount = MaxAuctionsCount;
 }
 
 parameter_types! {

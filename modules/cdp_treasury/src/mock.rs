@@ -7,6 +7,7 @@ use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, pa
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_std::cell::RefCell;
 use support::Rate;
 
 pub type AccountId = u64;
@@ -129,6 +130,12 @@ impl dex::Trait for Runtime {
 }
 pub type DEXModule = dex::Module<Runtime>;
 
+thread_local! {
+	pub static TOTAL_COLLATERAL_AUCTION: RefCell<u32> = RefCell::new(0);
+	pub static TOTAL_DEBIT_AUCTION: RefCell<u32> = RefCell::new(0);
+	pub static TOTAL_SURPLUS_AUCTION: RefCell<u32> = RefCell::new(0);
+}
+
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
 	type CurrencyId = CurrencyId;
@@ -141,11 +148,16 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		_amount: Self::Balance,
 		_target: Self::Balance,
 	) {
+		TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut() += 1);
 	}
 
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {}
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {
+		TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut() += 1);
+	}
 
-	fn new_surplus_auction(_amount: Self::Balance) {}
+	fn new_surplus_auction(_amount: Self::Balance) {
+		TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut() += 1);
+	}
 
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
 		Ok(())
@@ -170,6 +182,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
+	pub const MaxAuctionsCount: u32 = 5;
 }
 
 impl Trait for Runtime {
@@ -179,6 +192,7 @@ impl Trait for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = DEXModule;
+	type MaxAuctionsCount = MaxAuctionsCount;
 }
 pub type CDPTreasuryModule = Module<Runtime>;
 

@@ -197,6 +197,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub const MaxAuctionsCount: u32 = 10_000;
 }
 
 impl cdp_treasury::Trait for Runtime {
@@ -206,6 +207,7 @@ impl cdp_treasury::Trait for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = DEXModule;
+	type MaxAuctionsCount = MaxAuctionsCount;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
