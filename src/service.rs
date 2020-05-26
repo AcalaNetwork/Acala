@@ -7,7 +7,9 @@ use std::sync::Arc;
 use runtime::{opaque::Block, RuntimeApi};
 use sc_consensus::LongestChain;
 use sc_consensus_babe;
-use sc_finality_grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider, StorageAndProofProvider};
+use sc_finality_grandpa::{
+	self as grandpa, FinalityProofProvider as GrandpaFinalityProofProvider, StorageAndProofProvider,
+};
 use sc_service::{config::Configuration, error::Error as ServiceError, AbstractService, ServiceBuilder};
 use sp_inherents::InherentDataProviders;
 
@@ -19,7 +21,6 @@ macro_rules! new_full_start {
 	($config:expr) => {{
 		use std::sync::Arc;
 
-		type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 		let mut import_setup = None;
 		let mut rpc_setup = None;
 		let inherent_data_providers = sp_inherents::InherentDataProviders::new();
@@ -44,7 +45,7 @@ macro_rules! new_full_start {
 					.take()
 					.ok_or_else(|| sc_service::Error::SelectChainRequired)?;
 				let (grandpa_block_import, grandpa_link) =
-					sc_finality_grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain)?;
+					grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain)?;
 				let justification_import = grandpa_block_import.clone();
 
 				let (block_import, babe_link) = sc_consensus_babe::block_import(
@@ -68,36 +69,52 @@ macro_rules! new_full_start {
 				Ok(import_queue)
 			},
 			)?
-		.with_rpc_extensions(|builder| -> std::result::Result<RpcExtension, _> {
-			let babe_link = import_setup
-				.as_ref()
-				.map(|s| &s.2)
-				.expect("BabeLink is present for full services or set up failed; qed.");
+		.with_rpc_extensions_builder(|builder| {
 			let grandpa_link = import_setup
 				.as_ref()
 				.map(|s| &s.1)
 				.expect("GRANDPA LinkHalf is present for full services or set up failed; qed.");
-			let shared_authority_set = grandpa_link.shared_authority_set();
-			let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
-			let deps = crate::rpc::FullDeps {
-				client: builder.client().clone(),
-				pool: builder.pool(),
-				select_chain: builder
-					.select_chain()
-					.cloned()
-					.expect("SelectChain is present for full services or set up failed; qed."),
-				babe: crate::rpc::BabeDeps {
-					keystore: builder.keystore(),
-					babe_config: sc_consensus_babe::BabeLink::config(babe_link).clone(),
-					shared_epoch_changes: sc_consensus_babe::BabeLink::epoch_changes(babe_link).clone(),
-				},
-				grandpa: crate::rpc::GrandpaDeps {
-					shared_voter_state: shared_voter_state.clone(),
-					shared_authority_set: shared_authority_set.clone(),
-				},
-			};
-			rpc_setup = Some((shared_voter_state));
-			Ok(crate::rpc::create_full(deps))
+
+			let shared_authority_set = grandpa_link.shared_authority_set().clone();
+			let shared_voter_state = grandpa::SharedVoterState::empty();
+
+			rpc_setup = Some((shared_voter_state.clone()));
+
+			let babe_link = import_setup
+				.as_ref()
+				.map(|s| &s.2)
+				.expect("BabeLink is present for full services or set up failed; qed.");
+
+			let babe_config = babe_link.config().clone();
+			let shared_epoch_changes = babe_link.epoch_changes().clone();
+
+			let client = builder.client().clone();
+			let pool = builder.pool().clone();
+			let select_chain = builder
+				.select_chain()
+				.cloned()
+				.expect("SelectChain is present for full services or set up failed; qed.");
+			let keystore = builder.keystore().clone();
+
+			Ok(move |deny_unsafe| {
+				let deps = crate::rpc::FullDeps {
+					client: client.clone(),
+					pool: pool.clone(),
+					select_chain: select_chain.clone(),
+					deny_unsafe,
+					babe: crate::rpc::BabeDeps {
+						babe_config: babe_config.clone(),
+						shared_epoch_changes: shared_epoch_changes.clone(),
+						keystore: keystore.clone(),
+					},
+					grandpa: crate::rpc::GrandpaDeps {
+						shared_voter_state: shared_voter_state.clone(),
+						shared_authority_set: shared_authority_set.clone(),
+					},
+				};
+
+				crate::rpc::create_full(deps)
+			})
 		})?;
 
 		(builder, import_setup, inherent_data_providers, rpc_setup)
@@ -124,8 +141,8 @@ macro_rules! new_full {
 		let service = builder
 			.with_finality_proof_provider(|client, backend| {
 				// GenesisAuthoritySetProvider is implemented for StorageAndProofProvider
-				let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
-				Ok(Arc::new(sc_finality_grandpa::FinalityProofProvider::new(backend, provider)) as _)
+				let provider = client as Arc<dyn grandpa::StorageAndProofProvider<_, _>>;
+				Ok(Arc::new(grandpa::FinalityProofProvider::new(backend, provider)) as _)
 			})?
 			.build()?;
 
@@ -140,7 +157,11 @@ macro_rules! new_full {
 		($with_startup_data)(&block_import, &babe_link);
 
 		if let sc_service::config::Role::Authority { .. } = &role {
-			let proposer = sc_basic_authorship::ProposerFactory::new(service.client(), service.transaction_pool());
+			let proposer = sc_basic_authorship::ProposerFactory::new(
+				service.client(),
+				service.transaction_pool(),
+				service.prometheus_registry().as_ref(),
+			);
 
 			let client = service.client();
 			let select_chain = service.select_chain().ok_or(sc_service::Error::SelectChainRequired)?;
@@ -172,7 +193,7 @@ macro_rules! new_full {
 			None
 			};
 
-		let config = sc_finality_grandpa::Config {
+		let config = grandpa::Config {
 			// FIXME #1578 make this available through chainspec
 			gossip_duration: std::time::Duration::from_millis(333),
 			justification_period: 512,
@@ -190,22 +211,22 @@ macro_rules! new_full {
 			// and vote data availability than the observer. The observer has not
 			// been tested extensively yet and having most nodes in a network run it
 			// could lead to finality stalls.
-			let grandpa_config = sc_finality_grandpa::GrandpaParams {
+			let grandpa_config = grandpa::GrandpaParams {
 				config,
 				link: grandpa_link,
 				network: service.network(),
 				inherent_data_providers: inherent_data_providers.clone(),
 				telemetry_on_connect: Some(service.telemetry_on_connect_stream()),
-				voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
+				voting_rule: grandpa::VotingRulesBuilder::default().build(),
 				prometheus_registry: service.prometheus_registry(),
 				shared_voter_state,
 			};
 
 			// the GRANDPA voter task is considered infallible, i.e.
 			// if it fails we take down the service with it.
-			service.spawn_essential_task("grandpa-voter", sc_finality_grandpa::run_grandpa_voter(grandpa_config)?);
+			service.spawn_essential_task("grandpa-voter", grandpa::run_grandpa_voter(grandpa_config)?);
 		} else {
-			sc_finality_grandpa::setup_disabled_grandpa(service.client(), &inherent_data_providers, service.network())?;
+			grandpa::setup_disabled_grandpa(service.client(), &inherent_data_providers, service.network())?;
 			}
 
 		Ok((service, inherent_data_providers))

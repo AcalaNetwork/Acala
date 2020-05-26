@@ -66,6 +66,7 @@ impl frame_system::Trait for Runtime {
 	type DbWeight = ();
 	type BlockExecutionWeight = ();
 	type ExtrinsicBaseWeight = ();
+	type MaximumExtrinsicWeight = ();
 }
 
 impl orml_tokens::Trait for Runtime {

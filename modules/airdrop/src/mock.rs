@@ -64,6 +64,7 @@ impl system::Trait for Runtime {
 	type DbWeight = ();
 	type BlockExecutionWeight = ();
 	type ExtrinsicBaseWeight = ();
+	type MaximumExtrinsicWeight = ();
 }
 pub type System = system::Module<Runtime>;
 

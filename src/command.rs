@@ -6,6 +6,7 @@ use crate::{
 };
 use runtime::{Block, RuntimeApi};
 use sc_cli::{Result, SubstrateCli};
+use sc_finality_grandpa as grandpa;
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> &'static str {
