@@ -520,8 +520,8 @@ impl orml_auction::Trait for Runtime {
 
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
-	pub const ExpiresIn: Moment = 1000 * 60 * 30; // 30 mins
-	pub const OracleUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
+	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
+	pub const OracleUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 10000;
 }
 
 impl orml_oracle::Trait for Runtime {
