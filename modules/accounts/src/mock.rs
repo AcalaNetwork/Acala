@@ -3,13 +3,9 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_dispatch, impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_dispatch, impl_outer_origin, parameter_types, weights::IdentityFee};
 use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{ConvertInto, IdentityLookup},
-	Perbill,
-};
+use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
 pub type AccountId = u64;
 pub type BlockNumber = u64;
@@ -67,6 +63,7 @@ impl system::Trait for Runtime {
 	type DbWeight = ();
 	type BlockExecutionWeight = ();
 	type ExtrinsicBaseWeight = ();
+	type MaximumExtrinsicWeight = ();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -124,7 +121,7 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = PalletBalances;
 	type OnTransactionPayment = ();
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = ConvertInto;
+	type WeightToFee = IdentityFee<u64>;
 	type FeeMultiplierUpdate = ();
 }
 

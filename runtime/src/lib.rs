@@ -16,7 +16,7 @@ use sp_core::{
 	OpaqueMetadata,
 };
 use sp_runtime::traits::{
-	BlakeTwo256, Block as BlockT, Convert, ConvertInto, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
+	BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
 };
 use sp_runtime::{
 	create_runtime_str,
@@ -41,7 +41,7 @@ pub use frame_support::{
 	traits::{Contains, ContainsLengthBound, KeyOwnerProofSystem, Randomness},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
-		Weight,
+		IdentityFee, Weight,
 	},
 	StorageValue,
 };
@@ -107,6 +107,9 @@ parameter_types! {
 	/// We allow for 2 seconds of compute with a 4 second average block time.
 	pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	/// Assume 10% of weight for average on_initialize calls.
+	pub const MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
+		.saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
 	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	pub const Version: RuntimeVersion = VERSION;
 }
@@ -134,6 +137,7 @@ impl system::Trait for Runtime {
 	type DbWeight = RocksDbWeight;
 	type BlockExecutionWeight = BlockExecutionWeight;
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
+	type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
 }
 
 parameter_types! {
@@ -208,7 +212,7 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
 	type OnTransactionPayment = ();
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = ConvertInto;
+	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 }
 
@@ -517,8 +521,8 @@ impl orml_auction::Trait for Runtime {
 
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
-	pub const ExpiresIn: Moment = 1000 * 60 * 30; // 30 mins
-	pub const OracleUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
+	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
+	pub const OracleUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 10000;
 }
 
 impl orml_oracle::Trait for Runtime {
