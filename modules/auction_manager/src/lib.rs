@@ -19,7 +19,7 @@ use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
-use orml_traits::{Auction, AuctionHandler, MultiCurrency, OnNewBidResult};
+use orml_traits::{Auction, AuctionEndChange, AuctionHandler, MultiCurrency, OnNewBidResult};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash, Saturating, Zero},
@@ -554,7 +554,7 @@ impl<T: Trait> Module<T> {
 
 				return OnNewBidResult {
 					accept_bid: true,
-					auction_end: Some(Some(
+					auction_end_change: AuctionEndChange::Changed(Some(
 						now + Self::get_auction_time_to_close(now, collateral_auction.start_time),
 					)),
 				};
@@ -563,7 +563,7 @@ impl<T: Trait> Module<T> {
 
 		OnNewBidResult {
 			accept_bid: false,
-			auction_end: None,
+			auction_end_change: AuctionEndChange::NoChange,
 		}
 	}
 
@@ -616,7 +616,7 @@ impl<T: Trait> Module<T> {
 
 				return OnNewBidResult {
 					accept_bid: true,
-					auction_end: Some(Some(
+					auction_end_change: AuctionEndChange::Changed(Some(
 						now + Self::get_auction_time_to_close(now, debit_auction.start_time),
 					)),
 				};
@@ -625,7 +625,7 @@ impl<T: Trait> Module<T> {
 
 		OnNewBidResult {
 			accept_bid: false,
-			auction_end: None,
+			auction_end_change: AuctionEndChange::NoChange,
 		}
 	}
 
@@ -672,7 +672,7 @@ impl<T: Trait> Module<T> {
 
 				return OnNewBidResult {
 					accept_bid: true,
-					auction_end: Some(Some(
+					auction_end_change: AuctionEndChange::Changed(Some(
 						now + Self::get_auction_time_to_close(now, surplus_auction.start_time),
 					)),
 				};
@@ -681,7 +681,7 @@ impl<T: Trait> Module<T> {
 
 		OnNewBidResult {
 			accept_bid: false,
-			auction_end: None,
+			auction_end_change: AuctionEndChange::NoChange,
 		}
 	}
 
@@ -809,7 +809,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionIdOf
 		} else {
 			OnNewBidResult {
 				accept_bid: false,
-				auction_end: None,
+				auction_end_change: AuctionEndChange::NoChange,
 			}
 		}
 	}

@@ -72,6 +72,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 

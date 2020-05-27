@@ -132,16 +132,16 @@ fn bid_when_soft_cap_for_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
 		assert_eq!(
-			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end,
-			Some(Some(101))
+			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
+			AuctionEndChange::Changed(Some(101))
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 10), Some((BOB, 5))).accept_bid,
 			false,
 		);
 		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 15), Some((BOB, 5))).auction_end,
-			Some(Some(2051))
+			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 15), Some((BOB, 5))).auction_end_change,
+			AuctionEndChange::Changed(Some(2051))
 		);
 	});
 }
@@ -151,16 +151,16 @@ fn bid_when_soft_cap_for_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_debit_auction(200, 100);
 		assert_eq!(
-			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end,
-			Some(Some(101))
+			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
+			AuctionEndChange::Changed(Some(101))
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 105), Some((BOB, 100))).accept_bid,
 			false
 		);
 		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end,
-			Some(Some(2051))
+			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end_change,
+			AuctionEndChange::Changed(Some(2051))
 		);
 	});
 }
@@ -170,16 +170,16 @@ fn bid_when_soft_cap_for_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_surplus_auction(100);
 		assert_eq!(
-			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end,
-			Some(Some(101))
+			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
+			AuctionEndChange::Changed(Some(101))
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 105), Some((BOB, 100))).accept_bid,
 			false
 		);
 		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end,
-			Some(Some(2051))
+			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end_change,
+			AuctionEndChange::Changed(Some(2051))
 		);
 	});
 }
