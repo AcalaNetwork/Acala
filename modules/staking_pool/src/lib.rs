@@ -201,9 +201,8 @@ impl<T: Trait> Module<T> {
 
 			// burn who's ldot
 			let liquid_currency_id = T::LiquidCurrencyId::get();
-			T::Currency::ensure_can_withdraw(liquid_currency_id, who, ldot_to_redeem)
+			T::Currency::withdraw(liquid_currency_id, who, ldot_to_redeem)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
-			T::Currency::withdraw(liquid_currency_id, who, ldot_to_redeem).expect("never failed after balance check");
 
 			// start unbond at next era, and the unbond become unbonded after bonding duration
 			let unbonded_era_index = Self::current_era()
@@ -315,9 +314,8 @@ impl<T: Trait> Module<T> {
 			}
 
 			let liquid_currency_id = T::LiquidCurrencyId::get();
-			T::Currency::ensure_can_withdraw(liquid_currency_id, who, total_deduct)
+			T::Currency::withdraw(liquid_currency_id, who, total_deduct)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
-			T::Currency::withdraw(liquid_currency_id, who, total_deduct).expect("never failed after balance check");
 
 			<ClaimedUnbond<T>>::mutate(who, target_era, |balance| *balance += unbond_amount);
 			Unbonding::mutate(target_era, |(_, claimed)| *claimed += unbond_amount);
