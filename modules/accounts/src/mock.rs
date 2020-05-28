@@ -7,7 +7,7 @@ use frame_support::{impl_outer_dispatch, impl_outer_origin, parameter_types, wei
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Balance = u64;
 pub type Amount = i64;

@@ -340,8 +340,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		let new_total_collateral = Self::total_collaterals(currency_id)
 			.checked_sub(amount)
 			.ok_or(Error::<T>::CollateralNotEnough)?;
-		T::Currency::ensure_can_withdraw(currency_id, &Self::account_id(), amount)?;
-		T::Currency::transfer(currency_id, &Self::account_id(), to, amount).expect("never failed after check");
+		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)?;
 		TotalCollaterals::insert(currency_id, new_total_collateral);
 		Ok(())
 	}
@@ -354,8 +353,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		let new_total_collateral = Self::total_collaterals(currency_id)
 			.checked_add(amount)
 			.ok_or(Error::<T>::CollateralOverflow)?;
-		T::Currency::ensure_can_withdraw(currency_id, &from, amount)?;
-		T::Currency::transfer(currency_id, from, &Self::account_id(), amount).expect("never failed after check");
+		T::Currency::transfer(currency_id, from, &Self::account_id(), amount)?;
 		TotalCollaterals::insert(currency_id, new_total_collateral);
 		Ok(())
 	}

@@ -13,7 +13,7 @@ use sp_runtime::{
 };
 use support::AuctionManager;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type DebitBalance = Balance;
 pub type DebitAmount = Amount;
