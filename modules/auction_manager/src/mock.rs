@@ -13,7 +13,7 @@ use sp_runtime::{
 };
 use support::Price;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type AuctionId = u64;
 pub type Amount = i64;

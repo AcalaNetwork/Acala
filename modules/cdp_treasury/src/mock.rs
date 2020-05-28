@@ -10,7 +10,7 @@ use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
 use support::Rate;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i64;
 pub type Share = u64;

@@ -9,9 +9,9 @@ use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::PolkadotStakingLedger;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type PolkadotAccountId = u64;
+pub type PolkadotAccountId = u128;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
