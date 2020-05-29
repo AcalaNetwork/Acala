@@ -385,11 +385,11 @@ mod tests {
 				assert_eq!(DexModule::liquidity_pool(CurrencyId::XBTC), (10003, 10003000));
 
 				assert_eq!(DexModule::total_shares(CurrencyId::XBTC), 10002998);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 0);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (0, 0));
 				DexModule::on_initialize(0);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 100030);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (100030, 0));
 				DexModule::on_initialize(0);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 200060);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (200060, 0));
 			});
 	}
 
