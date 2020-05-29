@@ -25,6 +25,7 @@ impl OffchainLock {
 		OffchainLock { key }
 	}
 
+	#[allow(clippy::option_option)] // the substrate offchain worker api requires an option option pattern
 	pub fn acquire_offchain_lock<T, F>(&self, f: F) -> Result<LockItem<T>, OffchainErr>
 	where
 		T: codec::Codec,
