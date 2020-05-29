@@ -61,9 +61,9 @@ impl BondingLedger {
 			.collect();
 
 		Self {
-			total: total,
+			total,
 			active: self.active,
-			unlocking: unlocking,
+			unlocking,
 		}
 	}
 
@@ -225,7 +225,7 @@ decl_module! {
 			let ledger = Self::ledger(&who);
 			ensure!(!ledger.total.is_zero(), Error::<T>::NoBonded);
 
-			let mut targets = targets.clone();
+			let mut targets = targets;
 			targets.sort();
 			targets.dedup();
 
@@ -243,7 +243,7 @@ decl_module! {
 			let old_nominations = Self::nominations(&who);
 			let old_active = Self::ledger(&who).active;
 
-			Self::update_votes(old_active, &old_nominations, Zero::zero(), &vec![]);
+			Self::update_votes(old_active, &old_nominations, Zero::zero(), &[]);
 			<Nominations<T>>::remove(&who);
 		}
 	}
@@ -263,9 +263,9 @@ impl<T: Trait> Module<T> {
 
 	fn update_votes(
 		old_active: Balance,
-		old_nominations: &Vec<T::PolkadotAccountId>,
+		old_nominations: &[T::PolkadotAccountId],
 		new_active: Balance,
-		new_nominations: &Vec<T::PolkadotAccountId>,
+		new_nominations: &[T::PolkadotAccountId],
 	) {
 		if !old_active.is_zero() && !old_nominations.is_empty() {
 			for account in old_nominations {

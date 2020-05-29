@@ -13,7 +13,7 @@ use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use sp_runtime::traits::{Saturating, UniqueSaturatedInto};
 
-use cdp_engine::Module as CdpEngine;
+use cdp_engine::{CollateralParamChange, Module as CdpEngine};
 use honzon::Module as Honzon;
 use honzon::*;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
@@ -102,11 +102,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			None,
-			Some(Some(Ratio::from_rational(150, 100))),
-			Some(Some(Rate::from_rational(10, 100))),
-			Some(Some(Ratio::from_rational(150, 100))),
-			Some(min_debit_value * 100),
+			CollateralParamChange::NoChange,
+			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
+			CollateralParamChange::New(Some(Rate::from_rational(10, 100))),
+			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
+			CollateralParamChange::New(min_debit_value * 100),
 		)?;
 	}: _(RawOrigin::Signed(caller), currency_id, collateral_amount, debit_amount)
 
@@ -134,11 +134,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			None,
-			Some(Some(Ratio::from_rational(150, 100))),
-			Some(Some(Rate::from_rational(10, 100))),
-			Some(Some(Ratio::from_rational(150, 100))),
-			Some(min_debit_value * 100),
+			CollateralParamChange::NoChange,
+			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
+			CollateralParamChange::New(Some(Rate::from_rational(10, 100))),
+			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
+			CollateralParamChange::New(min_debit_value * 100),
 		)?;
 
 		// initialize sender's loan

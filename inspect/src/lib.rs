@@ -46,6 +46,7 @@ impl<TBlock: Block> PrettyPrinter<TBlock> for DebugPrinter {
 }
 
 /// Aggregated error for `Inspector` operations.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, derive_more::From, derive_more::Display)]
 pub enum Error {
 	/// Could not decode Block or Extrinsic.
@@ -234,7 +235,7 @@ impl<Hash: FromStr + Debug, Number: FromStr + Debug> FromStr for ExtrinsicAddres
 
 		let index = it
 			.next()
-			.ok_or_else(|| format!("Extrinsic index missing: example \"5:0\""))?
+			.ok_or_else(|| "Extrinsic index missing: example \"5:0\"".to_string())?
 			.parse()
 			.map_err(|e| format!("Invalid index format: {}", e))?;
 

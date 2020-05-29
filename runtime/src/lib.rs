@@ -3,6 +3,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
+// The `large_enum_variant` warning originates from `construct_runtime` macro.
+#![allow(clippy::large_enum_variant)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -171,7 +173,7 @@ impl pallet_grandpa::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = 1 * DOLLARS;
+	pub const IndexDeposit: Balance = DOLLARS;
 }
 
 impl pallet_indices::Trait for Runtime {
@@ -379,13 +381,13 @@ impl ContainsLengthBound for GeneralCouncilProvider {
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
-	pub const SpendPeriod: BlockNumber = 1 * DAYS;
+	pub const ProposalBondMinimum: Balance = DOLLARS;
+	pub const SpendPeriod: BlockNumber = DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
-	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
-	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
-	pub const TipReportDepositPerByte: Balance = 1 * CENTS;
+	pub const TipReportDepositBase: Balance = DOLLARS;
+	pub const TipReportDepositPerByte: Balance = CENTS;
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 }
 
@@ -497,7 +499,7 @@ impl pallet_staking::Trait for Runtime {
 
 parameter_types! {
 	pub const ConfigDepositBase: Balance = 10 * CENTS;
-	pub const FriendDepositFactor: Balance = 1 * CENTS;
+	pub const FriendDepositFactor: Balance = CENTS;
 	pub const MaxFriends: u16 = 9;
 	pub const RecoveryDeposit: Balance = 10 * CENTS;
 }
@@ -671,7 +673,7 @@ where
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
 		let address = Indices::unlookup(account);
 		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (address, signature.into(), extra)))
+		Some((call, (address, signature, extra)))
 	}
 }
 
@@ -693,7 +695,7 @@ parameter_types! {
 	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
 	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
-	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
+	pub const MinimumDebitValue: Balance = DOLLARS;
 	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(5, 100);
 	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
@@ -760,8 +762,8 @@ impl module_cdp_treasury::Trait for Runtime {
 
 parameter_types! {
 	pub const FreeTransferCount: u8 = 3;
-	pub const FreeTransferPeriod: BlockNumber = 1 * DAYS;
-	pub const FreeTransferDeposit: Balance = 1 * DOLLARS;
+	pub const FreeTransferPeriod: BlockNumber = DAYS;
+	pub const FreeTransferDeposit: Balance = DOLLARS;
 }
 
 impl module_accounts::Trait for Runtime {
@@ -778,7 +780,7 @@ impl module_airdrop::Trait for Runtime {
 
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = 1 * DAYS;
+	pub const EraLength: BlockNumber = DAYS;
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
@@ -820,7 +822,7 @@ impl module_homa::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinCouncilBondThreshold: Balance = 1 * DOLLARS;
+	pub const MinCouncilBondThreshold: Balance = DOLLARS;
 	pub const NominateesCount: usize = 7;
 	pub const MaxUnlockingChunks: usize = 7;
 	pub const NomineesElectionBondingDuration: EraIndex = 7;
@@ -841,6 +843,7 @@ impl module_homa_treasury::Trait for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 }
 
+#[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,

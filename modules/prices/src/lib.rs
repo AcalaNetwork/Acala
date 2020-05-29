@@ -84,7 +84,7 @@ impl<T: Trait> PriceProvider<CurrencyId> for Module<T> {
 			// if is homa liquid currency,
 			// return the product of staking currency price and liquid/staking exchange rate.
 			if let Some(staking_currency_price) = Self::get_price(T::GetStakingCurrencyId::get()) {
-				let exchange_rate: Price = T::LiquidStakingExchangeRateProvider::get_exchange_rate().into();
+				let exchange_rate: Price = T::LiquidStakingExchangeRateProvider::get_exchange_rate();
 				staking_currency_price.checked_mul(&exchange_rate)
 			} else {
 				None

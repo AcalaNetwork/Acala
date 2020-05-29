@@ -3,6 +3,7 @@
 #![cfg(test)]
 
 use super::*;
+use cdp_engine::CollateralParamChange;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	CDPEngineModule, ExtBuilder, HonzonModule, LoansModule, Origin, Runtime, System, TestEvent, ALICE, BOB, BTC, CAROL,
@@ -75,11 +76,11 @@ fn transfer_loan_from_should_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			Some(Some(Rate::from_rational(1, 100000))),
-			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Rate::from_rational(2, 10))),
-			Some(Some(Ratio::from_rational(9, 5))),
-			Some(10000),
+			CollateralParamChange::New(Some(Rate::from_rational(1, 100000))),
+			CollateralParamChange::New(Some(Ratio::from_rational(3, 2))),
+			CollateralParamChange::New(Some(Rate::from_rational(2, 10))),
+			CollateralParamChange::New(Some(Ratio::from_rational(9, 5))),
+			CollateralParamChange::New(10000),
 		));
 		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
@@ -105,11 +106,11 @@ fn adjust_loan_should_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			Some(Some(Rate::from_rational(1, 100000))),
-			Some(Some(Ratio::from_rational(3, 2))),
-			Some(Some(Rate::from_rational(2, 10))),
-			Some(Some(Ratio::from_rational(9, 5))),
-			Some(10000),
+			CollateralParamChange::New(Some(Rate::from_rational(1, 100000))),
+			CollateralParamChange::New(Some(Ratio::from_rational(3, 2))),
+			CollateralParamChange::New(Some(Rate::from_rational(2, 10))),
+			CollateralParamChange::New(Some(Ratio::from_rational(9, 5))),
+			CollateralParamChange::New(10000),
 		));
 		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
