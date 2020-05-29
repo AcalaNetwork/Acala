@@ -171,7 +171,7 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
 		target_amount: Self::Balance,
-	) -> DispatchResult;
+	) -> sp_std::result::Result<Self::Balance, DispatchError>;
 	fn create_collateral_auctions(
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
