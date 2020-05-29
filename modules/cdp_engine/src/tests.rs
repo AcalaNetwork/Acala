@@ -180,23 +180,26 @@ fn set_collateral_params_work() {
 			Some(Some(Ratio::from_rational(9, 5))),
 			Some(10000),
 		));
+
+		let new_collateral_params = CDPEngineModule::collateral_params(BTC);
+
 		assert_eq!(
-			CDPEngineModule::stability_fee(BTC),
+			new_collateral_params.stability_fee,
 			Some(Rate::from_rational(1, 100000))
 		);
 		assert_eq!(
-			CDPEngineModule::liquidation_ratio(BTC),
+			new_collateral_params.liquidation_ratio,
 			Some(Ratio::from_rational(3, 2))
 		);
 		assert_eq!(
-			CDPEngineModule::liquidation_penalty(BTC),
+			new_collateral_params.liquidation_penalty,
 			Some(Rate::from_rational(2, 10))
 		);
 		assert_eq!(
-			CDPEngineModule::required_collateral_ratio(BTC),
+			new_collateral_params.required_collateral_ratio,
 			Some(Ratio::from_rational(9, 5))
 		);
-		assert_eq!(CDPEngineModule::maximum_total_debit_value(BTC), 10000);
+		assert_eq!(new_collateral_params.maximum_total_debit_value, 10000);
 	});
 }
 

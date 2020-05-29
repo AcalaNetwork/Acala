@@ -93,6 +93,32 @@ pub enum LiquidationStrategy {
 	Exchange,
 }
 
+/// Risk management params
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+pub struct RiskManagementParams {
+	/// Maximum total debit value generated from it, when reach the hard cap,
+	/// CDP's owner cannot issue more stablecoin under the collateral type.
+	pub maximum_total_debit_value: Balance,
+
+	/// Extra stability fee rate, `None` value means not set
+	pub stability_fee: Option<Rate>,
+
+	/// Liquidation ratio, when the collateral ratio of
+	/// CDP under this collateral type is below the liquidation ratio, this CDP is unsafe and can be liquidated.
+	/// `None` value means not set
+	pub liquidation_ratio: Option<Ratio>,
+
+	/// Liquidation penalty rate, when liquidation occurs,
+	/// CDP will be deducted an additional penalty base on the product of penalty rate and debit value.
+	/// `None` value means not set
+	pub liquidation_penalty: Option<Rate>,
+
+	/// Required collateral ratio, it it's set, cannot adjust the position of CDP so that
+	/// the current collateral ratio is lower than the required collateral ratio.
+	/// `None` value means not set
+	pub required_collateral_ratio: Option<Ratio>,
+}
+
 decl_event!(
 	pub enum Event<T>
 	where
@@ -147,38 +173,17 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPEngine {
+		/// System shutdown flag
+		pub IsShutdown get(fn is_shutdown): bool;
 
 		/// Mapping from collateral type to its exchange rate of debit units and debit value
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyId => Option<ExchangeRate>;
 
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
-
-		/// Mapping from collateral type to its extra stability fee rate,
-		/// `None` value means not set
-		pub StabilityFee get(fn stability_fee): map hasher(twox_64_concat) CurrencyId => Option<Rate>;
-
-		/// Mapping from collateral type to its liquidation ratio, when the collateral ratio of
-		/// CDP under this collateral type is below the liquidation ratio, this CDP is unsafe and can be liquidated.
-		/// `None` value means not set
-		pub LiquidationRatio get(fn liquidation_ratio): map hasher(twox_64_concat) CurrencyId => Option<Ratio>;
-
-		/// Mapping from collateral type to its liquidation penalty rate, when liquidation occurs,
-		/// CDP will be deducted an additional penalty base on the product of penalty rate and debit value.
-		/// `None` value means not set
-		pub LiquidationPenalty get(fn liquidation_penalty): map hasher(twox_64_concat) CurrencyId => Option<Rate>;
-
-		/// Mapping from collateral type to its required collateral ratio, it it's set, cannot adjust the position of CDP so that
-		/// the current collateral ratio is lower than the required collateral ratio.
-		/// `None` value means not set
-		pub RequiredCollateralRatio get(fn required_collateral_ratio): map hasher(twox_64_concat) CurrencyId => Option<Ratio>;
-
-		/// Mapping from collateral type to the maximum total debit value generated from it, when reach the hard cap,
-		/// CDP's owner cannot issue more stablecoin under the collateral type.
-		pub MaximumTotalDebitValue get(fn maximum_total_debit_value): map hasher(twox_64_concat) CurrencyId => Balance;
-
 		/// Global stability fee rate for all types of collateral
 		pub GlobalStabilityFee get(fn global_stability_fee) config(): Rate;
+
+		/// Mapping from collateral type to its risk management params
+		pub CollateralParams get(fn collateral_params): map hasher(twox_64_concat) CurrencyId => RiskManagementParams;
 	}
 
 	add_extra_genesis {
@@ -192,19 +197,13 @@ decl_storage! {
 				required_collateral_ratio,
 				maximum_total_debit_value,
 			)| {
-				if let Some(val) = stability_fee {
-					StabilityFee::insert(currency_id, val);
-				}
-				if let Some(val) = liquidation_ratio {
-					LiquidationRatio::insert(currency_id, val);
-				}
-				if let Some(val) = liquidation_penalty {
-					LiquidationPenalty::insert(currency_id, val);
-				}
-				if let Some(val) = required_collateral_ratio {
-					RequiredCollateralRatio::insert(currency_id, val);
-				}
-				MaximumTotalDebitValue::insert(currency_id, maximum_total_debit_value);
+				CollateralParams::insert(currency_id, RiskManagementParams {
+					maximum_total_debit_value: *maximum_total_debit_value,
+					stability_fee: *stability_fee,
+					liquidation_ratio: *liquidation_ratio,
+					liquidation_penalty: *liquidation_penalty,
+					required_collateral_ratio: *required_collateral_ratio,
+				});
 			});
 		});
 	}
@@ -285,12 +284,12 @@ decl_module! {
 		/// 	- T::CDPTreasury is module_cdp_treasury
 		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
-		/// - Db reads: `IsShutdown`, 10 items of modules related to module_cdp_engine
+		/// - Db reads: `IsShutdown`, 9 items of modules related to module_cdp_engine
 		/// - Db writes: 8 items of modules related to module_cdp_engine
 		/// -------------------
 		/// Base Weight: 76.54 µs
 		/// # </weight>
-		#[weight = (77_000_000 + T::DbWeight::get().reads_writes(11, 8), DispatchClass::Operational)]
+		#[weight = (77_000_000 + T::DbWeight::get().reads_writes(10, 8), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -339,12 +338,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `StabilityFee`, `LiquidationRatio`, `LiquidationPenalty`, `RequiredCollateralRatio`, `MaximumTotalDebitValue`
+		/// - Db reads:	`CollateralParams`
+		/// - Db writes: `CollateralParams`
 		/// -------------------
 		/// Base Weight: 32.81 µs
 		/// # </weight>
-		#[weight = 33_000_000 + T::DbWeight::get().reads_writes(0, 5)]
+		#[weight = 33_000_000 + T::DbWeight::get().reads_writes(1, 1)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
@@ -357,42 +356,33 @@ decl_module! {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
+			ensure!(
+				T::CollateralCurrencyIds::get().contains(&currency_id),
+				Error::<T>::InvalidCollateralType,
+			);
+
+			let mut collateral_params = Self::collateral_params(currency_id);
 			if let Some(update) = stability_fee {
-				if let Some(val) = update {
-					StabilityFee::insert(currency_id, val);
-				} else {
-					StabilityFee::remove(currency_id);
-				}
+				collateral_params.stability_fee = update;
 				Self::deposit_event(RawEvent::StabilityFeeUpdated(currency_id, update));
 			}
 			if let Some(update) = liquidation_ratio {
-				if let Some(val) = update {
-					LiquidationRatio::insert(currency_id, val);
-				} else {
-					LiquidationRatio::remove(currency_id);
-				}
+				collateral_params.liquidation_ratio = update;
 				Self::deposit_event(RawEvent::LiquidationRatioUpdated(currency_id, update));
 			}
 			if let Some(update) = liquidation_penalty {
-				if let Some(val) = update {
-					LiquidationPenalty::insert(currency_id, val);
-				} else {
-					LiquidationPenalty::remove(currency_id);
-				}
+				collateral_params.liquidation_penalty = update;
 				Self::deposit_event(RawEvent::LiquidationPenaltyUpdated(currency_id, update));
 			}
 			if let Some(update) = required_collateral_ratio {
-				if let Some(val) = update {
-					RequiredCollateralRatio::insert(currency_id, val);
-				} else {
-					RequiredCollateralRatio::remove(currency_id);
-				}
+				collateral_params.required_collateral_ratio = update;
 				Self::deposit_event(RawEvent::RequiredCollateralRatioUpdated(currency_id, update));
 			}
 			if let Some(val) = maximum_total_debit_value {
-				MaximumTotalDebitValue::insert(currency_id, val);
+				collateral_params.maximum_total_debit_value = val;
 				Self::deposit_event(RawEvent::MaximumTotalDebitValueUpdated(currency_id, val));
 			}
+			CollateralParams::insert(currency_id, collateral_params);
 		}
 
 		/// Issue interest in stable coin for all types of collateral has debit when block end,
@@ -400,13 +390,9 @@ decl_module! {
 		fn on_finalize(_now: T::BlockNumber) {
 			// collect stability fee for all types of collateral
 			if !Self::is_shutdown() {
-				let global_stability_fee = Self::global_stability_fee();
-
 				for currency_id in T::CollateralCurrencyIds::get() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
-					let stability_fee_rate = Self::stability_fee(currency_id)
-						.unwrap_or_default()
-						.saturating_add(global_stability_fee);
+					let stability_fee_rate = Self::get_stability_fee(currency_id);
 					let total_debits = <loans::Module<T>>::total_debits(currency_id);
 					if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
 						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
@@ -562,16 +548,35 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
+	pub fn maximum_total_debit_value(currency_id: CurrencyId) -> Balance {
+		Self::collateral_params(currency_id).maximum_total_debit_value
+	}
+
+	pub fn required_collateral_ratio(currency_id: CurrencyId) -> Option<Ratio> {
+		Self::collateral_params(currency_id).required_collateral_ratio
+	}
+
+	pub fn get_stability_fee(currency_id: CurrencyId) -> Rate {
+		Self::collateral_params(currency_id)
+			.stability_fee
+			.unwrap_or_default()
+			.saturating_add(Self::global_stability_fee())
+	}
+
 	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Ratio {
-		Self::liquidation_ratio(currency_id).unwrap_or_else(T::DefaultLiquidationRatio::get)
+		Self::collateral_params(currency_id)
+			.liquidation_ratio
+			.unwrap_or_else(T::DefaultLiquidationRatio::get)
+	}
+
+	pub fn get_liquidation_penalty(currency_id: CurrencyId) -> Rate {
+		Self::collateral_params(currency_id)
+			.liquidation_penalty
+			.unwrap_or_else(T::DefaultLiquidationPenalty::get)
 	}
 
 	pub fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {
 		Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaultDebitExchangeRate::get)
-	}
-
-	pub fn get_liquidation_penalty(currency_id: CurrencyId) -> Rate {
-		Self::liquidation_penalty(currency_id).unwrap_or_else(T::DefaultLiquidationPenalty::get)
 	}
 
 	pub fn get_debit_value(currency_id: CurrencyId, debit_balance: T::DebitBalance) -> Balance {
