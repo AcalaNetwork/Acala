@@ -151,7 +151,7 @@ decl_event!(
 		SurplusAuctionDealed(AuctionId, Balance, AccountId, Balance),
 		/// Debit auction dealed (auction_id, debit_currency_amount, winner, payment_amount).
 		DebitAuctionDealed(AuctionId, Balance, AccountId, Balance),
-		/// Dex take collateral auction (auction_id, collateral_type, collateral_amount, turnover)
+		/// Dex take collateral auction (auction_id, collateral_type, collateral_amount, turnover, refund)
 		DEXTakeCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
 	}
 );
@@ -692,80 +692,73 @@ impl<T: Trait> Module<T> {
 
 	pub fn collateral_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
 		if let (Some(collateral_auction), Some((bidder, bid_price))) = (Self::collateral_auctions(auction_id), winner) {
-			// decrease account ref of bidder
-			system::Module::<T>::dec_ref(&bidder);
-
-			// check the bid_price if greater than target
 			let stable_currency_id = T::GetStableCurrencyId::get();
+			let mut should_deal = true;
 
-			let should_deal = bid_price >= collateral_auction.target
-				|| bid_price
-					>= T::DEX::get_target_amount(
+			// if bid_price doesn't reach target and trading with DEX will get better result
+			if bid_price < collateral_auction.target
+				&& bid_price
+					< T::DEX::get_target_amount(
 						collateral_auction.currency_id,
 						stable_currency_id,
 						collateral_auction.amount,
-					);
-
-			if !should_deal {
-				// shouldn't deal, exchange with DEX can get a better result.
-				// refund stable coin to the last bidder, ignore result to continue
-				if T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price).is_ok() {
-					// swap with DEX
-					if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
-						collateral_auction.currency_id,
-						collateral_auction.amount,
-						Zero::zero(),
 					) {
-						// TODO: discuss if the turnover is greater than traget, whether to return the extra part to the auction owner
-
-						// decrease account ref of refund recipient
-						system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
-
-						// update auction records
-						TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
-							*balance = balance.saturating_sub(collateral_auction.amount)
-						});
-						TotalTargetInAuction::mutate(|balance| {
-							*balance = balance.saturating_sub(collateral_auction.target)
-						});
-						<CollateralAuctions<T>>::remove(auction_id);
-
-						<Module<T>>::deposit_event(RawEvent::DEXTakeCollateralAuction(
-							auction_id,
-							collateral_auction.currency_id,
-							collateral_auction.amount,
-							amount,
-						));
-					}
-				}
-			} else {
-				// auction will be dealed
-				// transfer collateral to winner from cdp treasury, ignore result to continue
-				if T::CDPTreasury::transfer_collateral_to(
+				// try trade with DEX
+				if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
 					collateral_auction.currency_id,
-					&bidder,
 					collateral_auction.amount,
-				)
-				.is_ok()
-				{
-					system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
-					TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
-						*balance = balance.saturating_sub(collateral_auction.amount)
-					});
-					TotalTargetInAuction::mutate(|balance| {
-						*balance = balance.saturating_sub(collateral_auction.target)
-					});
-					<CollateralAuctions<T>>::remove(auction_id);
+					Zero::zero(),
+				) {
+					// swap successfully, will not deal
+					should_deal = false;
 
-					<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealed(
+					// refund stable coin to the last bidder, ignore result to continue
+					let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price);
+
+					// extra stable coin will refund to refund recipient, ignore result to continue
+					if amount > collateral_auction.target {
+						let _ = T::CDPTreasury::deposit_unbacked_debit_to(
+							&collateral_auction.refund_recipient,
+							amount - collateral_auction.target,
+						);
+					}
+
+					<Module<T>>::deposit_event(RawEvent::DEXTakeCollateralAuction(
 						auction_id,
 						collateral_auction.currency_id,
 						collateral_auction.amount,
-						bidder,
-						sp_std::cmp::min(collateral_auction.target, bid_price),
+						amount,
 					));
 				}
 			}
+
+			if should_deal {
+				// transfer collateral to winner from cdp treasury, ignore result to continue
+				let _ = T::CDPTreasury::transfer_collateral_to(
+					collateral_auction.currency_id,
+					&bidder,
+					collateral_auction.amount,
+				);
+
+				<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealed(
+					auction_id,
+					collateral_auction.currency_id,
+					collateral_auction.amount,
+					bidder.clone(),
+					sp_std::cmp::min(collateral_auction.target, bid_price),
+				));
+			}
+
+			// decrease account ref of bidder and refund recipient
+			system::Module::<T>::dec_ref(&bidder);
+			system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
+
+			// update auction records
+			TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
+				*balance = balance.saturating_sub(collateral_auction.amount)
+			});
+			TotalTargetInAuction::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
+			<CollateralAuctions<T>>::remove(auction_id);
 		}
 	}
 

@@ -260,6 +260,7 @@ fn on_auction_ended_for_collateral_auction_and_dex_take() {
 		assert_eq!(DEXModule::get_target_amount(BTC, AUSD, 100), 500);
 		assert_eq!(Tokens::free_balance(BTC, &BOB), 1000);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 980);
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1000);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 20);
 
@@ -276,7 +277,8 @@ fn on_auction_ended_for_collateral_auction_and_dex_take() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(Tokens::free_balance(BTC, &BOB), 1000);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 20);
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1300);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 320);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 520);
 	});
 }
