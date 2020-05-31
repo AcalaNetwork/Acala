@@ -385,11 +385,11 @@ mod tests {
 				assert_eq!(DexModule::liquidity_pool(CurrencyId::XBTC), (10003, 10003000));
 
 				assert_eq!(DexModule::total_shares(CurrencyId::XBTC), 10002998);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 0);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (0, 0));
 				DexModule::on_initialize(0);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 100030);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (100030, 0));
 				DexModule::on_initialize(0);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 200060);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (200060, 0));
 			});
 	}
 
@@ -489,26 +489,25 @@ mod tests {
 					Some(amount(10000)),
 				));
 
+				let new_collateral_params = CdpEngineModule::collateral_params(CurrencyId::XBTC);
+
 				assert_eq!(
-					CdpEngineModule::stability_fee(CurrencyId::XBTC),
+					new_collateral_params.stability_fee,
 					Some(Rate::from_rational(1, 100000))
 				);
 				assert_eq!(
-					CdpEngineModule::liquidation_ratio(CurrencyId::XBTC),
+					new_collateral_params.liquidation_ratio,
 					Some(Ratio::from_rational(3, 2))
 				);
 				assert_eq!(
-					CdpEngineModule::liquidation_penalty(CurrencyId::XBTC),
+					new_collateral_params.liquidation_penalty,
 					Some(Rate::from_rational(2, 10))
 				);
 				assert_eq!(
-					CdpEngineModule::required_collateral_ratio(CurrencyId::XBTC),
+					new_collateral_params.required_collateral_ratio,
 					Some(Ratio::from_rational(9, 5))
 				);
-				assert_eq!(
-					CdpEngineModule::maximum_total_debit_value(CurrencyId::XBTC),
-					amount(10000)
-				);
+				assert_eq!(new_collateral_params.maximum_total_debit_value, amount(10000));
 
 				assert_eq!(
 					CdpEngineModule::calculate_collateral_ratio(CurrencyId::XBTC, 100, 50, Price::from_rational(1, 1)),
