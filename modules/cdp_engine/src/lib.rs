@@ -464,8 +464,7 @@ impl<T: Trait> Module<T> {
 		// Acquire offchain worker lock.
 		// If succeeded, update the lock, otherwise return error
 		let LockItem {
-			expire_timestamp: _,
-			extra_data: position,
+			extra_data: position, ..
 		} = offchain_lock.acquire_offchain_lock(|val: Option<u32>| {
 			if let Some(previous_position) = val {
 				if previous_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
