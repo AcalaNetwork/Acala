@@ -9,7 +9,7 @@ use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::ExchangeRate;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 
 pub const ACA: CurrencyId = CurrencyId::ACA;

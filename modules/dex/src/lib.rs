@@ -113,18 +113,13 @@ decl_storage! {
 		/// CurrencyType -> IncentiveRate
 		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyId => Rate;
 
-		/// Total incentive interest for different currency type
-		/// CurrencyType -> TotalInterest
-		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => Balance;
-
-		/// Total withdrawn incentive interest for different currency type
-		/// CurrencyType -> TotalWithdrawnInterest
-		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyId => Balance;
+		/// Total interest(include total withdrawn) and total withdrawn interest for different currency type
+		/// CurrencyType -> (TotalInterest, TotalWithdrawnInterest)
+		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
 
 		/// Withdrawn interest indexed by currency type and account id
 		/// CurrencyType -> Owner -> WithdrawnInterest
 		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
-
 
 		/// System shutdown flag
 		IsShutdown get(fn is_shutdown): bool;
@@ -265,16 +260,16 @@ decl_module! {
 		/// - Complexity: `O(1)`
 		/// - Db reads:
 		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
-		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
 		/// - Db writes:
 		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
-		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
 		/// -------------------
 		/// Base Weight:
 		///		- best case: 49.04 µs
 		///		- worst case: 57.72 µs
 		/// # </weight>
-		#[weight = 58_000_000 + T::DbWeight::get().reads_writes(8, 8)]
+		#[weight = 58_000_000 + T::DbWeight::get().reads_writes(8, 9)]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyId,
@@ -359,14 +354,14 @@ decl_module! {
 		/// - Preconditions:
 		/// 	- T::Currency is orml_currencies
 		/// - Complexity: `O(1)`
-		/// - Db reads: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
-		/// - Db writes: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// - Db reads: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// - Db writes: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
 		/// -------------------
 		/// Base Weight:
 		///		- best case: 66.59 µs
 		///		- worst case: 71.18 µs
 		/// # </weight>
-		#[weight = 72_000_000 + T::DbWeight::get().reads_writes(10, 10)]
+		#[weight = 72_000_000 + T::DbWeight::get().reads_writes(9, 9)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -719,7 +714,7 @@ impl<T: Trait> Module<T> {
 			return;
 		}
 		let proportion = Ratio::from_rational(share_amount, total_shares);
-		let total_interest = Self::total_interest(currency_id);
+		let (total_interest, _) = Self::total_interest(currency_id);
 		if total_interest.is_zero() {
 			return;
 		}
@@ -727,11 +722,9 @@ impl<T: Trait> Module<T> {
 		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 			*val = val.saturating_add(interest_to_expand);
 		});
-		TotalWithdrawnInterest::mutate(currency_id, |val| {
-			*val = val.saturating_add(interest_to_expand);
-		});
-		TotalInterest::mutate(currency_id, |interest| {
-			*interest = interest.saturating_add(interest_to_expand);
+		TotalInterest::mutate(currency_id, |(total_interest, total_withdrawn)| {
+			*total_interest = total_interest.saturating_add(interest_to_expand);
+			*total_withdrawn = total_withdrawn.saturating_add(interest_to_expand);
 		});
 	}
 
@@ -750,11 +743,9 @@ impl<T: Trait> Module<T> {
 		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 			*val = val.saturating_sub(withdrawn_interest_to_remove);
 		});
-		TotalWithdrawnInterest::mutate(currency_id, |val| {
-			*val = val.saturating_sub(withdrawn_interest_to_remove);
-		});
-		TotalInterest::mutate(currency_id, |val| {
-			*val = val.saturating_sub(proportion.saturating_mul_int(val));
+		TotalInterest::mutate(currency_id, |(total_interest, total_withdrawn)| {
+			*total_interest = total_interest.saturating_sub(proportion.saturating_mul_int(total_interest));
+			*total_withdrawn = total_withdrawn.saturating_sub(withdrawn_interest_to_remove);
 		});
 
 		Ok(())
@@ -763,7 +754,7 @@ impl<T: Trait> Module<T> {
 	fn claim_interest(currency_id: CurrencyId, who: &T::AccountId) -> DispatchResult {
 		let proportion = Ratio::from_rational(Self::shares(currency_id, who), Self::total_shares(currency_id));
 		let interest_to_withdraw = proportion
-			.saturating_mul_int(&Self::total_interest(currency_id))
+			.saturating_mul_int(&Self::total_interest(currency_id).0)
 			.saturating_sub(Self::withdrawn_interest(currency_id, who));
 
 		if !interest_to_withdraw.is_zero() {
@@ -777,8 +768,8 @@ impl<T: Trait> Module<T> {
 			<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 				*val = val.saturating_add(interest_to_withdraw);
 			});
-			TotalWithdrawnInterest::mutate(currency_id, |val| {
-				*val = val.saturating_add(interest_to_withdraw);
+			TotalInterest::mutate(currency_id, |(_, total_withdrawn)| {
+				*total_withdrawn = total_withdrawn.saturating_add(interest_to_withdraw);
 			});
 		}
 
@@ -792,8 +783,8 @@ impl<T: Trait> Module<T> {
 		if !interest_to_increase.is_zero() {
 			// issue aUSD as interest
 			if T::CDPTreasury::deposit_unbacked_debit_to(&Self::account_id(), interest_to_increase).is_ok() {
-				TotalInterest::mutate(currency_id, |val| {
-					*val = val.saturating_add(interest_to_increase);
+				TotalInterest::mutate(currency_id, |(total_interest, _)| {
+					*total_interest = total_interest.saturating_add(interest_to_increase);
 				});
 			}
 		}
