@@ -30,10 +30,10 @@ impl<T: Trait> Module<T> {
 impl<T: Trait> OnCommission<Balance, CurrencyId> for Module<T> {
 	fn on_commission(currency_id: CurrencyId, amount: Balance) {
 		let module_account = Self::account_id();
-		if T::Currency::deposit(currency_id, &module_account, amount).is_ok() {
-			if currency_id == T::StakingCurrencyId::get() {
-				if let Ok(_amount) = T::Homa::mint(&module_account, amount) {}
-			}
+		if T::Currency::deposit(currency_id, &module_account, amount).is_ok()
+			&& currency_id == T::StakingCurrencyId::get()
+		{
+			if let Ok(_amount) = T::Homa::mint(&module_account, amount) {}
 		}
 	}
 }

@@ -93,6 +93,12 @@ pub enum LiquidationStrategy {
 	Exchange,
 }
 
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+pub enum CollateralParamChange<Data> {
+	NoChange,
+	New(Data),
+}
+
 /// Risk management params
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
 pub struct RiskManagementParams {
@@ -187,6 +193,7 @@ decl_storage! {
 	}
 
 	add_extra_genesis {
+		#[allow(clippy::type_complexity)] // it's reasonable to use this one-off complex params config type
 		config(collaterals_params): Vec<(CurrencyId, Option<Rate>, Option<Ratio>, Option<Rate>, Option<Ratio>, Balance)>;
 		build(|config: &GenesisConfig| {
 			config.collaterals_params.iter().for_each(|(
@@ -347,11 +354,11 @@ decl_module! {
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
-			stability_fee: Option<Option<Rate>>,
-			liquidation_ratio: Option<Option<Ratio>>,
-			liquidation_penalty: Option<Option<Rate>>,
-			required_collateral_ratio: Option<Option<Ratio>>,
-			maximum_total_debit_value: Option<Balance>,
+			stability_fee: CollateralParamChange<Option<Rate>>,
+			liquidation_ratio: CollateralParamChange<Option<Ratio>>,
+			liquidation_penalty: CollateralParamChange<Option<Rate>>,
+			required_collateral_ratio: CollateralParamChange<Option<Ratio>>,
+			maximum_total_debit_value: CollateralParamChange<Balance>,
 		) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
@@ -362,23 +369,23 @@ decl_module! {
 			);
 
 			let mut collateral_params = Self::collateral_params(currency_id);
-			if let Some(update) = stability_fee {
+			if let CollateralParamChange::New(update) = stability_fee {
 				collateral_params.stability_fee = update;
 				Self::deposit_event(RawEvent::StabilityFeeUpdated(currency_id, update));
 			}
-			if let Some(update) = liquidation_ratio {
+			if let CollateralParamChange::New(update) = liquidation_ratio {
 				collateral_params.liquidation_ratio = update;
 				Self::deposit_event(RawEvent::LiquidationRatioUpdated(currency_id, update));
 			}
-			if let Some(update) = liquidation_penalty {
+			if let CollateralParamChange::New(update) = liquidation_penalty {
 				collateral_params.liquidation_penalty = update;
 				Self::deposit_event(RawEvent::LiquidationPenaltyUpdated(currency_id, update));
 			}
-			if let Some(update) = required_collateral_ratio {
+			if let CollateralParamChange::New(update) = required_collateral_ratio {
 				collateral_params.required_collateral_ratio = update;
 				Self::deposit_event(RawEvent::RequiredCollateralRatioUpdated(currency_id, update));
 			}
-			if let Some(val) = maximum_total_debit_value {
+			if let CollateralParamChange::New(val) = maximum_total_debit_value {
 				collateral_params.maximum_total_debit_value = val;
 				Self::deposit_event(RawEvent::MaximumTotalDebitValueUpdated(currency_id, val));
 			}
@@ -457,8 +464,7 @@ impl<T: Trait> Module<T> {
 		// Acquire offchain worker lock.
 		// If succeeded, update the lock, otherwise return error
 		let LockItem {
-			expire_timestamp: _,
-			extra_data: position,
+			extra_data: position, ..
 		} = offchain_lock.acquire_offchain_lock(|val: Option<u32>| {
 			if let Some(previous_position) = val {
 				if previous_position < collateral_currency_ids.len().saturating_sub(1) as u32 {

@@ -441,7 +441,7 @@ impl<T: Trait> Module<T> {
 		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
 		let new_target_pool = supply_pool
 			.checked_add(supply_amount)
-			.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
+			.map(|n| Ratio::from_rational(supply_pool, n))
 			.and_then(|n| n.checked_mul_int(&target_pool))
 			.unwrap_or_default();
 
@@ -474,7 +474,7 @@ impl<T: Trait> Module<T> {
 				.and_then(|n| n.checked_mul_int(&target_amount))
 				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
 				.and_then(|n| target_pool.checked_sub(n))
-				.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
+				.map(|n| Ratio::from_rational(supply_pool, n))
 				.and_then(|n| Ratio::from_parts(1).checked_add(&n)) // add Ratio::from_parts(1) to correct the possible losses caused by discarding the remainder in inner division
 				.and_then(|n| n.checked_mul_int(&target_pool))
 				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division

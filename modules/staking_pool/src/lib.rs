@@ -149,12 +149,13 @@ impl<T: Trait> Module<T> {
 		let mut withdrawn_amount: Balance = Zero::zero();
 
 		for (era_index, claimed) in claimed_unbond {
-			if era_index <= current_era && !claimed.is_zero() {
-				if T::Currency::transfer(staking_currency_id, &Self::account_id(), who, claimed).is_ok() {
-					withdrawn_amount += claimed;
-					TotalClaimedUnbonded::mutate(|balance| *balance -= claimed);
-					<ClaimedUnbond<T>>::remove(who, era_index);
-				}
+			if era_index <= current_era
+				&& !claimed.is_zero()
+				&& T::Currency::transfer(staking_currency_id, &Self::account_id(), who, claimed).is_ok()
+			{
+				withdrawn_amount += claimed;
+				TotalClaimedUnbonded::mutate(|balance| *balance -= claimed);
+				<ClaimedUnbond<T>>::remove(who, era_index);
 			}
 		}
 		Ok(withdrawn_amount)
@@ -343,13 +344,11 @@ impl<T: Trait> Module<T> {
 		let bonding_duration = <<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();
 		let unbonded_era_index = era + bonding_duration;
 
-		if !total_to_unbond.is_zero() {
-			if T::Bridge::unbond(total_to_unbond).is_ok() {
-				NextEraUnbond::kill();
-				TotalBonded::mutate(|bonded| *bonded -= total_to_unbond);
-				Unbonding::insert(unbonded_era_index, (total_to_unbond, claimed_to_unbond));
-				UnbondingToFree::mutate(|unbonding| *unbonding += total_to_unbond - claimed_to_unbond);
-			}
+		if !total_to_unbond.is_zero() && T::Bridge::unbond(total_to_unbond).is_ok() {
+			NextEraUnbond::kill();
+			TotalBonded::mutate(|bonded| *bonded -= total_to_unbond);
+			Unbonding::insert(unbonded_era_index, (total_to_unbond, claimed_to_unbond));
+			UnbondingToFree::mutate(|unbonding| *unbonding += total_to_unbond - claimed_to_unbond);
 		}
 	}
 

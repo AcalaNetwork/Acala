@@ -303,9 +303,9 @@ impl<T: Trait> PolkadotBridgeState<Balance, EraIndex> for Module<T> {
 			.collect::<_>();
 
 		PolkadotStakingLedger {
-			total: total,
-			active: active,
-			unlocking: unlocking,
+			total,
+			active,
+			unlocking,
 		}
 	}
 

@@ -4,9 +4,9 @@
 //!
 //! Auction the assets of the system for maintain the normal operation of the business.
 //! Auction types include:
-//! 	- `collateral auction`: sell collateral assets for getting stable coin to eliminate the system's bad debit by auction
-//! 	- `surplus auction`: sell excessive surplus for getting native coin to burn by auction
-//! 	- `debit auction`: inflation some native token to sell for getting stable coin to eliminate excessive bad debit by auction
+//!   - `collateral auction`: sell collateral assets for getting stable coin to eliminate the system's bad debit by auction
+//!   - `surplus auction`: sell excessive surplus for getting native coin to burn by auction
+//!   - `debit auction`: inflation some native token to sell for getting stable coin to eliminate excessive bad debit by auction
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -274,7 +274,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	fn submit_cancel_auction_tx(auction_id: AuctionIdOf<T>) {
 		let call = Call::<T>::cancel(auction_id);
-		if !SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_ok() {
+		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::warn!(
 				target: "auction-manager offchain worker",
 				"submit unsigned auction cancel tx for \nAuctionId {:?} failed : {:?}",
@@ -847,9 +847,9 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None); // do not set endtime for collateral auction
 			let collateral_aution = CollateralAuctionItem {
 				refund_recipient: who.clone(),
-				currency_id: currency_id,
-				amount: amount,
-				target: target,
+				currency_id,
+				amount,
+				target,
 				start_time: block_number,
 			};
 
@@ -883,7 +883,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			TotalSurplusInAuction::mutate(|balance| *balance += amount);
 			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(<system::Module<T>>::block_number(), None); // do not set endtime for surplus auction
 			let surplus_auction = SurplusAuctionItem {
-				amount: amount,
+				amount,
 				start_time: <system::Module<T>>::block_number(),
 			};
 			<SurplusAuctions<T>>::insert(auction_id, surplus_auction);

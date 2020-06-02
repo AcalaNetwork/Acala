@@ -314,8 +314,8 @@ fn testnet_genesis(
 			initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
 			debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::DOT, 1 * DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::XBTC, 1 * DOLLARS),
+				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::XBTC, DOLLARS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
@@ -345,7 +345,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
-			global_stability_fee: FixedU128::from_rational(618850393, 100000000000000000u128), // 5% APR
+			global_stability_fee: FixedU128::from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
@@ -355,7 +355,7 @@ fn testnet_genesis(
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::from_rational(1, 100000000),
+			mock_reward_rate: FixedU128::from_rational(1, 100_000_000),
 		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: vec![],
@@ -434,7 +434,7 @@ fn mandala_genesis(
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: vec![
 				(root_key.clone(), CurrencyId::DOT, INITIAL_BALANCE),
-				(root_key.clone(), CurrencyId::XBTC, INITIAL_BALANCE),
+				(root_key, CurrencyId::XBTC, INITIAL_BALANCE),
 			],
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
@@ -444,7 +444,7 @@ fn mandala_genesis(
 			initial_amount_per_debit_auction: 20 * DOLLARS, // initial bid amount in ACA of per debit auction
 			debit_auction_fixed_size: 1_000 * DOLLARS, // amount in debit(aUSD) of per debit auction
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::DOT, 1 * DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, 5 * CENTS),
 			],
 		}),
@@ -475,13 +475,19 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
-			global_stability_fee: FixedU128::from_rational(618850393, 100000000000000000u128), // 5% APR
+			global_stability_fee: FixedU128::from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
-				(CurrencyId::DOT, FixedU128::from_rational(4975, 10000000000000u128)), // 4% APR
-				(CurrencyId::XBTC, FixedU128::from_rational(4975, 10000000000000u128)), // 4% APR
-				(CurrencyId::LDOT, FixedU128::from_rational(4975, 10000000000000u128)), // 4% APR
+				(CurrencyId::DOT, FixedU128::from_rational(4975, 10_000_000_000_000_u128)), // 4% APR
+				(
+					CurrencyId::XBTC,
+					FixedU128::from_rational(4975, 10_000_000_000_000_u128),
+				), // 4% APR
+				(
+					CurrencyId::LDOT,
+					FixedU128::from_rational(4975, 10_000_000_000_000_u128),
+				), // 4% APR
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
