@@ -40,3 +40,5 @@ jobs:
       run: cargo build --locked
     - name: Run tests
       run: cargo test --all
+    - name: Run benchmarking tests
+      run: cargo test --features runtime-benchmarks -p acala-runtime benchmarking
