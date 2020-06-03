@@ -2993,6 +2993,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
+ "module-dex",
  "module-primitives",
  "module-support",
  "orml-auction",

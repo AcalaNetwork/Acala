@@ -17,7 +17,7 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
-	DispatchResult, ModuleId,
+	DispatchError, DispatchResult, ModuleId,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
 
@@ -369,7 +369,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		currency_id: CurrencyId,
 		supply_amount: Balance,
 		target_amount: Balance,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		ensure!(
 			Self::total_collaterals(currency_id) >= supply_amount,
 			Error::<T>::CollateralNotEnough,
@@ -387,7 +387,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		TotalCollaterals::mutate(currency_id, |balance| *balance -= supply_amount);
 		SurplusPool::mutate(|surplus| *surplus += amount);
 
-		Ok(())
+		Ok(amount)
 	}
 
 	fn create_collateral_auctions(

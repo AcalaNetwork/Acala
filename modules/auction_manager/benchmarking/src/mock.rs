@@ -129,6 +129,7 @@ impl auction_manager::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
+	type DEX = ();
 	type PriceSource = prices::Module<Runtime>;
 	type UnsignedPriority = UnsignedPriority;
 }
