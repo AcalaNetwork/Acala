@@ -10,6 +10,7 @@ mod tests {
 	use module_support::CDPTreasury;
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
+	use orml_utilities::fixed_u128::FixedUnsignedNumber;
 	use sp_runtime::DispatchResult;
 
 	const ORACLE1: [u8; 32] = [0u8; 32];

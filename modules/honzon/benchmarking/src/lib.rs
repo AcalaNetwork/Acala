@@ -11,12 +11,13 @@ use sp_std::vec;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::{Saturating, UniqueSaturatedInto};
+use sp_runtime::traits::{CheckedDiv, Saturating, UniqueSaturatedInto};
 
 use cdp_engine::{CollateralParamChange, Module as CdpEngine};
 use honzon::Module as Honzon;
 use honzon::*;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::CurrencyId;
 use support::{ExchangeRate, Price, Rate, Ratio};
 

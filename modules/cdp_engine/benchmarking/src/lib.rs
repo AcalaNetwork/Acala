@@ -11,12 +11,13 @@ use sp_std::vec;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{CheckedDiv, UniqueSaturatedInto};
 
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use dex::Module as Dex;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use support::{ExchangeRate, OnEmergencyShutdown, Price, Rate, Ratio};
 
@@ -144,7 +145,7 @@ benchmarks! {
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		let max_slippage_swap_with_dex = <T as cdp_engine::Trait>::MaxSlippageSwapWithDEX::get();
-		let collateral_amount_in_dex = Ratio::from_natural(1).checked_div(&max_slippage_swap_with_dex).unwrap().saturating_mul_int((min_debit_value * 10));
+		let collateral_amount_in_dex = Ratio::from_natural(1).checked_div(&max_slippage_swap_with_dex).unwrap().saturating_mul_int(min_debit_value * 10);
 		let base_amount_in_dex = collateral_amount_in_dex * 2;
 
 		inject_liquidity::<T>(funder.clone(), currency_id, base_amount_in_dex, collateral_amount_in_dex)?;

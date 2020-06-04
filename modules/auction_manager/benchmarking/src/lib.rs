@@ -14,6 +14,7 @@ use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use orml_traits::{Auction, DataProviderExtended, MultiCurrency};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, OnEmergencyShutdown, Price};
 

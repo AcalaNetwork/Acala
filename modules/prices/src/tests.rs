@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{ExtBuilder, Origin, PricesModule, System, TestEvent, ACA, AUSD, BTC, DOT, LDOT};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use sp_runtime::traits::BadOrigin;
 
 #[test]

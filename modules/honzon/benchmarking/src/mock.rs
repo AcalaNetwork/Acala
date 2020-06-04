@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_oracle::DefaultCombineData;
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},

@@ -27,6 +27,7 @@ sp-io = { version = "2.0.0-rc1", default-features = false }
 pallet-balances = { version = "2.0.0-rc1", default-features = false }
 orml-currencies = { path = "../../../orml/currencies", default-features = false }
 orml-tokens = { path = "../../../orml/tokens", default-features = false }
+orml-utilities = { path = "../../../orml/utilities", default-features = false }
 pallet-timestamp = { version = "2.0.0-rc1" }
 
 [features]

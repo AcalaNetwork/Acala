@@ -16,6 +16,7 @@ use sp_runtime::traits::UniqueSaturatedInto;
 use emergency_shutdown::Module as EmergencyShutdown;
 use emergency_shutdown::*;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use support::{CDPTreasury, Price};
 

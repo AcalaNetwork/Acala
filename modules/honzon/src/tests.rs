@@ -9,6 +9,7 @@ use mock::{
 	CDPEngineModule, ExtBuilder, HonzonModule, LoansModule, Origin, Runtime, System, TestEvent, ALICE, BOB, BTC, CAROL,
 	DOT,
 };
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use support::{Rate, Ratio};
 
 #[test]
