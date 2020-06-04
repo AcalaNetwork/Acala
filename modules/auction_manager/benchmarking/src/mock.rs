@@ -110,11 +110,11 @@ impl orml_auction::Trait for Runtime {
 pub type AuctionModule = orml_auction::Module<Runtime>;
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 

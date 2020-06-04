@@ -34,6 +34,7 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{self as system};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -550,7 +551,7 @@ impl orml_tokens::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const StableCurrencyFixedPrice: Price = Price::from_rational(1, 1);
+	pub const StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 }
 
 impl module_prices::Trait for Runtime {
@@ -600,10 +601,10 @@ impl orml_schedule_update::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(2, 100);
+	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(20, 100);
+	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(20, 100);
 	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
@@ -693,11 +694,11 @@ where
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
-	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
-	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
+	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+	pub const DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = DOLLARS;
-	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(5, 100);
+	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
 	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
@@ -732,7 +733,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::from_rational(1, 1000);
+	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
 	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA];
 }
 
@@ -796,11 +797,11 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(95, 100);	// 95%
-	pub const MinBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
-	pub const MaxClaimFee: Rate = Rate::from_rational(5, 100);	// 5%
-	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(98, 100); // 98%
+	pub const MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100);	// 95%
+	pub const MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
+	pub const MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100);	// 5%
+	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(98, 100); // 98%
 }
 
 impl module_staking_pool::Trait for Runtime {

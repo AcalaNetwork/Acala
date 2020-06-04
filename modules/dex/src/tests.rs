@@ -10,22 +10,28 @@ use sp_runtime::traits::BadOrigin;
 #[test]
 fn set_liquidity_incentive_rate_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(DexModule::liquidity_incentive_rate(BTC), Rate::from_rational(1, 100));
+		assert_eq!(
+			DexModule::liquidity_incentive_rate(BTC),
+			Rate::saturating_from_rational(1, 100)
+		);
 		assert_noop!(
-			DexModule::set_liquidity_incentive_rate(Origin::signed(5), BTC, Rate::from_rational(5, 100)),
+			DexModule::set_liquidity_incentive_rate(Origin::signed(5), BTC, Rate::saturating_from_rational(5, 100)),
 			BadOrigin
 		);
 		assert_ok!(DexModule::set_liquidity_incentive_rate(
 			Origin::signed(1),
 			BTC,
-			Rate::from_rational(5, 100)
+			Rate::saturating_from_rational(5, 100)
 		));
 		assert_ok!(DexModule::set_liquidity_incentive_rate(
 			Origin::ROOT,
 			BTC,
-			Rate::from_rational(8, 100)
+			Rate::saturating_from_rational(8, 100)
 		));
-		assert_eq!(DexModule::liquidity_incentive_rate(BTC), Rate::from_rational(8, 100));
+		assert_eq!(
+			DexModule::liquidity_incentive_rate(BTC),
+			Rate::saturating_from_rational(8, 100)
+		);
 	});
 }
 
@@ -474,15 +480,15 @@ fn get_exchange_slippage_work() {
 		);
 		assert_eq!(
 			DexModule::get_exchange_slippage(BTC, AUSD, 10),
-			Some(Ratio::from_rational(10, 110))
+			Some(Ratio::saturating_from_rational(10, 110))
 		);
 		assert_eq!(
 			DexModule::get_exchange_slippage(AUSD, BTC, 100),
-			Some(Ratio::from_rational(100, 1100))
+			Some(Ratio::saturating_from_rational(100, 1100))
 		);
 		assert_eq!(
 			DexModule::get_exchange_slippage(BTC, DOT, 100),
-			Some(Ratio::from_rational(3, 5))
+			Some(Ratio::saturating_from_rational(3, 5))
 		);
 	});
 }

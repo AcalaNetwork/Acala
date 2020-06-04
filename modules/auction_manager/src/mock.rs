@@ -142,7 +142,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::from_rational(0, 100);
+	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
 	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
 }
 
@@ -159,11 +159,11 @@ impl dex::Trait for Runtime {
 pub type DEXModule = dex::Module<Runtime>;
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 

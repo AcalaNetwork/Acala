@@ -46,14 +46,15 @@ frame-system = { version = "2.0.0-rc1", default-features = false }
 sp-application-crypto = { version = "2.0.0-rc1", default-features = false }
 
 orml-auction = { path = "../orml/auction", default-features = false }
+orml-benchmarking = { path = "../orml/benchmarking", default-features = false }
 orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
+orml-schedule-update = { path = "../orml/schedule-update", default-features = false }
 orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-traits = { path = "../orml/traits", default-features = false }
+orml-utilities = { path = "../orml/utilities", default-features = false }
 orml-vesting = { path = "../orml/vesting", default-features = false }
-orml-schedule-update = { path = "../orml/schedule-update", default-features = false }
-orml-benchmarking = { path = "../orml/benchmarking", default-features = false }
 
 module-accounts = { path = "../modules/accounts", default-features = false }
 module-airdrop = { path = "../modules/airdrop", default-features = false }
@@ -125,14 +126,15 @@ std = [
 	"sp-transaction-pool/std",
 	"sp-version/std",
 
+	"orml-benchmarking/std",
 	"orml-currencies/std",
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
+	"orml-schedule-update/std",
 	"orml-tokens/std",
 	"orml-traits/std",
+	"orml-utilities/std",
 	"orml-vesting/std",
-	"orml-schedule-update/std",
-	"orml-benchmarking/std",
 
 	"module-accounts/std",
 	"module-airdrop/std",

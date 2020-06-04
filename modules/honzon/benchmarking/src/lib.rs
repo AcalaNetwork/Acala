@@ -87,7 +87,7 @@ benchmarks! {
 		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::from_natural(1);		// 1 USD
-		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_parts(1)).saturating_mul_int(&min_debit_value);
+		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
 		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
 		let debit_amount = min_debit_amount * 10.into();
 		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
@@ -103,9 +103,9 @@ benchmarks! {
 			RawOrigin::Root.into(),
 			currency_id,
 			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
-			CollateralParamChange::New(Some(Rate::from_rational(10, 100))),
-			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
+			CollateralParamChange::New(Some(Rate::saturating_from_rational(10, 100))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
 			CollateralParamChange::New(min_debit_value * 100),
 		)?;
 	}: _(RawOrigin::Signed(caller), currency_id, collateral_amount, debit_amount)
@@ -119,7 +119,7 @@ benchmarks! {
 		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::from_natural(1);		// 1 USD
-		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_parts(1)).saturating_mul_int(&min_debit_value);
+		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
 		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
 		let debit_amount = min_debit_amount * 10.into();
 		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
@@ -135,9 +135,9 @@ benchmarks! {
 			RawOrigin::Root.into(),
 			currency_id,
 			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
-			CollateralParamChange::New(Some(Rate::from_rational(10, 100))),
-			CollateralParamChange::New(Some(Ratio::from_rational(150, 100))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
+			CollateralParamChange::New(Some(Rate::saturating_from_rational(10, 100))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
 			CollateralParamChange::New(min_debit_value * 100),
 		)?;
 

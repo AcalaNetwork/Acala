@@ -16,6 +16,7 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::traits::Zero;
 use sp_std::prelude::*;
@@ -223,7 +224,7 @@ decl_module! {
 			// refund collaterals to caller by cdp treasury
 			for currency_id in collateral_currency_ids {
 				let refund_amount = refund_ratio
-					.saturating_mul_int(&<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
+					.saturating_mul_int(<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
 
 				if !refund_amount.is_zero() {
 					<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_amount)?;

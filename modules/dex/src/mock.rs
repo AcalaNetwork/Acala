@@ -146,7 +146,7 @@ impl AuctionManager<AccountId> for MockAuctionManagerHandler {
 
 parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
+	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
 	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
 }
 
@@ -178,7 +178,10 @@ impl Default for ExtBuilder {
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
-			liquidity_incentive_rate: vec![(BTC, Rate::from_rational(1, 100)), (DOT, Rate::from_rational(1, 100))],
+			liquidity_incentive_rate: vec![
+				(BTC, Rate::saturating_from_rational(1, 100)),
+				(DOT, Rate::saturating_from_rational(1, 100)),
+			],
 		}
 	}
 }

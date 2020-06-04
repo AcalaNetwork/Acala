@@ -74,7 +74,7 @@ pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
 		match currency_id {
-			&AUSD => Some(Price::from_rational(99, 100)),
+			&AUSD => Some(Price::saturating_from_rational(99, 100)),
 			&BTC => Some(Price::from_natural(5000)),
 			&DOT => Some(Price::from_natural(100)),
 			&ACA => Some(Price::from_natural(0)),
@@ -92,7 +92,7 @@ impl DataProviderExtended<CurrencyId, Price, AccountId> for MockDataProvider {
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::from_rational(1, 2)
+		ExchangeRate::saturating_from_rational(1, 2)
 	}
 }
 

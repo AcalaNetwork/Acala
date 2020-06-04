@@ -1,6 +1,7 @@
 //! Acala chain configurations.
 
 use hex_literal::hex;
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use orml_utilities::FixedU128;
 use runtime::{
 	opaque::SessionKeys, AccountId, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig, Block,
@@ -322,30 +323,30 @@ fn testnet_genesis(
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					Some(FixedU128::from_natural(0)),         // stability fee for this collateral
-					Some(FixedU128::from_rational(150, 100)), // liquidation ratio
-					Some(FixedU128::from_rational(10, 100)),  // liquidation penalty rate
-					Some(FixedU128::from_rational(150, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                     // maximum debit value in aUSD (cap)
+					Some(FixedU128::from_natural(0)),                    // stability fee for this collateral
+					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
+					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
+					Some(FixedU128::saturating_from_rational(150, 100)), // required liquidation ratio
+					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
 					Some(FixedU128::from_natural(0)),
-					Some(FixedU128::from_rational(150, 100)),
-					Some(FixedU128::from_rational(10, 100)),
-					Some(FixedU128::from_rational(150, 100)),
+					Some(FixedU128::saturating_from_rational(150, 100)),
+					Some(FixedU128::saturating_from_rational(10, 100)),
+					Some(FixedU128::saturating_from_rational(150, 100)),
 					10_000_000 * DOLLARS,
 				),
 				(
 					CurrencyId::LDOT,
 					Some(FixedU128::from_natural(0)),
-					Some(FixedU128::from_rational(150, 100)),
-					Some(FixedU128::from_rational(10, 100)),
-					Some(FixedU128::from_rational(180, 100)),
+					Some(FixedU128::saturating_from_rational(150, 100)),
+					Some(FixedU128::saturating_from_rational(10, 100)),
+					Some(FixedU128::saturating_from_rational(180, 100)),
 					10_000_000 * DOLLARS,
 				),
 			],
-			global_stability_fee: FixedU128::from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
+			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
@@ -355,7 +356,7 @@ fn testnet_genesis(
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::from_rational(1, 100_000_000),
+			mock_reward_rate: FixedU128::saturating_from_rational(1, 100_000_000),
 		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: vec![],
@@ -452,46 +453,49 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					Some(FixedU128::from_natural(0)),         // stability fee for this collateral
-					Some(FixedU128::from_rational(105, 100)), // liquidation ratio
-					Some(FixedU128::from_rational(3, 100)),   // liquidation penalty rate
-					Some(FixedU128::from_rational(110, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                     // maximum debit value in aUSD (cap)
+					Some(FixedU128::from_natural(0)),                    // stability fee for this collateral
+					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
+					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
+					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
+					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
 					Some(FixedU128::from_natural(0)),
-					Some(FixedU128::from_rational(110, 100)),
-					Some(FixedU128::from_rational(4, 100)),
-					Some(FixedU128::from_rational(115, 100)),
+					Some(FixedU128::saturating_from_rational(110, 100)),
+					Some(FixedU128::saturating_from_rational(4, 100)),
+					Some(FixedU128::saturating_from_rational(115, 100)),
 					10_000_000 * DOLLARS,
 				),
 				(
 					CurrencyId::LDOT,
 					Some(FixedU128::from_natural(0)),
-					Some(FixedU128::from_rational(120, 100)),
-					Some(FixedU128::from_rational(10, 100)),
-					Some(FixedU128::from_rational(130, 100)),
+					Some(FixedU128::saturating_from_rational(120, 100)),
+					Some(FixedU128::saturating_from_rational(10, 100)),
+					Some(FixedU128::saturating_from_rational(130, 100)),
 					10_000_000 * DOLLARS,
 				),
 			],
-			global_stability_fee: FixedU128::from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
+			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
-				(CurrencyId::DOT, FixedU128::from_rational(4975, 10_000_000_000_000_u128)), // 4% APR
+				(
+					CurrencyId::DOT,
+					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
+				), // 4% APR
 				(
 					CurrencyId::XBTC,
-					FixedU128::from_rational(4975, 10_000_000_000_000_u128),
+					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
 				), // 4% APR
 				(
 					CurrencyId::LDOT,
-					FixedU128::from_rational(4975, 10_000_000_000_000_u128),
+					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
 				), // 4% APR
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::from_rational(5, 10000), // 20% APR
+			mock_reward_rate: FixedU128::saturating_from_rational(5, 10000), // 20% APR
 		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: {

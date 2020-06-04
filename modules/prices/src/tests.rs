@@ -35,19 +35,19 @@ fn get_relative_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			PricesModule::get_relative_price(DOT, AUSD),
-			Some(Price::from_rational(100, 1))
+			Some(Price::saturating_from_rational(100, 1))
 		);
 		assert_eq!(
 			PricesModule::get_relative_price(BTC, AUSD),
-			Some(Price::from_rational(5000, 1))
+			Some(Price::saturating_from_rational(5000, 1))
 		);
 		assert_eq!(
 			PricesModule::get_relative_price(LDOT, DOT),
-			Some(Price::from_rational(1, 2))
+			Some(Price::saturating_from_rational(1, 2))
 		);
 		assert_eq!(
 			PricesModule::get_relative_price(AUSD, AUSD),
-			Some(Price::from_rational(1, 1))
+			Some(Price::saturating_from_rational(1, 1))
 		);
 		assert_eq!(PricesModule::get_relative_price(AUSD, ACA), None);
 	});

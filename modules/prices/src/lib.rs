@@ -7,6 +7,7 @@ use frame_support::{
 use frame_system::{self as system, ensure_root};
 use orml_traits::{DataProvider, DataProviderExtended};
 use primitives::CurrencyId;
+use sp_runtime::traits::{CheckedDiv, CheckedMul};
 use support::{ExchangeRateProvider, Price, PriceProvider};
 
 mod mock;
