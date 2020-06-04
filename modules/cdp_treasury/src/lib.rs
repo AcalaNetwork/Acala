@@ -361,7 +361,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 
 	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
 		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
-		Ratio::saturating_from_rational(amount, stable_total_supply)
+		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
 	}
 }
 
@@ -415,7 +415,8 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 						(unhandled_collateral_amount, unhandled_target)
 					} else {
 						created_lots += 1;
-						let proportion = Ratio::saturating_from_rational(collateral_auction_maximum_size, amount);
+						let proportion =
+							Ratio::checked_from_rational(collateral_auction_maximum_size, amount).unwrap_or_default();
 						(collateral_auction_maximum_size, proportion.saturating_mul_int(target))
 					}
 				} else {

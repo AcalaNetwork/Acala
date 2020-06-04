@@ -114,7 +114,8 @@ impl<T: Trait> Module<T> {
 
 	// communal_bonded_ratio = communal_bonded / total_communal_balance
 	pub fn get_communal_bonded_ratio() -> Ratio {
-		Ratio::saturating_from_rational(Self::get_communal_bonded(), Self::get_total_communal_balance())
+		Ratio::checked_from_rational(Self::get_communal_bonded(), Self::get_total_communal_balance())
+			.unwrap_or_default()
 	}
 
 	// LDOT/DOT = total communal DOT / total supply of LDOT
@@ -123,7 +124,8 @@ impl<T: Trait> Module<T> {
 		let total_ldot_amount = T::Currency::total_issuance(T::LiquidCurrencyId::get());
 
 		if !total_dot_amount.is_zero() && !total_ldot_amount.is_zero() {
-			ExchangeRate::saturating_from_rational(total_dot_amount, total_ldot_amount)
+			ExchangeRate::checked_from_rational(total_dot_amount, total_ldot_amount)
+				.unwrap_or_else(T::DefaultExchangeRate::get)
 		} else {
 			T::DefaultExchangeRate::get()
 		}
@@ -223,10 +225,11 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn claim_period_percent(era: EraIndex) -> Ratio {
-		Ratio::saturating_from_rational(
+		Ratio::checked_from_rational(
 			era.saturating_sub(Self::current_era()),
 			<<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get() + EraIndex::one(),
 		)
+		.unwrap_or_default()
 	}
 
 	pub fn calculate_claim_fee(amount: Balance, era: EraIndex) -> Balance {
@@ -254,7 +257,9 @@ impl<T: Trait> Module<T> {
 					.saturating_mul_int(free_unbonded);
 
 				// re-assign
-				fee = Ratio::saturating_from_rational(new_ldot_to_redeem, ldot_to_redeem).saturating_mul_int(fee);
+				fee = Ratio::checked_from_rational(new_ldot_to_redeem, ldot_to_redeem)
+					.unwrap_or_default()
+					.saturating_mul_int(fee);
 				ldot_to_redeem = new_ldot_to_redeem;
 				unbond_amount = free_unbonded;
 				total_deduct = fee + ldot_to_redeem;
@@ -309,7 +314,9 @@ impl<T: Trait> Module<T> {
 					.saturating_mul_int(target_era_unclaimed);
 
 				// re-assign
-				fee = Ratio::saturating_from_rational(new_ldot_to_redeem, ldot_to_redeem).saturating_mul_int(fee);
+				fee = Ratio::checked_from_rational(new_ldot_to_redeem, ldot_to_redeem)
+					.unwrap_or_default()
+					.saturating_mul_int(fee);
 				ldot_to_redeem = new_ldot_to_redeem;
 				unbond_amount = target_era_unclaimed;
 				total_deduct = fee + ldot_to_redeem;

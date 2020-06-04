@@ -536,12 +536,10 @@ impl<T: Trait> Module<T> {
 
 				// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
 				if new_bid.1 > collateral_auction.target {
-					let new_collateral_amount = Rate::saturating_from_rational(
-						sp_std::cmp::max(last_price, collateral_auction.target),
-						new_bid.1,
-					)
-					.checked_mul_int(collateral_auction.amount)
-					.unwrap_or(collateral_auction.amount);
+					let new_collateral_amount =
+						Rate::checked_from_rational(sp_std::cmp::max(last_price, collateral_auction.target), new_bid.1)
+							.and_then(|n| n.checked_mul_int(collateral_auction.amount))
+							.unwrap_or(collateral_auction.amount);
 					let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
 					if T::CDPTreasury::transfer_collateral_to(
@@ -616,8 +614,8 @@ impl<T: Trait> Module<T> {
 				// calculate new amount of issue native token
 				if new_bid.1 > debit_auction.fix {
 					debit_auction.amount =
-						Rate::saturating_from_rational(sp_std::cmp::max(last_price, debit_auction.fix), new_bid.1)
-							.checked_mul_int(debit_auction.amount)
+						Rate::checked_from_rational(sp_std::cmp::max(last_price, debit_auction.fix), new_bid.1)
+							.and_then(|n| n.checked_mul_int(debit_auction.amount))
 							.unwrap_or(debit_auction.amount);
 					<DebitAuctions<T>>::insert(id, debit_auction.clone());
 				}

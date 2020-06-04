@@ -18,6 +18,7 @@ support = { package = "module-support", path = "../../support", default-features
 cdp-engine = { package = "module-cdp-engine", path = "../../cdp_engine", default-features = false }
 loans = { package = "module-loans", path = "../../loans", default-features = false }
 emergency-shutdown = { package = "module-emergency-shutdown", path = "../../emergency_shutdown", default-features = false }
+orml-utilities = { path = "../../../orml/utilities", default-features = false }
 
 [dev-dependencies]
 serde = { version = "1.0.101" }
@@ -27,7 +28,6 @@ sp-io = { version = "2.0.0-rc1", default-features = false }
 pallet-balances = { version = "2.0.0-rc1", default-features = false }
 orml-currencies = { path = "../../../orml/currencies", default-features = false }
 orml-tokens = { path = "../../../orml/tokens", default-features = false }
-orml-utilities = { path = "../../../orml/utilities", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../../cdp_treasury", default-features = false }
 pallet-timestamp = { version = "2.0.0-rc1" }
 
@@ -46,4 +46,5 @@ std = [
 	"orml-traits/std",
 	"prices/std",
 	"emergency-shutdown/std",
+	"orml-utilities/std",
 ]

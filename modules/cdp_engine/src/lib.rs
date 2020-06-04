@@ -599,7 +599,7 @@ impl<T: Trait> Module<T> {
 		let locked_collateral_value = price.saturating_mul_int(collateral_balance);
 		let debit_value = Self::get_debit_value(currency_id, debit_balance);
 
-		Ratio::saturating_from_rational(locked_collateral_value, debit_value)
+		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_default()
 	}
 
 	pub fn adjust_position(

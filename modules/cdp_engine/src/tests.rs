@@ -100,7 +100,7 @@ fn set_global_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_noop!(
-			CDPEngineModule::set_global_params(Origin::signed(5), Rate::saturating_from_rational(1, 10000),),
+			CDPEngineModule::set_global_params(Origin::signed(5), Rate::saturating_from_rational(1, 10000)),
 			BadOrigin
 		);
 		assert_ok!(CDPEngineModule::set_global_params(
