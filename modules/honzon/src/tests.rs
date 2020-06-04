@@ -9,6 +9,7 @@ use mock::{
 	CDPEngineModule, ExtBuilder, HonzonModule, LoansModule, Origin, Runtime, System, TestEvent, ALICE, BOB, BTC, CAROL,
 	DOT,
 };
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use support::{Rate, Ratio};
 
 #[test]
@@ -76,10 +77,10 @@ fn transfer_loan_from_should_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::from_rational(9, 5))),
+			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
+			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
 			CollateralParamChange::New(10000),
 		));
 		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
@@ -106,10 +107,10 @@ fn adjust_loan_should_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::from_rational(9, 5))),
+			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
+			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
+			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
 			CollateralParamChange::New(10000),
 		));
 		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));

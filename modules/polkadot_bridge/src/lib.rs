@@ -3,6 +3,7 @@
 use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::BasicCurrency;
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
@@ -258,7 +259,7 @@ impl<T: Trait> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraInde
 	// simulate receive staking reward
 	fn payout_nominator() {
 		if let Some(mock_reward_rate) = Self::mock_reward_rate() {
-			let reward = mock_reward_rate.saturating_mul_int(&Self::bonded());
+			let reward = mock_reward_rate.saturating_mul_int(Self::bonded());
 			Available::mutate(|balance| *balance = balance.saturating_add(reward));
 
 			debug::debug!(

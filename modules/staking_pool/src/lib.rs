@@ -3,9 +3,10 @@
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IterableStorageDoubleMap};
 use frame_system::{self as system};
 use orml_traits::MultiCurrency;
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId, EraIndex};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, Saturating, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, CheckedDiv, One, Saturating, UniqueSaturatedInto, Zero},
 	DispatchError, DispatchResult, ModuleId,
 };
 use sp_std::prelude::*;
@@ -113,7 +114,8 @@ impl<T: Trait> Module<T> {
 
 	// communal_bonded_ratio = communal_bonded / total_communal_balance
 	pub fn get_communal_bonded_ratio() -> Ratio {
-		Ratio::from_rational(Self::get_communal_bonded(), Self::get_total_communal_balance())
+		Ratio::checked_from_rational(Self::get_communal_bonded(), Self::get_total_communal_balance())
+			.unwrap_or_default()
 	}
 
 	// LDOT/DOT = total communal DOT / total supply of LDOT
@@ -122,7 +124,8 @@ impl<T: Trait> Module<T> {
 		let total_ldot_amount = T::Currency::total_issuance(T::LiquidCurrencyId::get());
 
 		if !total_dot_amount.is_zero() && !total_ldot_amount.is_zero() {
-			ExchangeRate::from_rational(total_dot_amount, total_ldot_amount)
+			ExchangeRate::checked_from_rational(total_dot_amount, total_ldot_amount)
+				.unwrap_or_else(T::DefaultExchangeRate::get)
 		} else {
 			T::DefaultExchangeRate::get()
 		}
@@ -175,7 +178,7 @@ impl<T: Trait> Module<T> {
 		let ldot_amount = ExchangeRate::from_natural(1)
 			.checked_div(&liquid_exchange_rate)
 			.unwrap_or_default()
-			.saturating_mul_int(&amount);
+			.saturating_mul_int(amount);
 		T::Currency::deposit(T::LiquidCurrencyId::get(), who, ldot_amount)?;
 
 		<Module<T>>::deposit_event(RawEvent::BondAndMint(who.clone(), amount, ldot_amount));
@@ -185,7 +188,7 @@ impl<T: Trait> Module<T> {
 	pub fn redeem_by_unbond(who: &T::AccountId, amount: Balance) -> DispatchResult {
 		let mut ldot_to_redeem = amount;
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
-		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(&ldot_to_redeem);
+		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(ldot_to_redeem);
 		let communal_bonded = Self::get_communal_bonded();
 
 		if !unbond_amount.is_zero() && !communal_bonded.is_zero() {
@@ -194,7 +197,7 @@ impl<T: Trait> Module<T> {
 				let new_redeem_amount: u128 = ExchangeRate::from_natural(1)
 					.checked_div(&liquid_exchange_rate)
 					.unwrap_or_default()
-					.saturating_mul_int(&communal_bonded)
+					.saturating_mul_int(communal_bonded)
 					.unique_saturated_into();
 				ldot_to_redeem = new_redeem_amount.unique_saturated_into();
 				unbond_amount = communal_bonded;
@@ -222,17 +225,18 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn claim_period_percent(era: EraIndex) -> Ratio {
-		Ratio::from_rational(
+		Ratio::checked_from_rational(
 			era.saturating_sub(Self::current_era()),
 			<<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get() + EraIndex::one(),
 		)
+		.unwrap_or_default()
 	}
 
 	pub fn calculate_claim_fee(amount: Balance, era: EraIndex) -> Balance {
 		Ratio::from_natural(1)
 			.saturating_sub(Self::claim_period_percent(era))
 			.saturating_mul(T::MaxClaimFee::get())
-			.saturating_mul_int(&amount)
+			.saturating_mul_int(amount)
 	}
 
 	pub fn redeem_by_free_unbonded(who: &T::AccountId, amount: Balance) -> DispatchResult {
@@ -241,7 +245,7 @@ impl<T: Trait> Module<T> {
 		let mut fee = Self::calculate_claim_fee(total_deduct, current_era);
 		let mut ldot_to_redeem = total_deduct.saturating_sub(fee);
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
-		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(&ldot_to_redeem);
+		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(ldot_to_redeem);
 		let free_unbonded = Self::free_unbonded();
 
 		if !unbond_amount.is_zero() && !free_unbonded.is_zero() {
@@ -250,10 +254,12 @@ impl<T: Trait> Module<T> {
 				let new_ldot_to_redeem = ExchangeRate::from_natural(1)
 					.checked_div(&liquid_exchange_rate)
 					.unwrap_or_default()
-					.saturating_mul_int(&free_unbonded);
+					.saturating_mul_int(free_unbonded);
 
 				// re-assign
-				fee = Ratio::from_rational(new_ldot_to_redeem, ldot_to_redeem).saturating_mul_int(&fee);
+				fee = Ratio::checked_from_rational(new_ldot_to_redeem, ldot_to_redeem)
+					.unwrap_or_default()
+					.saturating_mul_int(fee);
 				ldot_to_redeem = new_ldot_to_redeem;
 				unbond_amount = free_unbonded;
 				total_deduct = fee + ldot_to_redeem;
@@ -269,7 +275,7 @@ impl<T: Trait> Module<T> {
 
 			let commission_fee = Ratio::from_natural(1)
 				.saturating_sub(T::ClaimFeeReturnRatio::get())
-				.saturating_mul_int(&fee);
+				.saturating_mul_int(fee);
 			T::OnCommission::on_commission(liquid_currency_id, commission_fee);
 
 			<Module<T>>::deposit_event(RawEvent::RedeemByFreeUnbonded(
@@ -295,7 +301,7 @@ impl<T: Trait> Module<T> {
 		let mut fee = Self::calculate_claim_fee(total_deduct, target_era);
 		let mut ldot_to_redeem = total_deduct.saturating_sub(fee);
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
-		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(&ldot_to_redeem);
+		let mut unbond_amount = liquid_exchange_rate.saturating_mul_int(ldot_to_redeem);
 		let target_era_unbonding = Self::unbonding(target_era);
 		let target_era_unclaimed = target_era_unbonding.0.saturating_sub(target_era_unbonding.1);
 
@@ -305,10 +311,12 @@ impl<T: Trait> Module<T> {
 				let new_ldot_to_redeem = ExchangeRate::from_natural(1)
 					.checked_div(&liquid_exchange_rate)
 					.unwrap_or_default()
-					.saturating_mul_int(&target_era_unclaimed);
+					.saturating_mul_int(target_era_unclaimed);
 
 				// re-assign
-				fee = Ratio::from_rational(new_ldot_to_redeem, ldot_to_redeem).saturating_mul_int(&fee);
+				fee = Ratio::checked_from_rational(new_ldot_to_redeem, ldot_to_redeem)
+					.unwrap_or_default()
+					.saturating_mul_int(fee);
 				ldot_to_redeem = new_ldot_to_redeem;
 				unbond_amount = target_era_unclaimed;
 				total_deduct = fee + ldot_to_redeem;
@@ -324,7 +332,7 @@ impl<T: Trait> Module<T> {
 
 			let commission_fee = Ratio::from_natural(1)
 				.saturating_sub(T::ClaimFeeReturnRatio::get())
-				.saturating_mul_int(&fee);
+				.saturating_mul_int(fee);
 			T::OnCommission::on_commission(liquid_currency_id, commission_fee);
 
 			<Module<T>>::deposit_event(RawEvent::RedeemByClaimUnbonding(
@@ -391,7 +399,7 @@ impl<T: Trait> Module<T> {
 			// unbond some to free pool
 			let unbond_to_free = communal_bonded_ratio
 				.saturating_sub(max_bond_ratio)
-				.saturating_mul_int(&total_communal_balance)
+				.saturating_mul_int(total_communal_balance)
 				.min(Self::get_communal_bonded());
 
 			if !unbond_to_free.is_zero() {
@@ -401,7 +409,7 @@ impl<T: Trait> Module<T> {
 			// bond more
 			let bond_amount = min_bond_ratio
 				.saturating_sub(communal_bonded_ratio)
-				.saturating_mul_int(&total_communal_balance)
+				.saturating_mul_int(total_communal_balance)
 				.min(Self::free_unbonded());
 
 			if T::Bridge::transfer_to_bridge(&Self::account_id(), bond_amount).is_ok() {

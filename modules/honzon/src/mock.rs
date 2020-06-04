@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::Balance;
 use sp_core::H256;
 use sp_runtime::{
@@ -215,11 +216,11 @@ pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
-	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(10, 100);
+	pub const DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
-	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
+	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 

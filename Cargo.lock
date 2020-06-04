@@ -124,6 +124,7 @@ dependencies = [
  "orml-schedule-update",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "orml-vesting",
  "pallet-babe",
  "pallet-balances",
@@ -2999,6 +3000,7 @@ dependencies = [
  "orml-auction",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -3026,6 +3028,7 @@ dependencies = [
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -3050,6 +3053,7 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -3079,6 +3083,7 @@ dependencies = [
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -3103,6 +3108,7 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -3173,6 +3179,7 @@ dependencies = [
  "module-support",
  "orml-currencies",
  "orml-tokens",
+ "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -3200,6 +3207,7 @@ dependencies = [
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -3254,6 +3262,7 @@ dependencies = [
  "module-support",
  "orml-currencies",
  "orml-tokens",
+ "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -3281,6 +3290,7 @@ dependencies = [
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -3341,6 +3351,7 @@ dependencies = [
  "module-primitives",
  "module-support",
  "orml-traits",
+ "orml-utilities",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -3358,6 +3369,7 @@ dependencies = [
  "module-primitives",
  "module-support",
  "orml-traits",
+ "orml-utilities",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -3386,6 +3398,7 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "sp-core",
@@ -3708,6 +3721,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-authority"
+version = "0.1.0"
+dependencies = [
+ "clear_on_drop",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-benchmarking"
 version = "0.1.0"
 dependencies = [
@@ -3821,6 +3850,7 @@ dependencies = [
  "clear_on_drop",
  "frame-support",
  "frame-system",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "sp-core",
@@ -3871,6 +3901,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "serde_json",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",

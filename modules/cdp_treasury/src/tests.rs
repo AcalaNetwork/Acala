@@ -231,7 +231,7 @@ fn get_debit_proportion_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			CDPTreasuryModule::get_debit_proportion(100),
-			Ratio::from_rational(100, Currencies::total_issuance(AUSD))
+			Ratio::saturating_from_rational(100, Currencies::total_issuance(AUSD))
 		);
 	});
 }

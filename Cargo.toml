@@ -83,6 +83,8 @@ members = [
 	"modules/*",
 	"utilities",
 	"orml/auction",
+	"orml/authority",
+	"orml/benchmarking",
 	"orml/currencies",
 	"orml/gradually-update",
 	"orml/oracle",
@@ -92,7 +94,6 @@ members = [
 	"orml/traits",
 	"orml/utilities",
 	"orml/vesting",
-	"orml/benchmarking",
 	"runtime",
 	"inspect",
 ]

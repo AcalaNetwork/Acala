@@ -13,6 +13,6 @@ where
 		let balance: Balance = balance.unique_saturated_into();
 		<Module<T>>::debit_exchange_rate(currency_id)
 			.unwrap_or_else(T::DefaultDebitExchangeRate::get)
-			.saturating_mul_int(&balance)
+			.saturating_mul_int(balance)
 	}
 }

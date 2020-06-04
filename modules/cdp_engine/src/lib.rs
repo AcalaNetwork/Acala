@@ -18,6 +18,7 @@ use frame_system::{
 	self as system, ensure_none, ensure_root,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
@@ -404,7 +405,7 @@ decl_module! {
 					if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
 						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
 						let total_debit_value = Self::get_debit_value(currency_id, total_debits);
-						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(&total_debit_value);
+						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
 
 						// issue stablecoin to surplus pool
 						if <T as Trait>::CDPTreasury::on_system_surplus(issued_stable_coin_balance).is_ok() {
@@ -595,10 +596,10 @@ impl<T: Trait> Module<T> {
 		debit_balance: T::DebitBalance,
 		price: Price,
 	) -> Ratio {
-		let locked_collateral_value = price.saturating_mul_int(&collateral_balance);
+		let locked_collateral_value = price.saturating_mul_int(collateral_balance);
 		let debit_value = Self::get_debit_value(currency_id, debit_balance);
 
-		Ratio::from_rational(locked_collateral_value, debit_value)
+		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_default()
 	}
 
 	pub fn adjust_position(
@@ -627,7 +628,7 @@ impl<T: Trait> Module<T> {
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let bad_debt_value = Self::get_debit_value(currency_id, debit_balance);
 		let confiscate_collateral_amount =
-			sp_std::cmp::min(settle_price.saturating_mul_int(&bad_debt_value), collateral_balance);
+			sp_std::cmp::min(settle_price.saturating_mul_int(bad_debt_value), collateral_balance);
 
 		// confiscate collateral and all debit
 		<loans::Module<T>>::confiscate_collateral_and_debit(
@@ -655,7 +656,7 @@ impl<T: Trait> Module<T> {
 
 		let bad_debt_value = Self::get_debit_value(currency_id, debit_balance);
 		let target_stable_amount = bad_debt_value
-			.saturating_add(Self::get_liquidation_penalty(currency_id).saturating_mul_int(&bad_debt_value));
+			.saturating_add(Self::get_liquidation_penalty(currency_id).saturating_mul_int(bad_debt_value));
 		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 		let exchange_slippage =
 			T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount);

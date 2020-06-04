@@ -14,6 +14,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_root};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -360,7 +361,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 
 	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
 		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
-		Ratio::from_rational(amount, stable_total_supply)
+		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
 	}
 }
 
@@ -414,8 +415,9 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 						(unhandled_collateral_amount, unhandled_target)
 					} else {
 						created_lots += 1;
-						let proportion = Ratio::from_rational(collateral_auction_maximum_size, amount);
-						(collateral_auction_maximum_size, proportion.saturating_mul_int(&target))
+						let proportion =
+							Ratio::checked_from_rational(collateral_auction_maximum_size, amount).unwrap_or_default();
+						(collateral_auction_maximum_size, proportion.saturating_mul_int(target))
 					}
 				} else {
 					(unhandled_collateral_amount, unhandled_target)

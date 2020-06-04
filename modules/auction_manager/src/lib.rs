@@ -20,6 +20,7 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::{Auction, AuctionEndChange, AuctionHandler, MultiCurrency, OnNewBidResult};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash, Saturating, Zero},
@@ -405,7 +406,7 @@ impl<T: Trait> Module<T> {
 		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let confiscate_collateral_amount = sp_std::cmp::min(
-			settle_price.saturating_mul_int(&collateral_auction.target),
+			settle_price.saturating_mul_int(collateral_auction.target),
 			collateral_auction.amount,
 		);
 		let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
@@ -465,7 +466,7 @@ impl<T: Trait> Module<T> {
 		minimum_increment: Rate,
 	) -> bool {
 		if let (Some(target), Some(result)) = (
-			minimum_increment.checked_mul_int(sp_std::cmp::max(&target_price, &last_price)),
+			minimum_increment.checked_mul_int(sp_std::cmp::max(target_price, last_price)),
 			new_price.checked_sub(last_price),
 		) {
 			return result >= target;
@@ -536,8 +537,8 @@ impl<T: Trait> Module<T> {
 				// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
 				if new_bid.1 > collateral_auction.target {
 					let new_collateral_amount =
-						Rate::from_rational(sp_std::cmp::max(last_price, collateral_auction.target), new_bid.1)
-							.checked_mul_int(&collateral_auction.amount)
+						Rate::checked_from_rational(sp_std::cmp::max(last_price, collateral_auction.target), new_bid.1)
+							.and_then(|n| n.checked_mul_int(collateral_auction.amount))
 							.unwrap_or(collateral_auction.amount);
 					let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
@@ -613,8 +614,8 @@ impl<T: Trait> Module<T> {
 				// calculate new amount of issue native token
 				if new_bid.1 > debit_auction.fix {
 					debit_auction.amount =
-						Rate::from_rational(sp_std::cmp::max(last_price, debit_auction.fix), new_bid.1)
-							.checked_mul_int(&debit_auction.amount)
+						Rate::checked_from_rational(sp_std::cmp::max(last_price, debit_auction.fix), new_bid.1)
+							.and_then(|n| n.checked_mul_int(debit_auction.amount))
 							.unwrap_or(debit_auction.amount);
 					<DebitAuctions<T>>::insert(id, debit_auction.clone());
 				}
@@ -795,7 +796,7 @@ impl<T: Trait> Module<T> {
 				let new_debit_auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block));
 				let new_amount = debit_auction
 					.amount
-					.saturating_add(T::GetAmountAdjustment::get().saturating_mul_int(&debit_auction.amount));
+					.saturating_add(T::GetAmountAdjustment::get().saturating_mul_int(debit_auction.amount));
 				let new_debit_auction = DebitAuctionItem {
 					amount: new_amount,
 					fix: debit_auction.fix,

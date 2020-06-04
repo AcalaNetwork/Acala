@@ -48,7 +48,7 @@ benchmarks! {
 
 	set_liquidity_incentive_rate {
 		let u in 0 .. 1000;
-	}: _(RawOrigin::Root, CurrencyId::DOT, Rate::from_rational(1, 10000000))
+	}: _(RawOrigin::Root, CurrencyId::DOT, Rate::saturating_from_rational(1, 10000000))
 
 	// `add_liquidity`, best case:
 	// liquidity pool is empty and there's no incentive interest before
@@ -90,7 +90,7 @@ benchmarks! {
 		Dex::<T>::set_liquidity_incentive_rate(
 			RawOrigin::Root.into(),
 			currency_id,
-			Rate::from_rational(1, 10),
+			Rate::saturating_from_rational(1, 10),
 		)?;
 
 		// accumulate incentive interest
@@ -120,7 +120,7 @@ benchmarks! {
 		Dex::<T>::set_liquidity_incentive_rate(
 			RawOrigin::Root.into(),
 			currency_id,
-			Rate::from_rational(1, 10),
+			Rate::saturating_from_rational(1, 10),
 		)?;
 
 		// accumulate incentive interest
@@ -139,7 +139,7 @@ benchmarks! {
 		Dex::<T>::set_liquidity_incentive_rate(
 			RawOrigin::Root.into(),
 			currency_id,
-			Rate::from_rational(1, 10),
+			Rate::saturating_from_rational(1, 10),
 		)?;
 
 		// accumulate incentive interest
@@ -158,7 +158,7 @@ benchmarks! {
 		Dex::<T>::set_liquidity_incentive_rate(
 			RawOrigin::Root.into(),
 			currency_id,
-			Rate::from_rational(1, 10),
+			Rate::saturating_from_rational(1, 10),
 		)?;
 	}: {
 		Dex::<T>::accumulate_interest(currency_id);

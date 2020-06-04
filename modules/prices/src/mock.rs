@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::ExchangeRate;
@@ -74,7 +75,7 @@ pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
 		match currency_id {
-			&AUSD => Some(Price::from_rational(99, 100)),
+			&AUSD => Some(Price::saturating_from_rational(99, 100)),
 			&BTC => Some(Price::from_natural(5000)),
 			&DOT => Some(Price::from_natural(100)),
 			&ACA => Some(Price::from_natural(0)),
@@ -92,7 +93,7 @@ impl DataProviderExtended<CurrencyId, Price, AccountId> for MockDataProvider {
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::from_rational(1, 2)
+		ExchangeRate::saturating_from_rational(1, 2)
 	}
 }
 
