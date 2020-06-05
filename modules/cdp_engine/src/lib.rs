@@ -121,6 +121,11 @@ pub struct RiskManagementParams {
 	pub required_collateral_ratio: Option<Ratio>,
 }
 
+// typedef to help polkadot.js disambiguate Change with different generic parameters
+type ChangeOptionRate = Change<Option<Rate>>;
+type ChangeOptionRatio = Change<Option<Ratio>>;
+type ChangeBalance = Change<Balance>;
+
 decl_event!(
 	pub enum Event<T>
 	where
@@ -350,11 +355,11 @@ decl_module! {
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
-			stability_fee: Change<Option<Rate>>,
-			liquidation_ratio: Change<Option<Ratio>>,
-			liquidation_penalty: Change<Option<Rate>>,
-			required_collateral_ratio: Change<Option<Ratio>>,
-			maximum_total_debit_value: Change<Balance>,
+			stability_fee: ChangeOptionRate,
+			liquidation_ratio: ChangeOptionRatio,
+			liquidation_penalty: ChangeOptionRate,
+			required_collateral_ratio: ChangeOptionRatio,
+			maximum_total_debit_value: ChangeBalance,
 		) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
