@@ -210,7 +210,7 @@ pub fn split_inner<T, R, S>(option: Option<T>, splitter: impl FnOnce(T) -> (R, S
 }
 
 impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
-	fn on_received(who: T::AccountId, currency_id: CurrencyId, amount: Balance) {}
+	fn on_received(who: &T::AccountId, currency_id: CurrencyId, amount: Balance) {}
 }
 
 impl<T: Trait> OnKilledAccount<T::AccountId> for Module<T> {
