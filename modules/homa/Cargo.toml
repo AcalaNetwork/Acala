@@ -7,9 +7,9 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.101", optional = true }
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
-sp-runtime = { version = "2.0.0-rc1", default-features = false }
-frame-support = { version = "2.0.0-rc1", default-features = false }
-frame-system = { version = "2.0.0-rc1", default-features = false }
+sp-runtime = { version = "2.0.0-rc2", default-features = false }
+frame-support = { version = "2.0.0-rc2", default-features = false }
+frame-system = { version = "2.0.0-rc2", default-features = false }
 staking-pool = { package = "module-staking-pool", path = "../staking_pool", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
