@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use runtime::{opaque::Block, RuntimeApi};
 use sc_consensus::LongestChain;
-use sc_consensus_babe;
 use sc_finality_grandpa::{
 	self as grandpa, FinalityProofProvider as GrandpaFinalityProofProvider, StorageAndProofProvider,
 };
@@ -154,7 +153,8 @@ macro_rules! new_full {
 			.take()
 			.expect("The SharedVoterState is present for Full Services or setup failed before. qed");
 
-		($with_startup_data)(&block_import, &babe_link);
+		let with_startup_data_closure = $with_startup_data;
+		with_startup_data_closure(&block_import, &babe_link);
 
 		if let sc_service::config::Role::Authority { .. } = &role {
 			let proposer = sc_basic_authorship::ProposerFactory::new(
@@ -251,7 +251,7 @@ pub fn new_light(config: Configuration) -> Result<impl AbstractService, ServiceE
 		.with_transaction_pool(|config, client, fetcher, prometheus_registry| {
 			let fetcher = fetcher.ok_or_else(|| "Trying to start light transaction pool without active fetcher")?;
 
-			let pool_api = sc_transaction_pool::LightChainApi::new(client.clone(), fetcher.clone());
+			let pool_api = sc_transaction_pool::LightChainApi::new(client, fetcher);
 			let pool = sc_transaction_pool::BasicPool::with_revalidation_type(
 				config,
 				Arc::new(pool_api),
@@ -285,7 +285,7 @@ pub fn new_light(config: Configuration) -> Result<impl AbstractService, ServiceE
 					babe_block_import,
 					None,
 					Some(Box::new(finality_proof_import)),
-					client.clone(),
+					client,
 					inherent_data_providers.clone(),
 					spawn_task_handle,
 					registry,

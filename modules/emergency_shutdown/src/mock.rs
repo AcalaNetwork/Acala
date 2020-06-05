@@ -14,7 +14,7 @@ use sp_runtime::{
 };
 use support::{AuctionManager, Price, PriceProvider};
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type AuctionId = u64;
 pub type BlockNumber = u64;
 pub type DebitBalance = Balance;
@@ -90,6 +90,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 

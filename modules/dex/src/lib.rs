@@ -17,11 +17,12 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_utilities::fixed_u128::{FixedPointOperand, FixedUnsignedNumber};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32Bit, MaybeSerializeDeserialize, Member, One, Saturating, UniqueSaturatedInto,
-		Zero,
+		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedDiv, CheckedSub, MaybeSerializeDeserialize, Member, One,
+		Saturating, UniqueSaturatedInto, Zero,
 	},
 	DispatchError, DispatchResult, ModuleId,
 };
@@ -38,7 +39,7 @@ pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
 	/// Associate type for measuring liquidity contribution of specific trading pairs
-	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
+	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize + FixedPointOperand;
 
 	/// The origin which may update parameters of dex. Root can always do this.
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
@@ -113,18 +114,13 @@ decl_storage! {
 		/// CurrencyType -> IncentiveRate
 		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyId => Rate;
 
-		/// Total incentive interest for different currency type
-		/// CurrencyType -> TotalInterest
-		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => Balance;
-
-		/// Total withdrawn incentive interest for different currency type
-		/// CurrencyType -> TotalWithdrawnInterest
-		TotalWithdrawnInterest get(fn total_withdrawn_interest): map hasher(twox_64_concat) CurrencyId => Balance;
+		/// Total interest(include total withdrawn) and total withdrawn interest for different currency type
+		/// CurrencyType -> (TotalInterest, TotalWithdrawnInterest)
+		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
 
 		/// Withdrawn interest indexed by currency type and account id
 		/// CurrencyType -> Owner -> WithdrawnInterest
 		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
-
 
 		/// System shutdown flag
 		IsShutdown get(fn is_shutdown): bool;
@@ -265,16 +261,16 @@ decl_module! {
 		/// - Complexity: `O(1)`
 		/// - Db reads:
 		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
-		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
 		/// - Db writes:
 		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
-		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
 		/// -------------------
 		/// Base Weight:
 		///		- best case: 49.04 µs
 		///		- worst case: 57.72 µs
 		/// # </weight>
-		#[weight = 58_000_000 + T::DbWeight::get().reads_writes(8, 8)]
+		#[weight = 58_000_000 + T::DbWeight::get().reads_writes(8, 9)]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyId,
@@ -302,19 +298,23 @@ decl_module! {
 				(max_other_currency_amount, max_base_currency_amount, initial_share)
 			} else {
 				let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(other_currency_id);
-				let other_base_price = Price::from_rational(base_currency_pool, other_currency_pool);
-				let input_other_base_price = Price::from_rational(max_base_currency_amount, max_other_currency_amount);
+				let other_base_price = Price::checked_from_rational(base_currency_pool, other_currency_pool).unwrap_or_default();
+				let input_other_base_price = Price::checked_from_rational(max_base_currency_amount, max_other_currency_amount).unwrap_or_default();
 
 				if input_other_base_price <= other_base_price {
 					// max_other_currency_amount may be too much, calculate the actual other currency amount
-					let base_other_price = Price::from_rational(other_currency_pool, base_currency_pool);
-					let other_currency_amount = base_other_price.saturating_mul_int(&max_base_currency_amount);
-					let share = Ratio::from_rational(other_currency_amount, other_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
+					let base_other_price = Price::checked_from_rational(other_currency_pool, base_currency_pool).unwrap_or_default();
+					let other_currency_amount = base_other_price.saturating_mul_int(max_base_currency_amount);
+					let share = Ratio::checked_from_rational(other_currency_amount, other_currency_pool)
+						.and_then(|n| n.checked_mul_int(total_shares))
+						.unwrap_or_default();
 					(other_currency_amount, max_base_currency_amount, share)
 				} else {
 					// max_base_currency_amount is too much, calculate the actual base currency amount
-					let base_currency_amount = other_base_price.saturating_mul_int(&max_other_currency_amount);
-					let share = Ratio::from_rational(base_currency_amount, base_currency_pool).checked_mul_int(&total_shares).unwrap_or_default();
+					let base_currency_amount = other_base_price.saturating_mul_int(max_other_currency_amount);
+					let share = Ratio::checked_from_rational(base_currency_amount, base_currency_pool)
+						.and_then(|n| n.checked_mul_int(total_shares))
+						.unwrap_or_default();
 					(max_other_currency_amount, base_currency_amount, share)
 				}
 			};
@@ -359,14 +359,14 @@ decl_module! {
 		/// - Preconditions:
 		/// 	- T::Currency is orml_currencies
 		/// - Complexity: `O(1)`
-		/// - Db reads: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
-		/// - Db writes: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalWithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// - Db reads: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// - Db writes: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
 		/// -------------------
 		/// Base Weight:
 		///		- best case: 66.59 µs
 		///		- worst case: 71.18 µs
 		/// # </weight>
-		#[weight = 72_000_000 + T::DbWeight::get().reads_writes(10, 10)]
+		#[weight = 72_000_000 + T::DbWeight::get().reads_writes(9, 9)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -380,9 +380,9 @@ decl_module! {
 			);
 
 			let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(currency_id);
-			let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
-			let withdraw_other_currency_amount = proportion.saturating_mul_int(&other_currency_pool);
-			let withdraw_base_currency_amount = proportion.saturating_mul_int(&base_currency_pool);
+			let proportion = Ratio::checked_from_rational(share_amount, Self::total_shares(currency_id)).unwrap_or_default();
+			let withdraw_other_currency_amount = proportion.saturating_mul_int(other_currency_pool);
+			let withdraw_base_currency_amount = proportion.saturating_mul_int(base_currency_pool);
 			if !withdraw_other_currency_amount.is_zero() {
 				T::Currency::transfer(currency_id, &Self::account_id(), &who, withdraw_other_currency_amount)
 				.expect("never failed because after checks");
@@ -446,8 +446,8 @@ impl<T: Trait> Module<T> {
 		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
 		let new_target_pool = supply_pool
 			.checked_add(supply_amount)
-			.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
-			.and_then(|n| n.checked_mul_int(&target_pool))
+			.and_then(|n| Ratio::checked_from_rational(supply_pool, n))
+			.map(|n| n.saturating_mul_int(target_pool))
 			.unwrap_or_default();
 
 		// new_target_pool should be more then 0
@@ -455,7 +455,7 @@ impl<T: Trait> Module<T> {
 			// actual can get = (target_pool - new_target_pool) * (1 - GetExchangeFee)
 			target_pool
 				.checked_sub(new_target_pool)
-				.and_then(|n| n.checked_sub(T::GetExchangeFee::get().saturating_mul_int(&n)))
+				.and_then(|n| n.checked_sub(T::GetExchangeFee::get().saturating_mul_int(n)))
 				.unwrap_or_default()
 		} else {
 			Zero::zero()
@@ -475,13 +475,13 @@ impl<T: Trait> Module<T> {
 			Rate::from_natural(1)
 				.checked_sub(&T::GetExchangeFee::get())
 				.and_then(|n| Ratio::from_natural(1).checked_div(&n))
-				.and_then(|n| Ratio::from_parts(1).checked_add(&n)) // add Ratio::from_parts(1) to correct the possible losses caused by discarding the remainder in inner division
-				.and_then(|n| n.checked_mul_int(&target_amount))
+				.and_then(|n| Ratio::from_inner(1).checked_add(&n)) // add Ratio::from_inner(1) to correct the possible losses caused by discarding the remainder in inner division
+				.and_then(|n| n.checked_mul_int(target_amount))
 				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
 				.and_then(|n| target_pool.checked_sub(n))
-				.and_then(|n| Some(Ratio::from_rational(supply_pool, n)))
-				.and_then(|n| Ratio::from_parts(1).checked_add(&n)) // add Ratio::from_parts(1) to correct the possible losses caused by discarding the remainder in inner division
-				.and_then(|n| n.checked_mul_int(&target_pool))
+				.and_then(|n| Ratio::checked_from_rational(supply_pool, n))
+				.and_then(|n| Ratio::from_inner(1).checked_add(&n)) // add Ratio::from_inner(1) to correct the possible losses caused by discarding the remainder in inner division
+				.and_then(|n| n.checked_mul_int(target_pool))
 				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
 				.and_then(|n| n.checked_sub(supply_pool))
 				.unwrap_or_default()
@@ -718,20 +718,18 @@ impl<T: Trait> Module<T> {
 		if total_shares.is_zero() {
 			return;
 		}
-		let proportion = Ratio::from_rational(share_amount, total_shares);
-		let total_interest = Self::total_interest(currency_id);
+		let proportion = Ratio::checked_from_rational(share_amount, total_shares).unwrap_or_default();
+		let (total_interest, _) = Self::total_interest(currency_id);
 		if total_interest.is_zero() {
 			return;
 		}
-		let interest_to_expand = proportion.saturating_mul_int(&total_interest);
+		let interest_to_expand = proportion.saturating_mul_int(total_interest);
 		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 			*val = val.saturating_add(interest_to_expand);
 		});
-		TotalWithdrawnInterest::mutate(currency_id, |val| {
-			*val = val.saturating_add(interest_to_expand);
-		});
-		TotalInterest::mutate(currency_id, |interest| {
-			*interest = interest.saturating_add(interest_to_expand);
+		TotalInterest::mutate(currency_id, |(total_interest, total_withdrawn)| {
+			*total_interest = total_interest.saturating_add(interest_to_expand);
+			*total_withdrawn = total_withdrawn.saturating_add(interest_to_expand);
 		});
 	}
 
@@ -743,27 +741,28 @@ impl<T: Trait> Module<T> {
 		// claim interest first
 		Self::claim_interest(currency_id, who)?;
 
-		let proportion = Ratio::from_rational(share_amount, Self::total_shares(currency_id));
-		let withdrawn_interest_to_remove = Ratio::from_rational(share_amount, Self::shares(currency_id, who))
-			.saturating_mul_int(&Self::withdrawn_interest(currency_id, who));
+		let proportion =
+			Ratio::checked_from_rational(share_amount, Self::total_shares(currency_id)).unwrap_or_default();
+		let withdrawn_interest_to_remove = Ratio::checked_from_rational(share_amount, Self::shares(currency_id, who))
+			.unwrap_or_default()
+			.saturating_mul_int(Self::withdrawn_interest(currency_id, who));
 
 		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 			*val = val.saturating_sub(withdrawn_interest_to_remove);
 		});
-		TotalWithdrawnInterest::mutate(currency_id, |val| {
-			*val = val.saturating_sub(withdrawn_interest_to_remove);
-		});
-		TotalInterest::mutate(currency_id, |val| {
-			*val = val.saturating_sub(proportion.saturating_mul_int(val));
+		TotalInterest::mutate(currency_id, |(total_interest, total_withdrawn)| {
+			*total_interest = total_interest.saturating_sub(proportion.saturating_mul_int(*total_interest));
+			*total_withdrawn = total_withdrawn.saturating_sub(withdrawn_interest_to_remove);
 		});
 
 		Ok(())
 	}
 
 	fn claim_interest(currency_id: CurrencyId, who: &T::AccountId) -> DispatchResult {
-		let proportion = Ratio::from_rational(Self::shares(currency_id, who), Self::total_shares(currency_id));
+		let proportion = Ratio::checked_from_rational(Self::shares(currency_id, who), Self::total_shares(currency_id))
+			.unwrap_or_default();
 		let interest_to_withdraw = proportion
-			.saturating_mul_int(&Self::total_interest(currency_id))
+			.saturating_mul_int(Self::total_interest(currency_id).0)
 			.saturating_sub(Self::withdrawn_interest(currency_id, who));
 
 		if !interest_to_withdraw.is_zero() {
@@ -777,8 +776,8 @@ impl<T: Trait> Module<T> {
 			<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
 				*val = val.saturating_add(interest_to_withdraw);
 			});
-			TotalWithdrawnInterest::mutate(currency_id, |val| {
-				*val = val.saturating_add(interest_to_withdraw);
+			TotalInterest::mutate(currency_id, |(_, total_withdrawn)| {
+				*total_withdrawn = total_withdrawn.saturating_add(interest_to_withdraw);
 			});
 		}
 
@@ -787,13 +786,13 @@ impl<T: Trait> Module<T> {
 
 	fn accumulate_interest(currency_id: CurrencyId) {
 		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
-		let interest_to_increase = Self::liquidity_incentive_rate(currency_id).saturating_mul_int(&base_currency_pool);
+		let interest_to_increase = Self::liquidity_incentive_rate(currency_id).saturating_mul_int(base_currency_pool);
 
 		if !interest_to_increase.is_zero() {
 			// issue aUSD as interest
 			if T::CDPTreasury::deposit_unbacked_debit_to(&Self::account_id(), interest_to_increase).is_ok() {
-				TotalInterest::mutate(currency_id, |val| {
-					*val = val.saturating_add(interest_to_increase);
+				TotalInterest::mutate(currency_id, |(total_interest, _)| {
+					*total_interest = total_interest.saturating_add(interest_to_increase);
 				});
 			}
 		}
@@ -854,18 +853,12 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 			let (_, base_currency_pool) = Self::liquidity_pool(target_currency_id);
 
 			// supply_amount / (supply_amount + base_currency_pool)
-			Some(Ratio::from_rational(
-				supply_amount,
-				supply_amount.saturating_add(base_currency_pool),
-			))
+			Ratio::checked_from_rational(supply_amount, supply_amount.saturating_add(base_currency_pool))
 		} else if target_currency_id == base_currency_id {
 			let (other_currency_pool, _) = Self::liquidity_pool(supply_currency_id);
 
 			// supply_amount / (supply_amount + other_currency_pool)
-			Some(Ratio::from_rational(
-				supply_amount,
-				supply_amount.saturating_add(other_currency_pool),
-			))
+			Ratio::checked_from_rational(supply_amount, supply_amount.saturating_add(other_currency_pool))
 		} else {
 			let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_currency_id);
 			let (_, target_base_currency_pool) = Self::liquidity_pool(target_currency_id);
@@ -873,17 +866,17 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 			// first slippage in swap supply other currency to base currency:
 			// first_slippage = supply_amount / (supply_amount + supply_other_currency_pool)
 			let supply_to_base_slippage: Ratio =
-				Ratio::from_rational(supply_amount, supply_amount.saturating_add(supply_other_currency_pool));
+				Ratio::checked_from_rational(supply_amount, supply_amount.saturating_add(supply_other_currency_pool))?;
 
 			// second slippage in swap base currency to target other currency:
 			// base_amount = first_slippage * supply_base_currency_pool
 			// second_slippage = base_amount / (base_amount + target_base_currency_pool)
-			let base_to_target_slippage: Ratio = Ratio::from_rational(
-				supply_to_base_slippage.saturating_mul_int(&supply_base_currency_pool),
+			let base_to_target_slippage: Ratio = Ratio::checked_from_rational(
+				supply_to_base_slippage.saturating_mul_int(supply_base_currency_pool),
 				supply_to_base_slippage
-					.saturating_mul_int(&supply_base_currency_pool)
+					.saturating_mul_int(supply_base_currency_pool)
 					.saturating_add(target_base_currency_pool),
-			);
+			)?;
 
 			// final_slippage = first_slippage + (1 - first_slippage) * second_slippage
 			let final_slippage: Ratio = supply_to_base_slippage.saturating_add(

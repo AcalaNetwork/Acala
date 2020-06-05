@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_oracle::DefaultCombineData;
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
@@ -26,7 +27,7 @@ impl_outer_origin! {
 }
 
 pub type AccountIndex = u32;
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type AuctionId = u64;
 pub type BlockNumber = u64;
 
@@ -70,6 +71,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -109,11 +111,11 @@ impl orml_auction::Trait for Runtime {
 pub type AuctionModule = orml_auction::Module<Runtime>;
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
@@ -128,6 +130,7 @@ impl auction_manager::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
+	type DEX = ();
 	type PriceSource = prices::Module<Runtime>;
 	type UnsignedPriority = UnsignedPriority;
 }

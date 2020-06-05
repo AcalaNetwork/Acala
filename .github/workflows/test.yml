@@ -12,9 +12,16 @@ jobs:
   build:
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         submodules: recursive
+    - name: Cache cargo registry and index
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo
     - name: Install toolchain
       uses: actions-rs/toolchain@v1
       with:
@@ -25,7 +32,13 @@ jobs:
         default: true
     - name: Check format
       run: cargo fmt --all -- --check
+    - name: Install clippy
+      run: rustup component add clippy
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
     - name: Build
       run: cargo build --locked
     - name: Run tests
       run: cargo test --all
+    - name: Run benchmarking tests
+      run: cargo test --features runtime-benchmarks -p acala-runtime benchmarking

@@ -157,7 +157,7 @@ fn redeem_by_claim_unbonding_work() {
 		);
 		assert_eq!(
 			StakingPoolModule::claim_period_percent(2),
-			Ratio::from_rational(2, 4 + 1)
+			Ratio::saturating_from_rational(2, 4 + 1)
 		);
 		assert_eq!(StakingPoolModule::calculate_claim_fee(10000, 2), 600);
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 10000, 2));

@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_oracle::DefaultCombineData;
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
@@ -27,7 +28,7 @@ impl_outer_origin! {
 }
 
 pub type AccountIndex = u32;
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type AuctionId = u64;
 pub type BlockNumber = u64;
 pub type DebitBalance = Balance;
@@ -74,6 +75,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -175,11 +177,11 @@ pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(3, 2);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
 	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
-	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(10, 100);
+	pub const DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
-	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(50, 100);
+	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 

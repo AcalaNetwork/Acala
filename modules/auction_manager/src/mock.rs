@@ -13,10 +13,11 @@ use sp_runtime::{
 };
 use support::Price;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type AuctionId = u64;
 pub type Amount = i64;
+pub type Share = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -49,6 +50,7 @@ impl_outer_event! {
 		orml_tokens<T>,
 		orml_auction<T>,
 		cdp_treasury,
+		dex<T>,
 	}
 }
 
@@ -92,6 +94,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -118,7 +121,7 @@ impl cdp_treasury::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManagerModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type DEX = ();
+	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
@@ -139,11 +142,28 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(1, 20);
+	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
+	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
+}
+
+impl dex::Trait for Runtime {
+	type Event = TestEvent;
+	type Currency = Tokens;
+	type Share = Share;
+	type EnabledCurrencyIds = EnabledCurrencyIds;
+	type GetBaseCurrencyId = GetStableCurrencyId;
+	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = CDPTreasuryModule;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+}
+pub type DEXModule = dex::Module<Runtime>;
+
+parameter_types! {
+	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(1, 2);
+	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
@@ -158,6 +178,7 @@ impl Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type GetAmountAdjustment = GetAmountAdjustment;
+	type DEX = DEXModule;
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = UnsignedPriority;
 }

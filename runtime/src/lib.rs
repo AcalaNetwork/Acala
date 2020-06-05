@@ -3,6 +3,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
+// The `large_enum_variant` warning originates from `construct_runtime` macro.
+#![allow(clippy::large_enum_variant)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -32,6 +34,7 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{self as system};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -171,7 +174,7 @@ impl pallet_grandpa::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = 1 * DOLLARS;
+	pub const IndexDeposit: Balance = DOLLARS;
 }
 
 impl pallet_indices::Trait for Runtime {
@@ -379,13 +382,13 @@ impl ContainsLengthBound for GeneralCouncilProvider {
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
-	pub const SpendPeriod: BlockNumber = 1 * DAYS;
+	pub const ProposalBondMinimum: Balance = DOLLARS;
+	pub const SpendPeriod: BlockNumber = DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
-	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
-	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
-	pub const TipReportDepositPerByte: Balance = 1 * CENTS;
+	pub const TipReportDepositBase: Balance = DOLLARS;
+	pub const TipReportDepositPerByte: Balance = CENTS;
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 }
 
@@ -497,7 +500,7 @@ impl pallet_staking::Trait for Runtime {
 
 parameter_types! {
 	pub const ConfigDepositBase: Balance = 10 * CENTS;
-	pub const FriendDepositFactor: Balance = 1 * CENTS;
+	pub const FriendDepositFactor: Balance = CENTS;
 	pub const MaxFriends: u16 = 9;
 	pub const RecoveryDeposit: Balance = 10 * CENTS;
 }
@@ -544,10 +547,11 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 
 parameter_types! {
-	pub const StableCurrencyFixedPrice: Price = Price::from_rational(1, 1);
+	pub const StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 }
 
 impl module_prices::Trait for Runtime {
@@ -597,10 +601,10 @@ impl orml_schedule_update::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::from_rational(2, 100);
+	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub const GetAmountAdjustment: Rate = Rate::from_rational(20, 100);
+	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(20, 100);
 	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
@@ -615,6 +619,7 @@ impl module_auction_manager::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type GetAmountAdjustment = GetAmountAdjustment;
+	type DEX = Dex;
 	type PriceSource = Prices;
 	type UnsignedPriority = AuctionManagerUnsignedPriority;
 }
@@ -670,7 +675,7 @@ where
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
 		let address = Indices::unlookup(account);
 		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (address, signature.into(), extra)))
+		Some((call, (address, signature, extra)))
 	}
 }
 
@@ -689,11 +694,11 @@ where
 
 parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
-	pub const DefaultLiquidationRatio: Ratio = Ratio::from_rational(110, 100);
-	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_rational(1, 10);
-	pub const DefaultLiquidationPenalty: Rate = Rate::from_rational(5, 100);
-	pub const MinimumDebitValue: Balance = 1 * DOLLARS;
-	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::from_rational(5, 100);
+	pub const DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
+	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+	pub const DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
+	pub const MinimumDebitValue: Balance = DOLLARS;
+	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
 	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
@@ -728,7 +733,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::from_rational(1, 1000);
+	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
 	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA];
 }
 
@@ -759,8 +764,8 @@ impl module_cdp_treasury::Trait for Runtime {
 
 parameter_types! {
 	pub const FreeTransferCount: u8 = 3;
-	pub const FreeTransferPeriod: BlockNumber = 1 * DAYS;
-	pub const FreeTransferDeposit: Balance = 1 * DOLLARS;
+	pub const FreeTransferPeriod: BlockNumber = DAYS;
+	pub const FreeTransferDeposit: Balance = DOLLARS;
 }
 
 impl module_accounts::Trait for Runtime {
@@ -777,7 +782,7 @@ impl module_airdrop::Trait for Runtime {
 
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = 1 * DAYS;
+	pub const EraLength: BlockNumber = DAYS;
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
@@ -792,11 +797,11 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(95, 100);	// 95%
-	pub const MinBondRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
-	pub const MaxClaimFee: Rate = Rate::from_rational(5, 100);	// 5%
-	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(98, 100); // 98%
+	pub const MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100);	// 95%
+	pub const MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
+	pub const MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100);	// 5%
+	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(98, 100); // 98%
 }
 
 impl module_staking_pool::Trait for Runtime {
@@ -819,7 +824,7 @@ impl module_homa::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinCouncilBondThreshold: Balance = 1 * DOLLARS;
+	pub const MinCouncilBondThreshold: Balance = DOLLARS;
 	pub const NominateesCount: usize = 7;
 	pub const MaxUnlockingChunks: usize = 7;
 	pub const NomineesElectionBondingDuration: EraIndex = 7;
@@ -840,6 +845,7 @@ impl module_homa_treasury::Trait for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 }
 
+#[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,

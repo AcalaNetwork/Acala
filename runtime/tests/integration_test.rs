@@ -6,10 +6,11 @@ mod tests {
 		assert_noop, assert_ok,
 		traits::{OnFinalize, OnInitialize},
 	};
-	use module_cdp_engine::LiquidationStrategy;
+	use module_cdp_engine::{CollateralParamChange, LiquidationStrategy};
 	use module_support::CDPTreasury;
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::MultiCurrency;
+	use orml_utilities::fixed_u128::FixedUnsignedNumber;
 	use sp_runtime::DispatchResult;
 
 	const ORACLE1: [u8; 32] = [0u8; 32];
@@ -59,7 +60,7 @@ mod tests {
 			.unwrap();
 
 			module_dex::GenesisConfig {
-				liquidity_incentive_rate: vec![(CurrencyId::XBTC, Rate::from_rational(1, 100))],
+				liquidity_incentive_rate: vec![(CurrencyId::XBTC, Rate::saturating_from_rational(1, 100))],
 			}
 			.assimilate_storage(&mut t)
 			.unwrap();
@@ -191,7 +192,7 @@ mod tests {
 				SystemModule::set_block_number(1);
 				assert_ok!(set_oracle_price(vec![(
 					CurrencyId::XBTC,
-					Price::from_rational(10000, 1)
+					Price::saturating_from_rational(10000, 1)
 				)])); // 10000 usd
 
 				assert_ok!(DexModule::add_liquidity(
@@ -204,11 +205,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					Some(Some(Rate::from_natural(0))),
-					Some(Some(Ratio::from_rational(200, 100))),
-					Some(Some(Rate::from_rational(20, 100))),
-					Some(Some(Ratio::from_rational(200, 100))),
-					Some(amount(1000000)),
+					CollateralParamChange::New(Some(Rate::from_natural(0))),
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(200, 100))),
+					CollateralParamChange::New(Some(Rate::saturating_from_rational(20, 100))),
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(200, 100))),
+					CollateralParamChange::New(amount(1000000)),
 				));
 
 				assert_ok!(CdpEngineModule::adjust_position(
@@ -247,11 +248,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					None,
-					Some(Some(Ratio::from_rational(400, 100))),
-					None,
-					Some(Some(Ratio::from_rational(400, 100))),
-					None,
+					CollateralParamChange::NoChange,
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(400, 100))),
+					CollateralParamChange::NoChange,
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(400, 100))),
+					CollateralParamChange::NoChange,
 				));
 
 				assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(
@@ -385,11 +386,11 @@ mod tests {
 				assert_eq!(DexModule::liquidity_pool(CurrencyId::XBTC), (10003, 10003000));
 
 				assert_eq!(DexModule::total_shares(CurrencyId::XBTC), 10002998);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 0);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (0, 0));
 				DexModule::on_initialize(0);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 100030);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (100030, 0));
 				DexModule::on_initialize(0);
-				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), 200060);
+				assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (200060, 0));
 			});
 	}
 
@@ -399,16 +400,19 @@ mod tests {
 			.balances(vec![(AccountId::from(ALICE), CurrencyId::XBTC, amount(1_000))])
 			.build()
 			.execute_with(|| {
-				assert_ok!(set_oracle_price(vec![(CurrencyId::XBTC, Price::from_rational(1, 1))]));
+				assert_ok!(set_oracle_price(vec![(
+					CurrencyId::XBTC,
+					Price::saturating_from_rational(1, 1)
+				)]));
 
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					Some(Some(Rate::from_rational(1, 100000))),
-					Some(Some(Ratio::from_rational(3, 2))),
-					Some(Some(Rate::from_rational(2, 10))),
-					Some(Some(Ratio::from_rational(9, 5))),
-					Some(amount(10000)),
+					CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
+					CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
+					CollateralParamChange::New(amount(10000)),
 				));
 				assert_ok!(CdpEngineModule::adjust_position(
 					&AccountId::from(ALICE),
@@ -444,11 +448,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					None,
-					Some(Some(Ratio::from_rational(3, 1))),
-					None,
-					None,
-					None
+					CollateralParamChange::NoChange,
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 1))),
+					CollateralParamChange::NoChange,
+					CollateralParamChange::NoChange,
+					CollateralParamChange::NoChange,
 				));
 				assert_ok!(CdpEngineModule::liquidate(
 					<Runtime as frame_system::Trait>::Origin::NONE,
@@ -482,37 +486,41 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					Some(Some(Rate::from_rational(1, 100000))),
-					Some(Some(Ratio::from_rational(3, 2))),
-					Some(Some(Rate::from_rational(2, 10))),
-					Some(Some(Ratio::from_rational(9, 5))),
-					Some(amount(10000)),
+					CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
+					CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
+					CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
+					CollateralParamChange::New(amount(10000)),
 				));
 
-				assert_eq!(
-					CdpEngineModule::stability_fee(CurrencyId::XBTC),
-					Some(Rate::from_rational(1, 100000))
-				);
-				assert_eq!(
-					CdpEngineModule::liquidation_ratio(CurrencyId::XBTC),
-					Some(Ratio::from_rational(3, 2))
-				);
-				assert_eq!(
-					CdpEngineModule::liquidation_penalty(CurrencyId::XBTC),
-					Some(Rate::from_rational(2, 10))
-				);
-				assert_eq!(
-					CdpEngineModule::required_collateral_ratio(CurrencyId::XBTC),
-					Some(Ratio::from_rational(9, 5))
-				);
-				assert_eq!(
-					CdpEngineModule::maximum_total_debit_value(CurrencyId::XBTC),
-					amount(10000)
-				);
+				let new_collateral_params = CdpEngineModule::collateral_params(CurrencyId::XBTC);
 
 				assert_eq!(
-					CdpEngineModule::calculate_collateral_ratio(CurrencyId::XBTC, 100, 50, Price::from_rational(1, 1)),
-					Ratio::from_rational(100 * 10, 50)
+					new_collateral_params.stability_fee,
+					Some(Rate::saturating_from_rational(1, 100000))
+				);
+				assert_eq!(
+					new_collateral_params.liquidation_ratio,
+					Some(Ratio::saturating_from_rational(3, 2))
+				);
+				assert_eq!(
+					new_collateral_params.liquidation_penalty,
+					Some(Rate::saturating_from_rational(2, 10))
+				);
+				assert_eq!(
+					new_collateral_params.required_collateral_ratio,
+					Some(Ratio::saturating_from_rational(9, 5))
+				);
+				assert_eq!(new_collateral_params.maximum_total_debit_value, amount(10000));
+
+				assert_eq!(
+					CdpEngineModule::calculate_collateral_ratio(
+						CurrencyId::XBTC,
+						100,
+						50,
+						Price::saturating_from_rational(1, 1)
+					),
+					Ratio::saturating_from_rational(100 * 10, 50)
 				);
 
 				assert_ok!(CdpEngineModule::check_debit_cap(CurrencyId::XBTC, amount(99999)));
@@ -543,8 +551,8 @@ mod tests {
 				);
 
 				assert_ok!(set_oracle_price(vec![
-					(CurrencyId::AUSD, Price::from_rational(1, 1)),
-					(CurrencyId::XBTC, Price::from_rational(3, 1))
+					(CurrencyId::AUSD, Price::saturating_from_rational(1, 1)),
+					(CurrencyId::XBTC, Price::saturating_from_rational(3, 1))
 				]));
 
 				assert_ok!(CdpEngineModule::adjust_position(

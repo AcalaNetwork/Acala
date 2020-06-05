@@ -10,7 +10,7 @@ use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
 use support::Rate;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i64;
 pub type Share = u64;
@@ -84,6 +84,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -114,7 +115,7 @@ impl orml_currencies::Trait for Runtime {
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::from_rational(0, 100);
+	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
 }

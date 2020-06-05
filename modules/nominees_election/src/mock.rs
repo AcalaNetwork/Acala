@@ -8,7 +8,7 @@ use primitives::{Amount, CurrencyId};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 0;
@@ -63,6 +63,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type TokensModule = orml_tokens::Module<Runtime>;
 

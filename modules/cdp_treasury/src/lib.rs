@@ -14,10 +14,11 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_root};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
-	DispatchResult, ModuleId,
+	DispatchError, DispatchResult, ModuleId,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
 
@@ -340,8 +341,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		let new_total_collateral = Self::total_collaterals(currency_id)
 			.checked_sub(amount)
 			.ok_or(Error::<T>::CollateralNotEnough)?;
-		T::Currency::ensure_can_withdraw(currency_id, &Self::account_id(), amount)?;
-		T::Currency::transfer(currency_id, &Self::account_id(), to, amount).expect("never failed after check");
+		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)?;
 		TotalCollaterals::insert(currency_id, new_total_collateral);
 		Ok(())
 	}
@@ -354,15 +354,14 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		let new_total_collateral = Self::total_collaterals(currency_id)
 			.checked_add(amount)
 			.ok_or(Error::<T>::CollateralOverflow)?;
-		T::Currency::ensure_can_withdraw(currency_id, &from, amount)?;
-		T::Currency::transfer(currency_id, from, &Self::account_id(), amount).expect("never failed after check");
+		T::Currency::transfer(currency_id, from, &Self::account_id(), amount)?;
 		TotalCollaterals::insert(currency_id, new_total_collateral);
 		Ok(())
 	}
 
 	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
 		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
-		Ratio::from_rational(amount, stable_total_supply)
+		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
 	}
 }
 
@@ -371,7 +370,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		currency_id: CurrencyId,
 		supply_amount: Balance,
 		target_amount: Balance,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		ensure!(
 			Self::total_collaterals(currency_id) >= supply_amount,
 			Error::<T>::CollateralNotEnough,
@@ -389,7 +388,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		TotalCollaterals::mutate(currency_id, |balance| *balance -= supply_amount);
 		SurplusPool::mutate(|surplus| *surplus += amount);
 
-		Ok(())
+		Ok(amount)
 	}
 
 	fn create_collateral_auctions(
@@ -416,8 +415,9 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 						(unhandled_collateral_amount, unhandled_target)
 					} else {
 						created_lots += 1;
-						let proportion = Ratio::from_rational(collateral_auction_maximum_size, amount);
-						(collateral_auction_maximum_size, proportion.saturating_mul_int(&target))
+						let proportion =
+							Ratio::checked_from_rational(collateral_auction_maximum_size, amount).unwrap_or_default();
+						(collateral_auction_maximum_size, proportion.saturating_mul_int(target))
 					}
 				} else {
 					(unhandled_collateral_amount, unhandled_target)

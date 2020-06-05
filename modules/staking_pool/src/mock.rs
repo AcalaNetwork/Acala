@@ -9,9 +9,9 @@ use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::PolkadotStakingLedger;
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type PolkadotAccountId = u64;
+pub type PolkadotAccountId = u128;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
@@ -80,6 +80,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type TokensModule = orml_tokens::Module<Runtime>;
 
@@ -185,11 +186,11 @@ impl PolkadotBridge<AccountId, BlockNumber, Balance, EraIndex> for MockBridge {}
 parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub const MaxBondRatio: Ratio = Ratio::from_rational(60, 100);	// 60%
-	pub const MinBondRatio: Ratio = Ratio::from_rational(50, 100);	// 50%
-	pub const MaxClaimFee: Rate = Rate::from_rational(10, 100);	// 10%
-	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::from_rational(80, 100);	// 80%
+	pub const MaxBondRatio: Ratio = Ratio::saturating_from_rational(60, 100);	// 60%
+	pub const MinBondRatio: Ratio = Ratio::saturating_from_rational(50, 100);	// 50%
+	pub const MaxClaimFee: Rate = Rate::saturating_from_rational(10, 100);	// 10%
+	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
+	pub const ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
 }
 
 impl Trait for Runtime {

@@ -9,7 +9,7 @@ use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use support::{AuctionManager, Rate};
 
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Share = u128;
 pub type Amount = i128;
@@ -83,6 +83,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
+	type OnReceived = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -145,7 +146,7 @@ impl AuctionManager<AccountId> for MockAuctionManagerHandler {
 
 parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub const GetExchangeFee: Rate = Rate::from_rational(1, 100);
+	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
 	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
 }
 
@@ -177,7 +178,10 @@ impl Default for ExtBuilder {
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
-			liquidity_incentive_rate: vec![(BTC, Rate::from_rational(1, 100)), (DOT, Rate::from_rational(1, 100))],
+			liquidity_incentive_rate: vec![
+				(BTC, Rate::saturating_from_rational(1, 100)),
+				(DOT, Rate::saturating_from_rational(1, 100)),
+			],
 		}
 	}
 }
