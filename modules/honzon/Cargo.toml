@@ -7,10 +7,10 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.101", optional = true }
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
-sp-runtime = { version = "2.0.0-rc1", default-features = false }
-frame-support = { version = "2.0.0-rc1", default-features = false }
-frame-system = { version = "2.0.0-rc1", default-features = false }
-sp-std = { version = "2.0.0-rc1", default-features = false }
+sp-runtime = { version = "2.0.0-rc2", default-features = false }
+frame-support = { version = "2.0.0-rc2", default-features = false }
+frame-system = { version = "2.0.0-rc2", default-features = false }
+sp-std = { version = "2.0.0-rc2", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 cdp-engine = { package = "module-cdp-engine", path = "../cdp_engine", default-features = false }
 loans = { package = "module-loans", path = "../loans", default-features = false }
@@ -18,9 +18,9 @@ support = { package = "module-support", path = "../support", default-features = 
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 
 [dev-dependencies]
-sp-io = { version = "2.0.0-rc1", default-features = false }
-sp-core = { version = "2.0.0-rc1", default-features = false }
-pallet-balances = { version = "2.0.0-rc1", default-features = false }
+sp-io = { version = "2.0.0-rc2", default-features = false }
+sp-core = { version = "2.0.0-rc2", default-features = false }
+pallet-balances = { version = "2.0.0-rc2", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-utilities = { path = "../../orml/utilities", default-features = false }
