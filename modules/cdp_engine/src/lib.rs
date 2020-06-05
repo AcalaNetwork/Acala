@@ -18,6 +18,7 @@ use frame_system::{
 	self as system, ensure_none, ensure_root,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
+use orml_traits::Change;
 use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
@@ -94,12 +95,6 @@ pub enum LiquidationStrategy {
 	Exchange,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub enum CollateralParamChange<Data> {
-	NoChange,
-	New(Data),
-}
-
 /// Risk management params
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
 pub struct RiskManagementParams {
@@ -125,6 +120,11 @@ pub struct RiskManagementParams {
 	/// `None` value means not set
 	pub required_collateral_ratio: Option<Ratio>,
 }
+
+// typedef to help polkadot.js disambiguate Change with different generic parameters
+type ChangeOptionRate = Change<Option<Rate>>;
+type ChangeOptionRatio = Change<Option<Ratio>>;
+type ChangeBalance = Change<Balance>;
 
 decl_event!(
 	pub enum Event<T>
@@ -355,11 +355,11 @@ decl_module! {
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
-			stability_fee: CollateralParamChange<Option<Rate>>,
-			liquidation_ratio: CollateralParamChange<Option<Ratio>>,
-			liquidation_penalty: CollateralParamChange<Option<Rate>>,
-			required_collateral_ratio: CollateralParamChange<Option<Ratio>>,
-			maximum_total_debit_value: CollateralParamChange<Balance>,
+			stability_fee: ChangeOptionRate,
+			liquidation_ratio: ChangeOptionRatio,
+			liquidation_penalty: ChangeOptionRate,
+			required_collateral_ratio: ChangeOptionRatio,
+			maximum_total_debit_value: ChangeBalance,
 		) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
@@ -370,23 +370,23 @@ decl_module! {
 			);
 
 			let mut collateral_params = Self::collateral_params(currency_id);
-			if let CollateralParamChange::New(update) = stability_fee {
+			if let Change::NewValue(update) = stability_fee {
 				collateral_params.stability_fee = update;
 				Self::deposit_event(RawEvent::StabilityFeeUpdated(currency_id, update));
 			}
-			if let CollateralParamChange::New(update) = liquidation_ratio {
+			if let Change::NewValue(update) = liquidation_ratio {
 				collateral_params.liquidation_ratio = update;
 				Self::deposit_event(RawEvent::LiquidationRatioUpdated(currency_id, update));
 			}
-			if let CollateralParamChange::New(update) = liquidation_penalty {
+			if let Change::NewValue(update) = liquidation_penalty {
 				collateral_params.liquidation_penalty = update;
 				Self::deposit_event(RawEvent::LiquidationPenaltyUpdated(currency_id, update));
 			}
-			if let CollateralParamChange::New(update) = required_collateral_ratio {
+			if let Change::NewValue(update) = required_collateral_ratio {
 				collateral_params.required_collateral_ratio = update;
 				Self::deposit_event(RawEvent::RequiredCollateralRatioUpdated(currency_id, update));
 			}
-			if let CollateralParamChange::New(val) = maximum_total_debit_value {
+			if let Change::NewValue(val) = maximum_total_debit_value {
 				collateral_params.maximum_total_debit_value = val;
 				Self::deposit_event(RawEvent::MaximumTotalDebitValueUpdated(currency_id, val));
 			}

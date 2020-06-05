@@ -6,10 +6,10 @@ mod tests {
 		assert_noop, assert_ok,
 		traits::{OnFinalize, OnInitialize},
 	};
-	use module_cdp_engine::{CollateralParamChange, LiquidationStrategy};
+	use module_cdp_engine::LiquidationStrategy;
 	use module_support::CDPTreasury;
 	use module_support::{Price, Rate, Ratio, RiskManager};
-	use orml_traits::MultiCurrency;
+	use orml_traits::{Change, MultiCurrency};
 	use orml_utilities::fixed_u128::FixedUnsignedNumber;
 	use sp_runtime::DispatchResult;
 
@@ -205,11 +205,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					CollateralParamChange::New(Some(Rate::from_natural(0))),
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(200, 100))),
-					CollateralParamChange::New(Some(Rate::saturating_from_rational(20, 100))),
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(200, 100))),
-					CollateralParamChange::New(amount(1000000)),
+					Change::NewValue(Some(Rate::from_natural(0))),
+					Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+					Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
+					Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+					Change::NewValue(amount(1000000)),
 				));
 
 				assert_ok!(CdpEngineModule::adjust_position(
@@ -248,11 +248,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					CollateralParamChange::NoChange,
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(400, 100))),
-					CollateralParamChange::NoChange,
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(400, 100))),
-					CollateralParamChange::NoChange,
+					Change::NoChange,
+					Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
+					Change::NoChange,
+					Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
+					Change::NoChange,
 				));
 
 				assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(
@@ -408,11 +408,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-					CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-					CollateralParamChange::New(amount(10000)),
+					Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+					Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+					Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+					Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+					Change::NewValue(amount(10000)),
 				));
 				assert_ok!(CdpEngineModule::adjust_position(
 					&AccountId::from(ALICE),
@@ -448,11 +448,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					CollateralParamChange::NoChange,
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 1))),
-					CollateralParamChange::NoChange,
-					CollateralParamChange::NoChange,
-					CollateralParamChange::NoChange,
+					Change::NoChange,
+					Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+					Change::NoChange,
+					Change::NoChange,
+					Change::NoChange,
 				));
 				assert_ok!(CdpEngineModule::liquidate(
 					<Runtime as frame_system::Trait>::Origin::NONE,
@@ -486,11 +486,11 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-					CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-					CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-					CollateralParamChange::New(amount(10000)),
+					Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+					Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+					Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+					Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+					Change::NewValue(amount(10000)),
 				));
 
 				let new_collateral_params = CdpEngineModule::collateral_params(CurrencyId::XBTC);

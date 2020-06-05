@@ -19,7 +19,7 @@ use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
-use orml_traits::{Auction, AuctionEndChange, AuctionHandler, MultiCurrency, OnNewBidResult};
+use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
 use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -560,7 +560,7 @@ impl<T: Trait> Module<T> {
 
 				return OnNewBidResult {
 					accept_bid: true,
-					auction_end_change: AuctionEndChange::Changed(Some(
+					auction_end_change: Change::NewValue(Some(
 						now + Self::get_auction_time_to_close(now, collateral_auction.start_time),
 					)),
 				};
@@ -569,7 +569,7 @@ impl<T: Trait> Module<T> {
 
 		OnNewBidResult {
 			accept_bid: false,
-			auction_end_change: AuctionEndChange::NoChange,
+			auction_end_change: Change::NoChange,
 		}
 	}
 
@@ -622,7 +622,7 @@ impl<T: Trait> Module<T> {
 
 				return OnNewBidResult {
 					accept_bid: true,
-					auction_end_change: AuctionEndChange::Changed(Some(
+					auction_end_change: Change::NewValue(Some(
 						now + Self::get_auction_time_to_close(now, debit_auction.start_time),
 					)),
 				};
@@ -631,7 +631,7 @@ impl<T: Trait> Module<T> {
 
 		OnNewBidResult {
 			accept_bid: false,
-			auction_end_change: AuctionEndChange::NoChange,
+			auction_end_change: Change::NoChange,
 		}
 	}
 
@@ -678,7 +678,7 @@ impl<T: Trait> Module<T> {
 
 				return OnNewBidResult {
 					accept_bid: true,
-					auction_end_change: AuctionEndChange::Changed(Some(
+					auction_end_change: Change::NewValue(Some(
 						now + Self::get_auction_time_to_close(now, surplus_auction.start_time),
 					)),
 				};
@@ -687,7 +687,7 @@ impl<T: Trait> Module<T> {
 
 		OnNewBidResult {
 			accept_bid: false,
-			auction_end_change: AuctionEndChange::NoChange,
+			auction_end_change: Change::NoChange,
 		}
 	}
 
@@ -853,7 +853,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionIdOf
 		} else {
 			OnNewBidResult {
 				accept_bid: false,
-				auction_end_change: AuctionEndChange::NoChange,
+				auction_end_change: Change::NoChange,
 			}
 		}
 	}
