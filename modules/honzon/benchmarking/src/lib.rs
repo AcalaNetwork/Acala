@@ -13,10 +13,10 @@ use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use sp_runtime::traits::{CheckedDiv, Saturating, UniqueSaturatedInto};
 
-use cdp_engine::{CollateralParamChange, Module as CdpEngine};
+use cdp_engine::Module as CdpEngine;
 use honzon::Module as Honzon;
 use honzon::*;
-use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
+use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
 use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::CurrencyId;
 use support::{ExchangeRate, Price, Rate, Ratio};
@@ -103,11 +103,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(10, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(min_debit_value * 100),
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(min_debit_value * 100),
 		)?;
 	}: _(RawOrigin::Signed(caller), currency_id, collateral_amount, debit_amount)
 
@@ -135,11 +135,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(10, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(min_debit_value * 100),
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(min_debit_value * 100),
 		)?;
 
 		// initialize sender's loan

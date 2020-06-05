@@ -542,7 +542,7 @@ dependencies = [
  "block-padding",
  "byte-tools",
  "byteorder",
- "generic-array 0.12.3",
+ "generic-array",
 ]
 
 [[package]]
@@ -949,7 +949,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4434400df11d95d556bac068ddfedd482915eb18fe8bea89bc80b6e4b1c179e5"
 dependencies = [
- "generic-array 0.12.3",
+ "generic-array",
  "subtle 1.0.0",
 ]
 
@@ -998,7 +998,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 dependencies = [
- "generic-array 0.12.3",
+ "generic-array",
 ]
 
 [[package]]
@@ -1283,7 +1283,7 @@ checksum = "00e5f8abfba8a7f0a89e5aae4ca9be5b86b88e9c93ccfc11a4b44485f7c6a1dd"
 dependencies = [
  "frame-support",
  "frame-system",
- "linregress 0.1.7",
+ "linregress",
  "parity-scale-codec",
  "paste",
  "sp-api",
@@ -1679,15 +1679,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generic-array"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ed1e761351b56f54eb9dcd0cfaca9fd0daecf93918e1cfc01c8a3d26ee7adcd"
-dependencies = [
- "typenum",
-]
-
-[[package]]
 name = "get_if_addrs"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1905,7 +1896,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6e570451493f10f6581b48cdd530413b63ea9e780f544bfd3bdcaa0d89d1a7b"
 dependencies = [
  "digest",
- "generic-array 0.12.3",
+ "generic-array",
  "hmac",
 ]
 
@@ -2782,18 +2773,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9290cf6f928576eeb9c096c6fad9d8d452a0a1a70a2bbffa6e36064eedc0aac9"
 dependencies = [
  "failure",
- "nalgebra 0.18.1",
- "statrs 0.10.0",
-]
-
-[[package]]
-name = "linregress"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "635a769f58dc3d6f0b90fbab2c830f4d48c21098492dbd7f9418a40530076ac7"
-dependencies = [
- "nalgebra 0.21.0",
- "statrs 0.12.0",
+ "nalgebra",
+ "statrs",
 ]
 
 [[package]]
@@ -3281,6 +3262,7 @@ dependencies = [
  "module-support",
  "orml-currencies",
  "orml-tokens",
+ "orml-traits",
  "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
@@ -3528,30 +3510,12 @@ checksum = "aaa9fddbc34c8c35dd2108515587b8ce0cab396f17977b8c738568e4edb521a2"
 dependencies = [
  "alga",
  "approx",
- "generic-array 0.12.3",
+ "generic-array",
  "matrixmultiply",
  "num-complex",
  "num-rational",
  "num-traits 0.2.11",
  "rand 0.6.5",
- "typenum",
-]
-
-[[package]]
-name = "nalgebra"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d630f146ae751cfb43db9e0ad6bd73819a546a38baa5d4a9de69823c389c78a1"
-dependencies = [
- "approx",
- "generic-array 0.13.2",
- "matrixmultiply",
- "num-complex",
- "num-rational",
- "num-traits 0.2.11",
- "rand 0.7.3",
- "rand_distr",
- "simba",
  "typenum",
 ]
 
@@ -3743,7 +3707,7 @@ checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
 
 [[package]]
 name = "orml-auction"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3759,7 +3723,7 @@ dependencies = [
 
 [[package]]
 name = "orml-authority"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3775,12 +3739,11 @@ dependencies = [
 
 [[package]]
 name = "orml-benchmarking"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "linregress 0.3.0",
  "parity-scale-codec",
  "paste",
  "sp-api",
@@ -3792,7 +3755,7 @@ dependencies = [
 
 [[package]]
 name = "orml-currencies"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3810,7 +3773,7 @@ dependencies = [
 
 [[package]]
 name = "orml-gradually-update"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3824,7 +3787,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3842,7 +3805,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -3856,7 +3819,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc-runtime-api"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -3865,7 +3828,7 @@ dependencies = [
 
 [[package]]
 name = "orml-prices"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3882,7 +3845,7 @@ dependencies = [
 
 [[package]]
 name = "orml-schedule-update"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3898,7 +3861,7 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3915,7 +3878,7 @@ dependencies = [
 
 [[package]]
 name = "orml-traits"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3930,7 +3893,7 @@ dependencies = [
 
 [[package]]
 name = "orml-utilities"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -3947,7 +3910,7 @@ dependencies = [
 
 [[package]]
 name = "orml-vesting"
-version = "0.1.0"
+version = "0.1.2-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4921,15 +4884,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90bde5296fc891b0cef12a6d03ddccc162ce7b2aff54160af9338f8d40df6d19"
 dependencies = [
  "getrandom",
-]
-
-[[package]]
-name = "rand_distr"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96977acbdd3a6576fb1d27391900035bf3863d4a16422973a409b488cf29ffb2"
-dependencies = [
- "rand 0.7.3",
 ]
 
 [[package]]
@@ -6339,18 +6293,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "simba"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d771bffb178827708f83829713e3a214bc8a9879a8f27ca548965bd849ed130"
-dependencies = [
- "approx",
- "num-complex",
- "num-traits 0.2.11",
- "paste",
-]
-
-[[package]]
 name = "slab"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7108,15 +7050,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10102ac8d55e35db2b3fafc26f81ba8647da2e15879ab686a67e6d19af2685e8"
 dependencies = [
  "rand 0.5.6",
-]
-
-[[package]]
-name = "statrs"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cce16f6de653e88beca7bd13780d08e09d4489dbca1f9210e041bc4852481382"
-dependencies = [
- "rand 0.7.3",
 ]
 
 [[package]]

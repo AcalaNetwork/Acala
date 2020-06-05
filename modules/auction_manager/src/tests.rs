@@ -133,7 +133,7 @@ fn bid_when_soft_cap_for_collateral_auction_work() {
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
-			AuctionEndChange::Changed(Some(101))
+			Change::NewValue(Some(101))
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 10), Some((BOB, 5))).accept_bid,
@@ -141,7 +141,7 @@ fn bid_when_soft_cap_for_collateral_auction_work() {
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 15), Some((BOB, 5))).auction_end_change,
-			AuctionEndChange::Changed(Some(2051))
+			Change::NewValue(Some(2051))
 		);
 	});
 }
@@ -152,7 +152,7 @@ fn bid_when_soft_cap_for_debit_auction_work() {
 		AuctionManagerModule::new_debit_auction(200, 100);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
-			AuctionEndChange::Changed(Some(101))
+			Change::NewValue(Some(101))
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 105), Some((BOB, 100))).accept_bid,
@@ -160,7 +160,7 @@ fn bid_when_soft_cap_for_debit_auction_work() {
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end_change,
-			AuctionEndChange::Changed(Some(2051))
+			Change::NewValue(Some(2051))
 		);
 	});
 }
@@ -171,7 +171,7 @@ fn bid_when_soft_cap_for_surplus_auction_work() {
 		AuctionManagerModule::new_surplus_auction(100);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
-			AuctionEndChange::Changed(Some(101))
+			Change::NewValue(Some(101))
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 105), Some((BOB, 100))).accept_bid,
@@ -179,7 +179,7 @@ fn bid_when_soft_cap_for_surplus_auction_work() {
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end_change,
-			AuctionEndChange::Changed(Some(2051))
+			Change::NewValue(Some(2051))
 		);
 	});
 }
