@@ -46,7 +46,7 @@ frame-system = { version = "2.0.0-rc2", default-features = false }
 sp-application-crypto = { version = "2.0.0-rc2", default-features = false }
 
 orml-auction = { path = "../orml/auction", default-features = false }
-orml-benchmarking = { path = "../orml/benchmarking", default-features = false }
+orml-benchmarking = { path = "../orml/benchmarking", default-features = false, optional = true }
 orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
@@ -126,6 +126,7 @@ std = [
 	"sp-transaction-pool/std",
 	"sp-version/std",
 
+	"orml-auction/std",
 	"orml-benchmarking/std",
 	"orml-currencies/std",
 	"orml-oracle-rpc-runtime-api/std",
@@ -157,15 +158,18 @@ std = [
 	"module-homa-treasury/std",
 ]
 runtime-benchmarks = [
-    "frame-benchmarking",
+	"frame-benchmarking",
+	"orml-benchmarking",
+
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
-	"sp-runtime/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
-	"module-dex/runtime-benchmarks",
-	"module-cdp-treasury/runtime-benchmarks",
-	"module-honzon-benchmarking",
-	"module-cdp-engine-benchmarking",
-	"module-emergency-shutdown-benchmarking",
+	"sp-runtime/runtime-benchmarks",
+
 	"module-auction-manager-benchmarking",
+	"module-cdp-engine-benchmarking",
+	"module-cdp-treasury/runtime-benchmarks",
+	"module-dex/runtime-benchmarks",
+	"module-emergency-shutdown-benchmarking",
+	"module-honzon-benchmarking",
 ]
