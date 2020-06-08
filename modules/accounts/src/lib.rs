@@ -29,8 +29,8 @@ use sp_std::convert::{Infallible, TryFrom, TryInto};
 use sp_std::prelude::*;
 use support::DEXManager;
 
-mod mock;
-mod tests;
+// mod mock;
+// mod tests;
 
 const ACCOUNTS_ID: LockIdentifier = *b"ACA/acct";
 

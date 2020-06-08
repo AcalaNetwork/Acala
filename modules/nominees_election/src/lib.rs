@@ -175,7 +175,7 @@ decl_module! {
 				let era = Self::current_era() + T::BondingDuration::get();
 				ledger.unlocking.push(UnlockChunk{
 					value: amount,
-					era: era,
+					era,
 				});
 				let old_nominations = Self::nominations(&who);
 

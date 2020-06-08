@@ -16,7 +16,7 @@ use sp_runtime::traits::{CheckedDiv, UniqueSaturatedInto};
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use dex::Module as Dex;
-use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
+use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
 use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use support::{ExchangeRate, OnEmergencyShutdown, Price, Rate, Ratio};
@@ -74,11 +74,11 @@ benchmarks! {
 	}: _(
 		RawOrigin::Root,
 		CurrencyId::DOT,
-		CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 1000000))),
-		CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-		CollateralParamChange::New(Some(Rate::saturating_from_rational(20, 100))),
-		CollateralParamChange::New(Some(Ratio::saturating_from_rational(180, 100))),
-		CollateralParamChange::New(dollar(100000))
+		Change::NewValue(Some(Rate::saturating_from_rational(1, 1000000))),
+		Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+		Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
+		Change::NewValue(Some(Ratio::saturating_from_rational(180, 100))),
+		Change::NewValue(dollar(100000))
 	)
 
 	set_global_params {
@@ -108,11 +108,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(10, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(min_debit_value * 100),
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(min_debit_value * 100),
 		)?;
 
 		// adjust position
@@ -122,11 +122,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(1000, 100))),
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(1000, 100))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
 		)?;
 	}: liquidate(RawOrigin::None, currency_id, owner)
 
@@ -160,11 +160,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(10, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(min_debit_value * 100),
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(min_debit_value * 100),
 		)?;
 
 		// adjust position
@@ -174,11 +174,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(1000, 100))),
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(1000, 100))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
 		)?;
 	}: liquidate(RawOrigin::None, currency_id, owner)
 	verify {
@@ -209,11 +209,11 @@ benchmarks! {
 		CdpEngine::<T>::set_collateral_params(
 			RawOrigin::Root.into(),
 			currency_id,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(10, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(150, 100))),
-			CollateralParamChange::New(min_debit_value * 100),
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(min_debit_value * 100),
 		)?;
 
 		// adjust position

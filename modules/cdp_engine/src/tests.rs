@@ -17,11 +17,11 @@ fn is_cdp_unsafe_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), false);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
@@ -29,11 +29,11 @@ fn is_cdp_unsafe_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 1))),
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
 		));
 		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), true);
 	});
@@ -59,11 +59,11 @@ fn get_liquidation_penalty_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(5, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(5, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_eq!(
 			CDPEngineModule::get_liquidation_penalty(BTC),
@@ -82,11 +82,11 @@ fn get_liquidation_ratio_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(5, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(5, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_eq!(
 			CDPEngineModule::get_liquidation_ratio(BTC),
@@ -130,22 +130,22 @@ fn set_collateral_params_work() {
 			CDPEngineModule::set_collateral_params(
 				Origin::signed(5),
 				BTC,
-				CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-				CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-				CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-				CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-				CollateralParamChange::New(10000),
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+				Change::NewValue(10000),
 			),
 			BadOrigin
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 
 		let update_stability_fee_event = TestEvent::cdp_engine(RawEvent::StabilityFeeUpdated(
@@ -185,11 +185,11 @@ fn set_collateral_params_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 
 		let new_collateral_params = CDPEngineModule::collateral_params(BTC);
@@ -220,11 +220,11 @@ fn calculate_collateral_ratio_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_eq!(
 			CDPEngineModule::calculate_collateral_ratio(BTC, 100, 50, Price::saturating_from_rational(1, 1)),
@@ -239,11 +239,11 @@ fn check_debit_cap_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::check_debit_cap(BTC, 9999));
 		assert_noop!(
@@ -259,11 +259,11 @@ fn check_position_valid_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(1, 1))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(1, 1))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::check_position_valid(BTC, 100, 50));
 	});
@@ -275,11 +275,11 @@ fn check_position_valid_ratio_below_liquidate_ratio() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(10, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(10, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_noop!(
 			CDPEngineModule::check_position_valid(BTC, 91, 50),
@@ -294,11 +294,11 @@ fn check_position_valid_ratio_below_required_ratio() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_noop!(
 			CDPEngineModule::check_position_valid(BTC, 89, 50),
@@ -313,11 +313,11 @@ fn adjust_position_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_noop!(
 			CDPEngineModule::adjust_position(&ALICE, ACA, 100, 50),
@@ -347,11 +347,11 @@ fn remain_debit_value_too_small_check() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
 		assert_eq!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, -49).is_ok(), false);
@@ -366,11 +366,11 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
@@ -384,11 +384,11 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 1))),
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
-			CollateralParamChange::NoChange,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
 		));
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
 
@@ -417,20 +417,20 @@ fn on_finalize_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			DOT,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		CDPEngineModule::on_finalize(1);
 		assert_eq!(CDPEngineModule::debit_exchange_rate(BTC), None);
@@ -468,11 +468,11 @@ fn on_emergency_shutdown_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 30));
 		CDPEngineModule::on_finalize(1);
@@ -498,11 +498,11 @@ fn settle_cdp_has_debit_work() {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::ROOT,
 			BTC,
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(1, 100000))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(3, 2))),
-			CollateralParamChange::New(Some(Rate::saturating_from_rational(2, 10))),
-			CollateralParamChange::New(Some(Ratio::saturating_from_rational(9, 5))),
-			CollateralParamChange::New(10000),
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 0));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
