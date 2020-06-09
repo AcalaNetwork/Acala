@@ -129,11 +129,11 @@ pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(_base: CurrencyId, _quota: CurrencyId) -> Option<Price> {
-		Some(Price::from_natural(1))
+		Some(Price::saturating_from_integer(1))
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::from_natural(1))
+		Some(Price::saturating_from_integer(1))
 	}
 
 	fn lock_price(_currency_id: CurrencyId) {}
@@ -142,8 +142,8 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
-	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
+	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
+	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
 }
 
 impl dex::Trait for Runtime {
@@ -159,11 +159,11 @@ impl dex::Trait for Runtime {
 pub type DEXModule = dex::Module<Runtime>;
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
+	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
+	pub GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 

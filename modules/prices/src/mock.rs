@@ -5,9 +5,8 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
 use support::ExchangeRate;
 
 pub type AccountId = u128;
@@ -76,9 +75,9 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
 		match currency_id {
 			&AUSD => Some(Price::saturating_from_rational(99, 100)),
-			&BTC => Some(Price::from_natural(5000)),
-			&DOT => Some(Price::from_natural(100)),
-			&ACA => Some(Price::from_natural(0)),
+			&BTC => Some(Price::saturating_from_integer(5000)),
+			&DOT => Some(Price::saturating_from_integer(100)),
+			&ACA => Some(Price::saturating_from_integer(0)),
 			_ => None,
 		}
 	}
@@ -105,7 +104,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub const StableCurrencyFixedPrice: Price = Price::from_natural(1);
+	pub StableCurrencyFixedPrice: Price = Price::saturating_from_integer(1);
 }
 
 impl Trait for Runtime {

@@ -14,11 +14,10 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_root};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
-	DispatchError, DispatchResult, ModuleId,
+	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
 

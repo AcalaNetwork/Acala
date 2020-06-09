@@ -115,9 +115,9 @@ impl orml_currencies::Trait for Runtime {
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
+	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
+	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
 }
 
 impl dex::Trait for Runtime {

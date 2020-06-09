@@ -20,14 +20,13 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash, Saturating, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchResult, RandomNumberGenerator, RuntimeDebug,
+	DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
 };
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -476,7 +475,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn get_minimum_increment_size(now: T::BlockNumber, start_block: T::BlockNumber) -> Rate {
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
-			T::MinimumIncrementSize::get().saturating_mul(Rate::from_natural(2))
+			T::MinimumIncrementSize::get().saturating_mul(Rate::saturating_from_integer(2))
 		} else {
 			T::MinimumIncrementSize::get()
 		}

@@ -16,9 +16,8 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
-use sp_runtime::traits::Zero;
+use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
 use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Ratio};
 

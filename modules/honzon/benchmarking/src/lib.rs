@@ -11,13 +11,15 @@ use sp_std::vec;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::{CheckedDiv, Saturating, UniqueSaturatedInto};
+use sp_runtime::{
+	traits::{CheckedDiv, Saturating, UniqueSaturatedInto},
+	FixedPointNumber,
+};
 
 use cdp_engine::Module as CdpEngine;
 use honzon::Module as Honzon;
 use honzon::*;
 use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::CurrencyId;
 use support::{ExchangeRate, Price, Rate, Ratio};
 
@@ -87,8 +89,8 @@ benchmarks! {
 		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
 		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
-		let collateral_price = Price::from_natural(1);		// 1 USD
-		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
+		let collateral_price = Price::saturating_from_integer(1);		// 1 USD
+		let min_debit_amount = ExchangeRate::saturating_from_integer(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
 		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
 		let debit_amount = min_debit_amount * 10.into();
 		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
@@ -119,8 +121,8 @@ benchmarks! {
 		let receiver: T::AccountId = account("receiver", u, SEED);
 		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
-		let collateral_price = Price::from_natural(1);		// 1 USD
-		let min_debit_amount = ExchangeRate::from_natural(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
+		let collateral_price = Price::saturating_from_integer(1);		// 1 USD
+		let min_debit_amount = ExchangeRate::saturating_from_integer(1).checked_div(&debit_exchange_rate).unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
 		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
 		let debit_amount = min_debit_amount * 10.into();
 		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
@@ -129,7 +131,7 @@ benchmarks! {
 		<T as loans::Trait>::Currency::update_balance(currency_id, &sender, collateral_amount)?;
 
 		// feed price
-		feed_price::<T>(currency_id, Price::from_natural(1))?;
+		feed_price::<T>(currency_id, Price::saturating_from_integer(1))?;
 
 		// set risk params
 		CdpEngine::<T>::set_collateral_params(

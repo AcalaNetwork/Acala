@@ -25,7 +25,7 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, ModuleId,
+	ApplyExtrinsicResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -34,7 +34,6 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{self as system};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;

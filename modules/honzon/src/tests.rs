@@ -9,7 +9,7 @@ use mock::{
 	DOT,
 };
 use orml_traits::Change;
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
+use sp_runtime::FixedPointNumber;
 use support::{Rate, Ratio};
 
 #[test]

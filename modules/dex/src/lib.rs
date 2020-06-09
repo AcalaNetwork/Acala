@@ -17,14 +17,13 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use orml_utilities::fixed_u128::{FixedPointOperand, FixedUnsignedNumber};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedDiv, CheckedSub, MaybeSerializeDeserialize, Member, One,
 		Saturating, UniqueSaturatedInto, Zero,
 	},
-	DispatchError, DispatchResult, ModuleId,
+	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
 use sp_std::prelude::Vec;
 use support::{CDPTreasury, DEXManager, OnEmergencyShutdown, Price, Rate, Ratio};
@@ -472,9 +471,9 @@ impl<T: Trait> Module<T> {
 		if target_amount.is_zero() {
 			Zero::zero()
 		} else {
-			Rate::from_natural(1)
+			Rate::saturating_from_integer(1)
 				.checked_sub(&T::GetExchangeFee::get())
-				.and_then(|n| Ratio::from_natural(1).checked_div(&n))
+				.and_then(|n| Ratio::saturating_from_integer(1).checked_div(&n))
 				.and_then(|n| Ratio::from_inner(1).checked_add(&n)) // add Ratio::from_inner(1) to correct the possible losses caused by discarding the remainder in inner division
 				.and_then(|n| n.checked_mul_int(target_amount))
 				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
@@ -880,7 +879,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 
 			// final_slippage = first_slippage + (1 - first_slippage) * second_slippage
 			let final_slippage: Ratio = supply_to_base_slippage.saturating_add(
-				Ratio::from_natural(1)
+				Ratio::saturating_from_integer(1)
 					.saturating_sub(supply_to_base_slippage)
 					.saturating_mul(base_to_target_slippage),
 			);
