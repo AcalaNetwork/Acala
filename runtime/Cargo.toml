@@ -52,6 +52,7 @@ orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
 orml-schedule-update = { path = "../orml/schedule-update", default-features = false }
+orml-gradually-update = { path = "../orml/gradually-update", default-features = false }
 orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-traits = { path = "../orml/traits", default-features = false }
 orml-vesting = { path = "../orml/vesting", default-features = false }
@@ -133,6 +134,7 @@ std = [
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
 	"orml-schedule-update/std",
+	"orml-gradually-update/std",
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-vesting/std",
