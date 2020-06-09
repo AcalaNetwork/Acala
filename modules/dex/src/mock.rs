@@ -146,8 +146,8 @@ impl AuctionManager<AccountId> for MockAuctionManagerHandler {
 
 parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
-	pub const EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
+	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
+	pub EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
 }
 
 impl Trait for Runtime {

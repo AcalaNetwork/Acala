@@ -6,12 +6,11 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_oracle::DefaultCombineData;
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
 	traits::IdentityLookup,
-	DispatchResult,
+	DispatchResult, FixedPointNumber,
 };
 use sp_std::vec;
 use support::{AuctionManager, ExchangeRate, ExchangeRateProvider, Price, Rate, Ratio};
@@ -178,7 +177,7 @@ pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
+	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
 }
 
 impl dex::Trait for Runtime {
@@ -194,12 +193,12 @@ impl dex::Trait for Runtime {
 pub type DexModule = dex::Module<Runtime>;
 
 parameter_types! {
-	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub const DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
-	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::from_natural(1);
-	pub const DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
+	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_integer(1);
+	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
-	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);
+	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
@@ -261,14 +260,14 @@ pub type ModuleOracle = orml_oracle::Module<Runtime>;
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::from_natural(1)
+		ExchangeRate::saturating_from_integer(1)
 	}
 }
 
 parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub const StableCurrencyFixedPrice: Price = Price::from_natural(1);
+	pub StableCurrencyFixedPrice: Price = Price::saturating_from_integer(1);
 }
 
 impl prices::Trait for Runtime {

@@ -10,8 +10,7 @@ mod tests {
 	use module_support::CDPTreasury;
 	use module_support::{Price, Rate, Ratio, RiskManager};
 	use orml_traits::{Change, MultiCurrency};
-	use orml_utilities::fixed_u128::FixedUnsignedNumber;
-	use sp_runtime::DispatchResult;
+	use sp_runtime::{DispatchResult, FixedPointNumber};
 
 	const ORACLE1: [u8; 32] = [0u8; 32];
 	const ORACLE2: [u8; 32] = [1u8; 32];
@@ -205,7 +204,7 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					Change::NewValue(Some(Rate::from_natural(0))),
+					Change::NewValue(Some(Rate::saturating_from_integer(0))),
 					Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
 					Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
 					Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),

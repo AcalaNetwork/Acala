@@ -18,6 +18,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
+	FixedPointOperand,
 };
 use sp_std::prelude::*;
 
@@ -137,7 +138,7 @@ impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> 
 
 impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
-	PalletBalanceOf<T>: Send + Sync,
+	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Module<T>, T>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";

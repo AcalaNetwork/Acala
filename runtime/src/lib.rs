@@ -25,7 +25,7 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, ModuleId,
+	ApplyExtrinsicResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -34,14 +34,13 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{self as system};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
 
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
-	traits::{Contains, ContainsLengthBound, KeyOwnerProofSystem, Randomness},
+	traits::{Contains, ContainsLengthBound, Filter, KeyOwnerProofSystem, Randomness},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		IdentityFee, Weight,
@@ -111,7 +110,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 	/// Assume 10% of weight for average on_initialize calls.
-	pub const MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
+	pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
 		.saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
 	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	pub const Version: RuntimeVersion = VERSION;
@@ -340,20 +339,35 @@ impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type MembershipChanged = Oracle;
 }
 
+pub struct BaseFilter;
+impl Filter<Call> for BaseFilter {
+	fn filter(_call: &Call) -> bool {
+		true
+	}
+}
+pub struct IsCallable;
+frame_support::impl_filter_stack!(IsCallable, BaseFilter, Call, is_callable);
+
+impl pallet_utility::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type IsCallable = IsCallable;
+}
+
 parameter_types! {
 	pub const MultisigDepositBase: Balance = 500 * MILLICENTS;
 	pub const MultisigDepositFactor: Balance = 100 * MILLICENTS;
 	pub const MaxSignatories: u16 = 100;
 }
 
-impl pallet_utility::Trait for Runtime {
+impl pallet_multisig::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
-	type MultisigDepositBase = MultisigDepositBase;
-	type MultisigDepositFactor = MultisigDepositFactor;
+	type DepositBase = MultisigDepositBase;
+	type DepositFactor = MultisigDepositFactor;
 	type MaxSignatories = MaxSignatories;
-	type IsCallable = ();
+	type IsCallable = IsCallable;
 }
 
 pub struct GeneralCouncilProvider;
@@ -471,9 +485,11 @@ parameter_types! {
 	pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 	pub const MaxNominatorRewardedPerValidator: u32 = 64;
-	pub const ElectionLookahead: BlockNumber = 25;
+	pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
 	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
 	pub const MaxIterations: u32 = 5;
+	// 0.05%. The higher the value, the more strict solution acceptance becomes.
+	pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
 }
 
 impl pallet_staking::Trait for Runtime {
@@ -495,6 +511,7 @@ impl pallet_staking::Trait for Runtime {
 	type ElectionLookahead = ElectionLookahead;
 	type Call = Call;
 	type MaxIterations = MaxIterations;
+	type MinSolutionScoreBump = MinSolutionScoreBump;
 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
 	type UnsignedPriority = StakingUnsignedPriority;
 }
@@ -552,7 +569,7 @@ impl orml_tokens::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
+	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 }
 
 impl module_prices::Trait for Runtime {
@@ -602,10 +619,10 @@ impl orml_schedule_update::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
+	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub const GetAmountAdjustment: Rate = Rate::saturating_from_rational(20, 100);
+	pub GetAmountAdjustment: Rate = Rate::saturating_from_rational(20, 100);
 	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
@@ -694,12 +711,12 @@ where
 }
 
 parameter_types! {
-	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
-	pub const DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
-	pub const DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub const DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
+	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = DOLLARS;
-	pub const MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
+	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
 	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
@@ -734,8 +751,8 @@ impl module_emergency_shutdown::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
-	pub const EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA];
+	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
+	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA];
 }
 
 impl module_dex::Trait for Runtime {
@@ -798,11 +815,11 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub const MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100);	// 95%
-	pub const MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
-	pub const MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100);	// 5%
-	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(98, 100); // 98%
+	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100);	// 95%
+	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
+	pub MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100);	// 5%
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
+	pub ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(98, 100); // 98%
 }
 
 impl module_staking_pool::Trait for Runtime {
@@ -863,7 +880,8 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
+		Utility: pallet_utility::{Module, Call, Event},
+		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
 		PalletTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},

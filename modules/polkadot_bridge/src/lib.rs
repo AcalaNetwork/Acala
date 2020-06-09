@@ -3,11 +3,10 @@
 use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::BasicCurrency;
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
-	DispatchResult,
+	DispatchResult, FixedPointNumber,
 };
 use sp_std::{fmt::Debug, prelude::*};
 use support::{

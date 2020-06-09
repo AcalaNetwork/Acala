@@ -1,8 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use orml_utilities::FixedU128;
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::{DispatchError, DispatchResult, FixedU128};
 use sp_std::{
 	cmp::{Eq, PartialEq},
 	fmt::Debug,

@@ -472,11 +472,11 @@ fn get_exchange_slippage_work() {
 		assert_eq!(DexModule::get_exchange_slippage(BTC, BTC, 100), None);
 		assert_eq!(
 			DexModule::get_exchange_slippage(ACA, AUSD, 100),
-			Some(Ratio::from_natural(1))
+			Some(Ratio::saturating_from_integer(1))
 		);
 		assert_eq!(
 			DexModule::get_exchange_slippage(BTC, AUSD, 0),
-			Some(Ratio::from_natural(0))
+			Some(Ratio::saturating_from_integer(0))
 		);
 		assert_eq!(
 			DexModule::get_exchange_slippage(BTC, AUSD, 10),

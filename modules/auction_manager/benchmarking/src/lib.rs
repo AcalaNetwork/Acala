@@ -14,8 +14,8 @@ use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use orml_traits::{Auction, DataProviderExtended, MultiCurrency};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
+use sp_runtime::FixedPointNumber;
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, OnEmergencyShutdown, Price};
 
 pub struct Module<T: Trait>(auction_manager::Module<T>);
@@ -104,7 +104,7 @@ benchmarks! {
 		<T as auction_manager::Trait>::CDPTreasury::transfer_collateral_from(CurrencyId::DOT, &funder, dollar(1))?;
 
 		// feed price
-		feed_price::<T>(CurrencyId::DOT, Price::from_natural(120))?;
+		feed_price::<T>(CurrencyId::DOT, Price::saturating_from_integer(120))?;
 
 		// create collateral auction
 		AuctionManager::<T>::new_collateral_auction(&funder, CurrencyId::DOT, dollar(1), dollar(100));

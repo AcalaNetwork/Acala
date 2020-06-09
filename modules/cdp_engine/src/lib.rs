@@ -19,14 +19,13 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::Change;
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchResult, RandomNumberGenerator, RuntimeDebug,
+	DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
 };
 use sp_std::{marker, prelude::*};
 use support::{
@@ -666,7 +665,7 @@ impl<T: Trait> Module<T> {
 		// directly exchange with DEX, otherwise create collateral auctions.
 		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
 			&& collateral_balance >= supply_collateral_amount									// ensure have sufficient collateral
-			&& slippage_limit > Ratio::from_natural(0)											// slippage_limit must be set as more than zero
+			&& slippage_limit > Ratio::zero()											// slippage_limit must be set as more than zero
 			&& exchange_slippage.map_or(false, |s| s <= slippage_limit)
 		{
 			LiquidationStrategy::Exchange
