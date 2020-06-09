@@ -608,7 +608,7 @@ impl orml_vesting::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MaxScheduleDispatchWeight: Weight = 100_000_000;
+	pub MaxScheduleDispatchWeight: Weight = Perbill::from_percent(10) * MaximumBlockWeight::get();
 }
 
 impl orml_schedule_update::Trait for Runtime {
