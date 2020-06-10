@@ -608,13 +608,23 @@ impl orml_vesting::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MaxScheduleDispatchWeight: Weight = 100_000_000;
+	pub MaxScheduleDispatchWeight: Weight = Perbill::from_percent(10) * MaximumBlockWeight::get();
 }
 
 impl orml_schedule_update::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type MaxScheduleDispatchWeight = MaxScheduleDispatchWeight;
+	type DispatchOrigin = system::EnsureRoot<AccountId>;
+}
+
+parameter_types! {
+	pub const UpdateFrequency: BlockNumber = 10;
+}
+
+impl orml_gradually_update::Trait for Runtime {
+	type Event = Event;
+	type UpdateFrequency = UpdateFrequency;
 	type DispatchOrigin = system::EnsureRoot<AccountId>;
 }
 
@@ -909,6 +919,7 @@ construct_runtime!(
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
 		ScheduleUpdate: orml_schedule_update::{Module, Storage, Call, Event<T>},
+		GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},

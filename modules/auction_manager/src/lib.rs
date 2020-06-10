@@ -12,7 +12,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchClass,
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::Get,
+	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 	IterableStorageMap,
 };
 use frame_system::{
@@ -252,7 +254,7 @@ decl_module! {
 		///		- debit auction worst case: 27.63 µs
 		///		- collateral auction worst case: 80.13 µs
 		/// # </weight>
-		#[weight = (80_000_000 + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
+		#[weight = (80 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
 			ensure_none(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
