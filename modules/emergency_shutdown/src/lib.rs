@@ -14,6 +14,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
+	weights::constants::WEIGHT_PER_MICROS,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use primitives::{Balance, CurrencyId};
@@ -110,7 +111,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 47.4 µs
 		/// # </weight>
-		#[weight = 48_000_000 + T::DbWeight::get().reads_writes(
+		#[weight = 48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
 			1 + (T::CollateralCurrencyIds::get().len() as u64),
 			5 + (T::CollateralCurrencyIds::get().len() as u64)
 		)]
@@ -150,7 +151,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 47.4 µs
 		/// # </weight>
-		#[weight = 48_000_000 + T::DbWeight::get().reads_writes(
+		#[weight = 48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
 			2 + 2 * (T::CollateralCurrencyIds::get().len() as u64),
 			1
 		)]
@@ -205,7 +206,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 95.86 µs
 		/// # </weight>
-		#[weight = 96_000_000 + T::DbWeight::get().reads_writes(
+		#[weight = 96 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
 			3 + 3 * (T::CollateralCurrencyIds::get().len() as u64),
 			3 * (T::CollateralCurrencyIds::get().len() as u64)
 		)]
