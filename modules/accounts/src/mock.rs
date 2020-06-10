@@ -124,7 +124,7 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = PalletBalances;
 	type OnTransactionPayment = ();
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = IdentityFee<u64>;
+	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 }
 

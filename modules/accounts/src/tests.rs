@@ -94,6 +94,10 @@ const INFO: DispatchInfo = DispatchInfo {
 	pays_fee: Pays::Yes,
 };
 
+const POST_INFO: PostDispatchInfo = PostDispatchInfo {
+	actual_weight: Some(800),
+};
+
 #[test]
 fn charges_fee() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -105,7 +109,7 @@ fn charges_fee() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 		let fee2 = 18 * 2 + 1000; // len * byte + weight
 		assert_eq!(
@@ -115,7 +119,7 @@ fn charges_fee() {
 				.priority,
 			fee2
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee - fee2);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - fee2);
 	});
 }
 
@@ -131,7 +135,7 @@ fn enabled_free_transaction_not_charges_fee() {
 				.priority,
 			0
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000);
 	});
 }
 
@@ -147,7 +151,7 @@ fn enabled_free_transaction_charges_tip() {
 				.priority,
 			100
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - 100);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - 100);
 	});
 }
 
@@ -164,7 +168,7 @@ fn enabled_free_transaction_charges_other_call() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 	});
 }
 
@@ -181,6 +185,32 @@ fn enabled_free_transaction_charges_other_call_with_tip() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE,), 100000 - fee);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+	});
+}
+
+#[test]
+fn charges_fee_when_pre_dispatch() {
+	ExtBuilder::default().build().execute_with(|| {
+		let fee = 23 * 2 + 1000; // len * byte + weight
+		assert!(ChargeTransactionPayment::<Runtime>::from(0)
+			.pre_dispatch(&ALICE, CALL, &INFO, 23)
+			.is_ok());
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+	});
+}
+
+#[test]
+fn refund_fee_according_to_actual_when_post_dispatch() {
+	ExtBuilder::default().build().execute_with(|| {
+		let fee = 23 * 2 + 1000; // len * byte + weight
+		let pre = ChargeTransactionPayment::<Runtime>::from(0)
+			.pre_dispatch(&ALICE, CALL, &INFO, 23)
+			.unwrap();
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+
+		let refund = 200; // 1000 - 800
+		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
 	});
 }
