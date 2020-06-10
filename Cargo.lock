@@ -146,6 +146,7 @@ dependencies = [
  "pallet-utility",
  "parity-scale-codec",
  "serde",
+ "smallvec 1.4.0",
  "sp-api",
  "sp-application-crypto",
  "sp-block-builder",
