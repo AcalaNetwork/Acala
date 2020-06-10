@@ -84,10 +84,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T>
-// where
-// 	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
-{
+impl<T: Trait> Module<T> {
 	pub fn try_free_transfer(who: &T::AccountId) -> bool {
 		let mut last_free_transfer = Self::last_free_transfers(who);
 		let now = T::Time::now();
