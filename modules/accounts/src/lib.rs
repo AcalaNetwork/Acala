@@ -3,18 +3,18 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_module, decl_storage,
-	dispatch::Dispatchable,
+	dispatch::{DispatchResult, Dispatchable},
 	ensure,
 	traits::{
-		Currency, ExistenceRequirement, Get, LockIdentifier, LockableCurrency, OnKilledAccount, OnUnbalanced, Time,
-		WithdrawReason, WithdrawReasons,
+		Currency, ExistenceRequirement, Get, Imbalance, LockIdentifier, LockableCurrency, OnKilledAccount,
+		OnUnbalanced, Time, WithdrawReason, WithdrawReasons,
 	},
 	weights::{DispatchInfo, PostDispatchInfo},
 	IsSubType,
 };
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::{
-	traits::{DispatchInfoOf, SaturatedConversion, Saturating, SignedExtension, Zero},
+	traits::{DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating, SignedExtension, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
@@ -30,6 +30,9 @@ const ACCOUNTS_ID: LockIdentifier = *b"ACA/acct";
 type MomentOf<T> = <<T as Trait>::Time as Time>::Moment;
 type PalletBalanceOf<T> =
 	<<T as pallet_transaction_payment::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type NegativeImbalanceOf<T> = <<T as pallet_transaction_payment::Trait>::Currency as Currency<
+	<T as system::Trait>::AccountId,
+>>::NegativeImbalance;
 type DepositBalanceOf<T> = <<T as Trait>::DepositCurrency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_currencies::Trait {
@@ -81,10 +84,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T>
-where
-	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
-{
+impl<T: Trait> Module<T> {
 	pub fn try_free_transfer(who: &T::AccountId) -> bool {
 		let mut last_free_transfer = Self::last_free_transfers(who);
 		let now = T::Time::now();
@@ -118,13 +118,6 @@ impl<T: Trait> OnKilledAccount<T::AccountId> for Module<T> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
 pub struct ChargeTransactionPayment<T: Trait + Send + Sync>(#[codec(compact)] PalletBalanceOf<T>);
 
-impl<T: Trait + Send + Sync> ChargeTransactionPayment<T> {
-	/// utility constructor. Used only in client/factory code.
-	pub fn from(fee: PalletBalanceOf<T>) -> Self {
-		Self(fee)
-	}
-}
-
 impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 	#[cfg(feature = "std")]
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
@@ -136,28 +129,23 @@ impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> 
 	}
 }
 
-impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
+impl<T: Trait + Send + Sync> ChargeTransactionPayment<T>
 where
-	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Module<T>, T>,
+	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
-	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
-	type AccountId = T::AccountId;
-	type Call = T::Call;
-	type AdditionalSigned = ();
-	type Pre = ();
-
-	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
-		Ok(())
+	/// utility constructor. Used only in client/factory code.
+	pub fn from(fee: PalletBalanceOf<T>) -> Self {
+		Self(fee)
 	}
 
-	fn validate(
+	fn withdraw_fee(
 		&self,
-		who: &Self::AccountId,
-		call: &Self::Call,
-		info: &DispatchInfoOf<Self::Call>,
+		who: &T::AccountId,
+		call: &T::Call,
+		info: &DispatchInfoOf<T::Call>,
 		len: usize,
-	) -> TransactionValidity {
+	) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
 		// pay any fees.
 		let tip = self.0;
 
@@ -171,37 +159,112 @@ where
 		let pay_tip = !tip.is_zero();
 
 		// skip payment withdraw if match conditions
-		let fee = if pay_fee || pay_tip {
+		if pay_fee || pay_tip {
 			let mut reason = WithdrawReasons::none();
 			let fee = if pay_fee {
 				reason.set(WithdrawReason::TransactionPayment);
 				<pallet_transaction_payment::Module<T>>::compute_fee(len as u32, info, tip)
-			//pallet_transaction_payment::ChargeTransactionPayment::<T>::compute_fee(len as u32, info, tip)
 			} else {
 				tip
 			};
+
 			if pay_tip {
 				reason.set(WithdrawReason::Tip);
 			}
-			let imbalance = match <T as pallet_transaction_payment::Trait>::Currency::withdraw(
+
+			match <T as pallet_transaction_payment::Trait>::Currency::withdraw(
 				who,
 				fee,
 				reason,
 				ExistenceRequirement::KeepAlive,
 			) {
-				Ok(imbalance) => imbalance,
-				Err(_) => return InvalidTransaction::Payment.into(),
-			};
-			<T as pallet_transaction_payment::Trait>::OnTransactionPayment::on_unbalanced(imbalance);
-			fee
+				Ok(imbalance) => Ok((fee, Some(imbalance))),
+				Err(_) => Err(InvalidTransaction::Payment.into()),
+			}
 		} else {
-			Zero::zero()
-		};
+			Ok((Zero::zero(), None))
+		}
+	}
+}
+
+impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
+where
+	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
+	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Module<T>, T>,
+{
+	const IDENTIFIER: &'static str = "AccountsChargeTransactionPayment";
+	type AccountId = T::AccountId;
+	type Call = T::Call;
+	type AdditionalSigned = ();
+	type Pre = (
+		PalletBalanceOf<T>,
+		Self::AccountId,
+		Option<NegativeImbalanceOf<T>>,
+		PalletBalanceOf<T>,
+	);
+
+	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn validate(
+		&self,
+		who: &Self::AccountId,
+		call: &Self::Call,
+		info: &DispatchInfoOf<Self::Call>,
+		len: usize,
+	) -> TransactionValidity {
+		let (fee, _) = self.withdraw_fee(who, call, info, len)?;
 
 		let mut r = ValidTransaction::default();
 		// NOTE: we probably want to maximize the _fee (of any type) per weight unit_ here, which
 		// will be a bit more than setting the priority to tip. For now, this is enough.
 		r.priority = fee.saturated_into::<TransactionPriority>();
 		Ok(r)
+	}
+
+	fn pre_dispatch(
+		self,
+		who: &Self::AccountId,
+		call: &Self::Call,
+		info: &DispatchInfoOf<Self::Call>,
+		len: usize,
+	) -> Result<Self::Pre, TransactionValidityError> {
+		let (fee, imbalance) = self.withdraw_fee(who, call, info, len)?;
+		Ok((self.0, who.clone(), imbalance, fee))
+	}
+
+	fn post_dispatch(
+		pre: Self::Pre,
+		info: &DispatchInfoOf<Self::Call>,
+		post_info: &PostDispatchInfoOf<Self::Call>,
+		len: usize,
+		_result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		let (tip, who, imbalance, fee) = pre;
+		if let Some(payed) = imbalance {
+			let actual_fee =
+				<pallet_transaction_payment::Module<T>>::compute_actual_fee(len as u32, info, post_info, tip);
+			let refund = fee.saturating_sub(actual_fee);
+			let actual_payment =
+				match <T as pallet_transaction_payment::Trait>::Currency::deposit_into_existing(&who, refund) {
+					Ok(refund_imbalance) => {
+						// The refund cannot be larger than the up front payed max weight.
+						// `PostDispatchInfo::calc_unspent` guards against such a case.
+						match payed.offset(refund_imbalance) {
+							Ok(actual_payment) => actual_payment,
+							Err(_) => return Err(InvalidTransaction::Payment.into()),
+						}
+					}
+					// We do not recreate the account using the refund. The up front payment
+					// is gone in that case.
+					Err(_) => payed,
+				};
+			let imbalances = actual_payment.split(tip);
+			<T as pallet_transaction_payment::Trait>::OnTransactionPayment::on_unbalanceds(
+				Some(imbalances.0).into_iter().chain(Some(imbalances.1)),
+			);
+		}
+		Ok(())
 	}
 }
