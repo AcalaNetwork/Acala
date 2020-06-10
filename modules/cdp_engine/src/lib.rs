@@ -11,7 +11,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::DispatchClass,
+	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 	IterableStorageDoubleMap,
 };
 use frame_system::{
@@ -268,7 +268,7 @@ decl_module! {
 		///		- liquidate by auction: 119.4 µs
 		///		- liquidate by dex: 125.1 µs
 		/// # </weight>
-		#[weight = (125_000_000 + T::DbWeight::get().reads_writes(18, 13), DispatchClass::Operational)]
+		#[weight = (125 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(18, 13), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -296,7 +296,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 76.54 µs
 		/// # </weight>
-		#[weight = (77_000_000 + T::DbWeight::get().reads_writes(10, 8), DispatchClass::Operational)]
+		#[weight = (77 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 8), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -320,7 +320,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 21.04 µs
 		/// # </weight>
-		#[weight = 21_000_000 + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 21 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -350,7 +350,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 32.81 µs
 		/// # </weight>
-		#[weight = 33_000_000 + T::DbWeight::get().reads_writes(1, 1)]
+		#[weight = 33 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,

@@ -12,7 +12,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::Weight,
+	weights::{constants::WEIGHT_PER_MICROS, Weight},
 	Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
@@ -164,7 +164,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 3.591 µs
 		/// # </weight>
-		#[weight = 4_000_000 + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 4 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn set_liquidity_incentive_rate(
 			origin,
 			currency_id: CurrencyId,
@@ -191,7 +191,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 38.4 µs
 		/// # </weight>
-		#[weight = 39_000_000 + T::DbWeight::get().reads_writes(4, 4)]
+		#[weight = 39 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			let who = ensure_signed(origin)?;
 			Self::claim_interest(currency_id, &who)?;
@@ -222,7 +222,7 @@ decl_module! {
 		///		- swap other to base: 42.57 µs
 		///		- swap other to other: 54.77 µs
 		/// # </weight>
-		#[weight = 55_000_000 + T::DbWeight::get().reads_writes(6, 6)]
+		#[weight = 55 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(6, 6)]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyId,
@@ -269,7 +269,7 @@ decl_module! {
 		///		- best case: 49.04 µs
 		///		- worst case: 57.72 µs
 		/// # </weight>
-		#[weight = 58_000_000 + T::DbWeight::get().reads_writes(8, 9)]
+		#[weight = 58 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(8, 9)]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyId,
@@ -365,7 +365,7 @@ decl_module! {
 		///		- best case: 66.59 µs
 		///		- worst case: 71.18 µs
 		/// # </weight>
-		#[weight = 72_000_000 + T::DbWeight::get().reads_writes(9, 9)]
+		#[weight = 72 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
