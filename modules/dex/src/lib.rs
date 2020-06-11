@@ -12,19 +12,18 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::Weight,
+	weights::{constants::WEIGHT_PER_MICROS, Weight},
 	Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use orml_utilities::fixed_u128::{FixedPointOperand, FixedUnsignedNumber};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedDiv, CheckedSub, MaybeSerializeDeserialize, Member, One,
 		Saturating, UniqueSaturatedInto, Zero,
 	},
-	DispatchError, DispatchResult, ModuleId,
+	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
 use sp_std::prelude::Vec;
 use support::{CDPTreasury, DEXManager, OnEmergencyShutdown, Price, Rate, Ratio};
@@ -165,7 +164,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 3.591 µs
 		/// # </weight>
-		#[weight = 4_000_000 + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 4 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn set_liquidity_incentive_rate(
 			origin,
 			currency_id: CurrencyId,
@@ -192,7 +191,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 38.4 µs
 		/// # </weight>
-		#[weight = 39_000_000 + T::DbWeight::get().reads_writes(4, 4)]
+		#[weight = 39 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			let who = ensure_signed(origin)?;
 			Self::claim_interest(currency_id, &who)?;
@@ -223,7 +222,7 @@ decl_module! {
 		///		- swap other to base: 42.57 µs
 		///		- swap other to other: 54.77 µs
 		/// # </weight>
-		#[weight = 55_000_000 + T::DbWeight::get().reads_writes(6, 6)]
+		#[weight = 55 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(6, 6)]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyId,
@@ -270,7 +269,7 @@ decl_module! {
 		///		- best case: 49.04 µs
 		///		- worst case: 57.72 µs
 		/// # </weight>
-		#[weight = 58_000_000 + T::DbWeight::get().reads_writes(8, 9)]
+		#[weight = 58 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(8, 9)]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyId,
@@ -366,7 +365,7 @@ decl_module! {
 		///		- best case: 66.59 µs
 		///		- worst case: 71.18 µs
 		/// # </weight>
-		#[weight = 72_000_000 + T::DbWeight::get().reads_writes(9, 9)]
+		#[weight = 72 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			let who = ensure_signed(origin)?;
 			let base_currency_id = T::GetBaseCurrencyId::get();
@@ -472,9 +471,9 @@ impl<T: Trait> Module<T> {
 		if target_amount.is_zero() {
 			Zero::zero()
 		} else {
-			Rate::from_natural(1)
+			Rate::saturating_from_integer(1)
 				.checked_sub(&T::GetExchangeFee::get())
-				.and_then(|n| Ratio::from_natural(1).checked_div(&n))
+				.and_then(|n| Ratio::saturating_from_integer(1).checked_div(&n))
 				.and_then(|n| Ratio::from_inner(1).checked_add(&n)) // add Ratio::from_inner(1) to correct the possible losses caused by discarding the remainder in inner division
 				.and_then(|n| n.checked_mul_int(target_amount))
 				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
@@ -880,7 +879,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 
 			// final_slippage = first_slippage + (1 - first_slippage) * second_slippage
 			let final_slippage: Ratio = supply_to_base_slippage.saturating_add(
-				Ratio::from_natural(1)
+				Ratio::saturating_from_integer(1)
 					.saturating_sub(supply_to_base_slippage)
 					.saturating_mul(base_to_target_slippage),
 			);

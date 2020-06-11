@@ -11,12 +11,11 @@ use sp_std::vec;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::{traits::UniqueSaturatedInto, FixedPointNumber};
 
 use emergency_shutdown::Module as EmergencyShutdown;
 use emergency_shutdown::*;
 use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use support::{CDPTreasury, Price};
 
@@ -46,7 +45,7 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let currency_id = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get()[0];
-		feed_price::<T>(currency_id, Price::from_natural(1))?;
+		feed_price::<T>(currency_id, Price::saturating_from_integer(1))?;
 	}: emergency_shutdown(RawOrigin::Root)
 
 	open_collateral_refund {

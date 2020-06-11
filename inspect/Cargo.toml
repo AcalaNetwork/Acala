@@ -8,10 +8,10 @@ edition = "2018"
 codec = { package = "parity-scale-codec", version = "1.3.0" }
 derive_more = "0.99"
 log = "0.4.8"
-sc-cli = { version = "0.8.0-rc2" }
-sc-client-api = { version = "2.0.0-rc2" }
-sc-service = { version = "0.8.0-rc2", default-features = false }
-sp-blockchain = { version = "2.0.0-rc2" }
-sp-core = { version = "2.0.0-rc2" }
-sp-runtime = { version = "2.0.0-rc2" }
+sc-cli = { version = "0.8.0-rc3" }
+sc-client-api = { version = "2.0.0-rc3" }
+sc-service = { version = "0.8.0-rc3", default-features = false }
+sp-blockchain = { version = "2.0.0-rc3" }
+sp-core = { version = "2.0.0-rc3" }
+sp-runtime = { version = "2.0.0-rc3" }
 structopt = "0.3.8"

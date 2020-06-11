@@ -186,11 +186,11 @@ impl PolkadotBridge<AccountId, BlockNumber, Balance, EraIndex> for MockBridge {}
 parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub const MaxBondRatio: Ratio = Ratio::saturating_from_rational(60, 100);	// 60%
-	pub const MinBondRatio: Ratio = Ratio::saturating_from_rational(50, 100);	// 50%
-	pub const MaxClaimFee: Rate = Rate::saturating_from_rational(10, 100);	// 10%
-	pub const DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
-	pub const ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
+	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(60, 100);	// 60%
+	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(50, 100);	// 50%
+	pub MaxClaimFee: Rate = Rate::saturating_from_rational(10, 100);	// 10%
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
+	pub ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
 }
 
 impl Trait for Runtime {

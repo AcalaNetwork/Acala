@@ -12,7 +12,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::DispatchClass,
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::Get,
+	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 	IterableStorageMap,
 };
 use frame_system::{
@@ -20,14 +22,13 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash, Saturating, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchResult, RandomNumberGenerator, RuntimeDebug,
+	DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
 };
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -253,7 +254,7 @@ decl_module! {
 		///		- debit auction worst case: 27.63 µs
 		///		- collateral auction worst case: 80.13 µs
 		/// # </weight>
-		#[weight = (80_000_000 + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
+		#[weight = (80 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
 			ensure_none(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
@@ -476,7 +477,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn get_minimum_increment_size(now: T::BlockNumber, start_block: T::BlockNumber) -> Rate {
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
-			T::MinimumIncrementSize::get().saturating_mul(Rate::from_natural(2))
+			T::MinimumIncrementSize::get().saturating_mul(Rate::saturating_from_integer(2))
 		} else {
 			T::MinimumIncrementSize::get()
 		}

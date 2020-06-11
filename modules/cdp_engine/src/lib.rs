@@ -11,7 +11,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::DispatchClass,
+	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 	IterableStorageDoubleMap,
 };
 use frame_system::{
@@ -19,14 +19,13 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::Change;
-use orml_utilities::fixed_u128::FixedUnsignedNumber;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchResult, RandomNumberGenerator, RuntimeDebug,
+	DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
 };
 use sp_std::{marker, prelude::*};
 use support::{
@@ -269,7 +268,7 @@ decl_module! {
 		///		- liquidate by auction: 119.4 µs
 		///		- liquidate by dex: 125.1 µs
 		/// # </weight>
-		#[weight = (125_000_000 + T::DbWeight::get().reads_writes(18, 13), DispatchClass::Operational)]
+		#[weight = (125 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(18, 13), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -297,7 +296,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 76.54 µs
 		/// # </weight>
-		#[weight = (77_000_000 + T::DbWeight::get().reads_writes(10, 8), DispatchClass::Operational)]
+		#[weight = (77 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 8), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -321,7 +320,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 21.04 µs
 		/// # </weight>
-		#[weight = 21_000_000 + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 21 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -351,7 +350,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 32.81 µs
 		/// # </weight>
-		#[weight = 33_000_000 + T::DbWeight::get().reads_writes(1, 1)]
+		#[weight = 33 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
@@ -666,7 +665,7 @@ impl<T: Trait> Module<T> {
 		// directly exchange with DEX, otherwise create collateral auctions.
 		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
 			&& collateral_balance >= supply_collateral_amount									// ensure have sufficient collateral
-			&& slippage_limit > Ratio::from_natural(0)											// slippage_limit must be set as more than zero
+			&& slippage_limit > Ratio::zero()											// slippage_limit must be set as more than zero
 			&& exchange_slippage.map_or(false, |s| s <= slippage_limit)
 		{
 			LiquidationStrategy::Exchange

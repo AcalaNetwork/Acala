@@ -30,6 +30,7 @@ impl_outer_origin! {
 impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
 		orml_currencies::Currencies,
+		frame_system::System,
 	}
 }
 
@@ -65,6 +66,7 @@ impl system::Trait for Runtime {
 	type ExtrinsicBaseWeight = ();
 	type MaximumExtrinsicWeight = ();
 }
+type System = frame_system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
@@ -85,7 +87,7 @@ impl pallet_balances::Trait for Runtime {
 	type DustRemoval = ();
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = system::Module<Runtime>;
+	type AccountStore = System;
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
@@ -122,7 +124,7 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = PalletBalances;
 	type OnTransactionPayment = ();
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = IdentityFee<u64>;
+	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 }
 

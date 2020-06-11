@@ -9,7 +9,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::Get,
+	weights::{constants::WEIGHT_PER_MICROS, Weight},
+};
 use frame_system::{self as system, ensure_signed};
 use primitives::{Amount, CurrencyId};
 use sp_runtime::{traits::Zero, DispatchResult};
@@ -77,7 +81,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 99.77 µs
 		/// # </weight>
-		#[weight = 100_000_000 + T::DbWeight::get().reads_writes(16, 9)]
+		#[weight = 100 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(16, 9)]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyId,
@@ -106,7 +110,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 74.81 µs
 		/// # </weight>
-		#[weight = 75_000_000 + T::DbWeight::get().reads_writes(11, 4)]
+		#[weight = 75 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(11, 4)]
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyId,
@@ -130,7 +134,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 20.04 µs
 		/// # </weight>
-		#[weight = 20_000_000 + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyId,
@@ -153,7 +157,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 19.77 µs
 		/// # </weight>
-		#[weight = 20_000_000 + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyId,
@@ -174,7 +178,7 @@ decl_module! {
 		/// Base Weight: 0 + 2.5 * M + 115 * C µs
 		/// # </weight>
 		#[weight = T::DbWeight::get().reads_writes(0, 1) +
-			115_000_000u64.saturating_mul(Weight::from(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32))
+			((WEIGHT_PER_MICROS as u64) * 115).saturating_mul(Weight::from(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32))
 		]
 		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
