@@ -116,7 +116,7 @@ decl_module! {
 
 			let native_currency_id = T::NativeCurrencyId::get();
 			let treasury_account = Self::treasury_account_id();
-			let specific_receiver = to.unwrap_or(treasury_account.clone());
+			let specific_receiver = to.unwrap_or_else(|| treasury_account.clone());
 
 			let total_reserved_native = <T as Trait>::Currency::reserved_balance(native_currency_id, &who);
 
@@ -196,8 +196,8 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 			let supply_amount = T::DEX::get_supply_amount(currency_id, native_currency_id, new_account_deposit);
 
 			// swap enough native currency to support subsequent opening account
-			if <T as Trait>::Currency::free_balance(currency_id, who) >= supply_amount {
-				if T::DEX::exchange_currency(
+			if <T as Trait>::Currency::free_balance(currency_id, who) >= supply_amount
+				&& T::DEX::exchange_currency(
 					who.clone(),
 					currency_id,
 					supply_amount,
@@ -205,11 +205,10 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 					new_account_deposit,
 				)
 				.is_ok()
-				{
-					// successful swap will cause changes in native currency,
-					// which alse means that it will open a new account
-					return;
-				}
+			{
+				// successful swap will cause changes in native currency,
+				// which alse means that it will open a new account
+				return;
 			}
 
 			// open account will fail because there's no enough native token,
@@ -418,8 +417,8 @@ where
 					let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, balance_fee);
 
 					// TODO: consider slipperage
-					if currency_amount >= supply_amount_needed {
-						if T::DEX::exchange_currency(
+					if currency_amount >= supply_amount_needed
+						&& T::DEX::exchange_currency(
 							who.clone(),
 							currency_id,
 							supply_amount_needed,
@@ -427,10 +426,9 @@ where
 							balance_fee,
 						)
 						.is_ok()
-						{
-							// successfully swap, break iteration
-							break;
-						}
+					{
+						// successfully swap, break iteration
+						break;
 					}
 				}
 			}
