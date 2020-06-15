@@ -193,7 +193,7 @@ impl<T: Trait> Module<T> {
 
 			// Note: will not reap treasury account even though it cannot reserve open account deposit
 			// best practice is to ensure that the first transfer received by treasury account is sufficient to open an account.
-			if k.clone() != treasury_account {
+			if *k != treasury_account {
 				// send dust native currency to treasury account
 				let _ = <T as Trait>::Currency::transfer(
 					native_currency_id,
