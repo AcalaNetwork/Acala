@@ -17,8 +17,6 @@ use support::{
 mod mock;
 mod tests;
 
-const MODULE_ID: ModuleId = ModuleId(*b"aca/stkp");
-
 type PolkadotAccountIdOf<T> =
 	<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber, EraIndex>>::PolkadotAccountId;
 
@@ -35,6 +33,9 @@ pub trait Trait: system::Trait {
 	type MaxClaimFee: Get<Rate>;
 	type DefaultExchangeRate: Get<ExchangeRate>;
 	type ClaimFeeReturnRatio: Get<Ratio>;
+
+	/// The staking pool's module id, keep all staking currency belong to Homa protocol.
+	type ModuleId: Get<ModuleId>;
 
 	// TODO: add RewardFeeRatio
 }
@@ -89,12 +90,13 @@ decl_module! {
 		const MaxClaimFee: Rate = T::MaxClaimFee::get();
 		const DefaultExchangeRate: ExchangeRate = T::DefaultExchangeRate::get();
 		const ClaimFeeReturnRatio: Ratio = T::ClaimFeeReturnRatio::get();
+		const ModuleId: ModuleId = T::ModuleId::get();
 	}
 }
 
 impl<T: Trait> Module<T> {
 	pub fn account_id() -> T::AccountId {
-		MODULE_ID.into_account()
+		T::ModuleId::get().into_account()
 	}
 
 	// it represent how much bonded DOT is belong to LDOT holders

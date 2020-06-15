@@ -10,7 +10,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{Convert, IdentityLookup},
-	DispatchResult, Perbill,
+	DispatchResult, ModuleId, Perbill,
 };
 use support::{AuctionManager, Price, PriceProvider};
 
@@ -128,6 +128,10 @@ impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
 	}
 }
 
+parameter_types! {
+	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
+}
+
 impl loans::Trait for Runtime {
 	type Event = TestEvent;
 	type Convert = MockConvert;
@@ -136,6 +140,7 @@ impl loans::Trait for Runtime {
 	type DebitBalance = DebitBalance;
 	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
+	type ModuleId = LoansModuleId;
 }
 
 pub struct MockPriceSource;
@@ -199,6 +204,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
+	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
 impl cdp_treasury::Trait for Runtime {
@@ -209,6 +215,7 @@ impl cdp_treasury::Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
+	type ModuleId = CDPTreasuryModuleId;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 

@@ -10,6 +10,7 @@ use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
 	traits::IdentityLookup,
+	ModuleId,
 };
 use sp_std::vec;
 use support::{ExchangeRate, ExchangeRateProvider, Price, Rate};
@@ -152,6 +153,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 10_000;
+	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
 impl cdp_treasury::Trait for Runtime {
@@ -162,6 +164,7 @@ impl cdp_treasury::Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
+	type ModuleId = CDPTreasuryModuleId;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 

@@ -198,6 +198,7 @@ parameter_types! {
 	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![ACA, BTC];
+	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
 impl dex::Trait for Runtime {
@@ -209,6 +210,7 @@ impl dex::Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = MockCDPTreasury;
 	type UpdateOrigin = EnsureSignedBy<Zero, AccountId>;
+	type ModuleId = DEXModuleId;
 }
 pub type DEXModule = dex::Module<Runtime>;
 

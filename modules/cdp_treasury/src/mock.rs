@@ -118,6 +118,7 @@ parameter_types! {
 	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
+	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
 impl dex::Trait for Runtime {
@@ -129,6 +130,7 @@ impl dex::Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type ModuleId = DEXModuleId;
 }
 pub type DEXModule = dex::Module<Runtime>;
 
@@ -187,6 +189,10 @@ ord_parameter_types! {
 	pub const MaxAuctionsCount: u32 = 5;
 }
 
+parameter_types! {
+	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
@@ -195,6 +201,7 @@ impl Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
+	type ModuleId = CDPTreasuryModuleId;
 }
 pub type CDPTreasuryModule = Module<Runtime>;
 

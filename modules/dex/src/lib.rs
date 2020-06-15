@@ -32,8 +32,6 @@ mod benchmarking;
 mod mock;
 mod tests;
 
-const MODULE_ID: ModuleId = ModuleId(*b"aca/dexm");
-
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
@@ -57,6 +55,9 @@ pub trait Trait: system::Trait {
 
 	/// Trading fee rate
 	type GetExchangeFee: Get<Rate>;
+
+	/// The dex's module id, keep all assets in DEX.
+	type ModuleId: Get<ModuleId>;
 }
 
 decl_event!(
@@ -149,6 +150,9 @@ decl_module! {
 
 		/// Trading fee rate
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
+
+		/// The dex's module id, keep all assets in DEX.
+		const ModuleId: ModuleId = T::ModuleId::get();
 
 		/// Update liquidity incentive rate of specific liquidity pool
 		///
@@ -438,7 +442,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	pub fn account_id() -> T::AccountId {
-		MODULE_ID.into_account()
+		T::ModuleId::get().into_account()
 	}
 
 	pub fn calculate_swap_target_amount(supply_pool: Balance, target_pool: Balance, supply_amount: Balance) -> Balance {

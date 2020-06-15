@@ -6,7 +6,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get, Parameter};
 use frame_system::{self as system};
 use orml_traits::{
 	arithmetic::{self, Signed},
@@ -24,8 +24,6 @@ use support::{CDPTreasury, RiskManager};
 
 mod mock;
 mod tests;
-
-const MODULE_ID: ModuleId = ModuleId(*b"aca/loan");
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -55,6 +53,9 @@ pub trait Trait: system::Trait {
 
 	/// CDP treasury for issuing/burning stable coin adjust debit value adjustment
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+
+	/// The loan's module id, keep all collaterals of CDPs.
+	type ModuleId: Get<ModuleId>;
 }
 
 decl_storage! {
@@ -110,12 +111,15 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
+
+		/// The loan's module id, keep all collaterals of CDPs.
+		const ModuleId: ModuleId = T::ModuleId::get();
 	}
 }
 
 impl<T: Trait> Module<T> {
 	pub fn account_id() -> T::AccountId {
-		MODULE_ID.into_account()
+		T::ModuleId::get().into_account()
 	}
 
 	// confiscate collateral and debit to cdp treasury

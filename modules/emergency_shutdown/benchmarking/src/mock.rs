@@ -10,7 +10,7 @@ use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
 	traits::IdentityLookup,
-	DispatchResult,
+	DispatchResult, ModuleId,
 };
 use sp_std::vec;
 use support::{AuctionManager, ExchangeRate, ExchangeRateProvider, Price, Rate, Ratio};
@@ -105,6 +105,10 @@ impl orml_currencies::Trait for Runtime {
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
 
+parameter_types! {
+	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
+}
+
 impl loans::Trait for Runtime {
 	type Event = ();
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
@@ -113,6 +117,7 @@ impl loans::Trait for Runtime {
 	type DebitBalance = DebitBalance;
 	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
+	type ModuleId = LoansModuleId;
 }
 
 pub struct MockAuctionManager;
@@ -161,6 +166,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
+	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
 impl cdp_treasury::Trait for Runtime {
@@ -171,6 +177,7 @@ impl cdp_treasury::Trait for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
+	type ModuleId = CDPTreasuryModuleId;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
