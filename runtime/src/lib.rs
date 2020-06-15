@@ -24,6 +24,7 @@ use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
+	traits::AccountIdConversion,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, ModuleId,
 };
@@ -112,6 +113,17 @@ parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
 	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
+}
+
+pub fn get_all_module_accounts() -> Vec<AccountId> {
+	vec![
+		PalletTreasuryModuleId::get().into_account(),
+		LoansModuleId::get().into_account(),
+		DEXModuleId::get().into_account(),
+		CDPTreasuryModuleId::get().into_account(),
+		StakingPoolModuleId::get().into_account(),
+		HomaTreasuryModuleId::get().into_account(),
+	]
 }
 
 parameter_types! {
