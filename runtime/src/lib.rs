@@ -798,7 +798,7 @@ parameter_types! {
 	pub const FreeTransferPeriod: BlockNumber = DAYS;
 	pub const FreeTransferDeposit: Balance = DOLLARS;
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC];
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
@@ -807,7 +807,7 @@ impl module_accounts::Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type Time = Timestamp;
-	type AllCurrencyIds = AllCurrencyIds;
+	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Currencies;
 	type DEX = Dex;

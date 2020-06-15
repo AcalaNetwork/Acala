@@ -216,7 +216,7 @@ parameter_types! {
 	pub const FreeTransferCount: u8 = 3;
 	pub const FreeTransferPeriod: Moment = 100;
 	pub const FreeTransferDeposit: Balance = 200;
-	pub AllCurrencyIds: Vec<CurrencyId> = vec![AUSD, BTC];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, BTC];
 	pub const NewAccountDeposit: Balance = 100;
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 }
@@ -226,7 +226,7 @@ impl Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type Time = TimeModule;
 	type FreeTransferDeposit = FreeTransferDeposit;
-	type AllCurrencyIds = AllCurrencyIds;
+	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Currencies;
 	type DEX = DEXModule;
@@ -254,7 +254,7 @@ impl ExtBuilder {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, 100000)],
+			balances: vec![(ALICE, 100000 + NewAccountDeposit::get())],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

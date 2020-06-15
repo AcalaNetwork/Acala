@@ -45,7 +45,7 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	type FreeTransferCount: Get<u8>;
 	type FreeTransferPeriod: Get<MomentOf<Self>>;
 	type FreeTransferDeposit: Get<Balance>;
-	type AllCurrencyIds: Get<Vec<CurrencyId>>;
+	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 	type NativeCurrencyId: Get<CurrencyId>;
 	type Time: Time;
 	type Currency: MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
@@ -78,7 +78,7 @@ decl_module! {
 		const FreeTransferCount: u8 = T::FreeTransferCount::get();
 		const FreeTransferPeriod: MomentOf<T> = T::FreeTransferPeriod::get();
 		const FreeTransferDeposit: Balance = T::FreeTransferDeposit::get();
-		const AllCurrencyIds: Vec<CurrencyId> = T::AllCurrencyIds::get();
+		const AllNonNativeCurrencyIds: Vec<CurrencyId> = T::AllNonNativeCurrencyIds::get();
 		const NativeCurrencyId: CurrencyId = T::NativeCurrencyId::get();
 		const NewAccountDeposit: Balance = T::NewAccountDeposit::get();
 		const TreasuryModuleId: ModuleId = T::TreasuryModuleId::get();
@@ -135,7 +135,7 @@ decl_module! {
 			<T as Trait>::Currency::transfer(native_currency_id, &who, &specific_receiver, <T as Trait>::Currency::free_balance(native_currency_id, &who))?;
 
 			// handle other non-native currencies
-			for currency_id in T::AllCurrencyIds::get() {
+			for currency_id in T::AllNonNativeCurrencyIds::get() {
 				let reserved = <T as Trait>::Currency::reserved_balance(currency_id, &who);
 				if !reserved.is_zero() {
 					// unreserve all reserved
@@ -143,12 +143,12 @@ decl_module! {
 
 					// transfer reserved amount to treasury_account seperately if specific_receiver is not treasury_account
 					if treasury_account != specific_receiver {
-						<T as Trait>::Currency::transfer(currency_id, &who, &treasury_account, reserved)?;
+						let _ = <T as Trait>::Currency::transfer(currency_id, &who, &treasury_account, reserved);
 					}
 				}
 
 				// transfer all free to specific_receiver
-				<T as Trait>::Currency::transfer(currency_id, &who, &specific_receiver, <T as Trait>::Currency::free_balance(currency_id, &who))?;
+				let _ = <T as Trait>::Currency::transfer(currency_id, &who, &specific_receiver, <T as Trait>::Currency::free_balance(currency_id, &who));
 			}
 
 			// finally kill the account
@@ -182,6 +182,31 @@ impl<T: Trait> Module<T> {
 			false
 		}
 	}
+
+	/// Open account by reserve native token
+	fn open_account(k: &T::AccountId) {
+		let native_currency_id = T::NativeCurrencyId::get();
+		if <T as Trait>::Currency::reserve(native_currency_id, k, T::NewAccountDeposit::get()).is_ok() {
+			T::OnCreatedAccount::happened(&k);
+		} else {
+			let treasury_account = Self::treasury_account_id();
+
+			// Note: will not reap treasury account even though it cannot reserve open account deposit
+			// best practice is to ensure that the first transfer received by treasury account is sufficient to open an account.
+			if k.clone() != treasury_account {
+				// send dust native currency to treasury account
+				let _ = <T as Trait>::Currency::transfer(
+					native_currency_id,
+					k,
+					&treasury_account,
+					<T as Trait>::Currency::free_balance(native_currency_id, k),
+				);
+
+				// remove the account info pretend that opening account has never happened
+				system::Account::<T>::remove(k);
+			}
+		}
+	}
 }
 
 /// Note: Currently `pallet_balances` does not implement `OnReceived`,
@@ -207,7 +232,7 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 				.is_ok()
 			{
 				// successful swap will cause changes in native currency,
-				// which alse means that it will open a new account
+				// which also means that it will open a new account
 				return;
 			}
 
@@ -241,7 +266,7 @@ impl<T: Trait> StoredMap<T::AccountId, T::AccountData> for Module<T> {
 		system::Account::<T>::mutate(k, |a| a.data = data);
 		// if not existed before, create new account info
 		if !existed {
-			T::OnCreatedAccount::happened(&k);
+			Self::open_account(k);
 		}
 	}
 
@@ -283,29 +308,7 @@ impl<T: Trait> StoredMap<T::AccountId, T::AccountData> for Module<T> {
 		.map(|(existed, exists, v)| {
 			if !existed && exists {
 				// need to open account
-				let native_currency_id = T::NativeCurrencyId::get();
-
-				// open account by reserve native currency
-				if <T as Trait>::Currency::reserve(native_currency_id, k, T::NewAccountDeposit::get()).is_ok() {
-					T::OnCreatedAccount::happened(&k);
-				} else {
-					let treasury_account = Self::treasury_account_id();
-
-					// Note: will not reap treasury account even though it cannot reserve open account deposit
-					// best practice is to ensure that the first transfer received by treasury account is sufficient to open an account.
-					if k.clone() != treasury_account {
-						// send dust native currency to treasury account
-						let _ = <T as Trait>::Currency::transfer(
-							native_currency_id,
-							k,
-							&treasury_account,
-							<T as Trait>::Currency::free_balance(native_currency_id, k),
-						);
-
-						// remove the account info pretend that opening account has never happened
-						system::Account::<T>::remove(k);
-					}
-				}
+				Self::open_account(k);
 			}
 
 			v
@@ -405,7 +408,7 @@ where
 			// try to use non-native currency to swap native currency by exchange with DEX
 			if !native_is_enough {
 				let native_currency_id = T::NativeCurrencyId::get();
-				let other_currency_ids = T::AllCurrencyIds::get();
+				let other_currency_ids = T::AllNonNativeCurrencyIds::get();
 				// Note: in fact, just obtain the gap between of fee and usable native currency amount,
 				// but `Currency` does not expose interface to get usable balance by specific reason.
 				// Here try to swap the whole fee by non-native currency.
