@@ -126,7 +126,7 @@ runtime_benchmarks! {
 		set_balance(native_currency_id, &who, balance);
 	}: update_balance(RawOrigin::Root, who_lookup, native_currency_id, -amount)
 	verify {
-		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(native_currency_id, &who), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(native_currency_id, &who), 0);
 	}
 }
 

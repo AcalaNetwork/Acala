@@ -7,7 +7,10 @@ use frame_support::{
 	assert_noop, assert_ok,
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
-use mock::{Accounts, Call, Currencies, ExtBuilder, Origin, Runtime, TimeModule, ACA, ALICE, AUSD, BOB};
+use mock::{
+	Accounts, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, System, TimeModule, ACA, ALICE, AUSD, BOB, BTC,
+	CAROL,
+};
 use orml_traits::MultiCurrency;
 
 #[test]
@@ -109,7 +112,7 @@ fn charges_fee() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), (100000 - fee).into());
 
 		let fee2 = 18 * 2 + 1000; // len * byte + weight
 		assert_eq!(
@@ -119,7 +122,10 @@ fn charges_fee() {
 				.priority,
 			fee2
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - fee2);
+		assert_eq!(
+			Currencies::free_balance(ACA, &ALICE),
+			(100000 - fee - fee2).unique_saturated_into()
+		);
 	});
 }
 
@@ -135,7 +141,7 @@ fn enabled_free_transaction_not_charges_fee() {
 				.priority,
 			0
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000);
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000.unique_saturated_into());
 	});
 }
 
@@ -151,7 +157,10 @@ fn enabled_free_transaction_charges_tip() {
 				.priority,
 			100
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - 100);
+		assert_eq!(
+			Currencies::free_balance(ACA, &ALICE),
+			(100000 - 100).unique_saturated_into()
+		);
 	});
 }
 
@@ -168,12 +177,15 @@ fn enabled_free_transaction_charges_other_call() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+		assert_eq!(
+			Currencies::free_balance(ACA, &ALICE),
+			(100000 - fee).unique_saturated_into()
+		);
 	});
 }
 
 #[test]
-fn enabled_free_transaction_charges_other_call_with_tip() {
+fn enabled_free_transaction_charges_other_call_with_tip_and_native_currency_is_enough() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
 
@@ -185,12 +197,15 @@ fn enabled_free_transaction_charges_other_call_with_tip() {
 				.priority,
 			fee
 		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+		assert_eq!(
+			Currencies::free_balance(ACA, &ALICE),
+			(100000 - fee).unique_saturated_into()
+		);
 	});
 }
 
 #[test]
-fn charges_fee_when_pre_dispatch() {
+fn charges_fee_when_pre_dispatch_and_native_currency_is_enough() {
 	ExtBuilder::default().build().execute_with(|| {
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		assert!(ChargeTransactionPayment::<Runtime>::from(0)
@@ -201,7 +216,7 @@ fn charges_fee_when_pre_dispatch() {
 }
 
 #[test]
-fn refund_fee_according_to_actual_when_post_dispatch() {
+fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enough() {
 	ExtBuilder::default().build().execute_with(|| {
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let pre = ChargeTransactionPayment::<Runtime>::from(0)
@@ -212,5 +227,263 @@ fn refund_fee_according_to_actual_when_post_dispatch() {
 		let refund = 200; // 1000 - 800
 		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
+	});
+}
+
+#[test]
+fn open_account_successfully_when_transfer_native() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 200));
+		assert_eq!(Accounts::is_explicit(&BOB), true);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 200 - 100);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			100
+		);
+	});
+}
+
+#[test]
+fn open_account_failed_when_transfer_native() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 50));
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), true);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &Accounts::treasury_account_id()),
+			50
+		);
+	});
+}
+
+#[test]
+fn open_account_successfully_when_transfer_non_native() {
+	ExtBuilder::default().build().execute_with(|| {
+		// add liquidity to dex
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, 10000, 100));
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, 10, 200));
+		assert_eq!(DEXModule::liquidity_pool(ACA).0, 10000);
+
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(BTC, &ALICE, &BOB, 10));
+		assert_eq!(Accounts::is_explicit(&BOB), true);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 1497);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 9);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			100
+		);
+		assert_eq!(DEXModule::liquidity_pool(ACA).0, 8403);
+	});
+}
+
+#[test]
+fn open_account_failed_when_transfer_non_native() {
+	ExtBuilder::default().build().execute_with(|| {
+		// inject liquidity to dex
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, 200, 100));
+		assert_eq!(DEXModule::liquidity_pool(ACA).0, 200);
+
+		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 99));
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
+			99
+		);
+	});
+}
+
+#[test]
+fn close_account_failed_when_not_allowed_death() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 200));
+		assert_eq!(Accounts::is_explicit(&BOB), true);
+		System::inc_ref(&BOB);
+		assert_noop!(
+			Accounts::close_account(Origin::signed(BOB), None),
+			Error::<Runtime>::NonZeroRefCount,
+		);
+	});
+}
+
+#[test]
+fn close_account_and_does_not_specific_receiver() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 500));
+		assert_eq!(Accounts::is_explicit(&BOB), true);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(BTC, &ALICE, &BOB, 300));
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 400);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			100
+		);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 300);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &Accounts::treasury_account_id()),
+			0
+		);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &Accounts::treasury_account_id()),
+			0
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
+			0
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(BTC, &Accounts::treasury_account_id()),
+			0
+		);
+
+		assert_ok!(Accounts::close_account(Origin::signed(BOB), None));
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			0
+		);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &Accounts::treasury_account_id()),
+			400
+		);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &Accounts::treasury_account_id()),
+			100
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
+			1000
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(BTC, &Accounts::treasury_account_id()),
+			300
+		);
+	});
+}
+
+#[test]
+fn close_account_and_specific_receiver() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 500));
+		assert_eq!(Accounts::is_explicit(&BOB), true);
+		assert_ok!(<Currencies as MultiReservableCurrency<_>>::reserve(ACA, &BOB, 150));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(BTC, &ALICE, &BOB, 300));
+
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 250);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			250
+		);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 300);
+		assert_eq!(Accounts::is_explicit(&CAROL), false);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &CAROL), 0);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &CAROL),
+			0
+		);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &CAROL), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &CAROL), 0);
+		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &Accounts::treasury_account_id()),
+			0
+		);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &Accounts::treasury_account_id()),
+			0
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
+			0
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(BTC, &Accounts::treasury_account_id()),
+			0
+		);
+
+		assert_ok!(Accounts::close_account(Origin::signed(BOB), Some(CAROL)));
+
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			0
+		);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 0);
+		assert_eq!(Accounts::is_explicit(&CAROL), true);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &CAROL), 250);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &CAROL),
+			100
+		);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &CAROL), 1000);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &CAROL), 300);
+		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), true);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &Accounts::treasury_account_id()),
+			50
+		);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &Accounts::treasury_account_id()),
+			100
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
+			0
+		);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(BTC, &Accounts::treasury_account_id()),
+			0
+		);
+	});
+}
+
+#[test]
+fn charges_fee_when_validate_and_native_is_not_enough() {
+	ExtBuilder::default().build().execute_with(|| {
+		// open account for BOB
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 100));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
+		assert_eq!(Accounts::is_explicit(&BOB), true);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			100
+		);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
+
+		// add liquidity to DEX
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, 10000, 1000));
+		assert_eq!(DEXModule::liquidity_pool(ACA), (10000, 1000));
+
+		let fee = 500 * 2 + 1000; // len * byte + weight
+		assert_eq!(
+			ChargeTransactionPayment::<Runtime>::from(0)
+				.validate(&BOB, CALL2, &INFO, 500)
+				.unwrap()
+				.priority,
+			fee
+		);
+
+		assert_eq!(Currencies::free_balance(ACA, &BOB), 7);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 749);
+		assert_eq!(DEXModule::liquidity_pool(ACA), (10000 - 7 - 2000, 1251));
 	});
 }

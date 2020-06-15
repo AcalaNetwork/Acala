@@ -195,15 +195,18 @@ impl pallet_timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const AcaExistentialDeposit: Balance = 100 * MILLICENTS;
+	pub const AcaExistentialDeposit: Balance = 0;
 }
+
+// `module_accounts` handles account opening/reaping, `ExistentialDeposit` in `pallet_balances` must be 0
+static_assertions::const_assert!(AcaExistentialDeposit::get() == 0);
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
-	type AccountStore = system::Module<Runtime>;
+	type AccountStore = module_accounts::Module<Runtime>;
 }
 
 parameter_types! {
@@ -794,6 +797,9 @@ parameter_types! {
 	pub const FreeTransferCount: u8 = 3;
 	pub const FreeTransferPeriod: BlockNumber = DAYS;
 	pub const FreeTransferDeposit: Balance = DOLLARS;
+	// All currency types except for native currency, Sort by fee charge order
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC];
+	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
 impl module_accounts::Trait for Runtime {
@@ -801,7 +807,14 @@ impl module_accounts::Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type FreeTransferDeposit = FreeTransferDeposit;
 	type Time = Timestamp;
-	type DepositCurrency = Balances;
+	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type Currency = Currencies;
+	type DEX = Dex;
+	type OnCreatedAccount = system::CallOnCreatedAccount<Runtime>;
+	type KillAccount = system::CallKillAccount<Runtime>;
+	type NewAccountDeposit = NewAccountDeposit;
+	type TreasuryModuleId = TreasuryModuleId;
 }
 
 impl module_airdrop::Trait for Runtime {

@@ -161,6 +161,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "static_assertions",
  "substrate-wasm-builder-runner",
 ]
 
@@ -2940,7 +2941,9 @@ version = "0.4.4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "module-dex",
  "module-primitives",
+ "module-support",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",

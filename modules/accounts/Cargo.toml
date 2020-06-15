@@ -17,11 +17,13 @@ pallet-timestamp = { version = "2.0.0-rc3", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
+support = { package = "module-support", path = "../support", default-features = false }
+orml-traits = { path = "../../orml/traits", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0-rc3", default-features = false }
 sp-io = { version = "2.0.0-rc3", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
+dex = { package = "module-dex", path = "../dex", default-features = false }
 
 [features]
 default = ["std"]
@@ -38,4 +40,6 @@ std = [
 	"pallet-balances/std",
 	"pallet-timestamp/std",
 	"primitives/std",
+	"support/std",
+	"orml-traits/std",
 ]

@@ -3,22 +3,27 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_dispatch, impl_outer_origin, parameter_types, weights::IdentityFee};
+use frame_support::{
+	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
+	weights::IdentityFee,
+};
+use frame_system::EnsureSignedBy;
+use primitives::Amount;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
+use support::{CDPTreasury, Rate, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type Balance = u64;
-pub type Amount = i64;
-pub type CurrencyId = u32;
 pub type Moment = u64;
+pub type Share = u64;
 
-pub const ALICE: AccountId = 0;
-pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = 0;
-pub const AUSD: CurrencyId = 1;
-pub const BTC: CurrencyId = 2;
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
+pub const CAROL: AccountId = 3;
+pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const AUSD: CurrencyId = CurrencyId::AUSD;
+pub const BTC: CurrencyId = CurrencyId::XBTC;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -31,6 +36,16 @@ impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
 		orml_currencies::Currencies,
 		frame_system::System,
+	}
+}
+
+impl_outer_event! {
+	pub enum TestEvent for Runtime {
+		system<T>,
+		orml_tokens<T>,
+		pallet_balances<T>,
+		orml_currencies<T>,
+		dex<T>,
 	}
 }
 
@@ -51,7 +66,7 @@ impl system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
@@ -66,28 +81,28 @@ impl system::Trait for Runtime {
 	type ExtrinsicBaseWeight = ();
 	type MaximumExtrinsicWeight = ();
 }
-type System = frame_system::Module<Runtime>;
+pub type System = frame_system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
-	type OnReceived = ();
+	type OnReceived = Accounts;
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
+	pub const ExistentialDeposit: Balance = 0;
 }
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = ();
+	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
+	type AccountStore = Accounts;
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
@@ -98,7 +113,7 @@ parameter_types! {
 }
 
 impl orml_currencies::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -128,10 +143,82 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type FeeMultiplierUpdate = ();
 }
 
+pub struct MockCDPTreasury;
+impl CDPTreasury<AccountId> for MockCDPTreasury {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+
+	fn get_surplus_pool() -> Self::Balance {
+		Default::default()
+	}
+	fn get_debit_pool() -> Self::Balance {
+		Default::default()
+	}
+	fn get_total_collaterals(_: Self::CurrencyId) -> Self::Balance {
+		Default::default()
+	}
+
+	fn on_system_debit(_: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+	fn on_system_surplus(_: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn deposit_backed_debit_to(_: &AccountId, _: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+	fn deposit_unbacked_debit_to(_: &AccountId, _: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+	fn withdraw_backed_debit_from(_: &AccountId, _: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn transfer_surplus_from(_: &AccountId, _: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+	fn transfer_collateral_to(_: Self::CurrencyId, _: &AccountId, _: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+	fn transfer_collateral_from(_: Self::CurrencyId, _: &AccountId, _: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn get_debit_proportion(_: Self::Balance) -> Ratio {
+		Default::default()
+	}
+}
+
+ord_parameter_types! {
+	pub const Zero: AccountId = 0;
+}
+
+parameter_types! {
+	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![ACA, BTC];
+}
+
+impl dex::Trait for Runtime {
+	type Event = TestEvent;
+	type Currency = Currencies;
+	type Share = Share;
+	type EnabledCurrencyIds = EnabledCurrencyIds;
+	type GetBaseCurrencyId = GetStableCurrencyId;
+	type GetExchangeFee = GetExchangeFee;
+	type CDPTreasury = MockCDPTreasury;
+	type UpdateOrigin = EnsureSignedBy<Zero, AccountId>;
+}
+pub type DEXModule = dex::Module<Runtime>;
+
 parameter_types! {
 	pub const FreeTransferCount: u8 = 3;
 	pub const FreeTransferPeriod: Moment = 100;
 	pub const FreeTransferDeposit: Balance = 200;
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, BTC];
+	pub const NewAccountDeposit: Balance = 100;
+	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 }
 
 impl Trait for Runtime {
@@ -139,7 +226,14 @@ impl Trait for Runtime {
 	type FreeTransferPeriod = FreeTransferPeriod;
 	type Time = TimeModule;
 	type FreeTransferDeposit = FreeTransferDeposit;
-	type DepositCurrency = pallet_balances::Module<Self>;
+	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type Currency = Currencies;
+	type DEX = DEXModule;
+	type OnCreatedAccount = system::CallOnCreatedAccount<Runtime>;
+	type KillAccount = system::CallKillAccount<Runtime>;
+	type NewAccountDeposit = NewAccountDeposit;
+	type TreasuryModuleId = TreasuryModuleId;
 }
 pub type Accounts = Module<Runtime>;
 
@@ -160,7 +254,7 @@ impl ExtBuilder {
 		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, 100000)],
+			balances: vec![(ALICE, 100000 + NewAccountDeposit::get())],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

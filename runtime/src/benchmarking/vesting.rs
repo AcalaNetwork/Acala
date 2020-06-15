@@ -1,5 +1,5 @@
 use super::utils::{dollars, lookup_of_account, set_aca_balance};
-use crate::{AccountId, Currencies, CurrencyId, Runtime, System, Vesting};
+use crate::{AccountId, Currencies, CurrencyId, NewAccountDeposit, Runtime, System, Vesting};
 
 use sp_std::prelude::*;
 
@@ -81,7 +81,7 @@ runtime_benchmarks! {
 	verify {
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
-			schedule.total_amount().unwrap()
+			schedule.total_amount().unwrap() - NewAccountDeposit::get()
 		);
 	}
 
@@ -114,7 +114,7 @@ runtime_benchmarks! {
 	verify {
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
-			schedule.total_amount().unwrap() * 10
+			schedule.total_amount().unwrap() * 10 - NewAccountDeposit::get()
 		);
 	}
 
@@ -137,7 +137,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, to_lookup, vec![schedule.clone()])
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::total_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
 			schedule.total_amount().unwrap()
 		);
 	}
@@ -168,7 +168,7 @@ runtime_benchmarks! {
 	}: update_vesting_schedules(RawOrigin::Root, to_lookup, schedules)
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::total_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
 			schedule.total_amount().unwrap() * 10
 		);
 	}
