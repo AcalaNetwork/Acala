@@ -12,14 +12,14 @@ fn get_price_from_oracle() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(PricesModule::get_price(BTC), Some(Price::saturating_from_integer(5000)));
 		assert_eq!(PricesModule::get_price(DOT), Some(Price::saturating_from_integer(100)));
-		assert_eq!(PricesModule::get_price(ACA), Some(Price::saturating_from_integer(0)));
+		assert_eq!(PricesModule::get_price(ACA), Some(Price::zero()));
 	});
 }
 
 #[test]
 fn get_price_of_stable_currency_id() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(PricesModule::get_price(AUSD), Some(Price::saturating_from_integer(1)));
+		assert_eq!(PricesModule::get_price(AUSD), Some(Price::one()));
 	});
 }
 

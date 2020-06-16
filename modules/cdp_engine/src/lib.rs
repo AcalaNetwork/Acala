@@ -654,8 +654,7 @@ impl<T: Trait> Module<T> {
 		<loans::Module<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral_balance, debit_balance)?;
 
 		let bad_debt_value = Self::get_debit_value(currency_id, debit_balance);
-		let target_stable_amount = bad_debt_value
-			.saturating_add(Self::get_liquidation_penalty(currency_id).saturating_mul_int(bad_debt_value));
+		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 		let exchange_slippage =
 			T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount);

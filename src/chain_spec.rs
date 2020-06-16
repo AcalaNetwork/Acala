@@ -323,15 +323,15 @@ fn testnet_genesis(
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					Some(FixedU128::saturating_from_integer(0)), // stability fee for this collateral
+					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
-					Some(FixedU128::saturating_from_rational(10, 100)), // liquidation penalty rate
+					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(150, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                        // maximum debit value in aUSD (cap)
+					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
-					Some(FixedU128::saturating_from_integer(0)),
+					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(150, 100)),
@@ -339,7 +339,7 @@ fn testnet_genesis(
 				),
 				(
 					CurrencyId::LDOT,
-					Some(FixedU128::saturating_from_integer(0)),
+					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(180, 100)),
@@ -350,9 +350,9 @@ fn testnet_genesis(
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
-				(CurrencyId::DOT, FixedU128::saturating_from_integer(0)),
-				(CurrencyId::XBTC, FixedU128::saturating_from_integer(0)),
-				(CurrencyId::LDOT, FixedU128::saturating_from_integer(0)),
+				(CurrencyId::DOT, FixedU128::zero()),
+				(CurrencyId::XBTC, FixedU128::zero()),
+				(CurrencyId::LDOT, FixedU128::zero()),
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
@@ -453,15 +453,15 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					CurrencyId::DOT,
-					Some(FixedU128::saturating_from_integer(0)), // stability fee for this collateral
+					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
-					Some(FixedU128::saturating_from_rational(3, 100)), // liquidation penalty rate
+					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                        // maximum debit value in aUSD (cap)
+					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
 				),
 				(
 					CurrencyId::XBTC,
-					Some(FixedU128::saturating_from_integer(0)),
+					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
 					Some(FixedU128::saturating_from_rational(115, 100)),
@@ -469,7 +469,7 @@ fn mandala_genesis(
 				),
 				(
 					CurrencyId::LDOT,
-					Some(FixedU128::saturating_from_integer(0)),
+					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(120, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(130, 100)),

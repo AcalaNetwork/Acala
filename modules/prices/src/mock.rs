@@ -77,7 +77,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 			&AUSD => Some(Price::saturating_from_rational(99, 100)),
 			&BTC => Some(Price::saturating_from_integer(5000)),
 			&DOT => Some(Price::saturating_from_integer(100)),
-			&ACA => Some(Price::saturating_from_integer(0)),
+			&ACA => Some(Price::zero()),
 			_ => None,
 		}
 	}
@@ -104,7 +104,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub StableCurrencyFixedPrice: Price = Price::saturating_from_integer(1);
+	pub StableCurrencyFixedPrice: Price = Price::one();
 }
 
 impl Trait for Runtime {
