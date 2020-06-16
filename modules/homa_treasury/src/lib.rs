@@ -7,23 +7,25 @@ use primitives::{Balance, CurrencyId, EraIndex};
 use sp_runtime::{traits::AccountIdConversion, ModuleId};
 use support::{HomaProtocol, OnCommission};
 
-const MODULE_ID: ModuleId = ModuleId(*b"aca/hmts");
-
 pub trait Trait: system::Trait {
 	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 	type Homa: HomaProtocol<Self::AccountId, Balance, EraIndex>;
 	type StakingCurrencyId: Get<CurrencyId>;
+
+	/// The Homa treasury's module id, keep benefits from Homa protocol.
+	type ModuleId: Get<ModuleId>;
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		const StakingCurrencyId: CurrencyId = T::StakingCurrencyId::get();
+		const ModuleId: ModuleId = T::ModuleId::get();
 	}
 }
 
 impl<T: Trait> Module<T> {
 	pub fn account_id() -> T::AccountId {
-		MODULE_ID.into_account()
+		T::ModuleId::get().into_account()
 	}
 }
 

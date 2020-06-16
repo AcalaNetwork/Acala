@@ -24,6 +24,7 @@ use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
+	traits::AccountIdConversion,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, ModuleId,
 };
@@ -102,6 +103,27 @@ pub mod opaque {
 			pub babe: Babe,
 		}
 	}
+}
+
+// Module accounts of runtime
+parameter_types! {
+	pub const PalletTreasuryModuleId: ModuleId = ModuleId(*b"aca/trsy");
+	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
+	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
+	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
+}
+
+pub fn get_all_module_accounts() -> Vec<AccountId> {
+	vec![
+		PalletTreasuryModuleId::get().into_account(),
+		LoansModuleId::get().into_account(),
+		DEXModuleId::get().into_account(),
+		CDPTreasuryModuleId::get().into_account(),
+		StakingPoolModuleId::get().into_account(),
+		HomaTreasuryModuleId::get().into_account(),
+	]
 }
 
 parameter_types! {
@@ -407,7 +429,6 @@ parameter_types! {
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
 	pub const TipReportDepositBase: Balance = DOLLARS;
 	pub const TipReportDepositPerByte: Balance = CENTS;
-	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 }
 
 impl pallet_treasury::Trait for Runtime {
@@ -425,7 +446,7 @@ impl pallet_treasury::Trait for Runtime {
 	type TipFindersFee = TipFindersFee;
 	type TipReportDepositBase = TipReportDepositBase;
 	type TipReportDepositPerByte = TipReportDepositPerByte;
-	type ModuleId = TreasuryModuleId;
+	type ModuleId = PalletTreasuryModuleId;
 }
 
 parameter_types! {
@@ -663,6 +684,7 @@ impl module_loans::Trait for Runtime {
 	type DebitBalance = Balance;
 	type DebitAmount = Amount;
 	type CDPTreasury = CdpTreasury;
+	type ModuleId = LoansModuleId;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -777,6 +799,7 @@ impl module_dex::Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
+	type ModuleId = DEXModuleId;
 }
 
 parameter_types! {
@@ -791,6 +814,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type UpdateOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>;
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
+	type ModuleId = CDPTreasuryModuleId;
 }
 
 parameter_types! {
@@ -814,7 +838,7 @@ impl module_accounts::Trait for Runtime {
 	type OnCreatedAccount = system::CallOnCreatedAccount<Runtime>;
 	type KillAccount = system::CallKillAccount<Runtime>;
 	type NewAccountDeposit = NewAccountDeposit;
-	type TreasuryModuleId = TreasuryModuleId;
+	type TreasuryModuleId = PalletTreasuryModuleId;
 }
 
 impl module_airdrop::Trait for Runtime {
@@ -858,6 +882,7 @@ impl module_staking_pool::Trait for Runtime {
 	type MaxClaimFee = MaxClaimFee;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ClaimFeeReturnRatio = ClaimFeeReturnRatio;
+	type ModuleId = StakingPoolModuleId;
 }
 
 impl module_homa::Trait for Runtime {
@@ -884,6 +909,7 @@ impl module_homa_treasury::Trait for Runtime {
 	type Currency = Currencies;
 	type Homa = StakingPool;
 	type StakingCurrencyId = GetStakingCurrencyId;
+	type ModuleId = HomaTreasuryModuleId;
 }
 
 #[allow(clippy::large_enum_variant)]

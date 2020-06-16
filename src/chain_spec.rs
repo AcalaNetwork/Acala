@@ -2,11 +2,12 @@
 
 use hex_literal::hex;
 use runtime::{
-	opaque::SessionKeys, AccountId, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig, Block,
-	CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GenesisConfig,
-	GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, OperatorMembershipConfig,
-	OracleConfig, OracleId, PolkadotBridgeConfig, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-	SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
+	get_all_module_accounts, opaque::SessionKeys, AccountId, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
+	BalancesConfig, Block, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
+	GenesisConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
+	NewAccountDeposit, OperatorMembershipConfig, OracleConfig, OracleId, PolkadotBridgeConfig, SessionConfig,
+	Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig,
+	VestingConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -239,6 +240,8 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	oracle_session_keys: Vec<(AccountId, OracleId)>,
 ) -> GenesisConfig {
+	let new_account_deposit = NewAccountDeposit::get();
+
 	GenesisConfig {
 		system: Some(SystemConfig {
 			code: WASM_BINARY.to_vec(),
@@ -250,6 +253,11 @@ fn testnet_genesis(
 				.iter()
 				.map(|x| (x.0.clone(), INITIAL_STAKING))
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+				.chain(
+					get_all_module_accounts()
+						.iter()
+						.map(|x| (x.clone(), new_account_deposit)),
+				)
 				.collect(),
 		}),
 		pallet_session: Some(SessionConfig {
@@ -374,6 +382,8 @@ fn mandala_genesis(
 	endowed_accounts: Vec<AccountId>,
 	oracle_session_keys: Vec<(AccountId, OracleId)>,
 ) -> GenesisConfig {
+	let new_account_deposit = NewAccountDeposit::get();
+
 	GenesisConfig {
 		system: Some(SystemConfig {
 			code: WASM_BINARY.to_vec(),
@@ -385,6 +395,11 @@ fn mandala_genesis(
 				.iter()
 				.map(|x| (x.0.clone(), INITIAL_STAKING))
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+				.chain(
+					get_all_module_accounts()
+						.iter()
+						.map(|x| (x.clone(), new_account_deposit)),
+				)
 				.collect(),
 		}),
 		pallet_session: Some(SessionConfig {

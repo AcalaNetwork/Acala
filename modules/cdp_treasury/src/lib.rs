@@ -26,8 +26,6 @@ mod benchmarking;
 mod mock;
 mod tests;
 
-const MODULE_ID: ModuleId = ModuleId(*b"aca/cdpt");
-
 pub trait Trait: system::Trait {
 	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
 
@@ -50,6 +48,9 @@ pub trait Trait: system::Trait {
 	/// or to create debit/surplus auction on block end.
 	/// If set to 0, does not work.
 	type MaxAuctionsCount: Get<u32>;
+
+	/// The CDP treasury's module id, keep surplus and collateral assets from liquidation.
+	type ModuleId: Get<ModuleId>;
 }
 
 decl_event!(
@@ -136,6 +137,9 @@ decl_module! {
 
 		/// Lots cap when create auction
 		const MaxAuctionsCount: u32 = T::MaxAuctionsCount::get();
+
+		/// The CDP treasury's module id, keep surplus and collateral assets from liquidation.
+		const ModuleId: ModuleId = T::ModuleId::get();
 
 		/// Update parameters related to surplus and debit auction
 		///
@@ -258,7 +262,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	pub fn account_id() -> T::AccountId {
-		MODULE_ID.into_account()
+		T::ModuleId::get().into_account()
 	}
 
 	pub fn offset_surplus_and_debit() {
