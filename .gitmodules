@@ -1,3 +1,6 @@
 [submodule "orml"]
 	path = orml
 	url = https://github.com/open-web3-stack/open-runtime-module-library.git
+[submodule "ecosystem-modules/template"]
+	path = ecosystem-modules/template
+	url = https://github.com/AcalaNetwork/ecosystem-template.git
