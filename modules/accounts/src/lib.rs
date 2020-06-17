@@ -457,7 +457,7 @@ where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
 	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Module<T>, T>,
 {
-	const IDENTIFIER: &'static str = "AccountsChargeTransactionPayment";
+	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
 	type Call = T::Call;
 	type AdditionalSigned = ();
