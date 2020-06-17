@@ -3,6 +3,7 @@
 use frame_support::{
 	decl_event, decl_module, decl_storage,
 	traits::{EnsureOrigin, Get},
+	weights::DispatchClass,
 };
 use frame_system::{self as system, ensure_root};
 use orml_traits::{DataProvider, DataProviderExtended};
@@ -44,7 +45,7 @@ decl_module! {
 		const GetStableCurrencyId: CurrencyId = T::GetStableCurrencyId::get();
 		const StableCurrencyFixedPrice: Price = T::StableCurrencyFixedPrice::get();
 
-		#[weight = 10_000]
+		#[weight = (10_000, DispatchClass::Operational)]
 		fn lock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())
@@ -53,7 +54,7 @@ decl_module! {
 			<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
 		}
 
-		#[weight = 10_000]
+		#[weight = (10_000, DispatchClass::Operational)]
 		fn unlock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::try_origin(origin)
 				.map(|_| ())

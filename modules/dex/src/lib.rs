@@ -12,7 +12,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{constants::WEIGHT_PER_MICROS, Weight},
+	weights::{constants::WEIGHT_PER_MICROS, DispatchClass, Weight},
 	Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
@@ -168,7 +168,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 3.591 µs
 		/// # </weight>
-		#[weight = 4 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = (4 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_liquidity_incentive_rate(
 			origin,
 			currency_id: CurrencyId,
