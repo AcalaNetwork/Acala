@@ -946,20 +946,20 @@ construct_runtime!(
 		HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
 		TechnicalCouncil: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		TechnicalCouncilMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
-
 		// oracle
 		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
 		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		OperatorMembership: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
 
-		// acala modules
 		Currencies: orml_currencies::{Module, Call, Event<T>},
-		Prices: module_prices::{Module, Storage, Call, Event},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
 		ScheduleUpdate: orml_schedule_update::{Module, Storage, Call, Event<T>},
 		GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
+
+		// acala modules
+		Prices: module_prices::{Module, Storage, Call, Event},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
