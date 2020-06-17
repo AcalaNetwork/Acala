@@ -20,8 +20,8 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedDiv, CheckedSub, MaybeSerializeDeserialize, Member, One,
-		Saturating, UniqueSaturatedInto, Zero,
+		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, One, Saturating,
+		UniqueSaturatedInto, Zero,
 	},
 	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
@@ -465,27 +465,24 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
+	/// Calculate how much supply token needed for swap specific target amount.
 	pub fn calculate_swap_supply_amount(supply_pool: Balance, target_pool: Balance, target_amount: Balance) -> Balance {
-		// formular:
 		// new_target_pool = target_pool - target_amount / (1 - GetExchangeFee)
 		// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
-
-		// TODO : determine if there is a remainder before adding 1 in multiple calculation of FixedU128
-		// that needs FixedU128 supporting new mul function
 		if target_amount.is_zero() {
 			Zero::zero()
 		} else {
-			Rate::saturating_from_integer(1)
+			Rate::one()
 				.checked_sub(&T::GetExchangeFee::get())
-				.and_then(|n| Ratio::saturating_from_integer(1).checked_div(&n))
-				.and_then(|n| Ratio::from_inner(1).checked_add(&n)) // add Ratio::from_inner(1) to correct the possible losses caused by discarding the remainder in inner division
+				.and_then(|n| n.reciprocal())
+				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
 				.and_then(|n| n.checked_mul_int(target_amount))
-				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
 				.and_then(|n| target_pool.checked_sub(n))
 				.and_then(|n| Ratio::checked_from_rational(supply_pool, n))
-				.and_then(|n| Ratio::from_inner(1).checked_add(&n)) // add Ratio::from_inner(1) to correct the possible losses caused by discarding the remainder in inner division
+				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
 				.and_then(|n| n.checked_mul_int(target_pool))
-				.and_then(|n| n.checked_add(One::one())) // add 1 to correct the possible losses caused by discarding the remainder in division
+				.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
 				.and_then(|n| n.checked_sub(supply_pool))
 				.unwrap_or_default()
 		}
@@ -883,7 +880,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 
 			// final_slippage = first_slippage + (1 - first_slippage) * second_slippage
 			let final_slippage: Ratio = supply_to_base_slippage.saturating_add(
-				Ratio::saturating_from_integer(1)
+				Ratio::one()
 					.saturating_sub(supply_to_base_slippage)
 					.saturating_mul(base_to_target_slippage),
 			);

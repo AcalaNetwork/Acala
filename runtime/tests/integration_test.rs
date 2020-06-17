@@ -204,7 +204,7 @@ mod tests {
 				assert_ok!(CdpEngineModule::set_collateral_params(
 					<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
 					CurrencyId::XBTC,
-					Change::NewValue(Some(Rate::saturating_from_integer(0))),
+					Change::NewValue(Some(Rate::zero())),
 					Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
 					Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
 					Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),

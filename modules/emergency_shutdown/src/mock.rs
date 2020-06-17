@@ -146,11 +146,11 @@ impl loans::Trait for Runtime {
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
-		Some(Price::saturating_from_integer(1))
+		Some(Price::one())
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::saturating_from_integer(1))
+		Some(Price::one())
 	}
 
 	fn lock_price(_currency_id: CurrencyId) {}

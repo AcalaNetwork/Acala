@@ -184,7 +184,7 @@ pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
-	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_integer(1);
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);
@@ -259,14 +259,14 @@ pub type ModuleOracle = orml_oracle::Module<Runtime>;
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::saturating_from_integer(1)
+		ExchangeRate::one()
 	}
 }
 
 parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub StableCurrencyFixedPrice: Price = Price::saturating_from_integer(1);
+	pub StableCurrencyFixedPrice: Price = Price::one();
 }
 
 impl prices::Trait for Runtime {

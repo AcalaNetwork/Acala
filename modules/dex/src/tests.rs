@@ -470,14 +470,8 @@ fn get_exchange_slippage_work() {
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 100, 1000));
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 200, 2000));
 		assert_eq!(DexModule::get_exchange_slippage(BTC, BTC, 100), None);
-		assert_eq!(
-			DexModule::get_exchange_slippage(ACA, AUSD, 100),
-			Some(Ratio::saturating_from_integer(1))
-		);
-		assert_eq!(
-			DexModule::get_exchange_slippage(BTC, AUSD, 0),
-			Some(Ratio::saturating_from_integer(0))
-		);
+		assert_eq!(DexModule::get_exchange_slippage(ACA, AUSD, 100), Some(Ratio::one()));
+		assert_eq!(DexModule::get_exchange_slippage(BTC, AUSD, 0), Some(Ratio::zero()));
 		assert_eq!(
 			DexModule::get_exchange_slippage(BTC, AUSD, 10),
 			Some(Ratio::saturating_from_rational(10, 110))

@@ -147,11 +147,11 @@ pub type LoansModule = loans::Module<Runtime>;
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
-		Some(Price::saturating_from_integer(1))
+		Some(Price::one())
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::saturating_from_integer(1))
+		Some(Price::one())
 	}
 
 	fn lock_price(_currency_id: CurrencyId) {}
@@ -223,7 +223,7 @@ pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
-	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_integer(1);
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);

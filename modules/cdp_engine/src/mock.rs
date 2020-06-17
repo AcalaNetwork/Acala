@@ -148,14 +148,14 @@ pub struct MockPriceSource;
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
 		match (base, quote) {
-			(AUSD, BTC) => Some(Price::saturating_from_integer(1)),
-			(BTC, AUSD) => Some(Price::saturating_from_integer(1)),
+			(AUSD, BTC) => Some(Price::one()),
+			(BTC, AUSD) => Some(Price::one()),
 			_ => None,
 		}
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::saturating_from_integer(1))
+		Some(Price::one())
 	}
 
 	fn lock_price(_currency_id: CurrencyId) {}
@@ -221,7 +221,7 @@ impl cdp_treasury::Trait for Runtime {
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 parameter_types! {
-	pub GetExchangeFee: Rate = Rate::saturating_from_integer(0);
+	pub GetExchangeFee: Rate = Rate::zero();
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
@@ -245,7 +245,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
-	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_integer(1);
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);

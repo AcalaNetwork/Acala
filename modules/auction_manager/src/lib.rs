@@ -476,7 +476,9 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn get_minimum_increment_size(now: T::BlockNumber, start_block: T::BlockNumber) -> Rate {
+		// reach soft cap
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
+			// double the minimum increment size
 			T::MinimumIncrementSize::get().saturating_mul(Rate::saturating_from_integer(2))
 		} else {
 			T::MinimumIncrementSize::get()
@@ -484,7 +486,9 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn get_auction_time_to_close(now: T::BlockNumber, start_block: T::BlockNumber) -> T::BlockNumber {
+		// reach soft cap
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
+			// halve the extended time of bid
 			T::AuctionTimeToClose::get() / 2.into()
 		} else {
 			T::AuctionTimeToClose::get()
@@ -795,9 +799,7 @@ impl<T: Trait> Module<T> {
 				let start_block = <system::Module<T>>::block_number();
 				let end_block = start_block + T::AuctionTimeToClose::get();
 				let new_debit_auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block));
-				let new_amount = debit_auction
-					.amount
-					.saturating_add(T::GetAmountAdjustment::get().saturating_mul_int(debit_auction.amount));
+				let new_amount = T::GetAmountAdjustment::get().saturating_mul_acc_int(debit_auction.amount);
 				let new_debit_auction = DebitAuctionItem {
 					amount: new_amount,
 					fix: debit_auction.fix,

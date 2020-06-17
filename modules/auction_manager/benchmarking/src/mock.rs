@@ -198,14 +198,14 @@ pub type ModuleOracle = orml_oracle::Module<Runtime>;
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::saturating_from_integer(1)
+		ExchangeRate::one()
 	}
 }
 
 parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub StableCurrencyFixedPrice: Price = Price::saturating_from_integer(1);
+	pub StableCurrencyFixedPrice: Price = Price::one();
 }
 
 impl prices::Trait for Runtime {

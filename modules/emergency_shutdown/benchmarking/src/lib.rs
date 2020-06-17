@@ -45,7 +45,7 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let currency_id = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get()[0];
-		feed_price::<T>(currency_id, Price::saturating_from_integer(1))?;
+		feed_price::<T>(currency_id, Price::one())?;
 	}: emergency_shutdown(RawOrigin::Root)
 
 	open_collateral_refund {
