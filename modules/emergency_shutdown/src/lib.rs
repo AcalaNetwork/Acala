@@ -14,7 +14,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::constants::WEIGHT_PER_MICROS,
+	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use primitives::{Balance, CurrencyId};
@@ -111,9 +111,12 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 47.4 µs
 		/// # </weight>
-		#[weight = 48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
-			1 + (T::CollateralCurrencyIds::get().len() as u64),
-			5 + (T::CollateralCurrencyIds::get().len() as u64)
+		#[weight = (
+			48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
+				1 + (T::CollateralCurrencyIds::get().len() as u64),
+				5 + (T::CollateralCurrencyIds::get().len() as u64),
+			),
+			DispatchClass::Operational,
 		)]
 		pub fn emergency_shutdown(origin) {
 			T::ShutdownOrigin::try_origin(origin)
@@ -151,9 +154,12 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 47.4 µs
 		/// # </weight>
-		#[weight = 48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
-			2 + 2 * (T::CollateralCurrencyIds::get().len() as u64),
-			1
+		#[weight = (
+			48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
+				2 + 2 * (T::CollateralCurrencyIds::get().len() as u64),
+				1,
+			),
+			DispatchClass::Operational,
 		)]
 		pub fn open_collateral_refund(origin) {
 			T::ShutdownOrigin::try_origin(origin)

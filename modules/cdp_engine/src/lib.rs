@@ -320,7 +320,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 21.04 µs
 		/// # </weight>
-		#[weight = 21 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = (21 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -350,7 +350,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 32.81 µs
 		/// # </weight>
-		#[weight = 33 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1)]
+		#[weight = (33 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1), DispatchClass::Operational)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,

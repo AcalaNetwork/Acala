@@ -11,7 +11,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::constants::WEIGHT_PER_MICROS,
+	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 };
 use frame_system::{self as system, ensure_root};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -157,7 +157,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 20.18 µs
 		/// # </weight>
-		#[weight = 20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 4)]
+		#[weight = (20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 4), DispatchClass::Operational)]
 		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<Balance>,
@@ -200,7 +200,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 15.59 µs
 		/// # </weight>
-		#[weight = 16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = (16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
 			T::UpdateOrigin::try_origin(origin)
 				.map(|_| ())
