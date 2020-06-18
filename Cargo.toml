@@ -96,6 +96,7 @@ members = [
 	"orml/vesting",
 	"runtime",
 	"inspect",
+	"ecosystem-modules/template/template",
 ]
 exclude = [ "runtime/wasm" ]
 
