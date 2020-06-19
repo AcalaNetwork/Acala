@@ -166,10 +166,10 @@ fn withdraw_backed_debit_from_work() {
 }
 
 #[test]
-fn emergency_shutdown_work() {
+fn on_emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(CDPTreasuryModule::is_shutdown(), false);
-		CDPTreasuryModule::emergency_shutdown();
+		CDPTreasuryModule::on_emergency_shutdown();
 		assert_eq!(CDPTreasuryModule::is_shutdown(), true);
 	});
 }
