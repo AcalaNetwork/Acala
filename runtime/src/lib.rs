@@ -157,7 +157,7 @@ impl system::Trait for Runtime {
 	type ModuleToIndex = ModuleToIndex;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
-	type OnKilledAccount = ();
+	type OnKilledAccount = module_accounts::Module<Runtime>;
 	type DbWeight = RocksDbWeight;
 	type BlockExecutionWeight = BlockExecutionWeight;
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;

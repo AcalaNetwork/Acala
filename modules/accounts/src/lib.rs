@@ -1,3 +1,9 @@
+//! # Accounts Module
+//!
+//! ## Overview
+//!
+//! Accounts module is responsible for opening and closing accounts in Acala, and charge fee and tip in different currencies
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
@@ -42,31 +48,66 @@ type NegativeImbalanceOf<T> = <<T as pallet_transaction_payment::Trait>::Currenc
 >>::NegativeImbalance;
 
 pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_currencies::Trait {
+	/// The number of fee transfer times per period.
 	type FreeTransferCount: Get<u8>;
+
+	/// The period to count free transfer.
 	type FreeTransferPeriod: Get<MomentOf<Self>>;
+
+	/// Deposit for free transfer service.
 	type FreeTransferDeposit: Get<Balance>;
+
+	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
+
+	/// Native currency id, the actual received currency type as fee for treasury.
 	type NativeCurrencyId: Get<CurrencyId>;
+
+	/// Time to get current time onchain.
 	type Time: Time;
+
+	/// Currency to transfer, reserve/unreserve, lock/unlock assets
 	type Currency: MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
 		+ MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+	/// DEX to exchange currencies.
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+
+	/// Handler to trigger events when opening accounts
+
+	/// Handler for the unbalanced reduction when taking transaction fees. This is either one or
+	/// two separate imbalances, the first is the transaction fee paid, the second is the tip paid,
+	/// if any.
+
+	/// Event handler which calls when open account in system.
 	type OnCreatedAccount: Happened<Self::AccountId>;
+
+	/// Handler to kill account in system.
 	type KillAccount: Happened<Self::AccountId>;
+
+	/// Deposit for opening account, reserve it utill close account.
 	type NewAccountDeposit: Get<Balance>;
+
+	/// The treasury module account id to keep fees.
 	type TreasuryModuleId: Get<ModuleId>;
 }
 
 decl_error! {
+	/// Error for accounts manager module.
 	pub enum Error for Module<T: Trait> {
+		/// Balance is not sufficient
 		NotEnoughBalance,
+		/// Account ref count is not zero
 		NonZeroRefCount,
 	}
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Accounts {
+		/// Mapping from account id to free transfer records, record moment when a transfer tx occurs.
 		LastFreeTransfers get(fn last_free_transfers): map hasher(twox_64_concat) T::AccountId => Vec<MomentOf<T>>;
+
+		/// Mapping from account id to flag for free transfer.
 		FreeTransferEnabledAccounts get(fn free_transfer_enabled_accounts): map hasher(twox_64_concat) T::AccountId => Option<bool>;
 	}
 }
@@ -75,14 +116,30 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
+		/// The number of fee transfer times per period.
 		const FreeTransferCount: u8 = T::FreeTransferCount::get();
+
+		/// The period to count free transfer.
 		const FreeTransferPeriod: MomentOf<T> = T::FreeTransferPeriod::get();
+
+		/// Deposit for free transfer service.
 		const FreeTransferDeposit: Balance = T::FreeTransferDeposit::get();
+
+		/// All non-native currency ids in Acala.
 		const AllNonNativeCurrencyIds: Vec<CurrencyId> = T::AllNonNativeCurrencyIds::get();
+
+		/// Native currency id, the actual received currency type as fee for treasury
 		const NativeCurrencyId: CurrencyId = T::NativeCurrencyId::get();
+
+		/// Deposit for opening account, reserve it utill close account.
 		const NewAccountDeposit: Balance = T::NewAccountDeposit::get();
+
+		/// The treasury module account id to keep fees.
 		const TreasuryModuleId: ModuleId = T::TreasuryModuleId::get();
 
+		/// Freeze some native currency to be able to free transfer.
+		///
+		/// The dispatch origin of this call must be Signed.
 		#[weight = 10_000]
 		fn enable_free_transfer(origin) {
 			let who = ensure_signed(origin)?;
@@ -95,6 +152,9 @@ decl_module! {
 			<FreeTransferEnabledAccounts<T>>::insert(who, true);
 		}
 
+		/// Unlock free transfer deposit.
+		///
+		/// The dispatch origin of this call must be Signed.
 		#[weight = 10_000]
 		fn disable_free_transfers(origin) {
 			let who = ensure_signed(origin)?;
@@ -103,12 +163,18 @@ decl_module! {
 			<FreeTransferEnabledAccounts<T>>::remove(who);
 		}
 
+		/// Kill self account from system.
+		///
+		/// The dispatch origin of this call must be Signed.
+		///
+		/// - `recipient`: the account as recipient to receive remaining currencies of the account will be killed,
+		///					None means no recipient is specified.
 		#[weight = 0]
-		fn close_account(origin, to: Option<T::AccountId>) {
+		fn close_account(origin, recipient: Option<T::AccountId>) {
 			let who = ensure_signed(origin)?;
 
-			// check must allow death
-			// if native/non-native currencies has locks, means ref_count shouldn't be zero, can not close the account
+			// check must allow death,
+			// if native/non-native currencies has locks, means ref_count shouldn't be zero, can not close the account.
 			ensure!(
 				<system::Module<T>>::allow_death(&who),
 				Error::<T>::NonZeroRefCount,
@@ -116,23 +182,22 @@ decl_module! {
 
 			let native_currency_id = T::NativeCurrencyId::get();
 			let treasury_account = Self::treasury_account_id();
-			let specific_receiver = to.unwrap_or_else(|| treasury_account.clone());
-
+			let recipient = recipient.unwrap_or_else(|| treasury_account.clone());
 			let total_reserved_native = <T as Trait>::Currency::reserved_balance(native_currency_id, &who);
 
 			// unreserve all native currency
 			<T as Trait>::Currency::unreserve(native_currency_id, &who, total_reserved_native);
 
-			// reserved except for the NewAccountDeposit should be refund to `TreasuryModuleId`
+			// The reserved exclude `NewAccountDeposit` should be refund to `TreasuryModuleId`.
 			if let Some(refund_to_treasury_reserved) = total_reserved_native.checked_sub(T::NewAccountDeposit::get()) {
-				// transfer refund to treasury seperately if specific_receiver is not treasury_account
-				if treasury_account != specific_receiver {
+				// transfer refund to treasury seperately if recipient is not spcified.
+				if treasury_account != recipient {
 					<T as Trait>::Currency::transfer(native_currency_id, &who, &treasury_account, refund_to_treasury_reserved)?;
 				}
 			}
 
-			// transfer all free to specific_receiver
-			<T as Trait>::Currency::transfer(native_currency_id, &who, &specific_receiver, <T as Trait>::Currency::free_balance(native_currency_id, &who))?;
+			// transfer all free to recipient
+			<T as Trait>::Currency::transfer(native_currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(native_currency_id, &who))?;
 
 			// handle other non-native currencies
 			for currency_id in T::AllNonNativeCurrencyIds::get() {
@@ -141,14 +206,14 @@ decl_module! {
 					// unreserve all reserved
 					<T as Trait>::Currency::unreserve(currency_id, &who, reserved);
 
-					// transfer reserved amount to treasury_account seperately if specific_receiver is not treasury_account
-					if treasury_account != specific_receiver {
+					// transfer reserved amount to treasury_account seperately if the recipient is not specified
+					if treasury_account != recipient {
 						let _ = <T as Trait>::Currency::transfer(currency_id, &who, &treasury_account, reserved);
 					}
 				}
 
-				// transfer all free to specific_receiver
-				let _ = <T as Trait>::Currency::transfer(currency_id, &who, &specific_receiver, <T as Trait>::Currency::free_balance(currency_id, &who));
+				// transfer all free to recipient
+				let _ = <T as Trait>::Currency::transfer(currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(currency_id, &who));
 			}
 
 			// finally kill the account
@@ -158,10 +223,12 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+	/// Get treasury account id.
 	pub fn treasury_account_id() -> T::AccountId {
 		T::TreasuryModuleId::get().into_account()
 	}
 
+	/// Try free transfer, if can transfer for free this time, record this moment
 	pub fn try_free_transfer(who: &T::AccountId) -> bool {
 		let mut last_free_transfer = Self::last_free_transfers(who);
 		let now = T::Time::now();
@@ -371,6 +438,7 @@ where
 
 		// check call type
 		let skip_pay_fee = match call.is_sub_type() {
+			// only orml_currencies::Call::transfer can be free for fee
 			Some(orml_currencies::Call::transfer(..)) => <Module<T>>::try_free_transfer(who),
 			_ => false,
 		};
@@ -419,7 +487,7 @@ where
 					let currency_amount = <T as Trait>::Currency::free_balance(currency_id, who);
 					let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, balance_fee);
 
-					// TODO: consider slipperage
+					// TODO: consider exchange slipperage
 					if currency_amount >= supply_amount_needed
 						&& T::DEX::exchange_currency(
 							who.clone(),

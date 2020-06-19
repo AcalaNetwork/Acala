@@ -134,34 +134,27 @@ impl<T: Trait> Module<T> {
 
 	pub fn get_available_unbonded(who: &T::AccountId) -> Balance {
 		let current_era = Self::current_era();
-		let claimed_unbond = <ClaimedUnbond<T>>::iter_prefix(who).collect::<Vec<(EraIndex, Balance)>>();
-		let mut available_unbonded: Balance = Zero::zero();
-
-		for (era_index, claimed) in claimed_unbond {
-			if era_index <= current_era && !claimed.is_zero() {
-				available_unbonded += claimed;
-			}
-		}
-
-		available_unbonded
+		<ClaimedUnbond<T>>::iter_prefix(who)
+			.filter(|(era_index, _)| era_index <= &current_era)
+			.fold(Zero::zero(), |available_unbonded, (_, claimed)| {
+				available_unbonded + claimed
+			})
 	}
 
 	pub fn withdraw_unbonded(who: &T::AccountId) -> sp_std::result::Result<Balance, DispatchError> {
 		let current_era = Self::current_era();
-		let claimed_unbond = <ClaimedUnbond<T>>::iter_prefix(who).collect::<Vec<(EraIndex, Balance)>>();
 		let staking_currency_id = T::StakingCurrencyId::get();
 		let mut withdrawn_amount: Balance = Zero::zero();
 
-		for (era_index, claimed) in claimed_unbond {
-			if era_index <= current_era
-				&& !claimed.is_zero()
-				&& T::Currency::transfer(staking_currency_id, &Self::account_id(), who, claimed).is_ok()
-			{
+		<ClaimedUnbond<T>>::iter_prefix(who)
+			.filter(|(era_index, _)| era_index <= &current_era)
+			.for_each(|(era_index, claimed)| {
 				withdrawn_amount += claimed;
-				TotalClaimedUnbonded::mutate(|balance| *balance -= claimed);
 				<ClaimedUnbond<T>>::remove(who, era_index);
-			}
-		}
+			});
+
+		let _ = T::Currency::transfer(staking_currency_id, &Self::account_id(), who, withdrawn_amount);
+		TotalClaimedUnbonded::mutate(|balance| *balance -= withdrawn_amount);
 		Ok(withdrawn_amount)
 	}
 

@@ -483,7 +483,7 @@ impl<T: Trait> Module<T> {
 		let currency_id = collateral_currency_ids[(position as usize)];
 
 		if !Self::is_shutdown() {
-			for (account_id, _) in <loans::Debits<T>>::iter_prefix(currency_id) {
+			<loans::Debits<T>>::iter_prefix(currency_id).for_each(|(account_id, _)| {
 				if Self::is_cdp_unsafe(currency_id, &account_id) {
 					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
 						debug::warn!(
@@ -502,9 +502,9 @@ impl<T: Trait> Module<T> {
 
 				// check the expire timestamp of lock that is needed to extend
 				offchain_lock.extend_offchain_lock_if_needed::<u32>();
-			}
+			});
 		} else {
-			for (account_id, debit) in <loans::Debits<T>>::iter_prefix(currency_id) {
+			<loans::Debits<T>>::iter_prefix(currency_id).for_each(|(account_id, debit)| {
 				if !debit.is_zero() {
 					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
 						debug::warn!(
@@ -523,7 +523,7 @@ impl<T: Trait> Module<T> {
 
 				// check the expire timestamp of lock that is needed to extend
 				offchain_lock.extend_offchain_lock_if_needed::<u32>();
-			}
+			});
 		}
 
 		// finally, reset the expire timestamp to now in order to release lock in advance.
