@@ -306,24 +306,24 @@ impl<T: Trait> Module<T> {
 		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
 		match rng.pick_u32(2) {
 			0 => {
-				for (auction_id, _) in <DebitAuctions<T>>::iter() {
+				<DebitAuctions<T>>::iter().for_each(|(auction_id, _)| {
 					Self::submit_cancel_auction_tx(auction_id);
 					offchain_lock.extend_offchain_lock_if_needed::<()>();
-				}
+				});
 			}
 			1 => {
-				for (auction_id, _) in <SurplusAuctions<T>>::iter() {
+				<SurplusAuctions<T>>::iter().for_each(|(auction_id, _)| {
 					Self::submit_cancel_auction_tx(auction_id);
 					offchain_lock.extend_offchain_lock_if_needed::<()>();
-				}
+				});
 			}
 			_ => {
-				for (auction_id, _) in <CollateralAuctions<T>>::iter() {
+				<CollateralAuctions<T>>::iter().for_each(|(auction_id, _)| {
 					if !Self::collateral_auction_in_reverse_stage(auction_id) {
 						Self::submit_cancel_auction_tx(auction_id);
 					}
 					offchain_lock.extend_offchain_lock_if_needed::<()>();
-				}
+				});
 			}
 		}
 

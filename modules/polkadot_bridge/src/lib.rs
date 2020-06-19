@@ -311,13 +311,11 @@ impl<T: Trait> PolkadotBridgeState<Balance, EraIndex> for Module<T> {
 
 	fn balance() -> Balance {
 		// bonded + total_unlocking + available
-		let mut total = Self::bonded().saturating_add(Self::available());
-
-		for (balance, _) in Self::unbonding() {
-			total = total.saturating_add(balance);
-		}
-
-		total
+		Self::unbonding()
+			.iter()
+			.fold(Self::bonded().saturating_add(Self::available()), |x, (balance, _)| {
+				x.saturating_add(*balance)
+			})
 	}
 
 	fn current_era() -> EraIndex {
