@@ -125,20 +125,11 @@ impl<T: Trait> PriceProvider<CurrencyId> for Module<T> {
 			Some(T::StableCurrencyFixedPrice::get())
 		} else if currency_id == T::GetLiquidCurrencyId::get() {
 			// if is homa liquid currency, return the product of staking currency price and liquid/staking exchange rate.
-			if let Some(staking_currency_price) = Self::get_price(T::GetStakingCurrencyId::get()) {
-				let exchange_rate: Price = T::LiquidStakingExchangeRateProvider::get_exchange_rate();
-				staking_currency_price.checked_mul(&exchange_rate)
-			} else {
-				None
-			}
+			Self::get_price(T::GetStakingCurrencyId::get())
+				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()))
 		} else {
-			if let Some(locked_price) = Self::locked_price(currency_id) {
-				// if locked price exists, return it
-				Some(locked_price)
-			} else {
-				// otherwise get latest price from oracle and return it.
-				T::Source::get(&currency_id)
-			}
+			// if locked price exists, return it, otherwise return latest price from oracle.
+			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
 		}
 	}
 
