@@ -276,10 +276,6 @@ impl<T: Trait> Module<T> {
 			SurplusPool::mutate(|surplus| *surplus -= offset_amount);
 		}
 	}
-
-	pub fn emergency_shutdown() {
-		<IsShutdown>::put(true);
-	}
 }
 
 impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
@@ -443,6 +439,6 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 
 impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
-		Self::emergency_shutdown();
+		IsShutdown::put(true);
 	}
 }

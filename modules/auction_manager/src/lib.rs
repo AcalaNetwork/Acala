@@ -21,7 +21,7 @@ use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
-use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
+use orml_traits::{Auction, AuctionHandler, AuctionInfo, Change, MultiCurrency, OnNewBidResult};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash, Saturating, Zero},
@@ -257,12 +257,12 @@ decl_module! {
 		#[weight = (80 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
 			ensure_none(origin)?;
+			// ensure already shutdown
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
 		}
 
-		/// Start offchain worker in order to submit unsigned tx to cancel active auction
-		/// after system shutdown.
+		/// Start offchain worker in order to submit unsigned tx to cancel active auction after system shutdown.
 		fn offchain_worker(now: T::BlockNumber) {
 			if Self::is_shutdown() && sp_io::offchain::is_validator() {
 				if let Err(e) = Self::_offchain_worker(now) {
@@ -304,6 +304,8 @@ impl<T: Trait> Module<T> {
 
 		let random_seed = sp_io::offchain::random_seed();
 		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+
+		// Randomly choose to start iterations to cancel collateral/surplus/debit auctions
 		match rng.pick_u32(2) {
 			0 => {
 				<DebitAuctions<T>>::iter().for_each(|(auction_id, _)| {
@@ -338,28 +340,21 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	pub fn emergency_shutdown() {
-		<IsShutdown>::put(true);
-	}
-
 	pub fn cancel_surplus_auction(id: AuctionIdOf<T>) -> DispatchResult {
 		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
-		if let Some(auction_info) = T::Auction::auction_info(id) {
-			// if these's bid, refund native token to the bidder
-			if let Some((bidder, bid_price)) = auction_info.bid {
-				let native_currency_id = T::GetNativeCurrencyId::get();
-				if T::Currency::free_balance(native_currency_id, &bidder)
-					.checked_add(bid_price)
-					.is_some()
-				{
-					// TODO: transfer from RESERVED TREASURY instead of mint
-					T::Currency::deposit(native_currency_id, &bidder, bid_price)
-						.expect("never failed after overflow check");
-				}
 
-				// decrease account ref of bidder
-				system::Module::<T>::dec_ref(&bidder);
-			}
+		// if these's bid
+		if let Some(AuctionInfo {
+			bid: Some((bidder, bid_price)),
+			..
+		}) = T::Auction::auction_info(id)
+		{
+			// refund native token to the bidder, ignore the result to continue
+			// TODO: transfer from RESERVED TREASURY instead of issuing
+			let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, bid_price);
+
+			// decrease account ref of bidder
+			system::Module::<T>::dec_ref(&bidder);
 		}
 
 		// decrease total surplus in auction
@@ -374,13 +369,16 @@ impl<T: Trait> Module<T> {
 
 	pub fn cancel_debit_auction(id: AuctionIdOf<T>) -> DispatchResult {
 		let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
-		if let Some(auction_info) = T::Auction::auction_info(id) {
-			// if these's bid, refund stable token to the bidder
-			if let Some((bidder, _)) = auction_info.bid {
-				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, debit_auction.fix)?;
-				// decrease account ref of bidder
-				system::Module::<T>::dec_ref(&bidder);
-			}
+
+		// if these's bid
+		if let Some(AuctionInfo {
+			bid: Some((bidder, _)), ..
+		}) = T::Auction::auction_info(id)
+		{
+			// refund stable token to the bidder, ignore the result to continue
+			let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, debit_auction.fix);
+			// decrease account ref of bidder
+			system::Module::<T>::dec_ref(&bidder);
 		}
 
 		// derease total debit in auction
@@ -395,14 +393,14 @@ impl<T: Trait> Module<T> {
 
 	pub fn cancel_collateral_auction(id: AuctionIdOf<T>) -> DispatchResult {
 		let collateral_auction = Self::collateral_auctions(id).ok_or(Error::<T>::AuctionNotExsits)?;
+
 		// must not in reverse bid stage
 		ensure!(
 			!Self::collateral_auction_in_reverse_stage(id),
 			Error::<T>::InReservedStage
 		);
 
-		// calculate which amount of collateral to offset target
-		// in settle price
+		// calculate which amount of collateral to offset target in settle price
 		let stable_currency_id = T::GetStableCurrencyId::get();
 		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
@@ -421,13 +419,16 @@ impl<T: Trait> Module<T> {
 			)?;
 		}
 
-		if let Some(auction_info) = T::Auction::auction_info(id) {
-			// if these's bid, refund stable token to the bidder
-			if let Some((bidder, bid_price)) = auction_info.bid {
-				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price)?;
-				// decrease account ref of bidder
-				system::Module::<T>::dec_ref(&bidder);
-			}
+		// if these's bid
+		if let Some(AuctionInfo {
+			bid: Some((bidder, bid_price)),
+			..
+		}) = T::Auction::auction_info(id)
+		{
+			// refund stable token to the bidder, ignore the result to continue
+			let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price);
+			// decrease account ref of bidder
+			system::Module::<T>::dec_ref(&bidder);
 		}
 
 		// decrease account ref of refund recipient
@@ -449,10 +450,12 @@ impl<T: Trait> Module<T> {
 
 	pub fn collateral_auction_in_reverse_stage(id: AuctionIdOf<T>) -> bool {
 		if let Some(collateral_auction) = <CollateralAuctions<T>>::get(id) {
-			if let Some(auction_info) = T::Auction::auction_info(id) {
-				if let Some((_, bid_price)) = auction_info.bid {
-					return bid_price >= collateral_auction.target;
-				}
+			if let Some(AuctionInfo {
+				bid: Some((_, bid_price)),
+				..
+			}) = T::Auction::auction_info(id)
+			{
+				return bid_price >= collateral_auction.target;
 			}
 		}
 		false
@@ -470,15 +473,15 @@ impl<T: Trait> Module<T> {
 			minimum_increment.checked_mul_int(sp_std::cmp::max(target_price, last_price)),
 			new_price.checked_sub(last_price),
 		) {
-			return result >= target;
+			result >= target
+		} else {
+			false
 		}
-		false
 	}
 
 	pub fn get_minimum_increment_size(now: T::BlockNumber, start_block: T::BlockNumber) -> Rate {
-		// reach soft cap
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
-			// double the minimum increment size
+			// double the minimum increment size when reach soft cap
 			T::MinimumIncrementSize::get().saturating_mul(Rate::saturating_from_integer(2))
 		} else {
 			T::MinimumIncrementSize::get()
@@ -486,9 +489,8 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn get_auction_time_to_close(now: T::BlockNumber, start_block: T::BlockNumber) -> T::BlockNumber {
-		// reach soft cap
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
-			// halve the extended time of bid
+			// halve the extended time of bid when reach soft cap
 			T::AuctionTimeToClose::get() / 2.into()
 		} else {
 			T::AuctionTimeToClose::get()
@@ -502,18 +504,19 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> OnNewBidResult<T::BlockNumber> {
 		if let Some(mut collateral_auction) = Self::collateral_auctions(id) {
-			// get last price, if these's no bid set 0
-			let last_price: Balance = match last_bid {
+			// get last bid price, if these's no bid set 0
+			let last_bid_price: Balance = match last_bid {
 				None => Zero::zero(),
 				Some((_, price)) => price,
 			};
+
 			let stable_currency_id = T::GetStableCurrencyId::get();
 			let mut payment = sp_std::cmp::min(collateral_auction.target, new_bid.1);
 
 			// check new price is larger than minimum increment and new bidder has enough stable coin
 			if Self::check_minimum_increment(
 				new_bid.1,
-				last_price,
+				last_bid_price,
 				collateral_auction.target,
 				Self::get_minimum_increment_size(now, collateral_auction.start_time),
 			) && T::Currency::ensure_can_withdraw(stable_currency_id, &new_bid.0, payment).is_ok()
@@ -541,10 +544,12 @@ impl<T: Trait> Module<T> {
 
 				// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
 				if new_bid.1 > collateral_auction.target {
-					let new_collateral_amount =
-						Rate::checked_from_rational(sp_std::cmp::max(last_price, collateral_auction.target), new_bid.1)
-							.and_then(|n| n.checked_mul_int(collateral_auction.amount))
-							.unwrap_or(collateral_auction.amount);
+					let new_collateral_amount = Rate::checked_from_rational(
+						sp_std::cmp::max(last_bid_price, collateral_auction.target),
+						new_bid.1,
+					)
+					.and_then(|n| n.checked_mul_int(collateral_auction.amount))
+					.unwrap_or(collateral_auction.amount);
 					let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
 					if T::CDPTreasury::transfer_collateral_to(
@@ -721,8 +726,8 @@ impl<T: Trait> Module<T> {
 					// refund stable coin to the last bidder, ignore result to continue
 					let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price);
 
-					// extra stable coin will refund to refund recipient, ignore result to continue
 					if amount > collateral_auction.target {
+						// refund extra stable coin to recipient, ignore result to continue
 						let _ = T::CDPTreasury::deposit_unbacked_debit_to(
 							&collateral_auction.refund_recipient,
 							amount - collateral_auction.target,
@@ -771,15 +776,9 @@ impl<T: Trait> Module<T> {
 	pub fn debit_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
 		if let Some(debit_auction) = Self::debit_auctions(auction_id) {
 			if let Some((bidder, _)) = winner {
-				// issue the amount of native token to winner
-				if T::Currency::free_balance(T::GetNativeCurrencyId::get(), &bidder)
-					.checked_add(debit_auction.amount)
-					.is_some()
-				{
-					// TODO: transfer from RESERVED TREASURY instead of mint
-					T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount)
-						.expect("never failed after overflow check");
-				}
+				// issue native token to winner, ignore the result to continue
+				// TODO: transfer from RESERVED TREASURY instead of issuing
+				let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
 
 				// decrease account ref of winner
 				system::Module::<T>::dec_ref(&bidder);
@@ -969,7 +968,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 
 impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	fn on_emergency_shutdown() {
-		Self::emergency_shutdown();
+		IsShutdown::put(true);
 	}
 }
 
@@ -981,7 +980,9 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 		if let Call::cancel(auction_id) = call {
 			if !Self::is_shutdown() {
 				return InvalidTransaction::Stale.into();
-			} else if <CollateralAuctions<T>>::contains_key(auction_id) {
+			}
+
+			if <CollateralAuctions<T>>::contains_key(auction_id) {
 				if !Self::collateral_auction_in_reverse_stage(*auction_id) {
 					return InvalidTransaction::Stale.into();
 				}
