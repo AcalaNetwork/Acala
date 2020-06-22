@@ -88,7 +88,7 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	/// Deposit for opening account, reserve it utill close account.
 	type NewAccountDeposit: Get<Balance>;
 
-	/// The treasury module account id to keep fees.
+	/// The treasury module account id to recycle assets.
 	type TreasuryModuleId: Get<ModuleId>;
 }
 
@@ -134,7 +134,7 @@ decl_module! {
 		/// Deposit for opening account, reserve it utill close account.
 		const NewAccountDeposit: Balance = T::NewAccountDeposit::get();
 
-		/// The treasury module account id to keep fees.
+		/// The treasury module account id to recycle assets.
 		const TreasuryModuleId: ModuleId = T::TreasuryModuleId::get();
 
 		/// Freeze some native currency to be able to free transfer.
@@ -594,6 +594,8 @@ where
 					Err(_) => payed,
 				};
 			let imbalances = actual_payment.split(tip);
+
+			// distribute fee by `pallet_transaction_payment`
 			<T as pallet_transaction_payment::Trait>::OnTransactionPayment::on_unbalanceds(
 				Some(imbalances.0).into_iter().chain(Some(imbalances.1)),
 			);
