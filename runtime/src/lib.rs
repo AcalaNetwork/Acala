@@ -300,7 +300,7 @@ const_assert!(
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
-	type OnTransactionPayment = ();
+	type OnTransactionPayment = PalletTreasury;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = fee::WeightToFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<TargetBlockFullness>;
