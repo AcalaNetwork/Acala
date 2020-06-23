@@ -315,7 +315,7 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 					// open account will fail because there's no enough native token,
 					// transfer all token as dust to treasury account.
 					let treasury_account = Self::treasury_account_id();
-					if who.clone() != treasury_account {
+					if *who != treasury_account {
 						let _ = <T as Trait>::Currency::transfer(currency_id, who, &treasury_account, amount);
 					}
 				}
