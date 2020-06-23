@@ -656,16 +656,13 @@ impl<T: Trait> Module<T> {
 		let bad_debt_value = Self::get_debit_value(currency_id, debit_balance);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
-		let exchange_slippage =
-			T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount);
-		let slippage_limit = T::MaxSlippageSwapWithDEX::get();
 
 		// if collateral_balance can swap enough native token in DEX and exchange slippage is blow the limit,
 		// directly exchange with DEX, otherwise create collateral auctions.
 		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
 			&& collateral_balance >= supply_collateral_amount									// ensure have sufficient collateral
-			&& slippage_limit > Ratio::zero()											// slippage_limit must be set as more than zero
-			&& exchange_slippage.map_or(false, |s| s <= slippage_limit)
+			&& T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount).map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
+		// slippage is acceptable
 		{
 			LiquidationStrategy::Exchange
 		} else {
