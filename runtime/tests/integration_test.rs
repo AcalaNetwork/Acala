@@ -1,6 +1,8 @@
 #![cfg(test)]
 
-use acala_runtime::{AccountId, Balance, CurrencyId, Runtime};
+use acala_runtime::{
+	get_all_module_accounts, AccountId, Balance, CurrencyId, GetNativeCurrencyId, NewAccountDeposit, Runtime,
+};
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{OnFinalize, OnInitialize},
@@ -51,8 +53,32 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
+		let native_currency_id = GetNativeCurrencyId::get();
+		let new_account_deposit = NewAccountDeposit::get();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self
+				.endowed_accounts
+				.clone()
+				.into_iter()
+				.filter(|(_, currency_id, _)| *currency_id == native_currency_id)
+				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
+				.chain(
+					get_all_module_accounts()
+						.iter()
+						.map(|x| (x.clone(), new_account_deposit)),
+				)
+				.collect::<Vec<_>>(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+			endowed_accounts: self
+				.endowed_accounts
+				.into_iter()
+				.filter(|(_, currency_id, _)| *currency_id != native_currency_id)
+				.collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
@@ -113,7 +139,17 @@ fn amount(amount: u128) -> u128 {
 fn emergency_shutdown_and_cdp_treasury() {
 	ExtBuilder::default()
 		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
 			(AccountId::from(ALICE), CurrencyId::AUSD, 2_000_000u128),
+			(
+				AccountId::from(BOB),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
 			(AccountId::from(BOB), CurrencyId::AUSD, 8_000_000u128),
 			(AccountId::from(BOB), CurrencyId::XBTC, 1_000_000u128),
 			(AccountId::from(BOB), CurrencyId::DOT, 200_000_000u128),
@@ -181,8 +217,18 @@ fn emergency_shutdown_and_cdp_treasury() {
 fn liquidate_cdp() {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(BOB), CurrencyId::AUSD, amount(1_000_000)),
+			(
+				AccountId::from(ALICE),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
 			(AccountId::from(ALICE), CurrencyId::XBTC, amount(10)),
+			(
+				AccountId::from(BOB),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
+			(AccountId::from(BOB), CurrencyId::AUSD, amount(1_000_000)),
 			(AccountId::from(BOB), CurrencyId::XBTC, amount(101)),
 		])
 		.build()
@@ -395,7 +441,14 @@ fn test_dex_module() {
 #[test]
 fn test_honzon_module() {
 	ExtBuilder::default()
-		.balances(vec![(AccountId::from(ALICE), CurrencyId::XBTC, amount(1_000))])
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
+			(AccountId::from(ALICE), CurrencyId::XBTC, amount(1_000)),
+		])
 		.build()
 		.execute_with(|| {
 			assert_ok!(set_oracle_price(vec![(
@@ -475,6 +528,11 @@ fn test_honzon_module() {
 fn test_cdp_engine_module() {
 	ExtBuilder::default()
 		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
 			(AccountId::from(ALICE), CurrencyId::AUSD, amount(1000)),
 			(AccountId::from(ALICE), CurrencyId::XBTC, amount(1000)),
 		])
