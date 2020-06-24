@@ -69,7 +69,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 405,
+	spec_version: 406,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -652,7 +652,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type DustRemoval = ();
-	type OnReceived = ();
+	type OnReceived = module_accounts::Module<Runtime>;
 }
 
 parameter_types! {
@@ -902,6 +902,7 @@ impl module_accounts::Trait for Runtime {
 	type KillAccount = system::CallKillAccount<Runtime>;
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = PalletTreasuryModuleId;
+	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 }
 
 impl module_airdrop::Trait for Runtime {

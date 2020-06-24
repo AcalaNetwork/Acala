@@ -221,6 +221,7 @@ parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, BTC];
 	pub const NewAccountDeposit: Balance = 100;
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
+	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
 }
 
 impl Trait for Runtime {
@@ -236,6 +237,7 @@ impl Trait for Runtime {
 	type KillAccount = system::CallKillAccount<Runtime>;
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = TreasuryModuleId;
+	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 }
 pub type Accounts = Module<Runtime>;
 

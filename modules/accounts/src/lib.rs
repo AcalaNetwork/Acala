@@ -33,7 +33,7 @@ use sp_runtime::{
 };
 use sp_std::convert::Infallible;
 use sp_std::prelude::*;
-use support::DEXManager;
+use support::{DEXManager, Ratio};
 
 mod mock;
 mod tests;
@@ -90,6 +90,9 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 
 	/// The treasury module account id to recycle assets.
 	type TreasuryModuleId: Get<ModuleId>;
+
+	/// The max slippage allowed when swap open account deposit or fee with DEX
+	type MaxSlippageSwapWithDEX: Get<Ratio>;
 }
 
 decl_error! {
@@ -136,6 +139,9 @@ decl_module! {
 
 		/// The treasury module account id to recycle assets.
 		const TreasuryModuleId: ModuleId = T::TreasuryModuleId::get();
+
+		/// The max slippage allowed when swap open account deposit or fee with DEX
+		const MaxSlippageSwapWithDEX: Ratio = T::MaxSlippageSwapWithDEX::get();
 
 		/// Freeze some native currency to be able to free transfer.
 		///
@@ -285,34 +291,38 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 
 		if !<Self as StoredMap<_, _>>::is_explicit(who) && currency_id != native_currency_id {
 			let new_account_deposit = T::NewAccountDeposit::get();
-			let supply_amount = T::DEX::get_supply_amount(currency_id, native_currency_id, new_account_deposit);
+			let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, new_account_deposit);
+			let amount = <T as Trait>::Currency::free_balance(currency_id, who);
 
-			// swap enough native currency to support subsequent opening account
-			if <T as Trait>::Currency::free_balance(currency_id, who) >= supply_amount
-				&& T::DEX::exchange_currency(
-					who.clone(),
-					currency_id,
-					supply_amount,
-					native_currency_id,
-					new_account_deposit,
-				)
-				.is_ok()
+			// the slippage is acceptable
+			if !supply_amount_needed.is_zero()
+				&& T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed)
+					.map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
 			{
-				// successful swap will cause changes in native currency,
-				// which also means that it will open a new account
-				return;
-			}
-
-			// open account will fail because there's no enough native token,
-			// transfer all token as dust to treasury account.
-			let treasury_account = Self::treasury_account_id();
-			if who.clone() != treasury_account {
-				let _ = <T as Trait>::Currency::transfer(
-					currency_id,
-					who,
-					&treasury_account,
-					<T as Trait>::Currency::free_balance(currency_id, who),
-				);
+				if amount >= supply_amount_needed
+					&& T::DEX::exchange_currency(
+						who.clone(),
+						currency_id,
+						supply_amount_needed,
+						native_currency_id,
+						new_account_deposit,
+					)
+					.is_ok()
+				{
+					// successful swap will cause changes in native currency,
+					// which also means that it will open a new account
+				} else {
+					// open account will fail because there's no enough native token,
+					// transfer all token as dust to treasury account.
+					let treasury_account = Self::treasury_account_id();
+					if *who != treasury_account {
+						let _ = <T as Trait>::Currency::transfer(currency_id, who, &treasury_account, amount);
+					}
+				}
+			} else {
+				// Don't recycle non-native token to avoid unreasonable loss due to insufficient liquidity of DEX,
+				// can try to open this account again later. This may leave some dust account data of non-native token,
+				// then consider repeat it by other methods.
 			}
 		}
 	}
@@ -487,8 +497,11 @@ where
 					let currency_amount = <T as Trait>::Currency::free_balance(currency_id, who);
 					let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, balance_fee);
 
-					// TODO: consider exchange slipperage
-					if currency_amount >= supply_amount_needed
+					// the balance is sufficient and slippage is acceptable
+					if !supply_amount_needed.is_zero()
+						&& currency_amount >= supply_amount_needed
+						&& T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed)
+							.map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
 						&& T::DEX::exchange_currency(
 							who.clone(),
 							currency_id,
