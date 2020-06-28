@@ -67,7 +67,7 @@ fn lock_price_call_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_noop!(PricesModule::lock_price(Origin::signed(5), BTC), BadOrigin,);
-		assert_ok!(PricesModule::lock_price(Origin::ROOT, BTC));
+		assert_ok!(PricesModule::lock_price(Origin::root(), BTC));
 
 		let lock_price_event = TestEvent::prices(Event::LockPrice(BTC, Price::saturating_from_integer(5000)));
 		assert!(System::events().iter().any(|record| record.event == lock_price_event));

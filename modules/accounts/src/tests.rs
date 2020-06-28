@@ -79,7 +79,7 @@ fn remove_expired_entry() {
 		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-		assert_ok!(TimeModule::dispatch(pallet_timestamp::Call::set(100), Origin::NONE));
+		TimeModule::set_timestamp(100);
 		assert_eq!(TimeModule::now(), 100);
 		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![100]);
