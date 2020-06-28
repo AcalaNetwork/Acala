@@ -5,6 +5,7 @@
 #![recursion_limit = "256"]
 // The `large_enum_variant` warning originates from `construct_runtime` macro.
 #![allow(clippy::large_enum_variant)]
+#![allow(clippy::unnecessary_mut_passed)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
