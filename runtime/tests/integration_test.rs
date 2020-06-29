@@ -111,19 +111,19 @@ pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Trait>::Ori
 fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	OracleModule::on_finalize(0);
 	assert_ok!(OracleModule::feed_values(
-		<acala_runtime::Runtime as frame_system::Trait>::Origin::NONE,
+		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
 		prices.clone(),
 		0,
 		Default::default()
 	));
 	assert_ok!(OracleModule::feed_values(
-		<acala_runtime::Runtime as frame_system::Trait>::Origin::NONE,
+		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
 		prices.clone(),
 		1,
 		Default::default()
 	));
 	assert_ok!(OracleModule::feed_values(
-		<acala_runtime::Runtime as frame_system::Trait>::Origin::NONE,
+		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
 		prices,
 		2,
 		Default::default()
@@ -181,10 +181,10 @@ fn emergency_shutdown_and_cdp_treasury() {
 				module_emergency_shutdown::Error::<Runtime>::CanNotRefund,
 			);
 			assert_ok!(EmergencyShutdownModule::emergency_shutdown(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT
+				<acala_runtime::Runtime as frame_system::Trait>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::open_collateral_refund(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT
+				<acala_runtime::Runtime as frame_system::Trait>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::refund_collaterals(
 				origin_of(AccountId::from(ALICE)),
@@ -247,7 +247,7 @@ fn liquidate_cdp() {
 			));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
+				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NewValue(Some(Rate::zero())),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
@@ -290,7 +290,7 @@ fn liquidate_cdp() {
 			assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
+				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
@@ -457,7 +457,7 @@ fn test_honzon_module() {
 			)]));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
+				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -489,7 +489,7 @@ fn test_honzon_module() {
 			);
 			assert_eq!(
 				CdpEngineModule::liquidate(
-					<Runtime as frame_system::Trait>::Origin::NONE,
+					<Runtime as frame_system::Trait>::Origin::none(),
 					CurrencyId::XBTC,
 					AccountId::from(ALICE)
 				)
@@ -497,7 +497,7 @@ fn test_honzon_module() {
 				false
 			);
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
+				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
@@ -506,7 +506,7 @@ fn test_honzon_module() {
 				Change::NoChange,
 			));
 			assert_ok!(CdpEngineModule::liquidate(
-				<Runtime as frame_system::Trait>::Origin::NONE,
+				<Runtime as frame_system::Trait>::Origin::none(),
 				CurrencyId::XBTC,
 				AccountId::from(ALICE)
 			));
@@ -540,7 +540,7 @@ fn test_cdp_engine_module() {
 		.execute_with(|| {
 			SystemModule::set_block_number(1);
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::ROOT,
+				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),

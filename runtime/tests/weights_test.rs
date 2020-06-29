@@ -228,7 +228,7 @@ fn weight_of_indices_free_is_correct() {
 fn weight_of_indices_force_transfer_is_correct() {
 	// #[weight = T::DbWeight::get().reads_writes(2, 2) + 25 * WEIGHT_PER_MICROS]
 	let expected_weight = 25 * WEIGHT_PER_MICROS + 2 * DbWeight::get().read + 2 * DbWeight::get().write;
-	let weight = IndicesCall::force_transfer::<Runtime>(Default::default(), Default::default())
+	let weight = IndicesCall::force_transfer::<Runtime>(Default::default(), Default::default(), Default::default())
 		.get_dispatch_info()
 		.weight;
 	assert_eq!(weight, expected_weight);

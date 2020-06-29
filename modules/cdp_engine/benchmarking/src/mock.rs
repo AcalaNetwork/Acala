@@ -67,6 +67,7 @@ impl frame_system::Trait for Runtime {
 	type BlockExecutionWeight = ();
 	type ExtrinsicBaseWeight = ();
 	type MaximumExtrinsicWeight = ();
+	type BaseCallFilter = ();
 }
 
 impl orml_tokens::Trait for Runtime {

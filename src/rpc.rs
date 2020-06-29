@@ -1,6 +1,6 @@
 #![warn(missing_docs)]
 
-use std::{fmt, sync::Arc};
+use std::sync::Arc;
 
 use runtime::{
 	opaque::Block, AccountId, Balance, BlockNumber, CurrencyId, Hash, Index, TimeStampedPrice, UncheckedExtrinsic,
@@ -13,6 +13,7 @@ use sc_finality_grandpa_rpc::GrandpaRpcHandler;
 use sc_keystore::KeyStorePtr;
 use sc_rpc_api::DenyUnsafe;
 use sp_api::ProvideRuntimeApi;
+use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
@@ -77,7 +78,7 @@ where
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, TimeStampedPrice>,
 	C::Api: module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
-	<C::Api as sp_api::ApiErrorExt>::Error: fmt::Debug,
+	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + 'static,
 	M: jsonrpc_core::Metadata + Default,
 	SC: SelectChain<Block> + 'static,
@@ -107,7 +108,11 @@ where
 		shared_authority_set,
 	} = grandpa;
 
-	io.extend_with(SystemApi::to_delegate(FullSystem::new(client.clone(), pool)));
+	io.extend_with(SystemApi::to_delegate(FullSystem::new(
+		client.clone(),
+		pool,
+		deny_unsafe,
+	)));
 	io.extend_with(sc_finality_grandpa_rpc::GrandpaApi::to_delegate(
 		GrandpaRpcHandler::new(shared_authority_set, shared_voter_state),
 	));
@@ -147,7 +152,7 @@ where
 		fetcher,
 	} = deps;
 	let mut io = jsonrpc_core::IoHandler::default();
-	io.extend_with(SystemApi::<AccountId, Index>::to_delegate(LightSystem::new(
+	io.extend_with(SystemApi::<Hash, AccountId, Index>::to_delegate(LightSystem::new(
 		client,
 		remote_blockchain,
 		fetcher,

@@ -25,7 +25,7 @@ fn emergency_shutdown_work() {
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), true);
 		assert_eq!(CDPTreasuryModule::is_shutdown(), true);
 		assert_noop!(
-			EmergencyShutdownModule::emergency_shutdown(Origin::ROOT),
+			EmergencyShutdownModule::emergency_shutdown(Origin::root()),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 	});
@@ -36,10 +36,10 @@ fn open_collateral_refund_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(EmergencyShutdownModule::can_refund(), false);
 		assert_noop!(
-			EmergencyShutdownModule::open_collateral_refund(Origin::ROOT),
+			EmergencyShutdownModule::open_collateral_refund(Origin::root()),
 			Error::<Runtime>::MustAfterShutdown,
 		);
-		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::ROOT));
+		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::root()));
 	});
 }
 
@@ -48,7 +48,7 @@ fn open_collateral_refund_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_eq!(EmergencyShutdownModule::can_refund(), false);
-		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::ROOT));
+		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::root()));
 		assert_noop!(
 			EmergencyShutdownModule::open_collateral_refund(Origin::signed(5)),
 			BadOrigin,

@@ -81,6 +81,7 @@ impl system::Trait for Runtime {
 	type BlockExecutionWeight = ();
 	type ExtrinsicBaseWeight = ();
 	type MaximumExtrinsicWeight = ();
+	type BaseCallFilter = ();
 }
 pub type System = system::Module<Runtime>;
 
