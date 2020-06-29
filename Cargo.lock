@@ -94,6 +94,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "hex-literal",
  "module-accounts",
  "module-airdrop",
  "module-auction-manager",
