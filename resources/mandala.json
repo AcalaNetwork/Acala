@@ -3,14 +3,14 @@
   "id": "mandala3",
   "chainType": "Live",
   "bootNodes": [
-	"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
+	"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA",
 	"/ip4/140.82.61.232/tcp/30333/p2p/12D3KooWQerLxUwda64NotKy3pKPbmR2E67PT9WhvL7ZVQJUXnjX",
-	"/dns4/libp2p.jm.onfinality.io/tcp/20255/p2p/QmQTK8APnXETHz9bq4coVb882DLECjbiGYWwHikP8RoTWb",
-	"/dns4/libp2p.rz.onfinality.io/tcp/31232/p2p/QmUbkKybpxtCdHkchWN37nivBeA7hrHwsN6p8bqKSinidy"
+	"/dns/libp2p.jm.onfinality.io/tcp/20255/p2p/QmQTK8APnXETHz9bq4coVb882DLECjbiGYWwHikP8RoTWb",
+	"/dns/libp2p.rz.onfinality.io/tcp/31232/p2p/QmUbkKybpxtCdHkchWN37nivBeA7hrHwsN6p8bqKSinidy"
   ],
   "telemetryEndpoints": [
     [
-      "/dns4/telemetry.polkadot.io/tcp/443/x-parity-wss/%2Fsubmit%2F",
+      "/dns/telemetry.polkadot.io/tcp/443/x-parity-wss/%2Fsubmit%2F",
       0
     ]
   ],

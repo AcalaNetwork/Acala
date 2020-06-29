@@ -220,7 +220,7 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 			)
 		},
 		vec![
-			"/dns4/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA"
+			"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA"
 				.parse()
 				.unwrap(),
 		],
