@@ -3,6 +3,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(feature = "runtime-benchmarks")]
 mod mock;
 
 use sp_std::prelude::*;
@@ -223,6 +224,7 @@ benchmarks! {
 	}: _(RawOrigin::None, currency_id, owner)
 }
 
+#[cfg(feature = "runtime-benchmarks")]
 #[cfg(test)]
 mod tests {
 	use super::*;

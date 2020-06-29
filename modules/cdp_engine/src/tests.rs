@@ -15,7 +15,7 @@ use sp_runtime::traits::BadOrigin;
 fn is_cdp_unsafe_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -27,7 +27,7 @@ fn is_cdp_unsafe_work() {
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
 		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), false);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
@@ -57,7 +57,7 @@ fn get_liquidation_penalty_work() {
 			DefaultLiquidationPenalty::get()
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(5, 2))),
@@ -80,7 +80,7 @@ fn get_liquidation_ratio_work() {
 			DefaultLiquidationRatio::get()
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(5, 2))),
@@ -183,7 +183,7 @@ fn set_collateral_params_work() {
 			.any(|record| record.event == update_maximum_total_debit_value_event));
 
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -218,7 +218,7 @@ fn set_collateral_params_work() {
 fn calculate_collateral_ratio_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -237,7 +237,7 @@ fn calculate_collateral_ratio_work() {
 fn check_debit_cap_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -257,7 +257,7 @@ fn check_debit_cap_work() {
 fn check_position_valid_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(1, 1))),
@@ -273,7 +273,7 @@ fn check_position_valid_work() {
 fn check_position_valid_ratio_below_liquidate_ratio() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(10, 2))),
@@ -292,7 +292,7 @@ fn check_position_valid_ratio_below_liquidate_ratio() {
 fn check_position_valid_ratio_below_required_ratio() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -311,7 +311,7 @@ fn check_position_valid_ratio_below_required_ratio() {
 fn adjust_position_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -345,7 +345,7 @@ fn adjust_position_work() {
 fn remain_debit_value_too_small_check() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -364,7 +364,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -382,7 +382,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			Error::<Runtime>::MustBeUnsafe,
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
@@ -415,7 +415,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 fn on_finalize_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -424,7 +424,7 @@ fn on_finalize_work() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			DOT,
 			Change::NewValue(Some(Rate::saturating_from_rational(2, 100))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -466,7 +466,7 @@ fn on_finalize_work() {
 fn on_emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -496,7 +496,7 @@ fn settle_cdp_has_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::root(),
+			Origin::signed(1),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),

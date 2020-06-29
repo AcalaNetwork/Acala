@@ -15,7 +15,7 @@ use frame_support::{
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass, Weight},
 	Parameter,
 };
-use frame_system::{self as system, ensure_root, ensure_signed};
+use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -156,7 +156,7 @@ decl_module! {
 
 		/// Update liquidity incentive rate of specific liquidity pool
 		///
-		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
+		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: currency type to determine the type of liquidity pool.
 		/// - `liquidity_incentive_rate`: liquidity incentive rate.
@@ -174,9 +174,7 @@ decl_module! {
 			currency_id: CurrencyId,
 			liquidity_incentive_rate: Rate,
 		) {
-			T::UpdateOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::UpdateOrigin::ensure_origin(origin)?;
 
 			LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
 		}

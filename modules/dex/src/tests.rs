@@ -23,14 +23,9 @@ fn set_liquidity_incentive_rate_work() {
 			BTC,
 			Rate::saturating_from_rational(5, 100)
 		));
-		assert_ok!(DexModule::set_liquidity_incentive_rate(
-			Origin::root(),
-			BTC,
-			Rate::saturating_from_rational(8, 100)
-		));
 		assert_eq!(
 			DexModule::liquidity_incentive_rate(BTC),
-			Rate::saturating_from_rational(8, 100)
+			Rate::saturating_from_rational(5, 100)
 		);
 	});
 }

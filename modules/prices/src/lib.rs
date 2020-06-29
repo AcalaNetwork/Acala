@@ -15,7 +15,7 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 	weights::DispatchClass,
 };
-use frame_system::{self as system, ensure_root};
+use frame_system::{self as system};
 use orml_traits::{DataProvider, DataProviderExtended};
 use primitives::CurrencyId;
 use sp_runtime::traits::{CheckedDiv, CheckedMul};
@@ -76,28 +76,24 @@ decl_module! {
 
 		/// Lock the price and feed it to system.
 		///
-		/// The dispatch origin of this call must be `LockOrigin` or _Root_.
+		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
 		#[weight = (10_000, DispatchClass::Operational)]
 		fn lock_price(origin, currency_id: CurrencyId) {
-			T::LockOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::LockOrigin::ensure_origin(origin)?;
 
 			<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
 		}
 
 		/// Unlock the price and get the price from `PriceProvider` again
 		///
-		/// The dispatch origin of this call must be `LockOrigin` or _Root_.
+		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
 		#[weight = (10_000, DispatchClass::Operational)]
 		fn unlock_price(origin, currency_id: CurrencyId) {
-			T::LockOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::LockOrigin::ensure_origin(origin)?;
 
 			<Module<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
 		}

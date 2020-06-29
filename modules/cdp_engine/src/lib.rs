@@ -15,7 +15,7 @@ use frame_support::{
 	IterableStorageDoubleMap,
 };
 use frame_system::{
-	self as system, ensure_none, ensure_root,
+	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::Change;
@@ -309,7 +309,7 @@ decl_module! {
 
 		/// Update global parameters related to risk management of CDP
 		///
-		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
+		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `global_stability_fee`: global stability fee rate.
 		///
@@ -325,16 +325,14 @@ decl_module! {
 			origin,
 			global_stability_fee: Rate,
 		) {
-			T::UpdateOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::UpdateOrigin::ensure_origin(origin)?;
 			GlobalStabilityFee::put(global_stability_fee);
 			Self::deposit_event(RawEvent::GlobalStabilityFeeUpdated(global_stability_fee));
 		}
 
 		/// Update parameters related to risk management of CDP under specific collateral type
 		///
-		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
+		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type.
 		/// - `stability_fee`: extra stability fee rate, `None` means do not update, `Some(None)` means update it to `None`.
@@ -360,9 +358,7 @@ decl_module! {
 			required_collateral_ratio: ChangeOptionRatio,
 			maximum_total_debit_value: ChangeBalance,
 		) {
-			T::UpdateOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::UpdateOrigin::ensure_origin(origin)?;
 			ensure!(
 				T::CollateralCurrencyIds::get().contains(&currency_id),
 				Error::<T>::InvalidCollateralType,
