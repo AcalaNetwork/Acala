@@ -13,7 +13,7 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 };
-use frame_system::{self as system, ensure_root};
+use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -143,7 +143,7 @@ decl_module! {
 
 		/// Update parameters related to surplus and debit auction
 		///
-		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
+		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `surplus_auction_fixed_size`: new fixed amount of stable coin for sale per surplus auction, `None` means do not update
 		/// - `surplus_buffer_size`: new buffer size of surplus pool, `None` means do not update
@@ -165,9 +165,7 @@ decl_module! {
 			initial_amount_per_debit_auction: Option<Balance>,
 			debit_auction_fixed_size: Option<Balance>,
 		) {
-			T::UpdateOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::UpdateOrigin::ensure_origin(origin)?;
 			if let Some(amount) = surplus_auction_fixed_size {
 				SurplusAuctionFixedSize::put(amount);
 				Self::deposit_event(Event::SurplusAuctionFixedSizeUpdated(amount));
@@ -188,7 +186,7 @@ decl_module! {
 
 		/// Update parameters related to collateral auction under specific collateral type
 		///
-		/// The dispatch origin of this call must be `UpdateOrigin` or _Root_.
+		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type
 		/// - `surplus_buffer_size`: collateral auction maximum size
@@ -202,9 +200,7 @@ decl_module! {
 		/// # </weight>
 		#[weight = (16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
-			T::UpdateOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::UpdateOrigin::ensure_origin(origin)?;
 			CollateralAuctionMaximumSize::insert(currency_id, size);
 			Self::deposit_event(Event::CollateralAuctionMaximumSizeUpdated(currency_id, size));
 		}

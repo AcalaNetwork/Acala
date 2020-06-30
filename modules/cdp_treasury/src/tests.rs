@@ -30,13 +30,6 @@ fn set_collateral_auction_maximum_size_work() {
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_collateral_auction_maximum_size_event));
-
-		assert_ok!(CDPTreasuryModule::set_collateral_auction_maximum_size(
-			Origin::root(),
-			BTC,
-			200
-		));
-		assert_eq!(CDPTreasuryModule::collateral_auction_maximum_size(BTC), 200);
 	});
 }
 
@@ -80,18 +73,6 @@ fn set_debit_and_surplus_handle_params_work() {
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_debit_auction_fixed_size_event));
-
-		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
-			Origin::root(),
-			Some(100),
-			Some(1000),
-			Some(200),
-			Some(100),
-		));
-		assert_eq!(CDPTreasuryModule::surplus_auction_fixed_size(), 100);
-		assert_eq!(CDPTreasuryModule::surplus_buffer_size(), 1000);
-		assert_eq!(CDPTreasuryModule::initial_amount_per_debit_auction(), 200);
-		assert_eq!(CDPTreasuryModule::debit_auction_fixed_size(), 100);
 	});
 }
 
@@ -282,7 +263,7 @@ fn create_surplus_auction_when_on_finalize() {
 	ExtBuilder::default().build().execute_with(|| {
 		SurplusPool::put(1000);
 		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
-			Origin::root(),
+			Origin::signed(1),
 			Some(300),
 			None,
 			None,
@@ -305,7 +286,7 @@ fn create_debit_auction_when_on_finalize() {
 	ExtBuilder::default().build().execute_with(|| {
 		DebitPool::put(1000);
 		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
-			Origin::root(),
+			Origin::signed(1),
 			None,
 			None,
 			Some(100),

@@ -16,7 +16,7 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
 };
-use frame_system::{self as system, ensure_root, ensure_signed};
+use frame_system::{self as system, ensure_signed};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
@@ -98,7 +98,7 @@ decl_module! {
 
 		/// Start emergency shutdown
 		///
-		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
+		/// The dispatch origin of this call must be `ShutdownOrigin`.
 		///
 		/// # <weight>
 		/// - Preconditions:
@@ -119,9 +119,7 @@ decl_module! {
 			DispatchClass::Operational,
 		)]
 		pub fn emergency_shutdown(origin) {
-			T::ShutdownOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::ShutdownOrigin::ensure_origin(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			// trigger shutdown in other related modules
@@ -141,7 +139,7 @@ decl_module! {
 
 		/// Open final redemption if settlement is completed.
 		///
-		/// The dispatch origin of this call must be `ShutdownOrigin` or _Root_.
+		/// The dispatch origin of this call must be `ShutdownOrigin`.
 		///
 		/// # <weight>
 		/// - Preconditions:
@@ -162,9 +160,7 @@ decl_module! {
 			DispatchClass::Operational,
 		)]
 		pub fn open_collateral_refund(origin) {
-			T::ShutdownOrigin::try_origin(origin)
-				.map(|_| ())
-				.or_else(ensure_root)?;
+			T::ShutdownOrigin::ensure_origin(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
 
 			// Ensure there's no debit and surplus auction now, these maybe bring uncertain surplus to system.
