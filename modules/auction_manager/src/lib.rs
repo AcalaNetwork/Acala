@@ -24,6 +24,10 @@ use frame_system::{
 use orml_traits::{Auction, AuctionHandler, AuctionInfo, Change, MultiCurrency, OnNewBidResult};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
+	offchain::{
+		storage_lock::{StorageLock, Time},
+		Duration,
+	},
 	traits::{BlakeTwo256, Hash, Saturating, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
@@ -35,12 +39,13 @@ use sp_std::{
 	prelude::*,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, PriceProvider, Rate};
-use utilities::{OffchainErr, OffchainLock};
+use utilities::OffchainErr;
 
 mod mock;
 mod tests;
 
-const DB_PREFIX: &[u8] = b"acala/auction-manager-offchain-worker/";
+const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
+const LOCK_DURATION: u64 = 100;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -265,12 +270,18 @@ decl_module! {
 		/// Start offchain worker in order to submit unsigned tx to cancel active auction after system shutdown.
 		fn offchain_worker(now: T::BlockNumber) {
 			if Self::is_shutdown() && sp_io::offchain::is_validator() {
-				if let Err(e) = Self::_offchain_worker(now) {
+				if let Err(e) = Self::_offchain_worker() {
 					debug::info!(
 						target: "auction-manager offchain worker",
 						"cannot run offchain worker at {:?}: {:?}",
 						now,
 						e,
+					);
+				} else {
+					debug::debug!(
+						target: "auction-manager offchain worker",
+						"offchain worker start at block: {:?} already done!",
+						now,
 					);
 				}
 			}
@@ -282,25 +293,20 @@ impl<T: Trait> Module<T> {
 	fn submit_cancel_auction_tx(auction_id: AuctionIdOf<T>) {
 		let call = Call::<T>::cancel(auction_id);
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
-			debug::warn!(
+			debug::info!(
 				target: "auction-manager offchain worker",
-				"submit unsigned auction cancel tx for \nAuctionId {:?} failed : {:?}",
-				auction_id, OffchainErr::SubmitTransaction,
-			);
-		} else {
-			debug::debug!(
-				target: "auction-manager offchain worker",
-				"successfully submit unsigned auction cancel tx for \nAuctionId {:?}",
+				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed!",
 				auction_id,
 			);
 		}
 	}
 
-	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
-		// Acquire offchain worker lock.
-		// If succeeded, update the lock, otherwise return error
-		let offchain_lock = OffchainLock::new(DB_PREFIX.to_vec());
-		offchain_lock.acquire_offchain_lock(|_: Option<()>| ())?;
+	fn _offchain_worker() -> Result<(), OffchainErr> {
+		let lock_expiration = Duration::from_millis(LOCK_DURATION);
+		let mut lock = StorageLock::<'_, Time>::with_deadline(&OFFCHAIN_WORKER_LOCK, lock_expiration);
+
+		// acquire offchain worker lock.
+		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
 
 		let random_seed = sp_io::offchain::random_seed();
 		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
@@ -308,34 +314,26 @@ impl<T: Trait> Module<T> {
 		// Randomly choose to start iterations to cancel collateral/surplus/debit auctions
 		match rng.pick_u32(2) {
 			0 => {
-				<DebitAuctions<T>>::iter().for_each(|(auction_id, _)| {
-					Self::submit_cancel_auction_tx(auction_id);
-					offchain_lock.extend_offchain_lock_if_needed::<()>();
-				});
+				for (debit_auction_id, _) in <DebitAuctions<T>>::iter() {
+					Self::submit_cancel_auction_tx(debit_auction_id);
+					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
+				}
 			}
 			1 => {
-				<SurplusAuctions<T>>::iter().for_each(|(auction_id, _)| {
-					Self::submit_cancel_auction_tx(auction_id);
-					offchain_lock.extend_offchain_lock_if_needed::<()>();
-				});
+				for (surplus_auction_id, _) in <SurplusAuctions<T>>::iter() {
+					Self::submit_cancel_auction_tx(surplus_auction_id);
+					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
+				}
 			}
 			_ => {
-				<CollateralAuctions<T>>::iter().for_each(|(auction_id, _)| {
-					if !Self::collateral_auction_in_reverse_stage(auction_id) {
-						Self::submit_cancel_auction_tx(auction_id);
+				for (collateral_auction_id, _) in <CollateralAuctions<T>>::iter() {
+					if !Self::collateral_auction_in_reverse_stage(collateral_auction_id) {
+						Self::submit_cancel_auction_tx(collateral_auction_id);
 					}
-					offchain_lock.extend_offchain_lock_if_needed::<()>();
-				});
+					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
+				}
 			}
 		}
-
-		// finally, reset the expire timestamp to now in order to release lock in advance.
-		offchain_lock.release_offchain_lock(|_: ()| true);
-		debug::debug!(
-			target: "auction-manager offchain worker",
-			"offchain worker start at block: {:?} already done!",
-			now,
-		);
 
 		Ok(())
 	}

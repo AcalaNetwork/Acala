@@ -1,9 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod offchain_lock;
-
-pub use offchain_lock::{LockItem, OffchainLock};
-
 /// Error which may occur while executing the off-chain code.
 #[cfg_attr(test, derive(PartialEq))]
 pub enum OffchainErr {

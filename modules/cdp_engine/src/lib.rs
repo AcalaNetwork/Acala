@@ -21,6 +21,11 @@ use frame_system::{
 use orml_traits::Change;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
+	offchain::{
+		storage::StorageValueRef,
+		storage_lock::{StorageLock, Time},
+		Duration,
+	},
 	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
@@ -32,7 +37,7 @@ use support::{
 	CDPTreasury, CDPTreasuryExtended, DEXManager, ExchangeRate, OnEmergencyShutdown, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
-use utilities::{LockItem, OffchainErr, OffchainLock};
+use utilities::OffchainErr;
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
@@ -40,7 +45,9 @@ pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 mod mock;
 mod tests;
 
-const DB_PREFIX: &[u8] = b"acala/cdp-engine-offchain-worker/";
+const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/cdp-engine/data/";
+const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
+const LOCK_DURATION: u64 = 100;
 
 pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -416,12 +423,18 @@ decl_module! {
 		/// Runs after every block. Start offchain worker to check CDP and
 		/// submit unsigned tx to trigger liquidation or settlement.
 		fn offchain_worker(now: T::BlockNumber) {
-			if let Err(e) = Self::_offchain_worker(now) {
+			if let Err(e) = Self::_offchain_worker() {
 				debug::info!(
 					target: "cdp-engine offchain worker",
 					"cannot run offchain worker at {:?}: {:?}",
 					now,
 					e,
+				);
+			} else {
+				debug::debug!(
+					target: "cdp-engine offchain worker",
+					"offchain worker start at block: {:?} already done!",
+					now,
 				);
 			}
 		}
@@ -429,21 +442,29 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) -> Result<(), OffchainErr> {
-		let call = Call::<T>::liquidate(currency_id, who);
-		SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-			.map_err(|_| OffchainErr::SubmitTransaction)?;
-		Ok(())
+	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) {
+		let call = Call::<T>::liquidate(currency_id, who.clone());
+		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+			debug::info!(
+				target: "cdp-engine offchain worker",
+				"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
+				who, currency_id,
+			);
+		}
 	}
 
-	fn submit_unsigned_settle_tx(currency_id: CurrencyId, who: T::AccountId) -> Result<(), OffchainErr> {
-		let call = Call::<T>::settle(currency_id, who);
-		SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-			.map_err(|_| OffchainErr::SubmitTransaction)?;
-		Ok(())
+	fn submit_unsigned_settlement_tx(currency_id: CurrencyId, who: T::AccountId) {
+		let call = Call::<T>::settle(currency_id, who.clone());
+		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+			debug::info!(
+				target: "cdp-engine offchain worker",
+				"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
+				who, currency_id,
+			);
+		}
 	}
 
-	fn _offchain_worker(block_number: T::BlockNumber) -> Result<(), OffchainErr> {
+	fn _offchain_worker() -> Result<(), OffchainErr> {
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		if collateral_currency_ids.len().is_zero() {
 			return Ok(());
@@ -455,80 +476,51 @@ impl<T: Trait> Module<T> {
 		}
 
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
-		let offchain_lock = OffchainLock::new(DB_PREFIX.to_vec());
 
-		// Acquire offchain worker lock.
-		// If succeeded, update the lock, otherwise return error
-		let LockItem {
-			extra_data: position, ..
-		} = offchain_lock.acquire_offchain_lock(|val: Option<u32>| {
-			if let Some(previous_position) = val {
-				if previous_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
-					previous_position + 1
-				} else {
-					0
-				}
-			} else {
-				let random_seed = sp_io::offchain::random_seed();
-				let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+		let lock_expiration = Duration::from_millis(LOCK_DURATION);
+		let mut lock = StorageLock::<'_, Time>::with_deadline(&OFFCHAIN_WORKER_LOCK, lock_expiration);
 
-				rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32)
-			}
-		})?;
+		// acquire offchain worker lock
+		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
 
+		// get currency_id from offchain worker db to handle
+		let position_storage = StorageValueRef::persistent(&OFFCHAIN_WORKER_DATA);
+		let get_position =
+			position_storage.mutate(
+				|maybe_previous_position: Option<Option<u32>>| match maybe_previous_position {
+					None => {
+						let random_seed = sp_io::offchain::random_seed();
+						let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+						Ok(rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32))
+					}
+					Some(Some(previous_position)) => {
+						let next_position =
+							if previous_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
+								previous_position + 1
+							} else {
+								0
+							};
+						Ok(next_position)
+					}
+					_ => Err(OffchainErr::OffchainStore),
+				},
+			)?;
+		let position = get_position.map_err(|_| OffchainErr::OffchainStore)?;
 		let currency_id = collateral_currency_ids[(position as usize)];
+		let is_shutdown = Self::is_shutdown();
 
-		if !Self::is_shutdown() {
-			<loans::Debits<T>>::iter_prefix(currency_id).for_each(|(account_id, _)| {
-				if Self::is_cdp_unsafe(currency_id, &account_id) {
-					if let Err(e) = Self::submit_unsigned_liquidation_tx(currency_id, account_id.clone()) {
-						debug::warn!(
-							target: "cdp-engine offchain worker",
-							"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
-							account_id, currency_id, e,
-						);
-					} else {
-						debug::debug!(
-							target: "cdp-engine offchain worker",
-							"successfully submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?}",
-							account_id, currency_id,
-						);
-					}
-				}
+		for (who, debit) in <loans::Debits<T>>::iter_prefix(currency_id) {
+			if !is_shutdown && Self::is_cdp_unsafe(currency_id, &who) {
+				// liquidate unsafe CDPs before emergency shutdown occurs
+				Self::submit_unsigned_liquidation_tx(currency_id, who);
+			} else if is_shutdown && !debit.is_zero() {
+				// settle CDPs with debit after emergency shutdown occurs.
+				Self::submit_unsigned_settlement_tx(currency_id, who);
+			}
 
-				// check the expire timestamp of lock that is needed to extend
-				offchain_lock.extend_offchain_lock_if_needed::<u32>();
-			});
-		} else {
-			<loans::Debits<T>>::iter_prefix(currency_id).for_each(|(account_id, debit)| {
-				if !debit.is_zero() {
-					if let Err(e) = Self::submit_unsigned_settle_tx(currency_id, account_id.clone()) {
-						debug::warn!(
-							target: "cdp-engine offchain worker",
-							"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed : {:?}",
-							account_id, currency_id, e,
-						);
-					} else {
-						debug::debug!(
-							target: "cdp-engine offchain worker",
-							"successfully submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?}",
-							account_id, currency_id,
-						);
-					}
-				}
-
-				// check the expire timestamp of lock that is needed to extend
-				offchain_lock.extend_offchain_lock_if_needed::<u32>();
-			});
+			// extend offchain worker lock
+			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
-
-		// finally, reset the expire timestamp to now in order to release lock in advance.
-		offchain_lock.release_offchain_lock(|current_position: u32| current_position == position);
-		debug::debug!(
-			target: "cdp-engine offchain worker",
-			"offchain worker start at block: {:?} already done!",
-			block_number,
-		);
 
 		Ok(())
 	}
