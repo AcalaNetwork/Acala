@@ -295,7 +295,7 @@ impl<T: Trait> Module<T> {
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::info!(
 				target: "auction-manager offchain worker",
-				"submit unsigned auction cancel tx for \nAuctionId {:?} failed!",
+				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed!",
 				auction_id,
 			);
 		}
