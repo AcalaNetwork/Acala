@@ -81,11 +81,11 @@ fn weight_of_vesting_claim_is_correct() {
 }
 
 #[test]
-fn weight_of_vesting_add_vesting_schedule_is_correct() {
+fn weight_of_vesting_vested_transfer_is_correct() {
 	// #[weight = 48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
 	let expected_weight = 48 * WEIGHT_PER_MICROS + 4 * DbWeight::get().read + 4 * DbWeight::get().write;
 
-	let weight = VestingCall::add_vesting_schedule::<Runtime>(
+	let weight = VestingCall::vested_transfer::<Runtime>(
 		Default::default(),
 		orml_vesting::VestingSchedule {
 			start: Default::default(),
@@ -128,7 +128,7 @@ fn weight_of_oracle_feed_values_is_correct() {
 	// #[weight = FunctionOf(0, DispatchClass::Operational, Pays::No)]
 	let expected_weight = 0;
 
-	let weight = OracleCall::feed_values::<Runtime>(vec![], Default::default(), Default::default())
+	let weight = OracleCall::feed_values::<Runtime>(vec![], Default::default(), 0, Default::default())
 		.get_dispatch_info()
 		.weight;
 	assert_eq!(weight, expected_weight);
