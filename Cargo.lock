@@ -3783,18 +3783,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orml-prices"
-version = "0.1.3-dev"
-dependencies = [
- "clear_on_drop",
- "frame-support",
- "orml-traits",
- "serde",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "orml-schedule-update"
 version = "0.1.3-dev"
 dependencies = [
@@ -3846,9 +3834,12 @@ name = "orml-utilities"
 version = "0.1.3-dev"
 dependencies = [
  "clear_on_drop",
+ "frame-support",
+ "frame-system",
  "parity-scale-codec",
  "serde",
  "serde_json",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
