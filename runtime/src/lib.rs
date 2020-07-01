@@ -652,9 +652,14 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
+parameter_types! {
+	pub const MinVestedTransfer: Balance = 100 * DOLLARS;
+}
+
 impl orml_vesting::Trait for Runtime {
 	type Event = Event;
 	type Currency = pallet_balances::Module<Runtime>;
+	type MinVestedTransfer = MinVestedTransfer;
 }
 
 parameter_types! {

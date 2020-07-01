@@ -28,7 +28,7 @@ runtime_benchmarks! {
 		let a in 1 .. MAX_PER_PERIOD => ();
 	}
 
-	add_vesting_schedule {
+	vested_transfer {
 		let u in ...;
 		let p in ...;
 		let c in ...;
@@ -75,7 +75,7 @@ runtime_benchmarks! {
 		let to: AccountId = account("to", u, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 
-		let _ = Vesting::add_vesting_schedule(RawOrigin::Signed(from).into(), to_lookup, schedule.clone());
+		let _ = Vesting::vested_transfer(RawOrigin::Signed(from).into(), to_lookup, schedule.clone());
 		System::set_block_number(schedule.end().unwrap() + 1u32);
 	}: _(RawOrigin::Signed(to.clone()))
 	verify {
@@ -107,7 +107,7 @@ runtime_benchmarks! {
 		let to_lookup = lookup_of_account(to.clone());
 
 		for _ in 0..10 {
-			let _ = Vesting::add_vesting_schedule(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone());
+			let _ = Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone());
 		}
 		System::set_block_number(schedule.end().unwrap() + 1u32);
 	}: claim(RawOrigin::Signed(to.clone()))
@@ -187,9 +187,9 @@ mod tests {
 	}
 
 	#[test]
-	fn add_vesting_schedule() {
+	fn vested_transfer() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_add_vesting_schedule());
+			assert_ok!(test_benchmark_vested_transfer());
 		});
 	}
 

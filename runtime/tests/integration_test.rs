@@ -114,18 +114,21 @@ fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
 		prices.clone(),
 		0,
+		0,
 		Default::default()
 	));
 	assert_ok!(OracleModule::feed_values(
 		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
 		prices.clone(),
 		1,
+		0,
 		Default::default()
 	));
 	assert_ok!(OracleModule::feed_values(
 		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
 		prices,
 		2,
+		0,
 		Default::default()
 	));
 	Ok(())
