@@ -164,8 +164,8 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	ChainSpec::from_genesis(
-		"Acala Mandala TC3",
-		"mandala3",
+		"Acala Mandala TC4",
+		"mandala4",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -220,12 +220,12 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 			)
 		},
 		vec![
-			"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/QmYmd7hdwanKpB5jVp6VndHcgjcSYq9izU8ZzccnMWYhoA"
+			"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz"
 				.parse()
 				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala3"),
+		Some("mandala4"),
 		Some(properties),
 		Default::default(),
 	)
@@ -251,7 +251,7 @@ fn testnet_genesis(
 		pallet_balances: Some(BalancesConfig {
 			balances: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), INITIAL_STAKING))
+				.map(|x| (x.0.clone(), INITIAL_STAKING + 1 * DOLLARS)) // bit more for fee
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
 				.chain(
 					get_all_module_accounts()
@@ -393,7 +393,7 @@ fn mandala_genesis(
 		pallet_balances: Some(BalancesConfig {
 			balances: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), INITIAL_STAKING))
+				.map(|x| (x.0.clone(), INITIAL_STAKING + 1 * DOLLARS)) // bit more for fee
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
 				.chain(
 					get_all_module_accounts()
@@ -409,8 +409,8 @@ fn mandala_genesis(
 				.collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
-			validator_count: 7,
-			minimum_validator_count: 3,
+			validator_count: 5,
+			minimum_validator_count: 1,
 			stakers: initial_authorities
 				.iter()
 				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
