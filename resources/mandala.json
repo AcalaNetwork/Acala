@@ -3,7 +3,9 @@
   "id": "mandala4",
   "chainType": "Live",
   "bootNodes": [
-    "/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz"
+	"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz",
+	"/dns/libp2p.jm.onfinality.io/tcp/20355/p2p/12D3KooWRn8CzbinrxGiwSr6rHuHnE3EQoozDZKfqRsHtKZzYz7r",
+	"/dns/libp2p.rz.onfinality.io/tcp/31233/p2p/12D3KooWQAcMJThaGoFEBJZA9sn5xeSsLRqqw1D7oqXewvRDmqSt"
   ],
   "telemetryEndpoints": [
     [
