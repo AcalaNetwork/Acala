@@ -251,7 +251,7 @@ fn testnet_genesis(
 		pallet_balances: Some(BalancesConfig {
 			balances: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), INITIAL_STAKING + 1 * DOLLARS)) // bit more for fee
+				.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
 				.chain(
 					get_all_module_accounts()
@@ -393,7 +393,7 @@ fn mandala_genesis(
 		pallet_balances: Some(BalancesConfig {
 			balances: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), INITIAL_STAKING + 1 * DOLLARS)) // bit more for fee
+				.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
 				.chain(
 					get_all_module_accounts()
