@@ -11,6 +11,7 @@ frame-support = { version = "2.0.0-rc4", default-features = false }
 frame-system = { version = "2.0.0-rc4", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
+orml-utilities = { path = "../../orml/utilities", default-features = false }
 sp-application-crypto = { version = "2.0.0-rc4", default-features = false }
 sp-io = { version = "2.0.0-rc4", default-features = false }
 sp-runtime = { version = "2.0.0-rc4", default-features = false }
@@ -44,4 +45,5 @@ std = [
 	"loans/std",
 	"primitives/std",
 	"utilities/std",
+	"orml-utilities/std",
 ]

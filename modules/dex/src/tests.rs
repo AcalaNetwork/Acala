@@ -144,13 +144,6 @@ fn add_liquidity_work() {
 			DexModule::add_liquidity(Origin::signed(ALICE), AUSD, 10000, 2000),
 			Error::<Runtime>::CurrencyIdNotAllowed,
 		);
-		assert_eq!(DexModule::liquidity_pool(BTC), (0, 0));
-		assert_eq!(DexModule::total_shares(BTC), 0);
-		assert_eq!(DexModule::shares(BTC, ALICE), 0);
-		assert_noop!(
-			DexModule::add_liquidity(Origin::signed(ALICE), BTC, 0, 10000000),
-			Error::<Runtime>::InvalidAmount,
-		);
 		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
 
 		let add_liquidity_event = TestEvent::dex(RawEvent::AddLiquidity(ALICE, BTC, 10000, 10000000, 10000000));
@@ -199,7 +192,7 @@ fn add_liquidity_and_calculate_interest() {
 			assert_eq!(DexModule::shares(BTC, ALICE), 0);
 			assert_noop!(
 				DexModule::add_liquidity(Origin::signed(ALICE), BTC, 0, 10000000),
-				Error::<Runtime>::InvalidAmount,
+				Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 
 			// ALICE add_liquidity 8000
@@ -329,10 +322,7 @@ fn swap_other_to_base_work() {
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, BTC, 10000));
 		assert_eq!(Tokens::free_balance(BTC, &CAROL), 10000);
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 0);
-		assert_noop!(
-			DexModule::swap_other_to_base(CAROL, BTC, 10001, 0),
-			Error::<Runtime>::AmountNotEnough,
-		);
+		assert_eq!(DexModule::swap_other_to_base(CAROL, BTC, 10001, 0).is_ok(), false);
 		assert_noop!(
 			DexModule::swap_other_to_base(CAROL, BTC, 10000, 5000000),
 			Error::<Runtime>::InacceptablePrice,
@@ -357,10 +347,7 @@ fn swap_base_to_other_work() {
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, AUSD, 10000));
 		assert_eq!(Tokens::free_balance(BTC, &CAROL), 0);
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 10000);
-		assert_noop!(
-			DexModule::swap_base_to_other(CAROL, BTC, 10001, 0),
-			Error::<Runtime>::AmountNotEnough,
-		);
+		assert_eq!(DexModule::swap_base_to_other(CAROL, BTC, 10001, 0).is_ok(), false);
 		assert_noop!(
 			DexModule::swap_base_to_other(CAROL, BTC, 10000, 5000),
 			Error::<Runtime>::InacceptablePrice,
@@ -387,10 +374,7 @@ fn swap_other_to_other_work() {
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, DOT, 1000));
 		assert_eq!(Tokens::free_balance(BTC, &CAROL), 0);
 		assert_eq!(Tokens::free_balance(DOT, &CAROL), 1000);
-		assert_noop!(
-			DexModule::swap_other_to_other(CAROL, DOT, 1001, BTC, 0),
-			Error::<Runtime>::AmountNotEnough,
-		);
+		assert_eq!(DexModule::swap_other_to_other(CAROL, DOT, 1001, BTC, 0).is_ok(), false);
 		assert_noop!(
 			DexModule::swap_other_to_other(CAROL, DOT, 1000, BTC, 35),
 			Error::<Runtime>::InacceptablePrice,
@@ -418,8 +402,8 @@ fn swap_currency_work() {
 			Error::<Runtime>::CanNotSwapItself,
 		);
 		assert_noop!(
-			DexModule::swap_currency(Origin::signed(CAROL), BTC, 101, DOT, 1000),
-			Error::<Runtime>::AmountNotEnough,
+			DexModule::swap_currency(Origin::signed(CAROL), BTC, 100, DOT, 2000),
+			Error::<Runtime>::InacceptablePrice,
 		);
 		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), BTC, 100, AUSD, 4950));
 		assert_ok!(DexModule::swap_currency(Origin::signed(CAROL), AUSD, 4950, BTC, 90));
@@ -438,9 +422,10 @@ fn exchange_currency_work() {
 			Error::<Runtime>::CanNotSwapItself
 		);
 		assert_noop!(
-			DexModule::exchange_currency(CAROL, BTC, 101, DOT, 1000),
-			Error::<Runtime>::AmountNotEnough
+			DexModule::exchange_currency(CAROL, BTC, 100, DOT, 2000),
+			Error::<Runtime>::InacceptablePrice
 		);
+		assert_eq!(DexModule::exchange_currency(CAROL, BTC, 101, DOT, 0).is_ok(), false);
 		assert_eq!(DexModule::exchange_currency(CAROL, BTC, 100, AUSD, 4950).is_ok(), true);
 		assert_eq!(DexModule::exchange_currency(CAROL, AUSD, 4950, BTC, 90).is_ok(), true);
 		assert_eq!(DexModule::exchange_currency(CAROL, BTC, 90, DOT, 300).is_ok(), true);

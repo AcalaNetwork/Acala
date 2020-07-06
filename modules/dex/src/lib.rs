@@ -17,6 +17,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
@@ -81,12 +82,8 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Not the tradable currency type
 		CurrencyIdNotAllowed,
-		/// Currency amount is not enough
-		AmountNotEnough,
 		/// Share amount is not enough
 		ShareNotEnough,
-		/// Currency amount is invalid
-		InvalidAmount,
 		/// Can not trading with self currency type
 		CanNotSwapItself,
 		/// The actual transaction price will be lower than the acceptable price
@@ -278,76 +275,70 @@ decl_module! {
 			#[compact] max_other_currency_amount: Balance,
 			#[compact] max_base_currency_amount: Balance,
 		) {
-			let who = ensure_signed(origin)?;
-			let base_currency_id = T::GetBaseCurrencyId::get();
-			ensure!(
-				T::EnabledCurrencyIds::get().contains(&other_currency_id),
-				Error::<T>::CurrencyIdNotAllowed,
-			);
-			ensure!(
-				!max_other_currency_amount.is_zero() && !max_base_currency_amount.is_zero(),
-				Error::<T>::InvalidAmount,
-			);
 
-			let total_shares = Self::total_shares(other_currency_id);
-			let (other_currency_increment, base_currency_increment, share_increment): (Balance, Balance, T::Share) =
-			if total_shares.is_zero() {
-				// initialize this liquidity pool, the initial share is equal to the max value between base currency amount and other currency amount
-				let initial_share: u128 = sp_std::cmp::max(max_other_currency_amount, max_base_currency_amount).unique_saturated_into();
-				let initial_share: T::Share = initial_share.unique_saturated_into();
+			with_transaction_result(|| -> DispatchResult {
+				let who = ensure_signed(origin)?;
+				let base_currency_id = T::GetBaseCurrencyId::get();
+				ensure!(
+					T::EnabledCurrencyIds::get().contains(&other_currency_id),
+					Error::<T>::CurrencyIdNotAllowed,
+				);
 
-				(max_other_currency_amount, max_base_currency_amount, initial_share)
-			} else {
-				let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(other_currency_id);
-				let other_base_price = Price::checked_from_rational(base_currency_pool, other_currency_pool).unwrap_or_default();
-				let input_other_base_price = Price::checked_from_rational(max_base_currency_amount, max_other_currency_amount).unwrap_or_default();
+				let total_shares = Self::total_shares(other_currency_id);
+				let (other_currency_increment, base_currency_increment, share_increment): (Balance, Balance, T::Share) =
+				if total_shares.is_zero() {
+					// initialize this liquidity pool, the initial share is equal to the max value between base currency amount and other currency amount
+					let initial_share: u128 = sp_std::cmp::max(max_other_currency_amount, max_base_currency_amount).unique_saturated_into();
+					let initial_share: T::Share = initial_share.unique_saturated_into();
 
-				if input_other_base_price <= other_base_price {
-					// max_other_currency_amount may be too much, calculate the actual other currency amount
-					let base_other_price = Price::checked_from_rational(other_currency_pool, base_currency_pool).unwrap_or_default();
-					let other_currency_amount = base_other_price.saturating_mul_int(max_base_currency_amount);
-					let share = Ratio::checked_from_rational(other_currency_amount, other_currency_pool)
-						.and_then(|n| n.checked_mul_int(total_shares))
-						.unwrap_or_default();
-					(other_currency_amount, max_base_currency_amount, share)
+					(max_other_currency_amount, max_base_currency_amount, initial_share)
 				} else {
-					// max_base_currency_amount is too much, calculate the actual base currency amount
-					let base_currency_amount = other_base_price.saturating_mul_int(max_other_currency_amount);
-					let share = Ratio::checked_from_rational(base_currency_amount, base_currency_pool)
-						.and_then(|n| n.checked_mul_int(total_shares))
-						.unwrap_or_default();
-					(max_other_currency_amount, base_currency_amount, share)
-				}
-			};
+					let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(other_currency_id);
+					let other_base_price = Price::checked_from_rational(base_currency_pool, other_currency_pool).unwrap_or_default();
+					let input_other_base_price = Price::checked_from_rational(max_base_currency_amount, max_other_currency_amount).unwrap_or_default();
 
-			ensure!(
-				!share_increment.is_zero() && !other_currency_increment.is_zero() && !base_currency_increment.is_zero(),
-				Error::<T>::InvalidLiquidityIncrement,
-			);
-			ensure!(
-				T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_increment).is_ok()
-				&&
-				T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_increment).is_ok(),
-				Error::<T>::AmountNotEnough,
-			);
-			T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)
-			.expect("never failed because after checks");
-			T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_increment)
-			.expect("never failed because after checks");
+					if input_other_base_price <= other_base_price {
+						// max_other_currency_amount may be too much, calculate the actual other currency amount
+						let base_other_price = Price::checked_from_rational(other_currency_pool, base_currency_pool).unwrap_or_default();
+						let other_currency_amount = base_other_price.saturating_mul_int(max_base_currency_amount);
+						let share = Ratio::checked_from_rational(other_currency_amount, other_currency_pool)
+							.and_then(|n| n.checked_mul_int(total_shares))
+							.unwrap_or_default();
+						(other_currency_amount, max_base_currency_amount, share)
+					} else {
+						// max_base_currency_amount is too much, calculate the actual base currency amount
+						let base_currency_amount = other_base_price.saturating_mul_int(max_other_currency_amount);
+						let share = Ratio::checked_from_rational(base_currency_amount, base_currency_pool)
+							.and_then(|n| n.checked_mul_int(total_shares))
+							.unwrap_or_default();
+						(max_other_currency_amount, base_currency_amount, share)
+					}
+				};
 
-			Self::deposit_calculate_interest(other_currency_id, &who, share_increment);
-			<TotalShares<T>>::mutate(other_currency_id, |share| *share = share.saturating_add(share_increment));
-			<Shares<T>>::mutate(other_currency_id, &who, |share| *share = share.saturating_add(share_increment));
-			LiquidityPool::mutate(other_currency_id, |pool| {
-				*pool = (pool.0.saturating_add(other_currency_increment), pool.1.saturating_add(base_currency_increment));
-			});
-			Self::deposit_event(RawEvent::AddLiquidity(
-				who,
-				other_currency_id,
-				other_currency_increment,
-				base_currency_increment,
-				share_increment,
-			));
+				ensure!(
+					!share_increment.is_zero() && !other_currency_increment.is_zero() && !base_currency_increment.is_zero(),
+					Error::<T>::InvalidLiquidityIncrement,
+				);
+
+				T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)?;
+				T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_increment)?;
+
+				Self::deposit_calculate_interest(other_currency_id, &who, share_increment);
+				<TotalShares<T>>::mutate(other_currency_id, |share| *share = share.saturating_add(share_increment));
+				<Shares<T>>::mutate(other_currency_id, &who, |share| *share = share.saturating_add(share_increment));
+				LiquidityPool::mutate(other_currency_id, |pool| {
+					*pool = (pool.0.saturating_add(other_currency_increment), pool.1.saturating_add(base_currency_increment));
+				});
+				Self::deposit_event(RawEvent::AddLiquidity(
+					who,
+					other_currency_id,
+					other_currency_increment,
+					base_currency_increment,
+					share_increment,
+				));
+
+				Ok(())
+			})?;
 		}
 
 		/// Withdraw liquidity from specific liquidity pool in the form of burning shares, and withdrawing currencies in trading pairs
@@ -369,44 +360,42 @@ decl_module! {
 		/// # </weight>
 		#[weight = 72 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
-			let who = ensure_signed(origin)?;
-			let base_currency_id = T::GetBaseCurrencyId::get();
-			ensure!(
-				T::EnabledCurrencyIds::get().contains(&currency_id),
-				Error::<T>::CurrencyIdNotAllowed,
-			);
-			ensure!(
-				Self::shares(currency_id, &who) >= share_amount && !share_amount.is_zero(),
-				Error::<T>::ShareNotEnough,
-			);
+			with_transaction_result(|| -> DispatchResult {
+				let who = ensure_signed(origin)?;
+				let base_currency_id = T::GetBaseCurrencyId::get();
+				ensure!(
+					T::EnabledCurrencyIds::get().contains(&currency_id),
+					Error::<T>::CurrencyIdNotAllowed,
+				);
+				ensure!(
+					Self::shares(currency_id, &who) >= share_amount && !share_amount.is_zero(),
+					Error::<T>::ShareNotEnough,
+				);
 
-			let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(currency_id);
-			let proportion = Ratio::checked_from_rational(share_amount, Self::total_shares(currency_id)).unwrap_or_default();
-			let withdraw_other_currency_amount = proportion.saturating_mul_int(other_currency_pool);
-			let withdraw_base_currency_amount = proportion.saturating_mul_int(base_currency_pool);
-			if !withdraw_other_currency_amount.is_zero() {
-				T::Currency::transfer(currency_id, &Self::account_id(), &who, withdraw_other_currency_amount)
-				.expect("never failed because after checks");
-			}
-			if !withdraw_base_currency_amount.is_zero() {
-				T::Currency::transfer(base_currency_id, &Self::account_id(), &who, withdraw_base_currency_amount)
-				.expect("never failed because after checks");
-			}
+				let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(currency_id);
+				let proportion = Ratio::checked_from_rational(share_amount, Self::total_shares(currency_id)).unwrap_or_default();
+				let withdraw_other_currency_amount = proportion.saturating_mul_int(other_currency_pool);
+				let withdraw_base_currency_amount = proportion.saturating_mul_int(base_currency_pool);
+				T::Currency::transfer(currency_id, &Self::account_id(), &who, withdraw_other_currency_amount)?;
+				T::Currency::transfer(base_currency_id, &Self::account_id(), &who, withdraw_base_currency_amount)?;
 
-			Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
-			<TotalShares<T>>::mutate(currency_id, |share| *share = share.saturating_sub(share_amount));
-			<Shares<T>>::mutate(currency_id, &who, |share| *share = share.saturating_sub(share_amount));
-			LiquidityPool::mutate(currency_id, |pool| {
-				*pool = (pool.0.saturating_sub(withdraw_other_currency_amount), pool.1.saturating_sub(withdraw_base_currency_amount));
-			});
+				Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
+				<TotalShares<T>>::mutate(currency_id, |share| *share = share.saturating_sub(share_amount));
+				<Shares<T>>::mutate(currency_id, &who, |share| *share = share.saturating_sub(share_amount));
+				LiquidityPool::mutate(currency_id, |pool| {
+					*pool = (pool.0.saturating_sub(withdraw_other_currency_amount), pool.1.saturating_sub(withdraw_base_currency_amount));
+				});
 
-			Self::deposit_event(RawEvent::WithdrawLiquidity(
-				who,
-				currency_id,
-				withdraw_other_currency_amount,
-				withdraw_base_currency_amount,
-				share_amount,
-			));
+				Self::deposit_event(RawEvent::WithdrawLiquidity(
+					who,
+					currency_id,
+					withdraw_other_currency_amount,
+					withdraw_base_currency_amount,
+					share_amount,
+				));
+
+				Ok(())
+			})?;
 		}
 
 		/// Accumalte liquidity incentive interest to respective reward pool when block end
@@ -493,45 +482,39 @@ impl<T: Trait> Module<T> {
 		other_currency_amount: Balance,
 		acceptable_base_currency_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		// ensure supply amount must > 0 and account has sufficient balance
-		ensure!(
-			!other_currency_amount.is_zero()
-				&& T::Currency::ensure_can_withdraw(other_currency_id, &who, other_currency_amount).is_ok(),
-			Error::<T>::AmountNotEnough,
-		);
+		with_transaction_result(|| -> sp_std::result::Result<Balance, DispatchError> {
+			// calculate the base currency amount can get
+			let base_currency_id = T::GetBaseCurrencyId::get();
+			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
+			let base_currency_amount =
+				Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, other_currency_amount);
 
-		// calculate the base currency amount can get
-		let base_currency_id = T::GetBaseCurrencyId::get();
-		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
-		let base_currency_amount =
-			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, other_currency_amount);
-
-		// ensure the amount can get is not 0 and >= minium acceptable
-		ensure!(
-			!base_currency_amount.is_zero() && base_currency_amount >= acceptable_base_currency_amount,
-			Error::<T>::InacceptablePrice,
-		);
-
-		// transfer token between account and dex and update liquidity pool
-		T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_amount)
-			.expect("never failed because after checks");
-		T::Currency::transfer(base_currency_id, &Self::account_id(), &who, base_currency_amount)
-			.expect("never failed because after checks");
-		LiquidityPool::mutate(other_currency_id, |pool| {
-			*pool = (
-				pool.0.saturating_add(other_currency_amount),
-				pool.1.saturating_sub(base_currency_amount),
+			// ensure the amount can get is not 0 and >= minium acceptable
+			ensure!(
+				!base_currency_amount.is_zero() && base_currency_amount >= acceptable_base_currency_amount,
+				Error::<T>::InacceptablePrice,
 			);
-		});
 
-		Self::deposit_event(RawEvent::Swap(
-			who,
-			other_currency_id,
-			other_currency_amount,
-			base_currency_id,
-			base_currency_amount,
-		));
-		Ok(base_currency_amount)
+			// transfer token between account and dex and update liquidity pool
+			T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_amount)?;
+			T::Currency::transfer(base_currency_id, &Self::account_id(), &who, base_currency_amount)?;
+
+			LiquidityPool::mutate(other_currency_id, |pool| {
+				*pool = (
+					pool.0.saturating_add(other_currency_amount),
+					pool.1.saturating_sub(base_currency_amount),
+				);
+			});
+
+			Self::deposit_event(RawEvent::Swap(
+				who,
+				other_currency_id,
+				other_currency_amount,
+				base_currency_id,
+				base_currency_amount,
+			));
+			Ok(base_currency_amount)
+		})
 	}
 
 	// use base currency to swap other currency
@@ -541,40 +524,34 @@ impl<T: Trait> Module<T> {
 		base_currency_amount: Balance,
 		acceptable_other_currency_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		let base_currency_id = T::GetBaseCurrencyId::get();
-		ensure!(
-			!base_currency_amount.is_zero()
-				&& T::Currency::ensure_can_withdraw(base_currency_id, &who, base_currency_amount).is_ok(),
-			Error::<T>::AmountNotEnough,
-		);
-
-		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
-		let other_currency_amount =
-			Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, base_currency_amount);
-		ensure!(
-			!other_currency_amount.is_zero() && other_currency_amount >= acceptable_other_currency_amount,
-			Error::<T>::InacceptablePrice,
-		);
-
-		T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_amount)
-			.expect("never failed because after checks");
-		T::Currency::transfer(other_currency_id, &Self::account_id(), &who, other_currency_amount)
-			.expect("never failed because after checks");
-		LiquidityPool::mutate(other_currency_id, |pool| {
-			*pool = (
-				pool.0.saturating_sub(other_currency_amount),
-				pool.1.saturating_add(base_currency_amount),
+		with_transaction_result(|| -> sp_std::result::Result<Balance, DispatchError> {
+			let base_currency_id = T::GetBaseCurrencyId::get();
+			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
+			let other_currency_amount =
+				Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, base_currency_amount);
+			ensure!(
+				!other_currency_amount.is_zero() && other_currency_amount >= acceptable_other_currency_amount,
+				Error::<T>::InacceptablePrice,
 			);
-		});
 
-		Self::deposit_event(RawEvent::Swap(
-			who,
-			base_currency_id,
-			base_currency_amount,
-			other_currency_id,
-			other_currency_amount,
-		));
-		Ok(other_currency_amount)
+			T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_amount)?;
+			T::Currency::transfer(other_currency_id, &Self::account_id(), &who, other_currency_amount)?;
+			LiquidityPool::mutate(other_currency_id, |pool| {
+				*pool = (
+					pool.0.saturating_sub(other_currency_amount),
+					pool.1.saturating_add(base_currency_amount),
+				);
+			});
+
+			Self::deposit_event(RawEvent::Swap(
+				who,
+				base_currency_id,
+				base_currency_amount,
+				other_currency_id,
+				other_currency_amount,
+			));
+			Ok(other_currency_amount)
+		})
 	}
 
 	// use other currency to swap another other currency
@@ -585,66 +562,62 @@ impl<T: Trait> Module<T> {
 		target_other_currency_id: CurrencyId,
 		acceptable_target_other_currency_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		ensure!(
-			!supply_other_currency_amount.is_zero()
-				&& T::Currency::ensure_can_withdraw(supply_other_currency_id, &who, supply_other_currency_amount)
-					.is_ok(),
-			Error::<T>::AmountNotEnough,
-		);
-
-		let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_other_currency_id);
-		let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
-			supply_other_currency_pool,
-			supply_base_currency_pool,
-			supply_other_currency_amount,
-		);
-		let (target_other_currency_pool, target_base_currency_pool) = Self::liquidity_pool(target_other_currency_id);
-		let target_other_currency_amount = Self::calculate_swap_target_amount(
-			target_base_currency_pool,
-			target_other_currency_pool,
-			intermediate_base_currency_amount,
-		);
-		ensure!(
-			!target_other_currency_amount.is_zero()
-				&& target_other_currency_amount >= acceptable_target_other_currency_amount,
-			Error::<T>::InacceptablePrice,
-		);
-
-		T::Currency::transfer(
-			supply_other_currency_id,
-			&who,
-			&Self::account_id(),
-			supply_other_currency_amount,
-		)
-		.expect("never failed because after checks");
-		T::Currency::transfer(
-			target_other_currency_id,
-			&Self::account_id(),
-			&who,
-			target_other_currency_amount,
-		)
-		.expect("never failed because after checks");
-		LiquidityPool::mutate(supply_other_currency_id, |pool| {
-			*pool = (
-				pool.0.saturating_add(supply_other_currency_amount),
-				pool.1.saturating_sub(intermediate_base_currency_amount),
+		with_transaction_result(|| -> sp_std::result::Result<Balance, DispatchError> {
+			let (supply_other_currency_pool, supply_base_currency_pool) =
+				Self::liquidity_pool(supply_other_currency_id);
+			let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
+				supply_other_currency_pool,
+				supply_base_currency_pool,
+				supply_other_currency_amount,
 			);
-		});
-		LiquidityPool::mutate(target_other_currency_id, |pool| {
-			*pool = (
-				pool.0.saturating_sub(target_other_currency_amount),
-				pool.1.saturating_add(intermediate_base_currency_amount),
+			let (target_other_currency_pool, target_base_currency_pool) =
+				Self::liquidity_pool(target_other_currency_id);
+			let target_other_currency_amount = Self::calculate_swap_target_amount(
+				target_base_currency_pool,
+				target_other_currency_pool,
+				intermediate_base_currency_amount,
 			);
-		});
+			ensure!(
+				!target_other_currency_amount.is_zero()
+					&& target_other_currency_amount >= acceptable_target_other_currency_amount,
+				Error::<T>::InacceptablePrice,
+			);
 
-		Self::deposit_event(RawEvent::Swap(
-			who,
-			supply_other_currency_id,
-			supply_other_currency_amount,
-			target_other_currency_id,
-			target_other_currency_amount,
-		));
-		Ok(target_other_currency_amount)
+			T::Currency::transfer(
+				supply_other_currency_id,
+				&who,
+				&Self::account_id(),
+				supply_other_currency_amount,
+			)?;
+			T::Currency::transfer(
+				target_other_currency_id,
+				&Self::account_id(),
+				&who,
+				target_other_currency_amount,
+			)?;
+
+			LiquidityPool::mutate(supply_other_currency_id, |pool| {
+				*pool = (
+					pool.0.saturating_add(supply_other_currency_amount),
+					pool.1.saturating_sub(intermediate_base_currency_amount),
+				);
+			});
+			LiquidityPool::mutate(target_other_currency_id, |pool| {
+				*pool = (
+					pool.0.saturating_sub(target_other_currency_amount),
+					pool.1.saturating_add(intermediate_base_currency_amount),
+				);
+			});
+
+			Self::deposit_event(RawEvent::Swap(
+				who,
+				supply_other_currency_id,
+				supply_other_currency_amount,
+				target_other_currency_id,
+				target_other_currency_amount,
+			));
+			Ok(target_other_currency_amount)
+		})
 	}
 
 	// get the minimum amount of supply currency needed for the target currency amount

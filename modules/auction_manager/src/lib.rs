@@ -22,6 +22,7 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::{Auction, AuctionHandler, AuctionInfo, Change, MultiCurrency, OnNewBidResult};
+use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
@@ -32,7 +33,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
+	DispatchError, DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
 };
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -174,6 +175,8 @@ decl_error! {
 		InvalidFeedPrice,
 		/// Must after system shutdown
 		MustAfterShutdown,
+		/// Bid price is invalid
+		InvalidBidPrice,
 	}
 }
 
@@ -500,63 +503,66 @@ impl<T: Trait> Module<T> {
 		id: AuctionIdOf<T>,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
-	) -> OnNewBidResult<T::BlockNumber> {
-		if let Some(mut collateral_auction) = Self::collateral_auctions(id) {
-			// get last bid price, if these's no bid set 0
-			let last_bid_price: Balance = match last_bid {
-				None => Zero::zero(),
-				Some((_, price)) => price,
-			};
+	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+			<CollateralAuctions<T>>::try_mutate_exists(
+				id,
+				|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+					let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExsits)?;
 
-			let stable_currency_id = T::GetStableCurrencyId::get();
-			let mut payment = sp_std::cmp::min(collateral_auction.target, new_bid.1);
+					// get last bid price, if these's no bid set 0
+					let last_bid_price: Balance = match last_bid {
+						None => Zero::zero(),
+						Some((_, price)) => price,
+					};
 
-			// check new price is larger than minimum increment and new bidder has enough stable coin
-			if Self::check_minimum_increment(
-				new_bid.1,
-				last_bid_price,
-				collateral_auction.target,
-				Self::get_minimum_increment_size(now, collateral_auction.start_time),
-			) && T::Currency::ensure_can_withdraw(stable_currency_id, &new_bid.0, payment).is_ok()
-			{
-				// increase account ref of new bidder
-				system::Module::<T>::inc_ref(&new_bid.0);
+					let stable_currency_id = T::GetStableCurrencyId::get();
+					let mut payment = sp_std::cmp::min(collateral_auction.target, new_bid.1);
 
-				// if these's bid before, return stablecoin from new bidder to last bidder
-				if let Some((last_bidder, last_price)) = last_bid {
-					let refund = sp_std::cmp::min(last_price, collateral_auction.target);
-					T::Currency::transfer(stable_currency_id, &new_bid.0, &last_bidder, refund)
-						.expect("never failed after balance check");
+					// ensure new bid price is great than minimun increment
+					ensure!(
+						Self::check_minimum_increment(
+							new_bid.1,
+							last_bid_price,
+							collateral_auction.target,
+							Self::get_minimum_increment_size(now, collateral_auction.start_time),
+						),
+						Error::<T>::InvalidBidPrice
+					);
 
-					// decrease account ref of last bidder
-					system::Module::<T>::dec_ref(&last_bidder);
+					// increase account ref of new bidder
+					system::Module::<T>::inc_ref(&new_bid.0);
 
-					payment -= refund;
-				}
+					// if these's bid before, return stablecoin from new bidder to last bidder
+					if let Some((last_bidder, last_price)) = last_bid {
+						let refund = sp_std::cmp::min(last_price, collateral_auction.target);
+						T::Currency::transfer(stable_currency_id, &new_bid.0, &last_bidder, refund)?;
 
-				if !payment.is_zero() {
-					// transfer stablecoin from new bidder to cdp treasury
-					T::CDPTreasury::transfer_surplus_from(&new_bid.0, payment)
-						.expect("never failed after balance check");
-				}
+						// decrease account ref of last bidder
+						system::Module::<T>::dec_ref(&last_bidder);
 
-				// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
-				if new_bid.1 > collateral_auction.target {
-					let new_collateral_amount = Rate::checked_from_rational(
-						sp_std::cmp::max(last_bid_price, collateral_auction.target),
-						new_bid.1,
-					)
-					.and_then(|n| n.checked_mul_int(collateral_auction.amount))
-					.unwrap_or(collateral_auction.amount);
-					let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
+						payment -= refund;
+					}
 
-					if T::CDPTreasury::transfer_collateral_to(
-						collateral_auction.currency_id,
-						&(collateral_auction.refund_recipient),
-						deduct_collateral_amount,
-					)
-					.is_ok()
-					{
+					// transfer remain payment from new bidder to cdp treasury
+					T::CDPTreasury::transfer_surplus_from(&new_bid.0, payment)?;
+
+					// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
+					if new_bid.1 > collateral_auction.target {
+						let new_collateral_amount = Rate::checked_from_rational(
+							sp_std::cmp::max(last_bid_price, collateral_auction.target),
+							new_bid.1,
+						)
+						.and_then(|n| n.checked_mul_int(collateral_auction.amount))
+						.unwrap_or(collateral_auction.amount);
+						let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
+
+						T::CDPTreasury::transfer_collateral_to(
+							collateral_auction.currency_id,
+							&(collateral_auction.refund_recipient),
+							deduct_collateral_amount,
+						)?;
+
 						// update collateral auction when refund collateral to refund recipient success
 						TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
 							*balance = balance.saturating_sub(deduct_collateral_amount)
@@ -564,21 +570,11 @@ impl<T: Trait> Module<T> {
 						collateral_auction.amount = new_collateral_amount;
 						<CollateralAuctions<T>>::insert(id, collateral_auction.clone());
 					}
-				}
 
-				return OnNewBidResult {
-					accept_bid: true,
-					auction_end_change: Change::NewValue(Some(
-						now + Self::get_auction_time_to_close(now, collateral_auction.start_time),
-					)),
-				};
-			}
-		}
-
-		OnNewBidResult {
-			accept_bid: false,
-			auction_end_change: Change::NoChange,
-		}
+					Ok(now + Self::get_auction_time_to_close(now, collateral_auction.start_time))
+				},
+			)
+		})
 	}
 
 	pub fn debit_auction_bid_handler(
@@ -586,61 +582,56 @@ impl<T: Trait> Module<T> {
 		id: AuctionIdOf<T>,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
-	) -> OnNewBidResult<T::BlockNumber> {
-		if let Some(mut debit_auction) = Self::debit_auctions(id) {
-			let last_price: Balance = match last_bid {
-				None => Zero::zero(),
-				Some((_, price)) => price,
-			};
-			let stable_currency_id = T::GetStableCurrencyId::get();
+	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+			<DebitAuctions<T>>::try_mutate_exists(
+				id,
+				|debit_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+					let mut debit_auction = debit_auction.as_mut().ok_or(Error::<T>::AuctionNotExsits)?;
+					let last_price: Balance = match last_bid {
+						None => Zero::zero(),
+						Some((_, price)) => price,
+					};
+					let stable_currency_id = T::GetStableCurrencyId::get();
 
-			if Self::check_minimum_increment(
-				new_bid.1,
-				last_price,
-				debit_auction.fix,
-				Self::get_minimum_increment_size(now, debit_auction.start_time),
-			) && new_bid.1 >= debit_auction.fix
-				&& T::Currency::ensure_can_withdraw(stable_currency_id, &new_bid.0, debit_auction.fix).is_ok()
-			{
-				if let Some((last_bidder, _)) = last_bid {
-					// these's bid before, transfer the stablecoin from new bidder to last bidder
-					T::Currency::transfer(stable_currency_id, &new_bid.0, &last_bidder, debit_auction.fix)
-						.expect("never failed after balance check");
+					ensure!(
+						Self::check_minimum_increment(
+							new_bid.1,
+							last_price,
+							debit_auction.fix,
+							Self::get_minimum_increment_size(now, debit_auction.start_time),
+						) && new_bid.1 >= debit_auction.fix,
+						Error::<T>::InvalidBidPrice,
+					);
 
-					// decrease account ref of last bidder
-					system::Module::<T>::dec_ref(&last_bidder);
-				} else {
-					// these's no bid before, transfer stablecoin to cdp treasury
-					T::CDPTreasury::transfer_surplus_from(&new_bid.0, debit_auction.fix)
-						.expect("never failed after balance check");
-				}
+					if let Some((last_bidder, _)) = last_bid {
+						// these's bid before, transfer the stablecoin from new bidder to last bidder
+						T::Currency::transfer(stable_currency_id, &new_bid.0, &last_bidder, debit_auction.fix)?;
 
-				// increase account ref of bidder
-				system::Module::<T>::inc_ref(&new_bid.0);
+						// decrease account ref of last bidder
+						system::Module::<T>::dec_ref(&last_bidder);
+					} else {
+						// these's no bid before, transfer stablecoin to cdp treasury
+						T::CDPTreasury::transfer_surplus_from(&new_bid.0, debit_auction.fix)?;
+					}
 
-				// if bid price is more than fix
-				// calculate new amount of issue native token
-				if new_bid.1 > debit_auction.fix {
-					debit_auction.amount =
-						Rate::checked_from_rational(sp_std::cmp::max(last_price, debit_auction.fix), new_bid.1)
-							.and_then(|n| n.checked_mul_int(debit_auction.amount))
-							.unwrap_or(debit_auction.amount);
-					<DebitAuctions<T>>::insert(id, debit_auction.clone());
-				}
+					// increase account ref of bidder
+					system::Module::<T>::inc_ref(&new_bid.0);
 
-				return OnNewBidResult {
-					accept_bid: true,
-					auction_end_change: Change::NewValue(Some(
-						now + Self::get_auction_time_to_close(now, debit_auction.start_time),
-					)),
-				};
-			}
-		}
+					// if bid price is more than fix
+					// calculate new amount of issue native token
+					if new_bid.1 > debit_auction.fix {
+						debit_auction.amount =
+							Rate::checked_from_rational(sp_std::cmp::max(last_price, debit_auction.fix), new_bid.1)
+								.and_then(|n| n.checked_mul_int(debit_auction.amount))
+								.unwrap_or(debit_auction.amount);
+						<DebitAuctions<T>>::insert(id, debit_auction.clone());
+					}
 
-		OnNewBidResult {
-			accept_bid: false,
-			auction_end_change: Change::NoChange,
-		}
+					Ok(now + Self::get_auction_time_to_close(now, debit_auction.start_time))
+				},
+			)
+		})
 	}
 
 	pub fn surplus_auction_bid_handler(
@@ -648,55 +639,44 @@ impl<T: Trait> Module<T> {
 		id: AuctionIdOf<T>,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
-	) -> OnNewBidResult<T::BlockNumber> {
-		if let Some(surplus_auction) = Self::surplus_auctions(id) {
+	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+			let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExsits)?;
 			let last_price: Balance = match last_bid {
 				None => Zero::zero(),
 				Some((_, price)) => price,
 			};
 			let native_currency_id = T::GetNativeCurrencyId::get();
 
-			// check new price is larger than minimum increment and new bidder has enough native token
-			if Self::check_minimum_increment(
-				new_bid.1,
-				last_price,
-				Zero::zero(),
-				Self::get_minimum_increment_size(now, surplus_auction.start_time),
-			) && T::Currency::ensure_can_withdraw(native_currency_id, &new_bid.0, new_bid.1).is_ok()
-				&& !new_bid.1.is_zero()
-			{
-				let mut burn_native_currency_amount = new_bid.1;
+			ensure!(
+				Self::check_minimum_increment(
+					new_bid.1,
+					last_price,
+					Zero::zero(),
+					Self::get_minimum_increment_size(now, surplus_auction.start_time),
+				) && !new_bid.1.is_zero(),
+				Error::<T>::InvalidBidPrice,
+			);
 
-				// if these's bid before, transfer the stablecoin from auction manager module to last bidder
-				if let Some((last_bidder, last_price)) = last_bid {
-					burn_native_currency_amount = burn_native_currency_amount.saturating_sub(last_price);
-					T::Currency::transfer(native_currency_id, &new_bid.0, &last_bidder, last_price)
-						.expect("never failed after balance check");
+			let mut burn_native_currency_amount = new_bid.1;
 
-					// decrease account ref of last bidder
-					system::Module::<T>::dec_ref(&last_bidder);
-				}
+			// if these's bid before, transfer the stablecoin from auction manager module to last bidder
+			if let Some((last_bidder, last_price)) = last_bid {
+				burn_native_currency_amount = burn_native_currency_amount.saturating_sub(last_price);
+				T::Currency::transfer(native_currency_id, &new_bid.0, &last_bidder, last_price)?;
 
-				// burn remain native token from new bidder
-				T::Currency::withdraw(native_currency_id, &new_bid.0, burn_native_currency_amount)
-					.expect("never failed after balance check");
-
-				// increase account ref of bidder
-				system::Module::<T>::inc_ref(&new_bid.0);
-
-				return OnNewBidResult {
-					accept_bid: true,
-					auction_end_change: Change::NewValue(Some(
-						now + Self::get_auction_time_to_close(now, surplus_auction.start_time),
-					)),
-				};
+				// decrease account ref of last bidder
+				system::Module::<T>::dec_ref(&last_bidder);
 			}
-		}
 
-		OnNewBidResult {
-			accept_bid: false,
-			auction_end_change: Change::NoChange,
-		}
+			// burn remain native token from new bidder
+			T::Currency::withdraw(native_currency_id, &new_bid.0, burn_native_currency_amount)?;
+
+			// increase account ref of bidder
+			system::Module::<T>::inc_ref(&new_bid.0);
+
+			Ok(now + Self::get_auction_time_to_close(now, surplus_auction.start_time))
+		})
 	}
 
 	pub fn collateral_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
@@ -844,17 +824,23 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionIdOf
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> OnNewBidResult<T::BlockNumber> {
-		if <CollateralAuctions<T>>::contains_key(id) {
+		match if <CollateralAuctions<T>>::contains_key(id) {
 			Self::collateral_auction_bid_handler(now, id, new_bid, last_bid)
 		} else if <DebitAuctions<T>>::contains_key(id) {
 			Self::debit_auction_bid_handler(now, id, new_bid, last_bid)
 		} else if <SurplusAuctions<T>>::contains_key(id) {
 			Self::surplus_auction_bid_handler(now, id, new_bid, last_bid)
 		} else {
-			OnNewBidResult {
+			Err(Error::<T>::AuctionNotExsits.into())
+		} {
+			Ok(new_auction_endtime) => OnNewBidResult {
+				accept_bid: true,
+				auction_end_change: Change::NewValue(Some(new_auction_endtime)),
+			},
+			Err(_) => OnNewBidResult {
 				accept_bid: false,
 				auction_end_change: Change::NoChange,
-			}
+			},
 		}
 	}
 
