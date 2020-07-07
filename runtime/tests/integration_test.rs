@@ -377,7 +377,7 @@ fn test_dex_module() {
 
 			assert_noop!(
 				DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), CurrencyId::XBTC, 0, 10000000),
-				module_dex::Error::<Runtime>::InvalidAmount,
+				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 
 			assert_ok!(DexModule::add_liquidity(

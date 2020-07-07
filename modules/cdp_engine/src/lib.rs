@@ -19,6 +19,7 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::Change;
+use orml_utilities::with_transaction_result;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
@@ -631,68 +632,67 @@ impl<T: Trait> Module<T> {
 
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyId) -> DispatchResult {
-		let debit_balance = <loans::Module<T>>::debits(currency_id, &who);
-		let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
-		let stable_currency_id = T::GetStableCurrencyId::get();
+		with_transaction_result(|| -> DispatchResult {
+			let debit_balance = <loans::Module<T>>::debits(currency_id, &who);
+			let collateral_balance = <loans::Module<T>>::collaterals(&who, currency_id);
+			let stable_currency_id = T::GetStableCurrencyId::get();
 
-		// ensure the cdp is unsafe
-		ensure!(Self::is_cdp_unsafe(currency_id, &who), Error::<T>::MustBeUnsafe);
+			// ensure the cdp is unsafe
+			ensure!(Self::is_cdp_unsafe(currency_id, &who), Error::<T>::MustBeUnsafe);
 
-		// confiscate all collateral and debit of unsafe cdp to cdp treasury
-		<loans::Module<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral_balance, debit_balance)?;
+			// confiscate all collateral and debit of unsafe cdp to cdp treasury
+			<loans::Module<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral_balance, debit_balance)?;
 
-		let bad_debt_value = Self::get_debit_value(currency_id, debit_balance);
-		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
-		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
+			let bad_debt_value = Self::get_debit_value(currency_id, debit_balance);
+			let target_stable_amount =
+				Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
+			let supply_collateral_amount =
+				T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 
-		// if collateral_balance can swap enough native token in DEX and exchange slippage is blow the limit,
-		// directly exchange with DEX, otherwise create collateral auctions.
-		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
-			&& collateral_balance >= supply_collateral_amount									// ensure have sufficient collateral
-			&& T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount).map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
-		// slippage is acceptable
-		{
-			LiquidationStrategy::Exchange
-		} else {
-			LiquidationStrategy::Auction
-		};
+			// if collateral_balance can swap enough native token in DEX and exchange slippage is blow the limit,
+			// directly exchange with DEX, otherwise create collateral auctions.
+			let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
+				&& collateral_balance >= supply_collateral_amount									// ensure have sufficient collateral
+				&& T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount).map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
+			// slippage is acceptable
+			{
+				LiquidationStrategy::Exchange
+			} else {
+				LiquidationStrategy::Auction
+			};
 
-		match liquidation_strategy {
-			LiquidationStrategy::Exchange => {
-				if <T as Trait>::CDPTreasury::swap_collateral_to_stable(
-					currency_id,
-					supply_collateral_amount,
-					target_stable_amount,
-				)
-				.is_ok()
-				{
+			match liquidation_strategy {
+				LiquidationStrategy::Exchange => {
+					<T as Trait>::CDPTreasury::swap_collateral_to_stable(
+						currency_id,
+						supply_collateral_amount,
+						target_stable_amount,
+					)?;
+
 					// refund remain collateral to CDP owner
 					let refund_collateral_amount = collateral_balance - supply_collateral_amount;
-					if !refund_collateral_amount.is_zero() {
-						<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_collateral_amount)
-							.expect("never failed");
-					}
+					<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_collateral_amount)?;
+				}
+				LiquidationStrategy::Auction => {
+					// create collateral auctions by cdp treasury
+					<T as Trait>::CDPTreasury::create_collateral_auctions(
+						currency_id,
+						collateral_balance,
+						target_stable_amount,
+						who.clone(),
+					);
 				}
 			}
-			LiquidationStrategy::Auction => {
-				// create collateral auctions by cdp treasury
-				<T as Trait>::CDPTreasury::create_collateral_auctions(
-					currency_id,
-					collateral_balance,
-					target_stable_amount,
-					who.clone(),
-				);
-			}
-		}
 
-		Self::deposit_event(RawEvent::LiquidateUnsafeCDP(
-			currency_id,
-			who,
-			collateral_balance,
-			bad_debt_value,
-			liquidation_strategy,
-		));
-		Ok(())
+			Self::deposit_event(RawEvent::LiquidateUnsafeCDP(
+				currency_id,
+				who,
+				collateral_balance,
+				bad_debt_value,
+				liquidation_strategy,
+			));
+			Ok(())
+		})
 	}
 }
 

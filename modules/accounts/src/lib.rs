@@ -20,6 +20,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed, AccountInfo};
 use orml_traits::{MultiCurrency, MultiLockableCurrency, MultiReservableCurrency, OnReceived};
+use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
@@ -177,53 +178,57 @@ decl_module! {
 		///					None means no recipient is specified.
 		#[weight = 0]
 		fn close_account(origin, recipient: Option<T::AccountId>) {
-			let who = ensure_signed(origin)?;
+			with_transaction_result(|| -> DispatchResult {
+				let who = ensure_signed(origin)?;
 
-			// check must allow death,
-			// if native/non-native currencies has locks, means ref_count shouldn't be zero, can not close the account.
-			ensure!(
-				<system::Module<T>>::allow_death(&who),
-				Error::<T>::NonZeroRefCount,
-			);
+				// check must allow death,
+				// if native/non-native currencies has locks, means ref_count shouldn't be zero, can not close the account.
+				ensure!(
+					<system::Module<T>>::allow_death(&who),
+					Error::<T>::NonZeroRefCount,
+				);
 
-			let native_currency_id = T::NativeCurrencyId::get();
-			let treasury_account = Self::treasury_account_id();
-			let recipient = recipient.unwrap_or_else(|| treasury_account.clone());
-			let total_reserved_native = <T as Trait>::Currency::reserved_balance(native_currency_id, &who);
+				let native_currency_id = T::NativeCurrencyId::get();
+				let treasury_account = Self::treasury_account_id();
+				let recipient = recipient.unwrap_or_else(|| treasury_account.clone());
+				let total_reserved_native = <T as Trait>::Currency::reserved_balance(native_currency_id, &who);
 
-			// unreserve all native currency
-			<T as Trait>::Currency::unreserve(native_currency_id, &who, total_reserved_native);
+				// unreserve all native currency
+				<T as Trait>::Currency::unreserve(native_currency_id, &who, total_reserved_native);
 
-			// The reserved exclude `NewAccountDeposit` should be refund to `TreasuryModuleId`.
-			if let Some(refund_to_treasury_reserved) = total_reserved_native.checked_sub(T::NewAccountDeposit::get()) {
-				// transfer refund to treasury seperately if recipient is not spcified.
-				if treasury_account != recipient {
-					<T as Trait>::Currency::transfer(native_currency_id, &who, &treasury_account, refund_to_treasury_reserved)?;
-				}
-			}
-
-			// transfer all free to recipient
-			<T as Trait>::Currency::transfer(native_currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(native_currency_id, &who))?;
-
-			// handle other non-native currencies
-			for currency_id in T::AllNonNativeCurrencyIds::get() {
-				let reserved = <T as Trait>::Currency::reserved_balance(currency_id, &who);
-				if !reserved.is_zero() {
-					// unreserve all reserved
-					<T as Trait>::Currency::unreserve(currency_id, &who, reserved);
-
-					// transfer reserved amount to treasury_account seperately if the recipient is not specified
+				// The reserved exclude `NewAccountDeposit` should be refund to `TreasuryModuleId`.
+				if let Some(refund_to_treasury_reserved) = total_reserved_native.checked_sub(T::NewAccountDeposit::get()) {
+					// transfer refund to treasury seperately if recipient is not spcified.
 					if treasury_account != recipient {
-						let _ = <T as Trait>::Currency::transfer(currency_id, &who, &treasury_account, reserved);
+						<T as Trait>::Currency::transfer(native_currency_id, &who, &treasury_account, refund_to_treasury_reserved)?;
 					}
 				}
 
 				// transfer all free to recipient
-				let _ = <T as Trait>::Currency::transfer(currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(currency_id, &who));
-			}
+				<T as Trait>::Currency::transfer(native_currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(native_currency_id, &who))?;
 
-			// finally kill the account
-			T::KillAccount::happened(&who);
+				// handle other non-native currencies
+				for currency_id in T::AllNonNativeCurrencyIds::get() {
+					let reserved = <T as Trait>::Currency::reserved_balance(currency_id, &who);
+					if !reserved.is_zero() {
+						// unreserve all reserved
+						<T as Trait>::Currency::unreserve(currency_id, &who, reserved);
+
+						// transfer reserved amount to treasury_account seperately if the recipient is not specified
+						if treasury_account != recipient {
+							<T as Trait>::Currency::transfer(currency_id, &who, &treasury_account, reserved)?;
+						}
+					}
+
+					// transfer all free to recipient
+					<T as Trait>::Currency::transfer(currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(currency_id, &who))?;
+				}
+
+				// finally kill the account
+				T::KillAccount::happened(&who);
+
+				Ok(())
+			})?;
 		}
 	}
 }
