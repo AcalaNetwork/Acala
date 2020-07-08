@@ -16,7 +16,7 @@ sp-io = { version = "2.0.0-rc4", default-features = false }
 sp-runtime = { version = "2.0.0-rc4", default-features = false }
 sp-std = { version = "2.0.0-rc4", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
-utilities = { path = "../../utilities", default-features = false }
+utilities = { package = "module-utilities", path = "../utilities", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 
 [dev-dependencies]

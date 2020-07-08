@@ -19,7 +19,7 @@ sp-std = { version = "2.0.0-rc4", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 loans = { package = "module-loans", path = "../loans", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
-utilities = { path = "../../utilities", default-features = false }
+utilities = { package = "module-utilities", path = "../utilities", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0-rc4", default-features = false }
