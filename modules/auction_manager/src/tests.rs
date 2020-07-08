@@ -360,8 +360,9 @@ fn cancel_surplus_auction_work() {
 			AuctionManagerModule::on_new_bid(1, 0, (BOB, 500), None).accept_bid,
 			true
 		);
-		assert_ok!(AuctionManagerModule::cancel_surplus_auction(0));
 
+		AuctionManagerModule::on_emergency_shutdown();
+		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
 		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
 		assert!(System::events()
 			.iter()
@@ -390,8 +391,9 @@ fn cancel_debit_auction_work() {
 			true
 		);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
-		assert_ok!(AuctionManagerModule::cancel_debit_auction(0));
 
+		AuctionManagerModule::on_emergency_shutdown();
+		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
 		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
 		assert!(System::events()
 			.iter()
@@ -452,8 +454,8 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 80);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 
-		assert_ok!(AuctionManagerModule::cancel_collateral_auction(0));
-
+		AuctionManagerModule::on_emergency_shutdown();
+		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
 		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
 		assert!(System::events()
 			.iter()
