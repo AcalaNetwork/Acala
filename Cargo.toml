@@ -82,7 +82,6 @@ runtime-benchmarks = [
 [workspace]
 members = [
 	"modules/*",
-	"utilities",
 	"orml/auction",
 	"orml/authority",
 	"orml/benchmarking",

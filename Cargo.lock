@@ -2969,6 +2969,7 @@ dependencies = [
  "module-dex",
  "module-primitives",
  "module-support",
+ "module-utilities",
  "orml-auction",
  "orml-tokens",
  "orml-traits",
@@ -2980,7 +2981,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "utilities",
 ]
 
 [[package]]
@@ -3021,6 +3021,7 @@ dependencies = [
  "module-loans",
  "module-primitives",
  "module-support",
+ "module-utilities",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -3033,7 +3034,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "utilities",
 ]
 
 [[package]]
@@ -3418,6 +3418,17 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-utilities"
+version = "0.5.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
  "sp-io",
  "sp-runtime",
  "sp-std",
@@ -7948,17 +7959,6 @@ dependencies = [
  "idna 0.2.0",
  "matches",
  "percent-encoding 2.1.0",
-]
-
-[[package]]
-name = "utilities"
-version = "0.3.4"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
