@@ -265,9 +265,9 @@ decl_module! {
 		#[weight = (80 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
 			ensure_none(origin)?;
-			// ensure already shutdown
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
+			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
 		}
 
 		/// Start offchain worker in order to submit unsigned tx to cancel active auction after system shutdown.
@@ -365,7 +365,6 @@ impl<T: Trait> Module<T> {
 			// remove the auction info
 			T::Auction::remove_auction(id);
 
-			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
 			Ok(())
 		})
 	}
@@ -391,7 +390,6 @@ impl<T: Trait> Module<T> {
 			// remove the auction info
 			T::Auction::remove_auction(id);
 
-			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
 			Ok(())
 		})
 	}
@@ -447,7 +445,6 @@ impl<T: Trait> Module<T> {
 			// remove the auction info
 			T::Auction::remove_auction(id);
 
-			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
 			Ok(())
 		})
 	}
