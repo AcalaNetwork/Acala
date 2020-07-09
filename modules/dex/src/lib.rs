@@ -419,7 +419,12 @@ impl<T: Trait> Module<T> {
 		T::ModuleId::get().into_account()
 	}
 
-	fn calculate_swap_target_amount(supply_pool: Balance, target_pool: Balance, supply_amount: Balance) -> Balance {
+	fn calculate_swap_target_amount(
+		supply_pool: Balance,
+		target_pool: Balance,
+		supply_amount: Balance,
+		fee_rate: Rate,
+	) -> Balance {
 		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
 		let new_target_pool = supply_pool
 			.checked_add(supply_amount)
@@ -429,10 +434,10 @@ impl<T: Trait> Module<T> {
 
 		// new_target_pool should be more then 0
 		if !new_target_pool.is_zero() {
-			// actual can get = (target_pool - new_target_pool) * (1 - GetExchangeFee)
+			// actual can get = (target_pool - new_target_pool) * (1 - fee_rate)
 			target_pool
 				.checked_sub(new_target_pool)
-				.and_then(|n| n.checked_sub(T::GetExchangeFee::get().saturating_mul_int(n)))
+				.and_then(|n| n.checked_sub(fee_rate.saturating_mul_int(n)))
 				.unwrap_or_default()
 		} else {
 			Zero::zero()
@@ -440,14 +445,19 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Calculate how much supply token needed for swap specific target amount.
-	fn calculate_swap_supply_amount(supply_pool: Balance, target_pool: Balance, target_amount: Balance) -> Balance {
-		// new_target_pool = target_pool - target_amount / (1 - GetExchangeFee)
+	fn calculate_swap_supply_amount(
+		supply_pool: Balance,
+		target_pool: Balance,
+		target_amount: Balance,
+		fee_rate: Rate,
+	) -> Balance {
+		// new_target_pool = target_pool - target_amount / (1 - fee_rate)
 		// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
 		if target_amount.is_zero() {
 			Zero::zero()
 		} else {
 			Rate::one()
-				.checked_sub(&T::GetExchangeFee::get())
+				.checked_sub(&fee_rate)
 				.and_then(|n| n.reciprocal())
 				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
 				.and_then(|n| n.checked_mul_int(target_amount))
@@ -472,8 +482,12 @@ impl<T: Trait> Module<T> {
 		// calculate the base currency amount can get
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
-		let base_currency_amount =
-			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, other_currency_amount);
+		let base_currency_amount = Self::calculate_swap_target_amount(
+			other_currency_pool,
+			base_currency_pool,
+			other_currency_amount,
+			T::GetExchangeFee::get(),
+		);
 
 		// ensure the amount can get is not 0 and >= minium acceptable
 		ensure!(
@@ -502,8 +516,12 @@ impl<T: Trait> Module<T> {
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(other_currency_id);
-		let other_currency_amount =
-			Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, base_currency_amount);
+		let other_currency_amount = Self::calculate_swap_target_amount(
+			base_currency_pool,
+			other_currency_pool,
+			base_currency_amount,
+			T::GetExchangeFee::get(),
+		);
 		ensure!(
 			!other_currency_amount.is_zero() && other_currency_amount >= acceptable_other_currency_amount,
 			Error::<T>::InacceptablePrice,
@@ -527,17 +545,20 @@ impl<T: Trait> Module<T> {
 		target_other_currency_id: CurrencyId,
 		acceptable_target_other_currency_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
+		let fee_rate = T::GetExchangeFee::get();
 		let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_other_currency_id);
 		let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
 			supply_other_currency_pool,
 			supply_base_currency_pool,
 			supply_other_currency_amount,
+			fee_rate,
 		);
 		let (target_other_currency_pool, target_base_currency_pool) = Self::liquidity_pool(target_other_currency_id);
 		let target_other_currency_amount = Self::calculate_swap_target_amount(
 			target_base_currency_pool,
 			target_other_currency_pool,
 			intermediate_base_currency_amount,
+			fee_rate,
 		);
 		ensure!(
 			!target_other_currency_amount.is_zero()
@@ -621,26 +642,39 @@ impl<T: Trait> Module<T> {
 		target_currency_amount: Balance,
 	) -> Balance {
 		let base_currency_id = T::GetBaseCurrencyId::get();
+		let fee_rate = T::GetExchangeFee::get();
 		if supply_currency_id == target_currency_id {
 			Zero::zero()
 		} else if target_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(supply_currency_id);
-			Self::calculate_swap_supply_amount(other_currency_pool, base_currency_pool, target_currency_amount)
+			Self::calculate_swap_supply_amount(
+				other_currency_pool,
+				base_currency_pool,
+				target_currency_amount,
+				fee_rate,
+			)
 		} else if supply_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(target_currency_id);
-			Self::calculate_swap_supply_amount(base_currency_pool, other_currency_pool, target_currency_amount)
+			Self::calculate_swap_supply_amount(
+				base_currency_pool,
+				other_currency_pool,
+				target_currency_amount,
+				fee_rate,
+			)
 		} else {
 			let (target_other_currency_pool, target_base_currency_pool) = Self::liquidity_pool(target_currency_id);
 			let intermediate_base_currency_amount = Self::calculate_swap_supply_amount(
 				target_base_currency_pool,
 				target_other_currency_pool,
 				target_currency_amount,
+				fee_rate,
 			);
 			let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_currency_id);
 			Self::calculate_swap_supply_amount(
 				supply_other_currency_pool,
 				supply_base_currency_pool,
 				intermediate_base_currency_amount,
+				fee_rate,
 			)
 		}
 	}
@@ -653,26 +687,39 @@ impl<T: Trait> Module<T> {
 		supply_currency_amount: Balance,
 	) -> Balance {
 		let base_currency_id = T::GetBaseCurrencyId::get();
+		let fee_rate = T::GetExchangeFee::get();
 		if supply_currency_id == target_currency_id {
 			Zero::zero()
 		} else if target_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(supply_currency_id);
-			Self::calculate_swap_target_amount(other_currency_pool, base_currency_pool, supply_currency_amount)
+			Self::calculate_swap_target_amount(
+				other_currency_pool,
+				base_currency_pool,
+				supply_currency_amount,
+				fee_rate,
+			)
 		} else if supply_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(target_currency_id);
-			Self::calculate_swap_target_amount(base_currency_pool, other_currency_pool, supply_currency_amount)
+			Self::calculate_swap_target_amount(
+				base_currency_pool,
+				other_currency_pool,
+				supply_currency_amount,
+				fee_rate,
+			)
 		} else {
 			let (supply_other_currency_pool, supply_base_currency_pool) = Self::liquidity_pool(supply_currency_id);
 			let intermediate_base_currency_amount = Self::calculate_swap_target_amount(
 				supply_other_currency_pool,
 				supply_base_currency_pool,
 				supply_currency_amount,
+				fee_rate,
 			);
 			let (target_other_currency_pool, target_base_currency_pool) = Self::liquidity_pool(target_currency_id);
 			Self::calculate_swap_target_amount(
 				target_base_currency_pool,
 				target_other_currency_pool,
 				intermediate_base_currency_amount,
+				fee_rate,
 			)
 		}
 	}
