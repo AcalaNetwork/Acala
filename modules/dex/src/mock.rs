@@ -22,6 +22,7 @@ pub const AUSD: CurrencyId = CurrencyId::AUSD;
 pub const BTC: CurrencyId = CurrencyId::XBTC;
 pub const DOT: CurrencyId = CurrencyId::DOT;
 pub const ACA: CurrencyId = CurrencyId::ACA;
+pub const LDOT: CurrencyId = CurrencyId::LDOT;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
