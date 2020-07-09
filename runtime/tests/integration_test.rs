@@ -368,8 +368,6 @@ fn test_dex_module() {
 		.build()
 		.execute_with(|| {
 			SystemModule::set_block_number(1);
-			assert_eq!(DexModule::calculate_swap_target_amount(10000, 10000, 10000), 4995);
-			assert!(DexModule::calculate_swap_supply_amount(10000, 10000, 4995) >= 9996);
 
 			assert_eq!(DexModule::liquidity_pool(CurrencyId::XBTC), (0, 0));
 			assert_eq!(DexModule::total_shares(CurrencyId::XBTC), 0);

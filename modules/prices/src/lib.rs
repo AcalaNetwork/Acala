@@ -82,7 +82,6 @@ decl_module! {
 		#[weight = (10_000, DispatchClass::Operational)]
 		fn lock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::ensure_origin(origin)?;
-
 			<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
 		}
 
@@ -94,7 +93,6 @@ decl_module! {
 		#[weight = (10_000, DispatchClass::Operational)]
 		fn unlock_price(origin, currency_id: CurrencyId) {
 			T::LockOrigin::ensure_origin(origin)?;
-
 			<Module<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
 		}
 	}
