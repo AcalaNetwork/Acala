@@ -138,7 +138,7 @@ impl<T: Trait> Module<T> {
 				TryInto::<T::DebitAmount>::try_into(debit_decrease).map_err(|_| Error::<T>::AmountConvertFailed)?;
 
 			// transfer collateral to cdp treasury
-			T::CDPTreasury::transfer_collateral_from(currency_id, &Self::account_id(), collateral_confiscate)?;
+			T::CDPTreasury::deposit_collateral(&Self::account_id(), currency_id, collateral_confiscate)?;
 
 			// deposit debit to cdp treasury
 			let bad_debt_value = T::RiskManager::get_bad_debt_value(currency_id, debit_decrease);
@@ -184,18 +184,12 @@ impl<T: Trait> Module<T> {
 				// check debit cap when increase debit
 				T::RiskManager::check_debit_cap(currency_id, Self::total_debits(currency_id))?;
 
-				// update stable coin by Treasury
-				T::CDPTreasury::deposit_backed_debit_to(
-					who,
-					T::Convert::convert((currency_id, debit_balance_adjustment)),
-				)?;
+				// issue debit with collateral backed by cdp treasury
+				T::CDPTreasury::issue_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)), true)?;
 			} else if debit_adjustment.is_negative() {
 				// repay debit
-				// update stable coin by Treasury
-				T::CDPTreasury::withdraw_backed_debit_from(
-					who,
-					T::Convert::convert((currency_id, debit_balance_adjustment)),
-				)?;
+				// burn debit by cdp treasury
+				T::CDPTreasury::burn_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
 			}
 
 			// ensure pass risk check

@@ -157,36 +157,29 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 	fn get_total_collaterals(_: Self::CurrencyId) -> Self::Balance {
 		Default::default()
 	}
-
+	fn get_debit_proportion(_: Self::Balance) -> Ratio {
+		Default::default()
+	}
 	fn on_system_debit(_: Self::Balance) -> DispatchResult {
 		Ok(())
 	}
 	fn on_system_surplus(_: Self::Balance) -> DispatchResult {
 		Ok(())
 	}
-
-	fn deposit_backed_debit_to(_: &AccountId, _: Self::Balance) -> DispatchResult {
+	fn issue_debit(_: &AccountId, _: Self::Balance, _: bool) -> DispatchResult {
 		Ok(())
 	}
-	fn deposit_unbacked_debit_to(_: &AccountId, _: Self::Balance) -> DispatchResult {
+	fn burn_debit(_: &AccountId, _: Self::Balance) -> DispatchResult {
 		Ok(())
 	}
-	fn withdraw_backed_debit_from(_: &AccountId, _: Self::Balance) -> DispatchResult {
+	fn deposit_surplus(_: &AccountId, _: Self::Balance) -> DispatchResult {
 		Ok(())
 	}
-
-	fn transfer_surplus_from(_: &AccountId, _: Self::Balance) -> DispatchResult {
+	fn deposit_collateral(_: &AccountId, _: Self::CurrencyId, _: Self::Balance) -> DispatchResult {
 		Ok(())
 	}
-	fn transfer_collateral_to(_: Self::CurrencyId, _: &AccountId, _: Self::Balance) -> DispatchResult {
+	fn withdraw_collateral(_: &AccountId, _: Self::CurrencyId, _: Self::Balance) -> DispatchResult {
 		Ok(())
-	}
-	fn transfer_collateral_from(_: Self::CurrencyId, _: &AccountId, _: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn get_debit_proportion(_: Self::Balance) -> Ratio {
-		Default::default()
 	}
 }
 

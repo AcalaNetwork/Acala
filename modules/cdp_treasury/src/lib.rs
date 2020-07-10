@@ -32,7 +32,7 @@ pub trait Trait: system::Trait {
 	/// The origin which may update parameters. Root can always do this.
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-	/// The Currency for issuing/burning stable coin
+	/// The Currency for managing assets related to CDP
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 	/// Stablecoin currency id
@@ -75,8 +75,6 @@ decl_error! {
 		CollateralNotEnough,
 		/// Collateral Amount overflow
 		CollateralOverflow,
-		/// The amount of surplus pool is not enough
-		SurplusPoolNotEnough,
 		/// Surplus pool overflow
 		SurplusPoolOverflow,
 		/// debit pool overflow
@@ -261,7 +259,7 @@ impl<T: Trait> Module<T> {
 		T::ModuleId::get().into_account()
 	}
 
-	pub fn offset_surplus_and_debit() {
+	fn offset_surplus_and_debit() {
 		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
 
 		// burn the amount that is equal to offset amount of stable coin.
@@ -290,6 +288,11 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		Self::total_collaterals(id)
 	}
 
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
+		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
+		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
+	}
+
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult {
 		let new_debit_pool = Self::debit_pool()
 			.checked_add(amount)
@@ -307,46 +310,34 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		Ok(())
 	}
 
-	fn deposit_backed_debit_to(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount)
+	fn issue_debit(who: &T::AccountId, debit: Self::Balance, backed: bool) -> DispatchResult {
+		// increase the debit of same amount to cdp treasury for debit without any assets backed
+		if !backed {
+			let new_debit_pool = Self::debit_pool()
+				.checked_add(debit)
+				.ok_or(Error::<T>::DebitPoolOverflow)?;
+			T::Currency::deposit(T::GetStableCurrencyId::get(), who, debit)?;
+			DebitPool::put(new_debit_pool);
+		} else {
+			T::Currency::deposit(T::GetStableCurrencyId::get(), who, debit)?;
+		}
+		Ok(())
 	}
 
-	fn deposit_unbacked_debit_to(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::on_system_debit(amount)?;
-		T::Currency::deposit(T::GetStableCurrencyId::get(), who, amount)
+	fn burn_debit(who: &T::AccountId, debit: Self::Balance) -> DispatchResult {
+		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, debit)
 	}
 
-	fn withdraw_backed_debit_from(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, amount)
-	}
-
-	fn transfer_surplus_from(from: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn deposit_surplus(from: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
 		let new_surplus_pool = Self::surplus_pool()
-			.checked_add(amount)
+			.checked_add(surplus)
 			.ok_or(Error::<T>::SurplusPoolOverflow)?;
-		T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), amount)?;
+		T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), surplus)?;
 		SurplusPool::put(new_surplus_pool);
 		Ok(())
 	}
 
-	fn transfer_collateral_to(
-		currency_id: Self::CurrencyId,
-		to: &T::AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult {
-		let new_total_collateral = Self::total_collaterals(currency_id)
-			.checked_sub(amount)
-			.ok_or(Error::<T>::CollateralNotEnough)?;
-		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)?;
-		TotalCollaterals::insert(currency_id, new_total_collateral);
-		Ok(())
-	}
-
-	fn transfer_collateral_from(
-		currency_id: Self::CurrencyId,
-		from: &T::AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult {
+	fn deposit_collateral(from: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
 		let new_total_collateral = Self::total_collaterals(currency_id)
 			.checked_add(amount)
 			.ok_or(Error::<T>::CollateralOverflow)?;
@@ -355,9 +346,13 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		Ok(())
 	}
 
-	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
-		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
-		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
+	fn withdraw_collateral(to: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
+		let new_total_collateral = Self::total_collaterals(currency_id)
+			.checked_sub(amount)
+			.ok_or(Error::<T>::CollateralNotEnough)?;
+		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)?;
+		TotalCollaterals::insert(currency_id, new_total_collateral);
+		Ok(())
 	}
 }
 

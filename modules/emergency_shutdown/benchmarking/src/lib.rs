@@ -63,10 +63,10 @@ benchmarks! {
 		let currency_ids = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get();
 		for currency_id in currency_ids {
 			<T as loans::Trait>::Currency::update_balance(currency_id, &funder, dollar(100).unique_saturated_into())?;
-			<T as emergency_shutdown::Trait>::CDPTreasury::transfer_collateral_from(currency_id, &funder, dollar(100))?;
+			<T as emergency_shutdown::Trait>::CDPTreasury::deposit_collateral(&funder, currency_id, dollar(100))?;
 		}
-		<T as emergency_shutdown::Trait>::CDPTreasury::deposit_backed_debit_to(&caller, dollar(1000))?;
-		<T as emergency_shutdown::Trait>::CDPTreasury::deposit_backed_debit_to(&funder, dollar(9000))?;
+		<T as emergency_shutdown::Trait>::CDPTreasury::issue_debit(&caller, dollar(1000), true)?;
+		<T as emergency_shutdown::Trait>::CDPTreasury::issue_debit(&funder, dollar(9000), true)?;
 
 		EmergencyShutdown::<T>::emergency_shutdown(RawOrigin::Root.into())?;
 		EmergencyShutdown::<T>::open_collateral_refund(RawOrigin::Root.into())?;

@@ -671,7 +671,7 @@ impl<T: Trait> Module<T> {
 
 					// refund remain collateral to CDP owner
 					let refund_collateral_amount = collateral_balance - supply_collateral_amount;
-					<T as Trait>::CDPTreasury::transfer_collateral_to(currency_id, &who, refund_collateral_amount)?;
+					<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 				}
 				LiquidationStrategy::Auction => {
 					// create collateral auctions by cdp treasury

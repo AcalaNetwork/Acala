@@ -379,7 +379,7 @@ impl<T: Trait> Module<T> {
 			}) = T::Auction::auction_info(id)
 			{
 				// refund stable token to the bidder
-				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, debit_auction.fix)?;
+				T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
 				// decrease account ref of bidder
 				system::Module::<T>::dec_ref(&bidder);
 			}
@@ -414,9 +414,9 @@ impl<T: Trait> Module<T> {
 			let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
 
 			// refund remain collateral to refund recipient from cdp treasury
-			T::CDPTreasury::transfer_collateral_to(
-				collateral_auction.currency_id,
+			T::CDPTreasury::withdraw_collateral(
 				&collateral_auction.refund_recipient,
+				collateral_auction.currency_id,
 				refund_collateral_amount,
 			)?;
 
@@ -427,7 +427,7 @@ impl<T: Trait> Module<T> {
 			}) = T::Auction::auction_info(id)
 			{
 				// refund stable token to the bidder
-				T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price)?;
+				T::CDPTreasury::issue_debit(&bidder, bid_price, false)?;
 
 				// decrease account ref of bidder
 				system::Module::<T>::dec_ref(&bidder);
@@ -541,7 +541,7 @@ impl<T: Trait> Module<T> {
 					}
 
 					// transfer remain payment from new bidder to cdp treasury
-					T::CDPTreasury::transfer_surplus_from(&new_bidder, payment)?;
+					T::CDPTreasury::deposit_surplus(&new_bidder, payment)?;
 
 					// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
 					if new_bid_price > collateral_auction.target {
@@ -553,9 +553,9 @@ impl<T: Trait> Module<T> {
 						.unwrap_or(collateral_auction.amount);
 						let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
-						T::CDPTreasury::transfer_collateral_to(
-							collateral_auction.currency_id,
+						T::CDPTreasury::withdraw_collateral(
 							&(collateral_auction.refund_recipient),
+							collateral_auction.currency_id,
 							deduct_collateral_amount,
 						)?;
 
@@ -606,7 +606,7 @@ impl<T: Trait> Module<T> {
 						system::Module::<T>::dec_ref(&last_bidder);
 					} else {
 						// these's no bid before, transfer stablecoin to cdp treasury
-						T::CDPTreasury::transfer_surplus_from(&new_bidder, debit_auction.fix)?;
+						T::CDPTreasury::deposit_surplus(&new_bidder, debit_auction.fix)?;
 					}
 
 					// increase account ref of bidder
@@ -695,13 +695,14 @@ impl<T: Trait> Module<T> {
 					should_deal = false;
 
 					// refund stable coin to the last bidder, ignore result to continue
-					let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, bid_price);
+					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
 					if amount > collateral_auction.target {
 						// refund extra stable coin to recipient, ignore result to continue
-						let _ = T::CDPTreasury::deposit_unbacked_debit_to(
+						let _ = T::CDPTreasury::issue_debit(
 							&collateral_auction.refund_recipient,
 							amount - collateral_auction.target,
+							false,
 						);
 					}
 
@@ -716,9 +717,9 @@ impl<T: Trait> Module<T> {
 
 			if should_deal {
 				// transfer collateral to winner from cdp treasury, ignore result to continue
-				let _ = T::CDPTreasury::transfer_collateral_to(
-					collateral_auction.currency_id,
+				let _ = T::CDPTreasury::withdraw_collateral(
 					&bidder,
+					collateral_auction.currency_id,
 					collateral_auction.amount,
 				);
 
@@ -791,7 +792,7 @@ impl<T: Trait> Module<T> {
 	fn surplus_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
 		if let (Some(surplus_auction), Some((bidder, bidder_price))) = (Self::surplus_auctions(auction_id), winner) {
 			// deposit unbacked stable token to winner by cdp treasury, ignore Err
-			let _ = T::CDPTreasury::deposit_unbacked_debit_to(&bidder, surplus_auction.amount);
+			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
 
 			// decrease account ref of winner
 			system::Module::<T>::dec_ref(&bidder);
