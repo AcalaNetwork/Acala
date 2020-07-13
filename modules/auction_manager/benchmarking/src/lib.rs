@@ -101,7 +101,7 @@ benchmarks! {
 		// set balance
 		<T as auction_manager::Trait>::Currency::deposit(stable_currency_id, &bidder, dollar(80))?;
 		<T as auction_manager::Trait>::Currency::deposit(CurrencyId::DOT, &funder, dollar(1))?;
-		<T as auction_manager::Trait>::CDPTreasury::transfer_collateral_from(CurrencyId::DOT, &funder, dollar(1))?;
+		<T as auction_manager::Trait>::CDPTreasury::deposit_collateral(&funder, CurrencyId::DOT, dollar(1))?;
 
 		// feed price
 		feed_price::<T>(CurrencyId::DOT, Price::saturating_from_integer(120))?;

@@ -799,7 +799,7 @@ impl<T: Trait> Module<T> {
 
 		if !interest_to_increase.is_zero() {
 			// issue aUSD as interest
-			if T::CDPTreasury::deposit_unbacked_debit_to(&Self::account_id(), interest_to_increase).is_ok() {
+			if T::CDPTreasury::issue_debit(&Self::account_id(), interest_to_increase, false).is_ok() {
 				TotalInterest::mutate(currency_id, |(total_interest, _)| {
 					*total_interest = total_interest.saturating_add(interest_to_increase);
 				});

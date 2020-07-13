@@ -187,7 +187,7 @@ fn bid_when_soft_cap_for_surplus_auction_work() {
 #[test]
 fn reverse_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CDPTreasuryModule::transfer_collateral_from(BTC, &CAROL, 100));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 100);
@@ -218,7 +218,7 @@ fn reverse_collateral_auction_work() {
 fn on_auction_ended_for_collateral_auction_and_dealed() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(CDPTreasuryModule::transfer_collateral_from(BTC, &CAROL, 100));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 200);
@@ -250,7 +250,7 @@ fn on_auction_ended_for_collateral_auction_and_dealed() {
 fn on_auction_ended_for_collateral_auction_and_dex_take() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(CDPTreasuryModule::transfer_collateral_from(BTC, &CAROL, 100));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 200);
@@ -440,7 +440,7 @@ fn cancel_collateral_auction_work() {
 		System::set_block_number(1);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
-		assert_ok!(CDPTreasuryModule::transfer_collateral_from(BTC, &CAROL, 10));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 10));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);

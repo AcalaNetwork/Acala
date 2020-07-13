@@ -160,19 +160,19 @@ fn emergency_shutdown_and_cdp_treasury() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_ok!(CdpTreasuryModule::transfer_collateral_from(
-				CurrencyId::XBTC,
+			assert_ok!(CdpTreasuryModule::deposit_collateral(
 				&AccountId::from(BOB),
+				CurrencyId::XBTC,
 				1_000_000
 			));
-			assert_ok!(CdpTreasuryModule::transfer_collateral_from(
-				CurrencyId::DOT,
+			assert_ok!(CdpTreasuryModule::deposit_collateral(
 				&AccountId::from(BOB),
+				CurrencyId::DOT,
 				200_000_000
 			));
-			assert_ok!(CdpTreasuryModule::transfer_collateral_from(
-				CurrencyId::LDOT,
+			assert_ok!(CdpTreasuryModule::deposit_collateral(
 				&AccountId::from(BOB),
+				CurrencyId::LDOT,
 				40_000_000
 			));
 			assert_eq!(CdpTreasuryModule::total_collaterals(CurrencyId::XBTC), 1_000_000);

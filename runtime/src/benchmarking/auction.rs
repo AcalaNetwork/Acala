@@ -37,7 +37,7 @@ runtime_benchmarks! {
 
 		set_balance(currency_id, &funder, collateral_amount);
 		set_balance(CurrencyId::AUSD, &bidder, bid_price);
-		<CdpTreasury as CDPTreasury<_>>::transfer_collateral_from(currency_id, &funder, collateral_amount)?;
+		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
 		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount);
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
@@ -60,7 +60,7 @@ runtime_benchmarks! {
 		set_balance(currency_id, &funder, collateral_amount);
 		set_balance(CurrencyId::AUSD, &bidder, bid_price);
 		set_balance(CurrencyId::AUSD, &previous_bidder, previous_bid_price);
-		<CdpTreasury as CDPTreasury<_>>::transfer_collateral_from(currency_id, &funder, collateral_amount)?;
+		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
 		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount);
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)

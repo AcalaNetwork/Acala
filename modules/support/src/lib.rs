@@ -139,30 +139,45 @@ where
 	}
 }
 
+/// An abstraction of cdp treasury for Honzon Protocol.
 pub trait CDPTreasury<AccountId> {
 	type Balance;
 	type CurrencyId;
 
+	/// get surplus amount of cdp treasury
 	fn get_surplus_pool() -> Self::Balance;
+
+	/// get debit amount of cdp treasury
 	fn get_debit_pool() -> Self::Balance;
+
+	/// get collateral assets amount of cdp treasury
 	fn get_total_collaterals(id: Self::CurrencyId) -> Self::Balance;
 
+	/// calculate the proportion of specific debit amount for the whole system
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio;
+
+	/// issue debit for cdp treasury
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult;
+
+	/// issue surplus(stable coin) for cdp treasury
 	fn on_system_surplus(amount: Self::Balance) -> DispatchResult;
 
-	fn deposit_backed_debit_to(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn deposit_unbacked_debit_to(who: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn withdraw_backed_debit_from(who: &AccountId, amount: Self::Balance) -> DispatchResult;
+	/// issue debit to `who`
+	/// if backed flag is true, means the debit to issue is backed on some assets,
+	/// otherwise will increase same amount of debit to system debit.
+	fn issue_debit(who: &AccountId, debit: Self::Balance, backed: bool) -> DispatchResult;
 
-	fn transfer_surplus_from(from: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn transfer_collateral_to(currency_id: Self::CurrencyId, to: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn transfer_collateral_from(
-		currency_id: Self::CurrencyId,
-		from: &AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult;
+	/// burn debit(stable coin) of `who`
+	fn burn_debit(who: &AccountId, debit: Self::Balance) -> DispatchResult;
 
-	fn get_debit_proportion(amount: Self::Balance) -> Ratio;
+	/// deposit surplus(stable coin) to cdp treasury by `from`
+	fn deposit_surplus(from: &AccountId, surplus: Self::Balance) -> DispatchResult;
+
+	/// deposit collateral assets to cdp treasury by `who`
+	fn deposit_collateral(from: &AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult;
+
+	/// withdraw collateral assets of cdp treasury to `who`
+	fn withdraw_collateral(to: &AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult;
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
