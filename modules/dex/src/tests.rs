@@ -125,6 +125,113 @@ fn calculate_swap_supply_amount_work() {
 }
 
 #[test]
+fn target_and_supply_amount_calculation() {
+	ExtBuilder::default().build().execute_with(|| {
+		// target pool is drain
+		assert_eq!(
+			DexModule::calculate_swap_target_amount(
+				1_000_000_000_000_000_000,
+				0,
+				1_000_000_000_000_000_000,
+				Rate::zero()
+			),
+			0
+		);
+
+		// supply pool is drain
+		assert_eq!(
+			DexModule::calculate_swap_target_amount(
+				0,
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				Rate::zero()
+			),
+			0
+		);
+
+		// supply amount is zero
+		assert_eq!(
+			DexModule::calculate_swap_target_amount(
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				0,
+				Rate::zero()
+			),
+			0
+		);
+
+		// fee rate >= 100%
+		assert_eq!(
+			DexModule::calculate_swap_target_amount(
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				Rate::one()
+			),
+			0
+		);
+
+		// target pool <= target amount
+		assert_eq!(
+			DexModule::calculate_swap_supply_amount(
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				Rate::zero()
+			),
+			0
+		);
+		assert_eq!(
+			DexModule::calculate_swap_supply_amount(
+				0,
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				Rate::zero()
+			),
+			0
+		);
+
+		// fee rate >= 100%
+		assert_eq!(
+			DexModule::calculate_swap_supply_amount(
+				1_000_000_000_000_000_000,
+				1_000_000_000_000_000_000,
+				1_000_000_000_000,
+				Rate::one()
+			),
+			0
+		);
+
+		let supply_pool = 1_000_000_000_000_000_000_000_000;
+		let target_pool = 1_000_000_000_000_000_000_000_000;
+		let fee_rate = Rate::saturating_from_rational(1, 100);
+		let supply_amount = 1_000_000_000_000_000_000;
+		let target_amount = DexModule::calculate_swap_target_amount(supply_pool, target_pool, supply_amount, fee_rate);
+		let supply_amount_at_least =
+			DexModule::calculate_swap_supply_amount(supply_pool, target_pool, target_amount, fee_rate);
+		assert!(supply_amount_at_least >= supply_amount);
+
+		let supply_pool = 1_000_000;
+		let target_pool = 1_000_000_000_000_000_000_000_000;
+		let fee_rate = Rate::saturating_from_rational(1, 100);
+		let supply_amount = 1_000_000_000_000_000_000;
+		let target_amount = DexModule::calculate_swap_target_amount(supply_pool, target_pool, supply_amount, fee_rate);
+		let supply_amount_at_least =
+			DexModule::calculate_swap_supply_amount(supply_pool, target_pool, target_amount, fee_rate);
+		assert!(supply_amount_at_least >= supply_amount);
+
+		let supply_pool = 1_000_000_000_000_000_000_000_000;
+		let target_pool = 1_000_000;
+		let fee_rate = Rate::saturating_from_rational(1, 100);
+		let supply_amount = 1_000_000_000_000_000_000;
+		let target_amount = DexModule::calculate_swap_target_amount(supply_pool, target_pool, supply_amount, fee_rate);
+		let supply_amount_at_least =
+			DexModule::calculate_swap_supply_amount(supply_pool, target_pool, target_amount, fee_rate);
+		assert!(supply_amount_at_least >= supply_amount);
+	});
+}
+
+#[test]
 fn make_sure_get_supply_amount_needed_can_affort_target() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(DexModule::add_liquidity(
