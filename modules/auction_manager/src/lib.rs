@@ -769,7 +769,8 @@ impl<T: Trait> Module<T> {
 				// there's no bidder until auction closed, adjust the native token amount
 				let start_block = <system::Module<T>>::block_number();
 				let end_block = start_block + T::AuctionTimeToClose::get();
-				let new_debit_auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block));
+				let new_debit_auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block))
+					.expect("AuctionId is sufficient large so this can never fail");
 				let new_amount = T::GetAmountAdjustment::get().saturating_mul_acc_int(debit_auction.amount);
 				let new_debit_auction = DebitAuctionItem {
 					amount: new_amount,
@@ -868,7 +869,8 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			TotalTargetInAuction::mutate(|balance| *balance += target);
 
 			let block_number = <system::Module<T>>::block_number();
-			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None); // do not set endtime for collateral auction
+			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None)
+				.expect("AuctionId is sufficient large so this can never fail"); // do not set endtime for collateral auction
 			let collateral_aution = CollateralAuctionItem {
 				refund_recipient: who.clone(),
 				currency_id,
@@ -891,7 +893,8 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			let start_block = <system::Module<T>>::block_number();
 			let end_block = start_block + T::AuctionTimeToClose::get();
 			// set close time for initial debit auction
-			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block)); // set endtime for debit auction!
+			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block))
+				.expect("AuctionId is sufficient large so this can never fail"); // set endtime for debit auction!
 			let debit_auction = DebitAuctionItem {
 				amount: initial_amount,
 				fix: fix_debit,
@@ -905,7 +908,8 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	fn new_surplus_auction(amount: Self::Balance) {
 		if Self::total_surplus_in_auction().checked_add(amount).is_some() {
 			TotalSurplusInAuction::mutate(|balance| *balance += amount);
-			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(<system::Module<T>>::block_number(), None); // do not set endtime for surplus auction
+			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(<system::Module<T>>::block_number(), None)
+				.expect("AuctionId is sufficient large so this can never fail"); // do not set endtime for surplus auction
 			let surplus_auction = SurplusAuctionItem {
 				amount,
 				start_time: <system::Module<T>>::block_number(),
