@@ -74,6 +74,8 @@ decl_event!(
 		WithdrawLiquidity(AccountId, CurrencyId, Balance, Balance, Share),
 		/// Use supply currency to swap target currency (trader, supply_currency_type, supply_currency_amount, target_currency_type, target_currency_amount)
 		Swap(AccountId, CurrencyId, Balance, CurrencyId, Balance),
+		/// Incentive reward rate updated (currency_type, new_rate)
+		LiquidityIncentiveRateUpdated(CurrencyId, Rate),
 	}
 );
 
@@ -171,9 +173,12 @@ decl_module! {
 			currency_id: CurrencyId,
 			liquidity_incentive_rate: Rate,
 		) {
-			T::UpdateOrigin::ensure_origin(origin)?;
-
-			LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
+				Self::deposit_event(RawEvent::LiquidityIncentiveRateUpdated(currency_id, liquidity_incentive_rate));
+				Ok(())
+			})?;
 		}
 
 		/// Just withdraw liquidity incentive interest as the additional reward for liquidity contribution
@@ -192,8 +197,11 @@ decl_module! {
 		/// # </weight>
 		#[weight = 39 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
-			let who = ensure_signed(origin)?;
-			Self::claim_interest(currency_id, &who)?;
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				Self::claim_interest(currency_id, &who)?;
+				Ok(())
+			})?;
 		}
 
 		/// Trading with DEX, swap supply currency to target currency
@@ -229,8 +237,11 @@ decl_module! {
 			target_currency_id: CurrencyId,
 			#[compact] acceptable_target_amount: Balance,
 		) {
-			let who = ensure_signed(origin)?;
-			Self::do_exchange(&who, supply_currency_id, supply_amount, target_currency_id, acceptable_target_amount)?;
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				Self::do_exchange(&who, supply_currency_id, supply_amount, target_currency_id, acceptable_target_amount)?;
+				Ok(())
+			})?;
 		}
 
 		/// Injecting liquidity to specific liquidity pool in the form of depositing currencies in trading pairs
@@ -263,7 +274,7 @@ decl_module! {
 			#[compact] max_other_currency_amount: Balance,
 			#[compact] max_base_currency_amount: Balance,
 		) {
-			with_transaction_result(|| -> DispatchResult {
+			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				let base_currency_id = T::GetBaseCurrencyId::get();
 				ensure!(
@@ -312,7 +323,7 @@ decl_module! {
 				T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_increment)?;
 				Self::deposit_calculate_interest(other_currency_id, &who, share_increment);
 				<TotalShares<T>>::insert(other_currency_id, new_total_shares);
-				<Shares<T>>::mutate(other_currency_id, &who, |share| *share += share_increment);
+				<Shares<T>>::mutate(other_currency_id, &who, |share| *share += share_increment); // can't overflow because total shares did not overflow and shares is always less or equal to total shares
 				LiquidityPool::mutate(other_currency_id, |(other, base)| {
 					*other = other.saturating_add(other_currency_increment);
 					*base = base.saturating_add(base_currency_increment);
@@ -348,7 +359,7 @@ decl_module! {
 		/// # </weight>
 		#[weight = 72 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
-			with_transaction_result(|| -> DispatchResult {
+			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				if share_amount.is_zero() { return Ok(()); }
 				ensure!(
@@ -363,7 +374,7 @@ decl_module! {
 				T::Currency::transfer(currency_id, &Self::account_id(), &who, withdraw_other_currency_amount)?;
 				T::Currency::transfer(T::GetBaseCurrencyId::get(), &Self::account_id(), &who, withdraw_base_currency_amount)?;
 				Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
-				<TotalShares<T>>::mutate(currency_id, |share| *share -= share_amount);
+				<TotalShares<T>>::mutate(currency_id, |share| *share -= share_amount); // can't underflow because new_share_amount did not underflow and new_share_amount is always less or equal to total shares
 				<Shares<T>>::insert(currency_id, &who, new_share_amount);
 				LiquidityPool::mutate(currency_id, |(other, base)| {
 					*other = other.saturating_sub(withdraw_other_currency_amount);
@@ -594,40 +605,38 @@ impl<T: Trait> Module<T> {
 		target_currency_id: CurrencyId,
 		acceptable_target_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		with_transaction_result(|| -> sp_std::result::Result<Balance, DispatchError> {
-			let base_currency_id = T::GetBaseCurrencyId::get();
-			let allowed_currency_ids = T::EnabledCurrencyIds::get();
+		let base_currency_id = T::GetBaseCurrencyId::get();
+		let allowed_currency_ids = T::EnabledCurrencyIds::get();
 
-			let target_turnover =
-				if target_currency_id == base_currency_id && allowed_currency_ids.contains(&supply_currency_id) {
-					Self::swap_other_to_base(who, supply_currency_id, supply_amount, acceptable_target_amount)
-				} else if supply_currency_id == base_currency_id && allowed_currency_ids.contains(&target_currency_id) {
-					Self::swap_base_to_other(who, target_currency_id, supply_amount, acceptable_target_amount)
-				} else if supply_currency_id != target_currency_id
-					&& allowed_currency_ids.contains(&supply_currency_id)
-					&& allowed_currency_ids.contains(&target_currency_id)
-				{
-					Self::swap_other_to_other(
-						who,
-						supply_currency_id,
-						supply_amount,
-						target_currency_id,
-						acceptable_target_amount,
-					)
-				} else {
-					Err(Error::<T>::CurrencyIdNotAllowed.into())
-				}?;
+		let target_turnover =
+			if target_currency_id == base_currency_id && allowed_currency_ids.contains(&supply_currency_id) {
+				Self::swap_other_to_base(who, supply_currency_id, supply_amount, acceptable_target_amount)
+			} else if supply_currency_id == base_currency_id && allowed_currency_ids.contains(&target_currency_id) {
+				Self::swap_base_to_other(who, target_currency_id, supply_amount, acceptable_target_amount)
+			} else if supply_currency_id != target_currency_id
+				&& allowed_currency_ids.contains(&supply_currency_id)
+				&& allowed_currency_ids.contains(&target_currency_id)
+			{
+				Self::swap_other_to_other(
+					who,
+					supply_currency_id,
+					supply_amount,
+					target_currency_id,
+					acceptable_target_amount,
+				)
+			} else {
+				Err(Error::<T>::CurrencyIdNotAllowed.into())
+			}?;
 
-			Self::deposit_event(RawEvent::Swap(
-				who.clone(),
-				supply_currency_id,
-				supply_amount,
-				target_currency_id,
-				target_turnover,
-			));
+		Self::deposit_event(RawEvent::Swap(
+			who.clone(),
+			supply_currency_id,
+			supply_amount,
+			target_currency_id,
+			target_turnover,
+		));
 
-			Ok(target_turnover)
-		})
+		Ok(target_turnover)
 	}
 
 	// get the minimum amount of supply currency needed for the target currency amount

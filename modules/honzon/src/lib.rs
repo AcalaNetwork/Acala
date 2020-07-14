@@ -15,6 +15,7 @@ use frame_support::{
 	weights::{constants::WEIGHT_PER_MICROS, Weight},
 };
 use frame_system::{self as system, ensure_signed};
+use orml_utilities::with_transaction_result;
 use primitives::{Amount, CurrencyId};
 use sp_runtime::{traits::Zero, DispatchResult};
 use support::OnEmergencyShutdown;
@@ -88,13 +89,16 @@ decl_module! {
 			collateral_adjustment: Amount,
 			debit_adjustment: T::DebitAmount,
 		) {
-			let who = ensure_signed(origin)?;
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
 
-			// not allowed to adjust the debit after system shutdown
-			if !debit_adjustment.is_zero() {
-				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
-			}
-			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
+				// not allowed to adjust the debit after system shutdown
+				if !debit_adjustment.is_zero() {
+					ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+				}
+				<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
+				Ok(())
+			})?;
 		}
 
 		/// Transfer the whole CDP of `from` under `currency_id` to caller's CDP under the same `currency_id`,
@@ -116,10 +120,13 @@ decl_module! {
 			currency_id: CurrencyId,
 			from: T::AccountId,
 		) {
-			let to = ensure_signed(origin)?;
-			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
-			Self::check_authorization(&from, &to, currency_id)?;
-			<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
+			with_transaction_result(|| {
+				let to = ensure_signed(origin)?;
+				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+				Self::check_authorization(&from, &to, currency_id)?;
+				<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
+				Ok(())
+			})?;
 		}
 
 		/// Authorize `to` to manipulate the loan under `currency_id`
@@ -140,9 +147,12 @@ decl_module! {
 			currency_id: CurrencyId,
 			to: T::AccountId,
 		) {
-			let from = ensure_signed(origin)?;
-			<Authorization<T>>::insert(&from, (currency_id, &to), true);
-			Self::deposit_event(RawEvent::Authorization(from, to, currency_id));
+			with_transaction_result(|| {
+				let from = ensure_signed(origin)?;
+				<Authorization<T>>::insert(&from, (currency_id, &to), true);
+				Self::deposit_event(RawEvent::Authorization(from, to, currency_id));
+				Ok(())
+			})?;
 		}
 
 		/// Cancel the authorization for `to` under `currency_id`
@@ -163,9 +173,12 @@ decl_module! {
 			currency_id: CurrencyId,
 			to: T::AccountId,
 		) {
-			let from = ensure_signed(origin)?;
-			<Authorization<T>>::remove(&from, (currency_id, &to));
-			Self::deposit_event(RawEvent::UnAuthorization(from, to, currency_id));
+			with_transaction_result(|| {
+				let from = ensure_signed(origin)?;
+				<Authorization<T>>::remove(&from, (currency_id, &to));
+				Self::deposit_event(RawEvent::UnAuthorization(from, to, currency_id));
+				Ok(())
+			})?;
 		}
 
 		/// Cancel all authorization of caller
@@ -181,9 +194,12 @@ decl_module! {
 			((WEIGHT_PER_MICROS as u64) * 115).saturating_mul(Weight::from(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32))
 		]
 		pub fn unauthorize_all(origin) {
-			let from = ensure_signed(origin)?;
-			<Authorization<T>>::remove_prefix(&from);
-			Self::deposit_event(RawEvent::UnAuthorizationAll(from));
+			with_transaction_result(|| {
+				let from = ensure_signed(origin)?;
+				<Authorization<T>>::remove_prefix(&from);
+				Self::deposit_event(RawEvent::UnAuthorizationAll(from));
+				Ok(())
+			})?;
 		}
 	}
 }

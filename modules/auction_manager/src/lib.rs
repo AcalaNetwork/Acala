@@ -264,10 +264,13 @@ decl_module! {
 		/// # </weight>
 		#[weight = (80 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionIdOf<T>) {
-			ensure_none(origin)?;
-			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
-			<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
-			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
+			with_transaction_result(|| {
+				ensure_none(origin)?;
+				ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+				<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
+				<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
+				Ok(())
+			})?;
 		}
 
 		/// Start offchain worker in order to submit unsigned tx to cancel active auction after system shutdown.
@@ -342,111 +345,105 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn cancel_surplus_auction(id: AuctionIdOf<T>) -> DispatchResult {
-		with_transaction_result(|| -> DispatchResult {
-			let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
+		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 
-			// if these's bid
-			if let Some(AuctionInfo {
-				bid: Some((bidder, bid_price)),
-				..
-			}) = T::Auction::auction_info(id)
-			{
-				// refund native token to the bidder
-				// TODO: transfer from RESERVED TREASURY instead of issuing
-				T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, bid_price)?;
+		// if these's bid
+		if let Some(AuctionInfo {
+			bid: Some((bidder, bid_price)),
+			..
+		}) = T::Auction::auction_info(id)
+		{
+			// refund native token to the bidder
+			// TODO: transfer from RESERVED TREASURY instead of issuing
+			T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, bid_price)?;
 
-				// decrease account ref of bidder
-				system::Module::<T>::dec_ref(&bidder);
-			}
+			// decrease account ref of bidder
+			system::Module::<T>::dec_ref(&bidder);
+		}
 
-			// decrease total surplus in auction
-			TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
+		// decrease total surplus in auction
+		TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
 
-			// remove the auction info
-			T::Auction::remove_auction(id);
+		// remove the auction info
+		T::Auction::remove_auction(id);
 
-			Ok(())
-		})
+		Ok(())
 	}
 
 	fn cancel_debit_auction(id: AuctionIdOf<T>) -> DispatchResult {
-		with_transaction_result(|| -> DispatchResult {
-			let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
+		let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 
-			// if these's bid
-			if let Some(AuctionInfo {
-				bid: Some((bidder, _)), ..
-			}) = T::Auction::auction_info(id)
-			{
-				// refund stable token to the bidder
-				T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
-				// decrease account ref of bidder
-				system::Module::<T>::dec_ref(&bidder);
-			}
+		// if these's bid
+		if let Some(AuctionInfo {
+			bid: Some((bidder, _)), ..
+		}) = T::Auction::auction_info(id)
+		{
+			// refund stable token to the bidder
+			T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
+			// decrease account ref of bidder
+			system::Module::<T>::dec_ref(&bidder);
+		}
 
-			// derease total debit in auction
-			TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
+		// derease total debit in auction
+		TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
 
-			// remove the auction info
-			T::Auction::remove_auction(id);
+		// remove the auction info
+		T::Auction::remove_auction(id);
 
-			Ok(())
-		})
+		Ok(())
 	}
 
 	fn cancel_collateral_auction(id: AuctionIdOf<T>) -> DispatchResult {
-		with_transaction_result(|| -> DispatchResult {
-			// must not in reverse bid stage
-			ensure!(
-				!Self::collateral_auction_in_reverse_stage(id),
-				Error::<T>::InReservedStage
-			);
-			let collateral_auction = <CollateralAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
+		// must not in reverse bid stage
+		ensure!(
+			!Self::collateral_auction_in_reverse_stage(id),
+			Error::<T>::InReservedStage
+		);
+		let collateral_auction = <CollateralAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 
-			// calculate which amount of collateral to offset target in settle price
-			let stable_currency_id = T::GetStableCurrencyId::get();
-			let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
-				.ok_or(Error::<T>::InvalidFeedPrice)?;
-			let confiscate_collateral_amount = sp_std::cmp::min(
-				settle_price.saturating_mul_int(collateral_auction.target),
-				collateral_auction.amount,
-			);
-			let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
+		// calculate which amount of collateral to offset target in settle price
+		let stable_currency_id = T::GetStableCurrencyId::get();
+		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
+			.ok_or(Error::<T>::InvalidFeedPrice)?;
+		let confiscate_collateral_amount = sp_std::cmp::min(
+			settle_price.saturating_mul_int(collateral_auction.target),
+			collateral_auction.amount,
+		);
+		let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
 
-			// refund remain collateral to refund recipient from cdp treasury
-			T::CDPTreasury::withdraw_collateral(
-				&collateral_auction.refund_recipient,
-				collateral_auction.currency_id,
-				refund_collateral_amount,
-			)?;
+		// refund remain collateral to refund recipient from cdp treasury
+		T::CDPTreasury::withdraw_collateral(
+			&collateral_auction.refund_recipient,
+			collateral_auction.currency_id,
+			refund_collateral_amount,
+		)?;
 
-			// if these's bid
-			if let Some(AuctionInfo {
-				bid: Some((bidder, bid_price)),
-				..
-			}) = T::Auction::auction_info(id)
-			{
-				// refund stable token to the bidder
-				T::CDPTreasury::issue_debit(&bidder, bid_price, false)?;
+		// if these's bid
+		if let Some(AuctionInfo {
+			bid: Some((bidder, bid_price)),
+			..
+		}) = T::Auction::auction_info(id)
+		{
+			// refund stable token to the bidder
+			T::CDPTreasury::issue_debit(&bidder, bid_price, false)?;
 
-				// decrease account ref of bidder
-				system::Module::<T>::dec_ref(&bidder);
-			}
+			// decrease account ref of bidder
+			system::Module::<T>::dec_ref(&bidder);
+		}
 
-			// decrease account ref of refund recipient
-			system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
+		// decrease account ref of refund recipient
+		system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
 
-			// decrease total collateral and target in auction
-			TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
-				*balance = balance.saturating_sub(collateral_auction.amount)
-			});
-			TotalTargetInAuction::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
+		// decrease total collateral and target in auction
+		TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
+			*balance = balance.saturating_sub(collateral_auction.amount)
+		});
+		TotalTargetInAuction::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
 
-			// remove the auction info
-			T::Auction::remove_auction(id);
+		// remove the auction info
+		T::Auction::remove_auction(id);
 
-			Ok(())
-		})
+		Ok(())
 	}
 
 	fn collateral_auction_in_reverse_stage(id: AuctionIdOf<T>) -> bool {
@@ -507,6 +504,7 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+			// use `with_transaction_result` to ensure operation is atomatic
 			<CollateralAuctions<T>>::try_mutate_exists(
 				id,
 				|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
@@ -580,6 +578,7 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+			// use `with_transaction_result` to ensure operation is atomatic
 			<DebitAuctions<T>>::try_mutate_exists(
 				id,
 				|debit_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
@@ -636,6 +635,7 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+			// use `with_transaction_result` to ensure operation is atomatic
 			let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExsits)?;
 			let (new_bidder, new_bid_price) = new_bid;
 			let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price

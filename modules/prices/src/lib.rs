@@ -17,6 +17,7 @@ use frame_support::{
 };
 use frame_system::{self as system};
 use orml_traits::{DataProvider, DataProviderExtended};
+use orml_utilities::with_transaction_result;
 use primitives::CurrencyId;
 use sp_runtime::traits::{CheckedDiv, CheckedMul};
 use support::{ExchangeRateProvider, Price, PriceProvider};
@@ -81,8 +82,11 @@ decl_module! {
 		/// - `currency_id`: currency type.
 		#[weight = (10_000, DispatchClass::Operational)]
 		fn lock_price(origin, currency_id: CurrencyId) {
-			T::LockOrigin::ensure_origin(origin)?;
-			<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
+			with_transaction_result(|| {
+				T::LockOrigin::ensure_origin(origin)?;
+				<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
+				Ok(())
+			})?;
 		}
 
 		/// Unlock the price and get the price from `PriceProvider` again
@@ -92,8 +96,11 @@ decl_module! {
 		/// - `currency_id`: currency type.
 		#[weight = (10_000, DispatchClass::Operational)]
 		fn unlock_price(origin, currency_id: CurrencyId) {
-			T::LockOrigin::ensure_origin(origin)?;
-			<Module<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
+			with_transaction_result(|| {
+				T::LockOrigin::ensure_origin(origin)?;
+				<Module<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
+				Ok(())
+			})?;
 		}
 	}
 }

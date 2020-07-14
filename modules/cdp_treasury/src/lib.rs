@@ -15,6 +15,7 @@ use frame_support::{
 };
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -163,23 +164,26 @@ decl_module! {
 			initial_amount_per_debit_auction: Option<Balance>,
 			debit_auction_fixed_size: Option<Balance>,
 		) {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			if let Some(amount) = surplus_auction_fixed_size {
-				SurplusAuctionFixedSize::put(amount);
-				Self::deposit_event(Event::SurplusAuctionFixedSizeUpdated(amount));
-			}
-			if let Some(amount) = surplus_buffer_size {
-				SurplusBufferSize::put(amount);
-				Self::deposit_event(Event::SurplusBufferSizeUpdated(amount));
-			}
-			if let Some(amount) = initial_amount_per_debit_auction {
-				InitialAmountPerDebitAuction::put(amount);
-				Self::deposit_event(Event::InitialAmountPerDebitAuctionUpdated(amount));
-			}
-			if let Some(amount) = debit_auction_fixed_size {
-				DebitAuctionFixedSize::put(amount);
-				Self::deposit_event(Event::DebitAuctionFixedSizeUpdated(amount));
-			}
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				if let Some(amount) = surplus_auction_fixed_size {
+					SurplusAuctionFixedSize::put(amount);
+					Self::deposit_event(Event::SurplusAuctionFixedSizeUpdated(amount));
+				}
+				if let Some(amount) = surplus_buffer_size {
+					SurplusBufferSize::put(amount);
+					Self::deposit_event(Event::SurplusBufferSizeUpdated(amount));
+				}
+				if let Some(amount) = initial_amount_per_debit_auction {
+					InitialAmountPerDebitAuction::put(amount);
+					Self::deposit_event(Event::InitialAmountPerDebitAuctionUpdated(amount));
+				}
+				if let Some(amount) = debit_auction_fixed_size {
+					DebitAuctionFixedSize::put(amount);
+					Self::deposit_event(Event::DebitAuctionFixedSizeUpdated(amount));
+				}
+				Ok(())
+			})?;
 		}
 
 		/// Update parameters related to collateral auction under specific collateral type
@@ -198,9 +202,12 @@ decl_module! {
 		/// # </weight>
 		#[weight = (16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			CollateralAuctionMaximumSize::insert(currency_id, size);
-			Self::deposit_event(Event::CollateralAuctionMaximumSizeUpdated(currency_id, size));
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				CollateralAuctionMaximumSize::insert(currency_id, size);
+				Self::deposit_event(Event::CollateralAuctionMaximumSizeUpdated(currency_id, size));
+				Ok(())
+			})?;
 		}
 
 		/// Handle excessive surplus or debits of system when block end
