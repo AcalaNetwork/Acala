@@ -13,6 +13,7 @@ frame-system = { version = "2.0.0-rc4", default-features = false }
 sp-std = { version = "2.0.0-rc4", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-utilities = { path = "../../orml/utilities", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 frame-benchmarking = { version = "2.0.0-rc4", default-features = false, optional = true }
@@ -36,6 +37,7 @@ std = [
 	"sp-std/std",
 	"orml-traits/std",
 	"orml-tokens/std",
+	"orml-utilities/std",
 	"support/std",
 	"primitives/std",
 	"frame-benchmarking/std",

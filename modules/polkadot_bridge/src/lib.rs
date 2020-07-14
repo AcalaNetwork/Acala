@@ -3,6 +3,7 @@
 use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::BasicCurrency;
+use orml_utilities::with_transaction_result;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
@@ -63,60 +64,84 @@ decl_module! {
 
 		#[weight = 10_000]
 		pub fn set_mock_reward_rate(origin, mock_reward_rate: Option<Rate>) {
-			ensure_root(origin)?;
-			if let Some(mock_reward_rate) = mock_reward_rate {
-				MockRewardRate::put(mock_reward_rate);
-			} else {
-				MockRewardRate::kill();
-			}
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				if let Some(mock_reward_rate) = mock_reward_rate {
+					MockRewardRate::put(mock_reward_rate);
+				} else {
+					MockRewardRate::kill();
+				}
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn simulate_bond(origin, amount: Balance) {
-			ensure_root(origin)?;
-			Self::bond_extra(amount)?;
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				Self::bond_extra(amount)?;
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn simulate_unbond(origin, amount: Balance) {
-			ensure_root(origin)?;
-			Self::unbond(amount)?;
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				Self::unbond(amount)?;
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn simulate_withdraw_unbonded(origin) {
-			let _ = ensure_signed(origin)?;
-			Self::withdraw_unbonded();
+			with_transaction_result(|| {
+				let _ = ensure_signed(origin)?;
+				Self::withdraw_unbonded();
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn simulate_slash(origin, amount: Balance) {
-			ensure_root(origin)?;
-			Bonded::mutate(|balance| *balance = balance.saturating_sub(amount));
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				Bonded::mutate(|balance| *balance = balance.saturating_sub(amount));
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn simualte_receive(origin, to: T::AccountId, amount: Balance) {
-			ensure_root(origin)?;
-			let new_available = Self::available().checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
-			T::DOTCurrency::deposit(&to, amount)?;
-			Available::put(new_available);
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				let new_available = Self::available().checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
+				T::DOTCurrency::deposit(&to, amount)?;
+				Available::put(new_available);
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: Balance) {
-			let from = ensure_signed(origin)?;
-			let new_available = Self::available().checked_add(amount).ok_or(Error::<T>::Overflow)?;
-			T::DOTCurrency::withdraw(&from, amount)?;
-			Available::put(new_available);
+			with_transaction_result(|| {
+				let from = ensure_signed(origin)?;
+				let new_available = Self::available().checked_add(amount).ok_or(Error::<T>::Overflow)?;
+				T::DOTCurrency::withdraw(&from, amount)?;
+				Available::put(new_available);
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn force_era(origin, at: T::BlockNumber) {
-			ensure_root(origin)?;
-			if at > <system::Module<T>>::block_number() {
-				<ForcedEra<T>>::put(at);
-			}
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				if at > <system::Module<T>>::block_number() {
+					<ForcedEra<T>>::put(at);
+				}
+				Ok(())
+			})?;
 		}
 
 		fn on_finalize(now: T::BlockNumber) {

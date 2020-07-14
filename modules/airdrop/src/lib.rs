@@ -2,6 +2,7 @@
 
 use frame_support::{decl_event, decl_module, decl_storage};
 use frame_system::{self as system, ensure_root};
+use orml_utilities::with_transaction_result;
 use primitives::{AirDropCurrencyId, Balance};
 
 mod mock;
@@ -49,9 +50,12 @@ decl_module! {
 			currency_id: AirDropCurrencyId,
 			amount: Balance,
 		) {
-			ensure_root(origin)?;
-			<AirDrops<T>>::mutate(&to, currency_id, |balance| *balance += amount);
-			Self::deposit_event(RawEvent::Airdrop(to, currency_id, amount));
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				<AirDrops<T>>::mutate(&to, currency_id, |balance| *balance += amount);
+				Self::deposit_event(RawEvent::Airdrop(to, currency_id, amount));
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
@@ -61,9 +65,12 @@ decl_module! {
 			currency_id: AirDropCurrencyId,
 			amount: Balance,
 		) {
-			ensure_root(origin)?;
-			<AirDrops<T>>::insert(&to, currency_id, amount);
-			Self::deposit_event(RawEvent::UpdateAirdrop(to, currency_id, amount));
+			with_transaction_result(|| {
+				ensure_root(origin)?;
+				<AirDrops<T>>::insert(&to, currency_id, amount);
+				Self::deposit_event(RawEvent::UpdateAirdrop(to, currency_id, amount));
+				Ok(())
+			})?;
 		}
 	}
 }

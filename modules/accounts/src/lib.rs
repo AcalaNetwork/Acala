@@ -149,14 +149,15 @@ decl_module! {
 		/// The dispatch origin of this call must be Signed.
 		#[weight = 10_000]
 		fn enable_free_transfer(origin) {
-			let who = ensure_signed(origin)?;
-
-			let native_currency_id = T::NativeCurrencyId::get();
-			let free_transfer_deposit = T::FreeTransferDeposit::get();
-			ensure!(<T as Trait>::Currency::free_balance(native_currency_id, &who) > free_transfer_deposit, Error::<T>::NotEnoughBalance);
-
-			<T as Trait>::Currency::set_lock(ACCOUNTS_ID, native_currency_id, &who, T::FreeTransferDeposit::get());
-			<FreeTransferEnabledAccounts<T>>::insert(who, true);
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				let native_currency_id = T::NativeCurrencyId::get();
+				let free_transfer_deposit = T::FreeTransferDeposit::get();
+				ensure!(<T as Trait>::Currency::free_balance(native_currency_id, &who) > free_transfer_deposit, Error::<T>::NotEnoughBalance);
+				<T as Trait>::Currency::set_lock(ACCOUNTS_ID, native_currency_id, &who, T::FreeTransferDeposit::get());
+				<FreeTransferEnabledAccounts<T>>::insert(who, true);
+				Ok(())
+			})?;
 		}
 
 		/// Unlock free transfer deposit.
@@ -164,10 +165,12 @@ decl_module! {
 		/// The dispatch origin of this call must be Signed.
 		#[weight = 10_000]
 		fn disable_free_transfers(origin) {
-			let who = ensure_signed(origin)?;
-
-			<T as Trait>::Currency::remove_lock(ACCOUNTS_ID, T::NativeCurrencyId::get(), &who);
-			<FreeTransferEnabledAccounts<T>>::remove(who);
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				<T as Trait>::Currency::remove_lock(ACCOUNTS_ID, T::NativeCurrencyId::get(), &who);
+				<FreeTransferEnabledAccounts<T>>::remove(who);
+				Ok(())
+			})?;
 		}
 
 		/// Kill self account from system.
@@ -178,7 +181,7 @@ decl_module! {
 		///					None means no recipient is specified.
 		#[weight = 0]
 		fn close_account(origin, recipient: Option<T::AccountId>) {
-			with_transaction_result(|| -> DispatchResult {
+			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
 				// check must allow death,

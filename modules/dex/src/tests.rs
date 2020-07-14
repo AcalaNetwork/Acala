@@ -13,6 +13,7 @@ use sp_runtime::traits::BadOrigin;
 #[test]
 fn set_liquidity_incentive_rate_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_eq!(
 			DexModule::liquidity_incentive_rate(BTC),
 			Rate::saturating_from_rational(1, 100)
@@ -26,20 +27,17 @@ fn set_liquidity_incentive_rate_work() {
 			BTC,
 			Rate::saturating_from_rational(5, 100)
 		));
+		let update_liquidity_incentive_rate_event = TestEvent::dex(RawEvent::LiquidityIncentiveRateUpdated(
+			BTC,
+			Rate::saturating_from_rational(5, 100),
+		));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == update_liquidity_incentive_rate_event));
 		assert_eq!(
 			DexModule::liquidity_incentive_rate(BTC),
 			Rate::saturating_from_rational(5, 100)
 		);
-	});
-}
-
-#[test]
-fn accumulate_interest_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		LiquidityPool::insert(BTC, (100, 10000));
-		assert_eq!(DexModule::total_interest(BTC), (0, 0));
-		DexModule::accumulate_interest(BTC);
-		assert_eq!(DexModule::total_interest(BTC), (100, 0));
 	});
 }
 

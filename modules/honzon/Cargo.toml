@@ -12,6 +12,7 @@ frame-support = { version = "2.0.0-rc4", default-features = false }
 frame-system = { version = "2.0.0-rc4", default-features = false }
 sp-std = { version = "2.0.0-rc4", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-utilities = { path = "../../orml/utilities", default-features = false }
 cdp-engine = { package = "module-cdp-engine", path = "../cdp_engine", default-features = false }
 loans = { package = "module-loans", path = "../loans", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
@@ -35,6 +36,7 @@ std = [
 	"frame-system/std",
 	"sp-std/std",
 	"orml-tokens/std",
+	"orml-utilities/std",
 	"loans/std",
 	"cdp-engine/std",
 	"support/std",

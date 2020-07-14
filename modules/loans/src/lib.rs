@@ -131,6 +131,7 @@ impl<T: Trait> Module<T> {
 		debit_decrease: T::DebitBalance,
 	) -> DispatchResult {
 		with_transaction_result(|| -> DispatchResult {
+			// use `with_transaction_result` to ensure operation is atomatic
 			// convert balance type to amount type
 			let collateral_adjustment =
 				TryInto::<Amount>::try_into(collateral_confiscate).map_err(|_| Error::<T>::AmountConvertFailed)?;
@@ -165,6 +166,7 @@ impl<T: Trait> Module<T> {
 		debit_adjustment: T::DebitAmount,
 	) -> DispatchResult {
 		with_transaction_result(|| -> DispatchResult {
+			// use `with_transaction_result` to ensure operation is atomatic
 			// mutate collateral and debit
 			Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 

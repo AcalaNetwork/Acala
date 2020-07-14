@@ -8,6 +8,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{BasicCurrency, BasicLockableCurrency};
+use orml_utilities::with_transaction_result;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
@@ -133,118 +134,136 @@ decl_module! {
 
 		#[weight = 10_000]
 		pub fn bond(origin, #[compact] amount: Balance) {
-			let who = ensure_signed(origin)?;
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
 
-			let mut ledger = Self::ledger(&who);
-			let free_balance = T::Currency::free_balance(&who);
-			if let Some(extra) = free_balance.checked_sub(ledger.total) {
-				let extra = extra.min(amount);
-				let old_active = ledger.active;
-				ledger.active += extra;
-				ensure!(ledger.active >= T::MinBondThreshold::get(), Error::<T>::BelowMinBondThreshold);
-				ledger.total += extra;
-				let old_nominations = Self::nominations(&who);
+				let mut ledger = Self::ledger(&who);
+				let free_balance = T::Currency::free_balance(&who);
+				if let Some(extra) = free_balance.checked_sub(ledger.total) {
+					let extra = extra.min(amount);
+					let old_active = ledger.active;
+					ledger.active += extra;
+					ensure!(ledger.active >= T::MinBondThreshold::get(), Error::<T>::BelowMinBondThreshold);
+					ledger.total += extra;
+					let old_nominations = Self::nominations(&who);
 
-				Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
-				Self::update_ledger(&who, &ledger);
-			}
+					Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
+					Self::update_ledger(&who, &ledger);
+				}
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn unbond(origin, amount: Balance) {
-			let who = ensure_signed(origin)?;
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
 
-			let mut ledger = Self::ledger(&who);
-			ensure!(
-				ledger.unlocking.len() < T::MaxUnlockingChunks::get(),
-				Error::<T>::TooManyChunks,
-			);
-
-			let amount = amount.min(ledger.active);
-
-			if !amount.is_zero() {
-				let old_active = ledger.active;
-				ledger.active -= amount;
-
+				let mut ledger = Self::ledger(&who);
 				ensure!(
-					ledger.active.is_zero() || ledger.active >= T::MinBondThreshold::get(),
-					Error::<T>::BelowMinBondThreshold,
+					ledger.unlocking.len() < T::MaxUnlockingChunks::get(),
+					Error::<T>::TooManyChunks,
 				);
 
-				// Note: in case there is no current era it is fine to bond one era more.
-				let era = Self::current_era() + T::BondingDuration::get();
-				ledger.unlocking.push(UnlockChunk{
-					value: amount,
-					era,
-				});
-				let old_nominations = Self::nominations(&who);
+				let amount = amount.min(ledger.active);
 
-				Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
-				Self::update_ledger(&who, &ledger);
-			}
+				if !amount.is_zero() {
+					let old_active = ledger.active;
+					ledger.active -= amount;
+
+					ensure!(
+						ledger.active.is_zero() || ledger.active >= T::MinBondThreshold::get(),
+						Error::<T>::BelowMinBondThreshold,
+					);
+
+					// Note: in case there is no current era it is fine to bond one era more.
+					let era = Self::current_era() + T::BondingDuration::get();
+					ledger.unlocking.push(UnlockChunk{
+						value: amount,
+						era,
+					});
+					let old_nominations = Self::nominations(&who);
+
+					Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
+					Self::update_ledger(&who, &ledger);
+				}
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn rebond(origin, amount: Balance) {
-			let who = ensure_signed(origin)?;
-			let ledger = Self::ledger(&who);
-			ensure!(
-				!ledger.unlocking.is_empty(),
-				Error::<T>::NoUnlockChunk,
-			);
-			let old_active = ledger.active;
-			let old_nominations = Self::nominations(&who);
-			let ledger = ledger.rebond(amount);
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				let ledger = Self::ledger(&who);
+				ensure!(
+					!ledger.unlocking.is_empty(),
+					Error::<T>::NoUnlockChunk,
+				);
+				let old_active = ledger.active;
+				let old_nominations = Self::nominations(&who);
+				let ledger = ledger.rebond(amount);
 
-			Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
-			Self::update_ledger(&who, &ledger);
+				Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
+				Self::update_ledger(&who, &ledger);
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn withdraw_unbonded(origin) {
-			let who = ensure_signed(origin)?;
-			let ledger = Self::ledger(&who).consolidate_unlocked(Self::current_era());
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				let ledger = Self::ledger(&who).consolidate_unlocked(Self::current_era());
 
-			if ledger.unlocking.is_empty() && ledger.active.is_zero() {
-				Self::remove_ledger(&who);
-			} else {
-				// This was the consequence of a partial unbond. just update the ledger and move on.
-				Self::update_ledger(&who, &ledger);
-			}
+				if ledger.unlocking.is_empty() && ledger.active.is_zero() {
+					Self::remove_ledger(&who);
+				} else {
+					// This was the consequence of a partial unbond. just update the ledger and move on.
+					Self::update_ledger(&who, &ledger);
+				}
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn nominate(origin, targets: Vec<T::PolkadotAccountId>) {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				!targets.is_empty() &&
-				targets.len() <= T::NominateesCount::get(),
-				Error::<T>::InvalidTargetsLength,
-			);
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				ensure!(
+					!targets.is_empty() &&
+					targets.len() <= T::NominateesCount::get(),
+					Error::<T>::InvalidTargetsLength,
+				);
 
-			let ledger = Self::ledger(&who);
-			ensure!(!ledger.total.is_zero(), Error::<T>::NoBonded);
+				let ledger = Self::ledger(&who);
+				ensure!(!ledger.total.is_zero(), Error::<T>::NoBonded);
 
-			let mut targets = targets;
-			targets.sort();
-			targets.dedup();
+				let mut targets = targets;
+				targets.sort();
+				targets.dedup();
 
-			let old_nominations = Self::nominations(&who);
-			let old_active = Self::ledger(&who).active;
+				let old_nominations = Self::nominations(&who);
+				let old_active = Self::ledger(&who).active;
 
-			Self::update_votes(old_active, &old_nominations, old_active, &targets);
-			<Nominations<T>>::insert(&who, &targets);
+				Self::update_votes(old_active, &old_nominations, old_active, &targets);
+				<Nominations<T>>::insert(&who, &targets);
+				Ok(())
+			})?;
 		}
 
 		#[weight = 10_000]
 		pub fn chill(origin) {
-			let who = ensure_signed(origin)?;
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
 
-			let old_nominations = Self::nominations(&who);
-			let old_active = Self::ledger(&who).active;
+				let old_nominations = Self::nominations(&who);
+				let old_active = Self::ledger(&who).active;
 
-			Self::update_votes(old_active, &old_nominations, Zero::zero(), &[]);
-			<Nominations<T>>::remove(&who);
+				Self::update_votes(old_active, &old_nominations, Zero::zero(), &[]);
+				<Nominations<T>>::remove(&who);
+				Ok(())
+			})?;
 		}
 	}
 }

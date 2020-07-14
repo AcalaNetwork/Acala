@@ -12,6 +12,7 @@ frame-support = { version = "2.0.0-rc4", default-features = false }
 frame-system = { version = "2.0.0-rc4", default-features = false }
 sp-std = { version = "2.0.0-rc4", default-features = false }
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+orml-utilities = { path = "../../orml/utilities", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "module-primitives", path = "../primitives", default-features = false }
 
@@ -29,6 +30,7 @@ std = [
 	"frame-system/std",
 	"sp-std/std",
 	"orml-traits/std",
+	"orml-utilities/std",
 	"support/std",
 	"primitives/std",
 ]
