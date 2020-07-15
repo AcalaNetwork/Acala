@@ -12,6 +12,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::Encode;
+use hex_literal::hex;
 use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
@@ -953,6 +954,19 @@ impl module_homa_treasury::Trait for Runtime {
 	type ModuleId = HomaTreasuryModuleId;
 }
 
+parameter_types! {
+	pub const RenBtcCurrencyId: CurrencyId = CurrencyId::RenBTC;
+	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
+	pub const RenBtcIdentifier: [u8; 32] = hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
+}
+
+impl ecosystem_renvm_bridge::Trait for Runtime {
+	type Event = Event;
+	type Currency = Currency<Runtime, RenBtcCurrencyId>;
+	type PublicKey = RenVmPublickKey;
+	type CurrencyIdentifier = RenBtcIdentifier;
+}
+
 #[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
@@ -1015,6 +1029,9 @@ construct_runtime!(
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
 		HomaTreasury: module_homa_treasury::{Module},
+
+		// ecosystem modules
+		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>},
 	}
 );
 

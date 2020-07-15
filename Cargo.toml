@@ -96,6 +96,7 @@ members = [
 	"runtime",
 	"inspect",
 	"ecosystem-modules/template/template",
+	"ecosystem-modules/ren/renvm-bridge",
 ]
 exclude = [ "runtime/wasm" ]
 

@@ -14,6 +14,7 @@ pub enum CurrencyId {
 	DOT = 2,
 	XBTC = 3,
 	LDOT = 4,
+	RenBTC = 5,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
