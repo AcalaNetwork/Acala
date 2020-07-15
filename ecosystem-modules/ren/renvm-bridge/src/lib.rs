@@ -58,8 +58,6 @@ decl_error! {
 		InvalidMintSignature,
 		/// The mint signature has already been used.
 		SignatureAlreadyUsed,
-		/// The amount being burnt is greater than the account's balance.
-		InsufficientBalance,
 	}
 }
 
