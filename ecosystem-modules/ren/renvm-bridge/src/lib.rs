@@ -7,6 +7,7 @@ use orml_traits::BasicCurrency;
 use primitives::Balance;
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::DispatchResult;
+use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, Clone)]
 pub struct EcdsaSignature(pub [u8; 65]);
