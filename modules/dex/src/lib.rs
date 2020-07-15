@@ -57,7 +57,7 @@ pub trait Trait: system::Trait {
 	/// Trading fee rate
 	type GetExchangeFee: Get<Rate>;
 
-	/// The dex's module id, keep all assets in DEX.
+	/// The DEX's module id, keep all assets in DEX.
 	type ModuleId: Get<ModuleId>;
 }
 
@@ -76,6 +76,8 @@ decl_event!(
 		Swap(AccountId, CurrencyId, Balance, CurrencyId, Balance),
 		/// Incentive reward rate updated (currency_type, new_rate)
 		LiquidityIncentiveRateUpdated(CurrencyId, Rate),
+		/// Incentive interest claimed (who, currency_type, amount)
+		IncentiveInterestClaimed(AccountId, CurrencyId, Balance),
 	}
 );
 
@@ -89,8 +91,8 @@ decl_error! {
 		/// Share amount overflow
 		SharesOverflow,
 		/// The actual transaction price will be lower than the acceptable price
-		InacceptablePrice,
-		/// The increament of liquidity is invalid
+		UnacceptablePrice,
+		/// The increment of liquidity is invalid
 		InvalidLiquidityIncrement,
 	}
 }
@@ -101,7 +103,7 @@ decl_storage! {
 		/// CurrencyType -> (OtherCurrencyAmount, BaseCurrencyAmount)
 		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
 
-		/// Total shares amount of liquidity pool specificed by currency type
+		/// Total shares amount of liquidity pool specified by currency type
 		/// CurrencyType -> TotalSharesAmount
 		TotalShares get(fn total_shares): map hasher(twox_64_concat) CurrencyId => T::Share;
 
@@ -150,7 +152,7 @@ decl_module! {
 		/// Trading fee rate
 		const GetExchangeFee: Rate = T::GetExchangeFee::get();
 
-		/// The dex's module id, keep all assets in DEX.
+		/// The DEX's module id, keep all assets in DEX.
 		const ModuleId: ModuleId = T::ModuleId::get();
 
 		/// Update liquidity incentive rate of specific liquidity pool
@@ -286,8 +288,7 @@ decl_module! {
 				let (other_currency_increment, base_currency_increment, share_increment): (Balance, Balance, T::Share) =
 				if total_shares.is_zero() {
 					// initialize this liquidity pool, the initial share is equal to the max value between base currency amount and other currency amount
-					let initial_share: u128 = sp_std::cmp::max(max_other_currency_amount, max_base_currency_amount).unique_saturated_into();
-					let initial_share: T::Share = initial_share.unique_saturated_into();
+					let initial_share: T::Share = sp_std::cmp::max(max_other_currency_amount, max_base_currency_amount).unique_saturated_into();
 
 					(max_other_currency_amount, max_base_currency_amount, initial_share)
 				} else {
@@ -317,13 +318,17 @@ decl_module! {
 					!share_increment.is_zero() && !other_currency_increment.is_zero() && !base_currency_increment.is_zero(),
 					Error::<T>::InvalidLiquidityIncrement,
 				);
-				let new_total_shares = total_shares.checked_add(&share_increment).ok_or(Error::<T>::SharesOverflow)?;
 
 				T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)?;
 				T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_increment)?;
 				Self::deposit_calculate_interest(other_currency_id, &who, share_increment);
-				<TotalShares<T>>::insert(other_currency_id, new_total_shares);
-				<Shares<T>>::mutate(other_currency_id, &who, |share| *share += share_increment); // can't overflow because total shares did not overflow and shares is always less or equal to total shares
+				<TotalShares<T>>::try_mutate(other_currency_id, |total_shares| -> DispatchResult {
+					*total_shares = total_shares.checked_add(&share_increment).ok_or(Error::<T>::SharesOverflow)?;
+					Ok(())
+				})?;
+				<Shares<T>>::mutate(other_currency_id, &who, |share|
+					*share = share.checked_add(&share_increment).expect("share cannot overflow if `total_shares` doesn't; qed")
+				);
 				LiquidityPool::mutate(other_currency_id, |(other, base)| {
 					*other = other.saturating_add(other_currency_increment);
 					*base = base.saturating_add(base_currency_increment);
@@ -366,7 +371,6 @@ decl_module! {
 					T::EnabledCurrencyIds::get().contains(&currency_id),
 					Error::<T>::CurrencyIdNotAllowed,
 				);
-				let new_share_amount = Self::shares(currency_id, &who).checked_sub(&share_amount).ok_or(Error::<T>::ShareNotEnough)?;
 				let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(currency_id);
 				let proportion = Ratio::checked_from_rational(share_amount, Self::total_shares(currency_id)).unwrap_or_default();
 				let withdraw_other_currency_amount = proportion.saturating_mul_int(other_currency_pool);
@@ -374,8 +378,13 @@ decl_module! {
 				T::Currency::transfer(currency_id, &Self::account_id(), &who, withdraw_other_currency_amount)?;
 				T::Currency::transfer(T::GetBaseCurrencyId::get(), &Self::account_id(), &who, withdraw_base_currency_amount)?;
 				Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
-				<TotalShares<T>>::mutate(currency_id, |share| *share -= share_amount); // can't underflow because new_share_amount did not underflow and new_share_amount is always less or equal to total shares
-				<Shares<T>>::insert(currency_id, &who, new_share_amount);
+				<Shares<T>>::try_mutate(currency_id, &who, |share| -> DispatchResult {
+					*share = share.checked_sub(&share_amount).ok_or(Error::<T>::ShareNotEnough)?;
+					Ok(())
+				})?;
+				<TotalShares<T>>::mutate(currency_id, |share|
+					*share = share.checked_sub(&share_amount).expect("total share cannot underflow if share doesn't; qed")
+				);
 				LiquidityPool::mutate(currency_id, |(other, base)| {
 					*other = other.saturating_sub(withdraw_other_currency_amount);
 					*base = base.saturating_sub(withdraw_base_currency_amount);
@@ -392,7 +401,7 @@ decl_module! {
 			})?;
 		}
 
-		/// Accumalte liquidity incentive interest to respective reward pool when block end
+		/// Accumulate liquidity incentive interest to respective reward pool when block end
 		///
 		/// # <weight>
 		/// - Complexity: `O(N)` where `N` is the number of currency_ids
@@ -499,7 +508,7 @@ impl<T: Trait> Module<T> {
 		// ensure the amount can get is not 0 and >= minium acceptable
 		ensure!(
 			!base_currency_amount.is_zero() && base_currency_amount >= acceptable_base_currency_amount,
-			Error::<T>::InacceptablePrice,
+			Error::<T>::UnacceptablePrice,
 		);
 
 		// transfer token between account and dex and update liquidity pool
@@ -531,7 +540,7 @@ impl<T: Trait> Module<T> {
 		);
 		ensure!(
 			!other_currency_amount.is_zero() && other_currency_amount >= acceptable_other_currency_amount,
-			Error::<T>::InacceptablePrice,
+			Error::<T>::UnacceptablePrice,
 		);
 
 		T::Currency::transfer(base_currency_id, who, &Self::account_id(), base_currency_amount)?;
@@ -570,7 +579,7 @@ impl<T: Trait> Module<T> {
 		ensure!(
 			!target_other_currency_amount.is_zero()
 				&& target_other_currency_amount >= acceptable_target_other_currency_amount,
-			Error::<T>::InacceptablePrice,
+			Error::<T>::UnacceptablePrice,
 		);
 
 		T::Currency::transfer(
@@ -793,6 +802,12 @@ impl<T: Trait> Module<T> {
 			TotalInterest::mutate(currency_id, |(_, total_withdrawn)| {
 				*total_withdrawn = total_withdrawn.saturating_add(interest_to_withdraw);
 			});
+
+			Self::deposit_event(RawEvent::IncentiveInterestClaimed(
+				who.clone(),
+				currency_id,
+				interest_to_withdraw,
+			));
 		}
 
 		Ok(())

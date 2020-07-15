@@ -44,6 +44,8 @@ fn set_liquidity_incentive_rate_work() {
 #[test]
 fn claim_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
 		<Shares<Runtime>>::insert(BTC, ALICE, 2000);
 		<TotalShares<Runtime>>::insert(BTC, 10000);
 		TotalInterest::insert(BTC, (25000, 20000));
@@ -51,7 +53,11 @@ fn claim_interest_work() {
 		assert_ok!(Tokens::deposit(AUSD, &DexModule::account_id(), 5000));
 		let alice_former_balance = Tokens::free_balance(AUSD, &ALICE);
 		assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 5000);
+
 		assert_ok!(DexModule::claim_interest(BTC, &ALICE));
+		let claim_event = TestEvent::dex(RawEvent::IncentiveInterestClaimed(ALICE, BTC, 3000));
+		assert!(System::events().iter().any(|record| record.event == claim_event));
+
 		assert_eq!(DexModule::total_interest(BTC), (25000, 23000));
 		assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 5000);
 		assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 2000);
@@ -451,7 +457,7 @@ fn swap_other_to_base_work() {
 		);
 		assert_noop!(
 			DexModule::swap_currency(Origin::signed(CAROL), BTC, 10000, AUSD, 5000000),
-			Error::<Runtime>::InacceptablePrice,
+			Error::<Runtime>::UnacceptablePrice,
 		);
 
 		assert_eq!(
@@ -481,7 +487,7 @@ fn swap_base_to_other_work() {
 		);
 		assert_noop!(
 			DexModule::swap_currency(Origin::signed(CAROL), AUSD, 10000, BTC, 5000),
-			Error::<Runtime>::InacceptablePrice,
+			Error::<Runtime>::UnacceptablePrice,
 		);
 
 		assert_eq!(
@@ -513,7 +519,7 @@ fn swap_other_to_other_work() {
 		);
 		assert_noop!(
 			DexModule::swap_currency(Origin::signed(CAROL), DOT, 1000, BTC, 35),
-			Error::<Runtime>::InacceptablePrice,
+			Error::<Runtime>::UnacceptablePrice,
 		);
 
 		assert_eq!(
@@ -545,7 +551,7 @@ fn do_exchange_work() {
 		);
 		assert_noop!(
 			DexModule::do_exchange(&CAROL, BTC, 100, DOT, 2000),
-			Error::<Runtime>::InacceptablePrice,
+			Error::<Runtime>::UnacceptablePrice,
 		);
 		assert_ok!(DexModule::do_exchange(&CAROL, BTC, 100, AUSD, 4950));
 		assert_ok!(DexModule::do_exchange(&CAROL, AUSD, 4950, BTC, 90));
