@@ -56,9 +56,7 @@ fn claim_interest_work() {
 
 		assert_ok!(DexModule::claim_interest(BTC, &ALICE));
 		let claim_event = TestEvent::dex(RawEvent::IncentiveInterestClaimed(ALICE, BTC, 3000));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == claim_event));
+		assert!(System::events().iter().any(|record| record.event == claim_event));
 
 		assert_eq!(DexModule::total_interest(BTC), (25000, 23000));
 		assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 5000);

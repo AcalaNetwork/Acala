@@ -803,7 +803,11 @@ impl<T: Trait> Module<T> {
 				*total_withdrawn = total_withdrawn.saturating_add(interest_to_withdraw);
 			});
 
-			Self::deposit_event(RawEvent::IncentiveInterestClaimed(who.clone(), currency_id, interest_to_withdraw));
+			Self::deposit_event(RawEvent::IncentiveInterestClaimed(
+				who.clone(),
+				currency_id,
+				interest_to_withdraw,
+			));
 		}
 
 		Ok(())
