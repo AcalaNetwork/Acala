@@ -32,6 +32,8 @@ impl_outer_event! {
 	}
 }
 
+pub type RenvmBridgeCall = super::Call<Runtime>;
+
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
@@ -102,11 +104,16 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
+parameter_types! {
+	pub const UnsignedPriority: u64 = 1 << 20;
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = BasicCurrencyAdapter<Runtime, Balances, Balance>;
 	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RenBtcIdentifier;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type RenVmBridge = Module<Runtime>;
 

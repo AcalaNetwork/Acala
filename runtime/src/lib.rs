@@ -958,6 +958,7 @@ parameter_types! {
 	pub const RenBtcCurrencyId: CurrencyId = CurrencyId::RenBTC;
 	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RenBtcIdentifier: [u8; 32] = hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
+	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 3;
 }
 
 impl ecosystem_renvm_bridge::Trait for Runtime {
@@ -965,6 +966,7 @@ impl ecosystem_renvm_bridge::Trait for Runtime {
 	type Currency = Currency<Runtime, RenBtcCurrencyId>;
 	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RenBtcIdentifier;
+	type UnsignedPriority = RenvmBridgeUnsignedPriority;
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -1031,7 +1033,7 @@ construct_runtime!(
 		HomaTreasury: module_homa_treasury::{Module},
 
 		// ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>},
+		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
 	}
 );
 
