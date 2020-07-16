@@ -89,6 +89,7 @@ dependencies = [
 name = "acala-runtime"
 version = "0.5.0"
 dependencies = [
+ "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -984,6 +985,26 @@ name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
+name = "ecosystem-renvm-bridge"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "module-primitives",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "ecosystem-template"
