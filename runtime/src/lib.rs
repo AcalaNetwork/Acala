@@ -648,7 +648,7 @@ parameter_types! {
 impl orml_currencies::Trait for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Balance>;
+	type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 

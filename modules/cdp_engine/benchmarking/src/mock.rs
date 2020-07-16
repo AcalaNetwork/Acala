@@ -92,7 +92,8 @@ impl pallet_balances::Trait for Runtime {
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
+pub type AdaptedBasicCurrency =
+	orml_currencies::BasicCurrencyAdapter<PalletBalances, Balance, Balance, Amount, BlockNumber>;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
