@@ -995,7 +995,6 @@ dependencies = [
  "hex-literal",
  "module-primitives",
  "orml-currencies",
- "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
