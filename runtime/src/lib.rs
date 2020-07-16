@@ -777,7 +777,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::RenBTC];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -828,7 +828,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 
 parameter_types! {
 	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA];
+	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA, CurrencyId::RenBTC];
 }
 
 impl module_dex::Trait for Runtime {
@@ -863,7 +863,7 @@ parameter_types! {
 	pub const FreeTransferPeriod: BlockNumber = DAYS;
 	pub const FreeTransferDeposit: Balance = DOLLARS;
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::RenBTC];
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 

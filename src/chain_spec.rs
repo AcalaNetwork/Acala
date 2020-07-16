@@ -325,6 +325,7 @@ fn testnet_genesis(
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, DOLLARS),
+				(CurrencyId::RenBTC, DOLLARS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
@@ -353,6 +354,14 @@ fn testnet_genesis(
 					Some(FixedU128::saturating_from_rational(180, 100)),
 					10_000_000 * DOLLARS,
 				),
+				(
+					CurrencyId::RenBTC,
+					Some(FixedU128::zero()),
+					Some(FixedU128::saturating_from_rational(150, 100)),
+					Some(FixedU128::saturating_from_rational(10, 100)),
+					Some(FixedU128::saturating_from_rational(150, 100)),
+					10_000_000 * DOLLARS,
+				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
 		}),
@@ -361,6 +370,7 @@ fn testnet_genesis(
 				(CurrencyId::DOT, FixedU128::zero()),
 				(CurrencyId::XBTC, FixedU128::zero()),
 				(CurrencyId::LDOT, FixedU128::zero()),
+				(CurrencyId::RenBTC, FixedU128::zero()),
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
@@ -462,6 +472,7 @@ fn mandala_genesis(
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, 5 * CENTS),
+				(CurrencyId::RenBTC, 5 * CENTS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
@@ -490,6 +501,14 @@ fn mandala_genesis(
 					Some(FixedU128::saturating_from_rational(130, 100)),
 					10_000_000 * DOLLARS,
 				),
+				(
+					CurrencyId::RenBTC,
+					Some(FixedU128::zero()),
+					Some(FixedU128::saturating_from_rational(110, 100)),
+					Some(FixedU128::saturating_from_rational(4, 100)),
+					Some(FixedU128::saturating_from_rational(115, 100)),
+					10_000_000 * DOLLARS,
+				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
 		}),
@@ -505,6 +524,10 @@ fn mandala_genesis(
 				), // 4% APR
 				(
 					CurrencyId::LDOT,
+					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
+				), // 4% APR
+				(
+					CurrencyId::RenBTC,
 					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
 				), // 4% APR
 			],
