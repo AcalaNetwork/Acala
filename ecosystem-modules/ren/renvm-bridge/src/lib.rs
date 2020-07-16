@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::block_in_if_condition_stmt)]
 
 use codec::{Decode, Encode};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
@@ -183,12 +182,12 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 				return InvalidTransaction::Stale.into();
 			}
 
-			// verify signature
-			if Encode::using_encoded(&who, |encoded| -> DispatchResult {
+			let verify_result = Encode::using_encoded(&who, |encoded| -> DispatchResult {
 				Self::verify_signature(&p_hash, *amount, encoded, &n_hash, &sig.0)
-			})
-			.is_err()
-			{
+			});
+
+			// verify signature
+			if verify_result.is_err() {
 				return InvalidTransaction::BadProof.into();
 			}
 
