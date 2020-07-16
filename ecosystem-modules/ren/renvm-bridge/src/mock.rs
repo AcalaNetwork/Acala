@@ -26,8 +26,6 @@ impl_outer_event! {
 	pub enum TestEvent for Runtime {
 		system<T>,
 		pallet_balances<T>,
-		orml_tokens<T>,
-		orml_currencies<T>,
 		renvm<T>,
 	}
 }
@@ -68,7 +66,7 @@ impl system::Trait for Runtime {
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 0;
-	pub const RenVmPublickKey: [u8; 20] = hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
+	pub const RenVmPublicKey: [u8; 20] = hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RenBtcIdentifier: [u8; 32] = hex_literal::hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
 }
 
@@ -86,26 +84,10 @@ impl pallet_balances::Trait for Runtime {
 
 pub type Balances = pallet_balances::Module<Runtime>;
 
-impl orml_tokens::Trait for Runtime {
-	type Event = TestEvent;
-	type Balance = Balance;
-	type Amount = i128;
-	type CurrencyId = u8;
-	type OnReceived = ();
-}
-pub type Tokens = orml_tokens::Module<Runtime>;
-
-impl orml_currencies::Trait for Runtime {
-	type Event = TestEvent;
-	type MultiCurrency = Tokens;
-	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Balance>;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
-
 impl Trait for Runtime {
 	type Event = TestEvent;
-	type Currency = BasicCurrencyAdapter<Runtime, Balances, Balance>;
-	type PublicKey = RenVmPublickKey;
+	type Currency = BasicCurrencyAdapter<Balances, Balance, Balance, i128, BlockNumber>;
+	type PublicKey = RenVmPublicKey;
 	type CurrencyIdentifier = RenBtcIdentifier;
 }
 pub type RenVmBridge = Module<Runtime>;

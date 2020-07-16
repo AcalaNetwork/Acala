@@ -85,7 +85,7 @@ parameter_types! {
 	pub const GetLDOTCurrencyId: CurrencyId = LDOT;
 }
 
-pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
+pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<PalletBalances, Balance, Balance, Amount, BlockNumber>;
 pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLDOTCurrencyId>;
 
 impl orml_currencies::Trait for Runtime {

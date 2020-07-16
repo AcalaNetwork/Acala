@@ -112,7 +112,8 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 pub type Currencies = orml_currencies::Module<Runtime>;
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Balance>;
+pub type AdaptedBasicCurrency =
+	orml_currencies::BasicCurrencyAdapter<PalletBalances, Balance, Balance, Amount, BlockNumber>;
 
 pub struct MockAuctionManager;
 impl AuctionManager<AccountId> for MockAuctionManager {
