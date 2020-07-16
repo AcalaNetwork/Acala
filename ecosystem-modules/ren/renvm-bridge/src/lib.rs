@@ -81,6 +81,10 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Allow a user to mint if they have a valid signature from RenVM.
+		///
+		/// The dispatch origin of this call must be _None_.
+		///
+		/// Verify input by `validate_unsigned`
 		#[weight = 10_000]
 		fn mint(
 			origin,
@@ -91,7 +95,7 @@ decl_module! {
 			sig: EcdsaSignature,
 		) {
 			ensure_none(origin)?;
-			Self::do_mint(who, p_hash, amount, n_hash, sig)?;
+			Self::do_mint(who, amount, sig)?;
 		}
 
 		/// Allow a user to burn assets.
@@ -111,28 +115,11 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn do_mint(
-		sender: T::AccountId,
-		_p_hash: [u8; 32],
-		amount: Balance,
-		_n_hash: [u8; 32],
-		sig: EcdsaSignature,
-	) -> DispatchResult {
-		Signatures::try_mutate_exists(&sig, |exists| -> DispatchResult {
-			// ensure!(exists.is_none(), Error::<T>::SignatureAlreadyUsed);
-
-			// Encode::using_encoded(&sender, |encoded| -> DispatchResult {
-			// 	Self::verify_signature(&p_hash, amount, encoded, &n_hash, &sig.0)
-			// })?;
-
-			T::Currency::deposit(&sender, amount)?;
-
-			*exists = Some(());
-			Ok(())
-		})?;
+	fn do_mint(sender: T::AccountId, amount: Balance, sig: EcdsaSignature) -> DispatchResult {
+		T::Currency::deposit(&sender, amount)?;
+		Signatures::insert(&sig, ());
 
 		Self::deposit_event(RawEvent::Minted(sender, amount));
-
 		Ok(())
 	}
 
@@ -178,7 +165,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		if let Call::mint(who, p_hash, amount, n_hash, sig) = call {
 			// check if already exists
-			if let Some(()) = Signatures::get(&sig) {
+			if Signatures::contains_key(&sig) {
 				return InvalidTransaction::Stale.into();
 			}
 
