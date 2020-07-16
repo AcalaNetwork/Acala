@@ -15,6 +15,13 @@ sp-runtime = { version = "2.0.0-rc4", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
 primitives = { package = "module-primitives", path = "../../../modules/primitives", default-features = false }
 
+[dev-dependencies]
+hex-literal = { version = "0.2.1" }
+orml-currencies = { path = "../../../orml/currencies", default-features = false }
+orml-tokens = { path = "../../../orml/tokens", default-features = false }
+pallet-balances = { version = "2.0.0-rc4", default-features = false }
+sp-core = { version = "2.0.0-rc4", default-features = false }
+
 [features]
 default = ["std"]
 std = [
