@@ -69,7 +69,7 @@ impl system::Trait for Runtime {
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 0;
 	pub const RenVmPublicKey: [u8; 20] = hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
-	pub const RenBtcIdentifier: [u8; 32] = hex_literal::hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
+	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
 }
 
 parameter_types! {
@@ -93,7 +93,7 @@ impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = BasicCurrencyAdapter<Balances, Balance, Balance, i128, BlockNumber>;
 	type PublicKey = RenVmPublicKey;
-	type CurrencyIdentifier = RenBtcIdentifier;
+	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type RenVmBridge = Module<Runtime>;
