@@ -2,11 +2,16 @@
 
 use codec::{Decode, Encode};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
-use frame_system::{self as system, ensure_signed};
+use frame_system::{self as system, ensure_none, ensure_signed};
 use orml_traits::BasicCurrency;
 use primitives::Balance;
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
-use sp_runtime::DispatchResult;
+use sp_runtime::{
+	transaction_validity::{
+		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
+	},
+	DispatchResult,
+};
 use sp_std::vec::Vec;
 
 mod mock;
@@ -34,6 +39,11 @@ pub trait Trait: system::Trait {
 	type PublicKey: Get<[u8; 20]>;
 	/// The RenVM Currency identifier
 	type CurrencyIdentifier: Get<[u8; 32]>;
+	/// A configuration for base priority of unsigned transactions.
+	///
+	/// This is exposed so that it can be tuned for particular runtime, when
+	/// multiple modules send unsigned transactions.
+	type UnsignedPriority: Get<TransactionPriority>;
 }
 
 decl_storage! {
@@ -71,16 +81,21 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Allow a user to mint if they have a valid signature from RenVM.
+		///
+		/// The dispatch origin of this call must be _None_.
+		///
+		/// Verify input by `validate_unsigned`
 		#[weight = 10_000]
 		fn mint(
 			origin,
+			who: T::AccountId,
 			p_hash: [u8; 32],
 			#[compact] amount: Balance,
 			n_hash: [u8; 32],
 			sig: EcdsaSignature,
 		) {
-			let sender = ensure_signed(origin)?;
-			Self::do_mint(sender, p_hash, amount, n_hash, sig)?;
+			ensure_none(origin)?;
+			Self::do_mint(who, amount, sig)?;
 		}
 
 		/// Allow a user to burn assets.
@@ -100,28 +115,11 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn do_mint(
-		sender: T::AccountId,
-		p_hash: [u8; 32],
-		amount: Balance,
-		n_hash: [u8; 32],
-		sig: EcdsaSignature,
-	) -> DispatchResult {
-		Signatures::try_mutate_exists(&sig, |exists| -> DispatchResult {
-			ensure!(exists.is_none(), Error::<T>::SignatureAlreadyUsed);
-
-			Encode::using_encoded(&sender, |encoded| -> DispatchResult {
-				Self::verify_signature(&p_hash, amount, encoded, &n_hash, &sig.0)
-			})?;
-
-			T::Currency::deposit(&sender, amount)?;
-
-			*exists = Some(());
-			Ok(())
-		})?;
+	fn do_mint(sender: T::AccountId, amount: Balance, sig: EcdsaSignature) -> DispatchResult {
+		T::Currency::deposit(&sender, amount)?;
+		Signatures::insert(&sig, ());
 
 		Self::deposit_event(RawEvent::Minted(sender, amount));
-
 		Ok(())
 	}
 
@@ -157,5 +155,37 @@ impl<T: Trait> Module<T> {
 		ensure!(addr == T::PublicKey::get(), Error::<T>::InvalidMintSignature);
 
 		Ok(())
+	}
+}
+
+#[allow(deprecated)]
+impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+	type Call = Call<T>;
+
+	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+		if let Call::mint(who, p_hash, amount, n_hash, sig) = call {
+			// check if already exists
+			if Signatures::contains_key(&sig) {
+				return InvalidTransaction::Stale.into();
+			}
+
+			let verify_result = Encode::using_encoded(&who, |encoded| -> DispatchResult {
+				Self::verify_signature(&p_hash, *amount, encoded, &n_hash, &sig.0)
+			});
+
+			// verify signature
+			if verify_result.is_err() {
+				return InvalidTransaction::BadProof.into();
+			}
+
+			ValidTransaction::with_tag_prefix("renvm-bridge")
+				.priority(T::UnsignedPriority::get())
+				.and_provides(sig)
+				.longevity(64_u64)
+				.propagate(true)
+				.build()
+		} else {
+			InvalidTransaction::Call.into()
+		}
 	}
 }

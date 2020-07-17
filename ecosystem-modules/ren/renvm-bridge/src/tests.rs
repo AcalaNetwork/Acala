@@ -3,10 +3,26 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, unsigned::ValidateUnsigned};
 use hex_literal::hex;
-use mock::{Balances, ExtBuilder, Origin, RenVmBridge, Runtime};
+use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, RenvmBridgeCall};
 use sp_core::H256;
+use sp_runtime::transaction_validity::TransactionValidityError;
+
+fn mint_ren_btc(
+	who: AccountId,
+	p_hash: [u8; 32],
+	amount: Balance,
+	n_hash: [u8; 32],
+	sig: EcdsaSignature,
+) -> Result<DispatchResult, TransactionValidityError> {
+	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
+		TransactionSource::External,
+		&RenvmBridgeCall::mint(who.clone(), p_hash, amount, n_hash, sig.clone()),
+	)?;
+
+	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
+}
 
 #[test]
 fn verify_signature_works() {
@@ -65,9 +81,10 @@ fn verify_signature_works() {
 fn mint_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let to: H256 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
+
 		assert_ok!(
-			RenVmBridge::mint(
-				Origin::signed(to.clone()),
+			mint_ren_btc(
+				to.clone(),
 				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
 				5000,
 				hex!["e96cc92771222bd8f674ddf4ef6a4264e38030e90380fb215cb145591ed803e9"],
@@ -78,8 +95,8 @@ fn mint_works() {
 		assert_eq!(Balances::free_balance(to.clone()), 5000);
 
 		assert_ok!(
-			RenVmBridge::mint(
-				Origin::signed(to.clone()),
+			mint_ren_btc(
+				to.clone(),
 				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
 				95000,
 				hex!["81e25aafbe2fb3ea02de043f5e13118c087a12d6871198cc97d160180fafcca2"],
@@ -90,25 +107,25 @@ fn mint_works() {
 		assert_eq!(Balances::free_balance(to.clone()), 5000 + 95000);
 
 		assert_noop!(
-			RenVmBridge::mint(
-				Origin::signed(to.clone()),
+			mint_ren_btc(
+				to.clone(),
 				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
 				95000,
 				hex!["81e25aafbe2fb3ea02de043f5e13118c087a12d6871198cc97d160180fafcca2"],
 				EcdsaSignature(hex!["09f05f67a282e483d7e064ad1f2382dfedf6df11f55d42c86a47e6f54e0dd004280b395a923a8a60a93b6986217bb67adb4cc066ad4444dc28ec92d1de23b5f11b"]),
 			),
-			Error::<Runtime>::SignatureAlreadyUsed
+			TransactionValidityError::Invalid(InvalidTransaction::Stale)
 		);
 
 		assert_noop!(
-			RenVmBridge::mint(
-				Origin::signed(to.clone()),
+			mint_ren_btc(
+				to.clone(),
 				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
 				95000,
 				hex!["81e25aafbe2fb3ea02de043f5e13118c087a12d6871198cc97d160180fafcca2"],
 				EcdsaSignature(hex!["000000000000000000e064ad1f2382dfedf6df11f55d42c86a47e6f54e0dd004280b395a923a8a60a93b6986217bb67adb4cc066ad4444dc28ec92d1de23b5f11b"]),
 			),
-			Error::<Runtime>::InvalidMintSignature
+			TransactionValidityError::Invalid(InvalidTransaction::BadProof)
 		);
 	});
 }

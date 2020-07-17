@@ -30,6 +30,8 @@ impl_outer_event! {
 	}
 }
 
+pub type RenvmBridgeCall = super::Call<Runtime>;
+
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
@@ -81,14 +83,18 @@ impl pallet_balances::Trait for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
 }
-
 pub type Balances = pallet_balances::Module<Runtime>;
+
+parameter_types! {
+	pub const UnsignedPriority: u64 = 1 << 20;
+}
 
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = BasicCurrencyAdapter<Balances, Balance, Balance, i128, BlockNumber>;
 	type PublicKey = RenVmPublicKey;
 	type CurrencyIdentifier = RenBtcIdentifier;
+	type UnsignedPriority = UnsignedPriority;
 }
 pub type RenVmBridge = Module<Runtime>;
 
