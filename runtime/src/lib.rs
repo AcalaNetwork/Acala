@@ -777,7 +777,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::RenBTC];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::RENBTC];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -828,7 +828,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 
 parameter_types! {
 	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA, CurrencyId::RenBTC];
+	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA, CurrencyId::RENBTC];
 }
 
 impl module_dex::Trait for Runtime {
@@ -863,7 +863,7 @@ parameter_types! {
 	pub const FreeTransferPeriod: BlockNumber = DAYS;
 	pub const FreeTransferDeposit: Balance = DOLLARS;
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::RenBTC];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::RENBTC];
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
@@ -955,17 +955,17 @@ impl module_homa_treasury::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const RenBtcCurrencyId: CurrencyId = CurrencyId::RenBTC;
+	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::RENBTC;
 	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
-	pub const RenBtcIdentifier: [u8; 32] = hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
+	pub const RENBTCIdentifier: [u8; 32] = hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
 	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 3;
 }
 
 impl ecosystem_renvm_bridge::Trait for Runtime {
 	type Event = Event;
-	type Currency = Currency<Runtime, RenBtcCurrencyId>;
+	type Currency = Currency<Runtime, RENBTCCurrencyId>;
 	type PublicKey = RenVmPublickKey;
-	type CurrencyIdentifier = RenBtcIdentifier;
+	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = RenvmBridgeUnsignedPriority;
 }
 

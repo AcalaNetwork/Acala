@@ -325,7 +325,7 @@ fn testnet_genesis(
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, DOLLARS),
-				(CurrencyId::RenBTC, DOLLARS),
+				(CurrencyId::RENBTC, DOLLARS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
@@ -355,7 +355,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::RenBTC,
+					CurrencyId::RENBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
@@ -370,7 +370,7 @@ fn testnet_genesis(
 				(CurrencyId::DOT, FixedU128::zero()),
 				(CurrencyId::XBTC, FixedU128::zero()),
 				(CurrencyId::LDOT, FixedU128::zero()),
-				(CurrencyId::RenBTC, FixedU128::zero()),
+				(CurrencyId::RENBTC, FixedU128::zero()),
 			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
@@ -472,7 +472,7 @@ fn mandala_genesis(
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, 5 * CENTS),
-				(CurrencyId::RenBTC, 5 * CENTS),
+				(CurrencyId::RENBTC, 5 * CENTS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
@@ -502,7 +502,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::RenBTC,
+					CurrencyId::RENBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
@@ -527,7 +527,7 @@ fn mandala_genesis(
 					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
 				), // 4% APR
 				(
-					CurrencyId::RenBTC,
+					CurrencyId::RENBTC,
 					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
 				), // 4% APR
 			],
