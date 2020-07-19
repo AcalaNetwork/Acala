@@ -159,7 +159,7 @@ decl_event!(
 		SurplusAuctionDealed(AuctionId, Balance, AccountId, Balance),
 		/// Debit auction dealed (auction_id, debit_currency_amount, winner, payment_amount).
 		DebitAuctionDealed(AuctionId, Balance, AccountId, Balance),
-		/// Dex take collateral auction (auction_id, collateral_type, collateral_amount, turnover, refund)
+		/// Dex take collateral auction (auction_id, collateral_type, collateral_amount, turnover)
 		DEXTakeCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
 	}
 );
