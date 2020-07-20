@@ -55,11 +55,11 @@ decl_event!(
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
-		/// Emergency shutdown occurs (block_number)
+		/// Emergency shutdown occurs. [block_number]
 		Shutdown(BlockNumber),
-		/// The final redemption opened (block_number)
+		/// The final redemption opened. [block_number]
 		OpenRefund(BlockNumber),
-		/// Refund info (caller, stable_coin_amount, refund_list)
+		/// Refund info. [caller, stable_coin_amount, refund_list]
 		Refund(AccountId, Balance, Vec<(CurrencyId, Balance)>),
 	}
 );

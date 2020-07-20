@@ -68,15 +68,15 @@ decl_event!(
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
-		/// Add liquidity success (who, currency_type, added_currency_amount, added_base_currency_amount, increment_share_amount)
+		/// Add liquidity success. [who, currency_type, added_currency_amount, added_base_currency_amount, increment_share_amount]
 		AddLiquidity(AccountId, CurrencyId, Balance, Balance, Share),
-		/// Withdraw liquidity from the trading pool success (who, currency_type, withdrawn_currency_amount, withdrawn_base_currency_amount, burned_share_amount)
+		/// Withdraw liquidity from the trading pool success. [who, currency_type, withdrawn_currency_amount, withdrawn_base_currency_amount, burned_share_amount]
 		WithdrawLiquidity(AccountId, CurrencyId, Balance, Balance, Share),
-		/// Use supply currency to swap target currency (trader, supply_currency_type, supply_currency_amount, target_currency_type, target_currency_amount)
+		/// Use supply currency to swap target currency. [trader, supply_currency_type, supply_currency_amount, target_currency_type, target_currency_amount]
 		Swap(AccountId, CurrencyId, Balance, CurrencyId, Balance),
-		/// Incentive reward rate updated (currency_type, new_rate)
+		/// Incentive reward rate updated. [currency_type, new_rate]
 		LiquidityIncentiveRateUpdated(CurrencyId, Rate),
-		/// Incentive interest claimed (who, currency_type, amount)
+		/// Incentive interest claimed. [who, currency_type, amount]
 		IncentiveInterestClaimed(AccountId, CurrencyId, Balance),
 	}
 );

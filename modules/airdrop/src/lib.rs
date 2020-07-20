@@ -34,7 +34,9 @@ decl_event!(
 		AirDropCurrencyId = AirDropCurrencyId,
 		Balance = Balance,
 	{
+		/// [to, currency_id, amount]
 		Airdrop(AccountId, AirDropCurrencyId, Balance),
+		/// [to, currency_id, amount]
 		UpdateAirdrop(AccountId, AirDropCurrencyId, Balance),
 	}
 );

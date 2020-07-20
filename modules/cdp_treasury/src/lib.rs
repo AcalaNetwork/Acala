@@ -56,15 +56,15 @@ pub trait Trait: system::Trait {
 
 decl_event!(
 	pub enum Event {
-		/// The fixed size for surplus auction updated (new_size)
+		/// The fixed size for surplus auction updated. [new_size]
 		SurplusAuctionFixedSizeUpdated(Balance),
-		/// The buffer size of surplus pool updated (new_size)
+		/// The buffer size of surplus pool updated. [new_size]
 		SurplusBufferSizeUpdated(Balance),
-		/// The initial supply amount of a debit auction updated (new_amount)
+		/// The initial supply amount of a debit auction updated. [new_amount]
 		InitialAmountPerDebitAuctionUpdated(Balance),
-		/// The fixed size for debit auction updated (new_size)
+		/// The fixed size for debit auction updated. [new_size]
 		DebitAuctionFixedSizeUpdated(Balance),
-		/// The fixed size for collateral auction under specific collateral type updated (collateral_type, new_size)
+		/// The fixed size for collateral auction under specific collateral type updated. [collateral_type, new_size]
 		CollateralAuctionMaximumSizeUpdated(CurrencyId, Balance),
 	}
 );

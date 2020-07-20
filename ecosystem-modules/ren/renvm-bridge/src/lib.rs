@@ -58,9 +58,9 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		DestAddress = [u8; 20],
 	{
-		/// Asset minted (owner, amount)
+		/// Asset minted. [owner, amount]
 		Minted(AccountId, Balance),
-		/// Asset burnt in this chain (owner, dest, amount)
+		/// Asset burnt in this chain [owner, dest, amount]
 		Burnt(AccountId, DestAddress, Balance),
 	}
 );
