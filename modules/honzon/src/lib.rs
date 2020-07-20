@@ -102,7 +102,7 @@ decl_module! {
 		}
 
 		/// Transfer the whole CDP of `from` under `currency_id` to caller's CDP under the same `currency_id`,
-		/// caller must have the authrization of `from` for the specific collateral type
+		/// caller must have the authorization of `from` for the specific collateral type
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `from`: authorizer account
