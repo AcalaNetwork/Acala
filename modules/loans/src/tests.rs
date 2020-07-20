@@ -24,13 +24,13 @@ fn check_update_loan_overflow_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		// collateral underflow
 		assert_noop!(
-			LoansModule::check_update_loan_overflow(&ALICE, BTC, -100, 0),
+			LoansModule::update_loan(&ALICE, BTC, -100, 0),
 			Error::<Runtime>::CollateralTooLow,
 		);
 
 		// debit underflow
 		assert_noop!(
-			LoansModule::check_update_loan_overflow(&ALICE, BTC, 0, -100),
+			LoansModule::update_loan(&ALICE, BTC, 0, -100),
 			Error::<Runtime>::DebitTooLow,
 		);
 	});

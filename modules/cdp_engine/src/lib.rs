@@ -27,7 +27,7 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
+	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
@@ -122,7 +122,7 @@ pub struct RiskManagementParams {
 	/// `None` value means not set
 	pub liquidation_penalty: Option<Rate>,
 
-	/// Required collateral ratio, it it's set, cannot adjust the position of CDP so that
+	/// Required collateral ratio, if it's set, cannot adjust the position of CDP so that
 	/// the current collateral ratio is lower than the required collateral ratio.
 	/// `None` value means not set
 	pub required_collateral_ratio: Option<Ratio>,
@@ -543,14 +543,11 @@ impl<T: Trait> Module<T> {
 		let collateral_balance = <loans::Module<T>>::collaterals(who, currency_id);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
-		if debit_balance.is_zero() {
-			false
-		} else if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
+		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 			collateral_ratio < Self::get_liquidation_ratio(currency_id)
 		} else {
-			// if feed_price is invalid, can not judge the cdp is safe or unsafe!
 			false
 		}
 	}
@@ -599,7 +596,7 @@ impl<T: Trait> Module<T> {
 		let locked_collateral_value = price.saturating_mul_int(collateral_balance);
 		let debit_value = Self::get_debit_value(currency_id, debit_balance);
 
-		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_default()
+		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_else(Rate::max_value)
 	}
 
 	pub fn adjust_position(
