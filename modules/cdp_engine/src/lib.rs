@@ -140,21 +140,21 @@ decl_event!(
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
-		/// Liquidate the unsafe CDP (collateral_type, owner, collateral_amount, bad_debt_value, liquidation_strategy)
+		/// Liquidate the unsafe CDP. [collateral_type, owner, collateral_amount, bad_debt_value, liquidation_strategy]
 		LiquidateUnsafeCDP(CurrencyId, AccountId, Balance, Balance, LiquidationStrategy),
-		/// Settle the CDP has debit (collateral_type, owner)
+		/// Settle the CDP has debit. [collateral_type, owner]
 		SettleCDPInDebit(CurrencyId, AccountId),
-		/// The stability fee for specific collateral type updated (collateral_type, new_stability_fee)
+		/// The stability fee for specific collateral type updated. [collateral_type, new_stability_fee]
 		StabilityFeeUpdated(CurrencyId, Option<Rate>),
-		/// The liquidation fee for specific collateral type updated (collateral_type, new_liquidation_ratio)
+		/// The liquidation fee for specific collateral type updated. [collateral_type, new_liquidation_ratio]
 		LiquidationRatioUpdated(CurrencyId, Option<Ratio>),
-		/// The liquidation penalty rate for specific collateral type updated (collateral_type, new_liquidation_panelty)
+		/// The liquidation penalty rate for specific collateral type updated. [collateral_type, new_liquidation_panelty]
 		LiquidationPenaltyUpdated(CurrencyId, Option<Rate>),
-		/// The required collateral penalty rate for specific collateral type updated (collateral_type, new_required_collateral_ratio)
+		/// The required collateral penalty rate for specific collateral type updated. [collateral_type, new_required_collateral_ratio]
 		RequiredCollateralRatioUpdated(CurrencyId, Option<Ratio>),
-		/// The hard cap of total debit value for specific collateral type updated (collateral_type, new_total_debit_value)
+		/// The hard cap of total debit value for specific collateral type updated. [collateral_type, new_total_debit_value]
 		MaximumTotalDebitValueUpdated(CurrencyId, Balance),
-		/// The global stability fee for all types of collateral updated (new_global_stability_fee)
+		/// The global stability fee for all types of collateral updated. [new_global_stability_fee]
 		GlobalStabilityFeeUpdated(Rate),
 	}
 );
