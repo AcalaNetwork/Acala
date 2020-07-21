@@ -583,14 +583,14 @@ impl<T: Trait> Module<T> {
 		Self::debit_exchange_rate(currency_id).unwrap_or_else(T::DefaultDebitExchangeRate::get)
 	}
 
-	pub fn get_debit_value(currency_id: CurrencyId, debit_balance: T::DebitBalance) -> Balance {
+	pub fn get_debit_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
 		DebitExchangeRateConvertor::<T>::convert((currency_id, debit_balance))
 	}
 
 	pub fn calculate_collateral_ratio(
 		currency_id: CurrencyId,
 		collateral_balance: Balance,
-		debit_balance: T::DebitBalance,
+		debit_balance: Balance,
 		price: Price,
 	) -> Ratio {
 		let locked_collateral_value = price.saturating_mul_int(collateral_balance);
@@ -603,7 +603,7 @@ impl<T: Trait> Module<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_adjustment: Amount,
-		debit_adjustment: T::DebitAmount,
+		debit_adjustment: Amount,
 	) -> DispatchResult {
 		ensure!(
 			T::CollateralCurrencyIds::get().contains(&currency_id),
@@ -701,15 +701,15 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, T::DebitBalance> for Module<T> {
-	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: T::DebitBalance) -> Balance {
+impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Module<T> {
+	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
 		Self::get_debit_value(currency_id, debit_balance)
 	}
 
 	fn check_position_valid(
 		currency_id: CurrencyId,
 		collateral_balance: Balance,
-		debit_balance: T::DebitBalance,
+		debit_balance: Balance,
 	) -> DispatchResult {
 		let debit_value = Self::get_debit_value(currency_id, debit_balance);
 
@@ -743,7 +743,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, T::DebitBalance> f
 		Ok(())
 	}
 
-	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: T::DebitBalance) -> DispatchResult {
+	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
 		let hard_cap = Self::maximum_total_debit_value(currency_id);
 		let total_debit_value = Self::get_debit_value(currency_id, total_debit_balance);
 

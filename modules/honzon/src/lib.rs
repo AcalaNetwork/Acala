@@ -87,7 +87,7 @@ decl_module! {
 			origin,
 			currency_id: CurrencyId,
 			collateral_adjustment: Amount,
-			debit_adjustment: T::DebitAmount,
+			debit_adjustment: Amount,
 		) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;

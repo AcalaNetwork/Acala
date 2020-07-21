@@ -17,8 +17,6 @@ use support::{AuctionManager, Price, PriceProvider};
 pub type AccountId = u128;
 pub type AuctionId = u64;
 pub type BlockNumber = u64;
-pub type DebitBalance = Balance;
-pub type DebitAmount = Amount;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -123,8 +121,8 @@ pub type Currencies = orml_currencies::Module<Runtime>;
 
 // mock convert
 pub struct MockConvert;
-impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
-	fn convert(a: (CurrencyId, DebitBalance)) -> Balance {
+impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
+	fn convert(a: (CurrencyId, Balance)) -> Balance {
 		a.1.into()
 	}
 }
@@ -138,8 +136,6 @@ impl loans::Trait for Runtime {
 	type Convert = MockConvert;
 	type Currency = Tokens;
 	type RiskManager = ();
-	type DebitBalance = DebitBalance;
-	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
 }

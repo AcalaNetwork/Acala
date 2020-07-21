@@ -15,8 +15,6 @@ use support::AuctionManager;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type DebitBalance = Balance;
-pub type DebitAmount = Amount;
 pub type Share = u64;
 pub type AuctionId = u64;
 
@@ -138,8 +136,6 @@ impl loans::Trait for Runtime {
 	type Convert = DebitExchangeRateConvertor<Runtime>;
 	type Currency = Currencies;
 	type RiskManager = CDPEngineModule;
-	type DebitBalance = DebitBalance;
-	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
 }

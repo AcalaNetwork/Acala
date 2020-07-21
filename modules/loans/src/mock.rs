@@ -12,8 +12,6 @@ use support::{AuctionManager, RiskManager};
 pub type AccountId = u128;
 pub type AuctionId = u64;
 pub type BlockNumber = u64;
-pub type DebitBalance = Balance;
-pub type DebitAmount = Amount;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -178,23 +176,23 @@ pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 // mock convert
 pub struct MockConvert;
-impl Convert<(CurrencyId, DebitBalance), Balance> for MockConvert {
-	fn convert(a: (CurrencyId, DebitBalance)) -> Balance {
-		(a.1 / DebitBalance::from(2u64)).into()
+impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
+	fn convert(a: (CurrencyId, Balance)) -> Balance {
+		(a.1 / Balance::from(2u64)).into()
 	}
 }
 
 // mock risk manager
 pub struct MockRiskManager;
-impl RiskManager<AccountId, CurrencyId, Balance, DebitBalance> for MockRiskManager {
-	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance {
+impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
+	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
 		MockConvert::convert((currency_id, debit_balance))
 	}
 
 	fn check_position_valid(
 		currency_id: CurrencyId,
 		_collateral_balance: Balance,
-		_debit_balance: DebitBalance,
+		_debit_balance: Balance,
 	) -> DispatchResult {
 		match currency_id {
 			DOT => Err(sp_runtime::DispatchError::Other("mock error")),
@@ -203,7 +201,7 @@ impl RiskManager<AccountId, CurrencyId, Balance, DebitBalance> for MockRiskManag
 		}
 	}
 
-	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult {
+	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
 		match (currency_id, total_debit_balance) {
 			(DOT, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
 			(BTC, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
@@ -221,8 +219,6 @@ impl Trait for Runtime {
 	type Convert = MockConvert;
 	type Currency = Currencies;
 	type RiskManager = MockRiskManager;
-	type DebitBalance = DebitBalance;
-	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
 }
