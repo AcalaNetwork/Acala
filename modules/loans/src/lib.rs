@@ -15,7 +15,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
 	DispatchResult, ModuleId,
 };
-use sp_std::convert::TryInto;
+use sp_std::{convert::TryInto, result};
 use support::{CDPTreasury, RiskManager};
 
 mod mock;
@@ -112,10 +112,8 @@ impl<T: Trait> Module<T> {
 		with_transaction_result(|| -> DispatchResult {
 			// use `with_transaction_result` to ensure operation is atomic
 			// convert balance type to amount type
-			let collateral_adjustment =
-				TryInto::<Amount>::try_into(collateral_confiscate).map_err(|_| Error::<T>::AmountConvertFailed)?;
-			let debit_adjustment =
-				TryInto::<Amount>::try_into(debit_decrease).map_err(|_| Error::<T>::AmountConvertFailed)?;
+			let collateral_adjustment = Self::amount_try_from_balance(collateral_confiscate)?;
+			let debit_adjustment = Self::amount_try_from_balance(debit_decrease)?;
 
 			// transfer collateral to cdp treasury
 			T::CDPTreasury::deposit_collateral(&Self::account_id(), currency_id, collateral_confiscate)?;
@@ -149,10 +147,8 @@ impl<T: Trait> Module<T> {
 			// mutate collateral and debit
 			Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-			let collateral_balance_adjustment = TryInto::<Balance>::try_into(collateral_adjustment.abs())
-				.map_err(|_| Error::<T>::AmountConvertFailed)?;
-			let debit_balance_adjustment =
-				TryInto::<Balance>::try_into(debit_adjustment.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
+			let collateral_balance_adjustment = Self::balance_try_from_amount_abs(collateral_adjustment)?;
+			let debit_balance_adjustment = Self::balance_try_from_amount_abs(debit_adjustment)?;
 			let module_account = Self::account_id();
 
 			if collateral_adjustment.is_positive() {
@@ -207,10 +203,8 @@ impl<T: Trait> Module<T> {
 		T::RiskManager::check_position_valid(currency_id, new_to_collateral_balance, new_to_debit_balance)?;
 
 		// balance -> amount
-		let collateral_adjustment =
-			TryInto::<Amount>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
-		let debit_adjustment =
-			TryInto::<Amount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let collateral_adjustment = Self::amount_try_from_balance(collateral_balance)?;
+		let debit_adjustment = Self::amount_try_from_balance(debit_balance)?;
 
 		Self::update_loan(from, currency_id, -collateral_adjustment, -debit_adjustment)?;
 		Self::update_loan(to, currency_id, collateral_adjustment, debit_adjustment)?;
@@ -225,10 +219,8 @@ impl<T: Trait> Module<T> {
 		collateral_adjustment: Amount,
 		debit_adjustment: Amount,
 	) -> DispatchResult {
-		let collateral_balance =
-			TryInto::<Balance>::try_into(collateral_adjustment.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
-		let debit_balance =
-			TryInto::<Balance>::try_into(debit_adjustment.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let collateral_balance = Self::balance_try_from_amount_abs(collateral_adjustment)?;
+		let debit_balance = Self::balance_try_from_amount_abs(debit_adjustment)?;
 
 		// update collateral record
 		if collateral_adjustment.is_positive() {
@@ -293,5 +285,17 @@ impl<T: Trait> Module<T> {
 		}
 
 		Ok(())
+	}
+}
+
+impl<T: Trait> Module<T> {
+	/// Convert `Balance` to `Amount`.
+	fn amount_try_from_balance(b: Balance) -> result::Result<Amount, Error<T>> {
+		TryInto::<Amount>::try_into(b).map_err(|_| Error::<T>::AmountConvertFailed)
+	}
+
+	/// Convert the absolute value of `Amount` to `Balance`.
+	fn balance_try_from_amount_abs(a: Amount) -> result::Result<Balance, Error<T>> {
+		TryInto::<Balance>::try_into(a.saturating_abs()).map_err(|_| Error::<T>::AmountConvertFailed)
 	}
 }
