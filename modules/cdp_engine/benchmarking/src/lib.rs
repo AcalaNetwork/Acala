@@ -18,7 +18,7 @@ use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use dex::Module as Dex;
 use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
-use primitives::{Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId};
 use support::{OnEmergencyShutdown, Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(cdp_engine::Module<T>);
@@ -95,7 +95,7 @@ benchmarks! {
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
-		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
+		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		// set balance
@@ -141,7 +141,7 @@ benchmarks! {
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
-		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
+		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		let max_slippage_swap_with_dex = <T as cdp_engine::Trait>::MaxSlippageSwapWithDEX::get();
@@ -196,7 +196,7 @@ benchmarks! {
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
-		let min_debit_amount: T::DebitAmount = min_debit_amount.unique_saturated_into();
+		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		// set balance

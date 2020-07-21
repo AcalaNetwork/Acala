@@ -43,8 +43,6 @@ impl_outer_origin! {
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type DebitBalance = Balance;
-pub type DebitAmount = Amount;
 pub type AuctionId = u64;
 
 pub const ALICE: AccountId = 1;
@@ -138,8 +136,6 @@ impl loans::Trait for Runtime {
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
 	type RiskManager = CDPEngineModule;
-	type DebitBalance = DebitBalance;
-	type DebitAmount = DebitAmount;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
 }

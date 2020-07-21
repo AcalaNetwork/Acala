@@ -712,8 +712,6 @@ impl module_loans::Trait for Runtime {
 	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Currencies;
 	type RiskManager = CdpEngine;
-	type DebitBalance = Balance;
-	type DebitAmount = Amount;
 	type CDPTreasury = CdpTreasury;
 	type ModuleId = LoansModuleId;
 }

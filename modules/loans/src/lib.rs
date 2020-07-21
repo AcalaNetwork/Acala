@@ -6,21 +6,16 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get, Parameter};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
 use frame_system::{self as system};
-use orml_traits::{
-	arithmetic::{self, Signed},
-	MultiCurrency, MultiCurrencyExtended,
-};
+use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use orml_utilities::with_transaction_result;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
-	traits::{
-		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Member, Zero,
-	},
+	traits::{AccountIdConversion, Convert, Zero},
 	DispatchResult, ModuleId,
 };
-use sp_std::convert::{TryFrom, TryInto};
+use sp_std::{convert::TryInto, result};
 use support::{CDPTreasury, RiskManager};
 
 mod mock;
@@ -30,27 +25,13 @@ pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
 	/// Convert debit amount under specific collateral type to debit value(stable coin)
-	type Convert: Convert<(CurrencyId, Self::DebitBalance), Balance>;
+	type Convert: Convert<(CurrencyId, Balance), Balance>;
 
 	/// Currency type for deposit/withdraw collateral assets to/from loans module
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance, Amount = Amount>;
 
 	/// Risk manager is used to limit the debit size of CDP
-	type RiskManager: RiskManager<Self::AccountId, CurrencyId, Balance, Self::DebitBalance>;
-
-	/// Association type for debit amount
-	type DebitBalance: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize;
-
-	/// Signed debit amount
-	type DebitAmount: Signed
-		+ TryInto<Self::DebitBalance>
-		+ TryFrom<Self::DebitBalance>
-		+ Parameter
-		+ Member
-		+ arithmetic::SimpleArithmetic
-		+ Default
-		+ Copy
-		+ MaybeSerializeDeserialize;
+	type RiskManager: RiskManager<Self::AccountId, CurrencyId, Balance, Balance>;
 
 	/// CDP treasury for issuing/burning stable coin adjust debit value adjustment
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
@@ -63,7 +44,7 @@ decl_storage! {
 	trait Store for Module<T: Trait> as Loans {
 		/// The debit amount records of CDPs, map from
 		/// CollateralType -> Owner -> DebitAmount
-		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => T::DebitBalance;
+		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
 
 		/// The collateral asset amount of CDPs, map from
 		/// Owner -> CollateralType -> CollateralAmount
@@ -71,7 +52,7 @@ decl_storage! {
 
 		/// The total debit amount, map from
 		/// CollateralType -> TotalDebitAmount
-		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyId => T::DebitBalance;
+		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyId => Balance;
 
 		/// The total collateral asset amount, map from
 		/// CollateralType -> TotalCollateralAmount
@@ -82,16 +63,14 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
-		<T as Trait>::DebitAmount,
-		<T as Trait>::DebitBalance,
 		Amount = Amount,
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
 		/// Position updated. [owner, collateral_type, collateral_adjustment, debit_adjustment]
-		PositionUpdated(AccountId, CurrencyId, Amount, DebitAmount),
+		PositionUpdated(AccountId, CurrencyId, Amount, Amount),
 		/// Confiscate CDP's collateral assets and eliminate its debit. [owner, collateral_type, confiscated_collateral_amount, deduct_debit_amount]
-		ConfiscateCollateralAndDebit(AccountId, CurrencyId, Balance, DebitBalance),
+		ConfiscateCollateralAndDebit(AccountId, CurrencyId, Balance, Balance),
 		/// Transfer loan. [from, to, currency_id]
 		TransferLoan(AccountId, AccountId, CurrencyId),
 	}
@@ -128,15 +107,13 @@ impl<T: Trait> Module<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_confiscate: Balance,
-		debit_decrease: T::DebitBalance,
+		debit_decrease: Balance,
 	) -> DispatchResult {
 		with_transaction_result(|| -> DispatchResult {
 			// use `with_transaction_result` to ensure operation is atomic
 			// convert balance type to amount type
-			let collateral_adjustment =
-				TryInto::<Amount>::try_into(collateral_confiscate).map_err(|_| Error::<T>::AmountConvertFailed)?;
-			let debit_adjustment =
-				TryInto::<T::DebitAmount>::try_into(debit_decrease).map_err(|_| Error::<T>::AmountConvertFailed)?;
+			let collateral_adjustment = Self::amount_try_from_balance(collateral_confiscate)?;
+			let debit_adjustment = Self::amount_try_from_balance(debit_decrease)?;
 
 			// transfer collateral to cdp treasury
 			T::CDPTreasury::deposit_collateral(&Self::account_id(), currency_id, collateral_confiscate)?;
@@ -163,17 +140,15 @@ impl<T: Trait> Module<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_adjustment: Amount,
-		debit_adjustment: T::DebitAmount,
+		debit_adjustment: Amount,
 	) -> DispatchResult {
 		with_transaction_result(|| -> DispatchResult {
 			// use `with_transaction_result` to ensure operation is atomic
 			// mutate collateral and debit
 			Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-			let collateral_balance_adjustment = TryInto::<Balance>::try_into(collateral_adjustment.abs())
-				.map_err(|_| Error::<T>::AmountConvertFailed)?;
-			let debit_balance_adjustment = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
-				.map_err(|_| Error::<T>::AmountConvertFailed)?;
+			let collateral_balance_adjustment = Self::balance_try_from_amount_abs(collateral_adjustment)?;
+			let debit_balance_adjustment = Self::balance_try_from_amount_abs(debit_adjustment)?;
 			let module_account = Self::account_id();
 
 			if collateral_adjustment.is_positive() {
@@ -221,17 +196,15 @@ impl<T: Trait> Module<T> {
 			.checked_add(collateral_balance)
 			.expect("existing collateral balance cannot overflow; qed");
 		let new_to_debit_balance = Self::debits(currency_id, to)
-			.checked_add(&debit_balance)
+			.checked_add(debit_balance)
 			.expect("existing debit balance cannot overflow; qed");
 
 		// check new position
 		T::RiskManager::check_position_valid(currency_id, new_to_collateral_balance, new_to_debit_balance)?;
 
 		// balance -> amount
-		let collateral_adjustment =
-			TryInto::<Amount>::try_into(collateral_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
-		let debit_adjustment =
-			TryInto::<T::DebitAmount>::try_into(debit_balance).map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let collateral_adjustment = Self::amount_try_from_balance(collateral_balance)?;
+		let debit_adjustment = Self::amount_try_from_balance(debit_balance)?;
 
 		Self::update_loan(from, currency_id, -collateral_adjustment, -debit_adjustment)?;
 		Self::update_loan(to, currency_id, collateral_adjustment, debit_adjustment)?;
@@ -244,12 +217,10 @@ impl<T: Trait> Module<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_adjustment: Amount,
-		debit_adjustment: T::DebitAmount,
+		debit_adjustment: Amount,
 	) -> DispatchResult {
-		let collateral_balance =
-			TryInto::<Balance>::try_into(collateral_adjustment.abs()).map_err(|_| Error::<T>::AmountConvertFailed)?;
-		let debit_balance = TryInto::<T::DebitBalance>::try_into(debit_adjustment.abs())
-			.map_err(|_| Error::<T>::AmountConvertFailed)?;
+		let collateral_balance = Self::balance_try_from_amount_abs(collateral_adjustment)?;
+		let debit_balance = Self::balance_try_from_amount_abs(debit_adjustment)?;
 
 		// update collateral record
 		if collateral_adjustment.is_positive() {
@@ -290,29 +261,41 @@ impl<T: Trait> Module<T> {
 
 		// update debit record
 		if debit_adjustment.is_positive() {
-			<TotalDebits<T>>::try_mutate(currency_id, |balance| -> DispatchResult {
-				*balance = balance.checked_add(&debit_balance).ok_or(Error::<T>::DebitOverflow)?;
+			TotalDebits::try_mutate(currency_id, |balance| -> DispatchResult {
+				*balance = balance.checked_add(debit_balance).ok_or(Error::<T>::DebitOverflow)?;
 				Ok(())
 			})?;
 			<Debits<T>>::try_mutate(currency_id, who, |balance| -> DispatchResult {
 				*balance = balance
-					.checked_add(&debit_balance)
+					.checked_add(debit_balance)
 					.expect("debit cannot overflow if total debit does not; qed");
 				Ok(())
 			})?;
 		} else if debit_adjustment.is_negative() {
 			<Debits<T>>::try_mutate(currency_id, who, |balance| -> DispatchResult {
-				*balance = balance.checked_sub(&debit_balance).ok_or(Error::<T>::DebitTooLow)?;
+				*balance = balance.checked_sub(debit_balance).ok_or(Error::<T>::DebitTooLow)?;
 				Ok(())
 			})?;
-			<TotalDebits<T>>::try_mutate(currency_id, |balance| -> DispatchResult {
+			TotalDebits::try_mutate(currency_id, |balance| -> DispatchResult {
 				*balance = balance
-					.checked_sub(&debit_balance)
+					.checked_sub(debit_balance)
 					.expect("total debit cannot underflow if debit does not; qed");
 				Ok(())
 			})?;
 		}
 
 		Ok(())
+	}
+}
+
+impl<T: Trait> Module<T> {
+	/// Convert `Balance` to `Amount`.
+	fn amount_try_from_balance(b: Balance) -> result::Result<Amount, Error<T>> {
+		TryInto::<Amount>::try_into(b).map_err(|_| Error::<T>::AmountConvertFailed)
+	}
+
+	/// Convert the absolute value of `Amount` to `Balance`.
+	fn balance_try_from_amount_abs(a: Amount) -> result::Result<Balance, Error<T>> {
+		TryInto::<Balance>::try_into(a.saturating_abs()).map_err(|_| Error::<T>::AmountConvertFailed)
 	}
 }
