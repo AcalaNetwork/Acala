@@ -46,9 +46,13 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		Balance = Balance,
 	{
+		/// [account, bond, mint]
 		BondAndMint(AccountId, Balance, Balance),
+		/// [who, redeem_amount]
 		RedeemByUnbond(AccountId, Balance),
+		/// [who, fee, redeem_amount, unbond_amount]
 		RedeemByFreeUnbonded(AccountId, Balance, Balance, Balance),
+		/// [who, target_era, fee, redeem_amount, unbond_amount]
 		RedeemByClaimUnbonding(AccountId, EraIndex, Balance, Balance, Balance),
 	}
 );

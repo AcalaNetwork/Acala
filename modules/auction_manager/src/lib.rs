@@ -145,21 +145,21 @@ decl_event!(
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
-		/// Create a collateral auction (auction_id, collateral_type, collateral_amount, target_bid_price)
+		/// Create a collateral auction. [auction_id, collateral_type, collateral_amount, target_bid_price]
 		NewCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
-		/// Create a debit auction (auction_id, initial_supply_amount, fix_payment_amount)
+		/// Create a debit auction. [auction_id, initial_supply_amount, fix_payment_amount]
 		NewDebitAuction(AuctionId, Balance, Balance),
-		/// Create a surplus auction (auction_id, fix_surplus_amount)
+		/// Create a surplus auction. [auction_id, fix_surplus_amount]
 		NewSurplusAuction(AuctionId, Balance),
-		/// Cancel a specific active auction (auction_id)
+		/// Cancel a specific active auction. [auction_id]
 		CancelAuction(AuctionId),
-		/// Collateral auction dealed (auction_id, collateral_type, collateral_amount, winner, payment_amount).
+		/// Collateral auction dealed. [auction_id, collateral_type, collateral_amount, winner, payment_amount]
 		CollateralAuctionDealed(AuctionId, CurrencyId, Balance, AccountId, Balance),
-		/// Surplus auction dealed (auction_id, surplus_amount, winner, payment_amount).
+		/// Surplus auction dealed. [auction_id, surplus_amount, winner, payment_amount]
 		SurplusAuctionDealed(AuctionId, Balance, AccountId, Balance),
-		/// Debit auction dealed (auction_id, debit_currency_amount, winner, payment_amount).
+		/// Debit auction dealed. [auction_id, debit_currency_amount, winner, payment_amount]
 		DebitAuctionDealed(AuctionId, Balance, AccountId, Balance),
-		/// Dex take collateral auction (auction_id, collateral_type, collateral_amount, turnover)
+		/// Dex take collateral auction. [auction_id, collateral_type, collateral_amount, turnover]
 		DEXTakeCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
 	}
 );
