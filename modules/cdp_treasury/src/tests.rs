@@ -263,13 +263,17 @@ fn create_collateral_auctions_work() {
 			300
 		));
 
-		// not exceed lots cap
-		CDPTreasuryModule::create_collateral_auctions(BTC, 1000, 1000, ALICE);
-		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 5);
+		// amount < collateral auction maximum size
+		CDPTreasuryModule::create_collateral_auctions(BTC, 200, 1000, ALICE);
+		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 2); // auction + 1
 
-		// exceed lots cap
+		// not exceed lots count cap
+		CDPTreasuryModule::create_collateral_auctions(BTC, 1000, 1000, ALICE);
+		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 6); // auction + 4
+
+		// exceed lots count cap
 		CDPTreasuryModule::create_collateral_auctions(BTC, 2000, 1000, ALICE);
-		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 11);
+		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 11); // auction + 5
 	});
 }
 
