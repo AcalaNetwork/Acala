@@ -45,7 +45,7 @@ pub trait Trait: system::Trait {
 	/// Dex manager is used to swap confiscated collateral assets to stable coin
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-	/// the cap of lots number when create collateral auction on a liquidation
+	/// The cap of lots number when create collateral auction on a liquidation
 	/// or to create debit/surplus auction on block end.
 	/// If set to 0, does not work.
 	type MaxAuctionsCount: Get<u32>;
@@ -215,7 +215,7 @@ decl_module! {
 			// offset the same amount between debit pool and surplus pool
 			Self::offset_surplus_and_debit();
 
-			// Stop to create surplus auction and debit auction after emergency shutdown happend.
+			// Stop to create surplus auction and debit auction after emergency shutdown.
 			if !Self::is_shutdown() {
 				let max_auctions_count: u32 = T::MaxAuctionsCount::get();
 				let mut created_lots: u32 = 0;
@@ -234,7 +234,9 @@ decl_module! {
 						}
 						T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
 						created_lots += 1;
-						remain_surplus_pool -= surplus_auction_fixed_size;
+						remain_surplus_pool = remain_surplus_pool
+							.checked_sub(surplus_auction_fixed_size)
+							.expect("ensured remain surplus greater than auction fixed size; qed");
 					}
 				}
 
@@ -246,14 +248,16 @@ decl_module! {
 					let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
 
 					// create debit auction requires:
-					// debit_pool > total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
+					// debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
 					while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
 						if max_auctions_count != 0 && created_lots >= max_auctions_count {
 							break
 						}
 						T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
 						created_lots += 1;
-						remain_debit_pool -= debit_auction_fixed_size;
+						remain_debit_pool = remain_debit_pool
+							.checked_sub(debit_auction_fixed_size)
+							.expect("ensured remain debit greater than auction fixed size; qed");
 					}
 				}
 			}
@@ -269,12 +273,20 @@ impl<T: Trait> Module<T> {
 	fn offset_surplus_and_debit() {
 		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
 
-		// burn the amount that is equal to offset amount of stable coin.
+		// Burn the amount that is equal to offset amount of stable coin.
 		if !offset_amount.is_zero()
 			&& T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount).is_ok()
 		{
-			DebitPool::mutate(|debit| *debit -= offset_amount);
-			SurplusPool::mutate(|surplus| *surplus -= offset_amount);
+			DebitPool::mutate(|debit| {
+				*debit = debit
+					.checked_sub(offset_amount)
+					.expect("offset = min(debit, surplus); qed")
+			});
+			SurplusPool::mutate(|surplus| {
+				*surplus = surplus
+					.checked_sub(offset_amount)
+					.expect("offset = min(debit, surplus); qed")
+			});
 		}
 	}
 }
@@ -383,8 +395,16 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 			target_amount,
 		)?;
 
-		TotalCollaterals::mutate(currency_id, |balance| *balance -= supply_amount);
-		SurplusPool::mutate(|surplus| *surplus += amount);
+		SurplusPool::try_mutate(|pool| -> DispatchResult {
+			let new_surplus_pool = pool.checked_add(amount).ok_or(Error::<T>::SurplusPoolOverflow)?;
+			*pool = new_surplus_pool;
+			Ok(())
+		})?;
+		TotalCollaterals::mutate(currency_id, |balance| {
+			*balance = balance
+				.checked_sub(supply_amount)
+				.expect("ensured sufficient collateral; qed")
+		});
 
 		Ok(amount)
 	}

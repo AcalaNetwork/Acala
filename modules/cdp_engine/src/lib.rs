@@ -676,7 +676,9 @@ impl<T: Trait> Module<T> {
 				)?;
 
 				// refund remain collateral to CDP owner
-				let refund_collateral_amount = collateral_balance - supply_collateral_amount;
+				let refund_collateral_amount = collateral_balance
+					.checked_sub(supply_collateral_amount)
+					.expect("ensured collateral_balance >= supply_collateral_amount on exchange; qed");
 				<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 			}
 			LiquidationStrategy::Auction => {
@@ -711,9 +713,8 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Modul
 		collateral_balance: Balance,
 		debit_balance: Balance,
 	) -> DispatchResult {
-		let debit_value = Self::get_debit_value(currency_id, debit_balance);
-
-		if !debit_value.is_zero() {
+		if !debit_balance.is_zero() {
+			let debit_value = Self::get_debit_value(currency_id, debit_balance);
 			let feed_price = <T as Trait>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
 				.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
