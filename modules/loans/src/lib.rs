@@ -123,7 +123,12 @@ impl<T: Trait> Module<T> {
 			T::CDPTreasury::on_system_debit(bad_debt_value)?;
 
 			// update loan
-			Self::update_loan(&who, currency_id, -collateral_adjustment, -debit_adjustment)?;
+			Self::update_loan(
+				&who,
+				currency_id,
+				collateral_adjustment.saturating_neg(),
+				debit_adjustment.saturating_neg(),
+			)?;
 
 			Self::deposit_event(RawEvent::ConfiscateCollateralAndDebit(
 				who.clone(),
@@ -206,7 +211,12 @@ impl<T: Trait> Module<T> {
 		let collateral_adjustment = Self::amount_try_from_balance(collateral_balance)?;
 		let debit_adjustment = Self::amount_try_from_balance(debit_balance)?;
 
-		Self::update_loan(from, currency_id, -collateral_adjustment, -debit_adjustment)?;
+		Self::update_loan(
+			from,
+			currency_id,
+			collateral_adjustment.saturating_neg(),
+			debit_adjustment.saturating_neg(),
+		)?;
 		Self::update_loan(to, currency_id, collateral_adjustment, debit_adjustment)?;
 
 		Self::deposit_event(RawEvent::TransferLoan(from.clone(), to.clone(), currency_id));

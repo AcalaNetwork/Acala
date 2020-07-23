@@ -676,7 +676,9 @@ impl<T: Trait> Module<T> {
 				)?;
 
 				// refund remain collateral to CDP owner
-				let refund_collateral_amount = collateral_balance - supply_collateral_amount;
+				let refund_collateral_amount = collateral_balance
+					.checked_sub(supply_collateral_amount)
+					.expect("ensured collateral_balance >= supply_collateral_amount on exchange; qed");
 				<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 			}
 			LiquidationStrategy::Auction => {
