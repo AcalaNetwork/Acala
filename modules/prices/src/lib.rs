@@ -2,8 +2,8 @@
 //!
 //! ## Overview
 //!
-//! The data from Oracle cannot be used in business, prices module will do some process and feed prices for Acala.
-//! Process include:
+//! The data from Oracle cannot be used in business, prices module will do some
+//! process and feed prices for Acala. Process include:
 //!   - specify a fixed price for stable currency
 //!   - feed price in USD or related price bewteen two currencies
 //!   - lock/unlock the price data get from oracle
@@ -46,7 +46,8 @@ pub trait Trait: system::Trait {
 	/// The origin which may lock and unlock prices feed to system.
 	type LockOrigin: EnsureOrigin<Self::Origin>;
 
-	/// The provider of the exchange rate between liquid currency and staking currency.
+	/// The provider of the exchange rate between liquid currency and staking
+	/// currency.
 	type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
 }
 
@@ -125,7 +126,8 @@ impl<T: Trait> PriceProvider<CurrencyId> for Module<T> {
 			// if is stable currency, return fixed price
 			Some(T::StableCurrencyFixedPrice::get())
 		} else if currency_id == T::GetLiquidCurrencyId::get() {
-			// if is homa liquid currency, return the product of staking currency price and liquid/staking exchange rate.
+			// if is homa liquid currency, return the product of staking currency price and
+			// liquid/staking exchange rate.
 			Self::get_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()))
 		} else {

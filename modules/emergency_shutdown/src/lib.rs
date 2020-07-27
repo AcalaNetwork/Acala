@@ -2,12 +2,14 @@
 //!
 //! ## Overview
 //!
-//! When a black swan occurs such as price plunge or fatal bug, the highest priority is
-//! to minimize user losses as much as possible. When the decision to shutdown system is made,
-//! emergency shutdown module needs to trigger all related module to halt, and start a series of
-//! operations including close some user entry, freeze feed prices, run offchain worker to settle
-//! CDPs has debit, cancel all active auctions module, when debits and gaps are settled,
-//! the stable coin holder are allowed to refund a basket of remaining collateral assets.
+//! When a black swan occurs such as price plunge or fatal bug, the highest
+//! priority is to minimize user losses as much as possible. When the decision
+//! to shutdown system is made, emergency shutdown module needs to trigger all
+//! related module to halt, and start a series of operations including close
+//! some user entry, freeze feed prices, run offchain worker to settle
+//! CDPs has debit, cancel all active auctions module, when debits and gaps are
+//! settled, the stable coin holder are allowed to refund a basket of remaining
+//! collateral assets.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -38,13 +40,15 @@ pub trait Trait: system::Trait + loans::Trait {
 	/// CDP treasury to escrow collateral assets after settlement
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
-	/// Check the auction cancellation to decide whether to open the final redemption
+	/// Check the auction cancellation to decide whether to open the final
+	/// redemption
 	type AuctionManagerHandler: AuctionManager<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
 	/// Handler to trigger other operations
 	type OnShutdown: OnEmergencyShutdown;
 
-	/// The origin which may trigger emergency shutdown. Root can always do this.
+	/// The origin which may trigger emergency shutdown. Root can always do
+	/// this.
 	type ShutdownOrigin: EnsureOrigin<Self::Origin>;
 }
 

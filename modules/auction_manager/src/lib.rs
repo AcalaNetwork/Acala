@@ -2,11 +2,14 @@
 //!
 //! ## Overview
 //!
-//! Auction the assets of the system for maintain the normal operation of the business.
-//! Auction types include:
-//!   - `collateral auction`: sell collateral assets for getting stable coin to eliminate the system's bad debit by auction
-//!   - `surplus auction`: sell excessive surplus for getting native coin to burn by auction
-//!   - `debit auction`: inflation some native token to sell for getting stable coin to eliminate excessive bad debit by auction
+//! Auction the assets of the system for maintain the normal operation of the
+//! business. Auction types include:
+//!   - `collateral auction`: sell collateral assets for getting stable coin to
+//!     eliminate the system's bad debit by auction
+//!   - `surplus auction`: sell excessive surplus for getting native coin to
+//!     burn by auction
+//!   - `debit auction`: inflation some native token to sell for getting stable
+//!     coin to eliminate excessive bad debit by auction
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -103,7 +106,8 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 	/// The extended time for the auction to end after each successful bid
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 
-	/// When the total duration of the auction exceeds this soft cap, push the auction to end more faster
+	/// When the total duration of the auction exceeds this soft cap, push the
+	/// auction to end more faster
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
 
 	/// The stable currency id
@@ -317,7 +321,8 @@ impl<T: Trait> Module<T> {
 		let random_seed = sp_io::offchain::random_seed();
 		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
 
-		// Randomly choose to start iterations to cancel collateral/surplus/debit auctions
+		// Randomly choose to start iterations to cancel collateral/surplus/debit
+		// auctions
 		match rng.pick_u32(2) {
 			0 => {
 				for (debit_auction_id, _) in <DebitAuctions<T>>::iter() {
@@ -462,7 +467,8 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Check `new_price` is larger than minimum increment
-	/// Formula: new_price - last_price >= max(last_price, target_price) * minimum_increment
+	/// Formula: new_price - last_price >= max(last_price, target_price) *
+	/// minimum_increment
 	fn check_minimum_increment(
 		new_price: Balance,
 		last_price: Balance,
@@ -541,7 +547,8 @@ impl<T: Trait> Module<T> {
 					// transfer remain payment from new bidder to cdp treasury
 					T::CDPTreasury::deposit_surplus(&new_bidder, payment)?;
 
-					// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
+					// if bid_price > target, the auction is in reverse, refund collateral to it's
+					// origin from auction cdp treasury
 					if new_bid_price > collateral_auction.target {
 						let new_collateral_amount = Rate::checked_from_rational(
 							sp_std::cmp::max(last_bid_price, collateral_auction.target),
@@ -653,7 +660,8 @@ impl<T: Trait> Module<T> {
 
 			let mut burn_native_currency_amount = new_bid_price;
 
-			// if these's bid before, transfer the stablecoin from auction manager module to last bidder
+			// if these's bid before, transfer the stablecoin from auction manager module to
+			// last bidder
 			if let Some((last_bidder, _)) = last_bid {
 				burn_native_currency_amount = burn_native_currency_amount.saturating_sub(last_bid_price);
 				T::Currency::transfer(native_currency_id, &new_bidder, &last_bidder, last_bid_price)?;
