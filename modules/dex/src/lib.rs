@@ -480,18 +480,22 @@ impl<T: Trait> Module<T> {
 			Rate::one()
 				.checked_sub(&fee_rate)
 				.and_then(|n| n.reciprocal())
-				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal
+				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
 				// division calculation
+				.and_then(|n| n.checked_add(&Ratio::from_inner(1)))
 				.and_then(|n| n.checked_mul_int(target_amount))
-				.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal
+				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
 				// division calculation
+				.and_then(|n| n.checked_add(Balance::one()))
 				.and_then(|n| target_pool.checked_sub(n))
 				.and_then(|n| Ratio::checked_from_rational(supply_pool, n))
-				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal
+				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
 				// division calculation
+				.and_then(|n| n.checked_add(&Ratio::from_inner(1)))
 				.and_then(|n| n.checked_mul_int(target_pool))
-				.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal
+				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
 				// division calculation
+				.and_then(|n| n.checked_add(Balance::one()))
 				.and_then(|n| n.checked_sub(supply_pool))
 				.unwrap_or_default()
 		}
