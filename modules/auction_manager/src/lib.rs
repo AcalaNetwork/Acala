@@ -146,20 +146,20 @@ decl_event!(
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
-		/// Create a collateral auction. [auction_id, collateral_type, collateral_amount, target_bid_price]
+		/// Collateral auction created. [auction_id, collateral_type, collateral_amount, target_bid_price]
 		NewCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
-		/// Create a debit auction. [auction_id, initial_supply_amount, fix_payment_amount]
+		/// Debit auction created. [auction_id, initial_supply_amount, fix_payment_amount]
 		NewDebitAuction(AuctionId, Balance, Balance),
-		/// Create a surplus auction. [auction_id, fix_surplus_amount]
+		/// Surplus auction created. [auction_id, fix_surplus_amount]
 		NewSurplusAuction(AuctionId, Balance),
-		/// Cancel a specific active auction. [auction_id]
+		/// Active auction cancelled. [auction_id]
 		CancelAuction(AuctionId),
-		/// Collateral auction dealed. [auction_id, collateral_type, collateral_amount, winner, payment_amount]
-		CollateralAuctionDealed(AuctionId, CurrencyId, Balance, AccountId, Balance),
-		/// Surplus auction dealed. [auction_id, surplus_amount, winner, payment_amount]
-		SurplusAuctionDealed(AuctionId, Balance, AccountId, Balance),
-		/// Debit auction dealed. [auction_id, debit_currency_amount, winner, payment_amount]
-		DebitAuctionDealed(AuctionId, Balance, AccountId, Balance),
+		/// Collateral auction dealt. [auction_id, collateral_type, collateral_amount, winner, payment_amount]
+		CollateralAuctionDealt(AuctionId, CurrencyId, Balance, AccountId, Balance),
+		/// Surplus auction dealt. [auction_id, surplus_amount, winner, payment_amount]
+		SurplusAuctionDealt(AuctionId, Balance, AccountId, Balance),
+		/// Debit auction dealt. [auction_id, debit_currency_amount, winner, payment_amount]
+		DebitAuctionDealt(AuctionId, Balance, AccountId, Balance),
 		/// Dex take collateral auction. [auction_id, collateral_type, collateral_amount, turnover]
 		DEXTakeCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
 	}
@@ -169,7 +169,7 @@ decl_error! {
 	/// Error for auction manager module.
 	pub enum Error for Module<T: Trait> {
 		/// The auction dose not exist
-		AuctionNotExsits,
+		AuctionNotExists,
 		/// The collateral auction is in reserved stage now
 		InReservedStage,
 		/// Feed price is invalid
@@ -195,17 +195,17 @@ decl_storage! {
 		pub SurplusAuctions get(fn surplus_auctions): map hasher(twox_64_concat) AuctionId =>
 			Option<SurplusAuctionItem<T::BlockNumber>>;
 
-		/// Record of the total collateral amount of all ative collateral auctions under specific collateral type
+		/// Record of the total collateral amount of all active collateral auctions under specific collateral type
 		/// CollateralType -> TotalAmount
 		pub TotalCollateralInAuction get(fn total_collateral_in_auction): map hasher(twox_64_concat) CurrencyId => Balance;
 
-		/// Record of total target sales of all ative collateral auctions
+		/// Record of total target sales of all active collateral auctions
 		pub TotalTargetInAuction get(fn total_target_in_auction): Balance;
 
-		/// Record of total fix amount of all ative debit auctions
+		/// Record of total fix amount of all active debit auctions
 		pub TotalDebitInAuction get(fn total_debit_in_auction): Balance;
 
-		/// Record of total surplus amount of all ative surplus auctions
+		/// Record of total surplus amount of all active surplus auctions
 		pub TotalSurplusInAuction get(fn total_surplus_in_auction): Balance;
 
 		/// System shutdown flag
@@ -234,7 +234,7 @@ decl_module! {
 		/// The native currency id
 		const GetNativeCurrencyId: CurrencyId = T::GetNativeCurrencyId::get();
 
-		/// The decrement of amout in debit auction when restocking
+		/// The decrement of amount in debit auction when restocking
 		const GetAmountAdjustment: Rate = T::GetAmountAdjustment::get();
 
 		/// Cancel active auction after system shutdown
@@ -347,9 +347,9 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn cancel_surplus_auction(id: AuctionId) -> DispatchResult {
-		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
+		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
 
-		// if these's bid
+		// if there's bid
 		if let Some(AuctionInfo {
 			bid: Some((bidder, bid_price)),
 			..
@@ -373,9 +373,9 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn cancel_debit_auction(id: AuctionId) -> DispatchResult {
-		let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
+		let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
 
-		// if these's bid
+		// if there's bid
 		if let Some(AuctionInfo {
 			bid: Some((bidder, _)), ..
 		}) = T::Auction::auction_info(id)
@@ -386,7 +386,7 @@ impl<T: Trait> Module<T> {
 			system::Module::<T>::dec_ref(&bidder);
 		}
 
-		// derease total debit in auction
+		// decrease total debit in auction
 		TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
 
 		// remove the auction info
@@ -401,7 +401,7 @@ impl<T: Trait> Module<T> {
 			!Self::collateral_auction_in_reverse_stage(id),
 			Error::<T>::InReservedStage
 		);
-		let collateral_auction = <CollateralAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
+		let collateral_auction = <CollateralAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
 
 		// calculate which amount of collateral to offset target in settle price
 		let stable_currency_id = T::GetStableCurrencyId::get();
@@ -413,14 +413,14 @@ impl<T: Trait> Module<T> {
 		);
 		let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
 
-		// refund remain collateral to refund recipient from cdp treasury
+		// refund remain collateral to refund recipient from CDP treasury
 		T::CDPTreasury::withdraw_collateral(
 			&collateral_auction.refund_recipient,
 			collateral_auction.currency_id,
 			refund_collateral_amount,
 		)?;
 
-		// if these's bid
+		// if there's bid
 		if let Some(AuctionInfo {
 			bid: Some((bidder, bid_price)),
 			..
@@ -507,17 +507,17 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-			// use `with_transaction_result` to ensure operation is atomatic
+			// use `with_transaction_result` to ensure operation is atomic
 			<CollateralAuctions<T>>::try_mutate_exists(
 				id,
 				|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-					let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExsits)?;
+					let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
 					let (new_bidder, new_bid_price) = new_bid;
 					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 					let stable_currency_id = T::GetStableCurrencyId::get();
 					let mut payment = sp_std::cmp::min(collateral_auction.target, new_bid_price);
 
-					// ensure new bid price is great than minimun increment
+					// ensure new bid price is great than minimum increment
 					ensure!(
 						Self::check_minimum_increment(
 							new_bid_price,
@@ -531,7 +531,7 @@ impl<T: Trait> Module<T> {
 					// increase account ref of new bidder
 					system::Module::<T>::inc_ref(&new_bidder);
 
-					// if these's bid before, return stablecoin from new bidder to last bidder
+					// if there's bid before, return stablecoin from new bidder to last bidder
 					if let Some((last_bidder, _)) = last_bid {
 						let refund = sp_std::cmp::min(last_bid_price, collateral_auction.target);
 						T::Currency::transfer(stable_currency_id, &new_bidder, &last_bidder, refund)?;
@@ -541,11 +541,11 @@ impl<T: Trait> Module<T> {
 						system::Module::<T>::dec_ref(&last_bidder);
 					}
 
-					// transfer remain payment from new bidder to cdp treasury
+					// transfer remain payment from new bidder to CDP treasury
 					T::CDPTreasury::deposit_surplus(&new_bidder, payment)?;
 
 					// if bid_price > target, the auction is in reverse, refund collateral to it's
-					// origin from auction cdp treasury
+					// origin from auction CDP treasury
 					if new_bid_price > collateral_auction.target {
 						let new_collateral_amount = Rate::checked_from_rational(
 							sp_std::cmp::max(last_bid_price, collateral_auction.target),
@@ -582,11 +582,11 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-			// use `with_transaction_result` to ensure operation is atomatic
+			// use `with_transaction_result` to ensure operation is atomic
 			<DebitAuctions<T>>::try_mutate_exists(
 				id,
 				|debit_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-					let mut debit_auction = debit_auction.as_mut().ok_or(Error::<T>::AuctionNotExsits)?;
+					let mut debit_auction = debit_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
 					let (new_bidder, new_bid_price) = new_bid;
 					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 					let stable_currency_id = T::GetStableCurrencyId::get();
@@ -602,13 +602,13 @@ impl<T: Trait> Module<T> {
 					);
 
 					if let Some((last_bidder, _)) = last_bid {
-						// these's bid before, transfer the stablecoin from new bidder to last bidder
+						// there's bid before, transfer the stablecoin from new bidder to last bidder
 						T::Currency::transfer(stable_currency_id, &new_bidder, &last_bidder, debit_auction.fix)?;
 
 						// decrease account ref of last bidder
 						system::Module::<T>::dec_ref(&last_bidder);
 					} else {
-						// these's no bid before, transfer stablecoin to cdp treasury
+						// there's no bid before, transfer stablecoin to CDP treasury
 						T::CDPTreasury::deposit_surplus(&new_bidder, debit_auction.fix)?;
 					}
 
@@ -639,8 +639,8 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-			// use `with_transaction_result` to ensure operation is atomatic
-			let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExsits)?;
+			// use `with_transaction_result` to ensure operation is atomic
+			let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExists)?;
 			let (new_bidder, new_bid_price) = new_bid;
 			let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 			let native_currency_id = T::GetNativeCurrencyId::get();
@@ -657,7 +657,7 @@ impl<T: Trait> Module<T> {
 
 			let mut burn_native_currency_amount = new_bid_price;
 
-			// if these's bid before, transfer the stablecoin from auction manager module to
+			// if there's bid before, transfer the stablecoin from auction manager module to
 			// last bidder
 			if let Some((last_bidder, _)) = last_bid {
 				burn_native_currency_amount = burn_native_currency_amount.saturating_sub(last_bid_price);
@@ -721,14 +721,14 @@ impl<T: Trait> Module<T> {
 			}
 
 			if should_deal {
-				// transfer collateral to winner from cdp treasury, ignore result to continue
+				// transfer collateral to winner from CDP treasury, ignore result to continue
 				let _ = T::CDPTreasury::withdraw_collateral(
 					&bidder,
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 				);
 
-				<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealed(
+				<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealt(
 					auction_id,
 					collateral_auction.currency_id,
 					collateral_auction.amount,
@@ -764,7 +764,7 @@ impl<T: Trait> Module<T> {
 				TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
 				<DebitAuctions<T>>::remove(auction_id);
 
-				<Module<T>>::deposit_event(RawEvent::DebitAuctionDealed(
+				<Module<T>>::deposit_event(RawEvent::DebitAuctionDealt(
 					auction_id,
 					debit_auction.amount,
 					bidder,
@@ -797,7 +797,7 @@ impl<T: Trait> Module<T> {
 
 	fn surplus_auction_end_handler(auction_id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
 		if let (Some(surplus_auction), Some((bidder, bidder_price))) = (Self::surplus_auctions(auction_id), winner) {
-			// deposit unbacked stable token to winner by cdp treasury, ignore Err
+			// deposit unbacked stable token to winner by CDP treasury, ignore Err
 			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
 
 			// decrease account ref of winner
@@ -807,7 +807,7 @@ impl<T: Trait> Module<T> {
 			TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
 			<SurplusAuctions<T>>::remove(auction_id);
 
-			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealed(
+			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealt(
 				auction_id,
 				surplus_auction.amount,
 				bidder,
@@ -831,11 +831,11 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> 
 		} else if <SurplusAuctions<T>>::contains_key(id) {
 			Self::surplus_auction_bid_handler(now, id, new_bid, last_bid)
 		} else {
-			Err(Error::<T>::AuctionNotExsits.into())
+			Err(Error::<T>::AuctionNotExists.into())
 		} {
-			Ok(new_auction_endtime) => OnNewBidResult {
+			Ok(new_auction_end_time) => OnNewBidResult {
 				accept_bid: true,
-				auction_end_change: Change::NewValue(Some(new_auction_endtime)),
+				auction_end_change: Change::NewValue(Some(new_auction_end_time)),
 			},
 			Err(_) => OnNewBidResult {
 				accept_bid: false,
@@ -875,8 +875,8 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 
 			let block_number = <system::Module<T>>::block_number();
 			let auction_id: AuctionId = T::Auction::new_auction(block_number, None)
-				.expect("AuctionId is sufficient large so this can never fail"); // do not set endtime for collateral auction
-			let collateral_aution = CollateralAuctionItem {
+				.expect("AuctionId is sufficient large so this can never fail"); // do not set end time for collateral auction
+			let collateral_auction = CollateralAuctionItem {
 				refund_recipient: who.clone(),
 				currency_id,
 				amount,
@@ -887,7 +887,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			// decrease account ref of refund recipient
 			system::Module::<T>::inc_ref(&who);
 
-			<CollateralAuctions<T>>::insert(auction_id, collateral_aution);
+			<CollateralAuctions<T>>::insert(auction_id, collateral_auction);
 			<Module<T>>::deposit_event(RawEvent::NewCollateralAuction(auction_id, currency_id, amount, target));
 		}
 	}
@@ -899,7 +899,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			let end_block = start_block + T::AuctionTimeToClose::get();
 			// set close time for initial debit auction
 			let auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
-				.expect("AuctionId is sufficient large so this can never fail"); // set endtime for debit auction!
+				.expect("AuctionId is sufficient large so this can never fail"); // set end time for debit auction!
 			let debit_auction = DebitAuctionItem {
 				amount: initial_amount,
 				fix: fix_debit,
@@ -914,7 +914,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		if Self::total_surplus_in_auction().checked_add(amount).is_some() {
 			TotalSurplusInAuction::mutate(|balance| *balance += amount);
 			let auction_id: AuctionId = T::Auction::new_auction(<system::Module<T>>::block_number(), None)
-				.expect("AuctionId is sufficient large so this can never fail"); // do not set endtime for surplus auction
+				.expect("AuctionId is sufficient large so this can never fail"); // do not set end time for surplus auction
 			let surplus_auction = SurplusAuctionItem {
 				amount,
 				start_time: <system::Module<T>>::block_number(),
@@ -948,7 +948,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		} else if <SurplusAuctions<T>>::contains_key(id) {
 			Self::cancel_surplus_auction(id)
 		} else {
-			Err(Error::<T>::AuctionNotExsits.into())
+			Err(Error::<T>::AuctionNotExists.into())
 		}
 	}
 }
