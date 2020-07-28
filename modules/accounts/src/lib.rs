@@ -2,7 +2,8 @@
 //!
 //! ## Overview
 //!
-//! Accounts module is responsible for opening and closing accounts in Acala, and charge fee and tip in different currencies
+//! Accounts module is responsible for opening and closing accounts in Acala,
+//! and charge fee and tip in different currencies
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -61,7 +62,8 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
-	/// Native currency id, the actual received currency type as fee for treasury.
+	/// Native currency id, the actual received currency type as fee for
+	/// treasury.
 	type NativeCurrencyId: Get<CurrencyId>;
 
 	/// Time to get current time onchain.
@@ -76,9 +78,9 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 
 	/// Handler to trigger events when opening accounts
 
-	/// Handler for the unbalanced reduction when taking transaction fees. This is either one or
-	/// two separate imbalances, the first is the transaction fee paid, the second is the tip paid,
-	/// if any.
+	/// Handler for the unbalanced reduction when taking transaction fees. This
+	/// is either one or two separate imbalances, the first is the transaction
+	/// fee paid, the second is the tip paid, if any.
 
 	/// Event handler which calls when open account in system.
 	type OnCreatedAccount: Happened<Self::AccountId>;
@@ -242,7 +244,8 @@ impl<T: Trait> Module<T> {
 		T::TreasuryModuleId::get().into_account()
 	}
 
-	/// Try free transfer, if can transfer for free this time, record this moment
+	/// Try free transfer, if can transfer for free this time, record this
+	/// moment
 	pub fn try_free_transfer(who: &T::AccountId) -> bool {
 		let mut last_free_transfer = Self::last_free_transfers(who);
 		let now = T::Time::now();
@@ -272,8 +275,9 @@ impl<T: Trait> Module<T> {
 		} else {
 			let treasury_account = Self::treasury_account_id();
 
-			// Note: will not reap treasury account even though it cannot reserve open account deposit
-			// best practice is to ensure that the first transfer received by treasury account is sufficient to open an account.
+			// Note: will not reap treasury account even though it cannot reserve open
+			// account deposit best practice is to ensure that the first transfer received
+			// by treasury account is sufficient to open an account.
 			if *k != treasury_account {
 				// send dust native currency to treasury account
 				let _ = <T as Trait>::Currency::transfer(
@@ -291,8 +295,9 @@ impl<T: Trait> Module<T> {
 }
 
 /// Note: Currently `pallet_balances` does not implement `OnReceived`,
-/// which means here only do the preparations for opening an account by non-native currency,
-/// acutal process of opening account is handled by `StoredMap`.
+/// which means here only do the preparations for opening an account by
+/// non-native currency, acutal process of opening account is handled by
+/// `StoredMap`.
 impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 	fn on_received(who: &T::AccountId, currency_id: CurrencyId, _: Balance) {
 		let native_currency_id = T::NativeCurrencyId::get();
@@ -328,15 +333,17 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 					}
 				}
 			} else {
-				// Don't recycle non-native token to avoid unreasonable loss due to insufficient liquidity of DEX,
-				// can try to open this account again later. This may leave some dust account data of non-native token,
-				// then consider repeat it by other methods.
+				// Don't recycle non-native token to avoid unreasonable loss due
+				// to insufficient liquidity of DEX, can try to open this
+				// account again later. This may leave some dust account data of
+				// non-native token, then consider repeat it by other methods.
 			}
 		}
 	}
 }
 
-/// Fork StoredMap in frame_system,  still use `Account` storage of frame_system.
+/// Fork StoredMap in frame_system,  still use `Account` storage of
+/// frame_system.
 impl<T: Trait> StoredMap<T::AccountId, T::AccountData> for Module<T> {
 	fn get(k: &T::AccountId) -> T::AccountData {
 		system::Account::<T>::get(k).data
@@ -401,7 +408,8 @@ impl<T: Trait> StoredMap<T::AccountId, T::AccountData> for Module<T> {
 	}
 }
 
-/// Split an `option` into two constituent options, as defined by a `splitter` function.
+/// Split an `option` into two constituent options, as defined by a `splitter`
+/// function.
 pub fn split_inner<T, R, S>(option: Option<T>, splitter: impl FnOnce(T) -> (R, S)) -> (Option<R>, Option<S>) {
 	match option {
 		Some(inner) => {
@@ -418,8 +426,8 @@ impl<T: Trait> OnKilledAccount<T::AccountId> for Module<T> {
 	}
 }
 
-/// Require the transactor pay for themselves and maybe include a tip to gain additional priority
-/// in the queue.
+/// Require the transactor pay for themselves and maybe include a tip to gain
+/// additional priority in the queue.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
 pub struct ChargeTransactionPayment<T: Trait + Send + Sync>(#[codec(compact)] PalletBalanceOf<T>);
 
@@ -495,9 +503,9 @@ where
 			if !native_is_enough {
 				let native_currency_id = T::NativeCurrencyId::get();
 				let other_currency_ids = T::AllNonNativeCurrencyIds::get();
-				// Note: in fact, just obtain the gap between of fee and usable native currency amount,
-				// but `Currency` does not expose interface to get usable balance by specific reason.
-				// Here try to swap the whole fee by non-native currency.
+				// Note: in fact, just obtain the gap between of fee and usable native currency
+				// amount, but `Currency` does not expose interface to get usable balance by
+				// specific reason. Here try to swap the whole fee by non-native currency.
 				let balance_fee: Balance = fee.unique_saturated_into();
 
 				// iterator non-native currencies to get enough fee
@@ -571,8 +579,9 @@ where
 		let (fee, _) = self.withdraw_fee(who, call, info, len)?;
 
 		let mut r = ValidTransaction::default();
-		// NOTE: we probably want to maximize the _fee (of any type) per weight unit_ here, which
-		// will be a bit more than setting the priority to tip. For now, this is enough.
+		// NOTE: we probably want to maximize the _fee (of any type) per weight unit
+		// here, which will be a bit more than setting the priority to tip. For now,
+		// this is enough.
 		r.priority = fee.saturated_into::<TransactionPriority>();
 		Ok(r)
 	}

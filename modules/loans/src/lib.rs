@@ -2,7 +2,8 @@
 //!
 //! ## Overview
 //!
-//! Loans module manages CDP's collateral assets and the debits backed by these assets.
+//! Loans module manages CDP's collateral assets and the debits backed by these
+//! assets.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -24,16 +25,19 @@ mod tests;
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-	/// Convert debit amount under specific collateral type to debit value(stable coin)
+	/// Convert debit amount under specific collateral type to debit
+	/// value(stable coin)
 	type Convert: Convert<(CurrencyId, Balance), Balance>;
 
-	/// Currency type for deposit/withdraw collateral assets to/from loans module
+	/// Currency type for deposit/withdraw collateral assets to/from loans
+	/// module
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance, Amount = Amount>;
 
 	/// Risk manager is used to limit the debit size of CDP
 	type RiskManager: RiskManager<Self::AccountId, CurrencyId, Balance, Balance>;
 
-	/// CDP treasury for issuing/burning stable coin adjust debit value adjustment
+	/// CDP treasury for issuing/burning stable coin adjust debit value
+	/// adjustment
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
 	/// The loan's module id, keep all collaterals of CDPs.

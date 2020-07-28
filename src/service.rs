@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
-/// Use this macro if you don't actually need the full service, but just the builder in order to
-/// be able to perform chain operations.
+/// Use this macro if you don't actually need the full service, but just the
+/// builder in order to be able to perform chain operations.
 macro_rules! new_full_start {
 	($config:expr) => {{
 		use std::sync::Arc;
@@ -123,8 +123,8 @@ macro_rules! new_full_start {
 
 /// Creates a full service from the configuration.
 ///
-/// We need to use a macro because the test suit doesn't work with an opaque service. It expects
-/// concrete types instead.
+/// We need to use a macro because the test suit doesn't work with an opaque
+/// service. It expects concrete types instead.
 macro_rules! new_full {
 	($config:expr, $with_startup_data: expr) => {{
 		use sc_client_api::ExecutorProvider;

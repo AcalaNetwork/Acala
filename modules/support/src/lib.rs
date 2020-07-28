@@ -163,8 +163,8 @@ pub trait CDPTreasury<AccountId> {
 	fn on_system_surplus(amount: Self::Balance) -> DispatchResult;
 
 	/// issue debit to `who`
-	/// if backed flag is true, means the debit to issue is backed on some assets,
-	/// otherwise will increase same amount of debit to system debit.
+	/// if backed flag is true, means the debit to issue is backed on some
+	/// assets, otherwise will increase same amount of debit to system debit.
 	fn issue_debit(who: &AccountId, debit: Self::Balance, backed: bool) -> DispatchResult;
 
 	/// burn debit(stable coin) of `who`

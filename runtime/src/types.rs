@@ -10,15 +10,16 @@ pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 /// An index to a block.
 pub type BlockNumber = u32;
 
-/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
+/// Alias to 512-bit hash when used in the context of a transaction signature on
+/// the chain.
 pub type Signature = MultiSignature;
 
-/// Some way of identifying an account on the chain. We intentionally make it equivalent
-/// to the public key of our transaction signing scheme.
+/// Some way of identifying an account on the chain. We intentionally make it
+/// equivalent to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-/// The type for looking up accounts. We don't expect more than 4 billion of them, but you
-/// never know...
+/// The type for looking up accounts. We don't expect more than 4 billion of
+/// them, but you never know...
 pub type AccountIndex = u32;
 
 /// Index of a transaction in the chain.
@@ -56,8 +57,8 @@ pub mod report {
 	/// Identity of the equivocation/misbehavior reporter.
 	pub type ReporterId = app::Public;
 
-	/// An `AppCrypto` type to allow submitting signed transactions using the reporting
-	/// application key as signer.
+	/// An `AppCrypto` type to allow submitting signed transactions using the
+	/// reporting application key as signer.
 	pub struct ReporterAppCrypto;
 
 	impl AppCrypto<<Signature as Verify>::Signer, Signature> for ReporterAppCrypto {
@@ -80,21 +81,24 @@ pub mod fee {
 	/// The block saturation level. Fees will be updates based on this value.
 	pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
 
-	/// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
-	/// node's balance type.
+	/// Handles converting a weight scalar to a fee value, based on the scale
+	/// and granularity of the node's balance type.
 	///
 	/// This should typically create a mapping between the following ranges:
 	///   - [0, system::MaximumBlockWeight]
 	///   - [Balance::min, Balance::max]
 	///
-	/// Yet, it can be used for any other sort of change to weight-fee. Some examples being:
+	/// Yet, it can be used for any other sort of change to weight-fee. Some
+	/// examples being:
 	///   - Setting it to `0` will essentially disable the weight fee.
-	///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
+	///   - Setting it to `1` will cause the literal `#[weight = x]` values to
+	///     be charged.
 	pub struct WeightToFee;
 	impl WeightToFeePolynomial for WeightToFee {
 		type Balance = Balance;
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
+			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10
+			// CENT:
 			let p = CENTS / 10; // 1_000_000_000_000_000
 			let q = Balance::from(ExtrinsicBaseWeight::get()); // 125_000_000
 			smallvec![WeightToFeeCoefficient {

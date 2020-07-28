@@ -2,8 +2,9 @@
 //!
 //! ## Overview
 //!
-//! The entry of the Honzon protocol for users, user can manipulate their CDP position to loan/payback,
-//! and can also authorize others to manage the their CDP under specific collateral type.
+//! The entry of the Honzon protocol for users, user can manipulate their CDP
+//! position to loan/payback, and can also authorize others to manage the their
+//! CDP under specific collateral type.
 //!
 //! After system shutdown, some operations will be restricted.
 
