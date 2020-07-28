@@ -25,7 +25,7 @@ use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32Bit, CheckedAdd, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Member, One,
-		UniqueSaturatedInto, Zero,
+		Saturating, UniqueSaturatedInto, Zero,
 	},
 	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
@@ -446,22 +446,25 @@ impl<T: Trait> Module<T> {
 		supply_amount: Balance,
 		fee_rate: Rate,
 	) -> Balance {
-		// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
-		let new_target_pool = supply_pool
-			.checked_add(supply_amount)
-			.and_then(|n| Ratio::checked_from_rational(supply_pool, n))
-			.map(|n| n.saturating_mul_int(target_pool))
-			.unwrap_or_default();
-
-		// new_target_pool should be more then 0
-		if !new_target_pool.is_zero() {
-			// actual can get = (target_pool - new_target_pool) * (1 - fee_rate)
-			target_pool
-				.checked_sub(new_target_pool)
-				.and_then(|n| n.checked_sub(fee_rate.saturating_mul_int(n)))
-				.unwrap_or_default()
-		} else {
+		if supply_amount.is_zero() {
 			Zero::zero()
+		} else {
+			// new_target_pool = supply_pool * target_pool / (supply_amount + supply_pool)
+			let new_target_pool = supply_pool
+				.checked_add(supply_amount)
+				.and_then(|n| Ratio::checked_from_rational(supply_pool, n))
+				.and_then(|n| n.checked_mul_int(target_pool))
+				.unwrap_or_default();
+
+			if new_target_pool.is_zero() {
+				Zero::zero()
+			} else {
+				// target_amount = (target_pool - new_target_pool) * (1 - fee_rate)
+				target_pool
+					.checked_sub(new_target_pool)
+					.and_then(|n| Rate::one().saturating_sub(fee_rate).checked_mul_int(n))
+					.unwrap_or_default()
+			}
 		}
 	}
 
@@ -472,32 +475,35 @@ impl<T: Trait> Module<T> {
 		target_amount: Balance,
 		fee_rate: Rate,
 	) -> Balance {
-		// new_target_pool = target_pool - target_amount / (1 - fee_rate)
-		// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
 		if target_amount.is_zero() {
 			Zero::zero()
 		} else {
-			Rate::one()
-				.checked_sub(&fee_rate)
-				.and_then(|n| n.reciprocal())
-				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
+			// new_target_pool = target_pool - target_amount / (1 - fee_rate)
+			let new_target_pool = Rate::one()
+				.saturating_sub(fee_rate)
+				.reciprocal()
+				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal
 				// division calculation
-				.and_then(|n| n.checked_add(&Ratio::from_inner(1)))
 				.and_then(|n| n.checked_mul_int(target_amount))
 				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
 				// division calculation
 				.and_then(|n| n.checked_add(Balance::one()))
 				.and_then(|n| target_pool.checked_sub(n))
-				.and_then(|n| Ratio::checked_from_rational(supply_pool, n))
-				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
-				// division calculation
-				.and_then(|n| n.checked_add(&Ratio::from_inner(1)))
-				.and_then(|n| n.checked_mul_int(target_pool))
-				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
-				// division calculation
-				.and_then(|n| n.checked_add(Balance::one()))
-				.and_then(|n| n.checked_sub(supply_pool))
-				.unwrap_or_default()
+				.unwrap_or_default();
+
+			if new_target_pool.is_zero() {
+				Zero::zero()
+			} else {
+				// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
+				Ratio::checked_from_rational(target_pool, new_target_pool)
+					.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in
+					// internal division calculation
+					.and_then(|n| n.checked_mul_int(supply_pool))
+					.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in
+					// internal division calculation
+					.and_then(|n| n.checked_sub(supply_pool))
+					.unwrap_or_default()
+			}
 		}
 	}
 
