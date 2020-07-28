@@ -2,11 +2,14 @@
 //!
 //! ## Overview
 //!
-//! Auction the assets of the system for maintain the normal operation of the business.
-//! Auction types include:
-//!   - `collateral auction`: sell collateral assets for getting stable coin to eliminate the system's bad debit by auction
-//!   - `surplus auction`: sell excessive surplus for getting native coin to burn by auction
-//!   - `debit auction`: inflation some native token to sell for getting stable coin to eliminate excessive bad debit by auction
+//! Auction the assets of the system for maintain the normal operation of the
+//! business. Auction types include:
+//!   - `collateral auction`: sell collateral assets for getting stable coin to
+//!     eliminate the system's bad debit by auction
+//!   - `surplus auction`: sell excessive surplus for getting native coin to
+//!     burn by auction
+//!   - `debit auction`: inflation some native token to sell for getting stable
+//!     coin to eliminate excessive bad debit by auction
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -59,7 +62,9 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// current collateral amount for sale
 	#[codec(compact)]
 	amount: Balance,
-	/// Target sales amount want to get by this auction
+	/// Target sales amount want to get by this auction,
+	/// if zero, collateral auction will never be reverse stage,
+	/// otherwise, target amount is the actual payment amount of active bidder
 	#[codec(compact)]
 	target: Balance,
 	/// Auction start time
@@ -103,7 +108,8 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 	/// The extended time for the auction to end after each successful bid
 	type AuctionTimeToClose: Get<Self::BlockNumber>;
 
-	/// When the total duration of the auction exceeds this soft cap, push the auction to end more faster
+	/// When the total duration of the auction exceeds this soft cap, push the
+	/// auction to end more faster
 	type AuctionDurationSoftCap: Get<Self::BlockNumber>;
 
 	/// The stable currency id
@@ -169,8 +175,8 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// The auction dose not exist
 		AuctionNotExsits,
-		/// The collateral auction is in reserved stage now
-		InReservedStage,
+		/// The collateral auction is in reverse stage now
+		InReverseStage,
 		/// Feed price is invalid
 		InvalidFeedPrice,
 		/// Must after system shutdown
@@ -317,7 +323,8 @@ impl<T: Trait> Module<T> {
 		let random_seed = sp_io::offchain::random_seed();
 		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
 
-		// Randomly choose to start iterations to cancel collateral/surplus/debit auctions
+		// Randomly choose to start iterations to cancel collateral/surplus/debit
+		// auctions
 		match rng.pick_u32(2) {
 			0 => {
 				for (debit_auction_id, _) in <DebitAuctions<T>>::iter() {
@@ -397,7 +404,7 @@ impl<T: Trait> Module<T> {
 		// must not in reverse bid stage
 		ensure!(
 			!Self::collateral_auction_in_reverse_stage(id),
-			Error::<T>::InReservedStage
+			Error::<T>::InReverseStage
 		);
 		let collateral_auction = <CollateralAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 
@@ -405,10 +412,14 @@ impl<T: Trait> Module<T> {
 		let stable_currency_id = T::GetStableCurrencyId::get();
 		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
-		let confiscate_collateral_amount = sp_std::cmp::min(
-			settle_price.saturating_mul_int(collateral_auction.target),
-			collateral_auction.amount,
-		);
+		let confiscate_collateral_amount = if collateral_auction.target.is_zero() {
+			collateral_auction.amount
+		} else {
+			sp_std::cmp::min(
+				settle_price.saturating_mul_int(collateral_auction.target),
+				collateral_auction.amount,
+			)
+		};
 		let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
 
 		// refund remain collateral to refund recipient from cdp treasury
@@ -455,14 +466,15 @@ impl<T: Trait> Module<T> {
 			}),
 		) = (Self::collateral_auctions(id), T::Auction::auction_info(id))
 		{
-			bid_price >= target
+			!target.is_zero() && bid_price >= target
 		} else {
 			false
 		}
 	}
 
 	/// Check `new_price` is larger than minimum increment
-	/// Formula: new_price - last_price >= max(last_price, target_price) * minimum_increment
+	/// Formula: new_price - last_price >= max(last_price, target_price) *
+	/// minimum_increment
 	fn check_minimum_increment(
 		new_price: Balance,
 		last_price: Balance,
@@ -511,27 +523,36 @@ impl<T: Trait> Module<T> {
 					let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExsits)?;
 					let (new_bidder, new_bid_price) = new_bid;
 					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
-					let stable_currency_id = T::GetStableCurrencyId::get();
-					let mut payment = sp_std::cmp::min(collateral_auction.target, new_bid_price);
 
-					// ensure new bid price is great than minimun increment
+					// ensure new bid price is valid
 					ensure!(
-						Self::check_minimum_increment(
-							new_bid_price,
-							last_bid_price,
-							collateral_auction.target,
-							Self::get_minimum_increment_size(now, collateral_auction.start_time),
-						),
+						!new_bid_price.is_zero()
+							&& Self::check_minimum_increment(
+								new_bid_price,
+								last_bid_price,
+								collateral_auction.target,
+								Self::get_minimum_increment_size(now, collateral_auction.start_time),
+							),
 						Error::<T>::InvalidBidPrice
 					);
+
+					let mut payment = if collateral_auction.target.is_zero() {
+						new_bid_price
+					} else {
+						sp_std::cmp::min(collateral_auction.target, new_bid_price)
+					};
 
 					// increase account ref of new bidder
 					system::Module::<T>::inc_ref(&new_bidder);
 
 					// if these's bid before, return stablecoin from new bidder to last bidder
 					if let Some((last_bidder, _)) = last_bid {
-						let refund = sp_std::cmp::min(last_bid_price, collateral_auction.target);
-						T::Currency::transfer(stable_currency_id, &new_bidder, &last_bidder, refund)?;
+						let refund = if collateral_auction.target.is_zero() {
+							last_bid_price
+						} else {
+							sp_std::cmp::min(last_bid_price, collateral_auction.target)
+						};
+						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, &last_bidder, refund)?;
 						payment -= refund;
 
 						// decrease account ref of last bidder
@@ -541,8 +562,9 @@ impl<T: Trait> Module<T> {
 					// transfer remain payment from new bidder to cdp treasury
 					T::CDPTreasury::deposit_surplus(&new_bidder, payment)?;
 
-					// if bid_price > target, the auction is in reverse, refund collateral to it's origin from auction cdp treasury
-					if new_bid_price > collateral_auction.target {
+					// if collateral auction will be in reverse stage, refund collateral to it's
+					// origin from auction cdp treasury
+					if !collateral_auction.target.is_zero() && new_bid_price > collateral_auction.target {
 						let new_collateral_amount = Rate::checked_from_rational(
 							sp_std::cmp::max(last_bid_price, collateral_auction.target),
 							new_bid_price,
@@ -551,18 +573,20 @@ impl<T: Trait> Module<T> {
 						.unwrap_or(collateral_auction.amount);
 						let deduct_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
-						T::CDPTreasury::withdraw_collateral(
-							&(collateral_auction.refund_recipient),
-							collateral_auction.currency_id,
-							deduct_collateral_amount,
-						)?;
+						if !deduct_collateral_amount.is_zero() {
+							T::CDPTreasury::withdraw_collateral(
+								&(collateral_auction.refund_recipient),
+								collateral_auction.currency_id,
+								deduct_collateral_amount,
+							)?;
 
-						// update collateral auction when refund collateral to refund recipient success
-						TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
-							*balance = balance.saturating_sub(deduct_collateral_amount)
-						});
-						collateral_auction.amount = new_collateral_amount;
-						<CollateralAuctions<T>>::insert(id, collateral_auction.clone());
+							// update collateral auction when refund collateral to refund recipient success
+							TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
+								*balance = balance.saturating_sub(deduct_collateral_amount)
+							});
+							collateral_auction.amount = new_collateral_amount;
+							<CollateralAuctions<T>>::insert(id, collateral_auction.clone());
+						}
 					}
 
 					Ok(now + Self::get_auction_time_to_close(now, collateral_auction.start_time))
@@ -653,7 +677,8 @@ impl<T: Trait> Module<T> {
 
 			let mut burn_native_currency_amount = new_bid_price;
 
-			// if these's bid before, transfer the stablecoin from auction manager module to last bidder
+			// if these's bid before, transfer the stablecoin from auction manager module to
+			// last bidder
 			if let Some((last_bidder, _)) = last_bid {
 				burn_native_currency_amount = burn_native_currency_amount.saturating_sub(last_bid_price);
 				T::Currency::transfer(native_currency_id, &new_bidder, &last_bidder, last_bid_price)?;
@@ -678,7 +703,7 @@ impl<T: Trait> Module<T> {
 			let mut should_deal = true;
 
 			// if bid_price doesn't reach target and trading with DEX will get better result
-			if bid_price < collateral_auction.target
+			if (bid_price < collateral_auction.target || collateral_auction.target.is_zero())
 				&& bid_price
 					< T::DEX::get_target_amount(
 						collateral_auction.currency_id,
@@ -697,7 +722,7 @@ impl<T: Trait> Module<T> {
 					// refund stable coin to the last bidder, ignore result to continue
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
-					if amount > collateral_auction.target {
+					if !collateral_auction.target.is_zero() && amount > collateral_auction.target {
 						// refund extra stable coin to recipient, ignore result to continue
 						let _ = T::CDPTreasury::issue_debit(
 							&collateral_auction.refund_recipient,
@@ -723,12 +748,17 @@ impl<T: Trait> Module<T> {
 					collateral_auction.amount,
 				);
 
+				let payment_amount = if collateral_auction.target.is_zero() {
+					bid_price
+				} else {
+					sp_std::cmp::min(collateral_auction.target, bid_price)
+				};
 				<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealed(
 					auction_id,
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 					bidder.clone(),
-					sp_std::cmp::min(collateral_auction.target, bid_price),
+					payment_amount,
 				));
 			}
 

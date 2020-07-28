@@ -2,10 +2,13 @@
 //!
 //! ## Overview
 //!
-//! Built-in decentralized exchange modules in Acala network, the core currency type of trading pairs is stable coin (aUSD),
-//! the trading mechanism refers to the design of Uniswap. In addition to being used for trading, DEX also participates
-//! in CDP liquidation, which is faster than liquidation by auction when the liquidity is sufficient. And providing market
-//! making liquidity for DEX will also receive stable coin as additional reward for its participation in the CDP liquidation.
+//! Built-in decentralized exchange modules in Acala network, the core currency
+//! type of trading pairs is stable coin (aUSD), the trading mechanism refers to
+//! the design of Uniswap. In addition to being used for trading, DEX also
+//! participates in CDP liquidation, which is faster than liquidation by auction
+//! when the liquidity is sufficient. And providing market making liquidity for
+//! DEX will also receive stable coin as additional reward for its participation
+//! in the CDP liquidation.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -36,7 +39,8 @@ mod tests;
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-	/// Associate type for measuring liquidity contribution of specific trading pairs
+	/// Associate type for measuring liquidity contribution of specific trading
+	/// pairs
 	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize + FixedPointOperand;
 
 	/// The origin which may update parameters of dex. Root can always do this.
@@ -48,7 +52,8 @@ pub trait Trait: system::Trait {
 	/// CDP treasury for depositing additional liquidity reward to DEX
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
-	/// Allowed trading currency type list, each currency type forms a trading pair with the base currency
+	/// Allowed trading currency type list, each currency type forms a trading
+	/// pair with the base currency
 	type EnabledCurrencyIds: Get<Vec<CurrencyId>>;
 
 	/// The base currency as the core currency in all trading pairs
@@ -477,9 +482,12 @@ impl<T: Trait> Module<T> {
 			let new_target_pool = Rate::one()
 				.saturating_sub(fee_rate)
 				.reciprocal()
-				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
+				.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal
+				// division calculation
 				.and_then(|n| n.checked_mul_int(target_amount))
-				.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
+				// add 1 to result in order to correct the possible losses caused by remainder discarding in internal
+				// division calculation
+				.and_then(|n| n.checked_add(Balance::one()))
 				.and_then(|n| target_pool.checked_sub(n))
 				.unwrap_or_default();
 
@@ -488,9 +496,11 @@ impl<T: Trait> Module<T> {
 			} else {
 				// supply_amount = target_pool * supply_pool / new_target_pool - supply_pool
 				Ratio::checked_from_rational(target_pool, new_target_pool)
-					.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
+					.and_then(|n| n.checked_add(&Ratio::from_inner(1))) // add 1 to result in order to correct the possible losses caused by remainder discarding in
+					// internal division calculation
 					.and_then(|n| n.checked_mul_int(supply_pool))
-					.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in internal division calculation
+					.and_then(|n| n.checked_add(Balance::one())) // add 1 to result in order to correct the possible losses caused by remainder discarding in
+					// internal division calculation
 					.and_then(|n| n.checked_sub(supply_pool))
 					.unwrap_or_default()
 			}
@@ -657,8 +667,8 @@ impl<T: Trait> Module<T> {
 		Ok(target_turnover)
 	}
 
-	// get the minimum amount of supply currency needed for the target currency amount
-	// return 0 means cannot exchange
+	// get the minimum amount of supply currency needed for the target currency
+	// amount return 0 means cannot exchange
 	pub fn get_supply_amount_needed(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
@@ -702,8 +712,8 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	// get the maximum amount of target currency you can get for the supply currency amount
-	// return 0 means cannot exchange
+	// get the maximum amount of target currency you can get for the supply currency
+	// amount return 0 means cannot exchange
 	pub fn get_target_amount_available(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,

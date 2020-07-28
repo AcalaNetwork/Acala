@@ -363,7 +363,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
-			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
+			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![
@@ -510,7 +510,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 			],
-			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), // 5% APR
+			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
 		}),
 		module_dex: Some(DexConfig {
 			liquidity_incentive_rate: vec![

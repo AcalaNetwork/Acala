@@ -77,7 +77,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 };
 
-/// The version infromation used to identify this runtime when compiled natively.
+/// The version infromation used to identify this runtime when compiled
+/// natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
 	NativeVersion {
@@ -86,10 +87,11 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-/// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
-/// the specifics of the runtime. They can then be made to be agnostic over specific formats
-/// of data like extrinsics, allowing for them to continue syncing the network through upgrades
-/// to even the core datastructures.
+/// Opaque types. These are used by the CLI to instantiate machinery that don't
+/// need to know the specifics of the runtime. They can then be made to be
+/// agnostic over specific formats of data like extrinsics, allowing for them to
+/// continue syncing the network through upgrades to even the core
+/// datastructures.
 pub mod opaque {
 	use super::*;
 	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
@@ -225,7 +227,8 @@ parameter_types! {
 	pub const AcaExistentialDeposit: Balance = 0;
 }
 
-// `module_accounts` handles account opening/reaping, `ExistentialDeposit` in `pallet_balances` must be 0
+// `module_accounts` handles account opening/reaping, `ExistentialDeposit` in
+// `pallet_balances` must be 0
 const_assert!(AcaExistentialDeposit::get() == 0);
 
 impl pallet_balances::Trait for Runtime {
@@ -504,8 +507,8 @@ pallet_staking_reward_curve::build! {
 	);
 }
 
-/// Struct that handles the conversion of Balance -> `u64`. This is used for staking's election
-/// calculation.
+/// Struct that handles the conversion of Balance -> `u64`. This is used for
+/// staking's election calculation.
 pub struct CurrencyToVoteHandler;
 
 impl CurrencyToVoteHandler {
