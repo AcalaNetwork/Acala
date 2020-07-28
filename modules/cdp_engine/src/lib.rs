@@ -2,8 +2,9 @@
 //!
 //! ## Overview
 //!
-//! The core module of Honzon protocol. CDP engine is responsible for handle internal processes about CDPs,
-//! including liquidation, settlement and risk management.
+//! The core module of Honzon protocol. CDP engine is responsible for handle
+//! internal processes about CDPs, including liquidation, settlement and risk
+//! management.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -53,7 +54,8 @@ const LOCK_DURATION: u64 = 100;
 pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-	/// The origin which may update risk management parameters. Root can always do this.
+	/// The origin which may update risk management parameters. Root can always
+	/// do this.
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 	/// The list of valid collateral currency types
@@ -113,22 +115,23 @@ pub struct RiskManagementParams {
 	pub stability_fee: Option<Rate>,
 
 	/// Liquidation ratio, when the collateral ratio of
-	/// CDP under this collateral type is below the liquidation ratio, this CDP is unsafe and can be liquidated.
-	/// `None` value means not set
+	/// CDP under this collateral type is below the liquidation ratio, this CDP
+	/// is unsafe and can be liquidated. `None` value means not set
 	pub liquidation_ratio: Option<Ratio>,
 
 	/// Liquidation penalty rate, when liquidation occurs,
-	/// CDP will be deducted an additional penalty base on the product of penalty rate and debit value.
-	/// `None` value means not set
+	/// CDP will be deducted an additional penalty base on the product of
+	/// penalty rate and debit value. `None` value means not set
 	pub liquidation_penalty: Option<Rate>,
 
-	/// Required collateral ratio, if it's set, cannot adjust the position of CDP so that
-	/// the current collateral ratio is lower than the required collateral ratio.
-	/// `None` value means not set
+	/// Required collateral ratio, if it's set, cannot adjust the position of
+	/// CDP so that the current collateral ratio is lower than the required
+	/// collateral ratio. `None` value means not set
 	pub required_collateral_ratio: Option<Ratio>,
 }
 
-// typedef to help polkadot.js disambiguate Change with different generic parameters
+// typedef to help polkadot.js disambiguate Change with different generic
+// parameters
 type ChangeOptionRate = Change<Option<Rate>>;
 type ChangeOptionRatio = Change<Option<Ratio>>;
 type ChangeBalance = Change<Balance>;
@@ -655,8 +658,9 @@ impl<T: Trait> Module<T> {
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 
-		// if collateral_balance can swap enough native token in DEX and exchange slippage is blow the limit,
-		// directly exchange with DEX, otherwise create collateral auctions.
+		// if collateral_balance can swap enough native token in DEX and exchange
+		// slippage is blow the limit, directly exchange with DEX, otherwise create
+		// collateral auctions.
 		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
 			&& collateral_balance >= supply_collateral_amount									// ensure have sufficient collateral
 			&& T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount).map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())

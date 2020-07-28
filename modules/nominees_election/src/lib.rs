@@ -22,7 +22,8 @@ mod tests;
 
 const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
 
-/// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
+/// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be
+/// unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct UnlockChunk {
 	/// Amount of funds to be unlocked.
@@ -34,12 +35,14 @@ pub struct UnlockChunk {
 /// The ledger of a (bonded) account.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
 pub struct BondingLedger {
-	/// The total amount of the account's balance that we are currently accounting for.
-	/// It's just `active` plus all the `unlocking` balances.
+	/// The total amount of the account's balance that we are currently
+	/// accounting for. It's just `active` plus all the `unlocking` balances.
 	pub total: Balance,
-	/// The total amount of the account's balance that will be at stake in any forthcoming rounds.
+	/// The total amount of the account's balance that will be at stake in any
+	/// forthcoming rounds.
 	pub active: Balance,
-	/// Any balance that is becoming free, which may eventually be transferred out of the account.
+	/// Any balance that is becoming free, which may eventually be transferred
+	/// out of the account.
 	pub unlocking: Vec<UnlockChunk>,
 }
 

@@ -34,7 +34,8 @@ pub trait Trait: system::Trait {
 	type DefaultExchangeRate: Get<ExchangeRate>;
 	type ClaimFeeReturnRatio: Get<Ratio>;
 
-	/// The staking pool's module id, keep all staking currency belong to Homa protocol.
+	/// The staking pool's module id, keep all staking currency belong to Homa
+	/// protocol.
 	type ModuleId: Get<ModuleId>;
 
 	// TODO: add RewardFeeRatio
@@ -109,8 +110,8 @@ impl<T: Trait> Module<T> {
 		Self::total_bonded().saturating_sub(Self::next_era_unbond().1)
 	}
 
-	// it represent how much bonded DOT(include bonded, unbonded, unbonding) is belong to LDOT holders
-	// use it in exchange rate calculation
+	// it represent how much bonded DOT(include bonded, unbonded, unbonding) is
+	// belong to LDOT holders use it in exchange rate calculation
 	pub fn get_total_communal_balance() -> Balance {
 		Self::get_communal_bonded()
 			.saturating_add(Self::free_unbonded())
@@ -206,7 +207,8 @@ impl<T: Trait> Module<T> {
 			T::Currency::withdraw(liquid_currency_id, who, ldot_to_redeem)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 
-			// start unbond at next era, and the unbond become unbonded after bonding duration
+			// start unbond at next era, and the unbond become unbonded after bonding
+			// duration
 			let unbonded_era_index = Self::current_era()
 				+ EraIndex::one()
 				+ <<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();

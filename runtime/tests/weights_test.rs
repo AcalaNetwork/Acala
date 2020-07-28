@@ -3,8 +3,8 @@
 //!
 //! These test are not meant to be exhaustive, as it is inevitable that
 //! weights in Substrate will change. Instead they are supposed to provide
-//! some sort of indicator that calls we consider important (e.g Balances::transfer)
-//! have not suddenly changed from under us.
+//! some sort of indicator that calls we consider important (e.g
+//! Balances::transfer) have not suddenly changed from under us.
 
 use frame_support::{
 	traits::ContainsLengthBound,
@@ -248,7 +248,8 @@ fn weight_of_treasury_propose_spend_is_correct() {
 
 #[test]
 fn weight_of_treasury_approve_proposal_is_correct() {
-	// #[weight = (34_000_000 + T::DbWeight::get().reads_writes(2, 1), DispatchClass::Operational)]
+	// #[weight = (34_000_000 + T::DbWeight::get().reads_writes(2, 1),
+	// DispatchClass::Operational)]
 	let expected_weight = 34_000_000 + 2 * DbWeight::get().read + DbWeight::get().write;
 	let weight = TreasuryCall::approve_proposal::<Runtime>(Default::default())
 		.get_dispatch_info()
