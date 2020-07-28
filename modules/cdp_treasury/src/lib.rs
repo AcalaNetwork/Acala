@@ -432,7 +432,11 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 				let mut count = amount
 					.checked_div(collateral_auction_maximum_size)
 					.expect("collateral auction maximum size is not zero; qed");
-				if !(amount % collateral_auction_maximum_size).is_zero() {
+
+				let remainder = amount
+					.checked_rem(collateral_auction_maximum_size)
+					.expect("collateral auction maximum size is not zero; qed");
+				if !remainder.is_zero() {
 					count = count.saturating_add(One::one());
 				}
 				sp_std::cmp::min(count, max_auctions_count)
