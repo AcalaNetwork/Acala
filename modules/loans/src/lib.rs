@@ -26,7 +26,7 @@ pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
 	/// Convert debit amount under specific collateral type to debit
-	/// value(stable coin)
+	/// value(stable currency)
 	type Convert: Convert<(CurrencyId, Balance), Balance>;
 
 	/// Currency type for deposit/withdraw collateral assets to/from loans
@@ -36,7 +36,7 @@ pub trait Trait: system::Trait {
 	/// Risk manager is used to limit the debit size of CDP
 	type RiskManager: RiskManager<Self::AccountId, CurrencyId, Balance, Balance>;
 
-	/// CDP treasury for issuing/burning stable coin adjust debit value
+	/// CDP treasury for issuing/burning stable currency adjust debit value
 	/// adjustment
 	type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
@@ -144,7 +144,7 @@ impl<T: Trait> Module<T> {
 		})
 	}
 
-	// mutate collaterals and debits and then mutate stable coin
+	// mutate collaterals and debits and then mutate stable currency
 	pub fn adjust_position(
 		who: &T::AccountId,
 		currency_id: CurrencyId,

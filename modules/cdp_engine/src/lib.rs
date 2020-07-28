@@ -411,7 +411,7 @@ decl_module! {
 			})?;
 		}
 
-		/// Issue interest in stable coin for all types of collateral has debit when block end,
+		/// Issue interest in stable currency for all types of collateral has debit when block end,
 		/// and update their debit exchange rate
 		fn on_finalize(_now: T::BlockNumber) {
 			// collect stability fee for all types of collateral

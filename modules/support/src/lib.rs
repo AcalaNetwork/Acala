@@ -159,7 +159,7 @@ pub trait CDPTreasury<AccountId> {
 	/// issue debit for cdp treasury
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult;
 
-	/// issue surplus(stable coin) for cdp treasury
+	/// issue surplus(stable currency) for cdp treasury
 	fn on_system_surplus(amount: Self::Balance) -> DispatchResult;
 
 	/// issue debit to `who`
@@ -167,10 +167,10 @@ pub trait CDPTreasury<AccountId> {
 	/// assets, otherwise will increase same amount of debit to system debit.
 	fn issue_debit(who: &AccountId, debit: Self::Balance, backed: bool) -> DispatchResult;
 
-	/// burn debit(stable coin) of `who`
+	/// burn debit(stable currency) of `who`
 	fn burn_debit(who: &AccountId, debit: Self::Balance) -> DispatchResult;
 
-	/// deposit surplus(stable coin) to cdp treasury by `from`
+	/// deposit surplus(stable currency) to cdp treasury by `from`
 	fn deposit_surplus(from: &AccountId, surplus: Self::Balance) -> DispatchResult;
 
 	/// deposit collateral assets to cdp treasury by `who`

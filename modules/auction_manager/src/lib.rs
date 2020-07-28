@@ -4,7 +4,7 @@
 //!
 //! Auction the assets of the system for maintain the normal operation of the
 //! business. Auction types include:
-//!   - `collateral auction`: sell collateral assets for getting stable coin to
+//!   - `collateral auction`: sell collateral assets for getting stable currency to
 //!     eliminate the system's bad debit by auction
 //!   - `surplus auction`: sell excessive surplus for getting native coin to
 //!     burn by auction
@@ -26,7 +26,7 @@ use frame_system::{
 };
 use orml_traits::{Auction, AuctionHandler, AuctionInfo, Change, MultiCurrency, OnNewBidResult};
 use orml_utilities::with_transaction_result;
-use primitives::{Balance, CurrencyId};
+use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
 		storage_lock::{StorageLock, Time},
@@ -59,10 +59,10 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	refund_recipient: AccountId,
 	/// Collateral type for sale
 	currency_id: CurrencyId,
-	/// current collateral amount for sale
+	/// Current collateral amount for sale
 	#[codec(compact)]
 	amount: Balance,
-	/// Target sales amount want to get by this auction
+	/// Target sales amount of this auction
 	#[codec(compact)]
 	target: Balance,
 	/// Auction start time
@@ -73,10 +73,10 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
 pub struct DebitAuctionItem<BlockNumber> {
-	/// Current amount of native coin for sale
+	/// Current amount of native currency for sale
 	#[codec(compact)]
 	amount: Balance,
-	/// Fix amount of debit value(stable coin) which want to get by this auction
+	/// Fix amount of debit value(stable currency) which want to get by this auction
 	#[codec(compact)]
 	fix: Balance,
 	/// Auction start time
@@ -87,15 +87,12 @@ pub struct DebitAuctionItem<BlockNumber> {
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
 pub struct SurplusAuctionItem<BlockNumber> {
-	/// Fixed amount of surplus(stable coin) for sale
+	/// Fixed amount of surplus(stable currency) for sale
 	#[codec(compact)]
 	amount: Balance,
 	/// Auction start time
 	start_time: BlockNumber,
 }
-
-type AuctionIdOf<T> =
-	<<T as Trait>::Auction as Auction<<T as system::Trait>::AccountId, <T as system::Trait>::BlockNumber>>::AuctionId;
 
 pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -116,14 +113,14 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 	/// The native currency id
 	type GetNativeCurrencyId: Get<CurrencyId>;
 
-	/// The decrement of amout in debit auction when restocking
+	/// The decrement of amount in debit auction when restocking
 	type GetAmountAdjustment: Get<Rate>;
 
 	/// Currency to transfer assets
 	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 	/// Auction to manager the auction process
-	type Auction: Auction<Self::AccountId, Self::BlockNumber, Balance = Balance>;
+	type Auction: Auction<Self::AccountId, Self::BlockNumber, AuctionId = AuctionId, Balance = Balance>;
 
 	/// CDP treasury to escrow assets related to auction
 	type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
@@ -145,7 +142,7 @@ decl_event!(
 	pub enum Event<T>
 	where
 		<T as system::Trait>::AccountId,
-		AuctionId = AuctionIdOf<T>,
+		AuctionId = AuctionId,
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
@@ -187,15 +184,15 @@ decl_error! {
 decl_storage! {
 	trait Store for Module<T: Trait> as AuctionManager {
 		/// Mapping from auction id to collateral auction info
-		pub CollateralAuctions get(fn collateral_auctions): map hasher(twox_64_concat) AuctionIdOf<T> =>
+		pub CollateralAuctions get(fn collateral_auctions): map hasher(twox_64_concat) AuctionId =>
 			Option<CollateralAuctionItem<T::AccountId, T::BlockNumber>>;
 
 		/// Mapping from auction id to debit auction info
-		pub DebitAuctions get(fn debit_auctions): map hasher(twox_64_concat) AuctionIdOf<T> =>
+		pub DebitAuctions get(fn debit_auctions): map hasher(twox_64_concat) AuctionId =>
 			Option<DebitAuctionItem<T::BlockNumber>>;
 
 		/// Mapping from auction id to surplus auction info
-		pub SurplusAuctions get(fn surplus_auctions): map hasher(twox_64_concat) AuctionIdOf<T> =>
+		pub SurplusAuctions get(fn surplus_auctions): map hasher(twox_64_concat) AuctionId =>
 			Option<SurplusAuctionItem<T::BlockNumber>>;
 
 		/// Record of the total collateral amount of all ative collateral auctions under specific collateral type
@@ -267,7 +264,7 @@ decl_module! {
 		///		- collateral auction worst case: 80.13 µs
 		/// # </weight>
 		#[weight = (80 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9), DispatchClass::Operational)]
-		pub fn cancel(origin, id: AuctionIdOf<T>) {
+		pub fn cancel(origin, id: AuctionId) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;
 				ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
@@ -300,7 +297,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn submit_cancel_auction_tx(auction_id: AuctionIdOf<T>) {
+	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel(auction_id);
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::info!(
@@ -349,7 +346,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn cancel_surplus_auction(id: AuctionIdOf<T>) -> DispatchResult {
+	fn cancel_surplus_auction(id: AuctionId) -> DispatchResult {
 		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 
 		// if these's bid
@@ -375,7 +372,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn cancel_debit_auction(id: AuctionIdOf<T>) -> DispatchResult {
+	fn cancel_debit_auction(id: AuctionId) -> DispatchResult {
 		let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExsits)?;
 
 		// if these's bid
@@ -398,7 +395,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn cancel_collateral_auction(id: AuctionIdOf<T>) -> DispatchResult {
+	fn cancel_collateral_auction(id: AuctionId) -> DispatchResult {
 		// must not in reverse bid stage
 		ensure!(
 			!Self::collateral_auction_in_reverse_stage(id),
@@ -451,7 +448,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn collateral_auction_in_reverse_stage(id: AuctionIdOf<T>) -> bool {
+	fn collateral_auction_in_reverse_stage(id: AuctionId) -> bool {
 		if let (
 			Some(CollateralAuctionItem { target, .. }),
 			Some(AuctionInfo {
@@ -505,7 +502,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn collateral_auction_bid_handler(
 		now: T::BlockNumber,
-		id: AuctionIdOf<T>,
+		id: AuctionId,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
@@ -580,7 +577,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn debit_auction_bid_handler(
 		now: T::BlockNumber,
-		id: AuctionIdOf<T>,
+		id: AuctionId,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
@@ -637,7 +634,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn surplus_auction_bid_handler(
 		now: T::BlockNumber,
-		id: AuctionIdOf<T>,
+		id: AuctionId,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
@@ -680,7 +677,7 @@ impl<T: Trait> Module<T> {
 		})
 	}
 
-	fn collateral_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
+	fn collateral_auction_end_handler(auction_id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
 		if let (Some(collateral_auction), Some((bidder, bid_price))) = (Self::collateral_auctions(auction_id), winner) {
 			let stable_currency_id = T::GetStableCurrencyId::get();
 			let mut should_deal = true;
@@ -702,11 +699,11 @@ impl<T: Trait> Module<T> {
 					// swap successfully, will not deal
 					should_deal = false;
 
-					// refund stable coin to the last bidder, ignore result to continue
+					// refund stable currency to the last bidder, ignore result to continue
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
 					if amount > collateral_auction.target {
-						// refund extra stable coin to recipient, ignore result to continue
+						// refund extra stable currency to recipient, ignore result to continue
 						let _ = T::CDPTreasury::issue_debit(
 							&collateral_auction.refund_recipient,
 							amount - collateral_auction.target,
@@ -753,7 +750,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	fn debit_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
+	fn debit_auction_end_handler(auction_id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
 		if let Some(debit_auction) = Self::debit_auctions(auction_id) {
 			if let Some((bidder, _)) = winner {
 				// issue native token to winner, ignore the result to continue
@@ -777,7 +774,7 @@ impl<T: Trait> Module<T> {
 				// there's no bidder until auction closed, adjust the native token amount
 				let start_block = <system::Module<T>>::block_number();
 				let end_block = start_block + T::AuctionTimeToClose::get();
-				let new_debit_auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block))
+				let new_debit_auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
 					.expect("AuctionId is sufficient large so this can never fail");
 				let new_amount = T::GetAmountAdjustment::get().saturating_mul_acc_int(debit_auction.amount);
 				let new_debit_auction = DebitAuctionItem {
@@ -798,7 +795,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	fn surplus_auction_end_handler(auction_id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
+	fn surplus_auction_end_handler(auction_id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
 		if let (Some(surplus_auction), Some((bidder, bidder_price))) = (Self::surplus_auctions(auction_id), winner) {
 			// deposit unbacked stable token to winner by cdp treasury, ignore Err
 			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
@@ -820,10 +817,10 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionIdOf<T>> for Module<T> {
+impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> for Module<T> {
 	fn on_new_bid(
 		now: T::BlockNumber,
-		id: AuctionIdOf<T>,
+		id: AuctionId,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> OnNewBidResult<T::BlockNumber> {
@@ -847,7 +844,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionIdOf
 		}
 	}
 
-	fn on_auction_ended(id: AuctionIdOf<T>, winner: Option<(T::AccountId, Balance)>) {
+	fn on_auction_ended(id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
 		if <CollateralAuctions<T>>::contains_key(id) {
 			Self::collateral_auction_end_handler(id, winner)
 		} else if <DebitAuctions<T>>::contains_key(id) {
@@ -861,7 +858,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionIdOf
 impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
-	type AuctionId = AuctionIdOf<T>;
+	type AuctionId = AuctionId;
 
 	fn new_collateral_auction(
 		who: &T::AccountId,
@@ -877,7 +874,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			TotalTargetInAuction::mutate(|balance| *balance += target);
 
 			let block_number = <system::Module<T>>::block_number();
-			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(block_number, None)
+			let auction_id: AuctionId = T::Auction::new_auction(block_number, None)
 				.expect("AuctionId is sufficient large so this can never fail"); // do not set endtime for collateral auction
 			let collateral_aution = CollateralAuctionItem {
 				refund_recipient: who.clone(),
@@ -901,7 +898,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 			let start_block = <system::Module<T>>::block_number();
 			let end_block = start_block + T::AuctionTimeToClose::get();
 			// set close time for initial debit auction
-			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(start_block, Some(end_block))
+			let auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
 				.expect("AuctionId is sufficient large so this can never fail"); // set endtime for debit auction!
 			let debit_auction = DebitAuctionItem {
 				amount: initial_amount,
@@ -916,7 +913,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	fn new_surplus_auction(amount: Self::Balance) {
 		if Self::total_surplus_in_auction().checked_add(amount).is_some() {
 			TotalSurplusInAuction::mutate(|balance| *balance += amount);
-			let auction_id: AuctionIdOf<T> = T::Auction::new_auction(<system::Module<T>>::block_number(), None)
+			let auction_id: AuctionId = T::Auction::new_auction(<system::Module<T>>::block_number(), None)
 				.expect("AuctionId is sufficient large so this can never fail"); // do not set endtime for surplus auction
 			let surplus_auction = SurplusAuctionItem {
 				amount,
