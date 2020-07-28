@@ -56,7 +56,7 @@ fn new_surplus_auction_work() {
 }
 
 #[test]
-fn on_new_bid_for_collateral_auction_work() {
+fn on_new_bid_for_collateral_auction_which_target_more_than_zero_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
@@ -185,7 +185,7 @@ fn bid_when_soft_cap_for_surplus_auction_work() {
 }
 
 #[test]
-fn reverse_collateral_auction_work() {
+fn reverse_collateral_auction_which_target_more_than_zero_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
@@ -215,7 +215,7 @@ fn reverse_collateral_auction_work() {
 }
 
 #[test]
-fn on_auction_ended_for_collateral_auction_and_dealed() {
+fn on_auction_ended_for_collateral_auction_which_target_more_than_zero_by_dealing() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
@@ -247,7 +247,7 @@ fn on_auction_ended_for_collateral_auction_and_dealed() {
 }
 
 #[test]
-fn on_auction_ended_for_collateral_auction_and_dex_take() {
+fn on_auction_ended_for_collateral_auction_which_target_more_than_zero_by_dex() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
@@ -408,6 +408,7 @@ fn cancel_debit_auction_work() {
 #[test]
 fn collateral_auction_in_reverse_stage_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		// collateral auction which target > 0
 		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
 		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
@@ -415,11 +416,17 @@ fn collateral_auction_in_reverse_stage_work() {
 		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
 		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 0, 100));
 		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), true);
+
+		// collateral auction which target is zero
+		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 0);
+		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(1), false);
+		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 1, 5));
+		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(1), false);
 	});
 }
 
 #[test]
-fn cancel_collateral_auction_fail() {
+fn cancel_collateral_auction_failed() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			AuctionManagerModule::cancel_collateral_auction(0),
@@ -429,7 +436,7 @@ fn cancel_collateral_auction_fail() {
 		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 0, 100));
 		assert_noop!(
 			AuctionManagerModule::cancel_collateral_auction(0),
-			Error::<Runtime>::InReservedStage
+			Error::<Runtime>::InReverseStage
 		);
 	});
 }

@@ -717,9 +717,8 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Modul
 		collateral_balance: Balance,
 		debit_balance: Balance,
 	) -> DispatchResult {
-		let debit_value = Self::get_debit_value(currency_id, debit_balance);
-
-		if !debit_value.is_zero() {
+		if !debit_balance.is_zero() {
+			let debit_value = Self::get_debit_value(currency_id, debit_balance);
 			let feed_price = <T as Trait>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
 				.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
