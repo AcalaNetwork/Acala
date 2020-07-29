@@ -5,8 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
 use mock::{
-	DexModule, ExtBuilder, GetExchangeFee, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC,
-	CAROL, DOT, LDOT,
+	DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL, DOT, LDOT,
 };
 use sp_runtime::traits::BadOrigin;
 
@@ -86,45 +85,6 @@ fn deposit_calculate_interest_work() {
 		DexModule::deposit_calculate_interest(BTC, &ALICE, 4000);
 		assert_eq!(DexModule::total_interest(BTC), (18000, 10000));
 		assert_eq!(DexModule::withdrawn_interest(BTC, ALICE), 8000);
-	});
-}
-
-#[test]
-fn calculate_swap_target_amount_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert!(DexModule::calculate_swap_target_amount(10000, 10000, 10000, GetExchangeFee::get()) <= 4950);
-		// when target pool is 1
-		assert_eq!(
-			DexModule::calculate_swap_target_amount(10000, 1, 10000, GetExchangeFee::get()),
-			0
-		);
-		// when supply is too big
-		assert_eq!(
-			DexModule::calculate_swap_target_amount(100, 100, 9901, GetExchangeFee::get()),
-			0
-		);
-		// when target amount is too small to no fees
-		assert_eq!(
-			DexModule::calculate_swap_target_amount(100, 100, 9900, GetExchangeFee::get()),
-			99
-		);
-	});
-}
-
-#[test]
-fn calculate_swap_supply_amount_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert!(DexModule::calculate_swap_supply_amount(10000, 10000, 4950, GetExchangeFee::get()) >= 10000);
-		// when target amount is too big
-		assert_eq!(
-			DexModule::calculate_swap_supply_amount(10000, 10000, 10000, GetExchangeFee::get()),
-			0
-		);
-		// when target amount is zero
-		assert_eq!(
-			DexModule::calculate_swap_supply_amount(10000, 10000, 0, GetExchangeFee::get()),
-			0
-		);
 	});
 }
 
@@ -224,14 +184,15 @@ fn target_and_supply_amount_calculation() {
 			DexModule::calculate_swap_supply_amount(supply_pool, target_pool, target_amount, fee_rate);
 		assert!(supply_amount_at_least >= supply_amount);
 
-		let supply_pool = 1_000_000_000_000_000_000_000_000;
-		let target_pool = 1_000_000;
-		let fee_rate = Rate::saturating_from_rational(1, 100);
-		let supply_amount = 1_000_000_000_000_000_000;
-		let target_amount = DexModule::calculate_swap_target_amount(supply_pool, target_pool, supply_amount, fee_rate);
+		let supply_pool = 195_703_422_673_811_993_405_238u128;
+		let target_pool = 8_303_589_956_323_875_342_979u128;
+		let fee_rate = Rate::saturating_from_rational(1, 1000); // 0.1%
+		let target_amount = 1_000_000_000_000_000u128;
 		let supply_amount_at_least =
 			DexModule::calculate_swap_supply_amount(supply_pool, target_pool, target_amount, fee_rate);
-		assert!(supply_amount_at_least >= supply_amount);
+		let actual_target_amount =
+			DexModule::calculate_swap_target_amount(supply_pool, target_pool, supply_amount_at_least, fee_rate);
+		assert!(actual_target_amount >= target_amount);
 	});
 }
 
@@ -518,19 +479,19 @@ fn swap_other_to_other_work() {
 			false
 		);
 		assert_noop!(
-			DexModule::swap_currency(Origin::signed(CAROL), DOT, 1000, BTC, 35),
+			DexModule::swap_currency(Origin::signed(CAROL), DOT, 1000, BTC, 34),
 			Error::<Runtime>::UnacceptablePrice,
 		);
 
 		assert_eq!(
-			DexModule::swap_currency(Origin::signed(CAROL), DOT, 1000, BTC, 34).is_ok(),
+			DexModule::swap_currency(Origin::signed(CAROL), DOT, 1000, BTC, 33).is_ok(),
 			true
 		);
-		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, DOT, 1000, BTC, 34));
+		let swap_event = TestEvent::dex(RawEvent::Swap(CAROL, DOT, 1000, BTC, 33));
 		assert!(System::events().iter().any(|record| record.event == swap_event));
-		assert_eq!(Tokens::free_balance(BTC, &CAROL), 34);
+		assert_eq!(Tokens::free_balance(BTC, &CAROL), 33);
 		assert_eq!(Tokens::free_balance(DOT, &CAROL), 0);
-		assert_eq!(DexModule::liquidity_pool(BTC), (66, 14950));
+		assert_eq!(DexModule::liquidity_pool(BTC), (67, 14950));
 		assert_eq!(DexModule::liquidity_pool(DOT), (2000, 5050));
 	});
 }

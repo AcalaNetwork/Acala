@@ -19,7 +19,7 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
-	traits::{AccountIdConversion, Zero},
+	traits::{AccountIdConversion, One, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
@@ -420,30 +420,43 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		target: Balance,
 		refund_receiver: T::AccountId,
 	) {
-		if Self::total_collaterals(currency_id)
-			>= amount + T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id)
+		if !amount.is_zero()
+			&& Self::total_collaterals(currency_id)
+				>= amount.saturating_add(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
 		{
-			let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
 			let mut unhandled_collateral_amount = amount;
 			let mut unhandled_target = target;
-			let max_auctions_count: u32 = T::MaxAuctionsCount::get();
-			let mut created_lots: u32 = 0;
+			let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
+			let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
+			let lots_count = if max_auctions_count.is_zero()
+				|| collateral_auction_maximum_size.is_zero()
+				|| amount <= collateral_auction_maximum_size
+			{
+				One::one()
+			} else {
+				let mut count = amount
+					.checked_div(collateral_auction_maximum_size)
+					.expect("collateral auction maximum size is not zero; qed");
+
+				let remainder = amount
+					.checked_rem(collateral_auction_maximum_size)
+					.expect("collateral auction maximum size is not zero; qed");
+				if !remainder.is_zero() {
+					count = count.saturating_add(One::one());
+				}
+				sp_std::cmp::min(count, max_auctions_count)
+			};
+			let average_amount_per_lot = amount.checked_div(lots_count).expect("lots count is at least 1; qed");
+			let average_target_per_lot = target.checked_div(lots_count).expect("lots count is at least 1; qed");
+			let mut created_lots: Balance = Zero::zero();
 
 			while !unhandled_collateral_amount.is_zero() {
-				let (lot_collateral_amount, lot_target) = if unhandled_collateral_amount
-					> collateral_auction_maximum_size
-					&& !collateral_auction_maximum_size.is_zero()
-				{
-					if max_auctions_count != 0 && created_lots >= max_auctions_count {
-						(unhandled_collateral_amount, unhandled_target)
-					} else {
-						created_lots += 1;
-						let proportion =
-							Ratio::checked_from_rational(collateral_auction_maximum_size, amount).unwrap_or_default();
-						(collateral_auction_maximum_size, proportion.saturating_mul_int(target))
-					}
-				} else {
+				created_lots = created_lots.saturating_add(One::one());
+				let (lot_collateral_amount, lot_target) = if created_lots == lots_count {
+					// the last lot may be have some remnant than average
 					(unhandled_collateral_amount, unhandled_target)
+				} else {
+					(average_amount_per_lot, average_target_per_lot)
 				};
 
 				T::AuctionManagerHandler::new_collateral_auction(
@@ -453,8 +466,8 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 					lot_target,
 				);
 
-				unhandled_collateral_amount -= lot_collateral_amount;
-				unhandled_target -= lot_target;
+				unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
+				unhandled_target = unhandled_target.saturating_sub(lot_target);
 			}
 		}
 	}

@@ -270,6 +270,25 @@ fn check_position_valid_work() {
 }
 
 #[test]
+fn check_position_valid_failed_when_remain_debit_value_too_small() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(1, 1))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(10000),
+		));
+		assert_noop!(
+			CDPEngineModule::check_position_valid(BTC, 2, 1),
+			Error::<Runtime>::RemainDebitValueTooSmall,
+		);
+	});
+}
+
+#[test]
 fn check_position_valid_ratio_below_liquidate_ratio() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
