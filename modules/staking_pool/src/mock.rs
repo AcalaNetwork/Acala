@@ -186,7 +186,7 @@ impl PolkadotBridge<AccountId, BlockNumber, Balance, EraIndex> for MockBridge {}
 parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(60, 100);	// 60%
+	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
 	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(50, 100);	// 50%
 	pub MaxClaimFee: Rate = Rate::saturating_from_rational(10, 100);	// 10%
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
