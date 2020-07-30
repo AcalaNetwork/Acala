@@ -20,6 +20,8 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	rustup toolchain install nightly && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly && \
 	rustup default stable && \
+	git config --global submodule.recurse true && \
+	git submodule update --init --recursive && \
 	cargo build "--$PROFILE"
 
 # ===== SECOND STAGE ======
