@@ -10,7 +10,7 @@ use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId, Perbill};
 use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;
-pub type AuctionId = u64;
+pub type AuctionId = u32;
 pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 1;

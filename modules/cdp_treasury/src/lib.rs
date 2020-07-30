@@ -44,7 +44,8 @@ pub trait Trait: system::Trait {
 	/// surplus and debit, and confiscated collateral assets
 	type AuctionManagerHandler: AuctionManager<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-	/// Dex manager is used to swap confiscated collateral assets to stable coin
+	/// Dex manager is used to swap confiscated collateral assets to stable
+	/// currency
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
 	/// The cap of lots number when create collateral auction on a liquidation
@@ -89,7 +90,7 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
-		/// The fixed amount of stable coin for sale per surplus auction
+		/// The fixed amount of stable currency for sale per surplus auction
 		pub SurplusAuctionFixedSize get(fn surplus_auction_fixed_size) config(): Balance;
 
 		/// The buffer size of surplus pool, the system will process the surplus through
@@ -99,7 +100,7 @@ decl_storage! {
 		/// Initial amount of native token for sale per debit auction
 		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction) config(): Balance;
 
-		/// The fixed amount of stable coin per surplus auction wants to get
+		/// The fixed amount of stable currency per surplus auction wants to get
 		pub DebitAuctionFixedSize get(fn debit_auction_fixed_size) config(): Balance;
 
 		/// The maximum amount of collateral amount for sale per collateral auction
@@ -148,10 +149,10 @@ decl_module! {
 		///
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
-		/// - `surplus_auction_fixed_size`: new fixed amount of stable coin for sale per surplus auction, `None` means do not update
+		/// - `surplus_auction_fixed_size`: new fixed amount of stable currency for sale per surplus auction, `None` means do not update
 		/// - `surplus_buffer_size`: new buffer size of surplus pool, `None` means do not update
 		/// - `initial_amount_per_debit_auction`: initial amount of native token for sale per debit auction, `None` means do not update
-		/// - `debit_auction_fixed_size`: the fixed amount of stable coin per collateral auction wants to get, `None` means do not update
+		/// - `debit_auction_fixed_size`: the fixed amount of stable currency per collateral auction wants to get, `None` means do not update
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
@@ -277,7 +278,7 @@ impl<T: Trait> Module<T> {
 	fn offset_surplus_and_debit() {
 		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
 
-		// Burn the amount that is equal to offset amount of stable coin.
+		// Burn the amount that is equal to offset amount of stable currency.
 		if !offset_amount.is_zero()
 			&& T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount).is_ok()
 		{

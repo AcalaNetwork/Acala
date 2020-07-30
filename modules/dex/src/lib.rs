@@ -3,12 +3,12 @@
 //! ## Overview
 //!
 //! Built-in decentralized exchange modules in Acala network, the core currency
-//! type of trading pairs is stable coin (aUSD), the trading mechanism refers to
-//! the design of Uniswap. In addition to being used for trading, DEX also
-//! participates in CDP liquidation, which is faster than liquidation by auction
-//! when the liquidity is sufficient. And providing market making liquidity for
-//! DEX will also receive stable coin as additional reward for its participation
-//! in the CDP liquidation.
+//! type of trading pairs is stable currency (aUSD), the trading mechanism
+//! refers to the design of Uniswap. In addition to being used for trading, DEX
+//! also participates in CDP liquidation, which is faster than liquidation by
+//! auction when the liquidity is sufficient. And providing market making
+//! liquidity for DEX will also receive stable currency as additional reward for
+//! its participation in the CDP liquidation.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -257,7 +257,7 @@ decl_module! {
 		///
 		/// - `other_currency_id`: currency type to determine the type of liquidity pool.
 		/// - `max_other_currency_amount`: maximum currency amount allowed to inject to liquidity pool.
-		/// - `max_base_currency_amount`: maximum base currency(stable coin) amount allowed to inject to liquidity pool.
+		/// - `max_base_currency_amount`: maximum base currency(stable currency) amount allowed to inject to liquidity pool.
 		///
 		/// # <weight>
 		/// - Preconditions:

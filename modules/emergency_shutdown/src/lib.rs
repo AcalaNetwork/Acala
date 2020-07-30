@@ -8,8 +8,8 @@
 //! related module to halt, and start a series of operations including close
 //! some user entry, freeze feed prices, run offchain worker to settle
 //! CDPs has debit, cancel all active auctions module, when debits and gaps are
-//! settled, the stable coin holder are allowed to refund a basket of remaining
-//! collateral assets.
+//! settled, the stable currency holder are allowed to refund a basket of
+//! remaining collateral assets.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -206,7 +206,7 @@ decl_module! {
 
 		/// Refund a basket of remaining collateral assets to caller
 		///
-		/// - `amount`: stable coin amount used to refund.
+		/// - `amount`: stable currency amount used to refund.
 		///
 		/// # <weight>
 		/// - Preconditions:
