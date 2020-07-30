@@ -475,7 +475,7 @@ impl<T: Trait> Module<T> {
 
 	/// Return `true` if price increment rate is greater than or equal to
 	/// minimum Formula: new_price - last_price >=
-	/// 	max(last_price, target_price) * minimum_increment
+	///     max(last_price, target_price) * minimum_increment
 	fn check_minimum_increment(
 		new_price: Balance,
 		last_price: Balance,
@@ -507,7 +507,6 @@ impl<T: Trait> Module<T> {
 			T::AuctionTimeToClose::get()
 				.checked_div(&2u32.into())
 				.expect("cannot overflow with positive divisor; qed")
-				.into()
 		} else {
 			T::AuctionTimeToClose::get()
 		}

@@ -13,7 +13,7 @@ use auction_manager::*;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use orml_traits::{Auction, DataProviderExtended, MultiCurrency};
+use orml_traits::{DataProviderExtended, MultiCurrency};
 use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::FixedPointNumber;
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, OnEmergencyShutdown, Price};
