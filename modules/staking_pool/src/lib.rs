@@ -49,8 +49,8 @@ decl_event!(
 	{
 		/// [who, issued_liquid, bonded_staking, left_in_free]
 		MintLiquid(AccountId, Balance, Balance, Balance),
-		/// [who, redeem_amount]
-		RedeemByUnbond(AccountId, Balance),
+		/// [who, redeem_amount, unbond_amount]
+		RedeemByUnbond(AccountId, Balance, Balance),
 		/// [who, fee_in_liquid, liquid_amount_burned, staking_amount_retrived]
 		RedeemByFreeUnbonded(AccountId, Balance, Balance, Balance),
 		/// [who, target_era, fee, redeem_amount, unbond_amount]
@@ -108,7 +108,8 @@ impl<T: Trait> Module<T> {
 	/// It represent how much bonded DOT is belong to LDOT holders
 	/// use it in operation checks
 	pub fn get_communal_bonded() -> Balance {
-		Self::total_bonded().saturating_sub(Self::next_era_unbond().1)
+		let (unbond_next_era, _) = Self::next_era_unbond();
+		Self::total_bonded().saturating_sub(unbond_next_era)
 	}
 
 	/// It represent how much bonded DOT(include bonded, unbonded, unbonding) is
@@ -211,7 +212,8 @@ impl<T: Trait> Module<T> {
 	/// ensure atomic
 	pub fn redeem_by_unbond(who: &T::AccountId, amount: Balance) -> DispatchResult {
 		let mut liquid_amount_to_redeem = amount;
-		let mut staking_amount_to_unbond = Self::liquid_exchange_rate()
+		let liquid_exchange_rate = Self::liquid_exchange_rate();
+		let mut staking_amount_to_unbond = liquid_exchange_rate
 			.checked_mul_int(liquid_amount_to_redeem)
 			.ok_or(Error::<T>::Overflow)?;
 		let communal_bonded_staking_amount = Self::get_communal_bonded();
@@ -219,11 +221,13 @@ impl<T: Trait> Module<T> {
 		if !staking_amount_to_unbond.is_zero() && !communal_bonded_staking_amount.is_zero() {
 			// communal_bonded_staking_amount is not enough, re-calculate
 			if staking_amount_to_unbond > communal_bonded_staking_amount {
-				let ratio = Ratio::checked_from_rational(communal_bonded_staking_amount, staking_amount_to_unbond)
-					.expect("staking_amount is not zero; qed");
-
-				liquid_amount_to_redeem = ratio.saturating_mul_int(liquid_amount_to_redeem);
-				staking_amount_to_unbond = communal_bonded_staking_amount;
+				liquid_amount_to_redeem = liquid_exchange_rate
+					.reciprocal()
+					.unwrap_or_default()
+					.saturating_mul_int(communal_bonded_staking_amount);
+				staking_amount_to_unbond = liquid_exchange_rate
+					.checked_mul_int(liquid_amount_to_redeem)
+					.ok_or(Error::<T>::Overflow)?;
 			}
 
 			// burn liquid currency
@@ -245,12 +249,6 @@ impl<T: Trait> Module<T> {
 					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})?;
-			TotalBonded::try_mutate(|bonded| -> DispatchResult {
-				*bonded = bonded
-					.checked_sub(staking_amount_to_unbond)
-					.ok_or(Error::<T>::Overflow)?;
-				Ok(())
-			})?;
 			<ClaimedUnbond<T>>::try_mutate(who, unbonded_era_index, |balance| -> DispatchResult {
 				*balance = balance
 					.checked_add(staking_amount_to_unbond)
@@ -258,7 +256,11 @@ impl<T: Trait> Module<T> {
 				Ok(())
 			})?;
 
-			<Module<T>>::deposit_event(RawEvent::RedeemByUnbond(who.clone(), liquid_amount_to_redeem));
+			<Module<T>>::deposit_event(RawEvent::RedeemByUnbond(
+				who.clone(),
+				liquid_amount_to_redeem,
+				staking_amount_to_unbond,
+			));
 		}
 
 		Ok(())
@@ -273,7 +275,8 @@ impl<T: Trait> Module<T> {
 			Self::calculate_claim_fee(liquid_amount_to_redeem, Self::current_era()),
 		);
 		let mut liquid_amount_to_burn = liquid_amount_to_redeem.saturating_sub(fee_in_liquid_currency);
-		let mut staking_amount = Self::liquid_exchange_rate()
+		let liquid_exchange_rate = Self::liquid_exchange_rate();
+		let mut staking_amount = liquid_exchange_rate
 			.checked_mul_int(liquid_amount_to_burn)
 			.ok_or(Error::<T>::Overflow)?;
 		let free_unbonded_pool = Self::free_unbonded();
@@ -293,7 +296,8 @@ impl<T: Trait> Module<T> {
 			}
 
 			let liquid_currency_id = T::LiquidCurrencyId::get();
-			T::Currency::withdraw(liquid_currency_id, who, liquid_amount_to_redeem)?;
+			T::Currency::withdraw(liquid_currency_id, who, liquid_amount_to_redeem)
+				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 			T::Currency::transfer(T::StakingCurrencyId::get(), &Self::account_id(), who, staking_amount)?;
 			FreeUnbonded::try_mutate(|free_unbonded| -> DispatchResult {
 				*free_unbonded = free_unbonded.checked_sub(staking_amount).ok_or(Error::<T>::Overflow)?;

@@ -7,6 +7,7 @@ use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::Amount;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_std::cell::RefCell;
 use support::PolkadotStakingLedger;
 
 pub type AccountId = u128;
@@ -117,18 +118,23 @@ impl NomineesProvider<PolkadotAccountId> for MockNomineesProvider {
 	}
 }
 
-pub struct MockOnCommission;
-impl OnCommission<Balance, CurrencyId> for MockOnCommission {
-	fn on_commission(_currency_id: CurrencyId, _amount: Balance) {}
+thread_local! {
+	pub static TOTAL_COMMISSION: RefCell<Balance> = RefCell::new(0);
 }
 
-pub struct MockBridge;
+pub struct MockOnCommission;
+impl OnCommission<Balance, CurrencyId> for MockOnCommission {
+	fn on_commission(_currency_id: CurrencyId, amount: Balance) {
+		TOTAL_COMMISSION.with(|v| *v.borrow_mut() += amount);
+	}
+}
 
 parameter_types! {
 	pub const BondingDuration: EraIndex = 4;
 	pub const EraLength: BlockNumber = 10;
 }
 
+pub struct MockBridge;
 impl PolkadotBridgeType<BlockNumber, EraIndex> for MockBridge {
 	type BondingDuration = BondingDuration;
 	type EraLength = EraLength;
