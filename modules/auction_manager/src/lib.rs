@@ -474,7 +474,9 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Return `true` if price increment rate is greater than or equal to
-	/// minimum Formula: new_price - last_price >=
+	/// minimum.
+	///
+	/// Formula: new_price - last_price >=
 	///     max(last_price, target_price) * minimum_increment
 	fn check_minimum_increment(
 		new_price: Balance,
