@@ -44,7 +44,8 @@ pub trait Trait: system::Trait {
 	/// surplus and debit, and confiscated collateral assets
 	type AuctionManagerHandler: AuctionManager<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-	/// Dex manager is used to swap confiscated collateral assets to stable currency
+	/// Dex manager is used to swap confiscated collateral assets to stable
+	/// currency
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
 	/// The cap of lots number when create collateral auction on a liquidation
