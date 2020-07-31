@@ -175,9 +175,7 @@ impl<T: Trait> Module<T> {
 		TotalBonded::try_mutate(|total_bonded| -> DispatchResult {
 			*total_bonded = total_bonded.checked_add(amount).ok_or(Error::<T>::Overflow)?;
 			Ok(())
-		})?;
-
-		Ok(())
+		})
 	}
 
 	pub fn deposit_free_pool(who: &T::AccountId, amount: Balance) -> DispatchResult {
@@ -188,9 +186,7 @@ impl<T: Trait> Module<T> {
 		FreeUnbonded::try_mutate(|free| -> DispatchResult {
 			*free = free.checked_add(amount).ok_or(Error::<T>::Overflow)?;
 			Ok(())
-		})?;
-
-		Ok(())
+		})
 	}
 
 	pub fn claim_period_percent(era: EraIndex) -> Ratio {
@@ -225,9 +221,7 @@ impl<T: Trait> Module<T> {
 					.reciprocal()
 					.unwrap_or_default()
 					.saturating_mul_int(communal_bonded_staking_amount);
-				staking_amount_to_unbond = liquid_exchange_rate
-					.checked_mul_int(liquid_amount_to_redeem)
-					.ok_or(Error::<T>::Overflow)?;
+				staking_amount_to_unbond = communal_bonded_staking_amount;
 			}
 
 			// burn liquid currency
