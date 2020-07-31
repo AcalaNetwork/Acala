@@ -13,10 +13,6 @@ use mock::{
 fn mint_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_noop!(
-			StakingPoolModule::mint(&ALICE, 1001),
-			Error::<Runtime>::StakingCurrencyNotEnough,
-		);
 		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1000);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 0);
 		assert_eq!(StakingPoolModule::total_bonded(), 0);
@@ -24,10 +20,10 @@ fn mint_work() {
 		assert_eq!(StakingPoolModule::mint(&ALICE, 500), Ok(5000));
 		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 500);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 5000);
-		assert_eq!(StakingPoolModule::total_bonded(), 250);
-		assert_eq!(StakingPoolModule::free_unbonded(), 250);
+		assert_eq!(StakingPoolModule::total_bonded(), 0);
+		assert_eq!(StakingPoolModule::free_unbonded(), 500);
 
-		let mint_liquid_event = TestEvent::staking_pool(RawEvent::MintLiquid(ALICE, 5000, 250, 250));
+		let mint_liquid_event = TestEvent::staking_pool(RawEvent::MintLiquid(ALICE, 500, 5000));
 		assert!(System::events().iter().any(|record| record.event == mint_liquid_event));
 	});
 }
@@ -62,7 +58,9 @@ fn redeem_by_unbond_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_eq!(StakingPoolModule::mint(&BOB, 1000), Ok(10000));
+		assert_ok!(StakingPoolModule::bond(500));
 		assert_ok!(CurrenciesModule::transfer(Some(BOB).into(), ALICE, LDOT, 1000));
+
 		assert_noop!(
 			StakingPoolModule::redeem_by_unbond(&ALICE, 5000),
 			Error::<Runtime>::LiquidCurrencyNotEnough,
@@ -126,12 +124,13 @@ fn redeem_by_free_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_eq!(StakingPoolModule::mint(&BOB, 1000), Ok(10000));
+		assert_ok!(StakingPoolModule::bond(500));
 		assert_ok!(CurrenciesModule::transfer(Some(BOB).into(), ALICE, LDOT, 1000));
+
 		assert_noop!(
 			StakingPoolModule::redeem_by_free_unbonded(&ALICE, 5000),
 			Error::<Runtime>::LiquidCurrencyNotEnough,
 		);
-
 		assert_eq!(StakingPoolModule::total_bonded(), 500);
 		assert_eq!(StakingPoolModule::free_unbonded(), 500);
 		assert_eq!(
@@ -184,6 +183,7 @@ fn redeem_by_claim_unbonding_work() {
 		System::set_block_number(1);
 		assert_ok!(CurrenciesModule::transfer(Some(ALICE).into(), BOB, DOT, 1000));
 		assert_eq!(StakingPoolModule::mint(&BOB, 2000), Ok(20000));
+		assert_ok!(StakingPoolModule::bond(1000));
 		assert_ok!(CurrenciesModule::transfer(Some(BOB).into(), ALICE, LDOT, 1000));
 
 		TotalBonded::mutate(|bonded| *bonded -= 500);

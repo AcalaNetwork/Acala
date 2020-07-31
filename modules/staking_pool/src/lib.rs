@@ -47,8 +47,8 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		Balance = Balance,
 	{
-		/// [who, issued_liquid, bonded_staking, left_in_free]
-		MintLiquid(AccountId, Balance, Balance, Balance),
+		/// [who, bond_staking, issued_liquid]
+		MintLiquid(AccountId, Balance, Balance),
 		/// [who, redeem_amount, unbond_amount]
 		RedeemByUnbond(AccountId, Balance, Balance),
 		/// [who, fee_in_liquid, liquid_amount_burned, staking_amount_retrived]
@@ -61,7 +61,6 @@ decl_event!(
 decl_error! {
 	/// Error for staking pool module.
 	pub enum Error for Module<T: Trait> {
-		StakingCurrencyNotEnough,
 		LiquidCurrencyNotEnough,
 		InvalidEra,
 		Overflow,
@@ -166,12 +165,17 @@ impl<T: Trait> Module<T> {
 		Ok(withdrawn_amount)
 	}
 
-	pub fn bond(who: &T::AccountId, amount: Balance) -> DispatchResult {
+	pub fn bond(amount: Balance) -> DispatchResult {
 		if amount.is_zero() {
 			return Ok(());
 		}
-		T::Bridge::transfer_to_bridge(who, amount)?;
+
+		T::Bridge::transfer_to_bridge(&Self::account_id(), amount)?;
 		T::Bridge::bond_extra(amount)?;
+		FreeUnbonded::mutate(|free_unbonded| -> DispatchResult {
+			*free_unbonded = free_unbonded.checked_sub(amount).ok_or(Error::<T>::Overflow)?;
+			Ok(())
+		})?;
 		TotalBonded::try_mutate(|total_bonded| -> DispatchResult {
 			*total_bonded = total_bonded.checked_add(amount).ok_or(Error::<T>::Overflow)?;
 			Ok(())
@@ -456,9 +460,8 @@ impl<T: Trait> Module<T> {
 				.saturating_mul_int(total_communal_balance)
 				.min(Self::free_unbonded());
 
-			if Self::bond(&Self::account_id(), bond_amount).is_ok() {
-				FreeUnbonded::mutate(|balance| *balance = balance.saturating_sub(bond_amount));
-			}
+			// ignore result to continue
+			let _ = Self::bond(bond_amount);
 		}
 
 		// #5: unbond and update
@@ -484,13 +487,7 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 	/// This function must to be called in `with_transaction_result` scope to
 	/// ensure atomic
 	fn mint(who: &T::AccountId, amount: Self::Balance) -> sp_std::result::Result<Self::Balance, DispatchError> {
-		let staking_currency_id = T::StakingCurrencyId::get();
-		T::Currency::ensure_can_withdraw(staking_currency_id, who, amount)
-			.map_err(|_| Error::<T>::StakingCurrencyNotEnough)?;
-
-		let min_bond_ratio = T::MinBondRatio::get();
-		let total_communal_balance = Self::get_total_communal_balance();
-		let communal_bonded = Self::get_communal_bonded();
+		Self::deposit_free_pool(who, amount)?;
 
 		// issue liquid currency to who
 		let liquid_amount_to_issue = Self::liquid_exchange_rate()
@@ -500,27 +497,7 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 			.ok_or(Error::<T>::Overflow)?;
 		T::Currency::deposit(T::LiquidCurrencyId::get(), who, liquid_amount_to_issue)?;
 
-		let gap_amount = total_communal_balance
-			.checked_add(amount)
-			.and_then(|n| min_bond_ratio.checked_mul_int(n))
-			.map(|n| n.saturating_sub(communal_bonded))
-			.ok_or(Error::<T>::Overflow)?;
-
-		let amount_to_bond = sp_std::cmp::min(gap_amount, amount);
-		let remainer_to_free = amount.saturating_sub(amount_to_bond);
-
-		// bond
-		Self::bond(who, amount_to_bond)?;
-
-		// accumulate into free pool
-		Self::deposit_free_pool(who, remainer_to_free)?;
-
-		<Module<T>>::deposit_event(RawEvent::MintLiquid(
-			who.clone(),
-			liquid_amount_to_issue,
-			amount_to_bond,
-			remainer_to_free,
-		));
+		<Module<T>>::deposit_event(RawEvent::MintLiquid(who.clone(), amount, liquid_amount_to_issue));
 		Ok(liquid_amount_to_issue)
 	}
 
