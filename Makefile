@@ -1,29 +1,29 @@
 run: githooks
-	SKIP_WASM_BUILD= cargo run -- --dev --execution=native -lruntime=debug
+	SKIP_WASM_BUILD= cargo +nightly-2020-06-04 run -- --dev --execution=native -lruntime=debug
 
 toolchain:
 	./scripts/init.sh
 
 build-wasm: githooks
-	WASM_BUILD_TYPE=release cargo build
+	WASM_BUILD_TYPE=release cargo +nightly-2020-06-04 build
 
 check: githooks
-	SKIP_WASM_BUILD= cargo check
+	SKIP_WASM_BUILD= cargo +nightly-2020-06-04 check
 
 check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
 check-debug:
-	RUSTFLAGS="-Z external-macro-backtrace" BUILD_DUMMY_WASM_BINARY= cargo +nightly check
+	RUSTFLAGS="-Z external-macro-backtrace" BUILD_DUMMY_WASM_BINARY= cargo +nightly-2020-06-04 check
 
 check-dummy:
-	BUILD_DUMMY_WASM_BINARY= cargo check
+	BUILD_DUMMY_WASM_BINARY= cargo +nightly-2020-06-04 check
 
 test: githooks
-	SKIP_WASM_BUILD= cargo test --all
+	SKIP_WASM_BUILD= cargo +nightly-2020-06-04 test --all
 
 build: githooks
-	SKIP_WASM_BUILD= cargo build
+	SKIP_WASM_BUILD= cargo +nightly-2020-06-04 build
 
 purge: target/debug/acala
 	target/debug/acala purge-chain --dev -y
@@ -57,4 +57,4 @@ update: update-orml
 	make check
 
 prepare-wasm:
-	WASM_TARGET_DIRECTORY=${CURDIR} WASM_BUILD_TYPE=release cargo build
+	WASM_TARGET_DIRECTORY=${CURDIR} WASM_BUILD_TYPE=release cargo +nightly-2020-06-04 build

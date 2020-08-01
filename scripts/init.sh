@@ -5,7 +5,8 @@ set -e
 echo "*** Initializing WASM build environment"
 
 if [ -z $CI ] ; then
-   rustup update nightly
+   rustup toolchain install nightly-2020-06-04
+   rustup default nightly-2020-06-04
    rustup update stable
 fi
 
