@@ -75,12 +75,12 @@ decl_error! {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
-		/// Final redeption is still not opened
+		/// Final redemption is still not opened
 		CanNotRefund,
-		/// Exist optential surplus, means settlement has not been completed
+		/// Exist potential surplus, means settlement has not been completed
 		ExistPotentialSurplus,
 		/// Exist unhandled debit, means settlement has not been completed
-		ExistUnhandleDebit,
+		ExistUnhandledDebit,
 	}
 }
 
@@ -172,7 +172,7 @@ decl_module! {
 				T::ShutdownOrigin::ensure_origin(origin)?;
 				ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
 
-				// Ensure there's no debit and surplus auction now, these maybe bring uncertain surplus to system.
+				// Ensure there's no debit and surplus auction now, they may bring uncertain surplus to system.
 				// Cancel all surplus auctions and debit auctions to pass the check!
 				ensure!(
 					<T as Trait>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
@@ -185,15 +185,15 @@ decl_module! {
 				// wait for all collateral auctions in reverse stage to be ended.
 				let collateral_currency_ids = T::CollateralCurrencyIds::get();
 				for currency_id in collateral_currency_ids {
-					// these's no collateral auction
+					// there's no collateral auction
 					ensure!(
 						<T as Trait>::AuctionManagerHandler::get_total_collateral_in_auction(currency_id).is_zero(),
 						Error::<T>::ExistPotentialSurplus,
 					);
-					// there's on debit in cdp
+					// there's on debit in CDP
 					ensure!(
 						<loans::Module<T>>::total_debits(currency_id).is_zero(),
-						Error::<T>::ExistUnhandleDebit,
+						Error::<T>::ExistUnhandledDebit,
 					);
 				}
 
@@ -231,11 +231,11 @@ decl_module! {
 				let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_debit_proportion(amount);
 				let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-				// burn caller's stable currency by cdp treasury
+				// burn caller's stable currency by CDP treasury
 				<T as Trait>::CDPTreasury::burn_debit(&who, amount)?;
 
 				let mut refund_assets: Vec<(CurrencyId, Balance)> = vec![];
-				// refund collaterals to caller by cdp treasury
+				// refund collaterals to caller by CDP treasury
 				for currency_id in collateral_currency_ids {
 					let refund_amount = refund_ratio
 						.saturating_mul_int(<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
