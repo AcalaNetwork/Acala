@@ -7,6 +7,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -14,7 +15,7 @@ use orml_utilities::with_transaction_result;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
-	DispatchResult, ModuleId,
+	DispatchResult, ModuleId, RuntimeDebug,
 };
 use sp_std::{convert::TryInto, result};
 use support::{CDPTreasury, RiskManager};
@@ -44,15 +45,20 @@ pub trait Trait: system::Trait {
 	type ModuleId: Get<ModuleId>;
 }
 
+/// A collateralized debit position.
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default)]
+pub struct Position {
+	/// The amount of collateral.
+	pub collateral: Balance,
+	/// The amount of debit.
+	pub debit: Balance,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as Loans {
-		/// The debit amount records of CDPs, map from
-		/// CollateralType -> Owner -> DebitAmount
-		pub Debits get(fn debits): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
-
-		/// The collateral asset amount of CDPs, map from
-		/// Owner -> CollateralType -> CollateralAmount
-		pub Collaterals get(fn collaterals): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) CurrencyId => Balance;
+		/// The collateralized debit positions, map from
+		/// Owner -> CollateralType -> Position
+		pub Positions get(fn positions): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Position;
 
 		/// The total debit amount, map from
 		/// CollateralType -> TotalDebitAmount
@@ -179,11 +185,8 @@ impl<T: Trait> Module<T> {
 			}
 
 			// ensure pass risk check
-			T::RiskManager::check_position_valid(
-				currency_id,
-				Self::collaterals(who, currency_id),
-				Self::debits(currency_id, who),
-			)?;
+			let Position { collateral, debit } = Self::positions(currency_id, who);
+			T::RiskManager::check_position_valid(currency_id, collateral, debit)?;
 
 			Self::deposit_event(RawEvent::PositionUpdated(
 				who.clone(),
@@ -198,22 +201,25 @@ impl<T: Trait> Module<T> {
 	// transfer whole loan of `from` to `to`
 	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		// get `from` position data
-		let collateral_balance = Self::collaterals(from, currency_id);
-		let debit_balance = Self::debits(currency_id, from);
+		let Position { collateral, debit } = Self::positions(currency_id, from);
 
-		let new_to_collateral_balance = Self::collaterals(to, currency_id)
-			.checked_add(collateral_balance)
+		let Position {
+			collateral: to_collateral,
+			debit: to_debit,
+		} = Self::positions(currency_id, to);
+		let new_to_collateral_balance = to_collateral
+			.checked_add(collateral)
 			.expect("existing collateral balance cannot overflow; qed");
-		let new_to_debit_balance = Self::debits(currency_id, to)
-			.checked_add(debit_balance)
+		let new_to_debit_balance = to_debit
+			.checked_add(debit)
 			.expect("existing debit balance cannot overflow; qed");
 
 		// check new position
 		T::RiskManager::check_position_valid(currency_id, new_to_collateral_balance, new_to_debit_balance)?;
 
 		// balance -> amount
-		let collateral_adjustment = Self::amount_try_from_balance(collateral_balance)?;
-		let debit_adjustment = Self::amount_try_from_balance(debit_balance)?;
+		let collateral_adjustment = Self::amount_try_from_balance(collateral)?;
+		let debit_adjustment = Self::amount_try_from_balance(debit)?;
 
 		Self::update_loan(
 			from,
@@ -236,67 +242,54 @@ impl<T: Trait> Module<T> {
 		let collateral_balance = Self::balance_try_from_amount_abs(collateral_adjustment)?;
 		let debit_balance = Self::balance_try_from_amount_abs(debit_adjustment)?;
 
-		// update collateral record
-		if collateral_adjustment.is_positive() {
-			TotalCollaterals::try_mutate(currency_id, |balance| -> DispatchResult {
-				*balance = balance
+		<Positions<T>>::try_mutate(currency_id, who, |p| -> DispatchResult {
+			let new_collateral = if collateral_adjustment.is_positive() {
+				p.collateral
 					.checked_add(collateral_balance)
-					.ok_or(Error::<T>::CollateralOverflow)?;
-				Ok(())
-			})?;
-			<Collaterals<T>>::try_mutate(who, currency_id, |balance| -> DispatchResult {
-				// increase account ref for who when has no amount before
-				if balance.is_zero() {
-					system::Module::<T>::inc_ref(who);
-				}
-				*balance = balance
-					.checked_add(collateral_balance)
-					.expect("collateral cannot overflow if total collateral does not; qed");
-				Ok(())
-			})?;
-		} else if collateral_adjustment.is_negative() {
-			<Collaterals<T>>::try_mutate(who, currency_id, |balance| -> DispatchResult {
-				*balance = balance
+					.ok_or(Error::<T>::CollateralOverflow)
+			} else {
+				p.collateral
 					.checked_sub(collateral_balance)
-					.ok_or(Error::<T>::CollateralTooLow)?;
-				// decrease account ref for who when has no amount
-				if balance.is_zero() {
-					system::Module::<T>::dec_ref(who);
-				}
-				Ok(())
-			})?;
-			TotalCollaterals::try_mutate(currency_id, |balance| -> DispatchResult {
-				*balance = balance
-					.checked_sub(collateral_balance)
-					.expect("total collateral cannot underflow if collateral does not; qed");
-				Ok(())
-			})?;
-		}
+					.ok_or(Error::<T>::CollateralTooLow)
+			}?;
+			let new_debit = if debit_adjustment.is_positive() {
+				p.debit.checked_add(debit_balance).ok_or(Error::<T>::DebitOverflow)
+			} else {
+				p.debit.checked_sub(debit_balance).ok_or(Error::<T>::DebitTooLow)
+			}?;
 
-		// update debit record
-		if debit_adjustment.is_positive() {
-			TotalDebits::try_mutate(currency_id, |balance| -> DispatchResult {
-				*balance = balance.checked_add(debit_balance).ok_or(Error::<T>::DebitOverflow)?;
-				Ok(())
-			})?;
-			<Debits<T>>::try_mutate(currency_id, who, |balance| -> DispatchResult {
-				*balance = balance
-					.checked_add(debit_balance)
-					.expect("debit cannot overflow if total debit does not; qed");
-				Ok(())
-			})?;
-		} else if debit_adjustment.is_negative() {
-			<Debits<T>>::try_mutate(currency_id, who, |balance| -> DispatchResult {
-				*balance = balance.checked_sub(debit_balance).ok_or(Error::<T>::DebitTooLow)?;
-				Ok(())
-			})?;
-			TotalDebits::try_mutate(currency_id, |balance| -> DispatchResult {
-				*balance = balance
-					.checked_sub(debit_balance)
-					.expect("total debit cannot underflow if debit does not; qed");
-				Ok(())
-			})?;
-		}
+			// increase account ref if new position
+			if p.collateral.is_zero() && p.debit.is_zero() {
+				system::Module::<T>::inc_ref(who);
+			}
+
+			p.collateral = new_collateral;
+			p.debit = new_debit;
+
+			// decrease account ref if zero position
+			if p.collateral.is_zero() && p.debit.is_zero() {
+				system::Module::<T>::dec_ref(who);
+			}
+
+			Ok(())
+		})?;
+
+		TotalCollaterals::try_mutate(currency_id, |c| -> DispatchResult {
+			*c = if collateral_adjustment.is_positive() {
+				c.checked_add(collateral_balance).ok_or(Error::<T>::CollateralOverflow)
+			} else {
+				c.checked_sub(collateral_balance).ok_or(Error::<T>::CollateralTooLow)
+			}?;
+			Ok(())
+		})?;
+		TotalDebits::try_mutate(currency_id, |d| -> DispatchResult {
+			*d = if debit_adjustment.is_positive() {
+				d.checked_add(debit_balance).ok_or(Error::<T>::DebitOverflow)
+			} else {
+				d.checked_sub(debit_balance).ok_or(Error::<T>::DebitTooLow)
+			}?;
+			Ok(())
+		})?;
 
 		Ok(())
 	}

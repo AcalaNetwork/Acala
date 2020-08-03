@@ -274,19 +274,19 @@ fn liquidate_cdp() {
 			));
 
 			assert_eq!(
-				LoansModule::debits(CurrencyId::XBTC, AccountId::from(ALICE)),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).debit,
 				amount(500_000)
 			);
 			assert_eq!(
-				LoansModule::collaterals(AccountId::from(ALICE), CurrencyId::XBTC),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).collateral,
 				amount(10)
 			);
 			assert_eq!(
-				LoansModule::debits(CurrencyId::XBTC, AccountId::from(BOB)),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(BOB)).debit,
 				amount(50_000)
 			);
 			assert_eq!(
-				LoansModule::collaterals(AccountId::from(BOB), CurrencyId::XBTC),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(BOB)).collateral,
 				amount(1)
 			);
 			assert_eq!(CdpTreasuryModule::debit_pool(), 0);
@@ -319,8 +319,14 @@ fn liquidate_cdp() {
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
 
-			assert_eq!(LoansModule::debits(CurrencyId::XBTC, AccountId::from(ALICE)), 0);
-			assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), CurrencyId::XBTC), 0);
+			assert_eq!(
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).debit,
+				0
+			);
+			assert_eq!(
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).collateral,
+				0
+			);
 			assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 			assert_eq!(CdpTreasuryModule::debit_pool(), amount(50_000));
 
@@ -341,8 +347,11 @@ fn liquidate_cdp() {
 				.iter()
 				.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
 
-			assert_eq!(LoansModule::debits(CurrencyId::XBTC, AccountId::from(BOB)), 0);
-			assert_eq!(LoansModule::collaterals(AccountId::from(BOB), CurrencyId::XBTC), 0);
+			assert_eq!(LoansModule::positions(CurrencyId::XBTC, AccountId::from(BOB)).debit, 0);
+			assert_eq!(
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(BOB)).collateral,
+				0
+			);
 			assert_eq!(CdpTreasuryModule::debit_pool(), amount(55_000));
 			assert!(CdpTreasuryModule::surplus_pool() >= amount(5_000));
 		});
@@ -481,11 +490,11 @@ fn test_honzon_module() {
 				amount(50)
 			);
 			assert_eq!(
-				LoansModule::debits(CurrencyId::XBTC, AccountId::from(ALICE)),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).debit,
 				amount(500)
 			);
 			assert_eq!(
-				LoansModule::collaterals(AccountId::from(ALICE), CurrencyId::XBTC),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).collateral,
 				amount(100)
 			);
 			assert_eq!(
@@ -520,8 +529,14 @@ fn test_honzon_module() {
 				Currencies::free_balance(CurrencyId::AUSD, &AccountId::from(ALICE)),
 				amount(50)
 			);
-			assert_eq!(LoansModule::debits(CurrencyId::XBTC, AccountId::from(ALICE)), 0);
-			assert_eq!(LoansModule::collaterals(AccountId::from(ALICE), CurrencyId::XBTC), 0);
+			assert_eq!(
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).debit,
+				0
+			);
+			assert_eq!(
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).collateral,
+				0
+			);
 		});
 }
 
@@ -596,9 +611,12 @@ fn test_cdp_engine_module() {
 				Currencies::free_balance(CurrencyId::XBTC, &AccountId::from(ALICE)),
 				amount(900)
 			);
-			assert_eq!(LoansModule::debits(CurrencyId::XBTC, AccountId::from(ALICE)), 0);
 			assert_eq!(
-				LoansModule::collaterals(AccountId::from(ALICE), CurrencyId::XBTC),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).debit,
+				0
+			);
+			assert_eq!(
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).collateral,
 				amount(100)
 			);
 
@@ -619,7 +637,7 @@ fn test_cdp_engine_module() {
 				amount(100) as i128
 			));
 			assert_eq!(
-				LoansModule::debits(CurrencyId::XBTC, AccountId::from(ALICE)),
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).debit,
 				amount(100)
 			);
 			assert_eq!(CdpTreasuryModule::debit_pool(), 0);
@@ -636,7 +654,10 @@ fn test_cdp_engine_module() {
 				.iter()
 				.any(|record| record.event == settle_cdp_in_debit_event));
 
-			assert_eq!(LoansModule::debits(CurrencyId::XBTC, AccountId::from(ALICE)), 0);
+			assert_eq!(
+				LoansModule::positions(CurrencyId::XBTC, AccountId::from(ALICE)).debit,
+				0
+			);
 			assert_eq!(CdpTreasuryModule::debit_pool(), amount(10));
 			assert_eq!(
 				CdpTreasuryModule::total_collaterals(CurrencyId::XBTC),
