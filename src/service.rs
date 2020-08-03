@@ -5,7 +5,6 @@
 use crate::executor::Executor;
 use runtime::{opaque::Block, RuntimeApi};
 use sc_client_api::{ExecutorProvider, RemoteBackend};
-use sc_consensus_babe;
 use sc_finality_grandpa::{
 	self as grandpa, FinalityProofProvider as GrandpaFinalityProofProvider, StorageAndProofProvider,
 };
