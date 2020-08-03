@@ -11,50 +11,52 @@ serde = { version = "1.0.101", optional = true }
 static_assertions = "1.1.0"
 hex-literal = { version = "0.2.1" }
 
-frame-benchmarking = { version = "2.0.0-rc4", default-features = false, optional = true }
-frame-executive = { version = "2.0.0-rc4", default-features = false }
-frame-support = { version = "2.0.0-rc4", default-features = false }
-frame-system = { version = "2.0.0-rc4", default-features = false }
-frame-system-rpc-runtime-api = { version = "2.0.0-rc4", default-features = false }
-pallet-babe = { version = "2.0.0-rc4", default-features = false }
-pallet-balances = { version = "2.0.0-rc4", default-features = false }
-pallet-collective = { version = "2.0.0-rc4", default-features = false }
-pallet-grandpa = { version = "2.0.0-rc4", default-features = false }
-pallet-indices = { version = "2.0.0-rc4", default-features = false }
-pallet-membership = { version = "2.0.0-rc4", default-features = false }
-pallet-multisig = { version = "2.0.0-rc4", default-features = false }
-pallet-randomness-collective-flip = { version = "2.0.0-rc4", default-features = false }
-pallet-recovery = { version = "2.0.0-rc4", default-features = false }
-pallet-session = { version = "2.0.0-rc4", features = ["historical"], default-features = false }
-pallet-staking = { version = "2.0.0-rc4", default-features = false }
-pallet-staking-reward-curve = { version = "2.0.0-rc4", default-features = false }
-pallet-sudo = { version = "2.0.0-rc4", default-features = false }
-pallet-timestamp = { version = "2.0.0-rc4", default-features = false }
-pallet-transaction-payment = { version = "2.0.0-rc4", default-features = false }
-pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-rc4", default-features = false }
-pallet-treasury = { version = "2.0.0-rc4", default-features = false }
-pallet-utility = { version = "2.0.0-rc4", default-features = false }
-sp-api = { version = "2.0.0-rc4", default-features = false }
-sp-application-crypto = { version = "2.0.0-rc4", default-features = false }
-sp-block-builder = { version = "2.0.0-rc4", default-features = false }
-sp-consensus-babe = { version = "0.8.0-rc4", default-features = false }
-sp-core = { version = "2.0.0-rc4", default-features = false }
-sp-inherents = { version = "2.0.0-rc4", default-features = false }
-sp-io = { version = "2.0.0-rc4", default-features = false }
-sp-offchain = { version = "2.0.0-rc4", default-features = false }
-sp-runtime = { version = "2.0.0-rc4", default-features = false }
-sp-session = { version = "2.0.0-rc4", default-features = false }
-sp-staking = { version = "2.0.0-rc4", default-features = false }
-sp-std = { version = "2.0.0-rc4", default-features = false }
-sp-transaction-pool = { version = "2.0.0-rc4", default-features = false }
-sp-version = { version = "2.0.0-rc4", default-features = false }
+frame-benchmarking = { version = "2.0.0-rc5", default-features = false, optional = true }
+frame-executive = { version = "2.0.0-rc5", default-features = false }
+frame-support = { version = "2.0.0-rc5", default-features = false }
+frame-system = { version = "2.0.0-rc5", default-features = false }
+frame-system-rpc-runtime-api = { version = "2.0.0-rc5", default-features = false }
+pallet-authorship = { version = "2.0.0-rc5", default-features = false }
+pallet-babe = { version = "2.0.0-rc5", default-features = false }
+pallet-balances = { version = "2.0.0-rc5", default-features = false }
+pallet-collective = { version = "2.0.0-rc5", default-features = false }
+pallet-grandpa = { version = "2.0.0-rc5", default-features = false }
+pallet-indices = { version = "2.0.0-rc5", default-features = false }
+pallet-membership = { version = "2.0.0-rc5", default-features = false }
+pallet-multisig = { version = "2.0.0-rc5", default-features = false }
+pallet-offences = { version = "2.0.0-rc5", default-features = false }
+pallet-randomness-collective-flip = { version = "2.0.0-rc5", default-features = false }
+pallet-recovery = { version = "2.0.0-rc5", default-features = false }
+pallet-session = { version = "2.0.0-rc5", features = ["historical"], default-features = false }
+pallet-staking = { version = "2.0.0-rc5", default-features = false }
+pallet-staking-reward-curve = { version = "2.0.0-rc5", default-features = false }
+pallet-sudo = { version = "2.0.0-rc5", default-features = false }
+pallet-timestamp = { version = "2.0.0-rc5", default-features = false }
+pallet-transaction-payment = { version = "2.0.0-rc5", default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-rc5", default-features = false }
+pallet-treasury = { version = "2.0.0-rc5", default-features = false }
+pallet-utility = { version = "2.0.0-rc5", default-features = false }
+pallet-scheduler = { version = "2.0.0-rc5", default-features = false }
+sp-api = { version = "2.0.0-rc5", default-features = false }
+sp-application-crypto = { version = "2.0.0-rc5", default-features = false }
+sp-block-builder = { version = "2.0.0-rc5", default-features = false }
+sp-consensus-babe = { version = "0.8.0-rc5", default-features = false }
+sp-core = { version = "2.0.0-rc5", default-features = false }
+sp-inherents = { version = "2.0.0-rc5", default-features = false }
+sp-io = { version = "2.0.0-rc5", default-features = false }
+sp-offchain = { version = "2.0.0-rc5", default-features = false }
+sp-runtime = { version = "2.0.0-rc5", default-features = false }
+sp-session = { version = "2.0.0-rc5", default-features = false }
+sp-staking = { version = "2.0.0-rc5", default-features = false }
+sp-std = { version = "2.0.0-rc5", default-features = false }
+sp-transaction-pool = { version = "2.0.0-rc5", default-features = false }
+sp-version = { version = "2.0.0-rc5", default-features = false }
 
 orml-auction = { path = "../orml/auction", default-features = false }
 orml-benchmarking = { path = "../orml/benchmarking", default-features = false, optional = true }
 orml-currencies = { path = "../orml/currencies", default-features = false }
 orml-oracle = { path = "../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
-orml-schedule-update = { path = "../orml/schedule-update", default-features = false }
 orml-gradually-update = { path = "../orml/gradually-update", default-features = false }
 orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-traits = { path = "../orml/traits", default-features = false }
@@ -90,7 +92,7 @@ ecosystem-renvm-bridge = { path = "../ecosystem-modules/ren/renvm-bridge", defau
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
 
 [dev-dependencies]
-sp-io = { version = "2.0.0-rc4" }
+sp-io = { version = "2.0.0-rc5" }
 
 [features]
 default = ["std"]
@@ -115,6 +117,7 @@ std = [
 	"pallet-session/std",
 	"pallet-staking/std",
 	"pallet-sudo/std",
+	"pallet-scheduler/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
@@ -138,7 +141,6 @@ std = [
 	"orml-currencies/std",
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
-	"orml-schedule-update/std",
 	"orml-gradually-update/std",
 	"orml-tokens/std",
 	"orml-traits/std",

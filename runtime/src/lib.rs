@@ -36,7 +36,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-use frame_system::{self as system, EnsureOneOf, EnsureRoot};
+use frame_system::{EnsureOneOf, EnsureRoot};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
@@ -144,7 +144,7 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 }
 
-impl system::Trait for Runtime {
+impl frame_system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
 	type Lookup = Indices;
@@ -169,6 +169,7 @@ impl system::Trait for Runtime {
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
 	type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
 	type BaseCallFilter = ();
+	type SystemWeightInfo = ();
 }
 
 parameter_types! {
@@ -180,6 +181,16 @@ impl pallet_babe::Trait for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
 	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+
+	type KeyOwnerProofSystem = Historical;
+
+	type KeyOwnerProof =
+		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+
+	type KeyOwnerIdentification =
+		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::IdentificationTuple;
+
+	type HandleEquivocation = pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
 }
 
 impl pallet_grandpa::Trait for Runtime {
@@ -193,12 +204,7 @@ impl pallet_grandpa::Trait for Runtime {
 	type KeyOwnerIdentification =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::IdentificationTuple;
 
-	type HandleEquivocation = pallet_grandpa::EquivocationHandler<
-		Self::KeyOwnerIdentification,
-		report::ReporterAppCrypto,
-		Runtime,
-		(), //Offences,
-	>;
+	type HandleEquivocation = pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
 }
 
 parameter_types! {
@@ -210,6 +216,7 @@ impl pallet_indices::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type Deposit = IndexDeposit;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -221,6 +228,18 @@ impl pallet_timestamp::Trait for Runtime {
 	type Moment = Moment;
 	type OnTimestampSet = Babe;
 	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const UncleGenerations: BlockNumber = 5;
+}
+
+impl pallet_authorship::Trait for Runtime {
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
+	type UncleGenerations = UncleGenerations;
+	type FilterUncle = ();
+	type EventHandler = (Staking, ()); // ImOnline
 }
 
 parameter_types! {
@@ -237,6 +256,7 @@ impl pallet_balances::Trait for Runtime {
 	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
 	type AccountStore = module_accounts::Module<Runtime>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -271,6 +291,7 @@ impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = GeneralCouncilMotionDuration;
 	type MaxProposals = GeneralCouncilMaxProposals;
+	type WeightInfo = ();
 }
 
 type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
@@ -303,6 +324,7 @@ impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = HonzonCouncilMotionDuration;
 	type MaxProposals = HonzonCouncilMaxProposals;
+	type WeightInfo = ();
 }
 
 type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
@@ -335,6 +357,7 @@ impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = HomaCouncilMotionDuration;
 	type MaxProposals = HomaCouncilMaxProposals;
+	type WeightInfo = ();
 }
 
 type HomaCouncilMembershipInstance = pallet_membership::Instance3;
@@ -361,6 +384,7 @@ impl pallet_collective::Trait<TechnicalCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = TechnicalCouncilMotionDuration;
 	type MaxProposals = TechnicalCouncilMaxProposals;
+	type WeightInfo = ();
 }
 
 type TechnicalCouncilMembershipInstance = pallet_membership::Instance4;
@@ -396,6 +420,7 @@ impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 impl pallet_utility::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -411,6 +436,7 @@ impl pallet_multisig::Trait for Runtime {
 	type DepositBase = MultisigDepositBase;
 	type DepositFactor = MultisigDepositFactor;
 	type MaxSignatories = MaxSignatories;
+	type WeightInfo = ();
 }
 
 pub struct GeneralCouncilProvider;
@@ -450,6 +476,7 @@ parameter_types! {
 }
 
 impl pallet_treasury::Trait for Runtime {
+	type ModuleId = PalletTreasuryModuleId;
 	type Currency = Balances;
 	type ApproveOrigin = EnsureOneOf<
 		AccountId,
@@ -461,18 +488,19 @@ impl pallet_treasury::Trait for Runtime {
 		EnsureRoot<AccountId>,
 		pallet_collective::EnsureMembers<_2, AccountId, GeneralCouncilInstance>,
 	>;
+	type Tippers = GeneralCouncilProvider;
+	type TipCountdown = TipCountdown;
+	type TipFindersFee = TipFindersFee;
+	type TipReportDepositBase = TipReportDepositBase;
+	type TipReportDepositPerByte = TipReportDepositPerByte;
 	type Event = Event;
 	type ProposalRejection = ();
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
-	type Tippers = GeneralCouncilProvider;
-	type TipCountdown = TipCountdown;
-	type TipFindersFee = TipFindersFee;
-	type TipReportDepositBase = TipReportDepositBase;
-	type TipReportDepositPerByte = TipReportDepositPerByte;
-	type ModuleId = PalletTreasuryModuleId;
+	type BurnDestination = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -481,14 +509,15 @@ parameter_types! {
 
 impl pallet_session::Trait for Runtime {
 	type Event = Event;
-	type ValidatorId = <Self as system::Trait>::AccountId;
+	type ValidatorId = <Self as frame_system::Trait>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
 	type ShouldEndSession = Babe;
+	type NextSessionRotation = Babe;
 	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = opaque::SessionKeys;
 	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
-	type NextSessionRotation = Babe;
+	type WeightInfo = ();
 }
 
 impl pallet_session::historical::Trait for Runtime {
@@ -568,6 +597,7 @@ impl pallet_staking::Trait for Runtime {
 	type MinSolutionScoreBump = MinSolutionScoreBump;
 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
 	type UnsignedPriority = StakingUnsignedPriority;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -666,14 +696,17 @@ impl orml_vesting::Trait for Runtime {
 }
 
 parameter_types! {
-	pub MaxScheduleDispatchWeight: Weight = Perbill::from_percent(10) * MaximumBlockWeight::get();
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * MaximumBlockWeight::get();
 }
 
-impl orml_schedule_update::Trait for Runtime {
+impl pallet_scheduler::Trait for Runtime {
 	type Event = Event;
+	type Origin = Origin;
+	type PalletsOrigin = OriginCaller;
 	type Call = Call;
-	type MaxScheduleDispatchWeight = MaxScheduleDispatchWeight;
-	type DispatchOrigin = EnsureRoot<AccountId>;
+	type MaximumWeight = MaximumSchedulerWeight;
+	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -744,12 +777,12 @@ where
 			.saturating_sub(1);
 		let tip = 0;
 		let extra: SignedExtra = (
-			system::CheckSpecVersion::<Runtime>::new(),
-			system::CheckTxVersion::<Runtime>::new(),
-			system::CheckGenesis::<Runtime>::new(),
-			system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
-			system::CheckNonce::<Runtime>::from(nonce),
-			system::CheckWeight::<Runtime>::new(),
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			frame_system::CheckNonce::<Runtime>::from(nonce),
+			frame_system::CheckWeight::<Runtime>::new(),
 			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
@@ -877,8 +910,8 @@ impl module_accounts::Trait for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Currencies;
 	type DEX = Dex;
-	type OnCreatedAccount = system::CallOnCreatedAccount<Runtime>;
-	type KillAccount = system::CallKillAccount<Runtime>;
+	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
+	type KillAccount = frame_system::CallKillAccount<Runtime>;
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = PalletTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
@@ -905,9 +938,9 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100);	// 95%
-	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100);	// 80%
-	pub MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100);	// 5%
+	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100); // 95%
+	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100); // 80%
+	pub MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100); // 5%
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
 	pub ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(98, 100); // 98%
 }
@@ -978,10 +1011,11 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		// srml modules
-		System: system::{Module, Call, Storage, Config, Event<T>},
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
-		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
+		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
+		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
+		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		Balances: pallet_balances::{Module, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
@@ -1012,7 +1046,7 @@ construct_runtime!(
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
-		ScheduleUpdate: orml_schedule_update::{Module, Storage, Call, Event<T>},
+		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 		GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 
@@ -1050,12 +1084,12 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
-	system::CheckSpecVersion<Runtime>,
-	system::CheckTxVersion<Runtime>,
-	system::CheckGenesis<Runtime>,
-	system::CheckEra<Runtime>,
-	system::CheckNonce<Runtime>,
-	system::CheckWeight<Runtime>,
+	frame_system::CheckSpecVersion<Runtime>,
+	frame_system::CheckTxVersion<Runtime>,
+	frame_system::CheckGenesis<Runtime>,
+	frame_system::CheckEra<Runtime>,
+	frame_system::CheckNonce<Runtime>,
+	frame_system::CheckWeight<Runtime>,
 	module_accounts::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1065,7 +1099,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
 
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
@@ -1143,6 +1178,29 @@ impl_runtime_apis! {
 		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
 			Babe::current_epoch_start()
 		}
+
+		fn generate_key_ownership_proof(
+			_slot_number: sp_consensus_babe::SlotNumber,
+			authority_id: sp_consensus_babe::AuthorityId,
+			) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
+			use codec::Encode;
+
+			Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+				.map(|p| p.encode())
+				.map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
+		}
+
+		fn submit_report_equivocation_unsigned_extrinsic(
+			equivocation_proof: sp_consensus_babe::EquivocationProof<<Block as BlockT>::Header>,
+			key_owner_proof: sp_consensus_babe::OpaqueKeyOwnershipProof,
+			) -> Option<()> {
+			let key_owner_proof = key_owner_proof.decode()?;
+
+			Babe::submit_unsigned_equivocation_report(
+				equivocation_proof,
+				key_owner_proof,
+				)
+		}
 	}
 
 	impl sp_session::SessionKeys<Block> for Runtime {
@@ -1162,7 +1220,7 @@ impl_runtime_apis! {
 			Grandpa::grandpa_authorities()
 		}
 
-		fn submit_report_equivocation_extrinsic(
+		fn submit_report_equivocation_unsigned_extrinsic(
 			equivocation_proof: fg_primitives::EquivocationProof<
 				<Block as BlockT>::Hash,
 				NumberFor<Block>,
@@ -1171,7 +1229,7 @@ impl_runtime_apis! {
 		) -> Option<()> {
 			let key_owner_proof = key_owner_proof.decode()?;
 
-			Grandpa::submit_report_equivocation_extrinsic(
+			Grandpa::submit_unsigned_equivocation_report(
 				equivocation_proof,
 				key_owner_proof,
 			)
@@ -1305,12 +1363,12 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
 
-			add_benchmark!(params, batches, b"dex", Dex);
-			add_benchmark!(params, batches, b"cdp-treasury", CdpTreasury);
-			add_benchmark!(params, batches, b"honzon", HonzonBench::<Runtime>);
-			add_benchmark!(params, batches, b"cdp-engine", CdpEngineBench::<Runtime>);
-			add_benchmark!(params, batches, b"emergency-shutdown", EmergencyShutdownBench::<Runtime>);
-			add_benchmark!(params, batches, b"auction-manager", AuctionManagerBench::<Runtime>);
+			add_benchmark!(params, batches, auction_manager_dex, Dex);
+			add_benchmark!(params, batches, cdp_treasury, CdpTreasury);
+			add_benchmark!(params, batches, honzon, HonzonBench::<Runtime>);
+			add_benchmark!(params, batches, cdp_engine, CdpEngineBench::<Runtime>);
+			add_benchmark!(params, batches, emergency_shutdown, EmergencyShutdownBench::<Runtime>);
+			add_benchmark!(params, batches, auction_manager, AuctionManagerBench::<Runtime>);
 			orml_add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
 			orml_add_benchmark!(params, batches, b"vesting", benchmarking::vesting);
 			orml_add_benchmark!(params, batches, b"auction", benchmarking::auction);
