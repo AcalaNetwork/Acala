@@ -28,7 +28,7 @@ impl_outer_origin! {
 
 pub type AccountIndex = u32;
 pub type AccountId = u128;
-pub type AuctionId = u64;
+pub type AuctionId = u32;
 pub type BlockNumber = u64;
 
 pub const ACA: CurrencyId = CurrencyId::ACA;

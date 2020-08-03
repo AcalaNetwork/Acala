@@ -234,7 +234,7 @@ fn on_auction_ended_for_collateral_auction_which_target_more_than_zero_by_dealin
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 200)));
 
 		let collateral_auction_deal_event =
-			TestEvent::auction_manager(RawEvent::CollateralAuctionDealed(0, BTC, 100, BOB, 200));
+			TestEvent::auction_manager(RawEvent::CollateralAuctionDealt(0, BTC, 100, BOB, 200));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == collateral_auction_deal_event));
@@ -302,7 +302,7 @@ fn on_auction_ended_for_debit_auction_work() {
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
 		AuctionManagerModule::on_auction_ended(1, Some((BOB, 100)));
 
-		let debit_auction_deal_event = TestEvent::auction_manager(RawEvent::DebitAuctionDealed(1, 300, BOB, 100));
+		let debit_auction_deal_event = TestEvent::auction_manager(RawEvent::DebitAuctionDealt(1, 300, BOB, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == debit_auction_deal_event));
@@ -333,7 +333,7 @@ fn on_auction_ended_for_surplus_auction_work() {
 		assert_eq!(Tokens::total_issuance(ACA), 2500);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 500)));
 
-		let surplus_auction_deal_event = TestEvent::auction_manager(RawEvent::SurplusAuctionDealed(0, 100, BOB, 500));
+		let surplus_auction_deal_event = TestEvent::auction_manager(RawEvent::SurplusAuctionDealt(0, 100, BOB, 500));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == surplus_auction_deal_event));
@@ -350,7 +350,7 @@ fn cancel_surplus_auction_work() {
 		System::set_block_number(1);
 		assert_noop!(
 			AuctionManagerModule::cancel_surplus_auction(0),
-			Error::<Runtime>::AuctionNotExsits
+			Error::<Runtime>::AuctionNotExists
 		);
 		AuctionManagerModule::new_surplus_auction(100);
 		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
@@ -380,7 +380,7 @@ fn cancel_debit_auction_work() {
 		System::set_block_number(1);
 		assert_noop!(
 			AuctionManagerModule::cancel_debit_auction(0),
-			Error::<Runtime>::AuctionNotExsits
+			Error::<Runtime>::AuctionNotExists
 		);
 		AuctionManagerModule::new_debit_auction(200, 100);
 		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
@@ -430,7 +430,7 @@ fn cancel_collateral_auction_failed() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			AuctionManagerModule::cancel_collateral_auction(0),
-			Error::<Runtime>::AuctionNotExsits
+			Error::<Runtime>::AuctionNotExists
 		);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
 		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 0, 100));

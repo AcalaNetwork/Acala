@@ -15,7 +15,7 @@ use sp_runtime::{
 use support::{AuctionManager, Price, PriceProvider};
 
 pub type AccountId = u128;
-pub type AuctionId = u64;
+pub type AuctionId = u32;
 pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 1;

@@ -13,8 +13,8 @@ use auction_manager::*;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use orml_traits::{Auction, DataProviderExtended, MultiCurrency};
-use primitives::{Balance, CurrencyId};
+use orml_traits::{DataProviderExtended, MultiCurrency};
+use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::FixedPointNumber;
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, OnEmergencyShutdown, Price};
 
@@ -23,11 +23,6 @@ pub struct Module<T: Trait>(auction_manager::Module<T>);
 pub trait Trait: auction_manager::Trait + orml_oracle::Trait + prices::Trait {}
 
 const SEED: u32 = 0;
-
-type AuctionIdOf<T> = <<T as auction_manager::Trait>::Auction as Auction<
-	<T as frame_system::Trait>::AccountId,
-	<T as frame_system::Trait>::BlockNumber,
->>::AuctionId;
 
 fn dollar(d: u32) -> Balance {
 	let d: Balance = d.into();
@@ -58,7 +53,7 @@ benchmarks! {
 
 		// create surplus auction
 		AuctionManager::<T>::new_surplus_auction(dollar(1));
-		let auction_id: AuctionIdOf<T> = Default::default();
+		let auction_id: AuctionId = Default::default();
 
 		// bid surplus auction
 		let _ = AuctionManager::<T>::surplus_auction_bid_handler(1.into(), auction_id, (bidder, dollar(1)), None);
@@ -80,7 +75,7 @@ benchmarks! {
 
 		// create debit auction
 		AuctionManager::<T>::new_debit_auction(dollar(1), dollar(10));
-		let auction_id: AuctionIdOf<T> = Default::default();
+		let auction_id: AuctionId = Default::default();
 
 		// bid debit auction
 		let _ = AuctionManager::<T>::debit_auction_bid_handler(1.into(), auction_id, (bidder, dollar(20)), None);
@@ -108,7 +103,7 @@ benchmarks! {
 
 		// create collateral auction
 		AuctionManager::<T>::new_collateral_auction(&funder, CurrencyId::DOT, dollar(1), dollar(100));
-		let auction_id: AuctionIdOf<T> = Default::default();
+		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction
 		let _ = AuctionManager::<T>::collateral_auction_bid_handler(1.into(), auction_id, (bidder, dollar(80)), None);

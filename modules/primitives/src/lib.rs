@@ -32,3 +32,5 @@ pub type Balance = u128;
 
 /// Signed version of Balance
 pub type Amount = i128;
+
+pub type AuctionId = u32;

@@ -4,7 +4,7 @@ use sp_runtime::{
 	MultiSignature,
 };
 
-pub use module_primitives::{AirDropCurrencyId, Amount, Balance, CurrencyId, EraIndex};
+pub use module_primitives::{AirDropCurrencyId, Amount, AuctionId, Balance, CurrencyId, EraIndex};
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 
 /// An index to a block.
@@ -30,8 +30,6 @@ pub type Hash = sp_core::H256;
 
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
-
-pub type AuctionId = u32;
 
 pub type Share = u128;
 
