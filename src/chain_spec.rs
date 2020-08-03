@@ -40,7 +40,8 @@ pub struct Extensions {
 	pub bad_blocks: sc_client_api::BadBlocks<Block>,
 }
 
-/// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
+/// Specialized `ChainSpec`. This is a specialization of the general Substrate
+/// ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
 
 fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
