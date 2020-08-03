@@ -1,6 +1,6 @@
 [package]
 name = "module-utilities"
-version = "0.5.1"
+version = "0.5.4"
 authors = ["Acala Developers"]
 edition = "2018"
 
