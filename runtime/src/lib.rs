@@ -741,6 +741,7 @@ impl module_auction_manager::Trait for Runtime {
 	type DEX = Dex;
 	type PriceSource = Prices;
 	type UnsignedPriority = AuctionManagerUnsignedPriority;
+	type EmergencyShutdown = EmergencyShutdown;
 }
 
 impl module_loans::Trait for Runtime {
@@ -840,6 +841,7 @@ impl module_cdp_engine::Trait for Runtime {
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = Dex;
 	type UnsignedPriority = CdpEngineUnsignedPriority;
+	type EmergencyShutdown = EmergencyShutdown;
 }
 
 impl module_honzon::Trait for Runtime {
@@ -852,7 +854,6 @@ impl module_emergency_shutdown::Trait for Runtime {
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
-	type OnShutdown = (CdpTreasury, CdpEngine, Honzon, Dex);
 	type ShutdownOrigin = EnsureOneOf<
 		AccountId,
 		EnsureRoot<AccountId>,
@@ -875,6 +876,7 @@ impl module_dex::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = EmergencyShutdown;
 }
 
 parameter_types! {
@@ -890,6 +892,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = EmergencyShutdown;
 }
 
 parameter_types! {

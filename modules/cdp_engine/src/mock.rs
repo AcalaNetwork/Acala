@@ -12,7 +12,7 @@ use sp_runtime::{
 	ModuleId, Perbill,
 };
 use sp_std::cell::RefCell;
-use support::AuctionManager;
+use support::{AuctionManager, EmergencyShutdown};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -217,6 +217,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -236,6 +237,7 @@ impl dex::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type DEXModule = dex::Module<Runtime>;
 

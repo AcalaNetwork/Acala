@@ -30,7 +30,7 @@ use sp_runtime::{
 	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
 use sp_std::prelude::Vec;
-use support::{CDPTreasury, DEXManager, OnEmergencyShutdown, Price, Rate, Ratio};
+use support::{CDPTreasury, DEXManager, EmergencyShutdown, Price, Rate, Ratio};
 
 mod benchmarking;
 mod mock;
@@ -64,6 +64,9 @@ pub trait Trait: system::Trait {
 
 	/// The DEX's module id, keep all assets in DEX.
 	type ModuleId: Get<ModuleId>;
+
+	/// Emergency shutdown.
+	type EmergencyShutdown: EmergencyShutdown;
 }
 
 decl_event!(
@@ -127,9 +130,6 @@ decl_storage! {
 		/// Withdrawn interest indexed by currency type and account id
 		/// CurrencyType -> Owner -> WithdrawnInterest
 		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
-
-		/// System shutdown flag
-		IsShutdown get(fn is_shutdown): bool;
 	}
 
 	add_extra_genesis {
@@ -423,7 +423,7 @@ decl_module! {
 				consumed_weight += weight;
 			};
 
-			if !Self::is_shutdown() {
+			if !T::EmergencyShutdown::is_shutdown() {
 				add_weight(4, 3, 0);
 				for currency_id in T::EnabledCurrencyIds::get() {
 					Self::accumulate_interest(currency_id);
@@ -928,11 +928,5 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 				.and_then(|n| n.checked_mul(&base_to_target_slippage))
 				.and_then(|n| n.checked_add(&supply_to_base_slippage))
 		}
-	}
-}
-
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		<IsShutdown>::put(true);
 	}
 }

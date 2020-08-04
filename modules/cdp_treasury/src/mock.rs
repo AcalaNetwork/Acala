@@ -134,6 +134,7 @@ impl dex::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type DEXModule = dex::Module<Runtime>;
 
