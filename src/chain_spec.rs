@@ -22,7 +22,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedU128, Perbill,
 };
 
-// Note this is the URL for the telemetry server
+// The URL for the telemetry server.
 const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -40,21 +40,22 @@ pub struct Extensions {
 	pub bad_blocks: sc_client_api::BadBlocks<Block>,
 }
 
-/// Specialized `ChainSpec`.
+/// Specialized `ChainSpec`. This is a specialization of the general Substrate
+/// ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
 
 fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
 	SessionKeys { grandpa, babe }
 }
 
-/// Helper function to generate a crypto pair from seed
+/// Generate a crypto pair from seed.
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
 		.expect("static values are valid; qed")
 		.public()
 }
 
-/// Helper function to generate an account ID from seed
+/// Generate an account ID from seed.
 pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
 where
 	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
@@ -62,7 +63,7 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-/// Helper function to generate session key from seed
+/// Generate an Aura authority key.
 pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
@@ -80,19 +81,27 @@ pub fn get_oracle_keys_from_seed(seed: &str) -> (AccountId, OracleId) {
 }
 
 /// Development config (single validator Alice)
-pub fn development_testnet_config() -> ChainSpec {
+pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	ChainSpec::from_genesis(
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
+
+	Ok(ChainSpec::from_genesis(
+		// Name
 		"Development",
+		// ID
 		"dev",
 		ChainType::Development,
-		|| {
+		move || {
 			testnet_genesis(
+				wasm_binary,
+				// Initial PoA authorities
 				vec![get_authority_keys_from_seed("Alice")],
+				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				// Pre-funded accounts
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -102,26 +111,34 @@ pub fn development_testnet_config() -> ChainSpec {
 				vec![get_oracle_keys_from_seed("Alice")],
 			)
 		},
+		// Bootnodes
 		vec![],
+		// Telemetry
 		None,
+		// Protocol ID
 		None,
+		// Properties
 		Some(properties),
+		// Extensions
 		Default::default(),
-	)
+	))
 }
 
 /// Local testnet config (multivalidator Alice + Bob)
-pub fn local_testnet_config() -> ChainSpec {
+pub fn local_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	ChainSpec::from_genesis(
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
+
+	Ok(ChainSpec::from_genesis(
 		"Local",
 		"local",
 		ChainType::Local,
-		|| {
+		move || {
 			testnet_genesis(
+				wasm_binary,
 				vec![
 					get_authority_keys_from_seed("Alice"),
 					get_authority_keys_from_seed("Bob"),
@@ -149,7 +166,7 @@ pub fn local_testnet_config() -> ChainSpec {
 		None,
 		Some(properties),
 		Default::default(),
-	)
+	))
 }
 
 /// Mandala testnet generator
@@ -158,12 +175,14 @@ pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
 }
 
 /// latest Mandala testnet config
-pub fn latest_mandala_testnet_config() -> ChainSpec {
+pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	ChainSpec::from_genesis(
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
+
+	Ok(ChainSpec::from_genesis(
 		"Acala Mandala TC4",
 		"mandala4",
 		ChainType::Live,
@@ -179,8 +198,9 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//validator"
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//babe"
 		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
-		|| {
+		move || {
 			mandala_genesis(
+				wasm_binary,
 				vec![
 					(
 						// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
@@ -228,13 +248,14 @@ pub fn latest_mandala_testnet_config() -> ChainSpec {
 		Some("mandala4"),
 		Some(properties),
 		Default::default(),
-	)
+	))
 }
 
 const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
 fn testnet_genesis(
+	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
@@ -243,8 +264,9 @@ fn testnet_genesis(
 	let new_account_deposit = NewAccountDeposit::get();
 
 	GenesisConfig {
-		system: Some(SystemConfig {
-			code: WASM_BINARY.to_vec(),
+		frame_system: Some(SystemConfig {
+			// Add Wasm runtime to storage.
+			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		}),
 		pallet_indices: Some(IndicesConfig { indices: vec![] }),
@@ -387,6 +409,7 @@ fn testnet_genesis(
 }
 
 fn mandala_genesis(
+	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
@@ -395,8 +418,9 @@ fn mandala_genesis(
 	let new_account_deposit = NewAccountDeposit::get();
 
 	GenesisConfig {
-		system: Some(SystemConfig {
-			code: WASM_BINARY.to_vec(),
+		frame_system: Some(SystemConfig {
+			// Add Wasm runtime to storage.
+			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		}),
 		pallet_indices: Some(IndicesConfig { indices: vec![] }),

@@ -18,46 +18,47 @@ futures = "0.3.4"
 hex-literal = "0.2.1"
 jsonrpc-core = "14.0.3"
 log = "0.4.8"
-parity-util-mem = { version = "0.6.1", default-features = false, features = ["jemalloc-global"] }
+parity-util-mem = { version = "0.7.0", default-features = false, features = ["jemalloc-global"] }
 serde = { version = "1.0.101", features = ["derive"] }
 serde_json = "1.0.41"
 structopt = "0.3.8"
 
-pallet-transaction-payment-rpc = { version = "2.0.0-rc4" }
-sc-basic-authorship = { version = "0.8.0-rc4" }
-sc-chain-spec = { version = "2.0.0-rc4" }
-sc-cli = { version = "0.8.0-rc4" }
-sc-client-api = { version = "2.0.0-rc4" }
-sc-client-db = { version = "0.8.0-rc4" }
-sc-consensus = { version = "0.8.0-rc4" }
-sc-consensus-babe = { version = "0.8.0-rc4" }
-sc-consensus-babe-rpc = { version = "0.8.0-rc4" }
-sc-consensus-epochs = { version = "0.8.0-rc4" }
-sc-executor = { version = "0.8.0-rc4" }
-sc-finality-grandpa = { version = "0.8.0-rc4" }
-sc-finality-grandpa-rpc = { version = "0.8.0-rc4" }
-sc-keystore = { version = "2.0.0-rc4" }
-sc-network = { version = "0.8.0-rc4" }
-sc-offchain = { version = "2.0.0-rc4" }
-sc-rpc = { version = "2.0.0-rc4" }
-sc-rpc-api = { version = "0.8.0-rc4" }
-sc-service = { version = "0.8.0-rc4" }
-sc-telemetry = { version = "2.0.0-rc4" }
-sc-transaction-pool = { version = "2.0.0-rc4" }
-sp-api = { version = "2.0.0-rc4" }
-sp-block-builder = { version = "2.0.0-rc4" }
-sp-consensus = { version = "0.8.0-rc4" }
-sp-consensus-babe = { version = "0.8.0-rc4" }
-sp-core = { version = "2.0.0-rc4" }
-sp-finality-grandpa = { version = "2.0.0-rc4" }
-sp-inherents = { version = "2.0.0-rc4" }
-sp-io = { version = "2.0.0-rc4" }
-sp-runtime = { version = "2.0.0-rc4" }
-sp-transaction-pool = { version = "2.0.0-rc4" }
-substrate-frame-rpc-system = { version = "2.0.0-rc4" }
-frame-benchmarking-cli = { version = "2.0.0-rc4" }
-sp-blockchain = { version = "2.0.0-rc4" }
-frame-benchmarking = { version = "2.0.0-rc4" }
+pallet-transaction-payment-rpc = { version = "2.0.0-rc5" }
+sc-authority-discovery = { version = "0.8.0-rc5" }
+sc-basic-authorship = { version = "0.8.0-rc5" }
+sc-chain-spec = { version = "2.0.0-rc5" }
+sc-cli = { version = "0.8.0-rc5" }
+sc-client-api = { version = "2.0.0-rc5" }
+sc-client-db = { version = "0.8.0-rc5" }
+sc-consensus = { version = "0.8.0-rc5" }
+sc-consensus-babe = { version = "0.8.0-rc5" }
+sc-consensus-babe-rpc = { version = "0.8.0-rc5" }
+sc-consensus-epochs = { version = "0.8.0-rc5" }
+sc-executor = { version = "0.8.0-rc5" }
+sc-finality-grandpa = { version = "0.8.0-rc5" }
+sc-finality-grandpa-rpc = { version = "0.8.0-rc5" }
+sc-keystore = { version = "2.0.0-rc5" }
+sc-network = { version = "0.8.0-rc5" }
+sc-offchain = { version = "2.0.0-rc5" }
+sc-rpc = { version = "2.0.0-rc5" }
+sc-rpc-api = { version = "0.8.0-rc5" }
+sc-service = { version = "0.8.0-rc5" }
+sc-telemetry = { version = "2.0.0-rc5" }
+sc-transaction-pool = { version = "2.0.0-rc5" }
+sp-api = { version = "2.0.0-rc5" }
+sp-block-builder = { version = "2.0.0-rc5" }
+sp-consensus = { version = "0.8.0-rc5" }
+sp-consensus-babe = { version = "0.8.0-rc5" }
+sp-core = { version = "2.0.0-rc5" }
+sp-finality-grandpa = { version = "2.0.0-rc5" }
+sp-inherents = { version = "2.0.0-rc5" }
+sp-io = { version = "2.0.0-rc5" }
+sp-runtime = { version = "2.0.0-rc5" }
+sp-transaction-pool = { version = "2.0.0-rc5" }
+substrate-frame-rpc-system = { version = "2.0.0-rc5" }
+frame-benchmarking-cli = { version = "2.0.0-rc5" }
+sp-blockchain = { version = "2.0.0-rc5" }
+frame-benchmarking = { version = "2.0.0-rc5" }
 
 module-dex-rpc = { path = "modules/dex/rpc" }
 module-support = { path = "modules/support" }
@@ -69,8 +70,8 @@ inspect = { package = "acala-inspect", path = "inspect" }
 
 [build-dependencies]
 vergen = "3.0.4"
-build-script-utils = { package = "substrate-build-script-utils", version = "2.0.0-rc4" }
-frame-benchmarking-cli = { version = "2.0.0-rc4" }
+build-script-utils = { package = "substrate-build-script-utils", version = "2.0.0-rc5" }
+frame-benchmarking-cli = { version = "2.0.0-rc5" }
 
 [features]
 default = ["wasmtime"]
@@ -88,7 +89,6 @@ members = [
 	"orml/currencies",
 	"orml/gradually-update",
 	"orml/oracle",
-	"orml/schedule-update",
 	"orml/tokens",
 	"orml/traits",
 	"orml/utilities",
@@ -116,11 +116,13 @@ exclude = [ "runtime/wasm" ]
 #
 # This list is ordered alphabetically.
 [profile.dev.package]
+aes-soft = { opt-level = 3 }
+aesni = { opt-level = 3 }
 blake2 = { opt-level = 3 }
 blake2-rfc = { opt-level = 3 }
 blake2b_simd = { opt-level = 3 }
 blake2s_simd = { opt-level = 3 }
-chacha20-poly1305-aead = { opt-level = 3 }
+chacha20poly1305 = { opt-level = 3 }
 cranelift-codegen = { opt-level = 3 }
 cranelift-wasm = { opt-level = 3 }
 crc32fast = { opt-level = 3 }
