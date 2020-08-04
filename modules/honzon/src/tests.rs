@@ -86,8 +86,8 @@ fn transfer_loan_from_should_work() {
 		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::transfer_loan_from(Origin::signed(BOB), BTC, ALICE));
-		assert_eq!(LoansModule::collaterals(BOB, BTC), 100);
-		assert_eq!(LoansModule::debits(BTC, BOB), 50);
+		assert_eq!(LoansModule::positions(BTC, BOB).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, BOB).debit, 50);
 	});
 }
 
@@ -114,8 +114,8 @@ fn adjust_loan_should_work() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
-		assert_eq!(LoansModule::collaterals(ALICE, BTC), 100);
-		assert_eq!(LoansModule::debits(BTC, ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
 	});
 }
 
