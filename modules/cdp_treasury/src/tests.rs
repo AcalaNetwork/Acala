@@ -4,10 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
-use mock::{
-	CDPTreasuryModule, Currencies, DEXModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE, AUSD, BOB, BTC,
-	TOTAL_COLLATERAL_AUCTION, TOTAL_DEBIT_AUCTION, TOTAL_SURPLUS_AUCTION,
-};
+use mock::*;
 use sp_runtime::traits::BadOrigin;
 
 #[test]
@@ -73,15 +70,6 @@ fn set_debit_and_surplus_handle_params_work() {
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_debit_auction_fixed_size_event));
-	});
-}
-
-#[test]
-fn on_emergency_shutdown_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(CDPTreasuryModule::is_shutdown(), false);
-		CDPTreasuryModule::on_emergency_shutdown();
-		assert_eq!(CDPTreasuryModule::is_shutdown(), true);
 	});
 }
 
@@ -323,5 +311,25 @@ fn create_debit_auction_when_on_finalize() {
 		DebitPool::put(2000);
 		CDPTreasuryModule::on_finalize(1);
 		assert_eq!(TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut()), 8);
+	});
+}
+
+#[test]
+fn no_new_surplus_or_debit_auctions_on_finalize_if_shutdown() {
+	ExtBuilder::default().build().execute_with(|| {
+		SurplusPool::put(1000);
+		DebitPool::put(1000);
+		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
+			Origin::signed(1),
+			Some(300),
+			None,
+			Some(100),
+			Some(300),
+		));
+
+		mock_shutdown();
+		CDPTreasuryModule::on_finalize(1);
+		assert_eq!(TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut()), 0);
+		assert_eq!(TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut()), 0);
 	});
 }

@@ -4,10 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{
-	Auction as AuctionModule, AuctionManagerModule, CDPTreasuryModule, DEXModule, ExtBuilder, Origin, Runtime, System,
-	TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL,
-};
+use mock::*;
 
 #[test]
 fn new_collateral_auction_work() {
@@ -361,7 +358,7 @@ fn cancel_surplus_auction_work() {
 			true
 		);
 
-		AuctionManagerModule::on_emergency_shutdown();
+		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
 		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
 		assert!(System::events()
@@ -392,7 +389,7 @@ fn cancel_debit_auction_work() {
 		);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 
-		AuctionManagerModule::on_emergency_shutdown();
+		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
 		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
 		assert!(System::events()
@@ -461,7 +458,7 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 80);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 
-		AuctionManagerModule::on_emergency_shutdown();
+		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
 		let cancel_auction_event = TestEvent::auction_manager(RawEvent::CancelAuction(0));
 		assert!(System::events()

@@ -37,7 +37,7 @@ use sp_runtime::{
 };
 use sp_std::{marker, prelude::*};
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, ExchangeRate, OnEmergencyShutdown, Price, PriceProvider, Rate, Ratio,
+	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
 use utilities::OffchainErr;
@@ -96,6 +96,9 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait
 	/// This is exposed so that it can be tuned for particular runtime, when
 	/// multiple modules send unsigned transactions.
 	type UnsignedPriority: Get<TransactionPriority>;
+
+	/// Emergency shutdown.
+	type EmergencyShutdown: EmergencyShutdown;
 }
 
 /// Liquidation strategy available
@@ -193,9 +196,6 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPEngine {
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
-
 		/// Mapping from collateral type to its exchange rate of debit units and debit value
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyId => Option<ExchangeRate>;
 
@@ -290,7 +290,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;
-				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 				Self::liquidate_unsafe_cdp(who, currency_id)?;
 				Ok(())
 			})?;
@@ -321,7 +321,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;
-				ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+				ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 				Self::settle_cdp_has_debit(who, currency_id)?;
 				Ok(())
 			})?;
@@ -418,7 +418,7 @@ decl_module! {
 		/// and update their debit exchange rate
 		fn on_finalize(_now: T::BlockNumber) {
 			// collect stability fee for all types of collateral
-			if !Self::is_shutdown() {
+			if !T::EmergencyShutdown::is_shutdown() {
 				for currency_id in T::CollateralCurrencyIds::get() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
 					let stability_fee_rate = Self::get_stability_fee(currency_id);
@@ -526,7 +526,7 @@ impl<T: Trait> Module<T> {
 			)?;
 		let position = get_position.map_err(|_| OffchainErr::OffchainStore)?;
 		let currency_id = collateral_currency_ids[(position as usize)];
-		let is_shutdown = Self::is_shutdown();
+		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
 		for (who, Position { debit, .. }) in <loans::Positions<T>>::iter_prefix(currency_id) {
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, &who) {
@@ -752,12 +752,6 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Modul
 	}
 }
 
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		<IsShutdown>::put(true);
-	}
-}
-
 #[allow(deprecated)]
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
@@ -765,7 +759,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		match call {
 			Call::liquidate(currency_id, who) => {
-				if !Self::is_cdp_unsafe(*currency_id, &who) || Self::is_shutdown() {
+				if !Self::is_cdp_unsafe(*currency_id, &who) || T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}
 
@@ -778,7 +772,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 			}
 			Call::settle(currency_id, who) => {
 				let Position { debit, .. } = <LoansOf<T>>::positions(currency_id, who);
-				if debit.is_zero() || !Self::is_shutdown() {
+				if debit.is_zero() || !T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}
 

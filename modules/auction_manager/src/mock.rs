@@ -11,6 +11,7 @@ use sp_runtime::{
 	traits::IdentityLookup,
 	ModuleId, Perbill,
 };
+use sp_std::cell::RefCell;
 use support::Price;
 
 pub type AccountId = u128;
@@ -105,7 +106,7 @@ impl orml_auction::Trait for Runtime {
 	type AuctionId = AuctionId;
 	type Handler = AuctionManagerModule;
 }
-pub type Auction = orml_auction::Module<Runtime>;
+pub type AuctionModule = orml_auction::Module<Runtime>;
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
@@ -126,6 +127,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -160,8 +162,24 @@ impl dex::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type DEXModule = dex::Module<Runtime>;
+
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub fn mock_shutdown() {
+	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
 
 parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
@@ -175,7 +193,7 @@ parameter_types! {
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type Auction = Auction;
+	type Auction = AuctionModule;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
@@ -186,6 +204,7 @@ impl Trait for Runtime {
 	type DEX = DEXModule;
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = UnsignedPriority;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 

@@ -11,7 +11,8 @@ use frame_system::EnsureSignedBy;
 use primitives::Amount;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
-use support::{CDPTreasury, Rate, Ratio};
+use sp_std::cell::RefCell;
+use support::{CDPTreasury, EmergencyShutdown, Rate, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -187,6 +188,17 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 	}
 }
 
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
+
 ord_parameter_types! {
 	pub const Zero: AccountId = 0;
 }
@@ -208,6 +220,7 @@ impl dex::Trait for Runtime {
 	type CDPTreasury = MockCDPTreasury;
 	type UpdateOrigin = EnsureSignedBy<Zero, AccountId>;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type DEXModule = dex::Module<Runtime>;
 

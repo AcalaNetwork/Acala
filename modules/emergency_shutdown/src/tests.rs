@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{CDPTreasuryModule, EmergencyShutdownModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE};
+use mock::*;
 use sp_runtime::traits::BadOrigin;
 
 #[test]
@@ -12,7 +12,10 @@ fn emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), false);
-		assert_eq!(CDPTreasuryModule::is_shutdown(), false);
+		assert_eq!(
+			<Runtime as cdp_treasury::Trait>::EmergencyShutdown::is_shutdown(),
+			false
+		);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(5)),
 			BadOrigin,
@@ -23,7 +26,7 @@ fn emergency_shutdown_work() {
 		assert!(System::events().iter().any(|record| record.event == shutdown_event));
 
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), true);
-		assert_eq!(CDPTreasuryModule::is_shutdown(), true);
+		assert_eq!(<Runtime as cdp_treasury::Trait>::EmergencyShutdown::is_shutdown(), true);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)),
 			Error::<Runtime>::AlreadyShutdown,

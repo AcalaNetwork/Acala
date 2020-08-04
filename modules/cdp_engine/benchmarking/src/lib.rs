@@ -12,18 +12,21 @@ use sp_std::vec;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::{traits::UniqueSaturatedInto, FixedPointNumber};
+use sp_runtime::{traits::UniqueSaturatedInto, DispatchError, FixedPointNumber};
 
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use dex::Module as Dex;
 use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
-use support::{OnEmergencyShutdown, Price, Rate, Ratio};
+use support::{Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(cdp_engine::Module<T>);
 
-pub trait Trait: cdp_engine::Trait + orml_oracle::Trait + prices::Trait + dex::Trait {}
+pub trait Trait:
+	cdp_engine::Trait + orml_oracle::Trait + prices::Trait + dex::Trait + emergency_shutdown::Trait
+{
+}
 
 const SEED: u32 = 0;
 
@@ -64,6 +67,10 @@ fn inject_liquidity<T: Trait>(
 	)?;
 
 	Ok(())
+}
+
+fn emergency_shutdown<T: Trait>() -> Result<(), DispatchError> {
+	emergency_shutdown::Module::<T>::emergency_shutdown(RawOrigin::Root.into())
 }
 
 benchmarks! {
@@ -220,7 +227,7 @@ benchmarks! {
 		CdpEngine::<T>::adjust_position(&owner, currency_id, collateral_amount, min_debit_amount)?;
 
 		// shutdown
-		CdpEngine::<T>::on_emergency_shutdown();
+		emergency_shutdown::<T>()?;
 	}: _(RawOrigin::None, currency_id, owner)
 }
 

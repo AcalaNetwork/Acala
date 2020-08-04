@@ -11,7 +11,8 @@ use sp_runtime::{
 	traits::IdentityLookup,
 	ModuleId, Perbill,
 };
-use support::AuctionManager;
+use sp_std::cell::RefCell;
+use support::{AuctionManager, EmergencyShutdown};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -216,6 +217,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -235,8 +237,24 @@ impl dex::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type DEXModule = dex::Module<Runtime>;
+
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub fn mock_shutdown() {
+	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
@@ -265,6 +283,7 @@ impl Trait for Runtime {
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = DEXModule;
 	type UnsignedPriority = UnsignedPriority;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPEngineModule = Module<Runtime>;
 

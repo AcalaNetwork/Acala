@@ -19,7 +19,7 @@ use frame_system::{self as system, ensure_signed};
 use orml_utilities::with_transaction_result;
 use primitives::{Amount, CurrencyId};
 use sp_runtime::{traits::Zero, DispatchResult};
-use support::OnEmergencyShutdown;
+use support::EmergencyShutdown;
 
 mod mock;
 mod tests;
@@ -33,9 +33,6 @@ decl_storage! {
 		/// The authorization relationship map from
 		/// Authorizer -> (CollateralType, Authorizee) -> Authorized
 		pub Authorization get(fn authorization): double_map hasher(twox_64_concat) T::AccountId, hasher(blake2_128_concat) (CurrencyId, T::AccountId) => bool;
-
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -95,7 +92,7 @@ decl_module! {
 
 				// not allowed to adjust the debit after system shutdown
 				if !debit_adjustment.is_zero() {
-					ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+					ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 				}
 				<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
 				Ok(())
@@ -123,7 +120,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				let to = ensure_signed(origin)?;
-				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 				Self::check_authorization(&from, &to, currency_id)?;
 				<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
 				Ok(())
@@ -213,11 +210,5 @@ impl<T: Trait> Module<T> {
 			Error::<T>::NoAuthorization
 		);
 		Ok(())
-	}
-}
-
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		<IsShutdown>::put(true);
 	}
 }

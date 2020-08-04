@@ -205,7 +205,6 @@ pub trait ExchangeRateProvider {
 	fn get_exchange_rate() -> ExchangeRate;
 }
 
-#[impl_trait_for_tuples::impl_for_tuples(30)]
-pub trait OnEmergencyShutdown {
-	fn on_emergency_shutdown();
+pub trait EmergencyShutdown {
+	fn is_shutdown() -> bool;
 }
