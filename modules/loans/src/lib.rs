@@ -238,7 +238,8 @@ impl<T: Trait> Module<T> {
 		let collateral_balance = Self::balance_try_from_amount_abs(collateral_adjustment)?;
 		let debit_balance = Self::balance_try_from_amount_abs(debit_adjustment)?;
 
-		<Positions<T>>::try_mutate(currency_id, who, |p| -> DispatchResult {
+		<Positions<T>>::try_mutate_exists(currency_id, who, |may_be_position| -> DispatchResult {
+			let mut p = may_be_position.take().unwrap_or_default();
 			let new_collateral = if collateral_adjustment.is_positive() {
 				p.collateral
 					.checked_add(collateral_balance)
@@ -262,9 +263,14 @@ impl<T: Trait> Module<T> {
 			p.collateral = new_collateral;
 			p.debit = new_debit;
 
-			// decrease account ref if zero position
 			if p.collateral.is_zero() && p.debit.is_zero() {
+				// decrease account ref if zero position
 				system::Module::<T>::dec_ref(who);
+
+				// remove position storage if zero position
+				*may_be_position = None;
+			} else {
+				*may_be_position = Some(p);
 			}
 
 			Ok(())

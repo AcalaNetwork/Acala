@@ -85,6 +85,7 @@ fn update_loan_should_work() {
 		assert_eq!(LoansModule::total_positions(BTC).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
+		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
 
 		assert_ok!(LoansModule::update_loan(&ALICE, BTC, 3000, 2000));
 
@@ -97,6 +98,13 @@ fn update_loan_should_work() {
 		// dot not manipulate balance
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
+
+		// should remove position storage if zero
+		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), true);
+		assert_ok!(LoansModule::update_loan(&ALICE, BTC, -3000, -2000));
+		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
+		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
 	});
 }
 
