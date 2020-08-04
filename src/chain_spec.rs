@@ -86,7 +86,7 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
 		// Name
@@ -130,7 +130,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
 		"Local",
@@ -180,7 +180,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
 		"Acala Mandala TC4",

@@ -21,6 +21,7 @@ type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport = grandpa::GrandpaBlockImport<FullBackend, Block, FullClient, FullSelectChain>;
 type LightClient = sc_service::TLightClient<Block, RuntimeApi, Executor>;
 
+#[allow(clippy::type_complexity)]
 pub fn new_full_params(
 	config: Configuration,
 ) -> Result<
@@ -146,6 +147,7 @@ pub fn new_full_params(
 }
 
 /// Creates a full service from the configuration.
+#[allow(clippy::type_complexity)]
 pub fn new_full_base(
 	config: Configuration,
 	with_startup_data: impl FnOnce(
@@ -312,6 +314,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 	new_full_base(config, |_, _| ()).map(|(task_manager, _, _, _, _)| task_manager)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn new_light_base(
 	config: Configuration,
 ) -> Result<
@@ -364,8 +367,8 @@ pub fn new_light_base(
 		None,
 		Some(Box::new(finality_proof_import)),
 		client.clone(),
-		select_chain.clone(),
-		inherent_data_providers.clone(),
+		select_chain,
+		inherent_data_providers,
 		&task_manager.spawn_handle(),
 		config.prometheus_registry(),
 	)?;
