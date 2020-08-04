@@ -194,6 +194,21 @@ parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub fn mock_shutdown() {
+	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
@@ -203,6 +218,7 @@ impl Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = Module<Runtime>;
 

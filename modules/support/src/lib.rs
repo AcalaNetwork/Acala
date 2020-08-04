@@ -209,3 +209,7 @@ pub trait ExchangeRateProvider {
 pub trait OnEmergencyShutdown {
 	fn on_emergency_shutdown();
 }
+
+pub trait EmergencyShutdown {
+	fn is_shutdown() -> bool;
+}

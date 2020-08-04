@@ -11,6 +11,7 @@ use sp_runtime::{
 	traits::IdentityLookup,
 	ModuleId, Perbill,
 };
+use sp_std::cell::RefCell;
 use support::AuctionManager;
 
 pub type AccountId = u128;
@@ -236,6 +237,21 @@ impl dex::Trait for Runtime {
 }
 pub type DEXModule = dex::Module<Runtime>;
 
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub fn mock_shutdown() {
+	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
+
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -263,6 +279,7 @@ impl Trait for Runtime {
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = DEXModule;
 	type UnsignedPriority = UnsignedPriority;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPEngineModule = Module<Runtime>;
 

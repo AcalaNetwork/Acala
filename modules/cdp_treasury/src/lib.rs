@@ -22,7 +22,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, Ratio};
 
 mod benchmarking;
 mod mock;
@@ -56,6 +56,9 @@ pub trait Trait: system::Trait {
 	/// The CDP treasury's module id, keep surplus and collateral assets from
 	/// liquidation.
 	type ModuleId: Get<ModuleId>;
+
+	/// Emergency shutdown.
+	type EmergencyShutdown: EmergencyShutdown;
 }
 
 decl_event!(
@@ -115,9 +118,6 @@ decl_storage! {
 
 		/// Mapping from collateral type to collateral assets amount kept in CDP treasury
 		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyId => Balance;
-
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
 	}
 
 	add_extra_genesis {
@@ -221,7 +221,7 @@ decl_module! {
 			Self::offset_surplus_and_debit();
 
 			// Stop to create surplus auction and debit auction after emergency shutdown.
-			if !Self::is_shutdown() {
+			if !T::EmergencyShutdown::is_shutdown() {
 				let max_auctions_count: u32 = T::MaxAuctionsCount::get();
 				let mut created_lots: u32 = 0;
 
@@ -471,11 +471,5 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 				unhandled_target = unhandled_target.saturating_sub(lot_target);
 			}
 		}
-	}
-}
-
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		IsShutdown::put(true);
 	}
 }

@@ -23,7 +23,7 @@ use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, OnEmergencyShutdown, PriceProvider, Ratio};
+use support::{AuctionManager, CDPTreasury, EmergencyShutdown, PriceProvider, Ratio};
 
 mod mock;
 mod tests;
@@ -43,9 +43,6 @@ pub trait Trait: system::Trait + loans::Trait {
 	/// Check the auction cancellation to decide whether to open the final
 	/// redemption
 	type AuctionManagerHandler: AuctionManager<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
-
-	/// Handler to trigger other operations
-	type OnShutdown: OnEmergencyShutdown;
 
 	/// The origin which may trigger emergency shutdown. Root can always do
 	/// this.
@@ -127,9 +124,6 @@ decl_module! {
 			with_transaction_result(|| {
 				T::ShutdownOrigin::ensure_origin(origin)?;
 				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
-
-				// trigger shutdown in other related modules
-				T::OnShutdown::on_emergency_shutdown();
 
 				// get all collateral types
 				let collateral_currency_ids = T::CollateralCurrencyIds::get();
@@ -250,5 +244,11 @@ decl_module! {
 				Ok(())
 			})?;
 		}
+	}
+}
+
+impl<T: Trait> EmergencyShutdown for Module<T> {
+	fn is_shutdown() -> bool {
+		Self::is_shutdown()
 	}
 }

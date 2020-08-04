@@ -4,10 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
-use mock::{
-	CDPEngineModule, CDPTreasuryModule, Currencies, DefaultDebitExchangeRate, DefaultLiquidationPenalty,
-	DefaultLiquidationRatio, ExtBuilder, LoansModule, Origin, Runtime, System, TestEvent, ACA, ALICE, AUSD, BTC, DOT,
-};
+use mock::*;
 use orml_traits::MultiCurrency;
 use sp_runtime::traits::BadOrigin;
 
@@ -499,9 +496,8 @@ fn on_emergency_shutdown_work() {
 			CDPEngineModule::debit_exchange_rate(BTC),
 			Some(ExchangeRate::saturating_from_rational(101, 100))
 		);
-		assert_eq!(CDPEngineModule::is_shutdown(), false);
-		CDPEngineModule::on_emergency_shutdown();
-		assert_eq!(CDPEngineModule::is_shutdown(), true);
+		mock_shutdown();
+		assert_eq!(<Runtime as Trait>::EmergencyShutdown::is_shutdown(), true);
 		CDPEngineModule::on_finalize(2);
 		assert_eq!(
 			CDPEngineModule::debit_exchange_rate(BTC),
