@@ -270,23 +270,6 @@ impl<T: Trait> Module<T> {
 			Ok(())
 		})?;
 
-		// TotalCollaterals::try_mutate(currency_id, |c| -> DispatchResult {
-		// 	*c = if collateral_adjustment.is_positive() {
-		// 		c.checked_add(collateral_balance).ok_or(Error::<T>::CollateralOverflow)
-		// 	} else {
-		// 		c.checked_sub(collateral_balance).ok_or(Error::<T>::CollateralTooLow)
-		// 	}?;
-		// 	Ok(())
-		// })?;
-		// TotalDebits::try_mutate(currency_id, |d| -> DispatchResult {
-		// 	*d = if debit_adjustment.is_positive() {
-		// 		d.checked_add(debit_balance).ok_or(Error::<T>::DebitOverflow)
-		// 	} else {
-		// 		d.checked_sub(debit_balance).ok_or(Error::<T>::DebitTooLow)
-		// 	}?;
-		// 	Ok(())
-		// })?;
-
 		TotalPositions::try_mutate(currency_id, |total_positions| -> DispatchResult {
 			total_positions.collateral = if collateral_adjustment.is_positive() {
 				total_positions
