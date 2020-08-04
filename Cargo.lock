@@ -3345,7 +3345,9 @@ dependencies = [
  "serde",
  "sp-api",
  "sp-blockchain",
+ "sp-core",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

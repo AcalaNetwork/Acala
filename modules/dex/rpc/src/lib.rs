@@ -7,10 +7,14 @@ use module_dex_rpc_runtime_api::BalanceInfo;
 use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
+#[cfg(feature = "std")]
+use sp_core::U256;
 use sp_runtime::{
 	generic::BlockId,
 	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
 };
+#[cfg(feature = "std")]
+use sp_std::convert::TryFrom;
 use std::sync::Arc;
 
 pub use self::gen_client::Client as DexClient;
@@ -20,7 +24,29 @@ pub use module_dex_rpc_runtime_api::DexApi as DexRuntimeApi;
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct BalanceRequest<Balance> {
+	#[cfg_attr(
+		feature = "std",
+		serde(serialize_with = "serialize_number", deserialize_with = "deserialize_number")
+	)]
 	amount: Balance,
+}
+
+#[cfg(feature = "std")]
+pub fn serialize_number<S, T: Copy + Into<U256> + TryFrom<U256>>(val: &T, s: S) -> Result<S::Ok, S::Error>
+where
+	S: serde::Serializer,
+{
+	let u256: U256 = (*val).into();
+	serde::Serialize::serialize(&u256, s)
+}
+
+#[cfg(feature = "std")]
+pub fn deserialize_number<'a, D, T: Copy + Into<U256> + TryFrom<U256>>(d: D) -> Result<T, D::Error>
+where
+	D: serde::Deserializer<'a>,
+{
+	let u256: U256 = serde::Deserialize::deserialize(d)?;
+	TryFrom::try_from(u256).map_err(|_| serde::de::Error::custom("Try from failed"))
 }
 
 #[rpc]

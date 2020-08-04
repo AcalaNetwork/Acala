@@ -12,5 +12,7 @@ jsonrpc-core-client = "14.0.5"
 jsonrpc-derive = "14.0.5"
 sp-runtime = { version = "2.0.0-rc5" }
 sp-api = { version = "2.0.0-rc5" }
+sp-core = { version = "2.0.0-rc5" }
+sp-std = { version = "2.0.0-rc5" }
 sp-blockchain = { version = "2.0.0-rc5" }
 module-dex-rpc-runtime-api = { path = "runtime-api" }
