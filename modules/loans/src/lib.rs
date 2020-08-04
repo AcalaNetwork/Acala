@@ -60,13 +60,9 @@ decl_storage! {
 		/// Owner -> CollateralType -> Position
 		pub Positions get(fn positions): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Position;
 
-		/// The total debit amount, map from
-		/// CollateralType -> TotalDebitAmount
-		pub TotalDebits get(fn total_debits): map hasher(twox_64_concat) CurrencyId => Balance;
-
-		/// The total collateral asset amount, map from
-		/// CollateralType -> TotalCollateralAmount
-		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyId => Balance;
+		/// The total collateralized debit positions, map from
+		/// CollateralType -> Position
+		pub TotalPositions get(fn total_positions): map hasher(twox_64_concat) CurrencyId => Position;
 	}
 }
 
@@ -174,7 +170,7 @@ impl<T: Trait> Module<T> {
 
 			if debit_adjustment.is_positive() {
 				// check debit cap when increase debit
-				T::RiskManager::check_debit_cap(currency_id, Self::total_debits(currency_id))?;
+				T::RiskManager::check_debit_cap(currency_id, Self::total_positions(currency_id).debit)?;
 
 				// issue debit with collateral backed by cdp treasury
 				T::CDPTreasury::issue_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)), true)?;
@@ -274,24 +270,33 @@ impl<T: Trait> Module<T> {
 			Ok(())
 		})?;
 
-		TotalCollaterals::try_mutate(currency_id, |c| -> DispatchResult {
-			*c = if collateral_adjustment.is_positive() {
-				c.checked_add(collateral_balance).ok_or(Error::<T>::CollateralOverflow)
+		TotalPositions::try_mutate(currency_id, |total_positions| -> DispatchResult {
+			total_positions.collateral = if collateral_adjustment.is_positive() {
+				total_positions
+					.collateral
+					.checked_add(collateral_balance)
+					.ok_or(Error::<T>::CollateralOverflow)
 			} else {
-				c.checked_sub(collateral_balance).ok_or(Error::<T>::CollateralTooLow)
+				total_positions
+					.collateral
+					.checked_sub(collateral_balance)
+					.ok_or(Error::<T>::CollateralTooLow)
 			}?;
-			Ok(())
-		})?;
-		TotalDebits::try_mutate(currency_id, |d| -> DispatchResult {
-			*d = if debit_adjustment.is_positive() {
-				d.checked_add(debit_balance).ok_or(Error::<T>::DebitOverflow)
-			} else {
-				d.checked_sub(debit_balance).ok_or(Error::<T>::DebitTooLow)
-			}?;
-			Ok(())
-		})?;
 
-		Ok(())
+			total_positions.debit = if debit_adjustment.is_positive() {
+				total_positions
+					.debit
+					.checked_add(debit_balance)
+					.ok_or(Error::<T>::DebitOverflow)
+			} else {
+				total_positions
+					.debit
+					.checked_sub(debit_balance)
+					.ok_or(Error::<T>::DebitTooLow)
+			}?;
+
+			Ok(())
+		})
 	}
 }
 

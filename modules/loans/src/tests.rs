@@ -53,8 +53,8 @@ fn adjust_position_should_work() {
 
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
-		assert_eq!(LoansModule::total_debits(BTC), 0);
-		assert_eq!(LoansModule::total_collaterals(BTC), 0);
+		assert_eq!(LoansModule::total_positions(BTC).debit, 0);
+		assert_eq!(LoansModule::total_positions(BTC).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
@@ -63,8 +63,8 @@ fn adjust_position_should_work() {
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 500, 300));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 500);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 500);
-		assert_eq!(LoansModule::total_debits(BTC), 300);
-		assert_eq!(LoansModule::total_collaterals(BTC), 500);
+		assert_eq!(LoansModule::total_positions(BTC).debit, 300);
+		assert_eq!(LoansModule::total_positions(BTC).collateral, 500);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 300);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
@@ -81,16 +81,16 @@ fn update_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
-		assert_eq!(LoansModule::total_debits(BTC), 0);
-		assert_eq!(LoansModule::total_collaterals(BTC), 0);
+		assert_eq!(LoansModule::total_positions(BTC).debit, 0);
+		assert_eq!(LoansModule::total_positions(BTC).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
 
 		assert_ok!(LoansModule::update_loan(&ALICE, BTC, 3000, 2000));
 
 		// just update records
-		assert_eq!(LoansModule::total_debits(BTC), 2000);
-		assert_eq!(LoansModule::total_collaterals(BTC), 3000);
+		assert_eq!(LoansModule::total_positions(BTC).debit, 2000);
+		assert_eq!(LoansModule::total_positions(BTC).collateral, 3000);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 2000);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 3000);
 

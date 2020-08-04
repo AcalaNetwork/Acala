@@ -192,7 +192,7 @@ decl_module! {
 					);
 					// there's on debit in CDP
 					ensure!(
-						<loans::Module<T>>::total_debits(currency_id).is_zero(),
+						<loans::Module<T>>::total_positions(currency_id).debit.is_zero(),
 						Error::<T>::ExistUnhandledDebit,
 					);
 				}
