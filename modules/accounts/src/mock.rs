@@ -41,7 +41,7 @@ impl_outer_dispatch! {
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
-		system<T>,
+		frame_system<T>,
 		orml_tokens<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
@@ -56,7 +56,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl system::Trait for Runtime {
+impl frame_system::Trait for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -81,6 +81,7 @@ impl system::Trait for Runtime {
 	type ExtrinsicBaseWeight = ();
 	type MaximumExtrinsicWeight = ();
 	type BaseCallFilter = ();
+	type SystemWeightInfo = ();
 }
 pub type System = frame_system::Module<Runtime>;
 
@@ -103,6 +104,7 @@ impl pallet_balances::Trait for Runtime {
 	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = Accounts;
+	type WeightInfo = ();
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
@@ -129,6 +131,7 @@ impl pallet_timestamp::Trait for Runtime {
 	type Moment = Moment;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
 }
 pub type TimeModule = pallet_timestamp::Module<Runtime>;
 
@@ -227,8 +230,8 @@ impl Trait for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Currencies;
 	type DEX = DEXModule;
-	type OnCreatedAccount = system::CallOnCreatedAccount<Runtime>;
-	type KillAccount = system::CallKillAccount<Runtime>;
+	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
+	type KillAccount = frame_system::CallKillAccount<Runtime>;
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = TreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
@@ -249,7 +252,9 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![(ALICE, 100000 + NewAccountDeposit::get())],

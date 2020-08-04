@@ -1,67 +1,83 @@
 use crate::executor::Executor;
+use crate::service::new_full_params;
 use crate::{
 	chain_spec,
 	cli::{Cli, Subcommand},
 	service,
 };
 use runtime::{Block, RuntimeApi};
-use sc_cli::{Result, SubstrateCli};
-use sc_finality_grandpa as grandpa;
+use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
+use sc_service::ServiceParams;
 
 impl SubstrateCli for Cli {
-	fn impl_name() -> &'static str {
-		"Acala Node"
+	fn impl_name() -> String {
+		"Acala Node".into()
 	}
 
-	fn impl_version() -> &'static str {
-		env!("CARGO_PKG_VERSION")
+	fn impl_version() -> String {
+		env!("CARGO_PKG_VERSION").into()
 	}
 
-	fn description() -> &'static str {
-		env!("CARGO_PKG_DESCRIPTION")
+	fn description() -> String {
+		env!("CARGO_PKG_DESCRIPTION").into()
 	}
 
-	fn author() -> &'static str {
-		"Acala Developers"
+	fn author() -> String {
+		"Acala Developers".into()
 	}
 
-	fn support_url() -> &'static str {
-		"https://github.com/AcalaNetwork/Acala/issues"
+	fn support_url() -> String {
+		"https://github.com/AcalaNetwork/Acala/issues".into()
 	}
 
 	fn copyright_start_year() -> i32 {
 		2020
 	}
 
-	fn executable_name() -> &'static str {
-		"acala"
-	}
-
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		Ok(match id {
-			"dev" => Box::new(chain_spec::development_testnet_config()),
-			"local" => Box::new(chain_spec::local_testnet_config()),
+			"dev" => Box::new(chain_spec::development_testnet_config()?),
+			"local" => Box::new(chain_spec::local_testnet_config()?),
 			"" | "mandala" => Box::new(chain_spec::mandala_testnet_config()?),
-			"mandala-latest" => Box::new(chain_spec::latest_mandala_testnet_config()),
+			"mandala-latest" => Box::new(chain_spec::latest_mandala_testnet_config()?),
 			path => Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
 		})
+	}
+
+	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
+		&runtime::VERSION
 	}
 }
 
 /// Parse command line arguments into service configuration.
-pub fn run() -> Result<()> {
+pub fn run() -> sc_cli::Result<()> {
 	let cli = Cli::from_args();
 
 	match &cli.subcommand {
 		None => {
 			let runner = cli.create_runner(&cli.run)?;
-			runner.run_node(service::new_light, service::new_full, runtime::VERSION)
+			runner.run_node_until_exit(|config| match config.role {
+				Role::Light => service::new_light(config),
+				_ => service::new_full(config),
+			})
 		}
 
 		Some(Subcommand::Base(subcommand)) => {
 			let runner = cli.create_runner(subcommand)?;
 
-			runner.run_subcommand(subcommand, |config| Ok(new_full_start!(config).0))
+			runner.run_subcommand(subcommand, |config| {
+				let (
+					ServiceParams {
+						client,
+						backend,
+						task_manager,
+						import_queue,
+						..
+					},
+					..,
+				) = new_full_params(config)?;
+				Ok((client, backend, import_queue, task_manager))
+			})
 		}
 
 		Some(Subcommand::Inspect(cmd)) => {

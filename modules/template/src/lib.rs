@@ -1,13 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use support::{decl_event, decl_module, decl_storage, traits::Currency};
+use frame_support::{decl_event, decl_module, decl_storage, traits::Currency};
 
-pub trait Trait: system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Trait: frame_system::Trait {
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 	type Currency: Currency<Self::AccountId>;
 }
 
-type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Template {
@@ -17,7 +17,7 @@ decl_storage! {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as system::Trait>::AccountId,
+		<T as frame_system::Trait>::AccountId,
 		Balance = BalanceOf<T>,
 	{
 		Dummy(AccountId, Balance),
