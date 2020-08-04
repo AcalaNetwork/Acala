@@ -422,7 +422,7 @@ decl_module! {
 				for currency_id in T::CollateralCurrencyIds::get() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
 					let stability_fee_rate = Self::get_stability_fee(currency_id);
-					let total_debits = <LoansOf<T>>::total_debits(currency_id);
+					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
 					if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
 						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
 						let total_debit_value = Self::get_debit_value(currency_id, total_debits);
