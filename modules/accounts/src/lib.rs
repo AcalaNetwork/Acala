@@ -202,6 +202,24 @@ decl_module! {
 				<T as Trait>::Currency::unreserve(native_currency_id, &who, total_reserved_native);
 
 				// The reserved exclude `NewAccountDeposit` should be refund to `TreasuryModuleId`.
+				//
+				// REVIEW: This will not refund the account deposit in case the reserved is less
+				//         than the deposit. I would assume that you want to transfer as much as
+				//         possible up to the deposit.
+				//
+				// Current flow in pseudo code:
+				// ```
+				// unreserve(total_reserved)
+				// if (enough_reserved) { return_deposit() }
+				// transfer(recipient, remaining_balance)
+				// ```
+				//
+				// Flow that I would expect you to want:
+				// ```
+				// repatriate_reserved(account_deposit)
+				// unreserve(total_remaining_reserved)
+				// transfer(recipient, remaining_balance)
+				// ```
 				if let Some(refund_to_treasury_reserved) = total_reserved_native.checked_sub(T::NewAccountDeposit::get()) {
 					// transfer refund to treasury separately if recipient is not specified.
 					if treasury_account != recipient {
@@ -216,6 +234,7 @@ decl_module! {
 				for currency_id in T::AllNonNativeCurrencyIds::get() {
 					let reserved = <T as Trait>::Currency::reserved_balance(currency_id, &who);
 					if !reserved.is_zero() {
+						// REVIEW: This branch should be equivalent to `repatriate_reserved(reserved)`.
 						// unreserve all reserved
 						<T as Trait>::Currency::unreserve(currency_id, &who, reserved);
 
