@@ -42,7 +42,7 @@ use sp_std::{
 	cmp::{Eq, PartialEq},
 	prelude::*,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, PriceProvider, Rate};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate};
 use utilities::OffchainErr;
 
 mod mock;
@@ -139,6 +139,9 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 	/// This is exposed so that it can be tuned for particular runtime, when
 	/// multiple modules send unsigned transactions.
 	type UnsignedPriority: Get<TransactionPriority>;
+
+	/// Emergency shutdown.
+	type EmergencyShutdown: EmergencyShutdown;
 }
 
 decl_event!(
@@ -210,9 +213,6 @@ decl_storage! {
 
 		/// Record of total surplus amount of all active surplus auctions
 		pub TotalSurplusInAuction get(fn total_surplus_in_auction): Balance;
-
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -270,7 +270,7 @@ decl_module! {
 		pub fn cancel(origin, id: AuctionId) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;
-				ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+				ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 				<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
 				<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
 				Ok(())
@@ -279,7 +279,7 @@ decl_module! {
 
 		/// Start offchain worker in order to submit unsigned tx to cancel active auction after system shutdown.
 		fn offchain_worker(now: T::BlockNumber) {
-			if Self::is_shutdown() && sp_io::offchain::is_validator() {
+			if T::EmergencyShutdown::is_shutdown() && sp_io::offchain::is_validator() {
 				if let Err(e) = Self::_offchain_worker() {
 					debug::info!(
 						target: "auction-manager offchain worker",
@@ -1002,19 +1002,13 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	}
 }
 
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		IsShutdown::put(true);
-	}
-}
-
 #[allow(deprecated)]
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		if let Call::cancel(auction_id) = call {
-			if !Self::is_shutdown() {
+			if !T::EmergencyShutdown::is_shutdown() {
 				return InvalidTransaction::Stale.into();
 			}
 

@@ -4,12 +4,12 @@
 
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_oracle::DefaultCombineData;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
-	traits::IdentityLookup,
+	traits::{Convert, IdentityLookup},
 	ModuleId,
 };
 use sp_std::vec;
@@ -136,6 +136,7 @@ impl auction_manager::Trait for Runtime {
 	type DEX = ();
 	type PriceSource = prices::Module<Runtime>;
 	type UnsignedPriority = UnsignedPriority;
+	type EmergencyShutdown = EmergencyShutdownModule;
 }
 pub type AuctionManagerModule = auction_manager::Module<Runtime>;
 
@@ -168,6 +169,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = EmergencyShutdownModule;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -222,6 +224,40 @@ impl prices::Trait for Runtime {
 	type LockOrigin = EnsureSignedBy<One, AccountId>;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 }
+
+pub struct MockConvert;
+impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
+	fn convert(a: (CurrencyId, Balance)) -> Balance {
+		a.1.into()
+	}
+}
+
+parameter_types! {
+	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
+}
+
+impl loans::Trait for Runtime {
+	type Event = ();
+	type Convert = MockConvert;
+	type Currency = Tokens;
+	type RiskManager = ();
+	type CDPTreasury = CDPTreasuryModule;
+	type ModuleId = LoansModuleId;
+}
+
+parameter_types! {
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::XBTC, CurrencyId::DOT];
+}
+
+impl emergency_shutdown::Trait for Runtime {
+	type Event = ();
+	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type PriceSource = prices::Module<Runtime>;
+	type CDPTreasury = CDPTreasuryModule;
+	type AuctionManagerHandler = AuctionManagerModule;
+	type ShutdownOrigin = EnsureRoot<AccountId>;
+}
+pub type EmergencyShutdownModule = emergency_shutdown::Module<Runtime>;
 
 impl crate::Trait for Runtime {}
 
