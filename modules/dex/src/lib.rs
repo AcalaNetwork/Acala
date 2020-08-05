@@ -169,12 +169,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: LiquidityIncentiveRate
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 3.591 µs
+		/// Base Weight: 24.92 µs
 		/// # </weight>
-		#[weight = (4 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
+		#[weight = (25 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_liquidity_incentive_rate(
 			origin,
 			currency_id: CurrencyId,
@@ -197,12 +197,12 @@ decl_module! {
 		/// 	- T::Currency is orml_currencies
 		///		- T::CDPTreasury is module_cdp_treasury
 		/// - Complexity: `O(1)`
-		/// - Db reads: `WithdrawnInterest`, `TotalWithdrawnInterest`, 2 items of orml_currencies
-		/// - Db writes: `WithdrawnInterest`, `TotalWithdrawnInterest`, 2 items of orml_currencies
+		/// - Db reads: 8
+		/// - Db writes: 4
 		/// -------------------
-		/// Base Weight: 38.4 µs
+		/// Base Weight: 143.4 µs
 		/// # </weight>
-		#[weight = 39 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
+		#[weight = 143 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(8, 4)]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -223,20 +223,20 @@ decl_module! {
 		/// 	- T::Currency is orml_currencies
 		/// - Complexity: `O(1)`
 		/// - Db reads:
-		///		- swap other to base: 1 * `LiquidityPool`, 4 items of orml_currencies
-		///		- swap base to other: 1 * `LiquidityPool`, 4 items of orml_currencies
-		///		- swap other to other: 2 * `LiquidityPool`, 4 items of orml_currencies
+		///		- swap base to other: 8
+		///		- swap other to base: 8
+		///		- swap other to other: 9
 		/// - Db writes:
-		///		- swap other to base: 1 * `LiquidityPool`, 4 items of orml_currencies
-		///		- swap base to other: 1 * `LiquidityPool`, 4 items of orml_currencies
-		///		- swap other to other: 2 * `LiquidityPool`, 4 items of orml_currencies
+		///		- swap base to other: 5
+		///		- swap other to base: 5
+		///		- swap other to other: 6
 		/// -------------------
 		/// Base Weight:
-		///		- swap base to other: 47.81 µs
-		///		- swap other to base: 42.57 µs
-		///		- swap other to other: 54.77 µs
+		///		- swap base to other: 192.1 µs
+		///		- swap other to base: 175.8 µs
+		///		- swap other to other: 199.7 µs
 		/// # </weight>
-		#[weight = 55 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(6, 6)]
+		#[weight = 200 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 6)]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyId,
@@ -264,17 +264,17 @@ decl_module! {
 		/// 	- T::Currency is orml_currencies
 		/// - Complexity: `O(1)`
 		/// - Db reads:
-		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
-		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		///		- best case: 9
+		///		- worst case: 10
 		/// - Db writes:
-		///		- best case: `TotalShares`, `LiquidityPool`, `Shares`, 4 items of orml_currencies
-		///		- worst case: `TotalShares`, `LiquidityPool`, `Shares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		///		- best case: 7
+		///		- worst case: 9
 		/// -------------------
 		/// Base Weight:
-		///		- best case: 49.04 µs
-		///		- worst case: 57.72 µs
+		///		- best case: 177.6 µs
+		///		- worst case: 205.7 µs
 		/// # </weight>
-		#[weight = 58 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(8, 9)]
+		#[weight = 206 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 9)]
 		pub fn add_liquidity(
 			origin,
 			other_currency_id: CurrencyId,
@@ -360,14 +360,14 @@ decl_module! {
 		/// - Preconditions:
 		/// 	- T::Currency is orml_currencies
 		/// - Complexity: `O(1)`
-		/// - Db reads: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
-		/// - Db writes: `Shares`, `LiquidityPool`, `TotalShares`, `WithdrawnInterest`, `TotalInterest`, 4 items of orml_currencies
+		/// - Db reads: 11
+		/// - Db writes: 9
 		/// -------------------
 		/// Base Weight:
-		///		- best case: 66.59 µs
-		///		- worst case: 71.18 µs
+		///		- best case: 240.1 µs
+		///		- worst case: 248.2 µs
 		/// # </weight>
-		#[weight = 72 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9)]
+		#[weight = 248 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(11, 9)]
 		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -414,7 +414,7 @@ decl_module! {
 		///	- Db writes: `TotalInterest`, 2 items in cdp_treasury
 		/// - Db reads per currency_id: , `LiquidityPool`, `LiquidityIncentiveRate`
 		/// -------------------
-		/// Base Weight: 35.45 * N µs
+		/// Base Weight: 79.58 * N µs
 		/// # </weight>
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			let mut consumed_weight = 0;
@@ -427,7 +427,7 @@ decl_module! {
 				add_weight(4, 3, 0);
 				for currency_id in T::EnabledCurrencyIds::get() {
 					Self::accumulate_interest(currency_id);
-					add_weight(2, 0, 36_000_000);
+					add_weight(2, 0, 80_000_000);
 				}
 			}
 			consumed_weight
