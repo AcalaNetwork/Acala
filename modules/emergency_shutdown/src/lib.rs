@@ -111,10 +111,10 @@ decl_module! {
 		/// - Db reads: `IsShutdown`, (length of collateral_ids) items in modules related to module_emergency_shutdown
 		/// - Db writes: `IsShutdown`, (4 + length of collateral_ids) items in modules related to module_emergency_shutdown
 		/// -------------------
-		/// Base Weight: 47.4 µs
+		/// Base Weight: 148.3 µs
 		/// # </weight>
 		#[weight = (
-			48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
+			148 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
 				1 + (T::CollateralCurrencyIds::get().len() as u64),
 				5 + (T::CollateralCurrencyIds::get().len() as u64),
 			),
@@ -152,10 +152,10 @@ decl_module! {
 		/// - Db reads: `IsShutdown`, (2 + 2 * length of collateral_ids) items in modules related to module_emergency_shutdown
 		/// - Db writes: `CanRefund`
 		/// -------------------
-		/// Base Weight: 47.4 µs
+		/// Base Weight: 71.8 µs
 		/// # </weight>
 		#[weight = (
-			48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
+			72 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
 				2 + 2 * (T::CollateralCurrencyIds::get().len() as u64),
 				1,
 			),
@@ -211,9 +211,9 @@ decl_module! {
 		/// - Db reads: `CanRefund`, (2 + 3 * length of collateral_ids) items in modules related to module_emergency_shutdown
 		/// - Db writes: (3 * length of collateral_ids) items in modules related to module_emergency_shutdown
 		/// -------------------
-		/// Base Weight: 95.86 µs
+		/// Base Weight: 455.1 µs
 		/// # </weight>
-		#[weight = 96 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
+		#[weight = 455 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
 			3 + 3 * (T::CollateralCurrencyIds::get().len() as u64),
 			3 * (T::CollateralCurrencyIds::get().len() as u64)
 		)]

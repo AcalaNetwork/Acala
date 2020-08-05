@@ -166,12 +166,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `SurplusAuctionFixedSize`, `SurplusBufferSize`, `InitialAmountPerDebitAuction`, `DebitAuctionFixedSize`
+		/// - Db reads: 1
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 20.18 µs
+		/// Base Weight: 63.48 µs
 		/// # </weight>
-		#[weight = (20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 4), DispatchClass::Operational)]
+		#[weight = (64 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 4), DispatchClass::Operational)]
 		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<Balance>,
@@ -212,10 +212,10 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `CollateralAuctionMaximumSize`
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 15.59 µs
+		/// Base Weight: 24.64 µs
 		/// # </weight>
 		#[weight = (16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {

@@ -272,17 +272,17 @@ decl_module! {
 		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
 		/// - Db reads:
-		///		- liquidate by auction: `IsShutdown`, (4 + 2 + 3 + 2 + 1 + 3 + 2) items of modules related to module_cdp_engine
-		///		- liquidate by dex: `IsShutdown`, (4 + 5 + 3 + 2 + 2 + 0 + 2) items of modules related to module_cdp_engine
+		///		- liquidate by auction: 19
+		///		- liquidate by dex: 19
 		/// - Db writes:
-		///		- liquidate by auction: (4 + 2 + 0 + 2 + 0 + 5) items of modules related to module_cdp_engine
-		///		- liquidate by dex: (4 + 5 + 0 + 2 + 1 + 0) items of modules related to module_cdp_engine
+		///		- liquidate by auction: 14
+		///		- liquidate by dex: 14
 		/// -------------------
 		/// Base Weight:
-		///		- liquidate by auction: 119.4 µs
-		///		- liquidate by dex: 125.1 µs
+		///		- liquidate by auction: 200.1 µs
+		///		- liquidate by dex: 325.3 µs
 		/// # </weight>
-		#[weight = (125 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(18, 13), DispatchClass::Operational)]
+		#[weight = (325 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(19, 14), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -308,12 +308,12 @@ decl_module! {
 		/// 	- T::CDPTreasury is module_cdp_treasury
 		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
-		/// - Db reads: `IsShutdown`, 9 items of modules related to module_cdp_engine
-		/// - Db writes: 8 items of modules related to module_cdp_engine
+		/// - Db reads: 10
+		/// - Db writes: 6
 		/// -------------------
-		/// Base Weight: 76.54 µs
+		/// Base Weight: 161.5 µs
 		/// # </weight>
-		#[weight = (77 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 8), DispatchClass::Operational)]
+		#[weight = (162 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 6), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -335,12 +335,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `GlobalStabilityFee`
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 21.04 µs
+		/// Base Weight: 24.16 µs
 		/// # </weight>
-		#[weight = (21 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
+		#[weight = (24 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -366,12 +366,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:	`CollateralParams`
-		/// - Db writes: `CollateralParams`
+		/// - Db reads:	1
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 32.81 µs
+		/// Base Weight: 76.08 µs
 		/// # </weight>
-		#[weight = (33 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1), DispatchClass::Operational)]
+		#[weight = (76 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1), DispatchClass::Operational)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,

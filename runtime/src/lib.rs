@@ -1367,7 +1367,7 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
 
-			add_benchmark!(params, batches, auction_manager_dex, Dex);
+			add_benchmark!(params, batches, dex, Dex);
 			add_benchmark!(params, batches, cdp_treasury, CdpTreasury);
 			add_benchmark!(params, batches, honzon, HonzonBench::<Runtime>);
 			add_benchmark!(params, batches, cdp_engine, CdpEngineBench::<Runtime>);
