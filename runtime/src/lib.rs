@@ -60,6 +60,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use constants::{currency::*, time::*};
+pub use module_cdp_treasury::SurplusDebitAuctionConfig;
 pub use types::*;
 
 mod benchmarking;
