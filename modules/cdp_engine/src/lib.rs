@@ -272,17 +272,17 @@ decl_module! {
 		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
 		/// - Db reads:
-		///		- liquidate by auction: `IsShutdown`, (4 + 2 + 3 + 2 + 1 + 3 + 2) items of modules related to module_cdp_engine
-		///		- liquidate by dex: `IsShutdown`, (4 + 5 + 3 + 2 + 2 + 0 + 2) items of modules related to module_cdp_engine
+		///		- liquidate by auction: 19
+		///		- liquidate by dex: 19
 		/// - Db writes:
-		///		- liquidate by auction: 20
-		///		- liquidate by dex: 15
+		///		- liquidate by auction: 14
+		///		- liquidate by dex: 14
 		/// -------------------
 		/// Base Weight:
 		///		- liquidate by auction: 200.1 µs
 		///		- liquidate by dex: 325.3 µs
 		/// # </weight>
-		#[weight = (325 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(20, 15), DispatchClass::Operational)]
+		#[weight = (325 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(19, 14), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -308,12 +308,12 @@ decl_module! {
 		/// 	- T::CDPTreasury is module_cdp_treasury
 		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
-		/// - Db reads: 13
-		/// - Db writes: 7
+		/// - Db reads: 10
+		/// - Db writes: 6
 		/// -------------------
-		/// Base Weight: 76.54 µs
+		/// Base Weight: 161.5 µs
 		/// # </weight>
-		#[weight = (77 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(13, 7), DispatchClass::Operational)]
+		#[weight = (162 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 6), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
