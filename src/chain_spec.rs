@@ -6,8 +6,8 @@ use runtime::{
 	BalancesConfig, Block, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
 	GenesisConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
 	NewAccountDeposit, OperatorMembershipConfig, OracleConfig, OracleId, PolkadotBridgeConfig, SessionConfig,
-	Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig,
-	VestingConfig, CENTS, DOLLARS, WASM_BINARY,
+	Signature, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig, SystemConfig,
+	TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -340,10 +340,12 @@ fn testnet_genesis(
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
-			surplus_buffer_size: 10_000 * DOLLARS,       // cache amount, exceed this will create surplus auction
-			initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
-			debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
+			auction_config: SurplusDebitAuctionConfig {
+				surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
+				surplus_buffer_size: 10_000 * DOLLARS,       // cache amount, exceed this will create surplus auction
+				initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
+				debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
+			},
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, DOLLARS),
@@ -489,10 +491,12 @@ fn mandala_genesis(
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			surplus_auction_fixed_size: 100 * DOLLARS, // amount in aUSD of per surplus auction
-			surplus_buffer_size: 1_000 * DOLLARS,      // cache amount, exceed this will create surplus auction
-			initial_amount_per_debit_auction: 20 * DOLLARS, // initial bid amount in ACA of per debit auction
-			debit_auction_fixed_size: 1_000 * DOLLARS, // amount in debit(aUSD) of per debit auction
+			auction_config: SurplusDebitAuctionConfig {
+				surplus_auction_fixed_size: 100 * DOLLARS, // amount in aUSD of per surplus auction
+				surplus_buffer_size: 1_000 * DOLLARS,      // cache amount, exceed this will create surplus auction
+				initial_amount_per_debit_auction: 20 * DOLLARS, // initial bid amount in ACA of per debit auction
+				debit_auction_fixed_size: 1_000 * DOLLARS, // amount in debit(aUSD) of per debit auction
+			},
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, 5 * CENTS),
