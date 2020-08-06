@@ -303,6 +303,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel(auction_id);
+		// REVIEW: Somewhat surprising that you are not interested in the error when logging.
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::info!(
 				target: "auction-manager offchain worker",
@@ -327,6 +328,8 @@ impl<T: Trait> Module<T> {
 		match rng.pick_u32(2) {
 			0 => {
 				for (debit_auction_id, _) in <DebitAuctions<T>>::iter() {
+					// REVIEW: Seems plausible to me that you can do one cancel in 100ms, but have
+					//         you tested?
 					Self::submit_cancel_auction_tx(debit_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
@@ -460,6 +463,8 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn collateral_auction_in_reverse_stage(id: AuctionId) -> bool {
+		// REVIEW: Tuple destructuring does not short-circuit so this might do more database calls
+		//         than strictly necessary. Consider splitting into 2 if-let expressions.
 		if let (
 			Some(CollateralAuctionItem { target, .. }),
 			Some(AuctionInfo {
@@ -993,6 +998,8 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
 		if <CollateralAuctions<T>>::contains_key(id) {
 			Self::cancel_collateral_auction(id)
+		// REVIEW: nit pick, but both this and the surplus cancel could be rewritten to be
+		//         `if let Some(auction_item) = <Auction<T>::take(id)` to avoid the extra `contains_key`
 		} else if <DebitAuctions<T>>::contains_key(id) {
 			Self::cancel_debit_auction(id)
 		} else if <SurplusAuctions<T>>::contains_key(id) {
