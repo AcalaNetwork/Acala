@@ -1006,10 +1006,10 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
 		if <CollateralAuctions<T>>::contains_key(id) {
 			Self::cancel_collateral_auction(id)
-		// REVIEW: nit pick, but both this and the surplus cancel could be 
-		//         rewritten to be 
+		// REVIEW: nit pick, but both this and the surplus cancel could be
+		//         rewritten to be
 		//         `if let Some(auction_item) = <Auction<T>::take(id)`
-		//         to avoid the extra `contains_key`.
+		//         to avoid the extra `contains_key`
 		} else if <DebitAuctions<T>>::contains_key(id) {
 			Self::cancel_debit_auction(id)
 		} else if <SurplusAuctions<T>>::contains_key(id) {

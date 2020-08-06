@@ -266,7 +266,7 @@ impl<T: Trait> Module<T> {
 	/// Try free transfer, if can transfer for free this time, record this
 	/// moment
 	// REVIEW: Based on the name I would expect this to actually trigger a transfer
-	//         (if the transfer is possible). Consider a new name like 
+	//         (if the transfer is possible). Consider a new name like
 	//         `try_record_free_transfer`.
 	pub fn try_free_transfer(who: &T::AccountId) -> bool {
 		let mut last_free_transfer = Self::last_free_transfers(who);
@@ -306,7 +306,7 @@ impl<T: Trait> Module<T> {
 			if *k != treasury_account {
 				// send dust native currency to treasury account
 				// REVIEW: IIUC the account could have lots of reserved balance, just not any
-				//         free balance and thus should maybe not be considered dust just based 
+				//         free balance and thus should maybe not be considered dust just based
 				//         on the reserving failing?
 				let _ = <T as Trait>::Currency::transfer(
 					native_currency_id,
