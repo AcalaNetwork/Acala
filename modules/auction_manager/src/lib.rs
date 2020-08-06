@@ -524,6 +524,7 @@ impl<T: Trait> Module<T> {
 	/// if bid accepted.
 	///
 	/// Ensured atomic.
+	// REVIEW: nit-pick: Consider reifying bid as a struct instead of a tuple.
 	pub fn collateral_auction_bid_handler(
 		now: T::BlockNumber,
 		id: AuctionId,
@@ -531,7 +532,7 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		let (new_bidder, new_bid_price) = new_bid;
-		// REVIEW: nit-pick: `new_bid_price` could be checked here and thus reduce DB accesses
+		// REVIEW: `new_bid_price` could be checked here and thus reduce DB accesses
 		//         for that case by failing fast.
 		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
 
@@ -557,6 +558,9 @@ impl<T: Trait> Module<T> {
 					let mut payment = if collateral_auction.target.is_zero() {
 						new_bid_price
 					} else {
+						// REVIEW: It seems that this could invalidate the `check_minimum_increment`
+						//         if `new_bid_price` is higher than the target.
+						//         --> Add a check that `payment` is not equal to `last_bid_price`?
 						sp_std::cmp::min(collateral_auction.target, new_bid_price)
 					};
 
