@@ -176,6 +176,7 @@ decl_error! {
 		/// The collateral auction is in reverse stage now
 		InReverseStage,
 		/// Feed price is invalid
+		// REVIEW: No tests for errors below.
 		InvalidFeedPrice,
 		/// Must after system shutdown
 		MustAfterShutdown,
