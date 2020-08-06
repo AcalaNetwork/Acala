@@ -530,24 +530,27 @@ impl<T: Trait> Module<T> {
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+		let (new_bidder, new_bid_price) = new_bid;
+		// REVIEW: nit-pick: `new_bid_price` could be checked here and thus reduce DB accesses
+		//         for that case by failing fast.
+		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
+
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 			// use `with_transaction_result` to ensure operation is atomic
 			<CollateralAuctions<T>>::try_mutate_exists(
 				id,
 				|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 					let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
-					let (new_bidder, new_bid_price) = new_bid;
 					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 
 					// ensure new bid price is valid
 					ensure!(
-						!new_bid_price.is_zero()
-							&& Self::check_minimum_increment(
-								new_bid_price,
-								last_bid_price,
-								collateral_auction.target,
-								Self::get_minimum_increment_size(now, collateral_auction.start_time),
-							),
+						Self::check_minimum_increment(
+							new_bid_price,
+							last_bid_price,
+							collateral_auction.target,
+							Self::get_minimum_increment_size(now, collateral_auction.start_time),
+						),
 						Error::<T>::InvalidBidPrice
 					);
 
