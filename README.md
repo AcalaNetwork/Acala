@@ -13,7 +13,6 @@
 [![Riot.im](https://img.shields.io/badge/Riot.im-gray?logo=riot)](https://riot.im/app/#/room/#acala:matrix.org)
 [![Discord](https://img.shields.io/badge/Discord-gray?logo=discord)](https://discord.gg/vdbFVCH)
 [![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/AcalaOfficial)
-[![Discourse](https://img.shields.io/badge/Discourse-gray?logo=discourse)](https://acala.discourse.group/)
 [![Medium](https://img.shields.io/badge/Medium-gray?logo=medium)](https://medium.com/acalanetwork)
 
 </div>
