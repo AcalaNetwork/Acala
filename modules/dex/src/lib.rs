@@ -425,11 +425,19 @@ decl_module! {
 
 			if !T::EmergencyShutdown::is_shutdown() {
 				add_weight(4, 3, 0);
+				let mut accumulated_interest: Balance = Zero::zero();
+
+				// accumulate interest
 				for currency_id in T::EnabledCurrencyIds::get() {
-					Self::accumulate_interest(currency_id);
+					let interest_to_issue = Self::accumulate_interest(currency_id);
+					accumulated_interest = accumulated_interest.saturating_add(interest_to_issue);
 					add_weight(2, 0, 80_000_000);
 				}
+
+				// issue aUSD as interest, ignore result
+				let _ = T::CDPTreasury::issue_debit(&Self::account_id(), accumulated_interest, false);
 			}
+
 			consumed_weight
 		}
 	}
@@ -832,18 +840,17 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn accumulate_interest(currency_id: CurrencyId) {
+	fn accumulate_interest(currency_id: CurrencyId) -> Balance {
 		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
 		let interest_to_increase = Self::liquidity_incentive_rate(currency_id).saturating_mul_int(base_currency_pool);
 
 		if !interest_to_increase.is_zero() {
-			// issue aUSD as interest
-			if T::CDPTreasury::issue_debit(&Self::account_id(), interest_to_increase, false).is_ok() {
-				TotalInterest::mutate(currency_id, |(total_interest, _)| {
-					*total_interest = total_interest.saturating_add(interest_to_increase);
-				});
-			}
+			TotalInterest::mutate(currency_id, |(total_interest, _)| {
+				*total_interest = total_interest.saturating_add(interest_to_increase);
+			});
 		}
+
+		interest_to_increase
 	}
 }
 
