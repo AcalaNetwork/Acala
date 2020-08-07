@@ -65,6 +65,9 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// Target sales amount of this auction
 	/// if zero, collateral auction will never be reverse stage,
 	/// otherwise, target amount is the actual payment amount of active bidder
+	// REVIEW: I wonder whether you should model an auction without a target more
+	//         explicitly so that it's less likely that you will forgot to branch
+	//         on `target.is_zero()`.
 	#[codec(compact)]
 	target: Balance,
 	/// Auction start time
@@ -570,15 +573,20 @@ impl<T: Trait> Module<T> {
 
 					// if there's bid before, return stablecoin from new bidder to last bidder
 					if let Some((last_bidder, _)) = last_bid {
+						// REVIEW: Consider extracting this logic out into a function to make sure
+						//         that it is executed the same between `new_bid_price` and
+						//         `last_bid_price`. E.g. `auction.determine_transfer(price)`
 						let refund = if collateral_auction.target.is_zero() {
 							last_bid_price
 						} else {
 							sp_std::cmp::min(last_bid_price, collateral_auction.target)
 						};
 						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, &last_bidder, refund)?;
+						// REVIEW: The expect message is not quite accurate, it should be
+						//         "new bid payment greater or equal to last bid payment"
 						payment = payment
 							.checked_sub(refund)
-							.expect("new bid price greater than last bid; qed");
+							.expect("new bid payment greater or equal to last bid payment; qed");
 
 						// decrease account ref of last bidder
 						system::Module::<T>::dec_ref(&last_bidder);
@@ -1026,6 +1034,7 @@ impl<T: Trait> OnEmergencyShutdown for Module<T> {
 	}
 }
 
+// REVIEW: This annotation should be fine to remove.
 #[allow(deprecated)]
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
