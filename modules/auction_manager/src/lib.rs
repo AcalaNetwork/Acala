@@ -1067,6 +1067,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		if let Call::cancel(auction_id) = call {
 			if !Self::is_shutdown() {
+				// REVIEW: Maybe `InvalidTransaction::Call` would be more accurate semantics wise.
 				return InvalidTransaction::Stale.into();
 			}
 
