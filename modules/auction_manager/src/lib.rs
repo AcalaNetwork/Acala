@@ -583,7 +583,9 @@ impl<T: Trait> Module<T> {
 						};
 						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, &last_bidder, refund)?;
 						// REVIEW: The expect message is not quite accurate, it should be
-						//         "new bid payment greater or equal to last bid payment"
+						//         "new bid payment greater or equal to last bid payment".
+						//         Also: The condition for this expect is quite complex. Consider
+						//         adding an `ensure!` here.
 						payment = payment
 							.checked_sub(refund)
 							.expect("new bid payment greater or equal to last bid payment; qed");
@@ -649,6 +651,8 @@ impl<T: Trait> Module<T> {
 					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 					let stable_currency_id = T::GetStableCurrencyId::get();
 
+					// REVIEW: I would tease the two conditions apart, potentially giving them
+					//         separate errors.
 					ensure!(
 						Self::check_minimum_increment(
 							new_bid_price,
@@ -699,10 +703,13 @@ impl<T: Trait> Module<T> {
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+		// REVIEW: Move price check out to avoid DB accesses in error case.
+		let (new_bidder, new_bid_price) = new_bid;
+		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
+
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 			// use `with_transaction_result` to ensure operation is atomic
 			let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExists)?;
-			let (new_bidder, new_bid_price) = new_bid;
 			let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 			let native_currency_id = T::GetNativeCurrencyId::get();
 
@@ -712,7 +719,7 @@ impl<T: Trait> Module<T> {
 					last_bid_price,
 					Zero::zero(),
 					Self::get_minimum_increment_size(now, surplus_auction.start_time),
-				) && !new_bid_price.is_zero(),
+				),
 				Error::<T>::InvalidBidPrice,
 			);
 
@@ -761,10 +768,16 @@ impl<T: Trait> Module<T> {
 					should_deal = false;
 
 					// refund stable currency to the last bidder, ignore result to continue
+					// REVIEW: I am surprised you don't at least log the error here.
+					//         I would suggest adding comments why this is benign and not a problem.
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
+					// REVIEW: Is it intentional that there is a DEX swap but no debit issue when
+					//         the auction target is zero/not set?
 					if !collateral_auction.target.is_zero() && amount > collateral_auction.target {
 						// refund extra stable currency to recipient, ignore result to continue
+						// REVIEW: I am surprised you don't at least log the error here.
+						//         I would suggest adding comments why this is benign and not a problem.
 						let _ = T::CDPTreasury::issue_debit(
 							&collateral_auction.refund_recipient,
 							amount
@@ -785,12 +798,15 @@ impl<T: Trait> Module<T> {
 
 			if should_deal {
 				// transfer collateral to winner from CDP treasury, ignore result to continue
+				// REVIEW: I am surprised you don't at least log the error here.
+				//         I would suggest adding comments why this is benign and not a problem.
 				let _ = T::CDPTreasury::withdraw_collateral(
 					&bidder,
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 				);
 
+				// REVIEW: Consider making this a method on `CollateralAuctionItem`.
 				let payment_amount = if collateral_auction.target.is_zero() {
 					bid_price
 				} else {
@@ -823,6 +839,10 @@ impl<T: Trait> Module<T> {
 			if let Some((bidder, _)) = winner {
 				// issue native token to winner, ignore the result to continue
 				// TODO: transfer from RESERVED TREASURY instead of issuing
+				// REVIEW: Based on the implementation in ORML returning `TotalIssuanceOverflow`
+				//         I am unsure it makes sense to continue here. I would tend to continue
+				//         for cleanup and then deposit a different event that includes the
+				//         error like `DebitAuctionFailed(id, amount, bidder, fix, error)`.
 				let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
 
 				// decrease account ref of winner
@@ -842,6 +862,10 @@ impl<T: Trait> Module<T> {
 				// there's no bidder until auction closed, adjust the native token amount
 				let start_block = <system::Module<T>>::block_number();
 				let end_block = start_block + T::AuctionTimeToClose::get();
+				// REVIEW: Just FYI this `expect` (as well as other similar ones) makes your
+				//         chain vulnerable in case someone finds a way to spam auctions. Of
+				//         course then you will have other problems so it seems fine to resolve
+				//         the trade-off this way.
 				let new_debit_auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
 					.expect("AuctionId is sufficient large so this can never fail");
 				let new_amount = T::GetAmountAdjustment::get().saturating_mul_acc_int(debit_auction.amount);
@@ -915,6 +939,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> 
 	}
 
 	fn on_auction_ended(id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
+		// REVIEW: The auction accesses can be moved here and reduced to one `take(id)`.
 		if <CollateralAuctions<T>>::contains_key(id) {
 			Self::collateral_auction_end_handler(id, winner);
 		} else if <DebitAuctions<T>>::contains_key(id) {
