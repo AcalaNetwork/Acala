@@ -1,13 +1,13 @@
 use crate::executor::Executor;
-use crate::service::new_full_params;
+use crate::service::new_partial;
 use crate::{
 	chain_spec,
 	cli::{Cli, Subcommand},
 	service,
 };
 use runtime::{Block, RuntimeApi};
-use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
-use sc_service::ServiceParams;
+use sc_cli::{ChainSpec, Result, Role, RuntimeVersion, SubstrateCli};
+use sc_service::PartialComponents;
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
@@ -50,7 +50,7 @@ impl SubstrateCli for Cli {
 }
 
 /// Parse command line arguments into service configuration.
-pub fn run() -> sc_cli::Result<()> {
+pub fn run() -> Result<()> {
 	let cli = Cli::from_args();
 
 	match &cli.subcommand {
@@ -61,31 +61,11 @@ pub fn run() -> sc_cli::Result<()> {
 				_ => service::new_full(config),
 			})
 		}
-
-		Some(Subcommand::Base(subcommand)) => {
-			let runner = cli.create_runner(subcommand)?;
-
-			runner.run_subcommand(subcommand, |config| {
-				let (
-					ServiceParams {
-						client,
-						backend,
-						task_manager,
-						import_queue,
-						..
-					},
-					..,
-				) = new_full_params(config)?;
-				Ok((client, backend, import_queue, task_manager))
-			})
-		}
-
 		Some(Subcommand::Inspect(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 
 			runner.sync_run(|config| cmd.run::<Block, RuntimeApi, Executor>(config))
 		}
-
 		Some(Subcommand::Benchmark(cmd)) => {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
@@ -98,6 +78,19 @@ pub fn run() -> sc_cli::Result<()> {
 				);
 				Ok(())
 			}
+		}
+		Some(Subcommand::Base(subcommand)) => {
+			let runner = cli.create_runner(subcommand)?;
+			runner.run_subcommand(subcommand, |config| {
+				let PartialComponents {
+					client,
+					backend,
+					task_manager,
+					import_queue,
+					..
+				} = new_partial(&config)?;
+				Ok((client, backend, import_queue, task_manager))
+			})
 		}
 	}
 }

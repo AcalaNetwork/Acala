@@ -2,16 +2,14 @@
 
 use std::sync::Arc;
 
-use runtime::{
-	opaque::Block, AccountId, Balance, BlockNumber, CurrencyId, Hash, Index, TimeStampedPrice, UncheckedExtrinsic,
-};
+use runtime::{opaque::Block, AccountId, Balance, BlockNumber, CurrencyId, Hash, Index, TimeStampedPrice};
 use sc_consensus_babe::{Config, Epoch};
 use sc_consensus_babe_rpc::BabeRpcHandler;
 use sc_consensus_epochs::SharedEpochChanges;
 use sc_finality_grandpa::{SharedAuthoritySet, SharedVoterState};
 use sc_finality_grandpa_rpc::GrandpaRpcHandler;
 use sc_keystore::KeyStorePtr;
-use sc_rpc_api::DenyUnsafe;
+pub use sc_rpc_api::DenyUnsafe;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
@@ -77,7 +75,7 @@ where
 	C: Send + Sync + 'static,
 	C::Api: AccountNonceApi<Block, AccountId, Index>,
 	C::Api: BabeApi<Block>,
-	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance, UncheckedExtrinsic>,
+	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, TimeStampedPrice>,
 	C::Api: module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
