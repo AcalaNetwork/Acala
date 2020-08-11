@@ -127,7 +127,10 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 		// Properties
 		Some(properties),
 		// Extensions
-		Default::default(),
+		Extensions {
+			relay_chain: "rococo-local".into(),
+			para_id: 5000u32.into(),
+		},
 	))
 }
 
