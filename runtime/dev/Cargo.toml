@@ -1,8 +1,9 @@
 [package]
-name = "acala-runtime"
+name = "dev-runtime"
 version = "0.5.4"
 authors = ["Acala Developers"]
 edition = "2018"
+build = "build.rs"
 
 [dependencies]
 smallvec = "1.4.0"
@@ -52,41 +53,42 @@ sp-std = { version = "2.0.0-rc5", default-features = false }
 sp-transaction-pool = { version = "2.0.0-rc5", default-features = false }
 sp-version = { version = "2.0.0-rc5", default-features = false }
 
-orml-auction = { path = "../orml/auction", default-features = false }
-orml-benchmarking = { path = "../orml/benchmarking", default-features = false, optional = true }
-orml-currencies = { path = "../orml/currencies", default-features = false }
-orml-oracle = { path = "../orml/oracle", default-features = false }
-orml-oracle-rpc-runtime-api = { path = "../orml/oracle/rpc/runtime-api", default-features = false }
-orml-gradually-update = { path = "../orml/gradually-update", default-features = false }
-orml-tokens = { path = "../orml/tokens", default-features = false }
-orml-traits = { path = "../orml/traits", default-features = false }
-orml-vesting = { path = "../orml/vesting", default-features = false }
+orml-auction = { path = "../../orml/auction", default-features = false }
+orml-benchmarking = { path = "../../orml/benchmarking", default-features = false, optional = true }
+orml-currencies = { path = "../../orml/currencies", default-features = false }
+orml-oracle = { path = "../../orml/oracle", default-features = false }
+orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
+orml-gradually-update = { path = "../../orml/gradually-update", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-traits = { path = "../../orml/traits", default-features = false }
+orml-vesting = { path = "../../orml/vesting", default-features = false }
 
-module-accounts = { path = "../modules/accounts", default-features = false }
-module-airdrop = { path = "../modules/airdrop", default-features = false }
-module-auction-manager = { path = "../modules/auction_manager", default-features = false }
-module-cdp-engine = { path = "../modules/cdp_engine", default-features = false }
-module-cdp-treasury = { path = "../modules/cdp_treasury", default-features = false }
-module-dex = { path = "../modules/dex", default-features = false }
-module-dex-rpc-runtime-api = { path = "../modules/dex/rpc/runtime-api", default-features = false }
-module-emergency-shutdown = { path = "../modules/emergency_shutdown", default-features = false }
-module-honzon = { path = "../modules/honzon", default-features = false }
-module-loans = { path = "../modules/loans", default-features = false }
-module-prices = { path = "../modules/prices", default-features = false }
-module-primitives = { path = "../modules/primitives", default-features = false }
-module-support = { path = "../modules/support", default-features = false }
-module-homa = { path = "../modules/homa", default-features = false }
-module-nominees-election = { path = "../modules/nominees_election", default-features = false }
-module-staking-pool = { path = "../modules/staking_pool", default-features = false }
-module-staking-pool-rpc-runtime-api = { path = "../modules/staking_pool/rpc/runtime-api", default-features = false }
-module-polkadot-bridge = { path = "../modules/polkadot_bridge", default-features = false }
-module-homa-treasury = { path = "../modules/homa_treasury", default-features = false }
-module-honzon-benchmarking = { path = "../modules/honzon/benchmarking", default-features = false, optional = true }
-module-cdp-engine-benchmarking = { path = "../modules/cdp_engine/benchmarking", default-features = false, optional = true }
-module-emergency-shutdown-benchmarking = { path = "../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
-module-auction-manager-benchmarking = { path = "../modules/auction_manager/benchmarking", default-features = false, optional = true }
+module-accounts = { path = "../../modules/accounts", default-features = false }
+module-airdrop = { path = "../../modules/airdrop", default-features = false }
+module-auction-manager = { path = "../../modules/auction_manager", default-features = false }
+module-cdp-engine = { path = "../../modules/cdp_engine", default-features = false }
+module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
+module-dex = { path = "../../modules/dex", default-features = false }
+module-dex-rpc-runtime-api = { path = "../../modules/dex/rpc/runtime-api", default-features = false }
+module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
+module-honzon = { path = "../../modules/honzon", default-features = false }
+module-loans = { path = "../../modules/loans", default-features = false }
+module-prices = { path = "../../modules/prices", default-features = false }
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+module-support = { path = "../../modules/support", default-features = false }
+module-homa = { path = "../../modules/homa", default-features = false }
+module-nominees-election = { path = "../../modules/nominees_election", default-features = false }
+module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
+module-staking-pool-rpc-runtime-api = { path = "../../modules/staking_pool/rpc/runtime-api", default-features = false }
+module-polkadot-bridge = { path = "../../modules/polkadot_bridge", default-features = false }
+module-homa-treasury = { path = "../../modules/homa_treasury", default-features = false }
+module-honzon-benchmarking = { path = "../../modules/honzon/benchmarking", default-features = false, optional = true }
+module-cdp-engine-benchmarking = { path = "../../modules/cdp_engine/benchmarking", default-features = false, optional = true }
+module-emergency-shutdown-benchmarking = { path = "../../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
+module-auction-manager-benchmarking = { path = "../../modules/auction_manager/benchmarking", default-features = false, optional = true }
+runtime-common = { path = "../common", default-features = false }
 
-ecosystem-renvm-bridge = { path = "../ecosystem-modules/ren/renvm-bridge", default-features = false }
+ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
@@ -157,7 +159,7 @@ std = [
 	"module-honzon/std",
 	"module-loans/std",
 	"module-prices/std",
-	"module-primitives/std",
+	"primitives/std",
 	"module-support/std",
 	"module-homa/std",
 	"module-nominees-election/std",
@@ -165,6 +167,7 @@ std = [
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
 	"module-homa-treasury/std",
+	"runtime-common/std",
 
 	"ecosystem-renvm-bridge/std",
 ]
@@ -184,3 +187,9 @@ runtime-benchmarks = [
 	"module-emergency-shutdown-benchmarking",
 	"module-honzon-benchmarking",
 ]
+# When enabled, the runtime api will not be build.
+#
+# This is required by Cumulus to access certain types of the
+# runtime without clashing with the runtime api exported functions
+# in WASM.
+disable-runtime-api = []

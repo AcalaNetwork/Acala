@@ -11,7 +11,7 @@ use frame_support::{
 	weights::{constants::*, GetDispatchInfo, Weight},
 };
 
-use acala_runtime::{self, CurrencyId, MaximumBlockWeight, Runtime};
+use dev_runtime::{self, CurrencyId, MaximumBlockWeight, Runtime};
 
 use frame_system::Call as SystemCall;
 use orml_auction::Call as AuctionCall;
