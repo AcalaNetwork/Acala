@@ -94,6 +94,7 @@ dependencies = [
  "cumulus-parachain-upgrade",
  "cumulus-primitives",
  "cumulus-runtime",
+ "cumulus-token-dealer",
  "cumulus-upward-message",
  "ecosystem-renvm-bridge",
  "frame-benchmarking",
@@ -1122,6 +1123,19 @@ dependencies = [
  "sp-std",
  "sp-trie",
  "trie-db",
+]
+
+[[package]]
+name = "cumulus-token-dealer"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus#96da14c14fb785e106bb89a18c9dedaf2f789d2c"
+dependencies = [
+ "cumulus-primitives",
+ "cumulus-upward-message",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "polkadot-parachain",
 ]
 
 [[package]]

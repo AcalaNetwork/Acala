@@ -5,8 +5,8 @@ use runtime::{
 	get_all_module_accounts, opaque::SessionKeys, AccountId, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
 	BalancesConfig, Block, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
 	GenesisConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
-	NewAccountDeposit, OperatorMembershipConfig, OracleConfig, OracleId, PolkadotBridgeConfig, SessionConfig,
-	Signature, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig, SystemConfig,
+	NewAccountDeposit, OperatorMembershipConfig, OracleConfig, OracleId, ParachainInfoConfig, PolkadotBridgeConfig,
+	SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig, SystemConfig,
 	TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
@@ -407,6 +407,9 @@ fn testnet_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			session_keys: oracle_session_keys,
 		}),
+		parachain_info: Some(ParachainInfoConfig {
+			parachain_id: 5000.into(),
+		}),
 	}
 }
 
@@ -574,6 +577,9 @@ fn mandala_genesis(
 		orml_oracle: Some(OracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			session_keys: oracle_session_keys,
+		}),
+		parachain_info: Some(ParachainInfoConfig {
+			parachain_id: 5000.into(),
 		}),
 	}
 }

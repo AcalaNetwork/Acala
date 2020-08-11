@@ -57,6 +57,7 @@ cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", defaul
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-primitives = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-token-dealer = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-upward-message = { git = "https://github.com/paritytech/cumulus", default-features = false }
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false }
 
@@ -150,6 +151,7 @@ std = [
 	"cumulus-parachain-upgrade/std",
 	"cumulus-primitives/std",
 	"cumulus-runtime/std",
+	"cumulus-token-dealer/std",
 	"cumulus-upward-message/std",
 	"parachain-info/std",
 	"polkadot-parachain/std",
@@ -201,4 +203,9 @@ runtime-benchmarks = [
 	"module-dex/runtime-benchmarks",
 	"module-emergency-shutdown-benchmarking",
 	"module-honzon-benchmarking",
+]
+
+# Will be enabled by the `wasm-builder` when building the runtime for WASM.
+runtime-wasm = [
+	"cumulus-upward-message/runtime-wasm",
 ]
