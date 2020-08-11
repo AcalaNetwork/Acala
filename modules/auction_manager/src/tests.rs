@@ -9,6 +9,10 @@ use mock::{
 	TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL,
 };
 
+// REVIEW: The account ref-counting in the `lib.rs` file looks consistent to me, but you might want
+//         to consider having some tests that execute more complex scenarios and check the reference
+//         counts.
+
 #[test]
 fn new_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {

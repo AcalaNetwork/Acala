@@ -569,6 +569,9 @@ impl<T: Trait> Module<T> {
 					};
 
 					// increase account ref of new bidder
+					// REVIEW: Consider adding methods to auction items for adding, exchanging and
+					//         removing bidders that make sure that the ref-counts stay in sync.
+					//         that way the ref-counts would not be scattered all over the module.
 					system::Module::<T>::inc_ref(&new_bidder);
 
 					// if there's bid before, return stablecoin from new bidder to last bidder
