@@ -52,6 +52,16 @@ sp-std = { version = "2.0.0-rc5", default-features = false }
 sp-transaction-pool = { version = "2.0.0-rc5", default-features = false }
 sp-version = { version = "2.0.0-rc5", default-features = false }
 
+# Cumulus dependencies
+cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-primitives = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-runtime = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-upward-message = { git = "https://github.com/paritytech/cumulus", default-features = false }
+parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false }
+
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
+
 orml-auction = { path = "../orml/auction", default-features = false }
 orml-benchmarking = { path = "../orml/benchmarking", default-features = false, optional = true }
 orml-currencies = { path = "../orml/currencies", default-features = false }
@@ -135,6 +145,14 @@ std = [
 	"sp-std/std",
 	"sp-transaction-pool/std",
 	"sp-version/std",
+
+	"cumulus-message-broker/std",
+	"cumulus-parachain-upgrade/std",
+	"cumulus-primitives/std",
+	"cumulus-runtime/std",
+	"cumulus-upward-message/std",
+	"parachain-info/std",
+	"polkadot-parachain/std",
 
 	"orml-auction/std",
 	"orml-benchmarking/std",
