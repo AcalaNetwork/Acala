@@ -3963,6 +3963,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-traits",
+ "pallet-scheduler",
  "parity-scale-codec",
  "serde",
  "sp-core",

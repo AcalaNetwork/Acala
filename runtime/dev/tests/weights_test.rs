@@ -39,8 +39,8 @@ fn sanity_check_weight_per_time_constants_are_as_expected() {
 /// orml_currencies call
 #[test]
 fn weight_of_currencies_transfer_is_correct() {
-	// #[weight = 30 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 2)]
-	let expected_weight = 30 * WEIGHT_PER_MICROS + 2 * DbWeight::get().read + 2 * DbWeight::get().write;
+	// #[weight = 90 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 2)]
+	let expected_weight = 90 * WEIGHT_PER_MICROS + 2 * DbWeight::get().read + 2 * DbWeight::get().write;
 
 	let weight = CurrenciesCall::transfer::<Runtime>(Default::default(), CurrencyId::ACA, Default::default())
 		.get_dispatch_info()
@@ -50,8 +50,8 @@ fn weight_of_currencies_transfer_is_correct() {
 
 #[test]
 fn weight_of_currencies_transfer_native_currency_is_correct() {
-	// #[weight = 30 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 2)]
-	let expected_weight = 30 * WEIGHT_PER_MICROS + 2 * DbWeight::get().read + 2 * DbWeight::get().write;
+	// #[weight = 70 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 2)]
+	let expected_weight = 70 * WEIGHT_PER_MICROS + 2 * DbWeight::get().read + 2 * DbWeight::get().write;
 
 	let weight = CurrenciesCall::transfer_native_currency::<Runtime>(Default::default(), Default::default())
 		.get_dispatch_info()
@@ -61,8 +61,8 @@ fn weight_of_currencies_transfer_native_currency_is_correct() {
 
 #[test]
 fn weight_of_currencies_update_balance_is_correct() {
-	// #[weight = 27 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1)]
-	let expected_weight = 27 * WEIGHT_PER_MICROS + 1 * DbWeight::get().read + 1 * DbWeight::get().write;
+	// #[weight = 66 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(5, 2)]
+	let expected_weight = 66 * WEIGHT_PER_MICROS + 5 * DbWeight::get().read + 2 * DbWeight::get().write;
 
 	let weight = CurrenciesCall::update_balance::<Runtime>(Default::default(), CurrencyId::ACA, Default::default())
 		.get_dispatch_info()
@@ -73,8 +73,8 @@ fn weight_of_currencies_update_balance_is_correct() {
 /// orml_vesting call
 #[test]
 fn weight_of_vesting_claim_is_correct() {
-	// #[weight = 30 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 2)]
-	let expected_weight = 30 * WEIGHT_PER_MICROS + 2 * DbWeight::get().read + 2 * DbWeight::get().write;
+	// #[weight = 30 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 3)]
+	let expected_weight = 30 * WEIGHT_PER_MICROS + 3 * DbWeight::get().read + 3 * DbWeight::get().write;
 
 	let weight = VestingCall::claim::<Runtime>().get_dispatch_info().weight;
 	assert_eq!(weight, expected_weight);
@@ -82,8 +82,8 @@ fn weight_of_vesting_claim_is_correct() {
 
 #[test]
 fn weight_of_vesting_vested_transfer_is_correct() {
-	// #[weight = 48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
-	let expected_weight = 48 * WEIGHT_PER_MICROS + 4 * DbWeight::get().read + 4 * DbWeight::get().write;
+	// #[weight = 150 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
+	let expected_weight = 150 * WEIGHT_PER_MICROS + 4 * DbWeight::get().read + 4 * DbWeight::get().write;
 
 	let weight = VestingCall::vested_transfer::<Runtime>(
 		Default::default(),
@@ -101,8 +101,8 @@ fn weight_of_vesting_vested_transfer_is_correct() {
 
 #[test]
 fn weight_of_vesting_update_vesting_schedules_is_correct() {
-	// #[weight = 28 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
-	let expected_weight = 28 * WEIGHT_PER_MICROS + 4 * DbWeight::get().read + 4 * DbWeight::get().write;
+	// #[weight = 62 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 3)]
+	let expected_weight = 62 * WEIGHT_PER_MICROS + 2 * DbWeight::get().read + 3 * DbWeight::get().write;
 
 	let weight = VestingCall::update_vesting_schedules::<Runtime>(Default::default(), vec![])
 		.get_dispatch_info()
@@ -113,8 +113,8 @@ fn weight_of_vesting_update_vesting_schedules_is_correct() {
 /// orml_auction call
 #[test]
 fn weight_of_auction_bid_is_correct() {
-	// #[weight = 84 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 9)]
-	let expected_weight = 84 * WEIGHT_PER_MICROS + 9 * DbWeight::get().read + 9 * DbWeight::get().write;
+	// #[weight = 300 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(14, 14)]
+	let expected_weight = 300 * WEIGHT_PER_MICROS + 14 * DbWeight::get().read + 14 * DbWeight::get().write;
 
 	let weight = AuctionCall::bid::<Runtime>(Default::default(), Default::default())
 		.get_dispatch_info()
