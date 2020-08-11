@@ -13,6 +13,7 @@ name = "acala"
 path = "src/main.rs"
 
 [dependencies]
+ansi_term = "0.12.1"
 codec = { package = "parity-scale-codec", version = "1.3.0" }
 futures = "0.3.4"
 hex-literal = "0.2.1"
@@ -39,6 +40,7 @@ sc-consensus-epochs = { version = "0.8.0-rc5" }
 sc-executor = { version = "0.8.0-rc5" }
 sc-finality-grandpa = { version = "0.8.0-rc5" }
 sc-finality-grandpa-rpc = { version = "0.8.0-rc5" }
+sc-informant = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 sc-keystore = { version = "2.0.0-rc5" }
 sc-network = { version = "0.8.0-rc5" }
 sc-offchain = { version = "2.0.0-rc5" }
@@ -57,8 +59,23 @@ sp-finality-grandpa = { version = "2.0.0-rc5" }
 sp-inherents = { version = "2.0.0-rc5" }
 sp-io = { version = "2.0.0-rc5" }
 sp-runtime = { version = "2.0.0-rc5" }
+sp-timestamp = { version = "2.0.0-rc5" }
 sp-transaction-pool = { version = "2.0.0-rc5" }
 substrate-frame-rpc-system = { version = "2.0.0-rc5" }
+
+# Cumulus dependencies
+cumulus-consensus = { git = "https://github.com/paritytech/cumulus" }
+cumulus-collator = { git = "https://github.com/paritytech/cumulus" }
+cumulus-network = { git = "https://github.com/paritytech/cumulus" }
+cumulus-primitives = { git = "https://github.com/paritytech/cumulus" }
+cumulus-service = { git = "https://github.com/paritytech/cumulus" }
+
+# Polkadot dependencies
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
+polkadot-collator = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
 
 module-dex-rpc = { path = "modules/dex/rpc" }
 module-support = { path = "modules/support" }
@@ -146,6 +163,7 @@ sp-runtime-interface = { git = "https://github.com/paritytech/substrate", branch
 sp-session = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 sp-staking = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
+sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 sp-version = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
