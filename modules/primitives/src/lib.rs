@@ -2,7 +2,7 @@
 
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
-use sp_std::convert::TryFrom;
+use sp_std::{convert::TryFrom, vec::Vec};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

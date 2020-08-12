@@ -58,3 +58,10 @@ update: update-orml
 
 prepare-wasm:
 	WASM_TARGET_DIRECTORY=${CURDIR} WASM_BUILD_TYPE=release cargo build
+
+cleanup:
+	rm -rf ~/Library/Application\ Support/polkadot/
+	rm -rf ~/Library/Application\ Support/acala/
+
+export-wasm:
+	cargo run -- export-genesis-wasm --chain=dev > genesis.wasm
