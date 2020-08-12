@@ -403,37 +403,40 @@ fn cancel_debit_auction_work() {
 }
 
 #[test]
-fn collateral_auction_in_reverse_stage_work() {
+fn collateral_auction_in_reverse_stage() {
 	ExtBuilder::default().build().execute_with(|| {
-		// collateral auction which target > 0
-		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
-		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
-		assert_ok!(AuctionModule::bid(Some(BOB).into(), 0, 20));
-		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), false);
-		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 0, 100));
-		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(0), true);
+		let collateral_auction_with_positive_target = AuctionManagerModule::collateral_auctions(0).unwrap();
+		assert_eq!(collateral_auction_with_positive_target.always_forward(), false);
+		assert_eq!(collateral_auction_with_positive_target.in_reverse_stage(99), false);
+		assert_eq!(collateral_auction_with_positive_target.in_reverse_stage(100), true);
+		assert_eq!(collateral_auction_with_positive_target.in_reverse_stage(101), true);
 
-		// collateral auction which target is zero
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 0);
-		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(1), false);
-		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 1, 5));
-		assert_eq!(AuctionManagerModule::collateral_auction_in_reverse_stage(1), false);
+		let collateral_auction_with_zero_target = AuctionManagerModule::collateral_auctions(1).unwrap();
+		assert_eq!(collateral_auction_with_zero_target.always_forward(), true);
+		assert_eq!(collateral_auction_with_zero_target.in_reverse_stage(0), false);
+		assert_eq!(collateral_auction_with_zero_target.in_reverse_stage(100), false);
 	});
 }
 
 #[test]
 fn cancel_collateral_auction_failed() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 10));
 		assert_noop!(
 			AuctionManagerModule::cancel_collateral_auction(0),
 			Error::<Runtime>::AuctionNotExists
 		);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
-		assert_ok!(AuctionModule::bid(Some(ALICE).into(), 0, 100));
+		assert_ok!(AuctionModule::bid(Origin::signed(ALICE), 0, 100));
+		let collateral_auction = AuctionManagerModule::collateral_auctions(0).unwrap();
+		assert_eq!(collateral_auction.always_forward(), false);
+		assert_eq!(AuctionManagerModule::get_last_bid(0), Some((ALICE, 100)));
+		assert_eq!(collateral_auction.in_reverse_stage(100), true);
 		assert_noop!(
 			AuctionManagerModule::cancel_collateral_auction(0),
-			Error::<Runtime>::InReverseStage
+			Error::<Runtime>::InReverseStage,
 		);
 	});
 }
