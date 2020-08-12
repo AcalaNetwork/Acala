@@ -108,7 +108,7 @@ impl<T: Trait> Module<T> {
 		T::ModuleId::get().into_account()
 	}
 
-	// confiscate collateral and debit to cdp treasury
+	/// confiscate collateral and debit to cdp treasury
 	pub fn confiscate_collateral_and_debit(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
@@ -146,7 +146,7 @@ impl<T: Trait> Module<T> {
 		})
 	}
 
-	// mutate collaterals and debits and then mutate stable currency
+	/// adjust the position
 	pub fn adjust_position(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
@@ -194,7 +194,7 @@ impl<T: Trait> Module<T> {
 		})
 	}
 
-	// transfer whole loan of `from` to `to`
+	/// transfer whole loan of `from` to `to`
 	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		// get `from` position data
 		let Position { collateral, debit } = Self::positions(currency_id, from);
@@ -229,6 +229,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
+	/// mutate records of collaterals and debits
 	fn update_loan(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
