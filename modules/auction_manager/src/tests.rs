@@ -455,7 +455,7 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 100);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
-		assert_ok!(AuctionModule::bid(Some(BOB).into(), 0, 80));
+		assert_ok!(AuctionModule::bid(Origin::signed(BOB), 0, 80));
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 920);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 80);
