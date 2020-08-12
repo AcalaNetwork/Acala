@@ -14,7 +14,7 @@ orml-auction = { path = "../../../orml/auction", default-features = false }
 orml-oracle = { path = "../../../orml/oracle", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
 prices = { package = "module-prices", path = "../../prices", default-features = false }
-primitives = { package = "module-primitives", path = "../../primitives", default-features = false }
+primitives = { package = "acala-primitives", path = "../../../primitives", default-features = false }
 support = { package = "module-support", path = "../../support", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../../cdp_treasury", default-features = false }
 auction-manager = { package = "module-auction-manager", path = "../../auction_manager", default-features = false }

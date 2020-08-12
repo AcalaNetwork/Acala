@@ -6,6 +6,7 @@
 //!   start and run the
 //! node as a CLI application.
 //!
+//! TODO :
 //! - `browser`: exposes the content of the `browser` module, which consists of
 //!   exported symbols
 //! that are meant to be passed through the `wasm-bindgen` utility and called
@@ -14,14 +15,6 @@
 
 #![warn(missing_docs)]
 
-#[macro_use]
-mod service;
-mod chain_spec;
-mod cli;
-mod command;
-mod executor;
-mod rpc;
-
-fn main() -> sc_cli::Result<()> {
-	command::run()
+fn main() -> acala_cli::Result<()> {
+	acala_cli::run()
 }

@@ -1,4 +1,4 @@
-//! The Acala runtime. This can be compiled with `#[no_std]`, ready for Wasm.
+//! The Dev runtime. This can be compiled with `#[no_std]`, ready for Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
@@ -52,20 +52,23 @@ pub use frame_support::{
 	},
 	StorageValue,
 };
-pub use orml_oracle::AuthorityId as OracleId;
+
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
-pub use constants::{currency::*, time::*};
+pub use constants::{currency::*, fee::*, time::*};
 pub use module_cdp_treasury::SurplusDebitAuctionConfig;
-pub use types::*;
+pub use primitives::{
+	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, Balance, BlockNumber, CurrencyId, EraIndex, Hash,
+	Moment, Nonce, Share, Signature,
+};
+pub use runtime_common::{ExchangeRate, OracleId, Price, Rate, Ratio};
 
 mod benchmarking;
 mod constants;
-mod types;
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -88,27 +91,10 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-/// Opaque types. These are used by the CLI to instantiate machinery that don't
-/// need to know the specifics of the runtime. They can then be made to be
-/// agnostic over specific formats of data like extrinsics, allowing for them to
-/// continue syncing the network through upgrades to even the core
-/// datastructures.
-pub mod opaque {
-	use super::*;
-	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
-
-	/// Opaque block header type.
-	pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
-	/// Opaque block type.
-	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-	/// Opaque block identifier type.
-	pub type BlockId = generic::BlockId<Block>;
-
-	impl_opaque_keys! {
-		pub struct SessionKeys {
-			pub grandpa: Grandpa,
-			pub babe: Babe,
-		}
+impl_opaque_keys! {
+	pub struct SessionKeys {
+		pub grandpa: Grandpa,
+		pub babe: Babe,
 	}
 }
 
@@ -149,7 +135,7 @@ impl frame_system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
 	type Lookup = Indices;
-	type Index = Index;
+	type Index = Nonce;
 	type BlockNumber = BlockNumber;
 	type Hash = Hash;
 	type Hashing = BlakeTwo256;
@@ -271,7 +257,7 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
 	type OnTransactionPayment = PalletTreasury;
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = fee::WeightToFee;
+	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 }
 
@@ -515,8 +501,8 @@ impl pallet_session::Trait for Runtime {
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
 	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
-	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type Keys = opaque::SessionKeys;
+	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = SessionKeys;
 	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 	type WeightInfo = ();
 }
@@ -762,7 +748,7 @@ where
 		call: Call,
 		public: <Signature as sp_runtime::traits::Verify>::Signer,
 		account: AccountId,
-		nonce: Index,
+		nonce: Nonce,
 	) -> Option<(
 		Call,
 		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
@@ -1011,7 +997,7 @@ impl ecosystem_renvm_bridge::Trait for Runtime {
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
-		NodeBlock = opaque::Block,
+		NodeBlock = primitives::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		// srml modules
@@ -1106,6 +1092,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive =
 	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
 
+#[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -1209,13 +1196,13 @@ impl_runtime_apis! {
 
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
-			opaque::SessionKeys::generate(seed)
+			SessionKeys::generate(seed)
 		}
 
 		fn decode_session_keys(
 			encoded: Vec<u8>,
 		) -> Option<Vec<(Vec<u8>, KeyTypeId)>> {
-			opaque::SessionKeys::decode_into_raw_public_keys(&encoded)
+			SessionKeys::decode_into_raw_public_keys(&encoded)
 		}
 	}
 
@@ -1251,8 +1238,8 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index> for Runtime {
-		fn account_nonce(account: AccountId) -> Index {
+	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce> for Runtime {
+		fn account_nonce(account: AccountId) -> Nonce {
 			System::account_nonce(account)
 		}
 	}

@@ -1,31 +1,19 @@
 //! Acala chain configurations.
 
+use acala_primitives::{AccountId, AccountPublic};
 use hex_literal::hex;
-use runtime::{
-	get_all_module_accounts, opaque::SessionKeys, AccountId, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
-	BalancesConfig, Block, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
-	GenesisConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
-	NewAccountDeposit, OperatorMembershipConfig, OracleConfig, OracleId, PolkadotBridgeConfig, SessionConfig,
-	Signature, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig, SystemConfig,
-	TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
-};
-use sc_chain_spec::ChainSpecExtension;
-use sc_service::ChainType;
+use runtime_common::OracleId;
+use sc_chain_spec::{ChainSpecExtension, ChainType};
 use sc_telemetry::TelemetryEndpoints;
 use serde::{Deserialize, Serialize};
 use serde_json::map::Map;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{
-	traits::{IdentifyAccount, Verify},
-	FixedPointNumber, FixedU128, Perbill,
-};
+use sp_runtime::{traits::IdentifyAccount, FixedPointNumber, FixedU128, Perbill};
 
 // The URL for the telemetry server.
 const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
-
-type AccountPublic = <Signature as Verify>::Signer;
 
 /// Node `ChainSpec` extensions.
 ///
@@ -35,27 +23,26 @@ type AccountPublic = <Signature as Verify>::Signer;
 #[serde(rename_all = "camelCase")]
 pub struct Extensions {
 	/// Block numbers with known hashes.
-	pub fork_blocks: sc_client_api::ForkBlocks<Block>,
+	pub fork_blocks: sc_client_api::ForkBlocks<acala_primitives::Block>,
 	/// Known bad block hashes.
-	pub bad_blocks: sc_client_api::BadBlocks<Block>,
+	pub bad_blocks: sc_client_api::BadBlocks<acala_primitives::Block>,
 }
 
-/// Specialized `ChainSpec`. This is a specialization of the general Substrate
-/// ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
+/// The `ChainSpec parametrised for dev/mandala runtime`.
+pub type DevChainSpec = sc_service::GenericChainSpec<dev_runtime::GenesisConfig, Extensions>;
 
-fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
-	SessionKeys { grandpa, babe }
+fn dev_session_keys(grandpa: GrandpaId, babe: BabeId) -> dev_runtime::SessionKeys {
+	dev_runtime::SessionKeys { grandpa, babe }
 }
 
-/// Generate a crypto pair from seed.
+/// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
 		.expect("static values are valid; qed")
 		.public()
 }
 
-/// Generate an account ID from seed.
+/// Helper function to generate an account ID from seed
 pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
 where
 	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
@@ -80,18 +67,16 @@ pub fn get_oracle_keys_from_seed(seed: &str) -> (AccountId, OracleId) {
 	)
 }
 
-/// Development config (single validator Alice)
-pub fn development_testnet_config() -> Result<ChainSpec, String> {
+/// Development testnet config (single validator Alice)
+pub fn development_testnet_config() -> Result<DevChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
+	let wasm_binary = dev_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
-	Ok(ChainSpec::from_genesis(
-		// Name
+	Ok(DevChainSpec::from_genesis(
 		"Development",
-		// ID
 		"dev",
 		ChainType::Development,
 		move || {
@@ -111,28 +96,23 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 				vec![get_oracle_keys_from_seed("Alice")],
 			)
 		},
-		// Bootnodes
 		vec![],
-		// Telemetry
 		None,
-		// Protocol ID
 		None,
-		// Properties
 		Some(properties),
-		// Extensions
 		Default::default(),
 	))
 }
 
 /// Local testnet config (multivalidator Alice + Bob)
-pub fn local_testnet_config() -> Result<ChainSpec, String> {
+pub fn local_testnet_config() -> Result<DevChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
+	let wasm_binary = dev_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
-	Ok(ChainSpec::from_genesis(
+	Ok(DevChainSpec::from_genesis(
 		"Local",
 		"local",
 		ChainType::Local,
@@ -169,20 +149,15 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 	))
 }
 
-/// Mandala testnet generator
-pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../resources/mandala-dist.json")[..])
-}
-
-/// latest Mandala testnet config
-pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
+/// Latest Mandala testnet config
+pub fn latest_mandala_testnet_config() -> Result<DevChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
+	let wasm_binary = dev_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
-	Ok(ChainSpec::from_genesis(
+	Ok(DevChainSpec::from_genesis(
 		"Acala Mandala TC4",
 		"mandala4",
 		ChainType::Live,
@@ -251,8 +226,10 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	))
 }
 
-const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
-const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+/// Mandala testnet generator
+pub fn mandala_testnet_config() -> Result<DevChainSpec, String> {
+	DevChainSpec::from_json_bytes(&include_bytes!("../../resources/mandala-dist.json")[..])
+}
 
 fn testnet_genesis(
 	wasm_binary: &[u8],
@@ -260,10 +237,21 @@ fn testnet_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	oracle_session_keys: Vec<(AccountId, OracleId)>,
-) -> GenesisConfig {
+) -> dev_runtime::GenesisConfig {
+	use dev_runtime::{
+		get_all_module_accounts, AirDropConfig, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+		CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
+		HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit, OperatorMembershipConfig, OracleConfig,
+		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig,
+		SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
+	};
+
 	let new_account_deposit = NewAccountDeposit::get();
 
-	GenesisConfig {
+	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
+	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+
+	dev_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
@@ -285,7 +273,7 @@ fn testnet_genesis(
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
+				.map(|x| (x.0.clone(), x.0.clone(), dev_session_keys(x.2.clone(), x.3.clone())))
 				.collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
@@ -416,10 +404,22 @@ fn mandala_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	oracle_session_keys: Vec<(AccountId, OracleId)>,
-) -> GenesisConfig {
+) -> dev_runtime::GenesisConfig {
+	use dev_runtime::{
+		get_all_module_accounts, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig,
+		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
+		OperatorMembershipConfig, OracleConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
+		SudoConfig, SurplusDebitAuctionConfig, SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig,
+		VestingConfig, CENTS, DOLLARS,
+	};
+
 	let new_account_deposit = NewAccountDeposit::get();
 
-	GenesisConfig {
+	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
+	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+
+	dev_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
@@ -441,7 +441,7 @@ fn mandala_genesis(
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone())))
+				.map(|x| (x.0.clone(), x.0.clone(), dev_session_keys(x.2.clone(), x.3.clone())))
 				.collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
@@ -565,7 +565,7 @@ fn mandala_genesis(
 		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: {
-				let airdrop_accounts_json = &include_bytes!("../resources/mandala-airdrop-accounts.json")[..];
+				let airdrop_accounts_json = &include_bytes!("../../resources/mandala-airdrop-accounts.json")[..];
 				let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
 					serde_json::from_slice(airdrop_accounts_json).unwrap();
 				airdrop_accounts

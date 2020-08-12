@@ -1,17 +1,7 @@
+//! Acala CLI library.
+
 use sc_cli::RunCmd;
 use structopt::StructOpt;
-
-/// An overarching CLI command definition.
-#[derive(Debug, StructOpt)]
-pub struct Cli {
-	/// Possible subcommand with parameters.
-	#[structopt(subcommand)]
-	pub subcommand: Option<Subcommand>,
-
-	#[allow(missing_docs)]
-	#[structopt(flatten)]
-	pub run: RunCmd,
-}
 
 /// Possible subcommands of the main binary.
 #[derive(Debug, StructOpt)]
@@ -30,4 +20,16 @@ pub enum Subcommand {
 	/// The custom benchmark subcommmand benchmarking runtime modules.
 	#[structopt(name = "benchmark", about = "Benchmark runtime modules.")]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
+}
+
+/// An overarching CLI command definition.
+#[derive(Debug, StructOpt)]
+pub struct Cli {
+	/// Possible subcommand with parameters.
+	#[structopt(subcommand)]
+	pub subcommand: Option<Subcommand>,
+
+	#[allow(missing_docs)]
+	#[structopt(flatten)]
+	pub run: RunCmd,
 }
