@@ -92,8 +92,10 @@ decl_error! {
 		/// Not the tradable currency type
 		CurrencyIdNotAllowed,
 		/// Share amount is not enough
+		// REVIEW: No tests.
 		ShareNotEnough,
 		/// Share amount overflow
+		// REVIEW: No tests.
 		SharesOverflow,
 		/// The actual transaction price will be lower than the acceptable price
 		UnacceptablePrice,
