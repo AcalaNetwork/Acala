@@ -153,6 +153,13 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Tradable currency type list
+		// REVIEW:
+		// The way you currently handle `EnabledCurrencyIds` in the pallet does not allow
+		// shrinking the amount of enabled currencies because you don't have
+		// "garbage collection" facilities where you can remove storage items that are
+		// no longer needed. This means you will need a runtime migration for every
+		// removed currency. (Not a big deal currently as the supported list is hard-
+		// coded anyway.)
 		const EnabledCurrencyIds: Vec<CurrencyId> = T::EnabledCurrencyIds::get();
 
 		/// Base currency type id
@@ -281,6 +288,7 @@ decl_module! {
 		///		- best case: 49.04 µs
 		///		- worst case: 57.72 µs
 		/// # </weight>
+		// REVIEW: Your weight documentation above is inconsistent with the calculation below.
 		#[weight = 58 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(8, 9)]
 		pub fn add_liquidity(
 			origin,
