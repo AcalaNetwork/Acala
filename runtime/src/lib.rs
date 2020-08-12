@@ -1015,22 +1015,22 @@ impl cumulus_parachain_upgrade::Trait for Runtime {
 
 impl cumulus_message_broker::Trait for Runtime {
 	type Event = Event;
-	type DownwardMessageHandlers = TokenDealer;
+	type DownwardMessageHandlers = ();
 	type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
 	type ParachainId = ParachainInfo;
-	type XCMPMessage = cumulus_token_dealer::XCMPMessage<AccountId, Balance>;
-	type XCMPMessageHandlers = TokenDealer;
-}
-
-impl cumulus_token_dealer::Trait for Runtime {
-	type Event = Event;
-	type UpwardMessageSender = MessageBroker;
-	type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
-	type Currency = Balances;
-	type XCMPMessageSender = MessageBroker;
+	type XCMPMessage = orml_xtokens::XCMPMessage<AccountId, Balance>;
+	type XCMPMessageHandlers = XTokens;
 }
 
 impl parachain_info::Trait for Runtime {}
+
+impl orml_xtokens::Trait for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Currency = Currencies;
+	type XCMPMessageSender = MessageBroker;
+}
 
 #[allow(clippy::large_enum_variant)]
 construct_runtime!(
@@ -1102,8 +1102,8 @@ construct_runtime!(
 		// parachain modules
 		ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
 		MessageBroker: cumulus_message_broker::{Module, Call, Inherent, Event<T>},
-		TokenDealer: cumulus_token_dealer::{Module, Call, Event<T>},
 		ParachainInfo: parachain_info::{Module, Storage, Config},
+		XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
 	}
 );
 

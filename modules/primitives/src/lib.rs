@@ -2,6 +2,7 @@
 
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
+use sp_std::convert::TryFrom;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,35 @@ pub enum CurrencyId {
 	XBTC = 3,
 	LDOT = 4,
 	RENBTC = 5,
+}
+
+impl Into<Vec<u8>> for CurrencyId {
+	fn into(self) -> Vec<u8> {
+		use CurrencyId::*;
+		match self {
+			ACA => b"ACA".to_vec(),
+			AUSD => b"AUSD".to_vec(),
+			DOT => b"DOT".to_vec(),
+			XBTC => b"XBTC".to_vec(),
+			LDOT => b"LDOT".to_vec(),
+			RENBTC => b"RENBTC".to_vec(),
+		}
+	}
+}
+
+impl TryFrom<Vec<u8>> for CurrencyId {
+	type Error = ();
+	fn try_from(v: Vec<u8>) -> Result<CurrencyId, ()> {
+		match v.as_slice() {
+			b"ACA" => Ok(CurrencyId::ACA),
+			b"AUSD" => Ok(CurrencyId::AUSD),
+			b"DOT" => Ok(CurrencyId::DOT),
+			b"XBTC" => Ok(CurrencyId::XBTC),
+			b"LDOT" => Ok(CurrencyId::LDOT),
+			b"RENBTC" => Ok(CurrencyId::RENBTC),
+			_ => Err(()),
+		}
+	}
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
