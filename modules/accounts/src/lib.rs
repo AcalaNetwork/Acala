@@ -342,6 +342,8 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 				if amount >= supply_amount_needed {
 					// successful swap will cause changes in native currency,
 					// which also means that it will open a new account
+					// REVIEW: This currently includes two DB mutating fallible calls and can leave
+					//         the storage in an inconsistent state.
 					let _ = T::DEX::exchange_currency(
 						who.clone(),
 						currency_id,

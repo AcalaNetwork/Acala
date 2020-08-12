@@ -106,6 +106,7 @@ decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
 		/// Liquidity pool, which is the trading pair for specific currency type to base currency type.
 		/// CurrencyType -> (OtherCurrencyAmount, BaseCurrencyAmount)
+		// REVIEW: Consider introducing a struct here to make it more self-documenting.
 		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
 
 		/// Total shares amount of liquidity pool specified by currency type
@@ -122,6 +123,7 @@ decl_storage! {
 
 		/// Total interest(include total withdrawn) and total withdrawn interest for different currency type
 		/// CurrencyType -> (TotalInterest, TotalWithdrawnInterest)
+		// REVIEW: I would opt for a struct here to make it more self-documenting.
 		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
 
 		/// Withdrawn interest indexed by currency type and account id
@@ -202,6 +204,9 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 38.4 µs
 		/// # </weight>
+		// REVIEW: I don't think 4 reads and writes is accurate. `claim_interest` has 4 reads and
+		//         2 writes itself and `orml::currencies::transfer` has 2 reads and writes.
+		//         I think you are missing the `Shares` and `TotalShares` reads.
 		#[weight = 39 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, 4)]
 		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
 			with_transaction_result(|| {
@@ -531,6 +536,8 @@ impl<T: Trait> Module<T> {
 		);
 
 		// transfer token between account and dex and update liquidity pool
+		// REVIEW: nit-pick: Converting the module id into an account takes computation,
+		//         consider storing it in a local variable.
 		T::Currency::transfer(other_currency_id, who, &Self::account_id(), other_currency_amount)?;
 		T::Currency::transfer(base_currency_id, &Self::account_id(), who, base_currency_amount)?;
 
@@ -601,6 +608,10 @@ impl<T: Trait> Module<T> {
 			Error::<T>::UnacceptablePrice,
 		);
 
+		// REVIEW: You are doing two fallible operations that mutate state one after
+		//         the other. --> Introduce an atomic operation or wrap in
+		//         `with_transaction`. `swap_currency` wraps in `with_transaction`,
+		//         `exchange_currency` does not.
 		T::Currency::transfer(
 			supply_other_currency_id,
 			who,
@@ -714,6 +725,8 @@ impl<T: Trait> Module<T> {
 
 	// get the maximum amount of target currency you can get for the supply currency
 	// amount return 0 means cannot exchange
+	// REVIEW: You might want to model this with an `Option<Balance>` instead of
+	//         returning 0.
 	pub fn get_target_amount_available(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
@@ -781,6 +794,9 @@ impl<T: Trait> Module<T> {
 		share_amount: T::Share,
 	) -> DispatchResult {
 		// claim interest first
+		// REVIEW: There are duplicate DB accesses in `claim_interest` and this
+		//         function. This means going through the DB overlay twice instead
+		//         of once. Might be a target for optimization.
 		Self::claim_interest(currency_id, who)?;
 
 		let proportion =
