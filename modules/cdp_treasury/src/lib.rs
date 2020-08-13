@@ -80,6 +80,7 @@ decl_error! {
 		/// The collateral amount of CDP treasury is not enough
 		CollateralNotEnough,
 		/// Collateral Amount overflow
+		// REVIEW: All overflow errors not tested.
 		CollateralOverflow,
 		/// Surplus pool overflow
 		SurplusPoolOverflow,
@@ -91,6 +92,9 @@ decl_error! {
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
 		/// The fixed amount of stable currency for sale per surplus auction
+		// REVIEW: `SurplusAuctionFixedSize` and `SurplusBufferSize` are only ever
+		//         accessed together. Consider bundling in a tuple or struct
+		//         to reduce database reads.
 		pub SurplusAuctionFixedSize get(fn surplus_auction_fixed_size) config(): Balance;
 
 		/// The buffer size of surplus pool, the system will process the surplus through
@@ -98,6 +102,8 @@ decl_storage! {
 		pub SurplusBufferSize get(fn surplus_buffer_size) config(): Balance;
 
 		/// Initial amount of native token for sale per debit auction
+		// REVIEW: Same not about bundling `InitialAmountPerDebitAuction` and
+		//         `DebitAuctionFixedSize`.
 		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction) config(): Balance;
 
 		/// The fixed amount of stable currency per surplus auction wants to get
@@ -216,54 +222,64 @@ decl_module! {
 		}
 
 		/// Handle excessive surplus or debits of system when block end
+		// REVIEW: `on_finalize` weight is not tracked. Calculate and return it
+		//         in `on_initialize`.
 		fn on_finalize(_now: T::BlockNumber) {
 			// offset the same amount between debit pool and surplus pool
 			Self::offset_surplus_and_debit();
 
 			// Stop to create surplus auction and debit auction after emergency shutdown.
-			if !Self::is_shutdown() {
-				let max_auctions_count: u32 = T::MaxAuctionsCount::get();
-				let mut created_lots: u32 = 0;
+			// REVIEW: nit-pick: I would reformat to the following to reduce indentation:
+			if Self::is_shutdown() { return }
 
-				let surplus_auction_fixed_size = Self::surplus_auction_fixed_size();
-				if !surplus_auction_fixed_size.is_zero() {
-					let mut remain_surplus_pool = Self::surplus_pool();
-					let surplus_buffer_size = Self::surplus_buffer_size();
-					let total_surplus_in_auction = T::AuctionManagerHandler::get_total_surplus_in_auction();
+			let max_auctions_count: u32 = T::MaxAuctionsCount::get();
+			let mut created_lots: u32 = 0;
 
-					// create surplus auction requires:
-					// surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size
-					while remain_surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size {
-						if max_auctions_count != 0 && created_lots >= max_auctions_count {
-							break
-						}
-						T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
-						created_lots += 1;
-						remain_surplus_pool = remain_surplus_pool
-							.checked_sub(surplus_auction_fixed_size)
-							.expect("ensured remain surplus greater than auction fixed size; qed");
+			let surplus_auction_fixed_size = Self::surplus_auction_fixed_size();
+			if !surplus_auction_fixed_size.is_zero() {
+				let mut remain_surplus_pool = Self::surplus_pool();
+				let surplus_buffer_size = Self::surplus_buffer_size();
+				let total_surplus_in_auction = T::AuctionManagerHandler::get_total_surplus_in_auction();
+
+				// create surplus auction requires:
+				// surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size
+				// REVIEW: Do you know that this addition cannot overflow?
+				while remain_surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size {
+					// REVIEW: This seems surprising. Add a comment for explanation and check
+					//         semantics. Does `MaxAuctionsCount == 0` mean no cap on auctions?
+					if max_auctions_count != 0 && created_lots >= max_auctions_count {
+						break
 					}
+					T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
+					created_lots += 1;
+					remain_surplus_pool = remain_surplus_pool
+						.checked_sub(surplus_auction_fixed_size)
+						.expect("ensured remain surplus greater than auction fixed size; qed");
 				}
+			}
 
-				let debit_auction_fixed_size = Self::debit_auction_fixed_size();
-				let initial_amount_per_debit_auction = Self::initial_amount_per_debit_auction();
-				if !debit_auction_fixed_size.is_zero() && !initial_amount_per_debit_auction.is_zero() {
-					let mut remain_debit_pool = Self::debit_pool();
-					let total_debit_in_auction = T::AuctionManagerHandler::get_total_debit_in_auction();
-					let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
+			let debit_auction_fixed_size = Self::debit_auction_fixed_size();
+			let initial_amount_per_debit_auction = Self::initial_amount_per_debit_auction();
+			if !debit_auction_fixed_size.is_zero() && !initial_amount_per_debit_auction.is_zero() {
+				let mut remain_debit_pool = Self::debit_pool();
+				let total_debit_in_auction = T::AuctionManagerHandler::get_total_debit_in_auction();
+				let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
 
-					// create debit auction requires:
-					// debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
-					while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
-						if max_auctions_count != 0 && created_lots >= max_auctions_count {
-							break
-						}
-						T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
-						created_lots += 1;
-						remain_debit_pool = remain_debit_pool
-							.checked_sub(debit_auction_fixed_size)
-							.expect("ensured remain debit greater than auction fixed size; qed");
+				// create debit auction requires:
+				// debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
+				// REVIEW: Check overflow.
+				while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
+					if max_auctions_count != 0 && created_lots >= max_auctions_count {
+						break
 					}
+					T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
+					// REVIEW: Is it intentional that surplus and debit auctions draw from
+					//         the same pool, especially one after the other? It means surplus
+					//         auctions can crowd out debit auctions.
+					created_lots += 1;
+					remain_debit_pool = remain_debit_pool
+						.checked_sub(debit_auction_fixed_size)
+						.expect("ensured remain debit greater than auction fixed size; qed");
 				}
 			}
 		}
@@ -275,6 +291,7 @@ impl<T: Trait> Module<T> {
 		T::ModuleId::get().into_account()
 	}
 
+	// REVIEW: This sounds more like equalizing rather than offsetting?
 	fn offset_surplus_and_debit() {
 		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
 
@@ -317,6 +334,8 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
 	}
 
+	// REVIEW: I think the name of the function should indicate that it's a setter.
+	//         e.g. `add_to_system_debit`.
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult {
 		let new_debit_pool = Self::debit_pool()
 			.checked_add(amount)
@@ -325,6 +344,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 		Ok(())
 	}
 
+	// REVIEW: name suggestion `add_to_system_surplus`
 	fn on_system_surplus(amount: Self::Balance) -> DispatchResult {
 		let new_surplus_pool = Self::surplus_pool()
 			.checked_add(amount)
@@ -382,6 +402,8 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 }
 
 impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
+	// REVIEW: This function does more than one fallible mutation operation.
+	//         You will want to make it atomic.
 	fn swap_collateral_to_stable(
 		currency_id: CurrencyId,
 		supply_amount: Balance,
@@ -445,6 +467,8 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 				if !remainder.is_zero() {
 					count = count.saturating_add(One::one());
 				}
+				// REVIEW: Just noting: This means `max_auctions_count` takes precedence
+				//         over max auction size.
 				sp_std::cmp::min(count, max_auctions_count)
 			};
 			let average_amount_per_lot = amount.checked_div(lots_count).expect("lots count is at least 1; qed");
