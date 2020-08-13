@@ -403,7 +403,7 @@ fn cancel_debit_auction_work() {
 }
 
 #[test]
-fn collateral_auction_in_reverse_stage() {
+fn collateral_auction_methods() {
 	ExtBuilder::default().build().execute_with(|| {
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
 		let collateral_auction_with_positive_target = AuctionManagerModule::collateral_auctions(0).unwrap();
@@ -411,12 +411,31 @@ fn collateral_auction_in_reverse_stage() {
 		assert_eq!(collateral_auction_with_positive_target.in_reverse_stage(99), false);
 		assert_eq!(collateral_auction_with_positive_target.in_reverse_stage(100), true);
 		assert_eq!(collateral_auction_with_positive_target.in_reverse_stage(101), true);
+		assert_eq!(collateral_auction_with_positive_target.payment_amount(99), 99);
+		assert_eq!(collateral_auction_with_positive_target.payment_amount(100), 100);
+		assert_eq!(collateral_auction_with_positive_target.payment_amount(101), 100);
+		assert_eq!(collateral_auction_with_positive_target.collateral_amount(80, 100), 10);
+		assert_eq!(collateral_auction_with_positive_target.collateral_amount(100, 200), 5);
 
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 0);
 		let collateral_auction_with_zero_target = AuctionManagerModule::collateral_auctions(1).unwrap();
 		assert_eq!(collateral_auction_with_zero_target.always_forward(), true);
 		assert_eq!(collateral_auction_with_zero_target.in_reverse_stage(0), false);
 		assert_eq!(collateral_auction_with_zero_target.in_reverse_stage(100), false);
+		assert_eq!(collateral_auction_with_zero_target.payment_amount(99), 99);
+		assert_eq!(collateral_auction_with_zero_target.payment_amount(101), 101);
+		assert_eq!(collateral_auction_with_zero_target.collateral_amount(100, 200), 10);
+	});
+}
+
+#[test]
+fn debit_auction_methods() {
+	ExtBuilder::default().build().execute_with(|| {
+		AuctionManagerModule::new_debit_auction(200, 100);
+		let debit_auction = AuctionManagerModule::debit_auctions(0).unwrap();
+		assert_eq!(debit_auction.amount_for_sale(0, 100), 200);
+		assert_eq!(debit_auction.amount_for_sale(100, 200), 100);
+		assert_eq!(debit_auction.amount_for_sale(200, 1000), 40);
 	});
 }
 
