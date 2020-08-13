@@ -133,6 +133,7 @@ decl_storage! {
 		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
 
 		/// System shutdown flag
+		// REVIEW: I'm surprised that the shutdown has no effect on trading. Is that intentional?
 		IsShutdown get(fn is_shutdown): bool;
 	}
 
