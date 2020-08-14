@@ -695,9 +695,9 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 
 	fn check_cancel_schedule(origin: Origin, initial_origin: &OriginCaller) -> DispatchResult {
 		ensure_root(origin.clone()).or_else(|_| {
-			if origin.caller() == initial_origin {
-				Ok(())
-			} else if EnsureRootOrThreeFourthsGeneralCouncil::ensure_origin(origin).is_ok() {
+			if origin.caller() == initial_origin
+				|| EnsureRootOrThreeFourthsGeneralCouncil::ensure_origin(origin).is_ok()
+			{
 				Ok(())
 			} else {
 				Err(BadOrigin.into())
