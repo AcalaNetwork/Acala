@@ -732,7 +732,11 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 				AuthoritysOriginId::HomaTreasury => EnsureRootOrHalfGeneralCouncil::ensure_origin(origin).is_ok(),
 				AuthoritysOriginId::DSWF => ensure_root(origin).is_ok(),
 			};
-			return if ok { Ok(()) } else { Err(BadOrigin.into()) };
+			if ok {
+				Ok(())
+			} else {
+				Err(BadOrigin.into())
+			}
 		})
 	}
 }
