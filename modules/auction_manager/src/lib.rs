@@ -1057,6 +1057,9 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 }
 
 impl<T: Trait> OnEmergencyShutdown for Module<T> {
+	// REVIEW: Seems a bit redundant to me to add an `IsShutdown` flag in every
+	//         module. You could instead inject the emergency_shutdown pallet as a
+	//         source ofinformation on whether the system is shut down.
 	fn on_emergency_shutdown() {
 		IsShutdown::put(true);
 	}

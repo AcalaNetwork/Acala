@@ -78,8 +78,10 @@ decl_error! {
 		/// Final redemption is still not opened
 		CanNotRefund,
 		/// Exist potential surplus, means settlement has not been completed
+		// REVIEW: No tests.
 		ExistPotentialSurplus,
 		/// Exist unhandled debit, means settlement has not been completed
+		// REVIEW: No tests.
 		ExistUnhandledDebit,
 	}
 }
@@ -116,6 +118,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 47.4 µs
 		/// # </weight>
+		// REVIEW: nit-pick: I would change `as u64` to `as Weight`.
 		#[weight = (
 			48 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
 				1 + (T::CollateralCurrencyIds::get().len() as u64),
@@ -174,6 +177,9 @@ decl_module! {
 
 				// Ensure there's no debit and surplus auction now, they may bring uncertain surplus to system.
 				// Cancel all surplus auctions and debit auctions to pass the check!
+				// REVIEW: nit-pick: The error seems to be reused here. Might be nice to
+				//         make the name more descriptive or introduce more targeted
+				//         errors.
 				ensure!(
 					<T as Trait>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
 					&& <T as Trait>::AuctionManagerHandler::get_total_surplus_in_auction().is_zero(),
