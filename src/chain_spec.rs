@@ -7,7 +7,7 @@ use runtime::{
 	GenesisConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
 	NewAccountDeposit, OperatorMembershipConfig, OracleConfig, OracleId, PolkadotBridgeConfig, SessionConfig,
 	Signature, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig, SystemConfig,
-	TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
+	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS, WASM_BINARY,
 };
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -318,7 +318,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance4: Some(Default::default()),
-		pallet_membership_Instance4: Some(TechnicalCouncilMembershipConfig {
+		pallet_membership_Instance4: Some(TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
@@ -474,7 +474,7 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance4: Some(Default::default()),
-		pallet_membership_Instance4: Some(TechnicalCouncilMembershipConfig {
+		pallet_membership_Instance4: Some(TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),

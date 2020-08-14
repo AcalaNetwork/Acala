@@ -4,7 +4,7 @@ use sp_runtime::{
 	MultiSignature,
 };
 
-pub use module_primitives::{AirDropCurrencyId, Amount, AuctionId, Balance, CurrencyId, EraIndex};
+pub use module_primitives::{AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, CurrencyId, EraIndex};
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 
 /// An index to a block.
