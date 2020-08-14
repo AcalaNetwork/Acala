@@ -181,6 +181,7 @@ runtime-benchmarks = [
 	"frame-system/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
+	"orml-authority/runtime-benchmarks",
 
 	"module-auction-manager-benchmarking",
 	"module-cdp-engine-benchmarking",
