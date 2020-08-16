@@ -44,6 +44,8 @@ use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 
+use cumulus_primitives::relay_chain::Balance as RelayChainBalance;
+
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
 	traits::{Contains, ContainsLengthBound, Filter, Get, KeyOwnerProofSystem, Randomness},
@@ -1024,12 +1026,39 @@ impl cumulus_message_broker::Trait for Runtime {
 
 impl parachain_info::Trait for Runtime {}
 
+parameter_types! {
+	pub const RelayChainCurrencyId: CurrencyId = CurrencyId::DOT;
+}
+
+pub struct RelayToNative;
+impl Convert<RelayChainBalance, Balance> for RelayToNative {
+	fn convert(val: u128) -> Balance {
+		// native is 18
+		// relay is 12
+		val * 1_000_000
+	}
+}
+
+pub struct NativeToRelay;
+impl Convert<Balance, RelayChainBalance> for NativeToRelay {
+	fn convert(val: u128) -> Balance {
+		// native is 18
+		// relay is 12
+		val / 1_000_000
+	}
+}
+
 impl orml_xtokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type Currency = Currencies;
 	type XCMPMessageSender = MessageBroker;
+	type RelayChainCurrencyId = RelayChainCurrencyId;
+	type UpwardMessageSender = MessageBroker;
+	type FromRelayChainBalance = RelayToNative;
+	type ToRelayChainBalance = NativeToRelay;
+	type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
 }
 
 #[allow(clippy::large_enum_variant)]

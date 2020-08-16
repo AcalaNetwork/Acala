@@ -64,11 +64,11 @@ sp-transaction-pool = { version = "2.0.0-rc5" }
 substrate-frame-rpc-system = { version = "2.0.0-rc5" }
 
 # Cumulus dependencies
-cumulus-consensus = { git = "https://github.com/paritytech/cumulus", branch = "bkchr-next-key" }
-cumulus-collator = { git = "https://github.com/paritytech/cumulus", branch = "bkchr-next-key" }
-cumulus-network = { git = "https://github.com/paritytech/cumulus", branch = "bkchr-next-key" }
-cumulus-primitives = { git = "https://github.com/paritytech/cumulus", branch = "bkchr-next-key" }
-cumulus-service = { git = "https://github.com/paritytech/cumulus", branch = "bkchr-next-key" }
+cumulus-consensus = { git = "https://github.com/paritytech/cumulus" }
+cumulus-collator = { git = "https://github.com/paritytech/cumulus" }
+cumulus-network = { git = "https://github.com/paritytech/cumulus" }
+cumulus-primitives = { git = "https://github.com/paritytech/cumulus" }
+cumulus-service = { git = "https://github.com/paritytech/cumulus" }
 
 # Polkadot dependencies
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }

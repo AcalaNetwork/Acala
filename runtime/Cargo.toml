@@ -53,14 +53,16 @@ sp-transaction-pool = { version = "2.0.0-rc5", default-features = false }
 sp-version = { version = "2.0.0-rc5", default-features = false }
 
 # Cumulus dependencies
-cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "bkchr-next-key" }
-cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "bkchr-next-key" }
-cumulus-primitives = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "bkchr-next-key" }
-cumulus-runtime = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "bkchr-next-key" }
-cumulus-upward-message = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "bkchr-next-key" }
-parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "bkchr-next-key" }
+cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-primitives = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-runtime = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-upward-message = { git = "https://github.com/paritytech/cumulus", default-features = false }
+parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false }
 
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
+
+rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
 
 orml-auction = { path = "../orml/auction", default-features = false }
 orml-benchmarking = { path = "../orml/benchmarking", default-features = false, optional = true }

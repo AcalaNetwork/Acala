@@ -172,6 +172,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
+ "rococo-runtime",
  "serde",
  "smallvec 1.4.1",
  "sp-api",
@@ -1069,7 +1070,7 @@ dependencies = [
 [[package]]
 name = "cumulus-collator"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "cumulus-consensus",
  "cumulus-network",
@@ -1097,7 +1098,7 @@ dependencies = [
 [[package]]
 name = "cumulus-consensus"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "futures 0.3.5",
  "log 0.4.11",
@@ -1119,7 +1120,7 @@ dependencies = [
 [[package]]
 name = "cumulus-message-broker"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "cumulus-primitives",
  "cumulus-upward-message",
@@ -1135,7 +1136,7 @@ dependencies = [
 [[package]]
 name = "cumulus-network"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "cumulus-primitives",
  "futures 0.3.5",
@@ -1157,7 +1158,7 @@ dependencies = [
 [[package]]
 name = "cumulus-parachain-upgrade"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "cumulus-primitives",
  "cumulus-runtime",
@@ -1178,7 +1179,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
@@ -1193,7 +1194,7 @@ dependencies = [
 [[package]]
 name = "cumulus-runtime"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "cumulus-primitives",
  "frame-executive",
@@ -1212,7 +1213,7 @@ dependencies = [
 [[package]]
 name = "cumulus-service"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "cumulus-collator",
  "cumulus-consensus",
@@ -1234,7 +1235,7 @@ dependencies = [
 [[package]]
 name = "cumulus-upward-message"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "kusama-runtime",
  "polkadot-core-primitives",
@@ -4456,6 +4457,7 @@ version = "0.1.3-dev"
 dependencies = [
  "clear_on_drop",
  "cumulus-primitives",
+ "cumulus-upward-message",
  "frame-support",
  "frame-system",
  "orml-traits",
@@ -4986,7 +4988,7 @@ dependencies = [
 [[package]]
 name = "parachain-info"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=bkchr-next-key#46c7f21d4e08965d2abfbf6b10fa83ab78f6ccac"
+source = "git+https://github.com/paritytech/cumulus#2381e5addfa9cb5fbba3626fd47639667d0b3069"
 dependencies = [
  "cumulus-primitives",
  "frame-support",
