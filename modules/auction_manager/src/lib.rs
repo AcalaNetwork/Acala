@@ -24,7 +24,7 @@ use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
-use orml_traits::{Auction, AuctionHandler, AuctionInfo, Change, MultiCurrency, OnNewBidResult};
+use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
 use orml_utilities::with_transaction_result;
 use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::{
@@ -71,6 +71,40 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	start_time: BlockNumber,
 }
 
+impl<AccountId, BlockNumber> CollateralAuctionItem<AccountId, BlockNumber> {
+	/// Return the collateral auction will never be reverse stage
+	fn always_forward(&self) -> bool {
+		self.target.is_zero()
+	}
+
+	/// Return whether the collateral auction is in reverse stage at specific
+	/// bid price
+	fn in_reverse_stage(&self, bid_price: Balance) -> bool {
+		!self.always_forward() && bid_price >= self.target
+	}
+
+	/// Return the actual number of stablecoins to be paid
+	fn payment_amount(&self, bid_price: Balance) -> Balance {
+		if self.always_forward() {
+			bid_price
+		} else {
+			sp_std::cmp::min(self.target, bid_price)
+		}
+	}
+
+	/// Return new collateral amount at specific last bid price and new bid
+	/// price
+	fn collateral_amount(&self, last_bid_price: Balance, new_bid_price: Balance) -> Balance {
+		if self.in_reverse_stage(new_bid_price) && new_bid_price > last_bid_price {
+			Rate::checked_from_rational(sp_std::cmp::max(last_bid_price, self.target), new_bid_price)
+				.and_then(|n| n.checked_mul_int(self.amount))
+				.unwrap_or(self.amount)
+		} else {
+			self.amount
+		}
+	}
+}
+
 /// Information of an debit auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
@@ -84,6 +118,19 @@ pub struct DebitAuctionItem<BlockNumber> {
 	fix: Balance,
 	/// Auction start time
 	start_time: BlockNumber,
+}
+
+impl<BlockNumber> DebitAuctionItem<BlockNumber> {
+	/// Return amount for sale at specific last bid price and new bid price
+	fn amount_for_sale(&self, last_bid_price: Balance, new_bid_price: Balance) -> Balance {
+		if new_bid_price > last_bid_price && new_bid_price > self.fix {
+			Rate::checked_from_rational(sp_std::cmp::max(last_bid_price, self.fix), new_bid_price)
+				.and_then(|n| n.checked_mul_int(self.amount))
+				.unwrap_or(self.amount)
+		} else {
+			self.amount
+		}
+	}
 }
 
 /// Information of an surplus auction
@@ -300,6 +347,10 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+	fn get_last_bid(auction_id: AuctionId) -> Option<(T::AccountId, Balance)> {
+		T::Auction::auction_info(auction_id).and_then(|auction_info| auction_info.bid)
+	}
+
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel(auction_id);
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
@@ -338,9 +389,17 @@ impl<T: Trait> Module<T> {
 			}
 			_ => {
 				for (collateral_auction_id, _) in <CollateralAuctions<T>>::iter() {
-					if !Self::collateral_auction_in_reverse_stage(collateral_auction_id) {
-						Self::submit_cancel_auction_tx(collateral_auction_id);
+					if let (Some(collateral_auction), Some((_, last_bid_price))) = (
+						Self::collateral_auctions(collateral_auction_id),
+						Self::get_last_bid(collateral_auction_id),
+					) {
+						// if collateral auction has already been in reverse stage,
+						// should skip it.
+						if collateral_auction.in_reverse_stage(last_bid_price) {
+							continue;
+						}
 					}
+					Self::submit_cancel_auction_tx(collateral_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
 			}
@@ -353,11 +412,7 @@ impl<T: Trait> Module<T> {
 		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
 
 		// if there's bid
-		if let Some(AuctionInfo {
-			bid: Some((bidder, bid_price)),
-			..
-		}) = T::Auction::auction_info(id)
-		{
+		if let Some((bidder, bid_price)) = Self::get_last_bid(id) {
 			// refund native token to the bidder
 			// TODO: transfer from RESERVED TREASURY instead of issuing
 			T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, bid_price)?;
@@ -370,7 +425,6 @@ impl<T: Trait> Module<T> {
 		TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
 
 		// remove the auction info
-		<SurplusAuctions<T>>::remove(id);
 		T::Auction::remove_auction(id);
 
 		Ok(())
@@ -380,10 +434,7 @@ impl<T: Trait> Module<T> {
 		let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
 
 		// if there's bid
-		if let Some(AuctionInfo {
-			bid: Some((bidder, _)), ..
-		}) = T::Auction::auction_info(id)
-		{
+		if let Some((bidder, _)) = Self::get_last_bid(id) {
 			// refund stable token to the bidder
 			T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
 			// decrease account ref of bidder
@@ -394,25 +445,28 @@ impl<T: Trait> Module<T> {
 		TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
 
 		// remove the auction info
-		<DebitAuctions<T>>::remove(id);
 		T::Auction::remove_auction(id);
 
 		Ok(())
 	}
 
 	fn cancel_collateral_auction(id: AuctionId) -> DispatchResult {
-		// must not in reverse bid stage
-		ensure!(
-			!Self::collateral_auction_in_reverse_stage(id),
-			Error::<T>::InReverseStage
-		);
-		let collateral_auction = <CollateralAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
+		let collateral_auction = <CollateralAuctions<T>>::get(id).ok_or(Error::<T>::AuctionNotExists)?;
+		let last_bid = Self::get_last_bid(id);
+
+		// collateral auction must not be in reverse stage
+		if let Some((_, bid_price)) = last_bid {
+			ensure!(
+				!collateral_auction.in_reverse_stage(bid_price),
+				Error::<T>::InReverseStage,
+			);
+		}
 
 		// calculate how much collateral to offset target in settle price
 		let stable_currency_id = T::GetStableCurrencyId::get();
 		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
 			.ok_or(Error::<T>::InvalidFeedPrice)?;
-		let confiscate_collateral_amount = if collateral_auction.target.is_zero() {
+		let confiscate_collateral_amount = if collateral_auction.always_forward() {
 			collateral_auction.amount
 		} else {
 			sp_std::cmp::min(
@@ -430,11 +484,7 @@ impl<T: Trait> Module<T> {
 		)?;
 
 		// if there's bid
-		if let Some(AuctionInfo {
-			bid: Some((bidder, bid_price)),
-			..
-		}) = T::Auction::auction_info(id)
-		{
+		if let Some((bidder, bid_price)) = last_bid {
 			// refund stable token to the bidder
 			T::CDPTreasury::issue_debit(&bidder, bid_price, false)?;
 
@@ -456,21 +506,6 @@ impl<T: Trait> Module<T> {
 		T::Auction::remove_auction(id);
 
 		Ok(())
-	}
-
-	fn collateral_auction_in_reverse_stage(id: AuctionId) -> bool {
-		if let (
-			Some(CollateralAuctionItem { target, .. }),
-			Some(AuctionInfo {
-				bid: Some((_, bid_price)),
-				..
-			}),
-		) = (Self::collateral_auctions(id), T::Auction::auction_info(id))
-		{
-			!target.is_zero() && bid_price >= target
-		} else {
-			false
-		}
 	}
 
 	/// Return `true` if price increment rate is greater than or equal to
@@ -545,22 +580,11 @@ impl<T: Trait> Module<T> {
 						Error::<T>::InvalidBidPrice
 					);
 
-					let mut payment = if collateral_auction.target.is_zero() {
-						new_bid_price
-					} else {
-						sp_std::cmp::min(collateral_auction.target, new_bid_price)
-					};
-
-					// increase account ref of new bidder
-					system::Module::<T>::inc_ref(&new_bidder);
+					let mut payment = collateral_auction.payment_amount(new_bid_price);
 
 					// if there's bid before, return stablecoin from new bidder to last bidder
 					if let Some((last_bidder, _)) = last_bid {
-						let refund = if collateral_auction.target.is_zero() {
-							last_bid_price
-						} else {
-							sp_std::cmp::min(last_bid_price, collateral_auction.target)
-						};
+						let refund = collateral_auction.payment_amount(last_bid_price);
 						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, &last_bidder, refund)?;
 						payment = payment
 							.checked_sub(refund)
@@ -573,17 +597,13 @@ impl<T: Trait> Module<T> {
 					// transfer remain payment from new bidder to CDP treasury
 					T::CDPTreasury::deposit_surplus(&new_bidder, payment)?;
 
+					// increase account ref of new bidder
+					system::Module::<T>::inc_ref(&new_bidder);
+
 					// if collateral auction will be in reverse stage, refund collateral to it's
 					// origin from auction CDP treasury
-					let should_reverse =
-						!collateral_auction.target.is_zero() && new_bid_price > collateral_auction.target;
-					if should_reverse {
-						let new_collateral_amount = Rate::checked_from_rational(
-							sp_std::cmp::max(last_bid_price, collateral_auction.target),
-							new_bid_price,
-						)
-						.and_then(|n| n.checked_mul_int(collateral_auction.amount))
-						.unwrap_or(collateral_auction.amount);
+					if collateral_auction.in_reverse_stage(new_bid_price) {
+						let new_collateral_amount = collateral_auction.collateral_amount(last_bid_price, new_bid_price);
 						let refund_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
 
 						if !refund_collateral_amount.is_zero() {
@@ -651,15 +671,7 @@ impl<T: Trait> Module<T> {
 					// increase account ref of new bidder
 					system::Module::<T>::inc_ref(&new_bidder);
 
-					// if bid price is greater than fix, calculate new amount of issue native token
-					if new_bid_price > debit_auction.fix {
-						debit_auction.amount = Rate::checked_from_rational(
-							sp_std::cmp::max(last_bid_price, debit_auction.fix),
-							new_bid_price,
-						)
-						.and_then(|n| n.checked_mul_int(debit_auction.amount))
-						.unwrap_or(debit_auction.amount);
-					}
+					debit_auction.amount = debit_auction.amount_for_sale(last_bid_price, new_bid_price);
 
 					Ok(now + Self::get_auction_time_to_close(now, debit_auction.start_time))
 				},
@@ -722,7 +734,7 @@ impl<T: Trait> Module<T> {
 			let mut should_deal = true;
 
 			// if bid_price doesn't reach target and trading with DEX will get better result
-			if (bid_price < collateral_auction.target || collateral_auction.target.is_zero())
+			if !collateral_auction.in_reverse_stage(bid_price)
 				&& bid_price
 					< T::DEX::get_target_amount(
 						collateral_auction.currency_id,
@@ -741,7 +753,7 @@ impl<T: Trait> Module<T> {
 					// refund stable currency to the last bidder, ignore result to continue
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
-					if !collateral_auction.target.is_zero() && amount > collateral_auction.target {
+					if collateral_auction.in_reverse_stage(amount) {
 						// refund extra stable currency to recipient, ignore result to continue
 						let _ = T::CDPTreasury::issue_debit(
 							&collateral_auction.refund_recipient,
@@ -769,11 +781,7 @@ impl<T: Trait> Module<T> {
 					collateral_auction.amount,
 				);
 
-				let payment_amount = if collateral_auction.target.is_zero() {
-					bid_price
-				} else {
-					sp_std::cmp::min(collateral_auction.target, bid_price)
-				};
+				let payment_amount = collateral_auction.payment_amount(bid_price);
 				<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealt(
 					auction_id,
 					collateral_auction.currency_id,
@@ -1012,9 +1020,12 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 				return InvalidTransaction::Stale.into();
 			}
 
-			if <CollateralAuctions<T>>::contains_key(auction_id) {
-				if !Self::collateral_auction_in_reverse_stage(*auction_id) {
-					return InvalidTransaction::Stale.into();
+			if let Some(collateral_auction) = Self::collateral_auctions(auction_id) {
+				if let Some((_, bid_price)) = Self::get_last_bid(*auction_id) {
+					// if collateral auction is in reverse stage, shouldn't cancel
+					if collateral_auction.in_reverse_stage(bid_price) {
+						return InvalidTransaction::Stale.into();
+					}
 				}
 			} else if !<SurplusAuctions<T>>::contains_key(auction_id) && !<DebitAuctions<T>>::contains_key(auction_id) {
 				return InvalidTransaction::Stale.into();
