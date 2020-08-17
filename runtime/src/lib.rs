@@ -1017,7 +1017,7 @@ impl cumulus_parachain_upgrade::Trait for Runtime {
 
 impl cumulus_message_broker::Trait for Runtime {
 	type Event = Event;
-	type DownwardMessageHandlers = ();
+	type DownwardMessageHandlers = XTokens;
 	type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
 	type ParachainId = ParachainInfo;
 	type XCMPMessage = orml_xtokens::XCMPMessage<AccountId, Balance>;
