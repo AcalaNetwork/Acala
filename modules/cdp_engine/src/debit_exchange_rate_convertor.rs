@@ -9,6 +9,7 @@ where
 {
 	fn convert(a: (CurrencyId, Balance)) -> Balance {
 		let (currency_id, balance) = a;
+		// REVIEW: It's unclear to me why you would need these conversions.
 		let balance: u128 = balance.unique_saturated_into();
 		let balance: Balance = balance.unique_saturated_into();
 		<Module<T>>::get_debit_exchange_rate(currency_id).saturating_mul_int(balance)

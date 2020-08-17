@@ -177,16 +177,20 @@ decl_error! {
 		/// The CDP must be unsafe to be liquidated
 		MustBeUnsafe,
 		/// Invalid collateral type
+		// REVIEW: Fewer tests than usages.
 		InvalidCollateralType,
 		/// Remain debit value in CDP below the dust amount
 		RemainDebitValueTooSmall,
 		/// Feed price is invalid
+		// REVIEW: No tests.
 		InvalidFeedPrice,
 		/// No debit value in CDP so that it cannot be settled
 		NoDebitValue,
 		/// System has already been shutdown
+		// REVIEW: No tests.
 		AlreadyShutdown,
 		/// Must after system shutdown
+		// REVIEW: No tests.
 		MustAfterShutdown,
 	}
 }
@@ -424,6 +428,8 @@ decl_module! {
 					let stability_fee_rate = Self::get_stability_fee(currency_id);
 					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
 					if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
+						// REVIEW: Is it intentional that this can be zero (because
+						//         `debit_exchange_rate` can be zero)?
 						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
 						let total_debit_value = Self::get_debit_value(currency_id, total_debits);
 						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
@@ -643,6 +649,9 @@ impl<T: Trait> Module<T> {
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		// ensure the cdp is unsafe
+		// REVIEW: You read the position a second time in this function. Consider
+		//         passing the position or creating an ensure function similar to
+		//         `ensure_signed`.
 		ensure!(Self::is_cdp_unsafe(currency_id, &who), Error::<T>::MustBeUnsafe);
 
 		// confiscate all collateral and debit of unsafe cdp to cdp treasury
@@ -653,7 +662,7 @@ impl<T: Trait> Module<T> {
 		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 
 		// if collateral can swap enough native token in DEX and exchange
-		// slippage is blow the limit, directly exchange with DEX, otherwise create
+		// slippage is below the limit, directly exchange with DEX, otherwise create
 		// collateral auctions.
 		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
 			&& collateral >= supply_collateral_amount									// ensure have sufficient collateral

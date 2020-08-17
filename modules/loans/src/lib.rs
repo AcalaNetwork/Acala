@@ -125,6 +125,8 @@ impl<T: Trait> Module<T> {
 			T::CDPTreasury::deposit_collateral(&Self::account_id(), currency_id, collateral_confiscate)?;
 
 			// deposit debit to cdp treasury
+			// REVIEW: Why does this call `get_debit_value` from cdp engine again when
+			//         `debit_decrease` is already in the debit currency (presumably aUSD)?
 			let bad_debt_value = T::RiskManager::get_bad_debt_value(currency_id, debit_decrease);
 			T::CDPTreasury::on_system_debit(bad_debt_value)?;
 
@@ -238,6 +240,10 @@ impl<T: Trait> Module<T> {
 		let collateral_balance = Self::balance_try_from_amount_abs(collateral_adjustment)?;
 		let debit_balance = Self::balance_try_from_amount_abs(debit_adjustment)?;
 
+		// REVIEW: Using `try_mutate` means loans are never removed. Consider using
+		//         `try_mutate_exists` and returning `None` after `dec_ref` to
+		//         remove zero positions. Or alternatively storing `Option<Position>`
+		//         and then setting the value to `None`.
 		<Positions<T>>::try_mutate(currency_id, who, |p| -> DispatchResult {
 			let new_collateral = if collateral_adjustment.is_positive() {
 				p.collateral
@@ -270,6 +276,9 @@ impl<T: Trait> Module<T> {
 			Ok(())
 		})?;
 
+		// REVIEW: You do a second potentially failing mutation here after `Positions`
+		//         has already been mutated. You will probably want to move this
+		//         into the `try_mutate` above to make the storage update atomic.
 		TotalPositions::try_mutate(currency_id, |total_positions| -> DispatchResult {
 			total_positions.collateral = if collateral_adjustment.is_positive() {
 				total_positions
