@@ -38,7 +38,9 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot};
+use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
+use orml_traits::currency::MultiCurrency;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -108,7 +110,7 @@ parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
-	pub const HonzonTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
+	pub const HonzonTreasuryModuleId: ModuleId = ModuleId(*b"aca/hztr");
 	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
 	// Decentralized Sovereign Wealth Fund
 	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
@@ -125,6 +127,16 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		HomaTreasuryModuleId::get().into_account(),
 		DSWFModuleId::get().into_account(),
 	]
+}
+
+pub struct DealWithCommission<GetModuleId>(sp_std::marker::PhantomData<GetModuleId>);
+impl<GetModuleId> OnCommission<Balance, CurrencyId> for DealWithCommission<GetModuleId>
+where
+	GetModuleId: Get<ModuleId>,
+{
+	fn on_commission(currency_id: CurrencyId, amount: Balance) {
+		let _ = Currencies::deposit(currency_id, &GetModuleId::get().into_account(), amount);
+	}
 }
 
 parameter_types! {
@@ -971,7 +983,7 @@ impl module_staking_pool::Trait for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type Nominees = NomineesElection;
-	type OnCommission = ();
+	type OnCommission = DealWithCommission<HomaTreasuryModuleId>;
 	type Bridge = PolkadotBridge;
 	type MaxBondRatio = MaxBondRatio;
 	type MinBondRatio = MinBondRatio;
@@ -999,13 +1011,6 @@ impl module_nominees_election::Trait for Runtime {
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
-}
-
-impl module_homa_treasury::Trait for Runtime {
-	type Currency = Currencies;
-	type Homa = StakingPool;
-	type StakingCurrencyId = GetStakingCurrencyId;
-	type ModuleId = HomaTreasuryModuleId;
 }
 
 parameter_types! {
@@ -1086,7 +1091,6 @@ construct_runtime!(
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
-		HomaTreasury: module_homa_treasury::{Module},
 
 		// ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},

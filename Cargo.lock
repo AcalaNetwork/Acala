@@ -1058,7 +1058,6 @@ dependencies = [
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
  "module-homa",
- "module-homa-treasury",
  "module-honzon",
  "module-honzon-benchmarking",
  "module-loans",
@@ -3456,23 +3455,6 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-runtime",
-]
-
-[[package]]
-name = "module-homa-treasury"
-version = "0.5.4"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-traits",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
