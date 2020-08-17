@@ -85,10 +85,14 @@ decl_event!(
 decl_error! {
 	/// Error for loans module.
 	pub enum Error for Module<T: Trait> {
+		// REVIEW: None of the errors have docs.
+		// REVIEW: No tests.
 		DebitOverflow,
 		DebitTooLow,
+		// REVIEW: No tests.
 		CollateralOverflow,
 		CollateralTooLow,
+		// REVIEW: No tests.
 		AmountConvertFailed,
 	}
 }
@@ -183,6 +187,8 @@ impl<T: Trait> Module<T> {
 			}
 
 			// ensure pass risk check
+			// REVIEW: You could probably return the changed position from `update_loan`
+			//         and so void this DB read.
 			let Position { collateral, debit } = Self::positions(currency_id, who);
 			T::RiskManager::check_position_valid(currency_id, collateral, debit)?;
 
@@ -197,10 +203,13 @@ impl<T: Trait> Module<T> {
 	}
 
 	// transfer whole loan of `from` to `to`
+	// REVIEW: This (public) function has fallible mutations, but is not wrapped
+	//         in `with_transaction`.
 	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		// get `from` position data
 		let Position { collateral, debit } = Self::positions(currency_id, from);
 
+		// REVIEW: Consider implementing an addition function on `Position`.
 		let Position {
 			collateral: to_collateral,
 			debit: to_debit,
