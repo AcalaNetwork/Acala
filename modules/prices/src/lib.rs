@@ -109,7 +109,7 @@ decl_module! {
 impl<T: Trait> Module<T> {}
 
 impl<T: Trait> PriceProvider<CurrencyId> for Module<T> {
-	/// get related price between two currency types
+	/// get relative price between two currency types
 	fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
 		if let (Some(base_price), Some(quote_price)) =
 			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
@@ -145,7 +145,9 @@ impl<T: Trait> PriceProvider<CurrencyId> for Module<T> {
 	}
 
 	fn unlock_price(currency_id: CurrencyId) {
-		LockedPrice::remove(currency_id);
-		<Module<T>>::deposit_event(Event::UnlockPrice(currency_id));
+		// REVIEW: I think always triggering the event might be slightly confusing.
+		if LockedPrice::take(currency_id).is_some() {
+			<Module<T>>::deposit_event(Event::UnlockPrice(currency_id));
+		}
 	}
 }
