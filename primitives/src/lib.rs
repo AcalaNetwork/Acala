@@ -91,3 +91,11 @@ pub enum AuthoritysOriginId {
 	HomaTreasury,
 	DSWF,
 }
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum DataProviderId {
+	AcalaDataProvier = 0,
+	BandDataProvider = 1,
+	AggergatedDataProvider = 2,
+}
