@@ -19,6 +19,7 @@ pub type ExchangeRate = FixedU128;
 pub type Ratio = FixedU128;
 pub type Rate = FixedU128;
 
+// REVIEW: No docs.
 pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance;
 
@@ -51,6 +52,7 @@ impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountI
 	}
 }
 
+// REVIEW: No docs.
 pub trait AuctionManager<AccountId> {
 	type CurrencyId;
 	type Balance;
@@ -72,6 +74,7 @@ pub trait AuctionManager<AccountId> {
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
+// REVIEW: No docs.
 pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	fn get_target_amount(
 		supply_currency_id: CurrencyId,
@@ -180,6 +183,7 @@ pub trait CDPTreasury<AccountId> {
 	fn withdraw_collateral(to: &AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult;
 }
 
+// REVIEW: No docs.
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 	fn swap_collateral_to_stable(
 		currency_id: Self::CurrencyId,
@@ -194,6 +198,7 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 	);
 }
 
+// REVIEW: No docs.
 pub trait PriceProvider<CurrencyId> {
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
 	fn get_price(currency_id: CurrencyId) -> Option<Price>;
@@ -201,10 +206,12 @@ pub trait PriceProvider<CurrencyId> {
 	fn unlock_price(currency_id: CurrencyId);
 }
 
+// REVIEW: No docs.
 pub trait ExchangeRateProvider {
 	fn get_exchange_rate() -> ExchangeRate;
 }
 
+// REVIEW: No docs.
 #[impl_trait_for_tuples::impl_for_tuples(30)]
 pub trait OnEmergencyShutdown {
 	fn on_emergency_shutdown();
