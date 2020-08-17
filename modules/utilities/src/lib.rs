@@ -3,6 +3,7 @@
 /// Error which may occur while executing the off-chain code.
 #[cfg_attr(test, derive(PartialEq))]
 pub enum OffchainErr {
+	// REVIEW: Error variants not documented.
 	OffchainStore,
 	SubmitTransaction,
 	NotValidator,
