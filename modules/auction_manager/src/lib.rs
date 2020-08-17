@@ -783,7 +783,7 @@ impl<T: Trait> Module<T> {
 						auction_id,
 						collateral_auction.currency_id,
 						collateral_auction.amount,
-						bidder.clone(),
+						bidder,
 						payment_amount,
 					));
 				}
