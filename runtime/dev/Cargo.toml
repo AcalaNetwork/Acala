@@ -82,7 +82,6 @@ module-nominees-election = { path = "../../modules/nominees_election", default-f
 module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking_pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot_bridge", default-features = false }
-module-homa-treasury = { path = "../../modules/homa_treasury", default-features = false }
 module-honzon-benchmarking = { path = "../../modules/honzon/benchmarking", default-features = false, optional = true }
 module-cdp-engine-benchmarking = { path = "../../modules/cdp_engine/benchmarking", default-features = false, optional = true }
 module-emergency-shutdown-benchmarking = { path = "../../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
@@ -168,7 +167,6 @@ std = [
 	"module-staking-pool/std",
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
-	"module-homa-treasury/std",
 	"runtime-common/std",
 
 	"ecosystem-renvm-bridge/std",
