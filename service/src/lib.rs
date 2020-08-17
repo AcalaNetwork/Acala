@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use acala_primitives::{AccountId, Balance, Block, CurrencyId, Nonce};
+use acala_primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Nonce};
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sc_executor::native_executor_instance;
 use sc_finality_grandpa::FinalityProofProvider as GrandpaFinalityProofProvider;
@@ -69,7 +69,7 @@ pub trait RuntimeApiCollection<UncheckedExtrinsic>:
 	+ sp_block_builder::BlockBuilder<Block>
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance, UncheckedExtrinsic>
-	+ orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, dev_runtime::TimeStampedPrice>
+	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, dev_runtime::TimeStampedPrice>
 	+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
@@ -89,7 +89,7 @@ where
 		+ sp_block_builder::BlockBuilder<Block>
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance, UncheckedExtrinsic>
-		+ orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, dev_runtime::TimeStampedPrice>
+		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, dev_runtime::TimeStampedPrice>
 		+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>

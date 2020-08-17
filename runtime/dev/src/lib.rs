@@ -29,7 +29,7 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::AccountIdConversion,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, FixedU128, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -41,6 +41,9 @@ use frame_system::{EnsureOneOf, EnsureRoot};
 use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_traits::currency::MultiCurrency;
+use orml_traits::{
+	create_median_value_data_provider, DataProvider, DataProviderExtended, MultiDataProvider, TimestampedValue,
+};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -66,7 +69,7 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
 pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
-	CurrencyId, EraIndex, Hash, Moment, Nonce, Share, Signature,
+	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature,
 };
 pub use runtime_common::{ExchangeRate, OracleId, Price, Rate, Ratio};
 
@@ -423,16 +426,28 @@ impl pallet_membership::Trait<TechnicalCommitteeMembershipInstance> for Runtime 
 	type MembershipChanged = TechnicalCommittee;
 }
 
-type OperatorMembershipInstance = pallet_membership::Instance5;
-impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
+type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
+impl pallet_membership::Trait<OperatorMembershipInstanceAcala> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = Oracle;
-	type MembershipChanged = Oracle;
+	type MembershipInitialized = AcalaOracle;
+	type MembershipChanged = AcalaOracle;
+}
+
+type OperatorMembershipInstanceBand = pallet_membership::Instance6;
+impl pallet_membership::Trait<OperatorMembershipInstanceBand> for Runtime {
+	type Event = Event;
+	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type MembershipInitialized = BandOracle;
+	type MembershipChanged = BandOracle;
 }
 
 impl pallet_utility::Trait for Runtime {
@@ -658,10 +673,11 @@ parameter_types! {
 	pub const OracleUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 10000;
 }
 
-impl orml_oracle::Trait for Runtime {
+type AcalaDataProvider = orml_oracle::Instance1;
+impl orml_oracle::Trait<AcalaDataProvider> for Runtime {
 	type Event = Event;
 	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn>;
+	type CombineData = orml_oracle::DefaultCombineData<Runtime, AcalaDataProvider, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
@@ -669,7 +685,32 @@ impl orml_oracle::Trait for Runtime {
 	type AuthorityId = orml_oracle::AuthorityId;
 }
 
-pub type TimeStampedPrice = orml_oracle::TimestampedValueOf<Runtime>;
+type BandDataProvider = orml_oracle::Instance2;
+impl orml_oracle::Trait<BandDataProvider> for Runtime {
+	type Event = Event;
+	type OnNewData = ();
+	type CombineData = orml_oracle::DefaultCombineData<Runtime, BandDataProvider, MinimumCount, ExpiresIn>;
+	type Time = Timestamp;
+	type OracleKey = CurrencyId;
+	type OracleValue = Price;
+	type UnsignedPriority = OracleUnsignedPriority;
+	type AuthorityId = orml_oracle::AuthorityId;
+}
+
+pub type TimeStampedPrice = TimestampedValue<Price, Moment>;
+
+create_median_value_data_provider!(AggregatedDataProviderImpl, AcalaOracle, BandOracle);
+
+struct MultiDataProviderImpl;
+impl MultiDataProvider<DataProviderId, CurrencyId, Price> for MultiDataProviderImpl {
+	fn get(source: DataProviderId, key: &CurrencyId) -> Option<Price> {
+		match source {
+			DataProviderId::AcalaDataProvier => <AcalaOracle as DataProvider<CurrencyId, Price>>::get(&key),
+			DataProviderId::BandDataProvider => <BandOracle as DataProvider<CurrencyId, Price>>::get(&key),
+			DataProviderId::AggergatedDataProvider => AggregatedDataProviderImpl::get(&key),
+		}
+	}
+}
 
 impl orml_tokens::Trait for Runtime {
 	type Event = Event;
@@ -685,7 +726,7 @@ parameter_types! {
 
 impl module_prices::Trait for Runtime {
 	type Event = Event;
-	type Source = Oracle;
+	type Source = AggregatedDataProviderImpl;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
 	type GetStakingCurrencyId = GetStakingCurrencyId;
@@ -1060,9 +1101,11 @@ construct_runtime!(
 		TechnicalCommittee: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
 		// oracle
-		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
+		AcalaOracle: orml_oracle::<Instance1>::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
+		BandOracle: orml_oracle::<Instance2>::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
 		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		OperatorMembership: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
+		OperatorMembershipAcala: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
+		OperatorMembershipBand: pallet_membership::<Instance6>::{Module, Call, Storage, Event<T>, Config<T>},
 		Authority: orml_authority::{Module, Call, Event<T>, Origin<T>},
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
@@ -1287,15 +1330,24 @@ impl_runtime_apis! {
 
 	impl orml_oracle_rpc_runtime_api::OracleApi<
 		Block,
+		DataProviderId,
 		CurrencyId,
 		TimeStampedPrice,
 	> for Runtime {
-		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
-			Oracle::get_no_op(&key)
+		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
+			match provider_id {
+				DataProviderId::AcalaDataProvier => AcalaOracle::get_no_op(&key),
+				DataProviderId::BandDataProvider => BandOracle::get_no_op(&key),
+				DataProviderId::AggergatedDataProvider => AggregatedDataProviderImpl::get_no_op(&key)
+			}
 		}
 
-		fn get_all_values() -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
-			Oracle::get_all_values()
+		fn get_all_values(provider_id: DataProviderId) -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
+			match provider_id {
+				DataProviderId::AcalaDataProvier => AcalaOracle::get_all_values(),
+				DataProviderId::BandDataProvider => BandOracle::get_all_values(),
+				DataProviderId::AggergatedDataProvider => AggregatedDataProviderImpl::get_all_values()
+			}
 		}
 	}
 

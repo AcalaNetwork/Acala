@@ -17,7 +17,7 @@ use sp_runtime::{traits::UniqueSaturatedInto, DispatchError, FixedPointNumber};
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use dex::Module as Dex;
-use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
+use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use support::{Price, Rate, Ratio};
 

@@ -20,7 +20,7 @@ use sp_runtime::{
 use cdp_engine::Module as CdpEngine;
 use honzon::Module as Honzon;
 use honzon::*;
-use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
+use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
 use primitives::{Amount, CurrencyId};
 use support::{ExchangeRate, Price, Rate, Ratio};
 
