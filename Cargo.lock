@@ -1069,6 +1069,7 @@ dependencies = [
  "module-staking-pool-rpc-runtime-api",
  "module-support",
  "orml-auction",
+ "orml-authority",
  "orml-benchmarking",
  "orml-currencies",
  "orml-gradually-update",

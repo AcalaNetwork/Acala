@@ -81,3 +81,13 @@ pub enum AirDropCurrencyId {
 	KAR = 0,
 	ACA,
 }
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum AuthoritysOriginId {
+	Root,
+	AcalaTreasury,
+	HonzonTreasury,
+	HomaTreasury,
+	DSWF,
+}

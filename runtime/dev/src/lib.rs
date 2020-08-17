@@ -20,7 +20,8 @@ use sp_core::{
 	OpaqueMetadata,
 };
 use sp_runtime::traits::{
-	BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
+	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, Saturating,
+	StaticLookup,
 };
 use sp_runtime::{
 	create_runtime_str,
@@ -28,7 +29,7 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::AccountIdConversion,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -59,14 +60,16 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
+pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
 pub use module_cdp_treasury::SurplusDebitAuctionConfig;
 pub use primitives::{
-	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, Balance, BlockNumber, CurrencyId, EraIndex, Hash,
-	Moment, Nonce, Share, Signature,
+	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
+	CurrencyId, EraIndex, Hash, Moment, Nonce, Share, Signature,
 };
 pub use runtime_common::{ExchangeRate, OracleId, Price, Rate, Ratio};
 
+mod authority;
 mod benchmarking;
 mod constants;
 
@@ -100,22 +103,27 @@ impl_opaque_keys! {
 
 // Module accounts of runtime
 parameter_types! {
-	pub const PalletTreasuryModuleId: ModuleId = ModuleId(*b"aca/trsy");
+	pub const AcalaTreasuryModuleId: ModuleId = ModuleId(*b"aca/trsy");
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
+	pub const HonzonTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
 	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
+	// Decentralized Sovereign Wealth Fund
+	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
 	vec![
-		PalletTreasuryModuleId::get().into_account(),
+		AcalaTreasuryModuleId::get().into_account(),
 		LoansModuleId::get().into_account(),
 		DEXModuleId::get().into_account(),
 		CDPTreasuryModuleId::get().into_account(),
 		StakingPoolModuleId::get().into_account(),
+		HonzonTreasuryModuleId::get().into_account(),
 		HomaTreasuryModuleId::get().into_account(),
+		DSWFModuleId::get().into_account(),
 	]
 }
 
@@ -255,7 +263,7 @@ parameter_types! {
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
-	type OnTransactionPayment = PalletTreasury;
+	type OnTransactionPayment = AcalaTreasury;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
@@ -271,6 +279,36 @@ parameter_types! {
 	pub const GeneralCouncilMaxProposals: u32 = 100;
 }
 
+type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>,
+>;
+
+type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_2, _3, AccountId, GeneralCouncilInstance>,
+>;
+
+type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>,
+>;
+
+type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, TechnicalCommitteeInstance>,
+>;
+
+type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_2, _3, AccountId, TechnicalCommitteeInstance>,
+>;
+
 type GeneralCouncilInstance = pallet_collective::Instance1;
 impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Origin = Origin;
@@ -280,12 +318,6 @@ impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type MaxProposals = GeneralCouncilMaxProposals;
 	type WeightInfo = ();
 }
-
-type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>,
->;
 
 type GeneralCouncilMembershipInstance = pallet_membership::Instance1;
 impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
@@ -314,20 +346,14 @@ impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 	type WeightInfo = ();
 }
 
-type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>,
->;
-
 type HonzonCouncilMembershipInstance = pallet_membership::Instance2;
 impl pallet_membership::Trait<HonzonCouncilMembershipInstance> for Runtime {
 	type Event = Event;
-	type AddOrigin = EnsureRootOrHalfGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrHalfGeneralCouncil;
-	type SwapOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ResetOrigin = EnsureRootOrHalfGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrHalfGeneralCouncil;
+	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = HonzonCouncil;
 	type MembershipChanged = HonzonCouncil;
 }
@@ -350,56 +376,50 @@ impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
 type HomaCouncilMembershipInstance = pallet_membership::Instance3;
 impl pallet_membership::Trait<HomaCouncilMembershipInstance> for Runtime {
 	type Event = Event;
-	type AddOrigin = EnsureRootOrHalfGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrHalfGeneralCouncil;
-	type SwapOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ResetOrigin = EnsureRootOrHalfGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrHalfGeneralCouncil;
+	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = HomaCouncil;
 	type MembershipChanged = HomaCouncil;
 }
 
 parameter_types! {
-	pub const TechnicalCouncilMotionDuration: BlockNumber = 0;
-	pub const TechnicalCouncilMaxProposals: u32 = 100;
+	pub const TechnicalCommitteeMotionDuration: BlockNumber = 0;
+	pub const TechnicalCommitteeMaxProposals: u32 = 100;
 }
 
-type TechnicalCouncilInstance = pallet_collective::Instance4;
-impl pallet_collective::Trait<TechnicalCouncilInstance> for Runtime {
+type TechnicalCommitteeInstance = pallet_collective::Instance4;
+impl pallet_collective::Trait<TechnicalCommitteeInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
-	type MotionDuration = TechnicalCouncilMotionDuration;
-	type MaxProposals = TechnicalCouncilMaxProposals;
+	type MotionDuration = TechnicalCommitteeMotionDuration;
+	type MaxProposals = TechnicalCommitteeMaxProposals;
 	type WeightInfo = ();
 }
 
-type TechnicalCouncilMembershipInstance = pallet_membership::Instance4;
-impl pallet_membership::Trait<TechnicalCouncilMembershipInstance> for Runtime {
+type TechnicalCommitteeMembershipInstance = pallet_membership::Instance4;
+impl pallet_membership::Trait<TechnicalCommitteeMembershipInstance> for Runtime {
 	type Event = Event;
-	type AddOrigin = EnsureRootOrHalfGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrHalfGeneralCouncil;
-	type SwapOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ResetOrigin = EnsureRootOrHalfGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrHalfGeneralCouncil;
-	type MembershipInitialized = TechnicalCouncil;
-	type MembershipChanged = TechnicalCouncil;
+	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type MembershipInitialized = TechnicalCommittee;
+	type MembershipChanged = TechnicalCommittee;
 }
-
-type EnsureRootOrOneThirdGeneralCouncil = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, GeneralCouncilInstance>,
->;
 
 type OperatorMembershipInstance = pallet_membership::Instance5;
 impl pallet_membership::Trait<OperatorMembershipInstance> for Runtime {
 	type Event = Event;
-	type AddOrigin = EnsureRootOrOneThirdGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrOneThirdGeneralCouncil;
-	type SwapOrigin = EnsureRootOrOneThirdGeneralCouncil;
-	type ResetOrigin = EnsureRootOrOneThirdGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrOneThirdGeneralCouncil;
+	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = Oracle;
 	type MembershipChanged = Oracle;
 }
@@ -463,7 +483,7 @@ parameter_types! {
 }
 
 impl pallet_treasury::Trait for Runtime {
-	type ModuleId = PalletTreasuryModuleId;
+	type ModuleId = AcalaTreasuryModuleId;
 	type Currency = Balances;
 	type ApproveOrigin = EnsureOneOf<
 		AccountId,
@@ -562,9 +582,9 @@ impl pallet_staking::Trait for Runtime {
 	type Currency = Balances;
 	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVoteHandler;
-	type RewardRemainder = PalletTreasury;
+	type RewardRemainder = AcalaTreasury;
 	type Event = Event;
-	type Slash = PalletTreasury; // send the slashed funds to the pallet treasury.
+	type Slash = AcalaTreasury; // send the slashed funds to the pallet treasury.
 	type Reward = (); // rewards are minted from the void
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
@@ -609,6 +629,16 @@ impl orml_auction::Trait for Runtime {
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManager;
+}
+
+impl orml_authority::Trait for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type PalletsOrigin = OriginCaller;
+	type Call = Call;
+	type Scheduler = Scheduler;
+	type AsOriginId = AuthoritysOriginId;
+	type AuthorityConfig = AuthorityConfigImpl;
 }
 
 parameter_types! {
@@ -903,7 +933,7 @@ impl module_accounts::Trait for Runtime {
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
 	type KillAccount = frame_system::CallKillAccount<Runtime>;
 	type NewAccountDeposit = NewAccountDeposit;
-	type TreasuryModuleId = PalletTreasuryModuleId;
+	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 }
 
@@ -1013,7 +1043,7 @@ construct_runtime!(
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		Utility: pallet_utility::{Module, Call, Event},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-		PalletTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
+		AcalaTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
@@ -1026,12 +1056,13 @@ construct_runtime!(
 		HonzonCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
 		HomaCouncil: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
-		TechnicalCouncil: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		TechnicalCouncilMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
+		TechnicalCommittee: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
 		// oracle
 		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
 		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		OperatorMembership: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
+		Authority: orml_authority::{Module, Call, Event<T>, Origin<T>},
 
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},

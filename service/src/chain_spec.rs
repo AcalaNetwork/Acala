@@ -243,7 +243,7 @@ fn testnet_genesis(
 		CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit, OperatorMembershipConfig, OracleConfig,
 		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig,
-		SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -306,7 +306,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance4: Some(Default::default()),
-		pallet_membership_Instance4: Some(TechnicalCouncilMembershipConfig {
+		pallet_membership_Instance4: Some(TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),
@@ -410,7 +410,7 @@ fn mandala_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
 		OperatorMembershipConfig, OracleConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
-		SudoConfig, SurplusDebitAuctionConfig, SystemConfig, TechnicalCouncilMembershipConfig, TokensConfig,
+		SudoConfig, SurplusDebitAuctionConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
 		VestingConfig, CENTS, DOLLARS,
 	};
 
@@ -474,7 +474,7 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_collective_Instance4: Some(Default::default()),
-		pallet_membership_Instance4: Some(TechnicalCouncilMembershipConfig {
+		pallet_membership_Instance4: Some(TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		}),

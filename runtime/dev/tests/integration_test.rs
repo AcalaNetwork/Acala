@@ -1,17 +1,18 @@
 #![cfg(test)]
 
 use dev_runtime::{
-	get_all_module_accounts, AccountId, Balance, CurrencyId, Event, GetNativeCurrencyId, NewAccountDeposit, Runtime,
+	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Call, CurrencyId, Event, GetNativeCurrencyId,
+	NewAccountDeposit, Runtime,
 };
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{OnFinalize, OnInitialize},
+	traits::{schedule::DispatchTime, OnFinalize, OnInitialize},
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::CDPTreasury;
 use module_support::{Price, Rate, Ratio, RiskManager};
 use orml_traits::{Change, MultiCurrency};
-use sp_runtime::{DispatchResult, FixedPointNumber};
+use sp_runtime::{traits::BadOrigin, DispatchResult, FixedPointNumber};
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -28,6 +29,7 @@ pub type CdpTreasuryModule = module_cdp_treasury::Module<Runtime>;
 pub type SystemModule = frame_system::Module<Runtime>;
 pub type EmergencyShutdownModule = module_emergency_shutdown::Module<Runtime>;
 pub type AuctionManagerModule = module_auction_manager::Module<Runtime>;
+pub type AuthorityModule = orml_authority::Module<Runtime>;
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 pub struct ExtBuilder {
@@ -664,5 +666,88 @@ fn test_cdp_engine_module() {
 				CdpTreasuryModule::total_collaterals(CurrencyId::XBTC),
 				3333333333333333330
 			);
+		});
+}
+
+#[test]
+fn test_authority_module() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
+			(AccountId::from(ALICE), CurrencyId::AUSD, amount(1000)),
+			(AccountId::from(ALICE), CurrencyId::XBTC, amount(1000)),
+		])
+		.build()
+		.execute_with(|| {
+			SystemModule::set_block_number(1);
+			let ensure_root_call = Call::CdpEngine(module_cdp_engine::Call::set_collateral_params(
+				CurrencyId::XBTC,
+				Change::NewValue(Some(Rate::zero())),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(amount(1000000)),
+			));
+
+			// dispatch_as
+			assert_ok!(AuthorityModule::dispatch_as(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				AuthoritysOriginId::Root,
+				Box::new(ensure_root_call.clone())
+			));
+
+			assert_noop!(
+				AuthorityModule::dispatch_as(
+					<dev_runtime::Runtime as frame_system::Trait>::Origin::signed(AccountId::from(BOB)),
+					AuthoritysOriginId::Root,
+					Box::new(ensure_root_call.clone())
+				),
+				BadOrigin
+			);
+
+			assert_noop!(
+				AuthorityModule::dispatch_as(
+					<dev_runtime::Runtime as frame_system::Trait>::Origin::signed(AccountId::from(BOB)),
+					AuthoritysOriginId::AcalaTreasury,
+					Box::new(ensure_root_call.clone())
+				),
+				BadOrigin
+			);
+
+			// schedule_dispatch
+			assert_ok!(AuthorityModule::schedule_dispatch(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				DispatchTime::At(4),
+				0,
+				true,
+				Box::new(ensure_root_call.clone())
+			));
+
+			// fast_track_scheduled_dispatch
+			assert_ok!(AuthorityModule::fast_track_scheduled_dispatch(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				frame_system::RawOrigin::Root.into(),
+				0,
+				DispatchTime::At(4),
+			));
+
+			// delay_scheduled_dispatch
+			assert_ok!(AuthorityModule::delay_scheduled_dispatch(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				frame_system::RawOrigin::Root.into(),
+				0,
+				5,
+			));
+
+			// cancel_scheduled_dispatch
+			//assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
+			//	<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+			//	frame_system::RawOrigin::Root.into(),
+			//	0
+			//));
 		});
 }
