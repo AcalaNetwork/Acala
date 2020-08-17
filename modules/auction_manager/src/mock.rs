@@ -186,7 +186,6 @@ parameter_types! {
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
@@ -200,7 +199,6 @@ impl Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
-	type GetAmountAdjustment = GetAmountAdjustment;
 	type DEX = DEXModule;
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = UnsignedPriority;
