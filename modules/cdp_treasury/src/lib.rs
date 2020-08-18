@@ -272,7 +272,6 @@ decl_module! {
 						.checked_sub(surplus_auction_fixed_size)
 						.expect("ensured remain surplus greater than auction fixed size; qed");
 				}
-			}
 
 				if !debit_auction_fixed_size.is_zero() && !initial_amount_per_debit_auction.is_zero() {
 					let mut remain_debit_pool = Self::debit_pool();

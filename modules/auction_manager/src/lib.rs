@@ -561,11 +561,6 @@ impl<T: Trait> Module<T> {
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-		let (new_bidder, new_bid_price) = new_bid;
-		// REVIEW: `new_bid_price` could be checked here and thus reduce DB accesses
-		//         for that case by failing fast.
-		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
-
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 			let (new_bidder, new_bid_price) = new_bid;
 			ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
