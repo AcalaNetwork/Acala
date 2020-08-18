@@ -38,7 +38,7 @@ runtime_benchmarks! {
 		set_balance(currency_id, &funder, collateral_amount);
 		set_balance(CurrencyId::AUSD, &bidder, bid_price);
 		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
-		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount);
+		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	// `bid` a collateral auction, worst cases:
@@ -61,7 +61,7 @@ runtime_benchmarks! {
 		set_balance(CurrencyId::AUSD, &bidder, bid_price);
 		set_balance(CurrencyId::AUSD, &previous_bidder, previous_bid_price);
 		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
-		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount);
+		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
@@ -78,7 +78,7 @@ runtime_benchmarks! {
 		let auction_id: AuctionId = 0;
 
 		set_balance(CurrencyId::ACA, &bidder, bid_price);
-		AuctionManager::new_surplus_auction(surplus_amount);
+		AuctionManager::new_surplus_auction(surplus_amount)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	// `bid` a surplus auction, worst cases:
@@ -96,7 +96,7 @@ runtime_benchmarks! {
 
 		set_balance(CurrencyId::ACA, &bidder, bid_price);
 		set_balance(CurrencyId::ACA, &previous_bidder, previous_bid_price);
-		AuctionManager::new_surplus_auction(surplus_amount);
+		AuctionManager::new_surplus_auction(surplus_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
@@ -112,7 +112,7 @@ runtime_benchmarks! {
 		let auction_id: AuctionId = 0;
 
 		set_balance(CurrencyId::AUSD, &bidder, fix_debit_amount);
-		AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount);
+		AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, fix_debit_amount)
 
 	// `bid` a debit auction, worst cases:
@@ -130,7 +130,7 @@ runtime_benchmarks! {
 
 		set_balance(CurrencyId::AUSD, &bidder, bid_price);
 		set_balance(CurrencyId::AUSD, &previous_bidder, previous_bid_price);
-		AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount);
+		AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 }

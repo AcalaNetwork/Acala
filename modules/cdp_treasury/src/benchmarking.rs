@@ -15,10 +15,6 @@ pub fn dollar(d: u32) -> Balance {
 benchmarks! {
 	_ {}
 
-	set_debit_and_surplus_handle_params {
-		let u in 0 .. 1000;
-	}: _(RawOrigin::Root, Some(dollar(100)), Some(dollar(100)), Some(dollar(100)), Some(dollar(100)))
-
 	set_collateral_auction_maximum_size {
 		let u in 0 .. 1000;
 	}: _(RawOrigin::Root, CurrencyId::DOT, dollar(100))
@@ -29,13 +25,6 @@ mod tests {
 	use super::*;
 	use crate::mock::{ExtBuilder, Runtime};
 	use frame_support::assert_ok;
-
-	#[test]
-	fn set_debit_and_surplus_handle_params() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_debit_and_surplus_handle_params::<Runtime>());
-		});
-	}
 
 	#[test]
 	fn set_collateral_auction_maximum_size() {
