@@ -244,9 +244,9 @@ impl<T: Trait> Module<T> {
 		T::TreasuryModuleId::get().into_account()
 	}
 
-	/// Try free transfer, if can transfer for free this time, record this
-	/// moment
-	pub fn try_free_transfer(who: &T::AccountId) -> bool {
+	/// Check if `who` could free transfer (but will not actually transfer),
+	/// if can transfer for free this time, record this moment.
+	pub fn try_record_free_transfer(who: &T::AccountId) -> bool {
 		let mut last_free_transfer = Self::last_free_transfers(who);
 		let now = T::Time::now();
 		let free_transfer_period = T::FreeTransferPeriod::get();
@@ -465,7 +465,7 @@ where
 		// check call type
 		let skip_pay_fee = match call.is_sub_type() {
 			// only orml_currencies::Call::transfer can be free for fee
-			Some(orml_currencies::Call::transfer(..)) => <Module<T>>::try_free_transfer(who),
+			Some(orml_currencies::Call::transfer(..)) => <Module<T>>::try_record_free_transfer(who),
 			_ => false,
 		};
 
