@@ -14,7 +14,7 @@ sp-std = { version = "2.0.0-rc5", default-features = false }
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 orml-utilities = { path = "../../orml/utilities", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
-primitives = { package = "module-primitives", path = "../primitives", default-features = false }
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0-rc5", default-features = false }

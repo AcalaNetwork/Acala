@@ -11,7 +11,8 @@ use sp_runtime::{
 	traits::IdentityLookup,
 	ModuleId, Perbill,
 };
-use support::Price;
+use sp_std::cell::RefCell;
+pub use support::Price;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -105,7 +106,7 @@ impl orml_auction::Trait for Runtime {
 	type AuctionId = AuctionId;
 	type Handler = AuctionManagerModule;
 }
-pub type Auction = orml_auction::Module<Runtime>;
+pub type AuctionModule = orml_auction::Module<Runtime>;
 
 ord_parameter_types! {
 	pub const One: AccountId = 1;
@@ -126,13 +127,23 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
+thread_local! {
+	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+}
+
 pub struct MockPriceSource;
+impl MockPriceSource {
+	pub fn set_relative_price(price: Option<Price>) {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+	}
+}
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(_base: CurrencyId, _quota: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+		RELATIVE_PRICE.with(|v| *v.borrow_mut())
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
@@ -160,32 +171,47 @@ impl dex::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type DEXModule = dex::Module<Runtime>;
+
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub fn mock_shutdown() {
+	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
 
 parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type Auction = Auction;
+	type Auction = AuctionModule;
 	type MinimumIncrementSize = MinimumIncrementSize;
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
-	type GetAmountAdjustment = GetAmountAdjustment;
 	type DEX = DEXModule;
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = UnsignedPriority;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type AuctionManagerModule = Module<Runtime>;
 

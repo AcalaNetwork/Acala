@@ -1,0 +1,16 @@
+[package]
+name = "runtime-common"
+version = "0.5.4"
+authors = ["Acala Developers"]
+edition = "2018"
+
+[dependencies]
+module-support = { path = "../../modules/support", default-features = false }
+orml-oracle = { path = "../../orml/oracle", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"module-support/std",
+	"orml-oracle/std",
+]

@@ -112,7 +112,7 @@ impl<T: Trait> Module<T> {
 		T::ModuleId::get().into_account()
 	}
 
-	// confiscate collateral and debit to cdp treasury
+	/// confiscate collateral and debit to cdp treasury
 	pub fn confiscate_collateral_and_debit(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
@@ -152,7 +152,7 @@ impl<T: Trait> Module<T> {
 		})
 	}
 
-	// mutate collaterals and debits and then mutate stable currency
+	/// adjust the position
 	pub fn adjust_position(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
@@ -202,7 +202,7 @@ impl<T: Trait> Module<T> {
 		})
 	}
 
-	// transfer whole loan of `from` to `to`
+	/// transfer whole loan of `from` to `to`
 	// REVIEW: This (public) function has fallible mutations, but is not wrapped
 	//         in `with_transaction`.
 	pub fn transfer_loan(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
@@ -240,6 +240,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
+	/// mutate records of collaterals and debits
 	fn update_loan(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
@@ -249,11 +250,8 @@ impl<T: Trait> Module<T> {
 		let collateral_balance = Self::balance_try_from_amount_abs(collateral_adjustment)?;
 		let debit_balance = Self::balance_try_from_amount_abs(debit_adjustment)?;
 
-		// REVIEW: Using `try_mutate` means loans are never removed. Consider using
-		//         `try_mutate_exists` and returning `None` after `dec_ref` to
-		//         remove zero positions. Or alternatively storing `Option<Position>`
-		//         and then setting the value to `None`.
-		<Positions<T>>::try_mutate(currency_id, who, |p| -> DispatchResult {
+		<Positions<T>>::try_mutate_exists(currency_id, who, |may_be_position| -> DispatchResult {
+			let mut p = may_be_position.take().unwrap_or_default();
 			let new_collateral = if collateral_adjustment.is_positive() {
 				p.collateral
 					.checked_add(collateral_balance)
@@ -277,9 +275,14 @@ impl<T: Trait> Module<T> {
 			p.collateral = new_collateral;
 			p.debit = new_debit;
 
-			// decrease account ref if zero position
 			if p.collateral.is_zero() && p.debit.is_zero() {
+				// decrease account ref if zero position
 				system::Module::<T>::dec_ref(who);
+
+				// remove position storage if zero position
+				*may_be_position = None;
+			} else {
+				*may_be_position = Some(p);
 			}
 
 			Ok(())

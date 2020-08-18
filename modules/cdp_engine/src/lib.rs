@@ -37,7 +37,7 @@ use sp_runtime::{
 };
 use sp_std::{marker, prelude::*};
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, ExchangeRate, OnEmergencyShutdown, Price, PriceProvider, Rate, Ratio,
+	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
 use utilities::OffchainErr;
@@ -96,6 +96,9 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait
 	/// This is exposed so that it can be tuned for particular runtime, when
 	/// multiple modules send unsigned transactions.
 	type UnsignedPriority: Get<TransactionPriority>;
+
+	/// Emergency shutdown.
+	type EmergencyShutdown: EmergencyShutdown;
 }
 
 /// Liquidation strategy available
@@ -197,9 +200,6 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPEngine {
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
-
 		/// Mapping from collateral type to its exchange rate of debit units and debit value
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyId => Option<ExchangeRate>;
 
@@ -276,17 +276,17 @@ decl_module! {
 		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
 		/// - Db reads:
-		///		- liquidate by auction: `IsShutdown`, (4 + 2 + 3 + 2 + 1 + 3 + 2) items of modules related to module_cdp_engine
-		///		- liquidate by dex: `IsShutdown`, (4 + 5 + 3 + 2 + 2 + 0 + 2) items of modules related to module_cdp_engine
+		///		- liquidate by auction: 19
+		///		- liquidate by dex: 19
 		/// - Db writes:
-		///		- liquidate by auction: (4 + 2 + 0 + 2 + 0 + 5) items of modules related to module_cdp_engine
-		///		- liquidate by dex: (4 + 5 + 0 + 2 + 1 + 0) items of modules related to module_cdp_engine
+		///		- liquidate by auction: 14
+		///		- liquidate by dex: 14
 		/// -------------------
 		/// Base Weight:
-		///		- liquidate by auction: 119.4 µs
-		///		- liquidate by dex: 125.1 µs
+		///		- liquidate by auction: 200.1 µs
+		///		- liquidate by dex: 325.3 µs
 		/// # </weight>
-		#[weight = (125 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(18, 13), DispatchClass::Operational)]
+		#[weight = (325 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(19, 14), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -294,7 +294,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;
-				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 				Self::liquidate_unsafe_cdp(who, currency_id)?;
 				Ok(())
 			})?;
@@ -312,12 +312,12 @@ decl_module! {
 		/// 	- T::CDPTreasury is module_cdp_treasury
 		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
-		/// - Db reads: `IsShutdown`, 9 items of modules related to module_cdp_engine
-		/// - Db writes: 8 items of modules related to module_cdp_engine
+		/// - Db reads: 10
+		/// - Db writes: 6
 		/// -------------------
-		/// Base Weight: 76.54 µs
+		/// Base Weight: 161.5 µs
 		/// # </weight>
-		#[weight = (77 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 8), DispatchClass::Operational)]
+		#[weight = (162 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 6), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -325,7 +325,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;
-				ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);
+				ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 				Self::settle_cdp_has_debit(who, currency_id)?;
 				Ok(())
 			})?;
@@ -339,12 +339,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `GlobalStabilityFee`
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 21.04 µs
+		/// Base Weight: 24.16 µs
 		/// # </weight>
-		#[weight = (21 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
+		#[weight = (24 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -370,12 +370,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:	`CollateralParams`
-		/// - Db writes: `CollateralParams`
+		/// - Db reads:	1
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 32.81 µs
+		/// Base Weight: 76.08 µs
 		/// # </weight>
-		#[weight = (33 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1), DispatchClass::Operational)]
+		#[weight = (76 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1), DispatchClass::Operational)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
@@ -422,7 +422,7 @@ decl_module! {
 		/// and update their debit exchange rate
 		fn on_finalize(_now: T::BlockNumber) {
 			// collect stability fee for all types of collateral
-			if !Self::is_shutdown() {
+			if !T::EmergencyShutdown::is_shutdown() {
 				for currency_id in T::CollateralCurrencyIds::get() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
 					let stability_fee_rate = Self::get_stability_fee(currency_id);
@@ -532,7 +532,7 @@ impl<T: Trait> Module<T> {
 			)?;
 		let position = get_position.map_err(|_| OffchainErr::OffchainStore)?;
 		let currency_id = collateral_currency_ids[(position as usize)];
-		let is_shutdown = Self::is_shutdown();
+		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
 		for (who, Position { debit, .. }) in <loans::Positions<T>>::iter_prefix(currency_id) {
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, &who) {
@@ -761,12 +761,6 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Modul
 	}
 }
 
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		<IsShutdown>::put(true);
-	}
-}
-
 #[allow(deprecated)]
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
@@ -774,7 +768,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		match call {
 			Call::liquidate(currency_id, who) => {
-				if !Self::is_cdp_unsafe(*currency_id, &who) || Self::is_shutdown() {
+				if !Self::is_cdp_unsafe(*currency_id, &who) || T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}
 
@@ -787,7 +781,7 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 			}
 			Call::settle(currency_id, who) => {
 				let Position { debit, .. } = <LoansOf<T>>::positions(currency_id, who);
-				if debit.is_zero() || !Self::is_shutdown() {
+				if debit.is_zero() || !T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}
 

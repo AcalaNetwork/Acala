@@ -15,12 +15,12 @@ use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use orml_traits::{DataProviderExtended, MultiCurrency};
 use primitives::{AuctionId, Balance, CurrencyId};
-use sp_runtime::FixedPointNumber;
-use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, OnEmergencyShutdown, Price};
+use sp_runtime::{DispatchError, FixedPointNumber};
+use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, Price};
 
 pub struct Module<T: Trait>(auction_manager::Module<T>);
 
-pub trait Trait: auction_manager::Trait + orml_oracle::Trait + prices::Trait {}
+pub trait Trait: auction_manager::Trait + orml_oracle::Trait + prices::Trait + emergency_shutdown::Trait {}
 
 const SEED: u32 = 0;
 
@@ -35,6 +35,10 @@ fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'s
 		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}
 	Ok(())
+}
+
+fn emergency_shutdown<T: Trait>() -> Result<(), DispatchError> {
+	emergency_shutdown::Module::<T>::emergency_shutdown(RawOrigin::Root.into())
 }
 
 benchmarks! {
@@ -59,7 +63,7 @@ benchmarks! {
 		let _ = AuctionManager::<T>::surplus_auction_bid_handler(1.into(), auction_id, (bidder, dollar(1)), None);
 
 		// shutdown
-		AuctionManager::<T>::on_emergency_shutdown();
+		emergency_shutdown::<T>()?;
 	}: cancel(RawOrigin::None, auction_id)
 
 	// `cancel` a debit auction, worst case:
@@ -81,7 +85,7 @@ benchmarks! {
 		let _ = AuctionManager::<T>::debit_auction_bid_handler(1.into(), auction_id, (bidder, dollar(20)), None);
 
 		// shutdown
-		AuctionManager::<T>::on_emergency_shutdown();
+		emergency_shutdown::<T>()?;
 	}: cancel(RawOrigin::None, auction_id)
 
 	// `cancel` a collateral auction, worst case:
@@ -109,7 +113,7 @@ benchmarks! {
 		let _ = AuctionManager::<T>::collateral_auction_bid_handler(1.into(), auction_id, (bidder, dollar(80)), None);
 
 		// shutdown
-		AuctionManager::<T>::on_emergency_shutdown();
+		emergency_shutdown::<T>()?;
 	}: cancel(RawOrigin::None, auction_id)
 }
 

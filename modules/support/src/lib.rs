@@ -212,7 +212,6 @@ pub trait ExchangeRateProvider {
 }
 
 // REVIEW: No docs.
-#[impl_trait_for_tuples::impl_for_tuples(30)]
-pub trait OnEmergencyShutdown {
-	fn on_emergency_shutdown();
+pub trait EmergencyShutdown {
+	fn is_shutdown() -> bool;
 }

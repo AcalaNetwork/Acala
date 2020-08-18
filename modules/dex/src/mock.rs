@@ -7,6 +7,7 @@ use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, pa
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_std::cell::RefCell;
 use support::{AuctionManager, Rate};
 
 pub type AccountId = u128;
@@ -108,6 +109,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -148,6 +150,17 @@ impl AuctionManager<AccountId> for MockAuctionManagerHandler {
 	}
 }
 
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
+
 parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
 	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
@@ -165,6 +178,7 @@ impl Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type DexModule = Module<Runtime>;
 

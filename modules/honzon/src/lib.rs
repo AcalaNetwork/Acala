@@ -19,7 +19,7 @@ use frame_system::{self as system, ensure_signed};
 use orml_utilities::with_transaction_result;
 use primitives::{Amount, CurrencyId};
 use sp_runtime::{traits::Zero, DispatchResult};
-use support::OnEmergencyShutdown;
+use support::EmergencyShutdown;
 
 mod mock;
 mod tests;
@@ -33,9 +33,6 @@ decl_storage! {
 		/// The authorization relationship map from
 		/// Authorizer -> (CollateralType, Authorizee) -> Authorized
 		pub Authorization get(fn authorization): double_map hasher(twox_64_concat) T::AccountId, hasher(blake2_128_concat) (CurrencyId, T::AccountId) => bool;
-
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
 	}
 }
 
@@ -78,12 +75,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads: `IsShutdown`, (4 + 4 + 4 + 1 + 2) items in modules related to module_loans and module_cdp_engine
-		/// - Db writes: (4 + 4 + 1) items in modules related to module_loans and module_cdp_engine
+		/// - Db reads: 17
+		/// - Db writes: 9
 		/// -------------------
-		/// Base Weight: 99.77 µs
+		/// Base Weight: 246.2 µs
 		/// # </weight>
-		#[weight = 100 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(16, 9)]
+		#[weight = 246 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(17, 9)]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyId,
@@ -95,7 +92,7 @@ decl_module! {
 
 				// not allowed to adjust the debit after system shutdown
 				if !debit_adjustment.is_zero() {
-					ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+					ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 				}
 				<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
 				Ok(())
@@ -110,12 +107,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads: `IsShutdown`, `Authorization`, (4 + 3 + 2) items in modules related to module_loans and module_cdp_engine
-		/// - Db writes: 4 items in module_loans
+		/// - Db reads: 13
+		/// - Db writes: 6
 		/// -------------------
-		/// Base Weight: 74.81 µs
+		/// Base Weight: 178.2 µs
 		/// # </weight>
-		#[weight = 75 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(11, 4)]
+		#[weight = 75 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(13, 6)]
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyId,
@@ -123,7 +120,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				let to = ensure_signed(origin)?;
-				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 				Self::check_authorization(&from, &to, currency_id)?;
 				<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
 				Ok(())
@@ -137,12 +134,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `Authorization`
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 20.04 µs
+		/// Base Weight: 27.82 µs
 		/// # </weight>
-		#[weight = 20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 28 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyId,
@@ -163,12 +160,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `Authorization`
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 19.77 µs
+		/// Base Weight: 28.14 µs
 		/// # </weight>
-		#[weight = 20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = 28 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyId,
@@ -186,13 +183,13 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(C + M)` where C is the length of collateral_ids and M is the number of authorizees
-		/// - Db reads:
-		/// - Db writes: `Authorization`
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 0 + 2.5 * M + 115 * C µs
+		/// Base Weight: 0 + 3.8 * M + 128.4 * C µs
 		/// # </weight>
 		#[weight = T::DbWeight::get().reads_writes(0, 1) +
-			((WEIGHT_PER_MICROS as u64) * 115).saturating_mul(Weight::from(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32))
+			((WEIGHT_PER_MICROS as u64) * 128).saturating_mul(Weight::from(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32))
 		]
 		pub fn unauthorize_all(origin) {
 			with_transaction_result(|| {
@@ -213,11 +210,5 @@ impl<T: Trait> Module<T> {
 			Error::<T>::NoAuthorization
 		);
 		Ok(())
-	}
-}
-
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		<IsShutdown>::put(true);
 	}
 }

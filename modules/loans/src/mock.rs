@@ -7,7 +7,8 @@ use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, pa
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId, Perbill};
-use support::{AuctionManager, RiskManager};
+use sp_std::cell::RefCell;
+use support::{AuctionManager, EmergencyShutdown, RiskManager};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -154,6 +155,17 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 }
 
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
+
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -173,6 +185,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 

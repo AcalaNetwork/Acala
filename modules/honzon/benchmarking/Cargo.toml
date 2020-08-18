@@ -14,7 +14,7 @@ orml-oracle = { path = "../../../orml/oracle", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
 honzon = { package = "module-honzon", path = "../../honzon", default-features = false }
 prices = { package = "module-prices", path = "../../prices", default-features = false }
-primitives = { package = "module-primitives", path = "../../primitives", default-features = false }
+primitives = { package = "acala-primitives", path = "../../../primitives", default-features = false }
 support = { package = "module-support", path = "../../support", default-features = false }
 cdp-engine = { package = "module-cdp-engine", path = "../../cdp_engine", default-features = false }
 loans = { package = "module-loans", path = "../../loans", default-features = false }

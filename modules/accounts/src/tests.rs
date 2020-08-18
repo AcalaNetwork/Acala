@@ -43,28 +43,28 @@ fn disable_free_transfers_work() {
 }
 
 #[test]
-fn try_free_transfer_when_no_lock() {
+fn try_record_free_transfer_when_no_lock() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(TimeModule::now(), 0);
 		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
-		assert_eq!(Accounts::try_free_transfer(&ALICE), false);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), false);
 	});
 }
 
 #[test]
-fn try_free_transfer_over_cap() {
+fn try_record_free_transfer_over_cap() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(TimeModule::now(), 0);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0]);
-		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0]);
-		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-		assert_eq!(Accounts::try_free_transfer(&ALICE), false);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), false);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
 	});
 }
@@ -75,13 +75,13 @@ fn remove_expired_entry() {
 		assert_eq!(TimeModule::now(), 0);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
 		TimeModule::set_timestamp(100);
 		assert_eq!(TimeModule::now(), 100);
-		assert_eq!(Accounts::try_free_transfer(&ALICE), true);
+		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![100]);
 	});
 }

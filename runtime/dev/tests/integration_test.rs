@@ -1,17 +1,18 @@
 #![cfg(test)]
 
-use acala_runtime::{
-	get_all_module_accounts, AccountId, Balance, CurrencyId, GetNativeCurrencyId, NewAccountDeposit, Runtime,
+use dev_runtime::{
+	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Call, CurrencyId, Event, GetNativeCurrencyId,
+	NewAccountDeposit, Runtime,
 };
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{OnFinalize, OnInitialize},
+	traits::{schedule::DispatchTime, OnFinalize, OnInitialize},
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::CDPTreasury;
 use module_support::{Price, Rate, Ratio, RiskManager};
 use orml_traits::{Change, MultiCurrency};
-use sp_runtime::{DispatchResult, FixedPointNumber};
+use sp_runtime::{traits::BadOrigin, DispatchResult, FixedPointNumber};
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -28,6 +29,7 @@ pub type CdpTreasuryModule = module_cdp_treasury::Module<Runtime>;
 pub type SystemModule = frame_system::Module<Runtime>;
 pub type EmergencyShutdownModule = module_emergency_shutdown::Module<Runtime>;
 pub type AuctionManagerModule = module_auction_manager::Module<Runtime>;
+pub type AuthorityModule = orml_authority::Module<Runtime>;
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 pub struct ExtBuilder {
@@ -111,21 +113,21 @@ pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Trait>::Ori
 fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	OracleModule::on_finalize(0);
 	assert_ok!(OracleModule::feed_values(
-		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
+		<Runtime as frame_system::Trait>::Origin::none(),
 		prices.clone(),
 		0,
 		0,
 		Default::default()
 	));
 	assert_ok!(OracleModule::feed_values(
-		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
+		<Runtime as frame_system::Trait>::Origin::none(),
 		prices.clone(),
 		1,
 		0,
 		Default::default()
 	));
 	assert_ok!(OracleModule::feed_values(
-		<acala_runtime::Runtime as frame_system::Trait>::Origin::none(),
+		<Runtime as frame_system::Trait>::Origin::none(),
 		prices,
 		2,
 		0,
@@ -184,10 +186,10 @@ fn emergency_shutdown_and_cdp_treasury() {
 				module_emergency_shutdown::Error::<Runtime>::CanNotRefund,
 			);
 			assert_ok!(EmergencyShutdownModule::emergency_shutdown(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::root()
+				<Runtime as frame_system::Trait>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::open_collateral_refund(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::root()
+				<Runtime as frame_system::Trait>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::refund_collaterals(
 				origin_of(AccountId::from(ALICE)),
@@ -250,7 +252,7 @@ fn liquidate_cdp() {
 			));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NewValue(Some(Rate::zero())),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
@@ -293,7 +295,7 @@ fn liquidate_cdp() {
 			assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
@@ -308,7 +310,7 @@ fn liquidate_cdp() {
 			));
 
 			let liquidate_alice_xbtc_cdp_event =
-				acala_runtime::Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
+				Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
 					CurrencyId::XBTC,
 					AccountId::from(ALICE),
 					amount(10),
@@ -336,7 +338,7 @@ fn liquidate_cdp() {
 			));
 
 			let liquidate_bob_xbtc_cdp_event =
-				acala_runtime::Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
+				Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
 					CurrencyId::XBTC,
 					AccountId::from(BOB),
 					amount(1),
@@ -394,7 +396,7 @@ fn test_dex_module() {
 				10000000
 			));
 
-			let add_liquidity_event = acala_runtime::Event::module_dex(module_dex::RawEvent::AddLiquidity(
+			let add_liquidity_event = Event::module_dex(module_dex::RawEvent::AddLiquidity(
 				AccountId::from(ALICE),
 				CurrencyId::XBTC,
 				10000,
@@ -467,7 +469,7 @@ fn test_honzon_module() {
 			)]));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -507,7 +509,7 @@ fn test_honzon_module() {
 				false
 			);
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
@@ -556,7 +558,7 @@ fn test_cdp_engine_module() {
 		.execute_with(|| {
 			SystemModule::set_block_number(1);
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<acala_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::XBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -647,9 +649,10 @@ fn test_cdp_engine_module() {
 				CurrencyId::XBTC
 			));
 
-			let settle_cdp_in_debit_event = acala_runtime::Event::module_cdp_engine(
-				module_cdp_engine::RawEvent::SettleCDPInDebit(CurrencyId::XBTC, AccountId::from(ALICE)),
-			);
+			let settle_cdp_in_debit_event = Event::module_cdp_engine(module_cdp_engine::RawEvent::SettleCDPInDebit(
+				CurrencyId::XBTC,
+				AccountId::from(ALICE),
+			));
 			assert!(SystemModule::events()
 				.iter()
 				.any(|record| record.event == settle_cdp_in_debit_event));
@@ -663,5 +666,88 @@ fn test_cdp_engine_module() {
 				CdpTreasuryModule::total_collaterals(CurrencyId::XBTC),
 				3333333333333333330
 			);
+		});
+}
+
+#[test]
+fn test_authority_module() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
+			(AccountId::from(ALICE), CurrencyId::AUSD, amount(1000)),
+			(AccountId::from(ALICE), CurrencyId::XBTC, amount(1000)),
+		])
+		.build()
+		.execute_with(|| {
+			SystemModule::set_block_number(1);
+			let ensure_root_call = Call::CdpEngine(module_cdp_engine::Call::set_collateral_params(
+				CurrencyId::XBTC,
+				Change::NewValue(Some(Rate::zero())),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(amount(1000000)),
+			));
+
+			// dispatch_as
+			assert_ok!(AuthorityModule::dispatch_as(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				AuthoritysOriginId::Root,
+				Box::new(ensure_root_call.clone())
+			));
+
+			assert_noop!(
+				AuthorityModule::dispatch_as(
+					<dev_runtime::Runtime as frame_system::Trait>::Origin::signed(AccountId::from(BOB)),
+					AuthoritysOriginId::Root,
+					Box::new(ensure_root_call.clone())
+				),
+				BadOrigin
+			);
+
+			assert_noop!(
+				AuthorityModule::dispatch_as(
+					<dev_runtime::Runtime as frame_system::Trait>::Origin::signed(AccountId::from(BOB)),
+					AuthoritysOriginId::AcalaTreasury,
+					Box::new(ensure_root_call.clone())
+				),
+				BadOrigin
+			);
+
+			// schedule_dispatch
+			assert_ok!(AuthorityModule::schedule_dispatch(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				DispatchTime::At(4),
+				0,
+				true,
+				Box::new(ensure_root_call.clone())
+			));
+
+			// fast_track_scheduled_dispatch
+			assert_ok!(AuthorityModule::fast_track_scheduled_dispatch(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				frame_system::RawOrigin::Root.into(),
+				0,
+				DispatchTime::At(4),
+			));
+
+			// delay_scheduled_dispatch
+			assert_ok!(AuthorityModule::delay_scheduled_dispatch(
+				<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+				frame_system::RawOrigin::Root.into(),
+				0,
+				5,
+			));
+
+			// cancel_scheduled_dispatch
+			//assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
+			//	<dev_runtime::Runtime as frame_system::Trait>::Origin::root(),
+			//	frame_system::RawOrigin::Root.into(),
+			//	0
+			//));
 		});
 }

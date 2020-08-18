@@ -9,10 +9,15 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
+use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	RuntimeDebug,
 };
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -22,7 +27,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, OnEmergencyShutdown, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, Ratio};
 
 mod benchmarking;
 mod mock;
@@ -56,6 +61,9 @@ pub trait Trait: system::Trait {
 	/// The CDP treasury's module id, keep surplus and collateral assets from
 	/// liquidation.
 	type ModuleId: Get<ModuleId>;
+
+	/// Emergency shutdown.
+	type EmergencyShutdown: EmergencyShutdown;
 }
 
 decl_event!(
@@ -89,25 +97,25 @@ decl_error! {
 	}
 }
 
+/// Surplus and debit auction config.
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default)]
+pub struct SurplusDebitAuctionConfig {
+	/// The buffer size of surplus pool, the system will process the surplus
+	/// through surplus auction when above this value
+	pub surplus_buffer_size: Balance,
+	/// The fixed amount of stable currency for sale per surplus auction
+	pub surplus_auction_fixed_size: Balance,
+
+	/// Initial amount of native token for sale per debit auction
+	pub initial_amount_per_debit_auction: Balance,
+	/// The fixed amount of stable currency per surplus auction wants to get
+	pub debit_auction_fixed_size: Balance,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
-		/// The fixed amount of stable currency for sale per surplus auction
-		// REVIEW: `SurplusAuctionFixedSize` and `SurplusBufferSize` are only ever
-		//         accessed together. Consider bundling in a tuple or struct
-		//         to reduce database reads.
-		pub SurplusAuctionFixedSize get(fn surplus_auction_fixed_size) config(): Balance;
-
-		/// The buffer size of surplus pool, the system will process the surplus through
-		/// surplus auction when above this value
-		pub SurplusBufferSize get(fn surplus_buffer_size) config(): Balance;
-
-		/// Initial amount of native token for sale per debit auction
-		// REVIEW: Same not about bundling `InitialAmountPerDebitAuction` and
-		//         `DebitAuctionFixedSize`.
-		pub InitialAmountPerDebitAuction get(fn initial_amount_per_debit_auction) config(): Balance;
-
-		/// The fixed amount of stable currency per surplus auction wants to get
-		pub DebitAuctionFixedSize get(fn debit_auction_fixed_size) config(): Balance;
+		pub AuctionConfig get(fn auction_config) config(): SurplusDebitAuctionConfig;
 
 		/// The maximum amount of collateral amount for sale per collateral auction
 		pub CollateralAuctionMaximumSize get(fn collateral_auction_maximum_size): map hasher(twox_64_concat) CurrencyId => Balance;
@@ -121,9 +129,6 @@ decl_storage! {
 
 		/// Mapping from collateral type to collateral assets amount kept in CDP treasury
 		pub TotalCollaterals get(fn total_collaterals): map hasher(twox_64_concat) CurrencyId => Balance;
-
-		/// System shutdown flag
-		pub IsShutdown get(fn is_shutdown): bool;
 	}
 
 	add_extra_genesis {
@@ -132,7 +137,7 @@ decl_storage! {
 		build(|config: &GenesisConfig| {
 			config.collateral_auction_maximum_size.iter().for_each(|(currency_id, size)| {
 				CollateralAuctionMaximumSize::insert(currency_id, size);
-			})
+			});
 		})
 	}
 }
@@ -162,12 +167,12 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `SurplusAuctionFixedSize`, `SurplusBufferSize`, `InitialAmountPerDebitAuction`, `DebitAuctionFixedSize`
+		/// - Db reads: 1
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 20.18 µs
+		/// Base Weight: 63.48 µs
 		/// # </weight>
-		#[weight = (20 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 4), DispatchClass::Operational)]
+		#[weight = (64 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 4), DispatchClass::Operational)]
 		pub fn set_debit_and_surplus_handle_params(
 			origin,
 			surplus_auction_fixed_size: Option<Balance>,
@@ -177,22 +182,24 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
-				if let Some(amount) = surplus_auction_fixed_size {
-					SurplusAuctionFixedSize::put(amount);
-					Self::deposit_event(Event::SurplusAuctionFixedSizeUpdated(amount));
-				}
-				if let Some(amount) = surplus_buffer_size {
-					SurplusBufferSize::put(amount);
-					Self::deposit_event(Event::SurplusBufferSizeUpdated(amount));
-				}
-				if let Some(amount) = initial_amount_per_debit_auction {
-					InitialAmountPerDebitAuction::put(amount);
-					Self::deposit_event(Event::InitialAmountPerDebitAuctionUpdated(amount));
-				}
-				if let Some(amount) = debit_auction_fixed_size {
-					DebitAuctionFixedSize::put(amount);
-					Self::deposit_event(Event::DebitAuctionFixedSizeUpdated(amount));
-				}
+				AuctionConfig::mutate(|c| {
+					if let Some(amount) = surplus_auction_fixed_size {
+						c.surplus_auction_fixed_size = amount;
+						Self::deposit_event(Event::SurplusAuctionFixedSizeUpdated(amount));
+					}
+					if let Some(amount) = surplus_buffer_size {
+						c.surplus_buffer_size = amount;
+						Self::deposit_event(Event::SurplusBufferSizeUpdated(amount));
+					}
+					if let Some(amount) = initial_amount_per_debit_auction {
+						c.initial_amount_per_debit_auction = amount;
+						Self::deposit_event(Event::InitialAmountPerDebitAuctionUpdated(amount));
+					}
+					if let Some(amount) = debit_auction_fixed_size {
+						c.debit_auction_fixed_size = amount;
+						Self::deposit_event(Event::DebitAuctionFixedSizeUpdated(amount));
+					}
+				});
 				Ok(())
 			})?;
 		}
@@ -206,10 +213,10 @@ decl_module! {
 		///
 		/// # <weight>
 		/// - Complexity: `O(1)`
-		/// - Db reads:
-		/// - Db writes: `CollateralAuctionMaximumSize`
+		/// - Db reads: 0
+		/// - Db writes: 1
 		/// -------------------
-		/// Base Weight: 15.59 µs
+		/// Base Weight: 24.64 µs
 		/// # </weight>
 		#[weight = (16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
@@ -229,26 +236,35 @@ decl_module! {
 			Self::offset_surplus_and_debit();
 
 			// Stop to create surplus auction and debit auction after emergency shutdown.
-			// REVIEW: nit-pick: I would reformat to the following to reduce indentation:
-			if Self::is_shutdown() { return }
+			if !T::EmergencyShutdown::is_shutdown() {
+				let max_auctions_count: u32 = T::MaxAuctionsCount::get();
+				let mut created_lots: u32 = 0;
 
-			let max_auctions_count: u32 = T::MaxAuctionsCount::get();
-			let mut created_lots: u32 = 0;
+				let SurplusDebitAuctionConfig {
+					surplus_auction_fixed_size,
+					surplus_buffer_size,
+					initial_amount_per_debit_auction,
+					debit_auction_fixed_size,
+				} = Self::auction_config();
 
-			let surplus_auction_fixed_size = Self::surplus_auction_fixed_size();
-			if !surplus_auction_fixed_size.is_zero() {
-				let mut remain_surplus_pool = Self::surplus_pool();
-				let surplus_buffer_size = Self::surplus_buffer_size();
-				let total_surplus_in_auction = T::AuctionManagerHandler::get_total_surplus_in_auction();
+				if !surplus_auction_fixed_size.is_zero() {
+					let mut remain_surplus_pool = Self::surplus_pool();
+					let total_surplus_in_auction = T::AuctionManagerHandler::get_total_surplus_in_auction();
 
-				// create surplus auction requires:
-				// surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size
-				// REVIEW: Do you know that this addition cannot overflow?
-				while remain_surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size {
-					// REVIEW: This seems surprising. Add a comment for explanation and check
-					//         semantics. Does `MaxAuctionsCount == 0` mean no cap on auctions?
-					if max_auctions_count != 0 && created_lots >= max_auctions_count {
-						break
+					// create surplus auction requires:
+					// surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size
+					// REVIEW: Do you know that this addition cannot overflow?
+					while remain_surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size {
+						// REVIEW: This seems surprising. Add a comment for explanation and check
+						//         semantics. Does `MaxAuctionsCount == 0` mean no cap on auctions?
+						if max_auctions_count != 0 && created_lots >= max_auctions_count {
+							break
+						}
+						T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
+						created_lots += 1;
+						remain_surplus_pool = remain_surplus_pool
+							.checked_sub(surplus_auction_fixed_size)
+							.expect("ensured remain surplus greater than auction fixed size; qed");
 					}
 					T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
 					created_lots += 1;
@@ -258,19 +274,23 @@ decl_module! {
 				}
 			}
 
-			let debit_auction_fixed_size = Self::debit_auction_fixed_size();
-			let initial_amount_per_debit_auction = Self::initial_amount_per_debit_auction();
-			if !debit_auction_fixed_size.is_zero() && !initial_amount_per_debit_auction.is_zero() {
-				let mut remain_debit_pool = Self::debit_pool();
-				let total_debit_in_auction = T::AuctionManagerHandler::get_total_debit_in_auction();
-				let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
+				if !debit_auction_fixed_size.is_zero() && !initial_amount_per_debit_auction.is_zero() {
+					let mut remain_debit_pool = Self::debit_pool();
+					let total_debit_in_auction = T::AuctionManagerHandler::get_total_debit_in_auction();
+					let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
 
-				// create debit auction requires:
-				// debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
-				// REVIEW: Check overflow.
-				while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
-					if max_auctions_count != 0 && created_lots >= max_auctions_count {
-						break
+					// create debit auction requires:
+					// debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
+					// REVIEW: Check overflow.
+					while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
+						if max_auctions_count != 0 && created_lots >= max_auctions_count {
+							break
+						}
+						T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
+						created_lots += 1;
+						remain_debit_pool = remain_debit_pool
+							.checked_sub(debit_auction_fixed_size)
+							.expect("ensured remain debit greater than auction fixed size; qed");
 					}
 					T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
 					// REVIEW: Is it intentional that surplus and debit auctions draw from
@@ -495,11 +515,5 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 				unhandled_target = unhandled_target.saturating_sub(lot_target);
 			}
 		}
-	}
-}
-
-impl<T: Trait> OnEmergencyShutdown for Module<T> {
-	fn on_emergency_shutdown() {
-		IsShutdown::put(true);
 	}
 }
