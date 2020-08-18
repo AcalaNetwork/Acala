@@ -7,8 +7,7 @@ use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, pa
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId, Perbill};
-use sp_std::cell::RefCell;
-use support::{AuctionManager, EmergencyShutdown, RiskManager};
+use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -127,12 +126,17 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		_currency_id: Self::CurrencyId,
 		_amount: Self::Balance,
 		_target: Self::Balance,
-	) {
+	) -> DispatchResult {
+		Ok(())
 	}
 
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {}
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
 
-	fn new_surplus_auction(_amount: Self::Balance) {}
+	fn new_surplus_auction(_amount: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
 
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
 		Ok(())
@@ -155,17 +159,6 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 }
 
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
-}
-
-pub struct MockEmergencyShutdown;
-impl EmergencyShutdown for MockEmergencyShutdown {
-	fn is_shutdown() -> bool {
-		IS_SHUTDOWN.with(|v| *v.borrow_mut())
-	}
-}
-
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -185,7 +178,6 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
-	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 

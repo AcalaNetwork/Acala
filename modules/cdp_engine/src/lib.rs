@@ -686,7 +686,8 @@ impl<T: Trait> Module<T> {
 					collateral,
 					target_stable_amount,
 					who.clone(),
-				);
+					true,
+				)?;
 			}
 		}
 

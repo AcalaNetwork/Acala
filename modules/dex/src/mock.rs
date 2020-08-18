@@ -109,7 +109,6 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
-	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -123,13 +122,13 @@ impl AuctionManager<AccountId> for MockAuctionManagerHandler {
 		_currency_id: Self::CurrencyId,
 		_amount: Self::Balance,
 		_target: Self::Balance,
-	) {
+	) -> DispatchResult {
 		unimplemented!()
 	}
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) {
+	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) -> DispatchResult {
 		unimplemented!()
 	}
-	fn new_surplus_auction(_amount: Self::Balance) {
+	fn new_surplus_auction(_amount: Self::Balance) -> DispatchResult {
 		unimplemented!()
 	}
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {

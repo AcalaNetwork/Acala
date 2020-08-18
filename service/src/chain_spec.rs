@@ -242,8 +242,8 @@ fn testnet_genesis(
 		get_all_module_accounts, AirDropConfig, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 		CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit, OperatorMembershipConfig, OracleConfig,
-		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SurplusDebitAuctionConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
+		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -328,12 +328,6 @@ fn testnet_genesis(
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			auction_config: SurplusDebitAuctionConfig {
-				surplus_auction_fixed_size: 1_000 * DOLLARS, // amount in aUSD of per surplus auction
-				surplus_buffer_size: 10_000 * DOLLARS,       // cache amount, exceed this will create surplus auction
-				initial_amount_per_debit_auction: 2_000 * DOLLARS, // initial bid amount in ACA of per debit auction
-				debit_auction_fixed_size: 1_000 * DOLLARS,   // amount in debit(aUSD) of per debit auction
-			},
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, DOLLARS),
@@ -410,8 +404,7 @@ fn mandala_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
 		OperatorMembershipConfig, OracleConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
-		SudoConfig, SurplusDebitAuctionConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		VestingConfig, CENTS, DOLLARS,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -491,12 +484,6 @@ fn mandala_genesis(
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
-			auction_config: SurplusDebitAuctionConfig {
-				surplus_auction_fixed_size: 100 * DOLLARS, // amount in aUSD of per surplus auction
-				surplus_buffer_size: 1_000 * DOLLARS,      // cache amount, exceed this will create surplus auction
-				initial_amount_per_debit_auction: 20 * DOLLARS, // initial bid amount in ACA of per debit auction
-				debit_auction_fixed_size: 1_000 * DOLLARS, // amount in debit(aUSD) of per debit auction
-			},
 			collateral_auction_maximum_size: vec![
 				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::XBTC, 5 * CENTS),

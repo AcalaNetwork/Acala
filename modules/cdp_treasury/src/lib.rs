@@ -9,15 +9,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
-
-use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
-	RuntimeDebug,
 };
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -27,7 +22,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, Ratio};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
 mod benchmarking;
 mod mock;
@@ -62,21 +57,10 @@ pub trait Trait: system::Trait {
 	/// The CDP treasury's module id, keep surplus and collateral assets from
 	/// liquidation.
 	type ModuleId: Get<ModuleId>;
-
-	/// Emergency shutdown.
-	type EmergencyShutdown: EmergencyShutdown;
 }
 
 decl_event!(
 	pub enum Event {
-		/// The fixed size for surplus auction updated. [new_size]
-		SurplusAuctionFixedSizeUpdated(Balance),
-		/// The buffer size of surplus pool updated. [new_size]
-		SurplusBufferSizeUpdated(Balance),
-		/// The initial supply amount of a debit auction updated. [new_amount]
-		InitialAmountPerDebitAuctionUpdated(Balance),
-		/// The fixed size for debit auction updated. [new_size]
-		DebitAuctionFixedSizeUpdated(Balance),
 		/// The fixed size for collateral auction under specific collateral type
 		/// updated. [collateral_type, new_size]
 		CollateralAuctionMaximumSizeUpdated(CurrencyId, Balance),
@@ -88,31 +72,17 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// The collateral amount of CDP treasury is not enough
 		CollateralNotEnough,
+		/// The surplus pool of CDP treasury is not enough
+		SurplusPoolNotEnough,
 		/// debit pool overflow
 		DebitPoolOverflow,
+		/// The debit pool of CDP treasury is not enough
+		DebitPoolNotEnough,
 	}
-}
-
-/// Surplus and debit auction config.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default)]
-pub struct SurplusDebitAuctionConfig {
-	/// The buffer size of surplus pool, the system will process the surplus
-	/// through surplus auction when above this value
-	pub surplus_buffer_size: Balance,
-	/// The fixed amount of stable currency for sale per surplus auction
-	pub surplus_auction_fixed_size: Balance,
-
-	/// Initial amount of native token for sale per debit auction
-	pub initial_amount_per_debit_auction: Balance,
-	/// The fixed amount of stable currency per surplus auction wants to get
-	pub debit_auction_fixed_size: Balance,
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as CDPTreasury {
-		pub AuctionConfig get(fn auction_config) config(): SurplusDebitAuctionConfig;
-
 		/// The maximum amount of collateral amount for sale per collateral auction
 		pub CollateralAuctionMaximumSize get(fn collateral_auction_maximum_size): map hasher(twox_64_concat) CurrencyId => Balance;
 
@@ -147,55 +117,40 @@ decl_module! {
 		const ModuleId: ModuleId = T::ModuleId::get();
 
 		#[weight = 10_000]
-		pub fn xixi(origin) {
-
-		}
-
-		/// Update parameters related to surplus and debit auction
-		///
-		/// The dispatch origin of this call must be `UpdateOrigin`.
-		///
-		/// - `surplus_auction_fixed_size`: new fixed amount of stable currency for sale per surplus auction, `None` means do not update
-		/// - `surplus_buffer_size`: new buffer size of surplus pool, `None` means do not update
-		/// - `initial_amount_per_debit_auction`: initial amount of native token for sale per debit auction, `None` means do not update
-		/// - `debit_auction_fixed_size`: the fixed amount of stable currency per collateral auction wants to get, `None` means do not update
-		///
-		/// # <weight>
-		/// - Complexity: `O(1)`
-		/// - Db reads: 1
-		/// - Db writes: 1
-		/// -------------------
-		/// Base Weight: 63.48 µs
-		/// # </weight>
-		#[weight = (64 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 4), DispatchClass::Operational)]
-		pub fn set_debit_and_surplus_handle_params(
-			origin,
-			surplus_auction_fixed_size: Option<Balance>,
-			surplus_buffer_size: Option<Balance>,
-			initial_amount_per_debit_auction: Option<Balance>,
-			debit_auction_fixed_size: Option<Balance>,
-		) {
+		pub fn auction_surplus(origin, amount: Balance) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
-				AuctionConfig::mutate(|c| {
-					if let Some(amount) = surplus_auction_fixed_size {
-						c.surplus_auction_fixed_size = amount;
-						Self::deposit_event(Event::SurplusAuctionFixedSizeUpdated(amount));
-					}
-					if let Some(amount) = surplus_buffer_size {
-						c.surplus_buffer_size = amount;
-						Self::deposit_event(Event::SurplusBufferSizeUpdated(amount));
-					}
-					if let Some(amount) = initial_amount_per_debit_auction {
-						c.initial_amount_per_debit_auction = amount;
-						Self::deposit_event(Event::InitialAmountPerDebitAuctionUpdated(amount));
-					}
-					if let Some(amount) = debit_auction_fixed_size {
-						c.debit_auction_fixed_size = amount;
-						Self::deposit_event(Event::DebitAuctionFixedSizeUpdated(amount));
-					}
-				});
-				Ok(())
+				ensure!(
+					Self::surplus_pool().saturating_sub(T::AuctionManagerHandler::get_total_surplus_in_auction()) >= amount,
+					Error::<T>::SurplusPoolNotEnough,
+				);
+				T::AuctionManagerHandler::new_surplus_auction(amount)
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn auction_debit(origin, amount: Balance, initial_price: Balance) {
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				ensure!(
+					Self::debit_pool().saturating_sub(T::AuctionManagerHandler::get_total_debit_in_auction()) >= amount,
+					Error::<T>::DebitPoolNotEnough,
+				);
+				T::AuctionManagerHandler::new_debit_auction(amount, initial_price)
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn auction_collateral(origin, currency_id: CurrencyId, amount: Balance, target: Balance, splited: bool) {
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				<Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
+					currency_id,
+					amount,
+					target,
+					Self::account_id(),
+					splited,
+				)
 			})?;
 		}
 
@@ -227,56 +182,6 @@ decl_module! {
 		fn on_finalize(_now: T::BlockNumber) {
 			// offset the same amount between debit pool and surplus pool
 			Self::offset_surplus_and_debit();
-
-			// Stop to create surplus auction and debit auction after emergency shutdown.
-			if !T::EmergencyShutdown::is_shutdown() {
-				let max_auctions_count: u32 = T::MaxAuctionsCount::get();
-				let mut created_lots: u32 = 0;
-
-				let SurplusDebitAuctionConfig {
-					surplus_auction_fixed_size,
-					surplus_buffer_size,
-					initial_amount_per_debit_auction,
-					debit_auction_fixed_size,
-				} = Self::auction_config();
-
-				if !surplus_auction_fixed_size.is_zero() {
-					let mut remain_surplus_pool = Self::surplus_pool();
-					let total_surplus_in_auction = T::AuctionManagerHandler::get_total_surplus_in_auction();
-
-					// create surplus auction requires:
-					// surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size
-					while remain_surplus_pool >= total_surplus_in_auction + surplus_buffer_size + surplus_auction_fixed_size {
-						if max_auctions_count != 0 && created_lots >= max_auctions_count {
-							break
-						}
-						T::AuctionManagerHandler::new_surplus_auction(surplus_auction_fixed_size);
-						created_lots += 1;
-						remain_surplus_pool = remain_surplus_pool
-							.checked_sub(surplus_auction_fixed_size)
-							.expect("ensured remain surplus greater than auction fixed size; qed");
-					}
-				}
-
-				if !debit_auction_fixed_size.is_zero() && !initial_amount_per_debit_auction.is_zero() {
-					let mut remain_debit_pool = Self::debit_pool();
-					let total_debit_in_auction = T::AuctionManagerHandler::get_total_debit_in_auction();
-					let total_target_in_auction = T::AuctionManagerHandler::get_total_target_in_auction();
-
-					// create debit auction requires:
-					// debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size
-					while remain_debit_pool >= total_debit_in_auction + total_target_in_auction + debit_auction_fixed_size {
-						if max_auctions_count != 0 && created_lots >= max_auctions_count {
-							break
-						}
-						T::AuctionManagerHandler::new_debit_auction(initial_amount_per_debit_auction, debit_auction_fixed_size);
-						created_lots += 1;
-						remain_debit_pool = remain_debit_pool
-							.checked_sub(debit_auction_fixed_size)
-							.expect("ensured remain debit greater than auction fixed size; qed");
-					}
-				}
-			}
 		}
 	}
 }
@@ -379,10 +284,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		target_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		ensure!(
-			Self::total_collaterals(currency_id)
-				.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
-				.checked_sub(supply_amount)
-				.is_some(),
+			Self::total_collaterals(currency_id) >= supply_amount,
 			Error::<T>::CollateralNotEnough,
 		);
 		T::DEX::exchange_currency(
@@ -399,58 +301,61 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		amount: Balance,
 		target: Balance,
 		refund_receiver: T::AccountId,
-	) {
-		if !amount.is_zero()
-			&& Self::total_collaterals(currency_id)
-				.saturating_add(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
-				.checked_sub(amount)
-				.is_some()
+		splited: bool,
+	) -> DispatchResult {
+		ensure!(
+			Self::total_collaterals(currency_id)
+				.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
+				>= amount,
+			Error::<T>::CollateralNotEnough,
+		);
+
+		let mut unhandled_collateral_amount = amount;
+		let mut unhandled_target = target;
+		let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
+		let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
+		let lots_count = if !splited
+			|| max_auctions_count.is_zero()
+			|| collateral_auction_maximum_size.is_zero()
+			|| amount <= collateral_auction_maximum_size
 		{
-			let mut unhandled_collateral_amount = amount;
-			let mut unhandled_target = target;
-			let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
-			let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
-			let lots_count = if max_auctions_count.is_zero()
-				|| collateral_auction_maximum_size.is_zero()
-				|| amount <= collateral_auction_maximum_size
-			{
-				One::one()
-			} else {
-				let mut count = amount
-					.checked_div(collateral_auction_maximum_size)
-					.expect("collateral auction maximum size is not zero; qed");
+			One::one()
+		} else {
+			let mut count = amount
+				.checked_div(collateral_auction_maximum_size)
+				.expect("collateral auction maximum size is not zero; qed");
 
-				let remainder = amount
-					.checked_rem(collateral_auction_maximum_size)
-					.expect("collateral auction maximum size is not zero; qed");
-				if !remainder.is_zero() {
-					count = count.saturating_add(One::one());
-				}
-				sp_std::cmp::min(count, max_auctions_count)
-			};
-			let average_amount_per_lot = amount.checked_div(lots_count).expect("lots count is at least 1; qed");
-			let average_target_per_lot = target.checked_div(lots_count).expect("lots count is at least 1; qed");
-			let mut created_lots: Balance = Zero::zero();
-
-			while !unhandled_collateral_amount.is_zero() {
-				created_lots = created_lots.saturating_add(One::one());
-				let (lot_collateral_amount, lot_target) = if created_lots == lots_count {
-					// the last lot may be have some remnant than average
-					(unhandled_collateral_amount, unhandled_target)
-				} else {
-					(average_amount_per_lot, average_target_per_lot)
-				};
-
-				T::AuctionManagerHandler::new_collateral_auction(
-					&refund_receiver,
-					currency_id,
-					lot_collateral_amount,
-					lot_target,
-				);
-
-				unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
-				unhandled_target = unhandled_target.saturating_sub(lot_target);
+			let remainder = amount
+				.checked_rem(collateral_auction_maximum_size)
+				.expect("collateral auction maximum size is not zero; qed");
+			if !remainder.is_zero() {
+				count = count.saturating_add(One::one());
 			}
+			sp_std::cmp::min(count, max_auctions_count)
+		};
+		let average_amount_per_lot = amount.checked_div(lots_count).expect("lots count is at least 1; qed");
+		let average_target_per_lot = target.checked_div(lots_count).expect("lots count is at least 1; qed");
+		let mut created_lots: Balance = Zero::zero();
+
+		while !unhandled_collateral_amount.is_zero() {
+			created_lots = created_lots.saturating_add(One::one());
+			let (lot_collateral_amount, lot_target) = if created_lots == lots_count {
+				// the last lot may be have some remnant than average
+				(unhandled_collateral_amount, unhandled_target)
+			} else {
+				(average_amount_per_lot, average_target_per_lot)
+			};
+
+			T::AuctionManagerHandler::new_collateral_auction(
+				&refund_receiver,
+				currency_id,
+				lot_collateral_amount,
+				lot_target,
+			)?;
+
+			unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
+			unhandled_target = unhandled_target.saturating_sub(lot_target);
 		}
+		Ok(())
 	}
 }
