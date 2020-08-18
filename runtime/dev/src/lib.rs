@@ -752,7 +752,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub GetAmountAdjustment: Rate = Rate::saturating_from_rational(20, 100);
 	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
@@ -766,7 +765,6 @@ impl module_auction_manager::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CdpTreasury;
-	type GetAmountAdjustment = GetAmountAdjustment;
 	type DEX = Dex;
 	type PriceSource = Prices;
 	type UnsignedPriority = AuctionManagerUnsignedPriority;

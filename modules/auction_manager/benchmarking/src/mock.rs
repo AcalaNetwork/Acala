@@ -118,7 +118,6 @@ parameter_types! {
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub GetAmountAdjustment: Rate = Rate::saturating_from_rational(1, 2);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
@@ -132,7 +131,6 @@ impl auction_manager::Trait for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
-	type GetAmountAdjustment = GetAmountAdjustment;
 	type DEX = ();
 	type PriceSource = prices::Module<Runtime>;
 	type UnsignedPriority = UnsignedPriority;

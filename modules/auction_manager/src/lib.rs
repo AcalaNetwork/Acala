@@ -163,9 +163,6 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 	/// The native currency id
 	type GetNativeCurrencyId: Get<CurrencyId>;
 
-	/// The decrement of amount in debit auction when restocking
-	type GetAmountAdjustment: Get<Rate>;
-
 	/// Currency to transfer assets
 	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
@@ -283,9 +280,6 @@ decl_module! {
 
 		/// The native currency id
 		const GetNativeCurrencyId: CurrencyId = T::GetNativeCurrencyId::get();
-
-		/// The decrement of amount in debit auction when restocking
-		const GetAmountAdjustment: Rate = T::GetAmountAdjustment::get();
 
 		/// Cancel active auction after system shutdown
 		///
@@ -729,73 +723,76 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn collateral_auction_end_handler(auction_id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
-		if let (Some(collateral_auction), Some((bidder, bid_price))) = (Self::collateral_auctions(auction_id), winner) {
-			let stable_currency_id = T::GetStableCurrencyId::get();
-			let mut should_deal = true;
+		if let Some(collateral_auction) = Self::collateral_auctions(auction_id) {
+			if let Some((bidder, bid_price)) = winner {
+				// decrease account ref of bidder
+				system::Module::<T>::dec_ref(&bidder);
 
-			// if bid_price doesn't reach target and trading with DEX will get better result
-			if !collateral_auction.in_reverse_stage(bid_price)
-				&& bid_price
-					< T::DEX::get_target_amount(
+				let mut should_deal = true;
+
+				// if bid_price doesn't reach target and trading with DEX will get better result
+				if !collateral_auction.in_reverse_stage(bid_price)
+					&& bid_price
+						< T::DEX::get_target_amount(
+							collateral_auction.currency_id,
+							T::GetStableCurrencyId::get(),
+							collateral_auction.amount,
+						) {
+					// try trade with DEX
+					if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
 						collateral_auction.currency_id,
-						stable_currency_id,
 						collateral_auction.amount,
+						Zero::zero(),
 					) {
-				// try trade with DEX
-				if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
-					collateral_auction.currency_id,
-					collateral_auction.amount,
-					Zero::zero(),
-				) {
-					// swap successfully, will not deal
-					should_deal = false;
+						// swap successfully, will not deal
+						should_deal = false;
 
-					// refund stable currency to the last bidder, ignore result to continue
-					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
+						// refund stable currency to the last bidder, ignore result to continue
+						let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
-					if collateral_auction.in_reverse_stage(amount) {
-						// refund extra stable currency to recipient, ignore result to continue
-						let _ = T::CDPTreasury::issue_debit(
-							&collateral_auction.refund_recipient,
-							amount
-								.checked_sub(collateral_auction.target)
-								.expect("ensured amount > target; qed"),
-							false,
-						);
+						if collateral_auction.in_reverse_stage(amount) {
+							// refund extra stable currency to recipient, ignore result to continue
+							let _ = T::CDPTreasury::issue_debit(
+								&collateral_auction.refund_recipient,
+								amount
+									.checked_sub(collateral_auction.target)
+									.expect("ensured amount > target; qed"),
+								false,
+							);
+						}
+
+						<Module<T>>::deposit_event(RawEvent::DEXTakeCollateralAuction(
+							auction_id,
+							collateral_auction.currency_id,
+							collateral_auction.amount,
+							amount,
+						));
 					}
+				}
 
-					<Module<T>>::deposit_event(RawEvent::DEXTakeCollateralAuction(
+				if should_deal {
+					// transfer collateral to winner from CDP treasury, ignore result to continue
+					let _ = T::CDPTreasury::withdraw_collateral(
+						&bidder,
+						collateral_auction.currency_id,
+						collateral_auction.amount,
+					);
+
+					let payment_amount = collateral_auction.payment_amount(bid_price);
+					<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealt(
 						auction_id,
 						collateral_auction.currency_id,
 						collateral_auction.amount,
-						amount,
+						bidder,
+						payment_amount,
 					));
 				}
+			} else {
+				<Module<T>>::deposit_event(RawEvent::CancelAuction(auction_id));
 			}
-
-			if should_deal {
-				// transfer collateral to winner from CDP treasury, ignore result to continue
-				let _ = T::CDPTreasury::withdraw_collateral(
-					&bidder,
-					collateral_auction.currency_id,
-					collateral_auction.amount,
-				);
-
-				let payment_amount = collateral_auction.payment_amount(bid_price);
-				<Module<T>>::deposit_event(RawEvent::CollateralAuctionDealt(
-					auction_id,
-					collateral_auction.currency_id,
-					collateral_auction.amount,
-					bidder.clone(),
-					payment_amount,
-				));
-			}
-
-			// decrease account ref of bidder and refund recipient
-			system::Module::<T>::dec_ref(&bidder);
-			system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
 
 			// update auction records
+			system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
 			TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
 				*balance = balance.saturating_sub(collateral_auction.amount)
 			});
@@ -807,16 +804,12 @@ impl<T: Trait> Module<T> {
 	fn debit_auction_end_handler(auction_id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
 		if let Some(debit_auction) = Self::debit_auctions(auction_id) {
 			if let Some((bidder, _)) = winner {
-				// issue native token to winner, ignore the result to continue
-				// TODO: transfer from RESERVED TREASURY instead of issuing
-				let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
-
 				// decrease account ref of winner
 				system::Module::<T>::dec_ref(&bidder);
 
-				// decrease debit in auction and delete auction
-				TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
-				<DebitAuctions<T>>::remove(auction_id);
+				// issue native token to winner, ignore the result to continue
+				// TODO: transfer from RESERVED TREASURY instead of issuing
+				let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
 
 				<Module<T>>::deposit_event(RawEvent::DebitAuctionDealt(
 					auction_id,
@@ -825,48 +818,37 @@ impl<T: Trait> Module<T> {
 					debit_auction.fix,
 				));
 			} else {
-				// there's no bidder until auction closed, adjust the native token amount
-				let start_block = <system::Module<T>>::block_number();
-				let end_block = start_block + T::AuctionTimeToClose::get();
-				let new_debit_auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
-					.expect("AuctionId is sufficient large so this can never fail");
-				let new_amount = T::GetAmountAdjustment::get().saturating_mul_acc_int(debit_auction.amount);
-				let new_debit_auction = DebitAuctionItem {
-					amount: new_amount,
-					fix: debit_auction.fix,
-					start_time: start_block,
-				};
-				<DebitAuctions<T>>::insert(new_debit_auction_id, new_debit_auction.clone());
-				<DebitAuctions<T>>::remove(auction_id);
-
 				<Module<T>>::deposit_event(RawEvent::CancelAuction(auction_id));
-				<Module<T>>::deposit_event(RawEvent::NewDebitAuction(
-					new_debit_auction_id,
-					new_debit_auction.amount,
-					new_debit_auction.fix,
-				));
 			}
+
+			// remove debit auction item
+			<DebitAuctions<T>>::remove(auction_id);
+			TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
 		}
 	}
 
 	fn surplus_auction_end_handler(auction_id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
-		if let (Some(surplus_auction), Some((bidder, bidder_price))) = (Self::surplus_auctions(auction_id), winner) {
-			// deposit unbacked stable token to winner by CDP treasury, ignore Err
-			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
+		if let Some(surplus_auction) = Self::surplus_auctions(auction_id) {
+			if let Some((bidder, bidder_price)) = winner {
+				// decrease account ref of winner
+				system::Module::<T>::dec_ref(&bidder);
 
-			// decrease account ref of winner
-			system::Module::<T>::dec_ref(&bidder);
+				// deposit unbacked stable token to winner by CDP treasury, ignore Err
+				let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
 
-			// decrease surplus in auction
-			TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
+				<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealt(
+					auction_id,
+					surplus_auction.amount,
+					bidder,
+					bidder_price,
+				));
+			} else {
+				<Module<T>>::deposit_event(RawEvent::CancelAuction(auction_id));
+			}
+
+			// remove surplus auction item
 			<SurplusAuctions<T>>::remove(auction_id);
-
-			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealt(
-				auction_id,
-				surplus_auction.amount,
-				bidder,
-				bidder_price,
-			));
+			TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
 		}
 	}
 }
