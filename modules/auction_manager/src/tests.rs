@@ -587,6 +587,13 @@ fn cancel_collateral_auction_failed() {
 			Error::<Runtime>::AuctionNotExists
 		);
 		AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100);
+		MockPriceSource::set_relative_price(None);
+		assert_noop!(
+			AuctionManagerModule::cancel_collateral_auction(0),
+			Error::<Runtime>::InvalidFeedPrice,
+		);
+		MockPriceSource::set_relative_price(Some(Price::one()));
+
 		assert_ok!(AuctionModule::bid(Origin::signed(ALICE), 0, 100));
 		let collateral_auction = AuctionManagerModule::collateral_auctions(0).unwrap();
 		assert_eq!(collateral_auction.always_forward(), false);

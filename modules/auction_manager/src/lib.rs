@@ -347,11 +347,12 @@ impl<T: Trait> Module<T> {
 
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel(auction_id);
-		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
 			debug::info!(
 				target: "auction-manager offchain worker",
-				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed!",
+				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed: {:?}",
 				auction_id,
+				err,
 			);
 		}
 	}
@@ -554,23 +555,24 @@ impl<T: Trait> Module<T> {
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+			let (new_bidder, new_bid_price) = new_bid;
+			ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
+
 			// use `with_transaction_result` to ensure operation is atomic
 			<CollateralAuctions<T>>::try_mutate_exists(
 				id,
 				|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 					let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
-					let (new_bidder, new_bid_price) = new_bid;
 					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 
 					// ensure new bid price is valid
 					ensure!(
-						!new_bid_price.is_zero()
-							&& Self::check_minimum_increment(
-								new_bid_price,
-								last_bid_price,
-								collateral_auction.target,
-								Self::get_minimum_increment_size(now, collateral_auction.start_time),
-							),
+						Self::check_minimum_increment(
+							new_bid_price,
+							last_bid_price,
+							collateral_auction.target,
+							Self::get_minimum_increment_size(now, collateral_auction.start_time),
+						),
 						Error::<T>::InvalidBidPrice
 					);
 
@@ -582,7 +584,7 @@ impl<T: Trait> Module<T> {
 						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, &last_bidder, refund)?;
 						payment = payment
 							.checked_sub(refund)
-							.expect("new bid price greater than last bid; qed");
+							.expect("new bid payment greater or equal to last bid payment; qed");
 
 						// decrease account ref of last bidder
 						system::Module::<T>::dec_ref(&last_bidder);
@@ -683,10 +685,12 @@ impl<T: Trait> Module<T> {
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+		let (new_bidder, new_bid_price) = new_bid;
+		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
+
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 			// use `with_transaction_result` to ensure operation is atomic
 			let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExists)?;
-			let (new_bidder, new_bid_price) = new_bid;
 			let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 			let native_currency_id = T::GetNativeCurrencyId::get();
 
@@ -696,7 +700,7 @@ impl<T: Trait> Module<T> {
 					last_bid_price,
 					Zero::zero(),
 					Self::get_minimum_increment_size(now, surplus_auction.start_time),
-				) && !new_bid_price.is_zero(),
+				),
 				Error::<T>::InvalidBidPrice,
 			);
 
@@ -992,14 +996,13 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	}
 }
 
-#[allow(deprecated)]
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		if let Call::cancel(auction_id) = call {
 			if !T::EmergencyShutdown::is_shutdown() {
-				return InvalidTransaction::Stale.into();
+				return InvalidTransaction::Call.into();
 			}
 
 			if let Some(collateral_auction) = Self::collateral_auctions(auction_id) {

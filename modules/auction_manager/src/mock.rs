@@ -12,7 +12,7 @@ use sp_runtime::{
 	ModuleId, Perbill,
 };
 use sp_std::cell::RefCell;
-use support::Price;
+pub use support::Price;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -131,10 +131,19 @@ impl cdp_treasury::Trait for Runtime {
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
+thread_local! {
+	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+}
+
 pub struct MockPriceSource;
+impl MockPriceSource {
+	pub fn set_relative_price(price: Option<Price>) {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+	}
+}
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(_base: CurrencyId, _quota: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+		RELATIVE_PRICE.with(|v| *v.borrow_mut())
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
