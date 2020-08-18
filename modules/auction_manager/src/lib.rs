@@ -353,11 +353,12 @@ impl<T: Trait> Module<T> {
 
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel(auction_id);
-		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
 			debug::info!(
 				target: "auction-manager offchain worker",
-				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed!",
+				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed: {:?}",
 				auction_id,
+				err,
 			);
 		}
 	}
