@@ -182,10 +182,7 @@ fn withdraw_collateral_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 500);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 500);
 		assert_eq!(Currencies::free_balance(BTC, &BOB), 1000);
-		assert_noop!(
-			CDPTreasuryModule::withdraw_collateral(&BOB, BTC, 501),
-			Error::<Runtime>::CollateralNotEnough,
-		);
+		assert_eq!(CDPTreasuryModule::withdraw_collateral(&BOB, BTC, 501).is_ok(), false);
 		assert_ok!(CDPTreasuryModule::withdraw_collateral(&BOB, BTC, 400));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 100);
@@ -228,6 +225,10 @@ fn swap_collateral_to_stable_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 100));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
+		assert_noop!(
+			CDPTreasuryModule::swap_collateral_to_stable(BTC, 101, 500),
+			Error::<Runtime>::CollateralNotEnough,
+		);
 		assert_ok!(CDPTreasuryModule::swap_collateral_to_stable(BTC, 100, 500));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 500);
@@ -237,7 +238,7 @@ fn swap_collateral_to_stable_work() {
 #[test]
 fn create_collateral_auctions_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		TotalCollaterals::mutate(BTC, |balance| *balance += 10000);
+		assert_ok!(Currencies::deposit(BTC, &CDPTreasuryModule::account_id(), 10000));
 		assert_eq!(CDPTreasuryModule::collateral_auction_maximum_size(BTC), 0);
 
 		// without collateral auction maximum size
@@ -271,7 +272,7 @@ fn create_collateral_auctions_work() {
 #[test]
 fn create_surplus_auction_when_on_finalize() {
 	ExtBuilder::default().build().execute_with(|| {
-		SurplusPool::put(1000);
+		assert_ok!(CDPTreasuryModule::on_system_surplus(1000));
 		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::signed(1),
 			Some(300),
@@ -285,7 +286,7 @@ fn create_surplus_auction_when_on_finalize() {
 		assert_eq!(TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut()), 3);
 
 		// exceed lots cap
-		SurplusPool::put(2000);
+		assert_ok!(CDPTreasuryModule::on_system_surplus(2000));
 		CDPTreasuryModule::on_finalize(1);
 		assert_eq!(TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut()), 8);
 	});
@@ -317,7 +318,7 @@ fn create_debit_auction_when_on_finalize() {
 #[test]
 fn no_new_surplus_or_debit_auctions_on_finalize_if_shutdown() {
 	ExtBuilder::default().build().execute_with(|| {
-		SurplusPool::put(1000);
+		assert_ok!(CDPTreasuryModule::on_system_surplus(1000));
 		DebitPool::put(1000);
 		assert_ok!(CDPTreasuryModule::set_debit_and_surplus_handle_params(
 			Origin::signed(1),
