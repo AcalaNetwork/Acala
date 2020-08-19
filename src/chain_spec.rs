@@ -193,8 +193,8 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
-		"Acala Mandala TC4",
-		"mandala4",
+		"Acala Mandala PC1",
+		"mandalapc1",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -250,14 +250,17 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![
-			"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz"
+			"/dns/172-31-11-20/tcp/30333/p2p/12D3KooWNUPp9ervpypz95DCMHfb3CAbQdfrmmBbYehUaJsFvRvT"
 				.parse()
 				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala4"),
+		Some("mandalapc1"),
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: "rococo".into(),
+			para_id: 5000u32.into(),
+		},
 	))
 }
 
