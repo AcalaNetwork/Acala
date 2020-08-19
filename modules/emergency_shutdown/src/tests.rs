@@ -12,10 +12,6 @@ fn emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), false);
-		assert_eq!(
-			<Runtime as cdp_treasury::Trait>::EmergencyShutdown::is_shutdown(),
-			false
-		);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(5)),
 			BadOrigin,
@@ -26,7 +22,6 @@ fn emergency_shutdown_work() {
 		assert!(System::events().iter().any(|record| record.event == shutdown_event));
 
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), true);
-		assert_eq!(<Runtime as cdp_treasury::Trait>::EmergencyShutdown::is_shutdown(), true);
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)),
 			Error::<Runtime>::AlreadyShutdown,

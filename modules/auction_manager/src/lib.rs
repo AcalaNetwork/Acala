@@ -228,6 +228,8 @@ decl_error! {
 		MustAfterShutdown,
 		/// Bid price is invalid
 		InvalidBidPrice,
+		/// Invalid input amount
+		InvalidAmount,
 	}
 }
 
@@ -907,64 +909,77 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
-	) {
-		if let (Some(new_total_collateral), Some(new_total_target)) = (
-			Self::total_collateral_in_auction(currency_id).checked_add(amount),
-			Self::total_target_in_auction().checked_add(target),
-		) {
-			TotalCollateralInAuction::insert(currency_id, new_total_collateral);
-			TotalTargetInAuction::put(new_total_target);
+	) -> DispatchResult {
+		ensure!(!amount.is_zero(), Error::<T>::InvalidAmount,);
+		TotalCollateralInAuction::try_mutate(currency_id, |total| -> DispatchResult {
+			*total = total.checked_add(amount).ok_or(Error::<T>::InvalidAmount)?;
+			Ok(())
+		})?;
+		TotalTargetInAuction::try_mutate(|total| -> DispatchResult {
+			*total = total.checked_add(target).ok_or(Error::<T>::InvalidAmount)?;
+			Ok(())
+		})?;
 
-			let block_number = <system::Module<T>>::block_number();
-			let auction_id: AuctionId = T::Auction::new_auction(block_number, None)
-				.expect("AuctionId is sufficient large so this can never fail"); // do not set end time for collateral auction
-			let collateral_auction = CollateralAuctionItem {
-				refund_recipient: who.clone(),
-				currency_id,
-				amount,
-				target,
-				start_time: block_number,
-			};
+		let block_number = <system::Module<T>>::block_number();
+		let auction_id: AuctionId =
+			T::Auction::new_auction(block_number, None).expect("AuctionId is sufficient large so this can never fail"); // do not set end time for collateral auction
+		let collateral_auction = CollateralAuctionItem {
+			refund_recipient: who.clone(),
+			currency_id,
+			amount,
+			target,
+			start_time: block_number,
+		};
 
-			// increase account ref of refund recipient
-			system::Module::<T>::inc_ref(&who);
+		// increase account ref of refund recipient
+		system::Module::<T>::inc_ref(&who);
 
-			<CollateralAuctions<T>>::insert(auction_id, collateral_auction);
-			<Module<T>>::deposit_event(RawEvent::NewCollateralAuction(auction_id, currency_id, amount, target));
-		}
+		<CollateralAuctions<T>>::insert(auction_id, collateral_auction);
+		<Module<T>>::deposit_event(RawEvent::NewCollateralAuction(auction_id, currency_id, amount, target));
+		Ok(())
 	}
 
-	fn new_debit_auction(initial_amount: Self::Balance, fix_debit: Self::Balance) {
-		if let Some(new_total_debit) = Self::total_debit_in_auction().checked_add(fix_debit) {
-			TotalDebitInAuction::put(new_total_debit);
-			let start_block = <system::Module<T>>::block_number();
-			let end_block = start_block + T::AuctionTimeToClose::get();
-			// set close time for initial debit auction
-			let auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
-				.expect("AuctionId is sufficient large so this can never fail");
-			let debit_auction = DebitAuctionItem {
-				amount: initial_amount,
-				fix: fix_debit,
-				start_time: start_block,
-			};
-			<DebitAuctions<T>>::insert(auction_id, debit_auction);
-			<Module<T>>::deposit_event(RawEvent::NewDebitAuction(auction_id, initial_amount, fix_debit));
-		}
+	fn new_debit_auction(initial_amount: Self::Balance, fix_debit: Self::Balance) -> DispatchResult {
+		ensure!(
+			!initial_amount.is_zero() && !fix_debit.is_zero(),
+			Error::<T>::InvalidAmount,
+		);
+		TotalDebitInAuction::try_mutate(|total| -> DispatchResult {
+			*total = total.checked_add(fix_debit).ok_or(Error::<T>::InvalidAmount)?;
+			Ok(())
+		})?;
+
+		let start_block = <system::Module<T>>::block_number();
+		let end_block = start_block + T::AuctionTimeToClose::get();
+		let auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
+			.expect("AuctionId is sufficient large so this can never fail"); // set end time for debit auction
+		let debit_auction = DebitAuctionItem {
+			amount: initial_amount,
+			fix: fix_debit,
+			start_time: start_block,
+		};
+
+		<DebitAuctions<T>>::insert(auction_id, debit_auction);
+		<Module<T>>::deposit_event(RawEvent::NewDebitAuction(auction_id, initial_amount, fix_debit));
+		Ok(())
 	}
 
-	fn new_surplus_auction(amount: Self::Balance) {
-		if let Some(new_total_surplus) = Self::total_surplus_in_auction().checked_add(amount) {
-			TotalSurplusInAuction::put(new_total_surplus);
-			// do not set end time for surplus auction
-			let auction_id: AuctionId = T::Auction::new_auction(<system::Module<T>>::block_number(), None)
-				.expect("AuctionId is sufficient large so this can never fail");
-			let surplus_auction = SurplusAuctionItem {
-				amount,
-				start_time: <system::Module<T>>::block_number(),
-			};
-			<SurplusAuctions<T>>::insert(auction_id, surplus_auction);
-			<Module<T>>::deposit_event(RawEvent::NewSurplusAuction(auction_id, amount));
-		}
+	fn new_surplus_auction(amount: Self::Balance) -> DispatchResult {
+		ensure!(!amount.is_zero(), Error::<T>::InvalidAmount,);
+		TotalSurplusInAuction::try_mutate(|total| -> DispatchResult {
+			*total = total.checked_add(amount).ok_or(Error::<T>::InvalidAmount)?;
+			Ok(())
+		})?;
+
+		let auction_id: AuctionId = T::Auction::new_auction(<system::Module<T>>::block_number(), None)
+			.expect("AuctionId is sufficient large so this can never fail"); // do not set end time for surplus auction
+		let surplus_auction = SurplusAuctionItem {
+			amount,
+			start_time: <system::Module<T>>::block_number(),
+		};
+		<SurplusAuctions<T>>::insert(auction_id, surplus_auction);
+		<Module<T>>::deposit_event(RawEvent::NewSurplusAuction(auction_id, amount));
+		Ok(())
 	}
 
 	fn get_total_debit_in_auction() -> Self::Balance {

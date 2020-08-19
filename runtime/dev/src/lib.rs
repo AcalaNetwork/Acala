@@ -64,7 +64,6 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
-pub use module_cdp_treasury::SurplusDebitAuctionConfig;
 pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
 	CurrencyId, EraIndex, Hash, Moment, Nonce, Share, Signature,
@@ -919,7 +918,6 @@ impl module_cdp_treasury::Trait for Runtime {
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
-	type EmergencyShutdown = EmergencyShutdown;
 }
 
 parameter_types! {

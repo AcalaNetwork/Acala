@@ -127,7 +127,6 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
-	type EmergencyShutdown = MockEmergencyShutdown;
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 

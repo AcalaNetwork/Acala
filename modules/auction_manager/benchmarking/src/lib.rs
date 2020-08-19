@@ -56,7 +56,7 @@ benchmarks! {
 		<T as auction_manager::Trait>::Currency::deposit(native_currency_id, &bidder, dollar(10))?;
 
 		// create surplus auction
-		AuctionManager::<T>::new_surplus_auction(dollar(1));
+		AuctionManager::<T>::new_surplus_auction(dollar(1))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid surplus auction
@@ -78,7 +78,7 @@ benchmarks! {
 		<T as auction_manager::Trait>::Currency::deposit(stable_currency_id, &bidder, dollar(20))?;
 
 		// create debit auction
-		AuctionManager::<T>::new_debit_auction(dollar(1), dollar(10));
+		AuctionManager::<T>::new_debit_auction(dollar(1), dollar(10))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid debit auction
@@ -106,7 +106,7 @@ benchmarks! {
 		feed_price::<T>(CurrencyId::DOT, Price::saturating_from_integer(120))?;
 
 		// create collateral auction
-		AuctionManager::<T>::new_collateral_auction(&funder, CurrencyId::DOT, dollar(1), dollar(100));
+		AuctionManager::<T>::new_collateral_auction(&funder, CurrencyId::DOT, dollar(1), dollar(100))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction

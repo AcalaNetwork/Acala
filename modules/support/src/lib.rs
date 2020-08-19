@@ -61,9 +61,9 @@ pub trait AuctionManager<AccountId> {
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
-	);
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance);
-	fn new_surplus_auction(amount: Self::Balance);
+	) -> DispatchResult;
+	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) -> DispatchResult;
+	fn new_surplus_auction(amount: Self::Balance) -> DispatchResult;
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult;
 
 	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance;
@@ -191,7 +191,8 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		amount: Self::Balance,
 		target: Self::Balance,
 		refund_receiver: AccountId,
-	);
+		splited: bool,
+	) -> DispatchResult;
 }
 
 pub trait PriceProvider<CurrencyId> {
