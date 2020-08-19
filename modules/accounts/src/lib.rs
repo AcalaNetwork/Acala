@@ -105,6 +105,8 @@ decl_error! {
 		NotEnoughBalance,
 		/// Account ref count is not zero
 		NonZeroRefCount,
+		/// Account still has active reserved(include non-native token and native token beyond new account deposit)
+		StillHasActiveReserved,
 	}
 }
 
@@ -194,36 +196,31 @@ decl_module! {
 				);
 
 				let native_currency_id = T::NativeCurrencyId::get();
-				let treasury_account = Self::treasury_account_id();
-				let recipient = recipient.unwrap_or_else(|| treasury_account.clone());
+				let new_account_deposit = T::NewAccountDeposit::get();
 				let total_reserved_native = <T as Trait>::Currency::reserved_balance(native_currency_id, &who);
 
-				// unreserve all native currency
-				<T as Trait>::Currency::unreserve(native_currency_id, &who, total_reserved_native);
+				// ensure total reserved native is lte new account deposit,
+				// otherwise think the account still has active reserved kept by some bussiness.
+				ensure!(
+					new_account_deposit >= total_reserved_native,
+					Error::<T>::StillHasActiveReserved,
+				);
+				let treasury_account = Self::treasury_account_id();
+				let recipient = recipient.unwrap_or_else(|| treasury_account.clone());
 
-				// The reserved exclude `NewAccountDeposit` should be refund to `TreasuryModuleId`.
-				if let Some(refund_to_treasury_reserved) = total_reserved_native.checked_sub(T::NewAccountDeposit::get()) {
-					// transfer refund to treasury separately if recipient is not specified.
-					if treasury_account != recipient {
-						<T as Trait>::Currency::transfer(native_currency_id, &who, &treasury_account, refund_to_treasury_reserved)?;
-					}
-				}
+				// unreserve all reserved native currency
+				<T as Trait>::Currency::unreserve(native_currency_id, &who, total_reserved_native);
 
 				// transfer all free to recipient
 				<T as Trait>::Currency::transfer(native_currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(native_currency_id, &who))?;
 
 				// handle other non-native currencies
 				for currency_id in T::AllNonNativeCurrencyIds::get() {
-					let reserved = <T as Trait>::Currency::reserved_balance(currency_id, &who);
-					if !reserved.is_zero() {
-						// unreserve all reserved
-						<T as Trait>::Currency::unreserve(currency_id, &who, reserved);
-
-						// transfer reserved amount to treasury_account separately if the recipient is not specified
-						if treasury_account != recipient {
-							<T as Trait>::Currency::transfer(currency_id, &who, &treasury_account, reserved)?;
-						}
-					}
+					// ensure the account has no active reserved of non-native token
+					ensure!(
+						<T as Trait>::Currency::reserved_balance(currency_id, &who).is_zero(),
+						Error::<T>::StillHasActiveReserved,
+					);
 
 					// transfer all free to recipient
 					<T as Trait>::Currency::transfer(currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(currency_id, &who))?;

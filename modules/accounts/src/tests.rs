@@ -8,8 +8,8 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Accounts, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, System, TimeModule, ACA, ALICE, AUSD, BOB, BTC,
-	CAROL,
+	Accounts, Call, Currencies, DEXModule, ExtBuilder, NewAccountDeposit, Origin, Runtime, System, TimeModule, ACA,
+	ALICE, AUSD, BOB, BTC, CAROL,
 };
 use orml_traits::MultiCurrency;
 
@@ -303,13 +303,37 @@ fn open_account_failed_when_transfer_non_native() {
 #[test]
 fn close_account_failed_when_not_allowed_death() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Accounts::is_explicit(&BOB), false);
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 200));
-		assert_eq!(Accounts::is_explicit(&BOB), true);
 		System::inc_ref(&BOB);
 		assert_noop!(
 			Accounts::close_account(Origin::signed(BOB), None),
 			Error::<Runtime>::NonZeroRefCount,
+		);
+	});
+}
+
+#[test]
+fn close_account_failed_when_still_has_active_reserved() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 200));
+		assert_eq!(System::allow_death(&BOB), true);
+		assert_ok!(<Currencies as MultiReservableCurrency<_>>::reserve(ACA, &BOB, 10));
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			10 + NewAccountDeposit::get(),
+		);
+		assert_noop!(
+			Accounts::close_account(Origin::signed(BOB), None),
+			Error::<Runtime>::StillHasActiveReserved,
+		);
+
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &CAROL, 200));
+		assert_ok!(<Currencies as MultiCurrency<_>>::deposit(BTC, &CAROL, 10));
+		assert_ok!(<Currencies as MultiReservableCurrency<_>>::reserve(BTC, &CAROL, 1));
+		assert_eq!(System::allow_death(&CAROL), true);
+		assert_noop!(
+			Accounts::close_account(Origin::signed(CAROL), None),
+			Error::<Runtime>::StillHasActiveReserved,
 		);
 	});
 }
@@ -380,14 +404,13 @@ fn close_account_and_specific_receiver() {
 		assert_eq!(Accounts::is_explicit(&BOB), false);
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 500));
 		assert_eq!(Accounts::is_explicit(&BOB), true);
-		assert_ok!(<Currencies as MultiReservableCurrency<_>>::reserve(ACA, &BOB, 150));
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(BTC, &ALICE, &BOB, 300));
 
-		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 250);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 400);
 		assert_eq!(
 			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
-			250
+			NewAccountDeposit::get()
 		);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 300);
@@ -428,30 +451,13 @@ fn close_account_and_specific_receiver() {
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 0);
 		assert_eq!(Accounts::is_explicit(&CAROL), true);
-		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &CAROL), 250);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &CAROL), 400);
 		assert_eq!(
 			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &CAROL),
 			100
 		);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &CAROL), 1000);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &CAROL), 300);
-		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), true);
-		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(ACA, &Accounts::treasury_account_id()),
-			50
-		);
-		assert_eq!(
-			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &Accounts::treasury_account_id()),
-			100
-		);
-		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
-			0
-		);
-		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(BTC, &Accounts::treasury_account_id()),
-			0
-		);
 	});
 }
 
