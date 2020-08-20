@@ -280,6 +280,14 @@ fn check_position_valid_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
 			Change::NewValue(10000),
 		));
+
+		MockPriceSource::set_relative_price(None);
+		assert_noop!(
+			CDPEngineModule::check_position_valid(BTC, 100, 50),
+			Error::<Runtime>::InvalidFeedPrice
+		);
+		MockPriceSource::set_relative_price(Some(Price::one()));
+
 		assert_ok!(CDPEngineModule::check_position_valid(BTC, 100, 50));
 	});
 }
@@ -442,6 +450,12 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+
+		mock_shutdown();
+		assert_noop!(
+			CDPEngineModule::liquidate(Origin::none(), BTC, ALICE),
+			Error::<Runtime>::AlreadyShutdown
+		);
 	});
 }
 
@@ -559,5 +573,10 @@ fn settle_cdp_has_debit_work() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 50);
+
+		assert_noop!(
+			CDPEngineModule::settle(Origin::none(), BTC, ALICE),
+			Error::<Runtime>::MustAfterShutdown
+		);
 	});
 }
