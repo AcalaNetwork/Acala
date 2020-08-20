@@ -528,8 +528,8 @@ impl<T: Trait> Module<T> {
 		let currency_id = collateral_currency_ids[(position as usize)];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
-		for (who, Position { debit, .. }) in <loans::Positions<T>>::iter_prefix(currency_id) {
-			if !is_shutdown && Self::is_cdp_unsafe(currency_id, &who) {
+		for (who, Position { collateral, debit }) in <loans::Positions<T>>::iter_prefix(currency_id) {
+			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
 				// liquidate unsafe CDPs before emergency shutdown occurs
 				Self::submit_unsigned_liquidation_tx(currency_id, who);
 			} else if is_shutdown && !debit.is_zero() {
@@ -544,8 +544,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	pub fn is_cdp_unsafe(currency_id: CurrencyId, who: &T::AccountId) -> bool {
-		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, who);
+	pub fn is_cdp_unsafe(currency_id: CurrencyId, collateral: Balance, debit: Balance) -> bool {
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
@@ -643,7 +642,10 @@ impl<T: Trait> Module<T> {
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		// ensure the cdp is unsafe
-		ensure!(Self::is_cdp_unsafe(currency_id, &who), Error::<T>::MustBeUnsafe);
+		ensure!(
+			Self::is_cdp_unsafe(currency_id, collateral, debit),
+			Error::<T>::MustBeUnsafe
+		);
 
 		// confiscate all collateral and debit of unsafe cdp to cdp treasury
 		<LoansOf<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral, debit)?;
@@ -653,7 +655,7 @@ impl<T: Trait> Module<T> {
 		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 
 		// if collateral can swap enough native token in DEX and exchange
-		// slippage is blow the limit, directly exchange with DEX, otherwise create
+		// slippage is below the limit, directly exchange with DEX, otherwise create
 		// collateral auctions.
 		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
 			&& collateral >= supply_collateral_amount									// ensure have sufficient collateral
@@ -760,7 +762,8 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		match call {
 			Call::liquidate(currency_id, who) => {
-				if !Self::is_cdp_unsafe(*currency_id, &who) || T::EmergencyShutdown::is_shutdown() {
+				let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+				if !Self::is_cdp_unsafe(*currency_id, collateral, debit) || T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}
 

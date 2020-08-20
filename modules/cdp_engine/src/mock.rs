@@ -144,12 +144,21 @@ impl loans::Trait for Runtime {
 }
 pub type LoansModule = loans::Module<Runtime>;
 
+thread_local! {
+	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+}
+
 pub struct MockPriceSource;
+impl MockPriceSource {
+	pub fn set_relative_price(price: Option<Price>) {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+	}
+}
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
 		match (base, quote) {
-			(AUSD, BTC) => Some(Price::one()),
-			(BTC, AUSD) => Some(Price::one()),
+			(AUSD, BTC) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
+			(BTC, AUSD) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
 			_ => None,
 		}
 	}

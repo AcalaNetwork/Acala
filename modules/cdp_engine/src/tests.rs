@@ -10,6 +10,11 @@ use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn is_cdp_unsafe_work() {
+	fn is_user_safe(currency_id: CurrencyId, who: &AccountId) -> bool {
+		let Position { collateral, debit } = LoansModule::positions(currency_id, &who);
+		CDPEngineModule::is_cdp_unsafe(currency_id, collateral, debit)
+	}
+
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -20,9 +25,9 @@ fn is_cdp_unsafe_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), false);
+		assert_eq!(is_user_safe(BTC, &ALICE), false);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
-		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), false);
+		assert_eq!(is_user_safe(BTC, &ALICE), false);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
@@ -32,7 +37,7 @@ fn is_cdp_unsafe_work() {
 			Change::NoChange,
 			Change::NoChange,
 		));
-		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), true);
+		assert_eq!(is_user_safe(BTC, &ALICE), true);
 	});
 }
 
@@ -122,6 +127,19 @@ fn set_global_params_work() {
 #[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CDPEngineModule::set_collateral_params(
+				Origin::signed(1),
+				CurrencyId::LDOT,
+				Change::NoChange,
+				Change::NoChange,
+				Change::NoChange,
+				Change::NoChange,
+				Change::NoChange,
+			),
+			Error::<Runtime>::InvalidCollateralType
+		);
+
 		System::set_block_number(1);
 		assert_noop!(
 			CDPEngineModule::set_collateral_params(
@@ -262,6 +280,14 @@ fn check_position_valid_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
 			Change::NewValue(10000),
 		));
+
+		MockPriceSource::set_relative_price(None);
+		assert_noop!(
+			CDPEngineModule::check_position_valid(BTC, 100, 50),
+			Error::<Runtime>::InvalidFeedPrice
+		);
+		MockPriceSource::set_relative_price(Some(Price::one()));
+
 		assert_ok!(CDPEngineModule::check_position_valid(BTC, 100, 50));
 	});
 }
@@ -424,6 +450,12 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+
+		mock_shutdown();
+		assert_noop!(
+			CDPEngineModule::liquidate(Origin::none(), BTC, ALICE),
+			Error::<Runtime>::AlreadyShutdown
+		);
 	});
 }
 
@@ -541,5 +573,10 @@ fn settle_cdp_has_debit_work() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 50);
+
+		assert_noop!(
+			CDPEngineModule::settle(Origin::none(), BTC, ALICE),
+			Error::<Runtime>::MustAfterShutdown
+		);
 	});
 }
