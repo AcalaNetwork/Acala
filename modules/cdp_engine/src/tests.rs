@@ -10,6 +10,11 @@ use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn is_cdp_unsafe_work() {
+	fn is_user_safe(currency_id: CurrencyId, who: &AccountId) -> bool {
+		let Position { collateral, debit } = LoansModule::positions(currency_id, &who);
+		CDPEngineModule::is_cdp_unsafe(currency_id, collateral, debit)
+	}
+
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -20,9 +25,9 @@ fn is_cdp_unsafe_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), false);
+		assert_eq!(is_user_safe(BTC, &ALICE), false);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
-		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), false);
+		assert_eq!(is_user_safe(BTC, &ALICE), false);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
@@ -32,7 +37,7 @@ fn is_cdp_unsafe_work() {
 			Change::NoChange,
 			Change::NoChange,
 		));
-		assert_eq!(CDPEngineModule::is_cdp_unsafe(BTC, &ALICE), true);
+		assert_eq!(is_user_safe(BTC, &ALICE), true);
 	});
 }
 
