@@ -59,6 +59,9 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	refund_recipient: AccountId,
 	/// Collateral type for sale
 	currency_id: CurrencyId,
+	/// Initial collateral amount for sale
+	#[codec(compact)]
+	initial_amount: Balance,
 	/// Current collateral amount for sale
 	#[codec(compact)]
 	amount: Balance,
@@ -109,6 +112,9 @@ impl<AccountId, BlockNumber> CollateralAuctionItem<AccountId, BlockNumber> {
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
 pub struct DebitAuctionItem<BlockNumber> {
+	/// Initial amount of native currency for sale
+	#[codec(compact)]
+	initial_amount: Balance,
 	/// Current amount of native currency for sale
 	#[codec(compact)]
 	amount: Balance,
@@ -926,6 +932,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		let collateral_auction = CollateralAuctionItem {
 			refund_recipient: who.clone(),
 			currency_id,
+			initial_amount: amount,
 			amount,
 			target,
 			start_time: block_number,
@@ -954,6 +961,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 		let auction_id: AuctionId = T::Auction::new_auction(start_block, Some(end_block))
 			.expect("AuctionId is sufficient large so this can never fail"); // set end time for debit auction
 		let debit_auction = DebitAuctionItem {
+			initial_amount,
 			amount: initial_amount,
 			fix: fix_debit,
 			start_time: start_block,
