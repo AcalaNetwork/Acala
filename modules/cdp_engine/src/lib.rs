@@ -652,7 +652,7 @@ impl<T: Trait> Module<T> {
 		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 
 		// if collateral can swap enough native token in DEX and exchange
-		// slippage is blow the limit, directly exchange with DEX, otherwise create
+		// slippage is below the limit, directly exchange with DEX, otherwise create
 		// collateral auctions.
 		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
 			&& collateral >= supply_collateral_amount									// ensure have sufficient collateral
