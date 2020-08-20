@@ -122,6 +122,19 @@ fn set_global_params_work() {
 #[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CDPEngineModule::set_collateral_params(
+				Origin::signed(1),
+				CurrencyId::LDOT,
+				Change::NoChange,
+				Change::NoChange,
+				Change::NoChange,
+				Change::NoChange,
+				Change::NoChange,
+			),
+			Error::<Runtime>::InvalidCollateralType
+		);
+
 		System::set_block_number(1);
 		assert_noop!(
 			CDPEngineModule::set_collateral_params(
