@@ -94,6 +94,7 @@ pub fn development_testnet_config() -> Result<DevChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 				],
 				vec![get_oracle_keys_from_seed("Alice")],
+				true,
 			)
 		},
 		vec![],
@@ -139,6 +140,7 @@ pub fn local_testnet_config() -> Result<DevChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
 				vec![get_oracle_keys_from_seed("Alice")],
+				false,
 			)
 		},
 		vec![],
@@ -212,6 +214,7 @@ pub fn latest_mandala_testnet_config() -> Result<DevChainSpec, String> {
 					hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].into(),
 					hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].unchecked_into(),
 				)],
+				false,
 			)
 		},
 		vec![
@@ -237,13 +240,14 @@ fn testnet_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	oracle_session_keys: Vec<(AccountId, OracleId)>,
+	enable_println: bool,
 ) -> dev_runtime::GenesisConfig {
 	use dev_runtime::{
 		get_all_module_accounts, AirDropConfig, BabeConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-		CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
-		HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit, OperatorMembershipConfig, OracleConfig,
-		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
+		ContractsConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
+		OperatorMembershipConfig, OracleConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -315,6 +319,12 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),
+		pallet_contracts: Some(ContractsConfig {
+			current_schedule: pallet_contracts::Schedule {
+				enable_println, // this should only be enabled on development chains
+				..Default::default()
+			},
+		}),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()
@@ -398,11 +408,12 @@ fn mandala_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	oracle_session_keys: Vec<(AccountId, OracleId)>,
+	enable_println: bool,
 ) -> dev_runtime::GenesisConfig {
 	use dev_runtime::{
 		get_all_module_accounts, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig,
-		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
+		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
+		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
 		OperatorMembershipConfig, OracleConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
 		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
@@ -476,6 +487,12 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),
+		pallet_contracts: Some(ContractsConfig {
+			current_schedule: pallet_contracts::Schedule {
+				enable_println, // this should only be enabled on development chains
+				..Default::default()
+			},
+		}),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: vec![
 				(root_key.clone(), CurrencyId::DOT, INITIAL_BALANCE),

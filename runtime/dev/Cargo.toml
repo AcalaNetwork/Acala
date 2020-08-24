@@ -13,6 +13,9 @@ static_assertions = "1.1.0"
 hex-literal = { version = "0.2.1" }
 
 frame-benchmarking = { version = "2.0.0-rc5", default-features = false, optional = true }
+pallet-contracts = { version = "2.0.0-rc5", default-features = false }
+pallet-contracts-primitives = { version = "2.0.0-rc5", default-features = false }
+pallet-contracts-rpc-runtime-api = { version = "0.8.0-rc5", default-features = false }
 frame-executive = { version = "2.0.0-rc5", default-features = false }
 frame-support = { version = "2.0.0-rc5", default-features = false }
 frame-system = { version = "2.0.0-rc5", default-features = false }
@@ -110,6 +113,9 @@ std = [
 	"frame-benchmarking/std",
 	"pallet-babe/std",
 	"pallet-balances/std",
+	"pallet-contracts/std",
+	"pallet-contracts-primitives/std",
+	"pallet-contracts-rpc-runtime-api/std",
 	"pallet-collective/std",
 	"pallet-grandpa/std",
 	"pallet-indices/std",

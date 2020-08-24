@@ -69,6 +69,7 @@ dependencies = [
  "jsonrpc-core",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
+ "pallet-contracts-rpc",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "sc-client-api",
@@ -100,6 +101,8 @@ dependencies = [
  "hex-literal",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
+ "pallet-contracts",
+ "pallet-contracts-rpc-runtime-api",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
@@ -1081,6 +1084,9 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-collective",
+ "pallet-contracts",
+ "pallet-contracts-primitives",
+ "pallet-contracts-rpc-runtime-api",
  "pallet-grandpa",
  "pallet-indices",
  "pallet-membership",
@@ -4189,6 +4195,72 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-contracts"
+version = "2.0.0-rc5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "104228a91841adc79f5f2f2c3dc5116479ea2124b67f5b070ab1f4b1c7660bd7"
+dependencies = [
+ "bitflags",
+ "frame-support",
+ "frame-system",
+ "pallet-contracts-primitives",
+ "parity-scale-codec",
+ "parity-wasm",
+ "pwasm-utils",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-sandbox",
+ "sp-std",
+ "wasmi-validation",
+]
+
+[[package]]
+name = "pallet-contracts-primitives"
+version = "2.0.0-rc5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2542fe4e5207c8351e5f111e6cddd5329767cb09d1ac562c89f2d1de3828af54"
+dependencies = [
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-contracts-rpc"
+version = "0.8.0-rc5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaa9fce8c4f47d61b23c159b4ead36f5b527dbc470c503e1f4cdb849cfdf194b"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-contracts-primitives",
+ "pallet-contracts-rpc-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "pallet-contracts-rpc-runtime-api"
+version = "0.8.0-rc5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4aff7498e17aadf038e80572824afe115241248e1e080baf0e77c5c086649c32"
+dependencies = [
+ "pallet-contracts-primitives",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-finality-tracker"
 version = "2.0.0-rc5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4961,6 +5033,17 @@ name = "protobuf"
 version = "2.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d883f78645c21b7281d21305181aa1f4dd9e9363e7cf2566c93121552cff003e"
+
+[[package]]
+name = "pwasm-utils"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f7a12f176deee919f4ba55326ee17491c8b707d0987aed822682c821b660192"
+dependencies = [
+ "byteorder",
+ "log",
+ "parity-wasm",
+]
 
 [[package]]
 name = "quick-error"
@@ -7185,6 +7268,20 @@ dependencies = [
  "proc-macro2",
  "quote 1.0.7",
  "syn 1.0.38",
+]
+
+[[package]]
+name = "sp-sandbox"
+version = "0.8.0-rc5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c100df4ee8e0a99a8a9879f4883be188186d1a183f7f01e4cd65aad8764d9ae"
+dependencies = [
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-std",
+ "sp-wasm-interface",
+ "wasmi",
 ]
 
 [[package]]
