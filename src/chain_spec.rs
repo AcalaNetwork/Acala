@@ -250,7 +250,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![
-			"/dns/172-31-11-20/tcp/30333/p2p/12D3KooWNUPp9ervpypz95DCMHfb3CAbQdfrmmBbYehUaJsFvRvT"
+			"/ipv4/54.254.37.221/tcp/30333/p2p/12D3KooWNUPp9ervpypz95DCMHfb3CAbQdfrmmBbYehUaJsFvRvT"
 				.parse()
 				.unwrap(),
 		],
