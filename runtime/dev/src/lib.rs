@@ -703,12 +703,12 @@ pub type TimeStampedPrice = TimestampedValue<Price, Moment>;
 create_median_value_data_provider!(AggregatedDataProvider, AcalaOracle, BandOracle);
 
 struct DataProviders;
-impl MultiDataProvider<DataProviderId, CurrencyId, Price> for MultiDataProviderImpl {
+impl MultiDataProvider<DataProviderId, CurrencyId, Price> for DataProviders {
 	fn get(source: DataProviderId, key: &CurrencyId) -> Option<Price> {
 		match source {
-			DataProviderId::AcalaDataProvier => <AcalaOracle as DataProvider<CurrencyId, Price>>::get(&key),
-			DataProviderId::BandDataProvider => <BandOracle as DataProvider<CurrencyId, Price>>::get(&key),
-			DataProviderId::AggergatedDataProvider => AggregatedDataProviderImpl::get(&key),
+			DataProviderId::Acala => <AcalaOracle as DataProvider<CurrencyId, Price>>::get(&key),
+			DataProviderId::Band => <BandOracle as DataProvider<CurrencyId, Price>>::get(&key),
+			DataProviderId::Aggergated => AggregatedDataProvider::get(&key),
 		}
 	}
 }
@@ -727,7 +727,7 @@ parameter_types! {
 
 impl module_prices::Trait for Runtime {
 	type Event = Event;
-	type Source = AggregatedDataProviderImpl;
+	type Source = AggregatedDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
 	type GetStakingCurrencyId = GetStakingCurrencyId;
@@ -1337,17 +1337,17 @@ impl_runtime_apis! {
 	> for Runtime {
 		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
 			match provider_id {
-				DataProviderId::AcalaDataProvier => AcalaOracle::get_no_op(&key),
-				DataProviderId::BandDataProvider => BandOracle::get_no_op(&key),
-				DataProviderId::AggergatedDataProvider => AggregatedDataProviderImpl::get_no_op(&key)
+				DataProviderId::Acala => AcalaOracle::get_no_op(&key),
+				DataProviderId::Band => BandOracle::get_no_op(&key),
+				DataProviderId::Aggergated => AggregatedDataProvider::get_no_op(&key)
 			}
 		}
 
 		fn get_all_values(provider_id: DataProviderId) -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
 			match provider_id {
-				DataProviderId::AcalaDataProvier => AcalaOracle::get_all_values(),
-				DataProviderId::BandDataProvider => BandOracle::get_all_values(),
-				DataProviderId::AggergatedDataProvider => AggregatedDataProviderImpl::get_all_values()
+				DataProviderId::Acala => AcalaOracle::get_all_values(),
+				DataProviderId::Band => BandOracle::get_all_values(),
+				DataProviderId::Aggergated => AggregatedDataProvider::get_all_values()
 			}
 		}
 	}
