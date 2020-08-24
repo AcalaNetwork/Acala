@@ -137,6 +137,16 @@ pub fn run_node(
 		Box::new(rpc_extensions_builder)
 	};
 
+	if parachain_config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(
+			&parachain_config,
+			backend.clone(),
+			task_manager.spawn_handle(),
+			client.clone(),
+			network.clone(),
+		);
+	}
+
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: None,
 		remote_blockchain: None,
@@ -147,7 +157,7 @@ pub fn run_node(
 		telemetry_connection_sinks: Default::default(),
 		config: parachain_config,
 		keystore: params.keystore,
-		backend,
+		backend: backend,
 		network: network.clone(),
 		network_status_sinks,
 		system_rpc_tx,
