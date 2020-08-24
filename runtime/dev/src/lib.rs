@@ -699,7 +699,7 @@ impl orml_oracle::Trait<BandDataProvider> for Runtime {
 
 pub type TimeStampedPrice = TimestampedValue<Price, Moment>;
 
-create_median_value_data_provider!(AggregatedDataProviderImpl, AcalaOracle, BandOracle);
+create_median_value_data_provider!(AggregatedDataProvider, AcalaOracle, BandOracle);
 
 struct DataProviders;
 impl MultiDataProvider<DataProviderId, CurrencyId, Price> for MultiDataProviderImpl {
