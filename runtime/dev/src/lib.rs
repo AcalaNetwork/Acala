@@ -1380,12 +1380,12 @@ impl_runtime_apis! {
 			input_data: Vec<u8>,
 		) -> ContractExecResult {
 			let (exec_result, gas_consumed) =
-				Contracts::bare_call(origin, dest.into(), value, gas_limit, input_data);
+				Contracts::bare_call(origin, dest, value, gas_limit, input_data);
 			match exec_result {
 				Ok(v) => ContractExecResult::Success {
 					flags: v.flags.bits(),
 					data: v.data,
-					gas_consumed: gas_consumed,
+					gas_consumed,
 				},
 				Err(_) => ContractExecResult::Error,
 			}
