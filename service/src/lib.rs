@@ -1,22 +1,27 @@
+// Disable the following lints
+#![allow(clippy::type_complexity)]
+
 //! Acala service. Specialized wrapper over substrate service.
 
 use std::sync::Arc;
 
-use acala_primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, Nonce};
+use acala_primitives::Block;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sc_executor::native_executor_instance;
 use sc_finality_grandpa::FinalityProofProvider as GrandpaFinalityProofProvider;
-use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, ServiceComponents, TaskManager};
+use sc_service::{config::Configuration, error::Error as ServiceError, PartialComponents, RpcHandlers, TaskManager};
 use sp_core::traits::BareCryptoStorePtr;
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
+pub use client::*;
 pub use dev_runtime;
 pub use sc_executor::NativeExecutionDispatch;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
 
 pub mod chain_spec;
+mod client;
 
 native_executor_instance!(
 	pub DevExecutor,
@@ -52,99 +57,62 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 	}
 }
 
+/// Acala's full backend.
 type FullBackend = sc_service::TFullBackend<Block>;
+
+/// Acala's select chain.
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
+
+/// Acala's full client.
 type FullClient<RuntimeApi, Executor> = sc_service::TFullClient<Block, RuntimeApi, Executor>;
+
+/// Acala's full Grandpa block import.
 type FullGrandpaBlockImport<RuntimeApi, Executor> =
 	sc_finality_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<RuntimeApi, Executor>, FullSelectChain>;
+
+/// Acala's light backend.
 type LightBackend = sc_service::TLightBackendWithHash<Block, BlakeTwo256>;
+
+/// Acala's light client.
 type LightClient<RuntimeApi, Executor> = sc_service::TLightClientWithBackend<Block, RuntimeApi, Executor, LightBackend>;
 
-/// A set of APIs that polkadot-like runtimes must implement.
-pub trait RuntimeApiCollection<UncheckedExtrinsic>:
-	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-	+ sp_api::ApiExt<Block, Error = sp_blockchain::Error>
-	+ sp_consensus_babe::BabeApi<Block>
-	+ sp_finality_grandpa::GrandpaApi<Block>
-	+ sp_block_builder::BlockBuilder<Block>
-	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
-	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance, UncheckedExtrinsic>
-	+ pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber>
-	+ orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, dev_runtime::TimeStampedPrice>
-	+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
-	+ sp_api::Metadata<Block>
-	+ sp_offchain::OffchainWorkerApi<Block>
-	+ sp_session::SessionKeys<Block>
-where
-	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
-	UncheckedExtrinsic: codec::Codec,
-{
-}
-
-impl<Api, UncheckedExtrinsic> RuntimeApiCollection<UncheckedExtrinsic> for Api
-where
-	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::ApiExt<Block, Error = sp_blockchain::Error>
-		+ sp_consensus_babe::BabeApi<Block>
-		+ sp_finality_grandpa::GrandpaApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
-		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance, UncheckedExtrinsic>
-		+ pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber>
-		+ orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, dev_runtime::TimeStampedPrice>
-		+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
-		+ sp_api::Metadata<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_session::SessionKeys<Block>,
-	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
-	UncheckedExtrinsic: codec::Codec,
-{
-}
-
-#[allow(clippy::type_complexity)]
-pub fn new_full_params<RuntimeApi, Executor, UncheckedExtrinsic>(
-	config: Configuration,
+pub fn new_partial<RuntimeApi, Executor>(
+	config: &mut Configuration,
 ) -> Result<
-	(
-		sc_service::ServiceParams<
-			Block,
-			FullClient<RuntimeApi, Executor>,
-			sc_consensus_babe::BabeImportQueue<Block, FullClient<RuntimeApi, Executor>>,
-			sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
-			acala_rpc::RpcExtension,
-			FullBackend,
-		>,
-		(
-			sc_consensus_babe::BabeBlockImport<
-				Block,
-				FullClient<RuntimeApi, Executor>,
-				FullGrandpaBlockImport<RuntimeApi, Executor>,
-			>,
-			sc_finality_grandpa::LinkHalf<Block, FullClient<RuntimeApi, Executor>, FullSelectChain>,
-			sc_consensus_babe::BabeLink<Block>,
-		),
-		sc_finality_grandpa::SharedVoterState,
+	PartialComponents<
+		FullClient<RuntimeApi, Executor>,
+		FullBackend,
 		FullSelectChain,
-		InherentDataProviders,
-	),
-	ServiceError,
+		sp_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
+		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
+		(
+			impl Fn(acala_rpc::DenyUnsafe, acala_rpc::SubscriptionManager) -> acala_rpc::RpcExtension,
+			(
+				sc_consensus_babe::BabeBlockImport<
+					Block,
+					FullClient<RuntimeApi, Executor>,
+					FullGrandpaBlockImport<RuntimeApi, Executor>,
+				>,
+				sc_finality_grandpa::LinkHalf<Block, FullClient<RuntimeApi, Executor>, FullSelectChain>,
+				sc_consensus_babe::BabeLink<Block>,
+			),
+			sc_finality_grandpa::SharedVoterState,
+		),
+	>,
+	sc_service::Error,
 >
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<UncheckedExtrinsic, StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
-	UncheckedExtrinsic: Send + Sync + 'static + codec::Codec,
 {
 	let (client, backend, keystore, task_manager) = sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
 	let client = Arc::new(client);
 
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
-	let pool_api = sc_transaction_pool::FullChainApi::new(client.clone(), config.prometheus_registry());
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
-		std::sync::Arc::new(pool_api),
 		config.prometheus_registry(),
 		task_manager.spawn_handle(),
 		client.clone(),
@@ -172,30 +140,29 @@ where
 		inherent_data_providers.clone(),
 		&task_manager.spawn_handle(),
 		config.prometheus_registry(),
+		sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 	)?;
 
-	let import_setup = (block_import, grandpa_link, babe_link);
+	let justification_stream = grandpa_link.justification_stream();
+	let shared_authority_set = grandpa_link.shared_authority_set().clone();
+	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
 
-	let (rpc_extensions_builder, rpc_setup) = {
-		let (_, grandpa_link, babe_link) = &import_setup;
+	let import_setup = (block_import, grandpa_link, babe_link.clone());
+	let rpc_setup = shared_voter_state.clone();
 
-		let shared_authority_set = grandpa_link.shared_authority_set().clone();
-		let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
+	let babe_config = babe_link.config().clone();
+	let shared_epoch_changes = babe_link.epoch_changes().clone();
 
-		let rpc_setup = shared_voter_state.clone();
-
-		let babe_config = babe_link.config().clone();
-		let shared_epoch_changes = babe_link.epoch_changes().clone();
-
+	let rpc_extensions_builder = {
 		let client = client.clone();
-		let pool = transaction_pool.clone();
-		let select_chain = select_chain.clone();
 		let keystore = keystore.clone();
+		let transaction_pool = transaction_pool.clone();
+		let select_chain = select_chain.clone();
 
-		let rpc_extensions_builder = Box::new(move |deny_unsafe| {
+		move |deny_unsafe, subscriptions| -> acala_rpc::RpcExtension {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
-				pool: pool.clone(),
+				pool: transaction_pool.clone(),
 				select_chain: select_chain.clone(),
 				deny_unsafe,
 				babe: acala_rpc::BabeDeps {
@@ -206,46 +173,32 @@ where
 				grandpa: acala_rpc::GrandpaDeps {
 					shared_voter_state: shared_voter_state.clone(),
 					shared_authority_set: shared_authority_set.clone(),
+					justification_stream: justification_stream.clone(),
+					subscriptions,
 				},
 			};
 
-			acala_rpc::create_full::<_, _, _, UncheckedExtrinsic>(deps)
-		});
-
-		(rpc_extensions_builder, rpc_setup)
+			acala_rpc::create_full::<_, _, _>(deps)
+		}
 	};
 
-	let provider = client.clone() as Arc<dyn sc_finality_grandpa::StorageAndProofProvider<_, _>>;
-	let finality_proof_provider = Arc::new(sc_finality_grandpa::FinalityProofProvider::new(
-		backend.clone(),
-		provider,
-	));
-
-	let params = sc_service::ServiceParams {
-		config,
-		backend,
+	Ok(PartialComponents {
 		client,
-		import_queue,
-		keystore,
+		backend,
 		task_manager,
-		rpc_extensions_builder,
+		keystore,
+		select_chain,
+		import_queue,
 		transaction_pool,
-		block_announce_validator_builder: None,
-		finality_proof_request_builder: None,
-		finality_proof_provider: Some(finality_proof_provider),
-		on_demand: None,
-		remote_blockchain: None,
-	};
-
-	Ok((params, import_setup, rpc_setup, select_chain, inherent_data_providers))
+		inherent_data_providers,
+		other: (rpc_extensions_builder, import_setup, rpc_setup),
+	})
 }
 
 /// Creates a full service from the configuration.
-#[allow(clippy::type_complexity)]
-pub fn new_full_base<
+pub fn new_full<
 	RuntimeApi,
 	Executor,
-	UncheckedExtrinsic,
 	T: FnOnce(
 		&sc_consensus_babe::BabeBlockImport<
 			Block,
@@ -255,7 +208,7 @@ pub fn new_full_base<
 		&sc_consensus_babe::BabeLink<Block>,
 	),
 >(
-	config: Configuration,
+	mut config: Configuration,
 	with_startup_data: T,
 ) -> Result<
 	(
@@ -269,41 +222,68 @@ pub fn new_full_base<
 >
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<UncheckedExtrinsic, StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
-	UncheckedExtrinsic: Send + Sync + 'static + codec::Codec,
 {
-	let (params, import_setup, rpc_setup, select_chain, inherent_data_providers) =
-		new_full_params::<RuntimeApi, Executor, UncheckedExtrinsic>(config)?;
+	let PartialComponents {
+		client,
+		backend,
+		mut task_manager,
+		import_queue,
+		keystore,
+		select_chain,
+		transaction_pool,
+		inherent_data_providers,
+		other: (rpc_extensions_builder, import_setup, rpc_setup),
+	} = new_partial::<RuntimeApi, Executor>(&mut config)?;
 
-	let (role, force_authoring, name, enable_grandpa, prometheus_registry, client, transaction_pool, keystore) = {
-		let sc_service::ServiceParams {
-			config,
-			client,
-			transaction_pool,
-			keystore,
-			..
-		} = &params;
+	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
 
-		(
-			config.role.clone(),
-			config.force_authoring,
-			config.network.node_name.clone(),
-			!config.disable_grandpa,
-			config.prometheus_registry().cloned(),
+	let (network, network_status_sinks, system_rpc_tx, network_starter) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			on_demand: None,
+			block_announce_validator_builder: None,
+			finality_proof_request_builder: None,
+			finality_proof_provider: Some(finality_proof_provider),
+		})?;
+
+	if config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(
+			&config,
+			backend.clone(),
+			task_manager.spawn_handle(),
 			client.clone(),
-			transaction_pool.clone(),
-			keystore.clone(),
-		)
-	};
+			network.clone(),
+		);
+	}
 
-	let ServiceComponents {
-		task_manager,
-		network,
-		telemetry_on_connect_sinks,
-		..
-	} = sc_service::build(params)?;
+	let role = config.role.clone();
+	let force_authoring = config.force_authoring;
+	let name = config.network.node_name.clone();
+	let enable_grandpa = !config.disable_grandpa;
+	let prometheus_registry = config.prometheus_registry().cloned();
+	let telemetry_connection_sinks = sc_service::TelemetryConnectionSinks::default();
+
+	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+		config,
+		backend,
+		client: client.clone(),
+		keystore: keystore.clone(),
+		network: network.clone(),
+		rpc_extensions_builder: Box::new(rpc_extensions_builder),
+		transaction_pool: transaction_pool.clone(),
+		task_manager: &mut task_manager,
+		on_demand: None,
+		remote_blockchain: None,
+		telemetry_connection_sinks: telemetry_connection_sinks.clone(),
+		network_status_sinks,
+		system_rpc_tx,
+	})?;
 
 	let (block_import, grandpa_link, babe_link) = import_setup;
 	let shared_voter_state = rpc_setup;
@@ -401,7 +381,7 @@ where
 			link: grandpa_link,
 			network: network.clone(),
 			inherent_data_providers: inherent_data_providers.clone(),
-			telemetry_on_connect: Some(telemetry_on_connect_sinks.on_connect_stream()),
+			telemetry_on_connect: Some(telemetry_connection_sinks.on_connect_stream()),
 			voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
 			prometheus_registry,
 			shared_voter_state,
@@ -416,30 +396,17 @@ where
 		sc_finality_grandpa::setup_disabled_grandpa(client.clone(), &inherent_data_providers, network.clone())?;
 	}
 
+	network_starter.start_network();
 	Ok((task_manager, inherent_data_providers, client, network, transaction_pool))
 }
 
-/// Builds a new service for a full client.
-pub fn new_full<RuntimeApi, Executor, UncheckedExtrinsic>(config: Configuration) -> Result<TaskManager, ServiceError>
-where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<UncheckedExtrinsic, StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
-	Executor: NativeExecutionDispatch + 'static,
-	UncheckedExtrinsic: Send + Sync + 'static + codec::Codec,
-{
-	new_full_base::<RuntimeApi, Executor, UncheckedExtrinsic, _>(config, |_, _| ())
-		.map(|(task_manager, _, _, _, _)| task_manager)
-}
-
 /// Creates a light service from the configuration.
-#[allow(clippy::type_complexity)]
-pub fn new_light_base<RuntimeApi, Executor, UncheckedExtrinsic>(
+pub fn new_light<RuntimeApi, Executor>(
 	config: Configuration,
 ) -> Result<
 	(
 		TaskManager,
-		Arc<RpcHandlers>,
+		RpcHandlers,
 		Arc<LightClient<RuntimeApi, Executor>>,
 		Arc<sc_network::NetworkService<Block, <Block as BlockT>::Hash>>,
 		Arc<
@@ -455,24 +422,20 @@ pub fn new_light_base<RuntimeApi, Executor, UncheckedExtrinsic>(
 where
 	RuntimeApi: ConstructRuntimeApi<Block, LightClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	<RuntimeApi as ConstructRuntimeApi<Block, LightClient<RuntimeApi, Executor>>>::RuntimeApi:
-		RuntimeApiCollection<UncheckedExtrinsic, StateBackend = sc_client_api::StateBackendFor<LightBackend, Block>>,
+		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<LightBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
-	UncheckedExtrinsic: Send + Sync + 'static + codec::Codec,
 {
-	let (client, backend, keystore, task_manager, on_demand) =
+	let (client, backend, keystore, mut task_manager, on_demand) =
 		sc_service::new_light_parts::<Block, RuntimeApi, Executor>(&config)?;
 
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
-	let transaction_pool_api = Arc::new(sc_transaction_pool::LightChainApi::new(
-		client.clone(),
-		on_demand.clone(),
-	));
 	let transaction_pool = Arc::new(sc_transaction_pool::BasicPool::new_light(
 		config.transaction_pool.clone(),
-		transaction_pool_api,
 		config.prometheus_registry(),
 		task_manager.spawn_handle(),
+		client.clone(),
+		on_demand.clone(),
 	));
 
 	let grandpa_block_import = sc_finality_grandpa::light_block_import(
@@ -503,11 +466,34 @@ where
 		inherent_data_providers,
 		&task_manager.spawn_handle(),
 		config.prometheus_registry(),
+		sp_consensus::NeverCanAuthor,
 	)?;
 
-	// GenesisAuthoritySetProvider is implemented for StorageAndProofProvider
-	let provider = client.clone() as Arc<dyn sc_finality_grandpa::StorageAndProofProvider<_, _>>;
-	let finality_proof_provider = Arc::new(GrandpaFinalityProofProvider::new(backend.clone(), provider));
+	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
+
+	let (network, network_status_sinks, system_rpc_tx, network_starter) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			on_demand: Some(on_demand.clone()),
+			block_announce_validator_builder: None,
+			finality_proof_request_builder: Some(finality_proof_request_builder),
+			finality_proof_provider: Some(finality_proof_provider),
+		})?;
+	network_starter.start_network();
+
+	if config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(
+			&config,
+			backend.clone(),
+			task_manager.spawn_handle(),
+			client.clone(),
+			network.clone(),
+		);
+	}
 
 	let light_deps = acala_rpc::LightDeps {
 		remote_blockchain: backend.remote_blockchain(),
@@ -518,38 +504,49 @@ where
 
 	let rpc_extensions = acala_rpc::create_light(light_deps);
 
-	let ServiceComponents {
-		task_manager,
-		rpc_handlers,
-		network,
-		..
-	} = sc_service::build(sc_service::ServiceParams {
-		block_announce_validator_builder: None,
-		finality_proof_request_builder: Some(finality_proof_request_builder),
-		finality_proof_provider: Some(finality_proof_provider),
+	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: Some(on_demand),
 		remote_blockchain: Some(backend.remote_blockchain()),
 		rpc_extensions_builder: Box::new(sc_service::NoopRpcExtensionBuilder(rpc_extensions)),
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		config,
-		import_queue,
 		keystore,
 		backend,
-		task_manager,
+		network_status_sinks,
+		system_rpc_tx,
+		network: network.clone(),
+		telemetry_connection_sinks: sc_service::TelemetryConnectionSinks::default(),
+		task_manager: &mut task_manager,
 	})?;
 
 	Ok((task_manager, rpc_handlers, client, network, transaction_pool))
 }
 
-/// Builds a new service for a light client.
-pub fn new_light<RuntimeApi, Executor, UncheckedExtrinsic>(config: Configuration) -> Result<TaskManager, ServiceError>
+/// Builds a new object suitable for chain operations.
+pub fn new_chain_ops<Runtime, Executor>(
+	mut config: Configuration,
+) -> Result<
+	(
+		Arc<FullClient<Runtime, Executor>>,
+		Arc<FullBackend>,
+		sp_consensus::import_queue::BasicQueue<Block, sp_trie::PrefixedMemoryDB<BlakeTwo256>>,
+		TaskManager,
+	),
+	ServiceError,
+>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, LightClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	<RuntimeApi as ConstructRuntimeApi<Block, LightClient<RuntimeApi, Executor>>>::RuntimeApi:
-		RuntimeApiCollection<UncheckedExtrinsic, StateBackend = sc_client_api::StateBackendFor<LightBackend, Block>>,
+	Runtime: ConstructRuntimeApi<Block, FullClient<Runtime, Executor>> + Send + Sync + 'static,
+	Runtime::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
-	UncheckedExtrinsic: Send + Sync + 'static + codec::Codec,
 {
-	new_light_base::<RuntimeApi, Executor, UncheckedExtrinsic>(config).map(|(task_manager, _, _, _, _)| task_manager)
+	config.keystore = sc_service::config::KeystoreConfig::InMemory;
+	let PartialComponents {
+		client,
+		backend,
+		import_queue,
+		task_manager,
+		..
+	} = new_partial::<Runtime, Executor>(&mut config)?;
+	Ok((client, backend, import_queue, task_manager))
 }
