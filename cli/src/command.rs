@@ -3,7 +3,6 @@
 
 use crate::cli::{Cli, Subcommand};
 use sc_cli::{Role, RuntimeVersion, SubstrateCli};
-use sc_service::ServiceParams;
 use service::IdentifyVariant;
 
 impl SubstrateCli for Cli {
@@ -74,16 +73,11 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.run_node_until_exit(|config| match config.role {
-				Role::Light => service::new_light::<
-					service::dev_runtime::RuntimeApi,
-					service::DevExecutor,
-					service::dev_runtime::UncheckedExtrinsic,
-				>(config),
-				_ => service::new_full::<
-					service::dev_runtime::RuntimeApi,
-					service::DevExecutor,
-					service::dev_runtime::UncheckedExtrinsic,
-				>(config),
+				Role::Light => {
+					service::new_light::<service::dev_runtime::RuntimeApi, service::DevExecutor>(config).map(|r| r.0)
+				}
+				_ => service::new_full::<service::dev_runtime::RuntimeApi, service::DevExecutor, _>(config, |_, _| ())
+					.map(|r| r.0),
 			})
 		}
 
@@ -94,21 +88,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.run_subcommand(subcommand, |config| {
-				let (
-					ServiceParams {
-						client,
-						backend,
-						task_manager,
-						import_queue,
-						..
-					},
-					..,
-				) = service::new_full_params::<
-					service::dev_runtime::RuntimeApi,
-					service::DevExecutor,
-					service::dev_runtime::UncheckedExtrinsic,
-				>(config)?;
-				Ok((client, backend, import_queue, task_manager))
+				service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(config)
 			})
 		}
 
@@ -131,5 +111,10 @@ pub fn run() -> sc_cli::Result<()> {
 
 			runner.sync_run(|config| cmd.run::<service::dev_runtime::Block, service::DevExecutor>(config))
 		}
+
+		Some(Subcommand::Key(cmd)) => cmd.run(),
+		Some(Subcommand::Sign(cmd)) => cmd.run(),
+		Some(Subcommand::Verify(cmd)) => cmd.run(),
+		Some(Subcommand::Vanity(cmd)) => cmd.run(),
 	}
 }

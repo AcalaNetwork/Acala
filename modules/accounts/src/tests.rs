@@ -99,6 +99,7 @@ const INFO: DispatchInfo = DispatchInfo {
 
 const POST_INFO: PostDispatchInfo = PostDispatchInfo {
 	actual_weight: Some(800),
+	pays_fee: Pays::Yes,
 };
 
 #[test]
