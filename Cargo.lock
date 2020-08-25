@@ -4260,6 +4260,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex-literal",
  "parity-scale-codec",
  "paste",
  "sp-api",
