@@ -1453,10 +1453,10 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, cdp_engine, CdpEngineBench::<Runtime>);
 			add_benchmark!(params, batches, emergency_shutdown, EmergencyShutdownBench::<Runtime>);
 			add_benchmark!(params, batches, auction_manager, AuctionManagerBench::<Runtime>);
-			orml_add_benchmark!(params, batches, b"tokens", benchmarking::tokens);
-			orml_add_benchmark!(params, batches, b"vesting", benchmarking::vesting);
-			orml_add_benchmark!(params, batches, b"auction", benchmarking::auction);
-			orml_add_benchmark!(params, batches, b"currencies", benchmarking::currencies);
+			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
+			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
+			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
+			orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
