@@ -1331,24 +1331,15 @@ impl_runtime_apis! {
 
 	impl orml_oracle_rpc_runtime_api::OracleApi<
 		Block,
-		DataProviderId,
 		CurrencyId,
 		TimeStampedPrice,
 	> for Runtime {
-		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
-			match provider_id {
-				DataProviderId::Acala => AcalaOracle::get_no_op(&key),
-				DataProviderId::Band => BandOracle::get_no_op(&key),
-				DataProviderId::Aggergated => AggregatedDataProvider::get_no_op(&key)
-			}
+		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
+			Oracle::get_no_op(&key)
 		}
 
-		fn get_all_values(provider_id: DataProviderId) -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
-			match provider_id {
-				DataProviderId::Acala => AcalaOracle::get_all_values(),
-				DataProviderId::Band => BandOracle::get_all_values(),
-				DataProviderId::Aggergated => AggregatedDataProvider::get_all_values()
-			}
+		fn get_all_values() -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
+			Oracle::get_all_values()
 		}
 	}
 
