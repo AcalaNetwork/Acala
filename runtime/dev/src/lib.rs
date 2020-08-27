@@ -706,7 +706,7 @@ create_median_value_data_provider!(
 // Aggregated data provider cannot feed.
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> DispatchResult {
-		Ok(())
+		Err("Not supported".into())
 	}
 }
 

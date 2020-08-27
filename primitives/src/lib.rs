@@ -95,7 +95,7 @@ pub enum AuthoritysOriginId {
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DataProviderId {
-	Acala = 0,
-	Band = 1,
-	Aggregated = 2,
+	Aggregated = 0,
+	Acala = 1,
+	Band = 2,
 }
