@@ -83,6 +83,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type OnReceived = ();
+	type WeightInfo = ();
 }
 pub type TokensModule = orml_tokens::Module<Runtime>;
 
@@ -110,6 +111,7 @@ impl orml_currencies::Trait for Runtime {
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
 }
 pub type CurrenciesModule = orml_currencies::Module<Runtime>;
 
