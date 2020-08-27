@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
+use orml_traits::DataFeeder;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
 use support::ExchangeRate;
@@ -85,7 +86,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	}
 }
 
-impl DataProviderExtended<CurrencyId, Price, AccountId> for MockDataProvider {
+impl DataFeeder<CurrencyId, Price, AccountId> for MockDataProvider {
 	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> sp_runtime::DispatchResult {
 		Ok(())
 	}

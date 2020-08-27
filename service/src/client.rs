@@ -1,6 +1,6 @@
 //! Acala Client abstractions.
 
-use acala_primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, Nonce};
+use acala_primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Nonce};
 use runtime_common::TimeStampedPrice;
 use sc_client_api::{Backend as BackendT, BlockchainEvents};
 use sp_api::{CallApiAt, ProvideRuntimeApi};
@@ -18,7 +18,7 @@ pub trait RuntimeApiCollection:
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber>
-	+ orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, TimeStampedPrice>
+	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 	+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
@@ -38,7 +38,7 @@ where
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber>
-		+ orml_oracle_rpc::OracleRuntimeApi<Block, CurrencyId, TimeStampedPrice>
+		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 		+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>

@@ -16,7 +16,7 @@ use frame_support::{
 	weights::DispatchClass,
 };
 use frame_system::{self as system};
-use orml_traits::{DataProvider, DataProviderExtended};
+use orml_traits::{DataFeeder, DataProvider};
 use orml_utilities::with_transaction_result;
 use primitives::CurrencyId;
 use sp_runtime::traits::{CheckedDiv, CheckedMul};
@@ -29,7 +29,7 @@ pub trait Trait: system::Trait {
 	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
 
 	/// The data source, such as Oracle.
-	type Source: DataProviderExtended<CurrencyId, Price, Self::AccountId>;
+	type Source: DataProvider<CurrencyId, Price> + DataFeeder<CurrencyId, Price, Self::AccountId>;
 
 	/// The stable currency id, it should be AUSD in Acala.
 	type GetStableCurrencyId: Get<CurrencyId>;

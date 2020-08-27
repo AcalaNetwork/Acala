@@ -189,17 +189,17 @@ parameter_types! {
 	pub const ExpiresIn: u32 = 1000 * 60 * 30; // 30 mins
 }
 
-impl orml_oracle::Trait for Runtime {
+impl orml_oracle::Trait<orml_oracle::Instance1> for Runtime {
 	type Event = ();
 	type OnNewData = ();
-	type CombineData = DefaultCombineData<Self, MinimumCount, ExpiresIn>;
+	type CombineData = DefaultCombineData<Self, orml_oracle::Instance1, MinimumCount, ExpiresIn>;
 	type Time = pallet_timestamp::Module<Self>;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type UnsignedPriority = UnsignedPriority;
 	type AuthorityId = UintAuthorityId;
 }
-pub type ModuleOracle = orml_oracle::Module<Runtime>;
+pub type ModuleOracle = orml_oracle::Module<Runtime, orml_oracle::Instance1>;
 
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
@@ -216,7 +216,7 @@ parameter_types! {
 
 impl prices::Trait for Runtime {
 	type Event = ();
-	type Source = orml_oracle::Module<Runtime>;
+	type Source = orml_oracle::Module<Runtime, orml_oracle::Instance1>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
 	type GetStakingCurrencyId = GetStakingCurrencyId;
@@ -266,7 +266,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.build_storage::<Runtime>()
 		.unwrap();
 
-	let _ = orml_oracle::GenesisConfig::<Runtime> {
+	let _ = orml_oracle::GenesisConfig::<Runtime, orml_oracle::Instance1> {
 		members: vec![1, 2, 3].into(),
 		session_keys: vec![(1, 10.into()), (2, 20.into()), (3, 30.into())],
 	}

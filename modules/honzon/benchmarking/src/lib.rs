@@ -20,18 +20,18 @@ use sp_runtime::{
 use cdp_engine::Module as CdpEngine;
 use honzon::Module as Honzon;
 use honzon::*;
-use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
+use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
 use primitives::{Amount, CurrencyId};
 use support::{ExchangeRate, Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(honzon::Module<T>);
 
-pub trait Trait: honzon::Trait + orml_oracle::Trait + prices::Trait {}
+pub trait Trait: honzon::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait {}
 
 const SEED: u32 = 0;
 
 fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
-	let oracle_operators = orml_oracle::Module::<T>::members().0;
+	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
 		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}

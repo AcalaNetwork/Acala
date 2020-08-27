@@ -21,7 +21,7 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
 
-pub type OracleModule = orml_oracle::Module<Runtime>;
+pub type OracleModule = orml_oracle::Module<Runtime, orml_oracle::Instance1>;
 pub type DexModule = module_dex::Module<Runtime>;
 pub type CdpEngineModule = module_cdp_engine::Module<Runtime>;
 pub type LoansModule = module_loans::Module<Runtime>;

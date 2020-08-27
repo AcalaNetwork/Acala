@@ -16,13 +16,16 @@ use sp_runtime::{traits::UniqueSaturatedInto, FixedPointNumber};
 
 use emergency_shutdown::Module as EmergencyShutdown;
 use emergency_shutdown::*;
-use orml_traits::{DataProviderExtended, MultiCurrencyExtended};
+use orml_traits::{DataFeeder, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use support::{CDPTreasury, Price};
 
 pub struct Module<T: Trait>(emergency_shutdown::Module<T>);
 
-pub trait Trait: emergency_shutdown::Trait + orml_oracle::Trait + prices::Trait + loans::Trait {}
+pub trait Trait:
+	emergency_shutdown::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait + loans::Trait
+{
+}
 
 const SEED: u32 = 0;
 
@@ -32,7 +35,7 @@ fn dollar(d: u32) -> Balance {
 }
 
 fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
-	let oracle_operators = orml_oracle::Module::<T>::members().0;
+	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
 		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}

@@ -17,14 +17,14 @@ use sp_runtime::{traits::UniqueSaturatedInto, DispatchError, FixedPointNumber};
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use dex::Module as Dex;
-use orml_traits::{Change, DataProviderExtended, MultiCurrencyExtended};
+use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use support::{Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(cdp_engine::Module<T>);
 
 pub trait Trait:
-	cdp_engine::Trait + orml_oracle::Trait + prices::Trait + dex::Trait + emergency_shutdown::Trait
+	cdp_engine::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait + dex::Trait + emergency_shutdown::Trait
 {
 }
 
@@ -36,7 +36,7 @@ fn dollar(d: u32) -> Balance {
 }
 
 fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
-	let oracle_operators = orml_oracle::Module::<T>::members().0;
+	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
 		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}
