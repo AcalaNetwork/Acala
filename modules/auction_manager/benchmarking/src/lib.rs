@@ -20,7 +20,10 @@ use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, Price};
 
 pub struct Module<T: Trait>(auction_manager::Module<T>);
 
-pub trait Trait: auction_manager::Trait + orml_oracle::Trait + prices::Trait + emergency_shutdown::Trait {}
+pub trait Trait:
+	auction_manager::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait + emergency_shutdown::Trait
+{
+}
 
 const SEED: u32 = 0;
 
@@ -30,7 +33,7 @@ fn dollar(d: u32) -> Balance {
 }
 
 fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
-	let oracle_operators = orml_oracle::Module::<T>::members().0;
+	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
 		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}

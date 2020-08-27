@@ -97,5 +97,5 @@ pub enum AuthoritysOriginId {
 pub enum DataProviderId {
 	Acala = 0,
 	Band = 1,
-	Aggergated = 2,
+	Aggregated = 2,
 }

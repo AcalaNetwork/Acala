@@ -29,7 +29,7 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::AccountIdConversion,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, FixedU128, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -40,10 +40,7 @@ use static_assertions::const_assert;
 use frame_system::{EnsureOneOf, EnsureRoot};
 use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
-use orml_traits::currency::MultiCurrency;
-use orml_traits::{
-	create_median_value_data_provider, DataProvider, MultiDataProvider, TimestampedValue,
-};
+use orml_traits::{create_median_value_data_provider, currency::MultiCurrency, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
@@ -698,18 +695,17 @@ impl orml_oracle::Trait<BandDataProvider> for Runtime {
 	type AuthorityId = orml_oracle::AuthorityId;
 }
 
-pub type TimeStampedPrice = TimestampedValue<Price, Moment>;
-
-create_median_value_data_provider!(AggregatedDataProvider, AcalaOracle, BandOracle);
-
-struct DataProviders;
-impl MultiDataProvider<DataProviderId, CurrencyId, Price> for DataProviders {
-	fn get(source: DataProviderId, key: &CurrencyId) -> Option<Price> {
-		match source {
-			DataProviderId::Acala => <AcalaOracle as DataProvider<CurrencyId, Price>>::get(&key),
-			DataProviderId::Band => <BandOracle as DataProvider<CurrencyId, Price>>::get(&key),
-			DataProviderId::Aggergated => AggregatedDataProvider::get(&key),
-		}
+create_median_value_data_provider!(
+	AggregatedDataProvider,
+	CurrencyId,
+	Price,
+	TimeStampedPrice,
+	[AcalaOracle, BandOracle]
+);
+// Aggregated data provider cannot feed.
+impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
+	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> DispatchResult {
+		Ok(())
 	}
 }
 
@@ -1357,15 +1353,24 @@ impl_runtime_apis! {
 
 	impl orml_oracle_rpc_runtime_api::OracleApi<
 		Block,
+		DataProviderId,
 		CurrencyId,
 		TimeStampedPrice,
 	> for Runtime {
-		fn get_value(key: CurrencyId) -> Option<TimeStampedPrice> {
-			Oracle::get_no_op(&key)
+		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
+			match provider_id {
+				DataProviderId::Acala => AcalaOracle::get_no_op(&key),
+				DataProviderId::Band => BandOracle::get_no_op(&key),
+				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_no_op(&key)
+			}
 		}
 
-		fn get_all_values() -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
-			Oracle::get_all_values()
+		fn get_all_values(provider_id: DataProviderId) -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
+			match provider_id {
+				DataProviderId::Acala => AcalaOracle::get_all_values(),
+				DataProviderId::Band => BandOracle::get_all_values(),
+				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
+			}
 		}
 	}
 

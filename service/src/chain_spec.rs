@@ -243,11 +243,12 @@ fn testnet_genesis(
 	enable_println: bool,
 ) -> dev_runtime::GenesisConfig {
 	use dev_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig, CdpTreasuryConfig,
-		ContractsConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig, GrandpaConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
-		OperatorMembershipConfig, OracleConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, DOLLARS,
+		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
+		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
+		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus,
+		StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
+		DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -405,7 +406,7 @@ fn testnet_genesis(
 		}),
 		orml_oracle_Instance2: Some(BandOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
-			session_keys: oracle_session_keys.clone(),
+			session_keys: oracle_session_keys,
 		}),
 	}
 }
@@ -419,11 +420,12 @@ fn mandala_genesis(
 	enable_println: bool,
 ) -> dev_runtime::GenesisConfig {
 	use dev_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig,
-		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
-		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
-		OperatorMembershipConfig, OracleConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
+		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig,
+		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
+		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
+		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -593,7 +595,7 @@ fn mandala_genesis(
 		}),
 		orml_oracle_Instance2: Some(BandOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
-			session_keys: oracle_session_keys.clone(),
+			session_keys: oracle_session_keys,
 		}),
 	}
 }
