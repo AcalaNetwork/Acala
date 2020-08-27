@@ -641,6 +641,7 @@ impl orml_auction::Trait for Runtime {
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManager;
+	type WeightInfo = ();
 }
 
 impl orml_authority::Trait for Runtime {
@@ -676,6 +677,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type OnReceived = module_accounts::Module<Runtime>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -710,6 +712,7 @@ impl orml_currencies::Trait for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -720,6 +723,7 @@ impl orml_vesting::Trait for Runtime {
 	type Event = Event;
 	type Currency = pallet_balances::Module<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
+	type WeightInfo = ();
 }
 
 parameter_types! {

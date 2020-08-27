@@ -97,6 +97,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type OnReceived = ();
+	type WeightInfo = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -105,6 +106,7 @@ impl orml_auction::Trait for Runtime {
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManagerModule;
+	type WeightInfo = ();
 }
 pub type AuctionModule = orml_auction::Module<Runtime>;
 
