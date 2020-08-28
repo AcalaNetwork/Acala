@@ -113,26 +113,14 @@ pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Trait>::Ori
 fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	OracleModule::on_finalize(0);
 	assert_ok!(OracleModule::feed_values(
-		<Runtime as frame_system::Trait>::Origin::none(),
+		origin_of(AccountId::from(ORACLE1)),
 		prices.clone(),
-		0,
-		0,
-		Default::default()
 	));
 	assert_ok!(OracleModule::feed_values(
-		<Runtime as frame_system::Trait>::Origin::none(),
+		origin_of(AccountId::from(ORACLE2)),
 		prices.clone(),
-		1,
-		0,
-		Default::default()
 	));
-	assert_ok!(OracleModule::feed_values(
-		<Runtime as frame_system::Trait>::Origin::none(),
-		prices,
-		2,
-		0,
-		Default::default()
-	));
+	assert_ok!(OracleModule::feed_values(origin_of(AccountId::from(ORACLE3)), prices,));
 	Ok(())
 }
 
