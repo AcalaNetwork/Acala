@@ -69,7 +69,7 @@ pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
 	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature,
 };
-pub use runtime_common::{ExchangeRate, OracleId, Price, Rate, Ratio, TimeStampedPrice};
+pub use runtime_common::{ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
 
 mod authority;
 mod benchmarking;
@@ -669,31 +669,29 @@ impl orml_authority::Trait for Runtime {
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
-	pub const OracleUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 10000;
+	pub RootOperatorAccountId: AccountId = AccountId::from([0u8; 32]);
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
 impl orml_oracle::Trait<AcalaDataProvider> for Runtime {
 	type Event = Event;
 	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Runtime, AcalaDataProvider, MinimumCount, ExpiresIn>;
+	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, AcalaDataProvider>;
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type UnsignedPriority = OracleUnsignedPriority;
-	type AuthorityId = orml_oracle::AuthorityId;
+	type RootOperatorAccountId = RootOperatorAccountId;
 }
 
 type BandDataProvider = orml_oracle::Instance2;
 impl orml_oracle::Trait<BandDataProvider> for Runtime {
 	type Event = Event;
 	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Runtime, BandDataProvider, MinimumCount, ExpiresIn>;
+	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, BandDataProvider>;
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type UnsignedPriority = OracleUnsignedPriority;
-	type AuthorityId = orml_oracle::AuthorityId;
+	type RootOperatorAccountId = RootOperatorAccountId;
 }
 
 create_median_value_data_provider!(
@@ -1129,8 +1127,8 @@ construct_runtime!(
 		TechnicalCommittee: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
 		// oracle
-		AcalaOracle: orml_oracle::<Instance1>::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
-		BandOracle: orml_oracle::<Instance2>::{Module, Storage, Call, Config<T>, Event<T>, ValidateUnsigned},
+		AcalaOracle: orml_oracle::<Instance1>::{Module, Storage, Call, Config<T>, Event<T>},
+		BandOracle: orml_oracle::<Instance2>::{Module, Storage, Call, Config<T>, Event<T>},
 		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
 		OperatorMembershipBand: pallet_membership::<Instance6>::{Module, Call, Storage, Event<T>, Config<T>},

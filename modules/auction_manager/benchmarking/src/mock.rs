@@ -8,7 +8,7 @@ use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_oracle::DefaultCombineData;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
-	testing::{Header, TestXt, UintAuthorityId},
+	testing::{Header, TestXt},
 	traits::{Convert, IdentityLookup},
 	ModuleId,
 };
@@ -187,17 +187,17 @@ impl pallet_timestamp::Trait for Runtime {
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 1000 * 60 * 30; // 30 mins
+	pub const RootOperatorAccountId: AccountId = 1;
 }
 
 impl orml_oracle::Trait<orml_oracle::Instance1> for Runtime {
 	type Event = ();
 	type OnNewData = ();
-	type CombineData = DefaultCombineData<Self, orml_oracle::Instance1, MinimumCount, ExpiresIn>;
+	type CombineData = DefaultCombineData<Self, MinimumCount, ExpiresIn, orml_oracle::Instance1>;
 	type Time = pallet_timestamp::Module<Self>;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type UnsignedPriority = UnsignedPriority;
-	type AuthorityId = UintAuthorityId;
+	type RootOperatorAccountId = RootOperatorAccountId;
 }
 pub type ModuleOracle = orml_oracle::Module<Runtime, orml_oracle::Instance1>;
 
@@ -268,7 +268,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let _ = orml_oracle::GenesisConfig::<Runtime, orml_oracle::Instance1> {
 		members: vec![1, 2, 3].into(),
-		session_keys: vec![(1, 10.into()), (2, 20.into()), (3, 30.into())],
+		phantom: Default::default(),
 	}
 	.assimilate_storage(&mut storage);
 
