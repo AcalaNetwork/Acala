@@ -24,6 +24,7 @@ pallet-authorship = { version = "2.0.0-rc6", default-features = false }
 pallet-babe = { version = "2.0.0-rc6", default-features = false }
 pallet-balances = { version = "2.0.0-rc6", default-features = false }
 pallet-collective = { version = "2.0.0-rc6", default-features = false }
+pallet-evm = { version = "2.0.0-rc6", default-features = false }
 pallet-grandpa = { version = "2.0.0-rc6", default-features = false }
 pallet-indices = { version = "2.0.0-rc6", default-features = false }
 pallet-membership = { version = "2.0.0-rc6", default-features = false }
@@ -31,6 +32,7 @@ pallet-multisig = { version = "2.0.0-rc6", default-features = false }
 pallet-offences = { version = "2.0.0-rc6", default-features = false }
 pallet-randomness-collective-flip = { version = "2.0.0-rc6", default-features = false }
 pallet-recovery = { version = "2.0.0-rc6", default-features = false }
+pallet-scheduler = { version = "2.0.0-rc6", default-features = false }
 pallet-session = { version = "2.0.0-rc6", features = ["historical"], default-features = false }
 pallet-staking = { version = "2.0.0-rc6", default-features = false }
 pallet-staking-reward-curve = { version = "2.0.0-rc6", default-features = false }
@@ -40,7 +42,6 @@ pallet-transaction-payment = { version = "2.0.0-rc6", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-rc6", default-features = false }
 pallet-treasury = { version = "2.0.0-rc6", default-features = false }
 pallet-utility = { version = "2.0.0-rc6", default-features = false }
-pallet-scheduler = { version = "2.0.0-rc6", default-features = false }
 sp-api = { version = "2.0.0-rc6", default-features = false }
 sp-application-crypto = { version = "2.0.0-rc6", default-features = false }
 sp-block-builder = { version = "2.0.0-rc6", default-features = false }
@@ -93,6 +94,9 @@ runtime-common = { path = "../common", default-features = false }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 
+# TODO: remove this once this is merged and deployed https://github.com/paritytech/substrate/pull/6995
+primitive-types = { version = "0.7.2", default-features = false, features = ["byteorder"] }
+
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
 
@@ -113,25 +117,26 @@ std = [
 	"frame-benchmarking/std",
 	"pallet-babe/std",
 	"pallet-balances/std",
-	"pallet-contracts/std",
+	"pallet-collective/std",
 	"pallet-contracts-primitives/std",
 	"pallet-contracts-rpc-runtime-api/std",
-	"pallet-collective/std",
+	"pallet-contracts/std",
+	"pallet-evm/std",
 	"pallet-grandpa/std",
 	"pallet-indices/std",
 	"pallet-membership/std",
+	"pallet-multisig/std",
 	"pallet-randomness-collective-flip/std",
 	"pallet-recovery/std",
+	"pallet-scheduler/std",
 	"pallet-session/std",
 	"pallet-staking/std",
 	"pallet-sudo/std",
-	"pallet-scheduler/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"pallet-treasury/std",
 	"pallet-utility/std",
-	"pallet-multisig/std",
 	"sp-api/std",
 	"sp-block-builder/std",
 	"sp-consensus-babe/std",
