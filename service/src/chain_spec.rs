@@ -392,6 +392,7 @@ fn testnet_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
+		pallet_evm: Some(Default::default()),
 	}
 }
 
@@ -580,5 +581,6 @@ fn mandala_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
+		pallet_evm: Some(Default::default()),
 	}
 }

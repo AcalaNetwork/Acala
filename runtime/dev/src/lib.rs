@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata,
+	OpaqueMetadata, U256,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, Saturating,
@@ -42,6 +42,7 @@ use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_traits::{create_median_value_data_provider, currency::MultiCurrency, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
+use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -1090,6 +1091,31 @@ impl pallet_contracts::Trait for Runtime {
 	type WeightPrice = pallet_transaction_payment::Module<Self>;
 }
 
+/// Fixed gas price of `1`.
+pub struct FixedGasPrice;
+
+impl FeeCalculator for FixedGasPrice {
+	fn min_gas_price() -> U256 {
+		// Gas price is always one token per gas.
+		1.into()
+	}
+}
+
+parameter_types! {
+	pub const ChainId: u64 = 42;
+}
+
+impl pallet_evm::Trait for Runtime {
+	type FeeCalculator = FixedGasPrice;
+	type CallOrigin = EnsureAddressTruncated;
+	type WithdrawOrigin = EnsureAddressTruncated;
+	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
+	type Currency = Balances;
+	type Event = Event;
+	type Precompiles = ();
+	type ChainId = ChainId;
+}
+
 #[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
@@ -1116,6 +1142,7 @@ construct_runtime!(
 		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 		Historical: pallet_session_historical::{Module},
 		Contracts: pallet_contracts::{Module, Call, Config, Storage, Event<T>},
+		EVM: pallet_evm::{Module, Config, Call, Storage, Event<T>},
 
 		// governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},

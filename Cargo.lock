@@ -1278,6 +1278,7 @@ dependencies = [
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
+ "pallet-evm",
  "pallet-grandpa",
  "pallet-indices",
  "pallet-membership",
@@ -1296,6 +1297,7 @@ dependencies = [
  "pallet-treasury",
  "pallet-utility",
  "parity-scale-codec",
+ "primitive-types",
  "runtime-common",
  "serde",
  "smallvec 1.4.2",
@@ -1528,6 +1530,52 @@ name = "event-listener"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1cd41440ae7e4734bbd42302f63eaba892afc93a3912dad84006247f0dedb0e"
+
+[[package]]
+name = "evm"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68224b0aa788720ef0c8a23030a4412a021ed73df069a922bee8f0db9ed617e2"
+dependencies = [
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
+ "primitive-types",
+ "rlp",
+ "serde",
+ "sha3 0.8.2",
+]
+
+[[package]]
+name = "evm-core"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a040378759577447945c89da1b07d6e33fda32a97a104afe0ec3fa1c382949d"
+dependencies = [
+ "primitive-types",
+]
+
+[[package]]
+name = "evm-gasometer"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bb5bc051afad6bb0735c82b46656bbdfac41917861307a608b1404a546fec42"
+dependencies = [
+ "evm-core",
+ "evm-runtime",
+ "primitive-types",
+]
+
+[[package]]
+name = "evm-runtime"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7410f5677a52203d3fca02b0eb8f96f9799f3a45cff82946a8ed28379e6b1b04"
+dependencies = [
+ "evm-core",
+ "primitive-types",
+ "sha3 0.8.2",
+]
 
 [[package]]
 name = "exit-future"
@@ -2474,6 +2522,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1be51a921b067b0eaca2fad532d9400041561aa922221cc65f95a85641c6bf53"
 dependencies = [
  "parity-scale-codec",
+]
+
+[[package]]
+name = "impl-rlp"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f7a72f11830b52333f36e3b09a288333888bf54380fd0ac0790a3c31ab0f3c5"
+dependencies = [
+ "rlp",
 ]
 
 [[package]]
@@ -4679,6 +4736,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-evm"
+version = "2.0.0-rc6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd3ce120fbef0cc9c75f94c0a6ac18dcaeb975578871876713816be9994a67c3"
+dependencies = [
+ "evm",
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "primitive-types",
+ "ripemd160",
+ "rlp",
+ "serde",
+ "sha3 0.8.2",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-finality-tracker"
 version = "2.0.0-rc6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5376,6 +5457,7 @@ checksum = "c55c21c64d0eaa4d7ed885d959ef2d62d9e488c27c0e02d9aa5ce6c877b7d5f8"
 dependencies = [
  "fixed-hash",
  "impl-codec",
+ "impl-rlp",
  "impl-serde 0.3.1",
  "uint",
 ]
@@ -5922,6 +6004,26 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "ripemd160"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2eca4ecc81b7f313189bf73ce724400a07da2a6dac19588b03c8bd76a2dcc251"
+dependencies = [
+ "block-buffer 0.9.0",
+ "digest 0.9.0",
+ "opaque-debug 0.3.0",
+]
+
+[[package]]
+name = "rlp"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a7d3f9bed94764eac15b8f14af59fac420c236adaff743b7bcc88e265cb4345"
+dependencies = [
+ "rustc-hex",
 ]
 
 [[package]]
