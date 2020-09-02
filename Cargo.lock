@@ -1278,6 +1278,7 @@ dependencies = [
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
+ "pallet-elections-phragmen",
  "pallet-evm",
  "pallet-grandpa",
  "pallet-indices",
@@ -4532,6 +4533,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-traits",
+ "pallet-elections-phragmen",
+ "pallet-treasury",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -4731,6 +4734,21 @@ dependencies = [
  "pallet-contracts-primitives",
  "parity-scale-codec",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-elections-phragmen"
+version = "2.0.0-rc6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52b73d61be5a54b095c394cb71573cbd293165156af208999af72c312a4ae193"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-npos-elections",
  "sp-runtime",
  "sp-std",
 ]
