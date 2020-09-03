@@ -40,6 +40,7 @@ use static_assertions::const_assert;
 use frame_system::{EnsureOneOf, EnsureRoot};
 use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
+use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, currency::MultiCurrency, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
 use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
@@ -50,7 +51,7 @@ use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
-	traits::{Contains, ContainsLengthBound, Filter, Get, KeyOwnerProofSystem, Randomness},
+	traits::{Contains, ContainsLengthBound, Filter, Get, KeyOwnerProofSystem, LockIdentifier, Randomness},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		IdentityFee, Weight,
@@ -115,6 +116,7 @@ parameter_types! {
 	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
 	// Decentralized Sovereign Wealth Fund
 	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
+	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"aca/phre";
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -668,6 +670,32 @@ impl orml_authority::Trait for Runtime {
 }
 
 parameter_types! {
+	pub const CandidacyBond: Balance = 10 * DOLLARS;
+	pub const VotingBond: Balance = DOLLARS;
+	pub const TermDuration: BlockNumber = 7 * DAYS;
+	pub const DesiredMembers: u32 = 13;
+	pub const DesiredRunnersUp: u32 = 7;
+}
+
+impl pallet_elections_phragmen::Trait for Runtime {
+	type ModuleId = ElectionsPhragmenModuleId;
+	type Event = Event;
+	type Currency = CurrencyAdapter<Runtime, GetLDOTCurrencyId>;
+	type CurrencyToVote = CurrencyToVoteHandler;
+	type ChangeMembers = HomaCouncil;
+	type InitializeMembers = HomaCouncil;
+	type CandidacyBond = CandidacyBond;
+	type VotingBond = VotingBond;
+	type TermDuration = TermDuration;
+	type DesiredMembers = DesiredMembers;
+	type DesiredRunnersUp = DesiredRunnersUp;
+	type LoserCandidate = ();
+	type KickedMember = ();
+	type BadReport = ();
+	type WeightInfo = ();
+}
+
+parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
 	pub RootOperatorAccountId: AccountId = AccountId::from([0u8; 32]);
@@ -743,6 +771,7 @@ impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
 	pub const GetStableCurrencyId: CurrencyId = CurrencyId::AUSD;
+	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::LDOT;
 }
 
 impl orml_currencies::Trait for Runtime {
@@ -1143,6 +1172,7 @@ construct_runtime!(
 		Historical: pallet_session_historical::{Module},
 		Contracts: pallet_contracts::{Module, Call, Config, Storage, Event<T>},
 		EVM: pallet_evm::{Module, Config, Call, Storage, Event<T>},
+		ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>},
 
 		// governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},

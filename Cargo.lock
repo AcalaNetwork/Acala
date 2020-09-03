@@ -1278,6 +1278,7 @@ dependencies = [
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
+ "pallet-elections-phragmen",
  "pallet-evm",
  "pallet-grandpa",
  "pallet-indices",
