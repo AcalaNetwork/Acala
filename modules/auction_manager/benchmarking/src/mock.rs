@@ -243,6 +243,7 @@ impl loans::Trait for Runtime {
 	type RiskManager = ();
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
+	type OnUpdateLoan = ();
 }
 
 parameter_types! {

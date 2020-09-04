@@ -116,6 +116,7 @@ impl loans::Trait for Runtime {
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
+	type OnUpdateLoan = ();
 }
 
 pub struct MockAuctionManager;
@@ -198,8 +199,9 @@ impl dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
+	type OnAddLiquidity = ();
+	type OnRemoveLiquidity = ();
 }
 pub type DexModule = dex::Module<Runtime>;
 

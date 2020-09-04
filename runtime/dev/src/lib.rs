@@ -129,6 +129,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		HonzonTreasuryModuleId::get().into_account(),
 		HomaTreasuryModuleId::get().into_account(),
 		DSWFModuleId::get().into_account(),
+		ZeroAccountId::get(),
 	]
 }
 
@@ -698,7 +699,7 @@ impl pallet_elections_phragmen::Trait for Runtime {
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
-	pub RootOperatorAccountId: AccountId = AccountId::from([0u8; 32]);
+	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
@@ -709,7 +710,7 @@ impl orml_oracle::Trait<AcalaDataProvider> for Runtime {
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type RootOperatorAccountId = RootOperatorAccountId;
+	type RootOperatorAccountId = ZeroAccountId;
 }
 
 type BandDataProvider = orml_oracle::Instance2;
@@ -720,7 +721,7 @@ impl orml_oracle::Trait<BandDataProvider> for Runtime {
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type RootOperatorAccountId = RootOperatorAccountId;
+	type RootOperatorAccountId = ZeroAccountId;
 }
 
 create_median_value_data_provider!(
@@ -847,6 +848,7 @@ impl module_loans::Trait for Runtime {
 	type RiskManager = CdpEngine;
 	type CDPTreasury = CdpTreasury;
 	type ModuleId = LoansModuleId;
+	type OnUpdateLoan = module_incentives::OnUpdateLoan<Runtime>;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -970,9 +972,9 @@ impl module_dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CdpTreasury;
-	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type ModuleId = DEXModuleId;
-	type EmergencyShutdown = EmergencyShutdown;
+	type OnAddLiquidity = module_incentives::OnAddLiquidity<Runtime>;
+	type OnRemoveLiquidity = module_incentives::OnRemoveLiquidity<Runtime>;
 }
 
 parameter_types! {
@@ -1013,6 +1015,31 @@ impl module_accounts::Trait for Runtime {
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+}
+
+impl orml_rewards::Trait for Runtime {
+	type Share = Share;
+	type Balance = Balance;
+	type PoolId = module_incentives::PoolId;
+	type Handler = Incentives;
+}
+
+parameter_types! {
+	pub const AccumulatePeriod: BlockNumber = HOURS;
+}
+
+impl module_incentives::Trait for Runtime {
+	type LoansIncentivePool = ZeroAccountId;
+	type DexIncentivePool = ZeroAccountId;
+	type HomaIncentivePool = ZeroAccountId;
+	type AccumulatePeriod = AccumulatePeriod;
+	type IncentiveCurrencyId = GetNativeCurrencyId;
+	type SavingCurrencyId = GetStableCurrencyId;
+	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
+	type CDPTreasury = CdpTreasury;
+	type Currency = Currencies;
+	type DEX = Dex;
+	type EmergencyShutdown = EmergencyShutdown;
 }
 
 impl module_airdrop::Trait for Runtime {
@@ -1197,17 +1224,19 @@ construct_runtime!(
 		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 		GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
+		Rewards: orml_rewards::{Module, Storage, Call},
 
 		// acala modules
 		Prices: module_prices::{Module, Storage, Call, Event},
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-		Dex: module_dex::{Module, Storage, Call, Config, Event<T>},
+		Dex: module_dex::{Module, Storage, Call, Event<T>},
 		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event},
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
+		Incentives: module_incentives::{Module, Storage, Call},
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
 		Homa: module_homa::{Module, Call},
 		NomineesElection: module_nominees_election::{Module, Call, Storage},

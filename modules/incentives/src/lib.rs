@@ -6,65 +6,49 @@ use frame_support::{
 	traits::{EnsureOrigin, Get, Happened},
 	IterableStorageMap,
 };
-use orml_traits::{Change, MultiCurrency, RewardHandler};
+use frame_system::ensure_signed;
+use orml_traits::{MultiCurrency, RewardHandler};
 use orml_utilities::with_transaction_result;
 use primitives::{Amount, Balance, CurrencyId, Share};
-use sp_runtime::{
-	traits::{Saturating, UniqueSaturatedInto, Zero},
-	DispatchResult, FixedPointNumber, RuntimeDebug,
-};
+use sp_runtime::{traits::Zero, RuntimeDebug};
 use sp_std::prelude::*;
-use support::{CDPTreasury, Rate};
+use support::{CDPTreasury, DEXManager, EmergencyShutdown, Rate};
 
 /// PoolId for various rewards pools
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug)]
 pub enum PoolId {
-	/// Loans rewards pool for users who open CDP
+	/// Rewards(ACA) pool for users who open CDP
 	Loans(CurrencyId),
-	/// Rewards pool(ACA) for market makers who provide dex liquidity
+	/// Rewards(ACA) pool for market makers who provide dex liquidity
 	DexIncentive(CurrencyId),
-	/// Rewards pool(ACA) for liquidators who provide dex liquidity to
+	/// Rewards(AUSD) pool for liquidators who provide dex liquidity to
 	/// participate automatic liquidation
 	DexSaving(CurrencyId),
-	/// Rewards pool(LDOT) for users who staking by Homa protocol
-	LDOT,
+	/// Rewards(ACA) pool for users who staking by Homa protocol
+	HomaIncentive,
 }
-
-/// Incentive params
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
-pub struct IncentiveParam<BlockNumber, Balance> {
-	pub start_block: Option<BlockNumber>,
-	pub end_block: Option<BlockNumber>,
-	pub liner_adjust_start_block: Option<BlockNumber>,
-	pub reward_amount_per_block: Balance,
-}
-
-// typedef to help polkadot.js disambiguate Change with different generic
-// parameters
-type ChangeOptionBlockNumber<T> = Change<Option<<T as frame_system::Trait>::BlockNumber>>;
-type ChangeBalance = Change<Balance>;
 
 pub trait Trait: frame_system::Trait + orml_rewards::Trait<Share = Share, Balance = Balance, PoolId = PoolId> {
-	/// The vault account to keep rewards for type Loans PoolId
+	/// The vault account to keep rewards for type LoansIncentive PoolId
 	type LoansIncentivePool: Get<Self::AccountId>;
 
 	/// The vault account to keep rewards for type DexIncentive and DexSaving
 	/// PoolId
 	type DexIncentivePool: Get<Self::AccountId>;
 
-	/// The vault account to keep rewards for type LDOT PoolId
-	type LDOTIncentivePool: Get<Self::AccountId>;
+	/// The vault account to keep rewards for type HomaIncentive PoolId
+	type HomaIncentivePool: Get<Self::AccountId>;
 
 	/// The period to accumulate rewards
 	type AccumulatePeriod: Get<Self::BlockNumber>;
 
-	/// The incentive currency type (should be ACA)
+	/// The incentive reward type (should be ACA)
 	type IncentiveCurrencyId: Get<CurrencyId>;
 
-	/// The saving reward currency type (should be AUSD)
+	/// The saving reward type (should be AUSD)
 	type SavingCurrencyId: Get<CurrencyId>;
 
-	/// The origin which may update incentives rate
+	/// The origin which may update incentive related params
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 	/// CDP treasury to issue rewards in AUSD
@@ -72,61 +56,109 @@ pub trait Trait: frame_system::Trait + orml_rewards::Trait<Share = Share, Balanc
 
 	/// Currency for transfer/issue rewards in other tokens except AUSD
 	type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+	/// DEX to supply liquidity info
+	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+
+	/// Emergency shutdown.
+	type EmergencyShutdown: EmergencyShutdown;
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as CDPEngine {
-		/// Mapping from reward pool to its incentive params
-		pub IncentiveParams get(fn incentive_params): map hasher(twox_64_concat) PoolId => IncentiveParam<T::BlockNumber, Balance>;
+	trait Store for Module<T: Trait> as Incentives {
+		/// Mapping from collateral currency type to its loans incentive reward amount per period
+		pub LoansIncentiveRewards get(fn loans_incentive_rewards): map hasher(twox_64_concat) CurrencyId => Balance;
+
+		/// Mapping from dex liquidity currency type to its loans incentive reward amount per period
+		pub DEXIncentiveRewards get(fn dex_incentive_rewards): map hasher(twox_64_concat) CurrencyId => Balance;
+
+		/// Homa incentive reward amount
+		pub HomaIncentiveReward get(fn homa_incentive_reward): Balance;
+
+		/// Mapping from dex liquidity currency type to its saving rate
+		pub DEXSavingRates get(fn dex_saving_rates): map hasher(twox_64_concat) CurrencyId => Rate;
 	}
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		/// The vault account to keep rewards for type Loans PoolId
+		/// The vault account to keep rewards for type LoansIncentive PoolId
 		const LoansIncentivePool: T::AccountId = T::LoansIncentivePool::get();
 
 		/// The vault account to keep rewards for type DexIncentive and DexSaving PoolId
 		const DexIncentivePool: T::AccountId = T::DexIncentivePool::get();
 
-		/// The vault account to keep rewards for type LDOT PoolId
-		const LDOTIncentivePool: T::AccountId = T::LDOTIncentivePool::get();
+		/// The vault account to keep rewards for type HomaIncentive PoolId
+		const HomaIncentivePool: T::AccountId = T::HomaIncentivePool::get();
 
 		/// The period to accumulate rewards
 		const AccumulatePeriod: T::BlockNumber = T::AccumulatePeriod::get();
 
-		/// The incentive currency type (should be ACA)
+		/// The incentive reward type (should be ACA)
 		const IncentiveCurrencyId: CurrencyId = T::IncentiveCurrencyId::get();
 
-		/// The saving reward currency type (should be AUSD)
+		/// The saving reward type (should be AUSD)
 		const SavingCurrencyId: CurrencyId = T::SavingCurrencyId::get();
 
 		#[weight = 10_000]
-		pub fn set_incentive_param(
+		pub fn claim_rewards(origin, pool_id: T::PoolId) {
+			with_transaction_result(|| {
+				let who = ensure_signed(origin)?;
+				<orml_rewards::Module<T>>::claim_rewards(&who, pool_id);
+				Ok(())
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn update_loans_incentive_rewards(
 			origin,
-			pool_id: PoolId,
-			start_block: ChangeOptionBlockNumber<T>,
-			end_block: ChangeOptionBlockNumber<T>,
-			liner_adjust_start_block: ChangeOptionBlockNumber<T>,
-			reward_amount_per_block: ChangeBalance,
+			updates: Vec<(CurrencyId, Balance)>,
 		) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
-				IncentiveParams::<T>::try_mutate(pool_id, |param| -> DispatchResult {
-					if let Change::NewValue(update) = start_block {
-						param.start_block = update;
-					}
-					if let Change::NewValue(update) = end_block {
-						param.end_block = update;
-					}
-					if let Change::NewValue(update) = liner_adjust_start_block {
-						param.liner_adjust_start_block = update;
-					}
-					if let Change::NewValue(update) = reward_amount_per_block {
-						param.reward_amount_per_block = update;
-					}
-					Ok(())
-				})
+				for (currency_id, amount) in updates {
+					LoansIncentiveRewards::insert(currency_id, amount);
+				}
+				Ok(())
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn update_dex_incentive_rewards(
+			origin,
+			updates: Vec<(CurrencyId, Balance)>,
+		) {
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				for (currency_id, amount) in updates {
+					DEXIncentiveRewards::insert(currency_id, amount);
+				}
+				Ok(())
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn update_homa_incentive_rate(
+			origin,
+			update: Balance,
+		) {
+			with_transaction_result(|| {
+				HomaIncentiveReward::put(update);
+				Ok(())
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn update_dex_saving_rates(
+			origin,
+			updates: Vec<(CurrencyId, Rate)>,
+		) {
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				for (currency_id, rate) in updates {
+					DEXSavingRates::insert(currency_id, rate);
+				}
+				Ok(())
 			})?;
 		}
 	}
@@ -169,99 +201,97 @@ impl<T: Trait> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdat
 	}
 }
 
-impl<T: Trait> Module<T>
-where
-	<T as frame_system::Trait>::BlockNumber: sp_runtime::FixedPointOperand,
-{
-	fn calculate_accumulate_reward_amount(pool_id: PoolId, now: T::BlockNumber) -> Balance {
-		let accumulate_period = T::AccumulatePeriod::get();
-		if now % accumulate_period != Zero::zero() {
-			return Zero::zero();
-		}
+impl<T: Trait> Module<T> {}
 
-		let param = Self::incentive_params(pool_id);
-
-		if let Some(start_block) = param.start_block {
-			if now <= start_block {
-				return Zero::zero();
-			}
-		}
-
-		let mut reward_amount_per_block = param.reward_amount_per_block;
-
-		if let Some(end_block) = param.end_block {
-			if now > end_block {
-				return Zero::zero();
-			}
-
-			if let Some(liner_adjust_start_block) = param.liner_adjust_start_block {
-				let multiplier = Rate::saturating_from_integer(1).saturating_sub(
-					Rate::checked_from_rational(
-						now.saturating_sub(liner_adjust_start_block),
-						end_block.saturating_sub(liner_adjust_start_block),
-					)
-					.unwrap_or_default(),
-				);
-
-				reward_amount_per_block = multiplier.saturating_mul_int(reward_amount_per_block);
-			}
-		}
-
-		reward_amount_per_block.saturating_mul(accumulate_period.unique_saturated_into())
-	}
-}
-
-impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T>
-where
-	<T as frame_system::Trait>::BlockNumber: sp_runtime::FixedPointOperand,
-{
+impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 	type Share = Share;
 	type Balance = Balance;
 	type PoolId = PoolId;
+	type CurrencyId = CurrencyId;
 
-	fn accumulate_reward(now: T::BlockNumber, callback: impl Fn(PoolId, Balance)) -> Balance {
-		for (pool_id, _) in orml_rewards::Pools::<T>::iter() {
-			let reward_amount = Self::calculate_accumulate_reward_amount(pool_id, now);
+	fn accumulate_reward(now: T::BlockNumber, callback: impl Fn(PoolId, Balance)) -> Vec<(CurrencyId, Balance)> {
+		let mut accumulated_rewards: Vec<(CurrencyId, Balance)> = vec![];
 
-			if !reward_amount.is_zero() {
-				if match pool_id {
-					PoolId::Loans(_) => {
+		if !T::EmergencyShutdown::is_shutdown() && now % T::AccumulatePeriod::get() == Zero::zero() {
+			let mut accumulated_incentive: Balance = Zero::zero();
+			let mut accumulated_saving: Balance = Zero::zero();
+			let incentive_currency_id = T::IncentiveCurrencyId::get();
+			let saving_currency_id = T::SavingCurrencyId::get();
+
+			for (pool_id, _) in orml_rewards::Pools::<T>::iter() {
+				match pool_id {
+					PoolId::Loans(currency_id) => {
+						let incentive_reward = Self::loans_incentive_rewards(currency_id);
+
 						// TODO: transfer from RESERVED TREASURY instead of issuing
-						T::Currency::deposit(
-							T::IncentiveCurrencyId::get(),
-							&T::LoansIncentivePool::get(),
-							reward_amount,
-						)
+						if !incentive_reward.is_zero()
+							&& T::Currency::deposit(
+								incentive_currency_id,
+								&T::LoansIncentivePool::get(),
+								incentive_reward,
+							)
+							.is_ok()
+						{
+							callback(pool_id, incentive_reward);
+							accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+						}
 					}
-					PoolId::DexIncentive(_) => {
+					PoolId::DexIncentive(currency_id) => {
+						let incentive_reward = Self::loans_incentive_rewards(currency_id);
+
 						// TODO: transfer from RESERVED TREASURY instead of issuing
-						T::Currency::deposit(
-							T::IncentiveCurrencyId::get(),
-							&T::DexIncentivePool::get(),
-							reward_amount,
-						)
+						if !incentive_reward.is_zero()
+							&& T::Currency::deposit(
+								incentive_currency_id,
+								&T::DexIncentivePool::get(),
+								incentive_reward,
+							)
+							.is_ok()
+						{
+							callback(pool_id, incentive_reward);
+							accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+						}
 					}
-					PoolId::DexSaving(_) => {
-						T::CDPTreasury::issue_debit(&T::DexIncentivePool::get(), reward_amount, false)
+					PoolId::DexSaving(currency_id) => {
+						let (_, stable_token_amount) = T::DEX::get_liquidity_pool(currency_id);
+						let saving_reward =
+							Self::loans_incentive_rewards(currency_id).saturating_mul(stable_token_amount);
+
+						if !saving_reward.is_zero()
+							&& T::CDPTreasury::issue_debit(&T::DexIncentivePool::get(), saving_reward, false).is_ok()
+						{
+							callback(pool_id, saving_reward);
+							accumulated_saving = accumulated_saving.saturating_add(saving_reward);
+						}
 					}
-					PoolId::LDOT => {
+					PoolId::HomaIncentive => {
+						let incentive_reward = Self::homa_incentive_reward();
+
 						// TODO: transfer from RESERVED TREASURY instead of issuing
-						T::Currency::deposit(
-							T::IncentiveCurrencyId::get(),
-							&T::LDOTIncentivePool::get(),
-							reward_amount,
-						)
+						if !incentive_reward.is_zero()
+							&& T::Currency::deposit(
+								incentive_currency_id,
+								&T::HomaIncentivePool::get(),
+								incentive_reward,
+							)
+							.is_ok()
+						{
+							callback(pool_id, incentive_reward);
+							accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+						}
 					}
 				}
-				.is_ok()
-				{
-					callback(pool_id, reward_amount);
-				}
+			}
+
+			if !accumulated_incentive.is_zero() {
+				accumulated_rewards.push((incentive_currency_id, accumulated_incentive));
+			}
+			if !accumulated_saving.is_zero() {
+				accumulated_rewards.push((saving_currency_id, accumulated_saving));
 			}
 		}
 
-		// TODO: accumulated rewards are deferent token types
-		Zero::zero()
+		accumulated_rewards
 	}
 
 	fn payout(who: &T::AccountId, pool_id: PoolId, amount: Balance) {
@@ -269,7 +299,7 @@ where
 			PoolId::Loans(_) => (T::LoansIncentivePool::get(), T::IncentiveCurrencyId::get()),
 			PoolId::DexIncentive(_) => (T::DexIncentivePool::get(), T::IncentiveCurrencyId::get()),
 			PoolId::DexSaving(_) => (T::DexIncentivePool::get(), T::SavingCurrencyId::get()),
-			PoolId::LDOT => (T::LDOTIncentivePool::get(), T::IncentiveCurrencyId::get()),
+			PoolId::HomaIncentive => (T::HomaIncentivePool::get(), T::IncentiveCurrencyId::get()),
 		};
 
 		// ignore result
