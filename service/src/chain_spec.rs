@@ -393,6 +393,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_evm: Some(Default::default()),
+		pallet_ethereum: Some(Default::default()),
 	}
 }
 
@@ -582,5 +583,6 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_evm: Some(Default::default()),
+		pallet_ethereum: Some(Default::default()),
 	}
 }
