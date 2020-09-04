@@ -411,9 +411,7 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn cancel_surplus_auction(id: AuctionId) -> DispatchResult {
-		let surplus_auction = <SurplusAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
-
+	fn cancel_surplus_auction(id: AuctionId, surplus_auction: SurplusAuctionItem<T::BlockNumber>) -> DispatchResult {
 		// if there's bid
 		if let Some((bidder, bid_price)) = Self::get_last_bid(id) {
 			// refund native token to the bidder
@@ -427,15 +425,10 @@ impl<T: Trait> Module<T> {
 		// decrease total surplus in auction
 		TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
 
-		// remove the auction info
-		T::Auction::remove_auction(id);
-
 		Ok(())
 	}
 
-	fn cancel_debit_auction(id: AuctionId) -> DispatchResult {
-		let debit_auction = <DebitAuctions<T>>::take(id).ok_or(Error::<T>::AuctionNotExists)?;
-
+	fn cancel_debit_auction(id: AuctionId, debit_auction: DebitAuctionItem<T::BlockNumber>) -> DispatchResult {
 		// if there's bid
 		if let Some((bidder, _)) = Self::get_last_bid(id) {
 			// refund stable token to the bidder
@@ -446,9 +439,6 @@ impl<T: Trait> Module<T> {
 
 		// decrease total debit in auction
 		TotalDebitInAuction::mutate(|balance| *balance = balance.saturating_sub(debit_auction.fix));
-
-		// remove the auction info
-		T::Auction::remove_auction(id);
 
 		Ok(())
 	}
@@ -506,7 +496,6 @@ impl<T: Trait> Module<T> {
 
 		// remove the auction info
 		<CollateralAuctions<T>>::remove(id);
-		T::Auction::remove_auction(id);
 
 		Ok(())
 	}
@@ -1012,14 +1001,16 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
 		if <CollateralAuctions<T>>::contains_key(id) {
-			Self::cancel_collateral_auction(id)
-		} else if <DebitAuctions<T>>::contains_key(id) {
-			Self::cancel_debit_auction(id)
-		} else if <SurplusAuctions<T>>::contains_key(id) {
-			Self::cancel_surplus_auction(id)
+			Self::cancel_collateral_auction(id)?;
+		} else if let Some(debit_auction) = <DebitAuctions<T>>::take(id) {
+			Self::cancel_debit_auction(id, debit_auction)?;
+		} else if let Some(surplus_auction) = <SurplusAuctions<T>>::take(id) {
+			Self::cancel_surplus_auction(id, surplus_auction)?;
 		} else {
-			Err(Error::<T>::AuctionNotExists.into())
+			return Err(Error::<T>::AuctionNotExists.into());
 		}
+		T::Auction::remove_auction(id);
+		Ok(())
 	}
 }
 

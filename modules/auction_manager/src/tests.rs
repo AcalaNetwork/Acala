@@ -570,10 +570,6 @@ fn surplus_auction_end_handler_with_bid() {
 fn cancel_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_noop!(
-			AuctionManagerModule::cancel_surplus_auction(0),
-			Error::<Runtime>::AuctionNotExists
-		);
 
 		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
 		assert_ok!(AuctionModule::bid(Origin::signed(BOB), 0, 500));
@@ -582,6 +578,11 @@ fn cancel_surplus_auction_work() {
 		assert_eq!(AuctionModule::auction_info(0).is_some(), true);
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 500);
 		assert_eq!(System::refs(&BOB), 1);
+
+		assert_noop!(
+			AuctionManagerModule::cancel(Origin::none(), 0),
+			Error::<Runtime>::MustAfterShutdown
+		);
 
 		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
@@ -602,16 +603,18 @@ fn cancel_surplus_auction_work() {
 fn cancel_debit_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_noop!(
-			AuctionManagerModule::cancel_debit_auction(0),
-			Error::<Runtime>::AuctionNotExists
-		);
+
 		assert_ok!(AuctionManagerModule::new_debit_auction(200, 100));
 		assert_ok!(AuctionModule::bid(Origin::signed(BOB), 0, 100));
 		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 		assert_eq!(System::refs(&BOB), 1);
+
+		assert_noop!(
+			AuctionManagerModule::cancel(Origin::none(), 0),
+			Error::<Runtime>::MustAfterShutdown
+		);
 
 		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
@@ -633,14 +636,14 @@ fn cancel_collateral_auction_failed() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 10));
 		assert_noop!(
-			AuctionManagerModule::cancel_collateral_auction(0),
+			AuctionManagerModule::cancel_auction(0),
 			Error::<Runtime>::AuctionNotExists
 		);
 
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
 		MockPriceSource::set_relative_price(None);
 		assert_noop!(
-			AuctionManagerModule::cancel_collateral_auction(0),
+			AuctionManagerModule::cancel_auction(0),
 			Error::<Runtime>::InvalidFeedPrice,
 		);
 		MockPriceSource::set_relative_price(Some(Price::one()));
@@ -651,7 +654,7 @@ fn cancel_collateral_auction_failed() {
 		assert_eq!(AuctionManagerModule::get_last_bid(0), Some((ALICE, 100)));
 		assert_eq!(collateral_auction.in_reverse_stage(100), true);
 		assert_noop!(
-			AuctionManagerModule::cancel_collateral_auction(0),
+			AuctionManagerModule::cancel_auction(0),
 			Error::<Runtime>::InReverseStage,
 		);
 	});
