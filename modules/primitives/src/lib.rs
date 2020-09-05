@@ -16,6 +16,7 @@ pub enum CurrencyId {
 	XBTC = 3,
 	LDOT = 4,
 	RENBTC = 5,
+	PLM = 10,
 }
 
 impl Into<Vec<u8>> for CurrencyId {
@@ -28,6 +29,7 @@ impl Into<Vec<u8>> for CurrencyId {
 			XBTC => b"XBTC".to_vec(),
 			LDOT => b"LDOT".to_vec(),
 			RENBTC => b"RENBTC".to_vec(),
+			PLM => b"PLM".to_vec(),
 		}
 	}
 }
@@ -42,6 +44,7 @@ impl TryFrom<Vec<u8>> for CurrencyId {
 			b"XBTC" => Ok(CurrencyId::XBTC),
 			b"LDOT" => Ok(CurrencyId::LDOT),
 			b"RENBTC" => Ok(CurrencyId::RENBTC),
+			b"PLM" => Ok(CurrencyId::PLM),
 			_ => Err(()),
 		}
 	}
