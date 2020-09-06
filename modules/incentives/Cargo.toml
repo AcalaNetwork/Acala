@@ -20,6 +20,9 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 [dev-dependencies]
 sp-core = { version = "2.0.0-rc6", default-features = false }
 sp-io = { version = "2.0.0-rc6", default-features = false }
+pallet-balances = { version = "2.0.0-rc6", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-rewards = { path = "../../orml/rewards", default-features = false }
 
 [features]
 default = ["std"]

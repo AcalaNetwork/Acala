@@ -10,9 +10,12 @@ use frame_system::ensure_signed;
 use orml_traits::{MultiCurrency, RewardHandler};
 use orml_utilities::with_transaction_result;
 use primitives::{Amount, Balance, CurrencyId, Share};
-use sp_runtime::{traits::Zero, RuntimeDebug};
+use sp_runtime::{traits::Zero, FixedPointNumber, RuntimeDebug};
 use sp_std::prelude::*;
 use support::{CDPTreasury, DEXManager, EmergencyShutdown, Rate};
+
+mod mock;
+mod tests;
 
 /// PoolId for various rewards pools
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -25,7 +28,7 @@ pub enum PoolId {
 	/// participate automatic liquidation
 	DexSaving(CurrencyId),
 	/// Rewards(ACA) pool for users who staking by Homa protocol
-	HomaIncentive,
+	Homa,
 }
 
 pub trait Trait: frame_system::Trait + orml_rewards::Trait<Share = Share, Balance = Balance, PoolId = PoolId> {
@@ -138,11 +141,12 @@ decl_module! {
 		}
 
 		#[weight = 10_000]
-		pub fn update_homa_incentive_rate(
+		pub fn update_homa_incentive_reward(
 			origin,
 			update: Balance,
 		) {
 			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
 				HomaIncentiveReward::put(update);
 				Ok(())
 			})?;
@@ -218,66 +222,69 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 			let incentive_currency_id = T::IncentiveCurrencyId::get();
 			let saving_currency_id = T::SavingCurrencyId::get();
 
-			for (pool_id, _) in orml_rewards::Pools::<T>::iter() {
-				match pool_id {
-					PoolId::Loans(currency_id) => {
-						let incentive_reward = Self::loans_incentive_rewards(currency_id);
+			for (pool_id, pool_info) in orml_rewards::Pools::<T>::iter() {
+				if !pool_info.total_shares.is_zero() {
+					match pool_id {
+						PoolId::Loans(currency_id) => {
+							let incentive_reward = Self::loans_incentive_rewards(currency_id);
 
-						// TODO: transfer from RESERVED TREASURY instead of issuing
-						if !incentive_reward.is_zero()
-							&& T::Currency::deposit(
-								incentive_currency_id,
-								&T::LoansIncentivePool::get(),
-								incentive_reward,
-							)
-							.is_ok()
-						{
-							callback(pool_id, incentive_reward);
-							accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+							// TODO: transfer from RESERVED TREASURY instead of issuing
+							if !incentive_reward.is_zero()
+								&& T::Currency::deposit(
+									incentive_currency_id,
+									&T::LoansIncentivePool::get(),
+									incentive_reward,
+								)
+								.is_ok()
+							{
+								callback(pool_id, incentive_reward);
+								accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+							}
 						}
-					}
-					PoolId::DexIncentive(currency_id) => {
-						let incentive_reward = Self::loans_incentive_rewards(currency_id);
+						PoolId::DexIncentive(currency_id) => {
+							let incentive_reward = Self::dex_incentive_rewards(currency_id);
 
-						// TODO: transfer from RESERVED TREASURY instead of issuing
-						if !incentive_reward.is_zero()
-							&& T::Currency::deposit(
-								incentive_currency_id,
-								&T::DexIncentivePool::get(),
-								incentive_reward,
-							)
-							.is_ok()
-						{
-							callback(pool_id, incentive_reward);
-							accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+							// TODO: transfer from RESERVED TREASURY instead of issuing
+							if !incentive_reward.is_zero()
+								&& T::Currency::deposit(
+									incentive_currency_id,
+									&T::DexIncentivePool::get(),
+									incentive_reward,
+								)
+								.is_ok()
+							{
+								callback(pool_id, incentive_reward);
+								accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+							}
 						}
-					}
-					PoolId::DexSaving(currency_id) => {
-						let (_, stable_token_amount) = T::DEX::get_liquidity_pool(currency_id);
-						let saving_reward =
-							Self::loans_incentive_rewards(currency_id).saturating_mul(stable_token_amount);
+						PoolId::DexSaving(currency_id) => {
+							let (_, stable_token_amount) = T::DEX::get_liquidity_pool(currency_id);
+							let saving_reward =
+								Self::dex_saving_rates(currency_id).saturating_mul_int(stable_token_amount);
 
-						if !saving_reward.is_zero()
-							&& T::CDPTreasury::issue_debit(&T::DexIncentivePool::get(), saving_reward, false).is_ok()
-						{
-							callback(pool_id, saving_reward);
-							accumulated_saving = accumulated_saving.saturating_add(saving_reward);
+							if !saving_reward.is_zero()
+								&& T::CDPTreasury::issue_debit(&T::DexIncentivePool::get(), saving_reward, false)
+									.is_ok()
+							{
+								callback(pool_id, saving_reward);
+								accumulated_saving = accumulated_saving.saturating_add(saving_reward);
+							}
 						}
-					}
-					PoolId::HomaIncentive => {
-						let incentive_reward = Self::homa_incentive_reward();
+						PoolId::Homa => {
+							let incentive_reward = Self::homa_incentive_reward();
 
-						// TODO: transfer from RESERVED TREASURY instead of issuing
-						if !incentive_reward.is_zero()
-							&& T::Currency::deposit(
-								incentive_currency_id,
-								&T::HomaIncentivePool::get(),
-								incentive_reward,
-							)
-							.is_ok()
-						{
-							callback(pool_id, incentive_reward);
-							accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+							// TODO: transfer from RESERVED TREASURY instead of issuing
+							if !incentive_reward.is_zero()
+								&& T::Currency::deposit(
+									incentive_currency_id,
+									&T::HomaIncentivePool::get(),
+									incentive_reward,
+								)
+								.is_ok()
+							{
+								callback(pool_id, incentive_reward);
+								accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
+							}
 						}
 					}
 				}
@@ -299,7 +306,7 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 			PoolId::Loans(_) => (T::LoansIncentivePool::get(), T::IncentiveCurrencyId::get()),
 			PoolId::DexIncentive(_) => (T::DexIncentivePool::get(), T::IncentiveCurrencyId::get()),
 			PoolId::DexSaving(_) => (T::DexIncentivePool::get(), T::SavingCurrencyId::get()),
-			PoolId::HomaIncentive => (T::HomaIncentivePool::get(), T::IncentiveCurrencyId::get()),
+			PoolId::Homa => (T::HomaIncentivePool::get(), T::IncentiveCurrencyId::get()),
 		};
 
 		// ignore result
