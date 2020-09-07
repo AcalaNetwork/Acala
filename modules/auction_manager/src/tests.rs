@@ -635,15 +635,10 @@ fn cancel_debit_auction_work() {
 fn cancel_collateral_auction_failed() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 10));
-		assert_noop!(
-			AuctionManagerModule::cancel_auction(0),
-			Error::<Runtime>::AuctionNotExists
-		);
-
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
 		MockPriceSource::set_relative_price(None);
 		assert_noop!(
-			AuctionManagerModule::cancel_auction(0),
+			AuctionManagerModule::cancel_collateral_auction(0, AuctionManagerModule::collateral_auctions(0).unwrap()),
 			Error::<Runtime>::InvalidFeedPrice,
 		);
 		MockPriceSource::set_relative_price(Some(Price::one()));
@@ -654,7 +649,7 @@ fn cancel_collateral_auction_failed() {
 		assert_eq!(AuctionManagerModule::get_last_bid(0), Some((ALICE, 100)));
 		assert_eq!(collateral_auction.in_reverse_stage(100), true);
 		assert_noop!(
-			AuctionManagerModule::cancel_auction(0),
+			AuctionManagerModule::cancel_collateral_auction(0, collateral_auction),
 			Error::<Runtime>::InReverseStage,
 		);
 	});

@@ -443,8 +443,10 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn cancel_collateral_auction(id: AuctionId) -> DispatchResult {
-		let collateral_auction = <CollateralAuctions<T>>::get(id).ok_or(Error::<T>::AuctionNotExists)?;
+	fn cancel_collateral_auction(
+		id: AuctionId,
+		collateral_auction: CollateralAuctionItem<T::AccountId, T::BlockNumber>,
+	) -> DispatchResult {
 		let last_bid = Self::get_last_bid(id);
 
 		// collateral auction must not be in reverse stage
@@ -493,9 +495,6 @@ impl<T: Trait> Module<T> {
 			*balance = balance.saturating_sub(collateral_auction.amount)
 		});
 		TotalTargetInAuction::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
-
-		// remove the auction info
-		<CollateralAuctions<T>>::remove(id);
 
 		Ok(())
 	}
@@ -998,8 +997,8 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	}
 
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult {
-		if <CollateralAuctions<T>>::contains_key(id) {
-			Self::cancel_collateral_auction(id)?;
+		if let Some(collateral_auction) = <CollateralAuctions<T>>::take(id) {
+			Self::cancel_collateral_auction(id, collateral_auction)?;
 		} else if let Some(debit_auction) = <DebitAuctions<T>>::take(id) {
 			Self::cancel_debit_auction(id, debit_auction)?;
 		} else if let Some(surplus_auction) = <SurplusAuctions<T>>::take(id) {
