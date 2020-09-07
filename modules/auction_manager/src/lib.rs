@@ -752,18 +752,16 @@ impl<T: Trait> Module<T> {
 					should_deal = false;
 
 					// refund stable currency to the last bidder, ignore result to continue
-					T::CDPTreasury::issue_debit(&bidder, bid_price, false).expect(
-						"issue_debit calls currency::deposit which always resolves so there's no error here; qed",
-					);
+					T::CDPTreasury::issue_debit(&bidder, bid_price, false)
+						.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
 
 					if collateral_auction.in_reverse_stage(amount) {
 						// refund extra stable currency to recipient, ignore result to continue
 						let refund_amount = amount
 							.checked_sub(collateral_auction.target)
 							.expect("ensured amount > target; qed");
-						T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false).expect(
-							"issue_debit calls currency::deposit which always resolves so there's no error here; qed",
-						);
+						T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false)
+							.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
 					}
 
 					<Module<T>>::deposit_event(RawEvent::DEXTakeCollateralAuction(
@@ -816,7 +814,7 @@ impl<T: Trait> Module<T> {
 			// issue native token to winner, ignore the result to continue
 			// TODO: transfer from RESERVED TREASURY instead of issuing
 			T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount)
-				.expect("currency::deposit always resolves so there's no error here; qed");
+				.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
 
 			<Module<T>>::deposit_event(RawEvent::DebitAuctionDealt(
 				auction_id,
@@ -842,7 +840,7 @@ impl<T: Trait> Module<T> {
 
 			// deposit unbacked stable token to winner by CDP treasury, ignore Err
 			T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false)
-				.expect("issue_debit calls currency::deposit which always resolves so there's no error here; qed");
+				.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
 
 			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealt(
 				auction_id,
