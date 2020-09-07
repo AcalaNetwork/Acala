@@ -4526,6 +4526,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-rewards"
+version = "0.1.3-dev"
+dependencies = [
+ "clear_on_drop",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-tokens"
 version = "0.1.3-dev"
 dependencies = [
