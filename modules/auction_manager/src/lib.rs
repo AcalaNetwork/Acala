@@ -751,17 +751,17 @@ impl<T: Trait> Module<T> {
 					// swap successfully, will not deal
 					should_deal = false;
 
-					// refund stable currency to the last bidder, ignore result to continue
-					T::CDPTreasury::issue_debit(&bidder, bid_price, false)
-						.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
+					// refund stable currency to the last bidder
+					// it currently cannot fail, it is ok to ignore the error in this case
+					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
 					if collateral_auction.in_reverse_stage(amount) {
 						// refund extra stable currency to recipient, ignore result to continue
 						let refund_amount = amount
 							.checked_sub(collateral_auction.target)
 							.expect("ensured amount > target; qed");
-						T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false)
-							.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
+						// it currently cannot fail, it is ok to ignore the error in this case
+						let _ = T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
 					}
 
 					<Module<T>>::deposit_event(RawEvent::DEXTakeCollateralAuction(
@@ -811,10 +811,10 @@ impl<T: Trait> Module<T> {
 			// decrease account ref of winner
 			system::Module::<T>::dec_ref(&bidder);
 
-			// issue native token to winner, ignore the result to continue
+			// issue native token to winner
+			// it currently cannot fail, it is ok to ignore the error in this case
 			// TODO: transfer from RESERVED TREASURY instead of issuing
-			T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount)
-				.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
+			let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
 
 			<Module<T>>::deposit_event(RawEvent::DebitAuctionDealt(
 				auction_id,
@@ -838,9 +838,9 @@ impl<T: Trait> Module<T> {
 			// decrease account ref of winner
 			system::Module::<T>::dec_ref(&bidder);
 
-			// deposit unbacked stable token to winner by CDP treasury, ignore Err
-			T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false)
-				.expect("it currently cannot fail, it is ok to ignore the error in this case; qed");
+			// deposit unbacked stable token to winner by CDP treasury
+			// it currently cannot fail, it is ok to ignore the error in this case
+			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
 
 			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealt(
 				auction_id,
