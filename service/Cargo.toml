@@ -47,6 +47,9 @@ acala-rpc = { path = "../rpc" }
 dev-runtime = { path = "../runtime/dev" }
 runtime-common = { path = "../runtime/common" }
 
+frontier-consensus = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }
+frontier-rpc-primitives = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }
+
 [dev-dependencies]
 sc-consensus-babe = { version = "0.8.0-rc6", features = ["test-helpers"] }
 

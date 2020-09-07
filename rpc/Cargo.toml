@@ -5,16 +5,13 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
+codec = { package = "parity-scale-codec", version = "1.3.0" }
+dev-runtime = { path = "../runtime/dev" }
 jsonrpc-core = "14.2.0"
 jsonrpc-pubsub = "14.2.0"
-codec = { package = "parity-scale-codec", version = "1.3.0" }
-primitives = { package = "acala-primitives", path = "../primitives" }
-sp-api = { version = "2.0.0-rc6" }
-sp-blockchain = { version = "2.0.0-rc6" }
-sp-block-builder = { version = "2.0.0-rc6" }
-sp-consensus = { version = "0.8.0-rc6" }
-sp-consensus-babe = { version = "0.8.0-rc6" }
-sp-transaction-pool = { version = "2.0.0-rc6" }
+
+pallet-contracts-rpc = { version = "0.8.0-rc6" }
+pallet-transaction-payment-rpc = { version = "2.0.0-rc6" }
 sc-client-api = { version = "2.0.0-rc6" }
 sc-consensus-babe = { version = "0.8.0-rc6" }
 sc-consensus-babe-rpc = { version = "0.8.0-rc6" }
@@ -23,10 +20,19 @@ sc-finality-grandpa = { version = "0.8.0-rc6" }
 sc-finality-grandpa-rpc = { version = "0.8.0-rc6" }
 sc-keystore = { version = "2.0.0-rc6" }
 sc-rpc = { version = "2.0.0-rc6" }
+sp-api = { version = "2.0.0-rc6" }
+sp-block-builder = { version = "2.0.0-rc6" }
+sp-blockchain = { version = "2.0.0-rc6" }
+sp-consensus = { version = "0.8.0-rc6" }
+sp-consensus-babe = { version = "0.8.0-rc6" }
+sp-transaction-pool = { version = "2.0.0-rc6" }
+sp-runtime = { version = "2.0.0-rc6" }
 substrate-frame-rpc-system = { version = "2.0.0-rc6" }
-pallet-transaction-payment-rpc = { version = "2.0.0-rc6" }
-pallet-contracts-rpc = { version = "0.8.0-rc6" }
-dev-runtime = { path = "../runtime/dev" }
+
+primitives = { package = "acala-primitives", path = "../primitives" }
 runtime-common = { path = "../runtime/common" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
+
+frontier-rpc = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }
+frontier-rpc-primitives = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }

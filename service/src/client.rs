@@ -23,6 +23,7 @@ pub trait RuntimeApiCollection:
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
+	+ frontier_rpc_primitives::EthereumRuntimeRPCApi<Block>
 where
 	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
 {
@@ -42,7 +43,8 @@ where
 		+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_session::SessionKeys<Block>,
+		+ sp_session::SessionKeys<Block>
+		+ frontier_rpc_primitives::EthereumRuntimeRPCApi<Block>,
 	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
 {
 }

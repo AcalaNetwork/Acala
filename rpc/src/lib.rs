@@ -3,6 +3,7 @@
 #![warn(missing_docs)]
 
 use primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Hash, Nonce};
+use sc_client_api::backend::{AuxStore, Backend, StateBackend, StorageProvider};
 use sc_client_api::light::{Fetcher, RemoteBlockchain};
 use sc_consensus_babe::{Config, Epoch};
 use sc_consensus_epochs::SharedEpochChanges;
@@ -13,6 +14,7 @@ use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
+use sp_runtime::traits::BlakeTwo256;
 use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
@@ -73,9 +75,11 @@ pub struct FullDeps<C, P, SC> {
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, SC>(deps: FullDeps<C, P, SC>) -> RpcExtension
+pub fn create_full<C, P, SC, BE>(deps: FullDeps<C, P, SC>) -> RpcExtension
 where
-	C: ProvideRuntimeApi<Block>,
+	BE: Backend<Block> + 'static,
+	BE::State: StateBackend<BlakeTwo256>,
+	C: ProvideRuntimeApi<Block> + StorageProvider<Block, BE> + AuxStore,
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
@@ -83,11 +87,13 @@ where
 	C::Api: pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
+	C::Api: frontier_rpc_primitives::EthereumRuntimeRPCApi<Block>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
-	P: TransactionPool + Sync + Send + 'static,
+	P: TransactionPool<Block = Block> + Sync + Send + 'static,
 	SC: SelectChain<Block> + 'static,
 {
+	use frontier_rpc::{EthApi, EthApiServer, NetApi, NetApiServer};
 	use module_staking_pool_rpc::{StakingPool, StakingPoolApi};
 	use orml_oracle_rpc::{Oracle, OracleApi};
 	use pallet_contracts_rpc::{Contracts, ContractsApi};
@@ -119,7 +125,7 @@ where
 
 	io.extend_with(SystemApi::to_delegate(FullSystem::new(
 		client.clone(),
-		pool,
+		pool.clone(),
 		deny_unsafe,
 	)));
 	io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
@@ -134,7 +140,7 @@ where
 		shared_epoch_changes,
 		keystore,
 		babe_config,
-		select_chain,
+		select_chain.clone(),
 		deny_unsafe,
 	)));
 	io.extend_with(GrandpaApi::to_delegate(GrandpaRpcHandler::new(
@@ -144,7 +150,15 @@ where
 		subscriptions,
 	)));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
-	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client)));
+	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client.clone())));
+	io.extend_with(EthApiServer::to_delegate(EthApi::new(
+		client,
+		select_chain,
+		pool,
+		dev_runtime::TransactionConverter,
+		false,
+	)));
+	io.extend_with(NetApiServer::to_delegate(NetApi));
 
 	io
 }

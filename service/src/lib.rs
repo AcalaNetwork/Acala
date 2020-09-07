@@ -14,6 +14,8 @@ use sp_core::traits::BareCryptoStorePtr;
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
+use frontier_consensus::FrontierBlockImport;
+
 pub use client::*;
 pub use dev_runtime;
 pub use sc_executor::NativeExecutionDispatch;
@@ -91,7 +93,11 @@ pub fn new_partial<RuntimeApi, Executor>(
 				sc_consensus_babe::BabeBlockImport<
 					Block,
 					FullClient<RuntimeApi, Executor>,
-					FullGrandpaBlockImport<RuntimeApi, Executor>,
+					FrontierBlockImport<
+						Block,
+						FullGrandpaBlockImport<RuntimeApi, Executor>,
+						FullClient<RuntimeApi, Executor>,
+					>,
 				>,
 				sc_finality_grandpa::LinkHalf<Block, FullClient<RuntimeApi, Executor>, FullSelectChain>,
 				sc_consensus_babe::BabeLink<Block>,
@@ -122,9 +128,11 @@ where
 		sc_finality_grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain.clone())?;
 	let justification_import = grandpa_block_import.clone();
 
+	let frontier_block_import = FrontierBlockImport::new(grandpa_block_import.clone(), client.clone());
+
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,
-		grandpa_block_import,
+		frontier_block_import,
 		client.clone(),
 	)?;
 
@@ -178,7 +186,7 @@ where
 				},
 			};
 
-			acala_rpc::create_full::<_, _, _>(deps)
+			acala_rpc::create_full(deps)
 		}
 	};
 
@@ -203,7 +211,7 @@ pub fn new_full<
 		&sc_consensus_babe::BabeBlockImport<
 			Block,
 			FullClient<RuntimeApi, Executor>,
-			FullGrandpaBlockImport<RuntimeApi, Executor>,
+			FrontierBlockImport<Block, FullGrandpaBlockImport<RuntimeApi, Executor>, FullClient<RuntimeApi, Executor>>,
 		>,
 		&sc_consensus_babe::BabeLink<Block>,
 	),

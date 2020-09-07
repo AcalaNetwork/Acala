@@ -58,8 +58,8 @@ sp-transaction-pool = { version = "2.0.0-rc6", default-features = false }
 sp-version = { version = "2.0.0-rc6", default-features = false }
 
 pallet-evm = { version = "2.0.0-rc6", default-features = false }
-pallet-ethereum = { git = "https://github.com/xlc/frontier", default-features = false, rev = "d7d6adc29ef9f95c472e62cf7ddb973c550dee2c" }
-frontier-rpc-primitives = { git = "https://github.com/xlc/frontier", default-features = false, rev = "d7d6adc29ef9f95c472e62cf7ddb973c550dee2c" }
+pallet-ethereum = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }
+frontier-rpc-primitives = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }
 
 orml-auction = { path = "../../orml/auction", default-features = false }
 orml-authority = { path = "../../orml/authority", default-features = false }
