@@ -2,12 +2,30 @@
 
 use crate::{
 	AcalaTreasuryModuleId, AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DSWFModuleId,
-	DispatchResult, EnsureRootOrHalfGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
-	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryModuleId,
-	HonzonTreasuryModuleId, Origin, OriginCaller, HOURS,
+	DispatchResult, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrHalfHonzonCouncil,
+	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryModuleId, HonzonTreasuryModuleId, OneDay, Origin,
+	OriginCaller, Runtime, SevenDays, System, HOURS,
 };
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
+use orml_authority::{DelayedOrigin, EnsureDelayed};
+use sp_std::boxed::Box;
+
+//impl Into<Result<DelayedOrigin<BlockNumber, Origin>, Origin>> for Origin {
+//	fn into(self) -> Result<DelayedOrigin<BlockNumber, Origin>, Origin> {
+//		Ok(DelayedOrigin {
+//			delay: System::block_number(),
+//			origin: Box::new(self),
+//		})
+//	}
+//}
+//
+//impl From<DelayedOrigin<BlockNumber, Origin>> for Origin {
+//	fn from(delayed_origin: DelayedOrigin<BlockNumber, Origin>) -> Origin {
+//		*delayed_origin.origin
+//	}
+//}
 
 pub struct AuthorityConfigImpl;
 impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for AuthorityConfigImpl {
@@ -84,15 +102,29 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 
 	fn check_dispatch_from(&self, origin: Origin) -> DispatchResult {
 		ensure_root(origin.clone()).or_else(|_| {
-			let ok = match self {
-				AuthoritysOriginId::Root => EnsureRootOrThreeFourthsGeneralCouncil::ensure_origin(origin).is_ok(),
-				AuthoritysOriginId::AcalaTreasury => EnsureRootOrHalfGeneralCouncil::ensure_origin(origin).is_ok(),
-				AuthoritysOriginId::HonzonTreasury => EnsureRootOrHalfGeneralCouncil::ensure_origin(origin).is_ok(),
-				AuthoritysOriginId::HomaTreasury => EnsureRootOrHalfGeneralCouncil::ensure_origin(origin).is_ok(),
-				AuthoritysOriginId::DSWF => ensure_root(origin).is_ok(),
-			};
-			if ok {
-				Ok(())
+			if let OriginCaller::orml_authority(sign) = origin.caller() {
+				match self {
+					_ => Ok(()),
+					AuthoritysOriginId::Root => {
+						EnsureDelayed::<SevenDays, EnsureRootOrThreeFourthsGeneralCouncil, BlockNumber>::ensure_origin(
+							*sign
+						)
+						.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+					}
+					//AuthoritysOriginId::AcalaTreasury => {
+					//	EnsureDelayed::<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber>::ensure_origin(origin)
+					//		.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+					//}
+					//AuthoritysOriginId::HonzonTreasury => {
+					//	EnsureDelayed::<OneDay, EnsureRootOrHalfHonzonCouncil, BlockNumber>::ensure_origin(origin)
+					//		.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+					//}
+					//AuthoritysOriginId::HomaTreasury => {
+					//	EnsureDelayed::<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber>::ensure_origin(origin)
+					//		.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+					//}
+					//AuthoritysOriginId::DSWF => ensure_root(origin).map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
+				}
 			} else {
 				Err(BadOrigin.into())
 			}
