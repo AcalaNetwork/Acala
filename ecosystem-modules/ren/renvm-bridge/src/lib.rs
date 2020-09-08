@@ -114,11 +114,10 @@ decl_module! {
 			let sender = ensure_signed(origin)?;
 
 			T::Currency::withdraw(&sender, amount)?;
-
-			let block_number = <frame_system::Module<T>>::block_number() + T::BurnEventStoreDuration::get();
-			BurnEvents::<T>::mutate(block_number, | list | {
-				list.push((to, amount));
-			});
+			BurnEvents::<T>::append(
+				<frame_system::Module<T>>::block_number() + T::BurnEventStoreDuration::get(),
+				(to, amount),
+			);
 
 			Self::deposit_event(RawEvent::Burnt(sender, to, amount));
 		}
