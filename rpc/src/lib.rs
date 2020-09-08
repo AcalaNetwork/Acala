@@ -83,11 +83,13 @@ where
 	C::Api: pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
+	C::Api: module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 	SC: SelectChain<Block> + 'static,
 {
+	use module_dex_rpc::{Dex, DexApi};
 	use module_staking_pool_rpc::{StakingPool, StakingPoolApi};
 	use orml_oracle_rpc::{Oracle, OracleApi};
 	use pallet_contracts_rpc::{Contracts, ContractsApi};
@@ -144,6 +146,7 @@ where
 		subscriptions,
 	)));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
+	io.extend_with(DexApi::to_delegate(Dex::new(client.clone())));
 	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client)));
 
 	io

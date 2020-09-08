@@ -16,21 +16,24 @@ use std::sync::Arc;
 pub use self::gen_client::Client as DexClient;
 pub use module_dex_rpc_runtime_api::DexApi as DexRuntimeApi;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, sp_std::fmt::Debug)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-pub struct BalanceRequest<Balance> {
-	amount: Balance,
+pub struct BalanceRequest {
+	amount: String,
 }
 
 #[rpc]
-pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType> {
+pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType>
+where
+	Balance: std::str::FromStr,
+{
 	#[rpc(name = "dex_getSupplyAmount")]
 	fn get_supply_amount(
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		target_currency_amount: BalanceRequest<Balance>,
+		target_currency_amount: BalanceRequest,
 		at: Option<BlockHash>,
 	) -> Result<ResponseType>;
 
@@ -39,7 +42,7 @@ pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType> {
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		supply_currency_amount: BalanceRequest<Balance>,
+		supply_currency_amount: BalanceRequest,
 		at: Option<BlockHash>,
 	) -> Result<ResponseType>;
 }
@@ -80,13 +83,14 @@ where
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
 	C::Api: DexRuntimeApi<Block, CurrencyId, Balance>,
 	CurrencyId: Codec,
-	Balance: Codec + MaybeDisplay + MaybeFromStr,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + sp_std::str::FromStr,
+	<Balance as sp_std::str::FromStr>::Err: sp_std::fmt::Debug,
 {
 	fn get_supply_amount(
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		target_currency_amount: BalanceRequest<Balance>,
+		target_currency_amount: BalanceRequest,
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
@@ -94,6 +98,12 @@ where
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
 		let BalanceRequest { amount } = target_currency_amount;
+
+		let amount: Balance = amount.parse::<Balance>().map_err(|e| RpcError {
+			code: ErrorCode::ServerError(Error::RuntimeError.into()),
+			message: "Unable to convert String to Balance type.".into(),
+			data: Some(format!("{:?}", e).into()),
+		})?;
 
 		api.get_supply_amount(&at, supply_currency_id, target_currency_id, amount)
 			.map_err(|e| RpcError {
@@ -107,7 +117,7 @@ where
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		supply_currency_amount: BalanceRequest<Balance>,
+		supply_currency_amount: BalanceRequest,
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
@@ -115,6 +125,12 @@ where
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
 		let BalanceRequest { amount } = supply_currency_amount;
+
+		let amount: Balance = amount.parse::<Balance>().map_err(|e| RpcError {
+			code: ErrorCode::ServerError(Error::RuntimeError.into()),
+			message: "Unable to convert String to Balance type.".into(),
+			data: Some(format!("{:?}", e).into()),
+		})?;
 
 		api.get_target_amount(&at, supply_currency_id, target_currency_id, amount)
 			.map_err(|e| RpcError {
