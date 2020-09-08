@@ -4460,8 +4460,12 @@ dependencies = [
  "cumulus-upward-message",
  "frame-support",
  "frame-system",
+ "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "parity-scale-codec",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
  "serde",
  "sp-core",
  "sp-io",
@@ -8482,7 +8486,8 @@ dependencies = [
 [[package]]
 name = "substrate-build-script-utils"
 version = "2.0.0-rc5"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66e900f037f623d363965b300f45ebdef955ae24929740200d29d7f34fbe7bd3"
 dependencies = [
  "platforms",
 ]
@@ -8490,8 +8495,7 @@ dependencies = [
 [[package]]
 name = "substrate-build-script-utils"
 version = "2.0.0-rc5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66e900f037f623d363965b300f45ebdef955ae24929740200d29d7f34fbe7bd3"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 dependencies = [
  "platforms",
 ]

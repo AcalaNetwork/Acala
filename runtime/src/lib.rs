@@ -44,7 +44,7 @@ use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 
-use cumulus_primitives::relay_chain::Balance as RelayChainBalance;
+use cumulus_primitives::{relay_chain::Balance as RelayChainBalance, ParaId};
 
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
@@ -1020,7 +1020,7 @@ impl cumulus_message_broker::Trait for Runtime {
 	type DownwardMessageHandlers = XTokens;
 	type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
 	type ParachainId = ParachainInfo;
-	type XCMPMessage = orml_xtokens::XCMPMessage<AccountId, Balance>;
+	type XCMPMessage = orml_xtokens::XCMPTokenMessage<AccountId, Balance>;
 	type XCMPMessageHandlers = XTokens;
 }
 
@@ -1028,6 +1028,7 @@ impl parachain_info::Trait for Runtime {}
 
 parameter_types! {
 	pub const RelayChainCurrencyId: CurrencyId = CurrencyId::DOT;
+	pub GetParaId: ParaId = 5000.into();
 }
 
 pub struct RelayToNative;
@@ -1059,6 +1060,7 @@ impl orml_xtokens::Trait for Runtime {
 	type FromRelayChainBalance = RelayToNative;
 	type ToRelayChainBalance = NativeToRelay;
 	type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
+	type ParaId = GetParaId;
 }
 
 #[allow(clippy::large_enum_variant)]
