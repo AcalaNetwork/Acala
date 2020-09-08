@@ -280,6 +280,7 @@ impl<T: Trait> Module<T> {
 			// by treasury account is sufficient to open an account.
 			if *k != treasury_account {
 				// send dust native currency to treasury account
+				// it currently cannot fail, so ignore the result
 				let _ = <T as Trait>::Currency::transfer(
 					native_currency_id,
 					k,
@@ -314,6 +315,7 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 				if amount >= supply_amount_needed {
 					// successful swap will cause changes in native currency,
 					// which also means that it will open a new account
+					// it currently cannot fail, so ignore the result
 					let _ = T::DEX::exchange_currency(
 						who.clone(),
 						currency_id,
@@ -326,6 +328,7 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 					// transfer all token as dust to treasury account.
 					let treasury_account = Self::treasury_account_id();
 					if *who != treasury_account {
+						// it currently cannot fail, so ignore the result
 						let _ = <T as Trait>::Currency::transfer(currency_id, who, &treasury_account, amount);
 					}
 				}

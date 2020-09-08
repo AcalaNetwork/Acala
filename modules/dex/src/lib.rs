@@ -435,6 +435,7 @@ decl_module! {
 				}
 
 				// issue aUSD as interest, ignore result
+				// it currently cannot fail, so ignore the result
 				let _ = T::CDPTreasury::issue_debit(&Self::account_id(), accumulated_interest, false);
 			}
 
