@@ -154,13 +154,6 @@ thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
-pub struct MockEmergencyShutdown;
-impl EmergencyShutdown for MockEmergencyShutdown {
-	fn is_shutdown() -> bool {
-		IS_SHUTDOWN.with(|v| *v.borrow_mut())
-	}
-}
-
 parameter_types! {
 	pub const GetBaseCurrencyId: CurrencyId = AUSD;
 	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
@@ -176,15 +169,14 @@ impl Trait for Runtime {
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
-	type EmergencyShutdown = MockEmergencyShutdown;
+	type OnAddLiquidity = ();
+	type OnRemoveLiquidity = ();
 }
 pub type DexModule = Module<Runtime>;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
-	liquidity_incentive_rate: Vec<(CurrencyId, Rate)>,
 }
 
 impl Default for ExtBuilder {
@@ -198,19 +190,11 @@ impl Default for ExtBuilder {
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
-			liquidity_incentive_rate: vec![
-				(BTC, Rate::saturating_from_rational(1, 100)),
-				(DOT, Rate::saturating_from_rational(1, 100)),
-			],
 		}
 	}
 }
 
 impl ExtBuilder {
-	pub fn set_balance(mut self, who: AccountId, currency_id: CurrencyId, balance: Balance) -> Self {
-		self.endowed_accounts.push((who, currency_id, balance));
-		self
-	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
@@ -218,12 +202,6 @@ impl ExtBuilder {
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			endowed_accounts: self.endowed_accounts,
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-
-		dex::GenesisConfig {
-			liquidity_incentive_rate: self.liquidity_incentive_rate,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

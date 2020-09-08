@@ -8,7 +8,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage,
+	traits::{Get, Happened},
+};
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use orml_utilities::with_transaction_result;
@@ -43,6 +46,9 @@ pub trait Trait: system::Trait {
 
 	/// The loan's module id, keep all collaterals of CDPs.
 	type ModuleId: Get<ModuleId>;
+
+	/// Event handler which calls when update loan.
+	type OnUpdateLoan: Happened<(Self::AccountId, CurrencyId, Amount, Balance)>;
 }
 
 /// A collateralized debit position.
@@ -262,6 +268,8 @@ impl<T: Trait> Module<T> {
 			}
 
 			p.collateral = new_collateral;
+
+			T::OnUpdateLoan::happened(&(who.clone(), currency_id, debit_adjustment, p.debit));
 			p.debit = new_debit;
 
 			if p.collateral.is_zero() && p.debit.is_zero() {

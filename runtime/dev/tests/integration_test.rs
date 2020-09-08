@@ -6,7 +6,7 @@ use dev_runtime::{
 };
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{schedule::DispatchTime, OnFinalize, OnInitialize},
+	traits::{schedule::DispatchTime, OnFinalize},
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::CDPTreasury;
@@ -81,12 +81,6 @@ impl ExtBuilder {
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id != native_currency_id)
 				.collect::<Vec<_>>(),
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-
-		module_dex::GenesisConfig {
-			liquidity_incentive_rate: vec![(CurrencyId::XBTC, Rate::saturating_from_rational(1, 100))],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
@@ -430,11 +424,6 @@ fn test_dex_module() {
 			assert_eq!(DexModule::liquidity_pool(CurrencyId::XBTC), (10003, 10003000));
 
 			assert_eq!(DexModule::total_shares(CurrencyId::XBTC), 10002998);
-			assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (0, 0));
-			DexModule::on_initialize(0);
-			assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (100030, 0));
-			DexModule::on_initialize(0);
-			assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (200060, 0));
 		});
 }
 

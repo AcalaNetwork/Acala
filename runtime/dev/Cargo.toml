@@ -68,6 +68,7 @@ orml-gradually-update = { path = "../../orml/gradually-update", default-features
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
+orml-rewards = { path = "../../orml/rewards", default-features = false }
 
 module-accounts = { path = "../../modules/accounts", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
@@ -80,7 +81,7 @@ module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-prices = { path = "../../modules/prices", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
 module-nominees-election = { path = "../../modules/nominees_election", default-features = false }
@@ -91,6 +92,7 @@ module-honzon-benchmarking = { path = "../../modules/honzon/benchmarking", defau
 module-cdp-engine-benchmarking = { path = "../../modules/cdp_engine/benchmarking", default-features = false, optional = true }
 module-emergency-shutdown-benchmarking = { path = "../../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
 module-auction-manager-benchmarking = { path = "../../modules/auction_manager/benchmarking", default-features = false, optional = true }
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
@@ -161,6 +163,7 @@ std = [
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-vesting/std",
+	"orml-rewards/std",
 
 	"module-accounts/std",
 	"module-airdrop/std",
@@ -173,13 +176,14 @@ std = [
 	"module-honzon/std",
 	"module-loans/std",
 	"module-prices/std",
-	"primitives/std",
+	"module-incentives/std",
 	"module-support/std",
 	"module-homa/std",
 	"module-nominees-election/std",
 	"module-staking-pool/std",
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
+	"primitives/std",
 	"runtime-common/std",
 
 	"ecosystem-renvm-bridge/std",

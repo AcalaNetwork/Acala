@@ -98,6 +98,8 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		supply_amount: Balance,
 	) -> Option<Ratio>;
+
+	fn get_liquidity_pool(currency_id: CurrencyId) -> (Balance, Balance);
 }
 
 impl<AccountId, CurrencyId, Balance> DEXManager<AccountId, CurrencyId, Balance> for ()
@@ -136,6 +138,10 @@ where
 		_supply_amount: Balance,
 	) -> Option<Ratio> {
 		None
+	}
+
+	fn get_liquidity_pool(_currency_id: CurrencyId) -> (Balance, Balance) {
+		Default::default()
 	}
 }
 
