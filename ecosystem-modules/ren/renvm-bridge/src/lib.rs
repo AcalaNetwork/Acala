@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
 use frame_system::{self as system, ensure_none, ensure_signed};
 use orml_traits::BasicCurrency;
 use primitives::Balance;
@@ -44,12 +44,18 @@ pub trait Trait: system::Trait {
 	/// This is exposed so that it can be tuned for particular runtime, when
 	/// multiple modules send unsigned transactions.
 	type UnsignedPriority: Get<TransactionPriority>;
+
+	/// Record burn event details when burn occurs until x blocks have passed
+	type BurnEventStoreDuration: Get<Self::BlockNumber>;
 }
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Template {
 		/// Signature blacklist. This is required to prevent double claim.
-		Signatures: map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
+		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
+
+		/// Record burn event details
+		BurnEvents get(fn burn_events): map hasher(twox_64_concat) T::BlockNumber => Vec<([u8; 20], Balance)>
 	}
 }
 
@@ -108,8 +114,21 @@ decl_module! {
 			let sender = ensure_signed(origin)?;
 
 			T::Currency::withdraw(&sender, amount)?;
+			BurnEvents::<T>::append(
+				<frame_system::Module<T>>::block_number() + T::BurnEventStoreDuration::get(),
+				(to, amount),
+			);
 
 			Self::deposit_event(RawEvent::Burnt(sender, to, amount));
+		}
+
+		/// dummy `on_initialize` to return the weight used in `on_finalize`.
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			0
+		}
+
+		fn on_finalize(now: T::BlockNumber) {
+			BurnEvents::<T>::remove(now);
 		}
 	}
 }

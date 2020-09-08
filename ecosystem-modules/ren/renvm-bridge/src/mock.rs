@@ -89,6 +89,7 @@ pub type Balances = pallet_balances::Module<Runtime>;
 
 parameter_types! {
 	pub const UnsignedPriority: u64 = 1 << 20;
+	pub const BurnEventStoreDuration: BlockNumber = 10;
 }
 
 impl Trait for Runtime {
@@ -97,6 +98,7 @@ impl Trait for Runtime {
 	type PublicKey = RenVmPublicKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = UnsignedPriority;
+	type BurnEventStoreDuration = BurnEventStoreDuration;
 }
 pub type RenVmBridge = Module<Runtime>;
 
