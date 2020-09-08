@@ -138,7 +138,7 @@ where
 	GetModuleId: Get<ModuleId>,
 {
 	fn on_commission(currency_id: CurrencyId, amount: Balance) {
-		// it currently cannot fail, so ignore the return
+		// it currently cannot fail, so ignore the result
 		let _ = Currencies::deposit(currency_id, &GetModuleId::get().into_account(), amount);
 	}
 }

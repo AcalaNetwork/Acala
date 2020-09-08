@@ -97,7 +97,7 @@ decl_module! {
 		#[weight = 10_000]
 		pub fn simulate_withdraw_unbonded(origin) {
 			with_transaction_result(|| {
-				// ignore the return
+				// ignore the result
 				let _ = ensure_signed(origin)?;
 				Self::withdraw_unbonded();
 				Ok(())
