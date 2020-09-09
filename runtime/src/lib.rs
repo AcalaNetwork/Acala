@@ -1028,7 +1028,6 @@ impl parachain_info::Trait for Runtime {}
 
 parameter_types! {
 	pub const RelayChainCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub GetParaId: ParaId = 5000.into();
 }
 
 pub struct RelayToNative;
@@ -1060,7 +1059,7 @@ impl orml_xtokens::Trait for Runtime {
 	type FromRelayChainBalance = RelayToNative;
 	type ToRelayChainBalance = NativeToRelay;
 	type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
-	type ParaId = GetParaId;
+	type ParaId = ParachainInfo;
 }
 
 #[allow(clippy::large_enum_variant)]
