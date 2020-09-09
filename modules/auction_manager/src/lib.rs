@@ -575,9 +575,9 @@ impl<T: Trait> Module<T> {
 					let mut payment = collateral_auction.payment_amount(new_bid_price);
 
 					// if there's bid before, return stablecoin from new bidder to last bidder
-					if let Some((last_bidder, _)) = last_bid {
+					if let Some((last_bidder, _)) = last_bid.clone() {
 						let refund = collateral_auction.payment_amount(last_bid_price);
-						Self::refund_last_bidder(&new_bidder, &last_bidder, T::GetStableCurrencyId::get(), refund)?;
+						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, &last_bidder, refund)?;
 
 						payment = payment
 							.checked_sub(refund)
@@ -608,14 +608,11 @@ impl<T: Trait> Module<T> {
 						}
 					}
 
+					Self::swap_bidders(new_bidder, last_bid.map(|(who, _)| who));
+
 					Ok(now + Self::get_auction_time_to_close(now, collateral_auction.start_time))
 				},
 			)
-		})
-		.and_then(|end_block| {
-			// increment bidder account reference
-			system::Module::<T>::inc_ref(&new_bidder);
-			Ok(end_block)
 		})
 	}
 
@@ -629,14 +626,13 @@ impl<T: Trait> Module<T> {
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-		let (new_bidder, new_bid_price) = new_bid;
-
 		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 			// use `with_transaction_result` to ensure operation is atomic
 			<DebitAuctions<T>>::try_mutate_exists(
 				id,
 				|debit_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
 					let mut debit_auction = debit_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
+					let (new_bidder, new_bid_price) = new_bid;
 					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 
 					ensure!(
@@ -649,12 +645,12 @@ impl<T: Trait> Module<T> {
 						Error::<T>::InvalidBidPrice,
 					);
 
-					if let Some((last_bidder, _)) = last_bid {
+					if let Some((last_bidder, _)) = last_bid.clone() {
 						// there's bid before, transfer the stablecoin from new bidder to last bidder
-						Self::refund_last_bidder(
+						T::Currency::transfer(
+							T::GetStableCurrencyId::get(),
 							&new_bidder,
 							&last_bidder,
-							T::GetStableCurrencyId::get(),
 							debit_auction.fix,
 						)?;
 					} else {
@@ -662,16 +658,13 @@ impl<T: Trait> Module<T> {
 						T::CDPTreasury::deposit_surplus(&new_bidder, debit_auction.fix)?;
 					}
 
+					Self::swap_bidders(new_bidder, last_bid.map(|(who, _)| who));
+
 					debit_auction.amount = debit_auction.amount_for_sale(last_bid_price, new_bid_price);
 
 					Ok(now + Self::get_auction_time_to_close(now, debit_auction.start_time))
 				},
 			)
-		})
-		.and_then(|end_block| {
-			// increment bidder account reference
-			system::Module::<T>::inc_ref(&new_bidder);
-			Ok(end_block)
 		})
 	}
 
@@ -704,8 +697,9 @@ impl<T: Trait> Module<T> {
 				Error::<T>::InvalidBidPrice,
 			);
 
-			let burn_amount = if let Some((last_bidder, _)) = last_bid {
-				Self::refund_last_bidder(&new_bidder, &last_bidder, native_currency_id, last_bid_price)?;
+			let burn_amount = if let Some((last_bidder, _)) = last_bid.clone() {
+				// refund last bidder
+				T::Currency::transfer(native_currency_id, &new_bidder, &last_bidder, last_bid_price)?;
 				new_bid_price.saturating_sub(last_bid_price)
 			} else {
 				new_bid_price
@@ -714,12 +708,9 @@ impl<T: Trait> Module<T> {
 			// burn remain native token from new bidder
 			T::Currency::withdraw(native_currency_id, &new_bidder, burn_amount)?;
 
+			Self::swap_bidders(new_bidder, last_bid.map(|(who, _)| who));
+
 			Ok(now + Self::get_auction_time_to_close(now, surplus_auction.start_time))
-		})
-		.and_then(|end_block| {
-			// increment bidder account reference
-			system::Module::<T>::inc_ref(&new_bidder);
-			Ok(end_block)
 		})
 	}
 
@@ -848,16 +839,14 @@ impl<T: Trait> Module<T> {
 		TotalSurplusInAuction::mutate(|balance| *balance = balance.saturating_sub(surplus_auction.amount));
 	}
 
-	/// transfer amount from `new_bidder` to `last_bidder` and decrement
-	/// `last_bidder` reference
-	fn refund_last_bidder(
-		new_bidder: &T::AccountId,
-		last_bidder: &T::AccountId,
-		currency_id: CurrencyId,
-		amount: Balance,
-	) -> DispatchResult {
-		system::Module::<T>::dec_ref(last_bidder);
-		T::Currency::transfer(currency_id, new_bidder, last_bidder, amount)
+	/// increment `new_bidder` reference and decrement `last_bidder` reference
+	/// if any
+	fn swap_bidders(new_bidder: T::AccountId, last_bidder: Option<T::AccountId>) {
+		system::Module::<T>::inc_ref(&new_bidder);
+
+		if let Some(who) = last_bidder {
+			system::Module::<T>::dec_ref(&who);
+		}
 	}
 }
 

@@ -567,25 +567,24 @@ fn surplus_auction_end_handler_with_bid() {
 }
 
 #[test]
-fn refund_last_bidder_works() {
+fn swap_bidders_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(System::refs(&ALICE), 0);
 		assert_eq!(System::refs(&BOB), 0);
 
-		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1000);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
+		AuctionManagerModule::swap_bidders(BOB, None);
 
-		// suppose BOB has already placed a bid
-		System::inc_ref(&BOB);
 		assert_eq!(System::refs(&BOB), 1);
 
-		assert_ok!(AuctionManagerModule::refund_last_bidder(&ALICE, &BOB, AUSD, 100));
+		AuctionManagerModule::swap_bidders(ALICE, Some(BOB));
 
-		assert_eq!(System::refs(&ALICE), 0);
+		assert_eq!(System::refs(&ALICE), 1);
 		assert_eq!(System::refs(&BOB), 0);
 
-		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 900);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1100);
+		AuctionManagerModule::swap_bidders(BOB, Some(ALICE));
+
+		assert_eq!(System::refs(&ALICE), 0);
+		assert_eq!(System::refs(&BOB), 1);
 	});
 }
 
