@@ -14,8 +14,8 @@
 
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{EnsureOrigin, Get},
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass, Weight},
+	traits::{Get, Happened},
+	weights::constants::WEIGHT_PER_MICROS,
 	Parameter,
 };
 use frame_system::{self as system, ensure_signed};
@@ -30,7 +30,7 @@ use sp_runtime::{
 	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
 use sp_std::prelude::Vec;
-use support::{CDPTreasury, DEXManager, EmergencyShutdown, Price, Rate, Ratio};
+use support::{CDPTreasury, DEXManager, Price, Rate, Ratio};
 
 mod benchmarking;
 mod mock;
@@ -42,9 +42,6 @@ pub trait Trait: system::Trait {
 	/// Associate type for measuring liquidity contribution of specific trading
 	/// pairs
 	type Share: Parameter + Member + AtLeast32Bit + Default + Copy + MaybeSerializeDeserialize + FixedPointOperand;
-
-	/// The origin which may update parameters of dex. Root can always do this.
-	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 	/// Currency for transfer currencies
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -65,8 +62,11 @@ pub trait Trait: system::Trait {
 	/// The DEX's module id, keep all assets in DEX.
 	type ModuleId: Get<ModuleId>;
 
-	/// Emergency shutdown.
-	type EmergencyShutdown: EmergencyShutdown;
+	/// Event handler which calls when add liquidity.
+	type OnAddLiquidity: Happened<(Self::AccountId, CurrencyId, Self::Share)>;
+
+	/// Event handler which calls when remove liquidity.
+	type OnRemoveLiquidity: Happened<(Self::AccountId, CurrencyId, Self::Share)>;
 }
 
 decl_event!(
@@ -118,27 +118,6 @@ decl_storage! {
 		/// Shares records indexed by currency type and account id
 		/// CurrencyType -> Owner -> ShareAmount
 		Shares get(fn shares): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => T::Share;
-
-		/// Incentive reward rate for different currency type
-		/// CurrencyType -> IncentiveRate
-		LiquidityIncentiveRate get(fn liquidity_incentive_rate): map hasher(twox_64_concat) CurrencyId => Rate;
-
-		/// Total interest(include total withdrawn) and total withdrawn interest for different currency type
-		/// CurrencyType -> (TotalInterest, TotalWithdrawnInterest)
-		TotalInterest get(fn total_interest): map hasher(twox_64_concat) CurrencyId => (Balance, Balance);
-
-		/// Withdrawn interest indexed by currency type and account id
-		/// CurrencyType -> Owner -> WithdrawnInterest
-		WithdrawnInterest get(fn withdrawn_interest): double_map hasher(twox_64_concat) CurrencyId, hasher(twox_64_concat) T::AccountId => Balance;
-	}
-
-	add_extra_genesis {
-		config(liquidity_incentive_rate): Vec<(CurrencyId, Rate)>;
-		build(|config: &GenesisConfig| {
-			config.liquidity_incentive_rate.iter().for_each(| (currency_id, liquidity_incentive_rate) | {
-				LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
-			});
-		});
 	}
 }
 
@@ -159,57 +138,6 @@ decl_module! {
 
 		/// The DEX's module id, keep all assets in DEX.
 		const ModuleId: ModuleId = T::ModuleId::get();
-
-		/// Update liquidity incentive rate of specific liquidity pool
-		///
-		/// The dispatch origin of this call must be `UpdateOrigin`.
-		///
-		/// - `currency_id`: currency type to determine the type of liquidity pool.
-		/// - `liquidity_incentive_rate`: liquidity incentive rate.
-		///
-		/// # <weight>
-		/// - Complexity: `O(1)`
-		/// - Db reads: 0
-		/// - Db writes: 1
-		/// -------------------
-		/// Base Weight: 24.92 µs
-		/// # </weight>
-		#[weight = (25 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
-		pub fn set_liquidity_incentive_rate(
-			origin,
-			currency_id: CurrencyId,
-			liquidity_incentive_rate: Rate,
-		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				LiquidityIncentiveRate::insert(currency_id, liquidity_incentive_rate);
-				Self::deposit_event(RawEvent::LiquidityIncentiveRateUpdated(currency_id, liquidity_incentive_rate));
-				Ok(())
-			})?;
-		}
-
-		/// Just withdraw liquidity incentive interest as the additional reward for liquidity contribution
-		///
-		/// - `currency_id`: currency type to determine the type of liquidity pool.
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::Currency is orml_currencies
-		///		- T::CDPTreasury is module_cdp_treasury
-		/// - Complexity: `O(1)`
-		/// - Db reads: 8
-		/// - Db writes: 4
-		/// -------------------
-		/// Base Weight: 143.4 µs
-		/// # </weight>
-		#[weight = 143 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(8, 4)]
-		pub fn withdraw_incentive_interest(origin, currency_id: CurrencyId) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				Self::claim_interest(currency_id, &who)?;
-				Ok(())
-			})?;
-		}
 
 		/// Trading with DEX, swap supply currency to target currency
 		///
@@ -277,7 +205,7 @@ decl_module! {
 		#[weight = 206 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 9)]
 		pub fn add_liquidity(
 			origin,
-			other_currency_id: CurrencyId,
+			currency_id: CurrencyId,
 			#[compact] max_other_currency_amount: Balance,
 			#[compact] max_base_currency_amount: Balance,
 		) {
@@ -285,11 +213,11 @@ decl_module! {
 				let who = ensure_signed(origin)?;
 				let base_currency_id = T::GetBaseCurrencyId::get();
 				ensure!(
-					T::EnabledCurrencyIds::get().contains(&other_currency_id),
+					T::EnabledCurrencyIds::get().contains(&currency_id),
 					Error::<T>::CurrencyIdNotAllowed,
 				);
 
-				let total_shares = Self::total_shares(other_currency_id);
+				let total_shares = Self::total_shares(currency_id);
 				let (other_currency_increment, base_currency_increment, share_increment): (Balance, Balance, T::Share) =
 				if total_shares.is_zero() {
 					// initialize this liquidity pool, the initial share is equal to the max value between base currency amount and other currency amount
@@ -297,7 +225,7 @@ decl_module! {
 
 					(max_other_currency_amount, max_base_currency_amount, initial_share)
 				} else {
-					let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(other_currency_id);
+					let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(currency_id);
 					let other_base_price = Price::checked_from_rational(base_currency_pool, other_currency_pool).unwrap_or_default();
 					let input_other_base_price = Price::checked_from_rational(max_base_currency_amount, max_other_currency_amount).unwrap_or_default();
 
@@ -324,24 +252,25 @@ decl_module! {
 					Error::<T>::InvalidLiquidityIncrement,
 				);
 
-				T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)?;
+				T::Currency::transfer(currency_id, &who, &Self::account_id(), other_currency_increment)?;
 				T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_increment)?;
-				Self::deposit_calculate_interest(other_currency_id, &who, share_increment);
-				<TotalShares<T>>::try_mutate(other_currency_id, |total_shares| -> DispatchResult {
+
+				<TotalShares<T>>::try_mutate(currency_id, |total_shares| -> DispatchResult {
 					*total_shares = total_shares.checked_add(&share_increment).ok_or(Error::<T>::SharesOverflow)?;
 					Ok(())
 				})?;
-				<Shares<T>>::mutate(other_currency_id, &who, |share|
+				<Shares<T>>::mutate(currency_id, &who, |share|
 					*share = share.checked_add(&share_increment).expect("share cannot overflow if `total_shares` doesn't; qed")
 				);
-				LiquidityPool::mutate(other_currency_id, |(other, base)| {
+				LiquidityPool::mutate(currency_id, |(other, base)| {
 					*other = other.saturating_add(other_currency_increment);
 					*base = base.saturating_add(base_currency_increment);
 				});
+				T::OnAddLiquidity::happened(&(who.clone(), currency_id, share_increment));
 
 				Self::deposit_event(RawEvent::AddLiquidity(
 					who,
-					other_currency_id,
+					currency_id,
 					other_currency_increment,
 					base_currency_increment,
 					share_increment,
@@ -368,77 +297,44 @@ decl_module! {
 		///		- worst case: 248.2 µs
 		/// # </weight>
 		#[weight = 248 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(11, 9)]
-		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] share_amount: T::Share) {
+		pub fn withdraw_liquidity(origin, currency_id: CurrencyId, #[compact] remove_share: T::Share) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				if share_amount.is_zero() { return Ok(()); }
+				if remove_share.is_zero() { return Ok(()); }
 				ensure!(
 					T::EnabledCurrencyIds::get().contains(&currency_id),
 					Error::<T>::CurrencyIdNotAllowed,
 				);
 				let (other_currency_pool, base_currency_pool): (Balance, Balance) = Self::liquidity_pool(currency_id);
-				let proportion = Ratio::checked_from_rational(share_amount, Self::total_shares(currency_id)).unwrap_or_default();
+				let proportion = Ratio::checked_from_rational(remove_share, Self::total_shares(currency_id)).unwrap_or_default();
 				let withdraw_other_currency_amount = proportion.saturating_mul_int(other_currency_pool);
 				let withdraw_base_currency_amount = proportion.saturating_mul_int(base_currency_pool);
+
 				T::Currency::transfer(currency_id, &Self::account_id(), &who, withdraw_other_currency_amount)?;
 				T::Currency::transfer(T::GetBaseCurrencyId::get(), &Self::account_id(), &who, withdraw_base_currency_amount)?;
-				Self::withdraw_calculate_interest(currency_id, &who, share_amount)?;
+
 				<Shares<T>>::try_mutate(currency_id, &who, |share| -> DispatchResult {
-					*share = share.checked_sub(&share_amount).ok_or(Error::<T>::ShareNotEnough)?;
+					*share = share.checked_sub(&remove_share).ok_or(Error::<T>::ShareNotEnough)?;
 					Ok(())
 				})?;
 				<TotalShares<T>>::mutate(currency_id, |share|
-					*share = share.checked_sub(&share_amount).expect("total share cannot underflow if share doesn't; qed")
+					*share = share.checked_sub(&remove_share).expect("total share cannot underflow if share doesn't; qed")
 				);
 				LiquidityPool::mutate(currency_id, |(other, base)| {
 					*other = other.saturating_sub(withdraw_other_currency_amount);
 					*base = base.saturating_sub(withdraw_base_currency_amount);
 				});
+				T::OnRemoveLiquidity::happened(&(who.clone(), currency_id, remove_share));
 
 				Self::deposit_event(RawEvent::WithdrawLiquidity(
 					who,
 					currency_id,
 					withdraw_other_currency_amount,
 					withdraw_base_currency_amount,
-					share_amount,
+					remove_share,
 				));
 				Ok(())
 			})?;
-		}
-
-		/// Accumulate liquidity incentive interest to respective reward pool when block end
-		///
-		/// # <weight>
-		/// - Complexity: `O(N)` where `N` is the number of currency_ids
-		/// - Db reads: `IsShutdown`, `TotalInterest`, 2 items in cdp_treasury
-		///	- Db writes: `TotalInterest`, 2 items in cdp_treasury
-		/// - Db reads per currency_id: , `LiquidityPool`, `LiquidityIncentiveRate`
-		/// -------------------
-		/// Base Weight: 79.58 * N µs
-		/// # </weight>
-		fn on_initialize(_n: T::BlockNumber) -> Weight {
-			let mut consumed_weight = 0;
-			let mut add_weight = |reads, writes, weight| {
-				consumed_weight += T::DbWeight::get().reads_writes(reads, writes);
-				consumed_weight += weight;
-			};
-
-			if !T::EmergencyShutdown::is_shutdown() {
-				add_weight(4, 3, 0);
-				let mut accumulated_interest: Balance = Zero::zero();
-
-				// accumulate interest
-				for currency_id in T::EnabledCurrencyIds::get() {
-					let interest_to_issue = Self::accumulate_interest(currency_id);
-					accumulated_interest = accumulated_interest.saturating_add(interest_to_issue);
-					add_weight(2, 0, 80_000_000);
-				}
-
-				// issue aUSD as interest, ignore result
-				let _ = T::CDPTreasury::issue_debit(&Self::account_id(), accumulated_interest, false);
-			}
-
-			consumed_weight
 		}
 	}
 }
@@ -764,94 +660,6 @@ impl<T: Trait> Module<T> {
 			)
 		}
 	}
-
-	fn deposit_calculate_interest(currency_id: CurrencyId, who: &T::AccountId, share_amount: T::Share) {
-		let total_shares = Self::total_shares(currency_id);
-		let (total_interest, _) = Self::total_interest(currency_id);
-		if total_shares.is_zero() || total_interest.is_zero() {
-			return;
-		}
-
-		let proportion = Ratio::checked_from_rational(share_amount, total_shares).unwrap_or_default();
-		let interest_to_expand = proportion.saturating_mul_int(total_interest);
-		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
-			*val = val.saturating_add(interest_to_expand);
-		});
-		TotalInterest::mutate(currency_id, |(total_interest, total_withdrawn)| {
-			*total_interest = total_interest.saturating_add(interest_to_expand);
-			*total_withdrawn = total_withdrawn.saturating_add(interest_to_expand);
-		});
-	}
-
-	fn withdraw_calculate_interest(
-		currency_id: CurrencyId,
-		who: &T::AccountId,
-		share_amount: T::Share,
-	) -> DispatchResult {
-		// claim interest first
-		Self::claim_interest(currency_id, who)?;
-
-		let proportion =
-			Ratio::checked_from_rational(share_amount, Self::total_shares(currency_id)).unwrap_or_default();
-		let withdrawn_interest_to_remove = Ratio::checked_from_rational(share_amount, Self::shares(currency_id, who))
-			.unwrap_or_default()
-			.saturating_mul_int(Self::withdrawn_interest(currency_id, who));
-
-		<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
-			*val = val.saturating_sub(withdrawn_interest_to_remove);
-		});
-		TotalInterest::mutate(currency_id, |(total_interest, total_withdrawn)| {
-			*total_interest = total_interest.saturating_sub(proportion.saturating_mul_int(*total_interest));
-			*total_withdrawn = total_withdrawn.saturating_sub(withdrawn_interest_to_remove);
-		});
-
-		Ok(())
-	}
-
-	fn claim_interest(currency_id: CurrencyId, who: &T::AccountId) -> DispatchResult {
-		let proportion = Ratio::checked_from_rational(Self::shares(currency_id, who), Self::total_shares(currency_id))
-			.unwrap_or_default();
-		let interest_to_withdraw = proportion
-			.saturating_mul_int(Self::total_interest(currency_id).0)
-			.saturating_sub(Self::withdrawn_interest(currency_id, who));
-
-		if !interest_to_withdraw.is_zero() {
-			// withdraw interest to share holder
-			T::Currency::transfer(
-				T::GetBaseCurrencyId::get(),
-				&Self::account_id(),
-				&who,
-				interest_to_withdraw,
-			)?;
-			<WithdrawnInterest<T>>::mutate(currency_id, who, |val| {
-				*val = val.saturating_add(interest_to_withdraw);
-			});
-			TotalInterest::mutate(currency_id, |(_, total_withdrawn)| {
-				*total_withdrawn = total_withdrawn.saturating_add(interest_to_withdraw);
-			});
-
-			Self::deposit_event(RawEvent::IncentiveInterestClaimed(
-				who.clone(),
-				currency_id,
-				interest_to_withdraw,
-			));
-		}
-
-		Ok(())
-	}
-
-	fn accumulate_interest(currency_id: CurrencyId) -> Balance {
-		let (_, base_currency_pool) = Self::liquidity_pool(currency_id);
-		let interest_to_increase = Self::liquidity_incentive_rate(currency_id).saturating_mul_int(base_currency_pool);
-
-		if !interest_to_increase.is_zero() {
-			TotalInterest::mutate(currency_id, |(total_interest, _)| {
-				*total_interest = total_interest.saturating_add(interest_to_increase);
-			});
-		}
-
-		interest_to_increase
-	}
 }
 
 impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
@@ -935,5 +743,9 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 				.and_then(|n| n.checked_mul(&base_to_target_slippage))
 				.and_then(|n| n.checked_add(&supply_to_base_slippage))
 		}
+	}
+
+	fn get_liquidity_pool(currency_id: CurrencyId) -> (Balance, Balance) {
+		Self::liquidity_pool(currency_id)
 	}
 }

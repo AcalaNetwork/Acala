@@ -100,12 +100,6 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		module_dex::GenesisConfig {
-			liquidity_incentive_rate: vec![(CurrencyId::XBTC, Rate::saturating_from_rational(1, 100))],
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-
 		pallet_membership::GenesisConfig::<Runtime, pallet_membership::Instance5> {
 			members: vec![
 				AccountId::from(ORACLE1),
@@ -445,11 +439,6 @@ fn test_dex_module() {
 			assert_eq!(DexModule::liquidity_pool(CurrencyId::XBTC), (10003, 10003000));
 
 			assert_eq!(DexModule::total_shares(CurrencyId::XBTC), 10002998);
-			assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (0, 0));
-			DexModule::on_initialize(0);
-			assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (100030, 0));
-			DexModule::on_initialize(0);
-			assert_eq!(DexModule::total_interest(CurrencyId::XBTC), (200060, 0));
 		});
 }
 

@@ -230,6 +230,7 @@ impl Trait for Runtime {
 	type RiskManager = MockRiskManager;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
+	type OnUpdateLoan = ();
 }
 pub type LoansModule = Module<Runtime>;
 

@@ -115,6 +115,7 @@ impl loans::Trait for Runtime {
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
+	type OnUpdateLoan = ();
 }
 
 pub struct MockAuctionManager;
