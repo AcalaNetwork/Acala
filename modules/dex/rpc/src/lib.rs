@@ -4,24 +4,19 @@ use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use module_dex_rpc_runtime_api::BalanceInfo;
-use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
+use sp_core::U256;
+use sp_rpc::number::NumberOrHex;
 use sp_runtime::{
 	generic::BlockId,
 	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
 };
+use sp_std::convert::TryFrom;
 use std::sync::Arc;
 
 pub use self::gen_client::Client as DexClient;
 pub use module_dex_rpc_runtime_api::DexApi as DexRuntimeApi;
-
-#[derive(Serialize, Deserialize, Clone, sp_std::fmt::Debug)]
-#[serde(rename_all = "camelCase")]
-#[serde(deny_unknown_fields)]
-pub struct BalanceRequest {
-	amount: String,
-}
 
 #[rpc]
 pub trait DexApi<BlockHash, CurrencyId, Balance, ResponseType>
@@ -33,7 +28,7 @@ where
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		target_currency_amount: BalanceRequest,
+		target_currency_amount: NumberOrHex,
 		at: Option<BlockHash>,
 	) -> Result<ResponseType>;
 
@@ -42,7 +37,7 @@ where
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		supply_currency_amount: BalanceRequest,
+		supply_currency_amount: NumberOrHex,
 		at: Option<BlockHash>,
 	) -> Result<ResponseType>;
 }
@@ -83,25 +78,24 @@ where
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
 	C::Api: DexRuntimeApi<Block, CurrencyId, Balance>,
 	CurrencyId: Codec,
-	Balance: Codec + MaybeDisplay + MaybeFromStr + sp_std::str::FromStr,
-	<Balance as sp_std::str::FromStr>::Err: sp_std::fmt::Debug,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + TryFrom<U256>,
+	<Balance as TryFrom<U256>>::Error: sp_std::fmt::Debug,
 {
 	fn get_supply_amount(
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		target_currency_amount: BalanceRequest,
+		target_currency_amount: NumberOrHex,
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
-		let BalanceRequest { amount } = target_currency_amount;
 
-		let amount: Balance = amount.parse::<Balance>().map_err(|e| RpcError {
+		let amount: Balance = TryFrom::try_from(target_currency_amount.into_u256()).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),
-			message: "Unable to convert String to Balance type.".into(),
+			message: "Unable to convert U256 to Balance type.".into(),
 			data: Some(format!("{:?}", e).into()),
 		})?;
 
@@ -117,18 +111,17 @@ where
 		&self,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
-		supply_currency_amount: BalanceRequest,
+		supply_currency_amount: NumberOrHex,
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
 			self.client.info().best_hash));
-		let BalanceRequest { amount } = supply_currency_amount;
 
-		let amount: Balance = amount.parse::<Balance>().map_err(|e| RpcError {
+		let amount: Balance = TryFrom::try_from(supply_currency_amount.into_u256()).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),
-			message: "Unable to convert String to Balance type.".into(),
+			message: "Unable to convert U256 to Balance type.".into(),
 			data: Some(format!("{:?}", e).into()),
 		})?;
 
