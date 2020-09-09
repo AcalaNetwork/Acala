@@ -521,6 +521,7 @@ parameter_types! {
 	pub const TipReportDepositBase: Balance = DOLLARS;
 	pub const TipReportDepositPerByte: Balance = CENTS;
 	pub const SevenDays: BlockNumber = DAYS * 7;
+	pub const ZeroDay: BlockNumber = 0;
 	pub const OneDay: BlockNumber = DAYS;
 }
 

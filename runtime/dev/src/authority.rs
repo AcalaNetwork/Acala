@@ -2,10 +2,10 @@
 
 use crate::{
 	AcalaTreasuryModuleId, AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DSWFModuleId,
-	DispatchResult, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrHalfHonzonCouncil,
-	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	DispatchResult, EnsureRoot, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	EnsureRootOrHalfHonzonCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryModuleId, HonzonTreasuryModuleId, OneDay, Origin,
-	OriginCaller, SevenDays, HOURS,
+	OriginCaller, SevenDays, ZeroDay, HOURS,
 };
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
@@ -85,7 +85,8 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	}
 
 	fn check_dispatch_from(&self, origin: Origin) -> DispatchResult {
-		ensure_root(origin.clone()).or_else(|_| match self {
+		ensure_root(origin.clone()).or_else(|_| {
+			match self {
 			AuthoritysOriginId::Root => <EnsureDelayed<
 				SevenDays,
 				EnsureRootOrThreeFourthsGeneralCouncil,
@@ -111,7 +112,13 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 				>>::ensure_origin(origin)
 				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 			}
-			AuthoritysOriginId::DSWF => ensure_root(origin).map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
+			AuthoritysOriginId::DSWF => {
+				<EnsureDelayed<ZeroDay, EnsureRoot<AccountId>, BlockNumber, OriginCaller> as EnsureOrigin<
+						Origin,
+					>>::ensure_origin(origin)
+					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+			}
+		}
 		})
 	}
 }
