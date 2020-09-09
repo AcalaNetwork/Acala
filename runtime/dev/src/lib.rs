@@ -301,6 +301,18 @@ type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
 	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>,
 >;
 
+type EnsureRootOrHalfHonzonCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>,
+>;
+
+type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HomaCouncilInstance>,
+>;
+
 type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
@@ -508,6 +520,9 @@ parameter_types! {
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
 	pub const TipReportDepositBase: Balance = DOLLARS;
 	pub const TipReportDepositPerByte: Balance = CENTS;
+	pub const SevenDays: BlockNumber = DAYS * 7;
+	pub const ZeroDay: BlockNumber = 0;
+	pub const OneDay: BlockNumber = DAYS;
 }
 
 impl pallet_treasury::Trait for Runtime {
@@ -618,11 +633,7 @@ impl pallet_staking::Trait for Runtime {
 	type BondingDuration = BondingDuration;
 	type SlashDeferDuration = SlashDeferDuration;
 	/// A super-majority of the council can cancel the slash.
-	type SlashCancelOrigin = EnsureOneOf<
-		AccountId,
-		EnsureRoot<AccountId>,
-		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
-	>;
+	type SlashCancelOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type SessionInterface = Self;
 	type RewardCurve = RewardCurve;
 	type NextNewSession = Session;
@@ -919,12 +930,6 @@ parameter_types! {
 	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
-type EnsureRootOrHalfHonzonCouncil = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>,
->;
-
 impl module_cdp_engine::Trait for Runtime {
 	type Event = Event;
 	type PriceSource = Prices;
@@ -952,11 +957,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
-	type ShutdownOrigin = EnsureOneOf<
-		AccountId,
-		EnsureRoot<AccountId>,
-		pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>,
-	>;
+	type ShutdownOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 parameter_types! {
