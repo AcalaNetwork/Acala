@@ -57,7 +57,7 @@ pub trait AuctionManager<AccountId> {
 	type AuctionId: FullCodec + Debug + Clone + Eq + PartialEq;
 
 	fn new_collateral_auction(
-		who: &AccountId,
+		refund_recipient: &AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 		target: Self::Balance,
