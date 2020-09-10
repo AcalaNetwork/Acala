@@ -567,6 +567,28 @@ fn surplus_auction_end_handler_with_bid() {
 }
 
 #[test]
+fn swap_bidders_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(System::refs(&ALICE), 0);
+		assert_eq!(System::refs(&BOB), 0);
+
+		AuctionManagerModule::swap_bidders(&BOB, None);
+
+		assert_eq!(System::refs(&BOB), 1);
+
+		AuctionManagerModule::swap_bidders(&ALICE, Some(&BOB));
+
+		assert_eq!(System::refs(&ALICE), 1);
+		assert_eq!(System::refs(&BOB), 0);
+
+		AuctionManagerModule::swap_bidders(&BOB, Some(&ALICE));
+
+		assert_eq!(System::refs(&ALICE), 0);
+		assert_eq!(System::refs(&BOB), 1);
+	});
+}
+
+#[test]
 fn cancel_surplus_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
