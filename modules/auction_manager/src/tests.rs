@@ -572,16 +572,16 @@ fn swap_bidders_works() {
 		assert_eq!(System::refs(&ALICE), 0);
 		assert_eq!(System::refs(&BOB), 0);
 
-		AuctionManagerModule::swap_bidders(BOB, None);
+		AuctionManagerModule::swap_bidders(&BOB, None);
 
 		assert_eq!(System::refs(&BOB), 1);
 
-		AuctionManagerModule::swap_bidders(ALICE, Some(BOB));
+		AuctionManagerModule::swap_bidders(&ALICE, Some(&BOB));
 
 		assert_eq!(System::refs(&ALICE), 1);
 		assert_eq!(System::refs(&BOB), 0);
 
-		AuctionManagerModule::swap_bidders(BOB, Some(ALICE));
+		AuctionManagerModule::swap_bidders(&BOB, Some(&ALICE));
 
 		assert_eq!(System::refs(&ALICE), 0);
 		assert_eq!(System::refs(&BOB), 1);

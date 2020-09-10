@@ -572,12 +572,14 @@ impl<T: Trait> Module<T> {
 						Error::<T>::InvalidBidPrice
 					);
 
+					let last_bidder = last_bid.as_ref().map(|(who, _)| who);
+
 					let mut payment = collateral_auction.payment_amount(new_bid_price);
 
 					// if there's bid before, return stablecoin from new bidder to last bidder
-					if let Some((last_bidder, _)) = last_bid.clone() {
+					if let Some(last_bidder) = last_bidder {
 						let refund = collateral_auction.payment_amount(last_bid_price);
-						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, &last_bidder, refund)?;
+						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, last_bidder, refund)?;
 
 						payment = payment
 							.checked_sub(refund)
@@ -608,7 +610,7 @@ impl<T: Trait> Module<T> {
 						}
 					}
 
-					Self::swap_bidders(new_bidder, last_bid.map(|(who, _)| who));
+					Self::swap_bidders(&new_bidder, last_bidder);
 
 					Ok(now + Self::get_auction_time_to_close(now, collateral_auction.start_time))
 				},
@@ -645,12 +647,14 @@ impl<T: Trait> Module<T> {
 						Error::<T>::InvalidBidPrice,
 					);
 
-					if let Some((last_bidder, _)) = last_bid.clone() {
+					let last_bidder = last_bid.as_ref().map(|(who, _)| who);
+
+					if let Some(last_bidder) = last_bidder {
 						// there's bid before, transfer the stablecoin from new bidder to last bidder
 						T::Currency::transfer(
 							T::GetStableCurrencyId::get(),
 							&new_bidder,
-							&last_bidder,
+							last_bidder,
 							debit_auction.fix,
 						)?;
 					} else {
@@ -658,7 +662,7 @@ impl<T: Trait> Module<T> {
 						T::CDPTreasury::deposit_surplus(&new_bidder, debit_auction.fix)?;
 					}
 
-					Self::swap_bidders(new_bidder, last_bid.map(|(who, _)| who));
+					Self::swap_bidders(&new_bidder, last_bidder);
 
 					debit_auction.amount = debit_auction.amount_for_sale(last_bid_price, new_bid_price);
 
@@ -697,9 +701,11 @@ impl<T: Trait> Module<T> {
 				Error::<T>::InvalidBidPrice,
 			);
 
-			let burn_amount = if let Some((last_bidder, _)) = last_bid.clone() {
+			let last_bidder = last_bid.as_ref().map(|(who, _)| who);
+
+			let burn_amount = if let Some(last_bidder) = last_bidder {
 				// refund last bidder
-				T::Currency::transfer(native_currency_id, &new_bidder, &last_bidder, last_bid_price)?;
+				T::Currency::transfer(native_currency_id, &new_bidder, last_bidder, last_bid_price)?;
 				new_bid_price.saturating_sub(last_bid_price)
 			} else {
 				new_bid_price
@@ -708,7 +714,7 @@ impl<T: Trait> Module<T> {
 			// burn remain native token from new bidder
 			T::Currency::withdraw(native_currency_id, &new_bidder, burn_amount)?;
 
-			Self::swap_bidders(new_bidder, last_bid.map(|(who, _)| who));
+			Self::swap_bidders(&new_bidder, last_bidder);
 
 			Ok(now + Self::get_auction_time_to_close(now, surplus_auction.start_time))
 		})
@@ -841,11 +847,11 @@ impl<T: Trait> Module<T> {
 
 	/// increment `new_bidder` reference and decrement `last_bidder` reference
 	/// if any
-	fn swap_bidders(new_bidder: T::AccountId, last_bidder: Option<T::AccountId>) {
-		system::Module::<T>::inc_ref(&new_bidder);
+	fn swap_bidders(new_bidder: &T::AccountId, last_bidder: Option<&T::AccountId>) {
+		system::Module::<T>::inc_ref(new_bidder);
 
 		if let Some(who) = last_bidder {
-			system::Module::<T>::dec_ref(&who);
+			system::Module::<T>::dec_ref(who);
 		}
 	}
 }
