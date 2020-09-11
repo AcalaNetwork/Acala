@@ -7,3 +7,4 @@ pub mod gradually_update;
 pub mod tokens;
 pub mod utils;
 pub mod vesting;
+pub mod rewards;
