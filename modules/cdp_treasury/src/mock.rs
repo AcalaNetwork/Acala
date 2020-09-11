@@ -8,7 +8,7 @@ use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
-use support::{EmergencyShutdown, Rate};
+use support::Rate;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -134,9 +134,9 @@ impl dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
-	type EmergencyShutdown = MockEmergencyShutdown;
+	type OnAddLiquidity = ();
+	type OnRemoveLiquidity = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
 
@@ -153,7 +153,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	type AuctionId = AuctionId;
 
 	fn new_collateral_auction(
-		_who: &AccountId,
+		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
 		_amount: Self::Balance,
 		_target: Self::Balance,
@@ -204,13 +204,6 @@ parameter_types! {
 
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
-}
-
-pub struct MockEmergencyShutdown;
-impl EmergencyShutdown for MockEmergencyShutdown {
-	fn is_shutdown() -> bool {
-		IS_SHUTDOWN.with(|v| *v.borrow_mut())
-	}
 }
 
 impl Trait for Runtime {

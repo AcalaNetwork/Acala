@@ -228,8 +228,8 @@ fn testnet_genesis(
 ) -> dev_runtime::GenesisConfig {
 	use dev_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, GeneralCouncilMembershipConfig,
-		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
+		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus,
 		StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
 		DOLLARS,
@@ -370,14 +370,6 @@ fn testnet_genesis(
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
 		}),
-		module_dex: Some(DexConfig {
-			liquidity_incentive_rate: vec![
-				(CurrencyId::DOT, FixedU128::zero()),
-				(CurrencyId::XBTC, FixedU128::zero()),
-				(CurrencyId::LDOT, FixedU128::zero()),
-				(CurrencyId::RENBTC, FixedU128::zero()),
-			],
-		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::saturating_from_rational(1, 100_000_000),
 		}),
@@ -405,7 +397,7 @@ fn mandala_genesis(
 ) -> dev_runtime::GenesisConfig {
 	use dev_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
-		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig,
+		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
 		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
@@ -541,26 +533,6 @@ fn mandala_genesis(
 				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
-		}),
-		module_dex: Some(DexConfig {
-			liquidity_incentive_rate: vec![
-				(
-					CurrencyId::DOT,
-					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
-				), // 4% APR
-				(
-					CurrencyId::XBTC,
-					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
-				), // 4% APR
-				(
-					CurrencyId::LDOT,
-					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
-				), // 4% APR
-				(
-					CurrencyId::RENBTC,
-					FixedU128::saturating_from_rational(4975, 10_000_000_000_000_u128),
-				), // 4% APR
-			],
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::saturating_from_rational(5, 10000), // 20% APR

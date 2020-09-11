@@ -7,12 +7,11 @@ use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 	weights::IdentityFee,
 };
-use frame_system::EnsureSignedBy;
 use primitives::Amount;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
 use sp_std::cell::RefCell;
-use support::{CDPTreasury, EmergencyShutdown, Rate, Ratio};
+use support::{CDPTreasury, Rate, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -194,13 +193,6 @@ thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
-pub struct MockEmergencyShutdown;
-impl EmergencyShutdown for MockEmergencyShutdown {
-	fn is_shutdown() -> bool {
-		IS_SHUTDOWN.with(|v| *v.borrow_mut())
-	}
-}
-
 ord_parameter_types! {
 	pub const Zero: AccountId = 0;
 }
@@ -220,9 +212,9 @@ impl dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = MockCDPTreasury;
-	type UpdateOrigin = EnsureSignedBy<Zero, AccountId>;
 	type ModuleId = DEXModuleId;
-	type EmergencyShutdown = MockEmergencyShutdown;
+	type OnAddLiquidity = ();
+	type OnRemoveLiquidity = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
 

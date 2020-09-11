@@ -1,9 +1,9 @@
-//! Unit tests for the airdrop module.
+//! Unit tests for the renvm bridge module.
 
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, unsigned::ValidateUnsigned};
+use frame_support::{assert_noop, assert_ok, traits::OnFinalize, unsigned::ValidateUnsigned};
 use hex_literal::hex;
 use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, RenvmBridgeCall};
 use sp_core::H256;
@@ -22,6 +22,36 @@ fn mint_ren_btc(
 	)?;
 
 	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
+}
+
+#[test]
+fn burn_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let issuer: H256 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
+		assert_ok!(
+			mint_ren_btc(
+				issuer.clone(),
+				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
+				5000,
+				hex!["e96cc92771222bd8f674ddf4ef6a4264e38030e90380fb215cb145591ed803e9"],
+				EcdsaSignature(hex!["1beaeea7cb5433659979ba0ba17bc0174c87b6208ea0fa82e1478a74b3ded5a27324239b8f0ef31f54cc56deb32bb8962803ecf399eac7ade08f291ae03f6a1f1c"]),
+			)
+		);
+		assert_eq!(Balances::free_balance(issuer.clone()), 5000);
+
+		let to: [u8; 20] = [0; 20];
+		assert_eq!(RenVmBridge::burn_events(10), vec![]);
+		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 1000));
+		assert_eq!(Balances::free_balance(&issuer), 4000);
+		assert_eq!(RenVmBridge::burn_events(10), vec![(to.clone(), 1000)]);
+
+		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 2000));
+		assert_eq!(Balances::free_balance(&issuer), 2000);
+		assert_eq!(RenVmBridge::burn_events(10), vec![(to.clone(), 1000), (to.clone(), 2000)]);
+
+		RenVmBridge::on_finalize(10);
+		assert_eq!(RenVmBridge::burn_events(10), vec![]);
+	});
 }
 
 #[test]
