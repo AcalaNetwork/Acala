@@ -319,9 +319,9 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 				if amount >= supply_amount_needed {
 					// successful swap will cause changes in native currency,
 					// which also means that it will open a new account
-					// exchange transfer all free balances from a new account to treasury account,
-					// so it shouldn't fail. but even it failed, leave some dust storage is not a
-					// critical issue, just open account without reserve NewAccountDeposit.
+					// exchange token to native currency and open account.
+					// if it failed, leave some dust storage is not a critical issue,
+					// just open account without reserve NewAccountDeposit.
 					let _ = T::DEX::exchange_currency(
 						who.clone(),
 						currency_id,

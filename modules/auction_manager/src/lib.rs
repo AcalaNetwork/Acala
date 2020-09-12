@@ -745,16 +745,19 @@ impl<T: Trait> Module<T> {
 					// swap successfully, will not deal
 					should_deal = false;
 
-					// refund stable currency to the last bidder
-					// it currently cannot fail, it is ok to ignore the error in this case
+					// refund stable currency to the last bidder, it shouldn't fail and affect the
+					// process. but even it failed, just the winner did not get the amount. it can
+					// be fixed by treasury council.
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
 					if collateral_auction.in_reverse_stage(amount) {
-						// refund extra stable currency to recipient, ignore result to continue
+						// refund extra stable currency to recipient
 						let refund_amount = amount
 							.checked_sub(collateral_auction.target)
 							.expect("ensured amount > target; qed");
-						// it currently cannot fail, it is ok to ignore the error in this case
+						// it shouldn't fail and affect the process.
+						// but even it failed, just the winner did not get the amount. it can be fixed
+						// by treasury council.
 						let _ = T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
 					}
 
@@ -768,7 +771,9 @@ impl<T: Trait> Module<T> {
 			}
 
 			if should_deal {
-				// transfer collateral to winner from CDP treasury, ignore result to continue
+				// transfer collateral to winner from CDP treasury, it shouldn't fail and affect
+				// the process. but even it failed, just the winner did not get the amount. it
+				// can be fixed by treasury council.
 				let _ = T::CDPTreasury::withdraw_collateral(
 					&bidder,
 					collateral_auction.currency_id,
@@ -804,9 +809,9 @@ impl<T: Trait> Module<T> {
 		winner: Option<(T::AccountId, Balance)>,
 	) {
 		if let Some((bidder, _)) = winner {
-			// issue native token to winner
-			// it currently cannot fail, it is ok to ignore the error in this case
-			// TODO: transfer from RESERVED TREASURY instead of issuing
+			// issue native token to winner, it shouldn't fail and affect the process.
+			// but even it failed, just the winner did not get the amount. it can be fixed
+			// by treasury council. TODO: transfer from RESERVED TREASURY instead of issuing
 			let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
 
 			<Module<T>>::deposit_event(RawEvent::DebitAuctionDealt(
@@ -828,8 +833,9 @@ impl<T: Trait> Module<T> {
 		winner: Option<(T::AccountId, Balance)>,
 	) {
 		if let Some((bidder, bid_price)) = winner {
-			// deposit unbacked stable token to winner by CDP treasury
-			// it currently cannot fail, it is ok to ignore the error in this case
+			// deposit unbacked stable token to winner by CDP treasury, it shouldn't fail
+			// and affect the process. but even it failed, just the winner did not get the
+			// amount. it can be fixed by treasury council.
 			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
 
 			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealt(

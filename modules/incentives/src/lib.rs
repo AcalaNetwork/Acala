@@ -309,7 +309,9 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 			PoolId::Homa => (T::HomaIncentivePool::get(), T::IncentiveCurrencyId::get()),
 		};
 
-		// ignore result
+		// payout the reward to user from the pool. it should not affect the
+		// process, ignore the result to continue. if it fails, just the user will not
+		// be rewarded, there will not increase user balance.
 		let _ = T::Currency::transfer(currency_id, &pool_account, &who, amount);
 	}
 }
