@@ -33,6 +33,7 @@ primitives = { package = "acala-primitives", path = "../primitives" }
 runtime-common = { path = "../runtime/common" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
+module-dex-rpc = { path = "../modules/dex/rpc" }
 
 frontier-rpc = { git = "https://github.com/paritytech/frontier", default-features = false }
 frontier-rpc-primitives = { git = "https://github.com/paritytech/frontier", default-features = false }

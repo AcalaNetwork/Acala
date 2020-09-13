@@ -143,6 +143,7 @@ impl loans::Trait for Runtime {
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = LoansModuleId;
+	type OnUpdateLoan = ();
 }
 pub type LoansModule = loans::Module<Runtime>;
 
@@ -181,7 +182,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	type AuctionId = AuctionId;
 
 	fn new_collateral_auction(
-		_who: &AccountId,
+		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
 		_amount: Self::Balance,
 		_target: Self::Balance,
@@ -250,9 +251,9 @@ impl dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type ModuleId = DEXModuleId;
-	type EmergencyShutdown = MockEmergencyShutdown;
+	type OnAddLiquidity = ();
+	type OnRemoveLiquidity = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
 
