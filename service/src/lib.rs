@@ -129,8 +129,9 @@ where
 		sc_finality_grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain.clone())?;
 	let justification_import = grandpa_block_import.clone();
 
-	let frontier_block_import =
-		FrontierBlockImport::new(grandpa_block_import.clone(), client.clone(), enable_ethereum_rpc);
+	let frontier_block_import = FrontierBlockImport::new(grandpa_block_import.clone(), client.clone());
+	// FrontierBlockImport::new(grandpa_block_import.clone(), client.clone(),
+	// enable_ethereum_rpc);
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,

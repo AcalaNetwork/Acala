@@ -34,5 +34,5 @@ runtime-common = { path = "../runtime/common" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 
-frontier-rpc = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }
-frontier-rpc-primitives = { git = "https://github.com/xlc/frontier", default-features = false, rev = "e924500f22da5080a68054cc922488cd2a830216" }
+frontier-rpc = { git = "https://github.com/paritytech/frontier", default-features = false }
+frontier-rpc-primitives = { git = "https://github.com/paritytech/frontier", default-features = false }
