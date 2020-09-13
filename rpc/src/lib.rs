@@ -152,13 +152,13 @@ where
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client.clone())));
 	io.extend_with(EthApiServer::to_delegate(EthApi::new(
-		client,
-		select_chain,
+		client.clone(),
+		select_chain.clone(),
 		pool,
 		dev_runtime::TransactionConverter,
 		false,
 	)));
-	io.extend_with(NetApiServer::to_delegate(NetApi));
+	io.extend_with(NetApiServer::to_delegate(NetApi::new(client, select_chain)));
 
 	io
 }

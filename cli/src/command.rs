@@ -67,7 +67,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 	match &cli.subcommand {
 		None => {
-			let runner = cli.create_runner(&cli.run)?;
+			let runner = cli.create_runner(&cli.run.base)?;
 			let chain_spec = &runner.config().chain_spec;
 
 			set_default_ss58_version(chain_spec);
@@ -76,22 +76,14 @@ pub fn run() -> sc_cli::Result<()> {
 				Role::Light => {
 					service::new_light::<service::dev_runtime::RuntimeApi, service::DevExecutor>(config).map(|r| r.0)
 				}
-				_ => service::new_full::<service::dev_runtime::RuntimeApi, service::DevExecutor, _>(config, |_, _| ())
-					.map(|r| r.0),
+				_ => service::new_full::<service::dev_runtime::RuntimeApi, service::DevExecutor, _>(
+					config,
+					cli.run.ethereum_rpc,
+					|_, _| (),
+				)
+				.map(|r| r.0),
 			})
 		}
-
-		Some(Subcommand::Base(subcommand)) => {
-			let runner = cli.create_runner(subcommand)?;
-			let chain_spec = &runner.config().chain_spec;
-
-			set_default_ss58_version(chain_spec);
-
-			runner.run_subcommand(subcommand, |config| {
-				service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(config)
-			})
-		}
-
 		Some(Subcommand::Inspect(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			let chain_spec = &runner.config().chain_spec;
@@ -102,7 +94,6 @@ pub fn run() -> sc_cli::Result<()> {
 				cmd.run::<service::dev_runtime::Block, service::dev_runtime::RuntimeApi, service::DevExecutor>(config)
 			})
 		}
-
 		Some(Subcommand::Benchmark(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			let chain_spec = &runner.config().chain_spec;
@@ -111,10 +102,58 @@ pub fn run() -> sc_cli::Result<()> {
 
 			runner.sync_run(|config| cmd.run::<service::dev_runtime::Block, service::DevExecutor>(config))
 		}
-
 		Some(Subcommand::Key(cmd)) => cmd.run(),
 		Some(Subcommand::Sign(cmd)) => cmd.run(),
 		Some(Subcommand::Verify(cmd)) => cmd.run(),
 		Some(Subcommand::Vanity(cmd)) => cmd.run(),
+		Some(Subcommand::BuildSpec(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
+		}
+		Some(Subcommand::CheckBlock(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|mut config| {
+				let (client, _, import_queue, task_manager) =
+					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+
+				Ok((cmd.run(client, import_queue), task_manager))
+			})
+		}
+		Some(Subcommand::ExportBlocks(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|mut config| {
+				let (client, _, _, task_manager) =
+					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				Ok((cmd.run(client, config.database), task_manager))
+			})
+		}
+		Some(Subcommand::ExportState(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|mut config| {
+				let (client, _, _, task_manager) =
+					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				Ok((cmd.run(client, config.chain_spec), task_manager))
+			})
+		}
+		Some(Subcommand::ImportBlocks(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|mut config| {
+				let (client, _, import_queue, task_manager) =
+					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				Ok((cmd.run(client, import_queue), task_manager))
+			})
+		}
+		Some(Subcommand::PurgeChain(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|config| cmd.run(config.database))
+		}
+		Some(Subcommand::Revert(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|mut config| {
+				let (client, backend, _, task_manager) =
+					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				Ok((cmd.run(client, backend), task_manager))
+			})
+		}
 	}
 }

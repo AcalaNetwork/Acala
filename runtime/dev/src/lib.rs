@@ -294,6 +294,7 @@ impl pallet_sudo::Trait for Runtime {
 parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
 	pub const GeneralCouncilMaxProposals: u32 = 100;
+	pub const MaxMembers: u32 = 30;
 }
 
 type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
@@ -333,6 +334,7 @@ impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = GeneralCouncilMotionDuration;
 	type MaxProposals = GeneralCouncilMaxProposals;
+	type MaxMembers = MaxMembers;
 	type WeightInfo = ();
 }
 
@@ -360,6 +362,7 @@ impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = HonzonCouncilMotionDuration;
 	type MaxProposals = HonzonCouncilMaxProposals;
+	type MaxMembers = MaxMembers;
 	type WeightInfo = ();
 }
 
@@ -387,6 +390,7 @@ impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = HomaCouncilMotionDuration;
 	type MaxProposals = HomaCouncilMaxProposals;
+	type MaxMembers = MaxMembers;
 	type WeightInfo = ();
 }
 
@@ -414,6 +418,7 @@ impl pallet_collective::Trait<TechnicalCommitteeInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = TechnicalCommitteeMotionDuration;
 	type MaxProposals = TechnicalCommitteeMaxProposals;
+	type MaxMembers = MaxMembers;
 	type WeightInfo = ();
 }
 
@@ -1127,8 +1132,7 @@ pub struct FixedGasPrice;
 
 impl FeeCalculator for FixedGasPrice {
 	fn min_gas_price() -> U256 {
-		// Gas price is always one token per gas.
-		1.into()
+		1_000_000_000.into()
 	}
 }
 
@@ -1587,7 +1591,7 @@ impl_runtime_apis! {
 			gas_price: Option<U256>,
 			nonce: Option<U256>,
 			action: pallet_ethereum::TransactionAction,
-		) -> Option<(Vec<u8>, U256)> {
+		) -> Result<(Vec<u8>, U256), sp_runtime::DispatchError> {
 			match action {
 				pallet_ethereum::TransactionAction::Call(to) =>
 					EVM::execute_call(
@@ -1596,20 +1600,24 @@ impl_runtime_apis! {
 						data,
 						value,
 						gas_limit.low_u32(),
-						gas_price,
+						gas_price.unwrap_or_default(),
 						nonce,
 						false,
-					).ok().map(|(_, ret, gas)| (ret, gas)),
+					)
+					.map(|(_, ret, gas)| (ret, gas))
+					.map_err(|err| err.into()),
 				pallet_ethereum::TransactionAction::Create =>
 					EVM::execute_create(
 						from,
 						data,
 						value,
 						gas_limit.low_u32(),
-						gas_price,
+						gas_price.unwrap_or_default(),
 						nonce,
 						false,
-					).ok().map(|(_, _, gas)| (vec![], gas)),
+					)
+					.map(|(_, _, gas)| (vec![], gas))
+					.map_err(|err| err.into()),
 			}
 		}
 

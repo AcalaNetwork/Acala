@@ -80,6 +80,7 @@ type LightClient<RuntimeApi, Executor> = sc_service::TLightClientWithBackend<Blo
 
 pub fn new_partial<RuntimeApi, Executor>(
 	config: &mut Configuration,
+	enable_ethereum_rpc: bool,
 ) -> Result<
 	PartialComponents<
 		FullClient<RuntimeApi, Executor>,
@@ -128,7 +129,8 @@ where
 		sc_finality_grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain.clone())?;
 	let justification_import = grandpa_block_import.clone();
 
-	let frontier_block_import = FrontierBlockImport::new(grandpa_block_import.clone(), client.clone());
+	let frontier_block_import =
+		FrontierBlockImport::new(grandpa_block_import.clone(), client.clone(), enable_ethereum_rpc);
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,
@@ -217,6 +219,7 @@ pub fn new_full<
 	),
 >(
 	mut config: Configuration,
+	enable_ethereum_rpc: bool,
 	with_startup_data: T,
 ) -> Result<
 	(
@@ -243,7 +246,7 @@ where
 		transaction_pool,
 		inherent_data_providers,
 		other: (rpc_extensions_builder, import_setup, rpc_setup),
-	} = new_partial::<RuntimeApi, Executor>(&mut config)?;
+	} = new_partial::<RuntimeApi, Executor>(&mut config, enable_ethereum_rpc)?;
 
 	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
 
@@ -533,7 +536,7 @@ where
 
 /// Builds a new object suitable for chain operations.
 pub fn new_chain_ops<Runtime, Executor>(
-	mut config: Configuration,
+	mut config: &mut Configuration,
 ) -> Result<
 	(
 		Arc<FullClient<Runtime, Executor>>,
@@ -555,6 +558,6 @@ where
 		import_queue,
 		task_manager,
 		..
-	} = new_partial::<Runtime, Executor>(&mut config)?;
+	} = new_partial::<Runtime, Executor>(&mut config, false)?;
 	Ok((client, backend, import_queue, task_manager))
 }

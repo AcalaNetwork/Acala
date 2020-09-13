@@ -1,5 +1,5 @@
 run: githooks
-	SKIP_WASM_BUILD= cargo run -- --dev --execution=native -lruntime=debug
+	SKIP_WASM_BUILD= cargo run -- --dev --execution=native -lruntime=debug --ethereum-rpc
 
 toolchain:
 	./scripts/init.sh

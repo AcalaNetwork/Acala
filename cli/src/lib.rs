@@ -1,6 +1,5 @@
 //! Acala CLI library.
 
-#![warn(missing_docs)]
 #![warn(unused_extern_crates)]
 
 #[cfg(feature = "cli")]
