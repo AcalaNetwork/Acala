@@ -68,6 +68,7 @@ dependencies = [
  "dev-runtime",
  "jsonrpc-core",
  "jsonrpc-pubsub",
+ "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts-rpc",
@@ -101,6 +102,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
+ "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts",
@@ -3871,6 +3873,24 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-dex-rpc"
+version = "0.5.4"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "module-dex-rpc-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
