@@ -75,7 +75,7 @@ pub struct FullDeps<C, P, SC> {
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, SC, BE>(deps: FullDeps<C, P, SC>) -> RpcExtension
+pub fn create_full<C, P, SC, BE>(deps: FullDeps<C, P, SC>, enable_ethereum_rpc: bool) -> RpcExtension
 where
 	BE: Backend<Block> + 'static,
 	BE::State: StateBackend<BlakeTwo256>,
@@ -156,14 +156,16 @@ where
 	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client.clone())));
 	io.extend_with(DexApi::to_delegate(Dex::new(client.clone())));
 
-	io.extend_with(EthApiServer::to_delegate(EthApi::new(
-		client.clone(),
-		select_chain.clone(),
-		pool,
-		dev_runtime::TransactionConverter,
-		false,
-	)));
-	io.extend_with(NetApiServer::to_delegate(NetApi::new(client, select_chain)));
+	if enable_ethereum_rpc {
+		io.extend_with(EthApiServer::to_delegate(EthApi::new(
+			client.clone(),
+			select_chain.clone(),
+			pool,
+			dev_runtime::TransactionConverter,
+			false,
+		)));
+		io.extend_with(NetApiServer::to_delegate(NetApi::new(client, select_chain)));
+	}
 
 	io
 }

@@ -131,7 +131,7 @@ where
 
 	let frontier_block_import = FrontierBlockImport::new(grandpa_block_import.clone(), client.clone());
 	// FrontierBlockImport::new(grandpa_block_import.clone(), client.clone(),
-	// enable_ethereum_rpc);
+	// enable_ethereum_rpc); // blocked by https://github.com/paritytech/frontier/pull/127
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,
@@ -189,7 +189,7 @@ where
 				},
 			};
 
-			acala_rpc::create_full(deps)
+			acala_rpc::create_full(deps, enable_ethereum_rpc)
 		}
 	};
 
