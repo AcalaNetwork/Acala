@@ -18,17 +18,17 @@ use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::Get,
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
-	IterableStorageMap,
 };
 use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
-use orml_utilities::with_transaction_result;
+use orml_utilities::{with_transaction_result, IterableStorageMapExtended, OffchainErr};
 use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
+		storage::StorageValueRef,
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
@@ -43,13 +43,14 @@ use sp_std::{
 	prelude::*,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate};
-use utilities::OffchainErr;
 
 mod mock;
 mod tests;
 
+const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/auction-manager/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
 const LOCK_DURATION: u64 = 100;
+const MAX_ITERATIONS: u32 = 10000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -366,32 +367,62 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn _offchain_worker() -> Result<(), OffchainErr> {
+		// acquire offchain worker lock.
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
 		let mut lock = StorageLock::<'_, Time>::with_deadline(&OFFCHAIN_WORKER_LOCK, lock_expiration);
-
-		// acquire offchain worker lock.
 		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
 
-		let random_seed = sp_io::offchain::random_seed();
-		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+		let mut to_be_continue = StorageValueRef::persistent(&OFFCHAIN_WORKER_DATA);
+
+		// get to_be_continue record,
+		// if it exsits, iterator map storage start with previous key
+		let (auction_type_num, start_key) = if let Some(Some((auction_type_num, last_iterator_previous_key))) =
+			to_be_continue.get::<(u32, Vec<u8>)>()
+		{
+			(auction_type_num, Some(last_iterator_previous_key))
+		} else {
+			let random_seed = sp_io::offchain::random_seed();
+			let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+			(rng.pick_u32(2), None)
+		};
 
 		// Randomly choose to start iterations to cancel collateral/surplus/debit
 		// auctions
-		match rng.pick_u32(2) {
+		match auction_type_num {
 			0 => {
-				for (debit_auction_id, _) in <DebitAuctions<T>>::iter() {
+				let mut iterator =
+					<DebitAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+				while let Some((debit_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(debit_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
+
+				// if iteration for map storage finished, clear to be continue record
+				// otherwise, update to be continue record
+				if iterator.finished {
+					to_be_continue.clear();
+				} else {
+					to_be_continue.set(&(auction_type_num, iterator.storage_map_iterator.previous_key));
+				}
 			}
 			1 => {
-				for (surplus_auction_id, _) in <SurplusAuctions<T>>::iter() {
+				let mut iterator =
+					<SurplusAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+				while let Some((surplus_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(surplus_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
+
+				if iterator.finished {
+					to_be_continue.clear();
+				} else {
+					to_be_continue.set(&(auction_type_num, iterator.storage_map_iterator.previous_key));
+				}
 			}
 			_ => {
-				for (collateral_auction_id, _) in <CollateralAuctions<T>>::iter() {
+				let mut iterator =
+					<CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+				while let Some((collateral_auction_id, _)) = iterator.next() {
 					if let (Some(collateral_auction), Some((_, last_bid_price))) = (
 						Self::collateral_auctions(collateral_auction_id),
 						Self::get_last_bid(collateral_auction_id),
@@ -405,8 +436,17 @@ impl<T: Trait> Module<T> {
 					Self::submit_cancel_auction_tx(collateral_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
+
+				if iterator.finished {
+					to_be_continue.clear();
+				} else {
+					to_be_continue.set(&(auction_type_num, iterator.storage_map_iterator.previous_key));
+				}
 			}
 		}
+
+		// Consume the guard but **do not** unlock the underlying lock.
+		guard.forget();
 
 		Ok(())
 	}
