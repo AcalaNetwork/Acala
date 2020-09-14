@@ -460,7 +460,8 @@ impl<T: Trait> Module<T> {
 				.saturating_mul_int(total_communal_balance)
 				.min(Self::free_unbonded());
 
-			// ignore result to continue
+			// bound more amount for staking. if it failed, just that added amount did not
+			// succeed and it should not affect the process. so ignore result to continue.
 			let _ = Self::bond(bond_amount);
 		}
 
