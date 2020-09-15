@@ -133,17 +133,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 	]
 }
 
-pub struct DealWithCommission<GetModuleId>(sp_std::marker::PhantomData<GetModuleId>);
-impl<GetModuleId> OnCommission<Balance, CurrencyId> for DealWithCommission<GetModuleId>
-where
-	GetModuleId: Get<ModuleId>,
-{
-	fn on_commission(currency_id: CurrencyId, amount: Balance) {
-		// this shouldn't overflow. but if it does, we will just burn the commission
-		let _ = Currencies::deposit(currency_id, &GetModuleId::get().into_account(), amount);
-	}
-}
-
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
 	/// We allow for 2 seconds of compute with a 4 second average block time.
@@ -1062,14 +1051,17 @@ impl module_polkadot_bridge::Trait for Runtime {
 	type PolkadotAccountId = AccountId;
 }
 
+pub struct FeeModel;
+impl module_staking_pool::FeeModel for FeeModel {
+	fn get_fee_rate(_: Ratio, _: Ratio, _: Rate) -> Rate {
+		Rate::saturating_from_rational(1, 10)
+	}
+}
+
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
-	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100); // 95%
-	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100); // 80%
-	pub MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100); // 5%
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
-	pub ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(98, 100); // 98%
 }
 
 impl module_staking_pool::Trait for Runtime {
@@ -1078,14 +1070,10 @@ impl module_staking_pool::Trait for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type Nominees = NomineesElection;
-	type OnCommission = DealWithCommission<HomaTreasuryModuleId>;
 	type Bridge = PolkadotBridge;
-	type MaxBondRatio = MaxBondRatio;
-	type MinBondRatio = MinBondRatio;
-	type MaxClaimFee = MaxClaimFee;
 	type DefaultExchangeRate = DefaultExchangeRate;
-	type ClaimFeeReturnRatio = ClaimFeeReturnRatio;
 	type ModuleId = StakingPoolModuleId;
+	type FeeModel = FeeModel;
 }
 
 impl module_homa::Trait for Runtime {
@@ -1244,7 +1232,7 @@ construct_runtime!(
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
 		Homa: module_homa::{Module, Call},
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
-		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
+		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>, Config},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
 
 		// ecosystem modules

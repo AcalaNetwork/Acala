@@ -231,8 +231,8 @@ fn testnet_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus,
-		StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-		DOLLARS,
+		StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+		VestingConfig, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -385,6 +385,15 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_evm: Some(Default::default()),
+		module_staking_pool: Some(StakingPoolConfig {
+			global_params: (
+				FixedU128::saturating_from_rational(5, 100), // target_max_free_unbonded_ratio
+				FixedU128::saturating_from_rational(4, 100), // target_min_free_unbonded_ratio
+				FixedU128::saturating_from_rational(2, 100), // target_unbonding_to_free_ratio
+				FixedU128::saturating_from_rational(1, 1000), // unbonding_to_free_adjustment
+				FixedU128::saturating_from_rational(2, 100), // base_fee_rate
+			),
+		}),
 	}
 }
 
@@ -400,7 +409,7 @@ fn mandala_genesis(
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
@@ -554,5 +563,14 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_evm: Some(Default::default()),
+		module_staking_pool: Some(StakingPoolConfig {
+			global_params: (
+				FixedU128::saturating_from_rational(5, 100), // target_max_free_unbonded_ratio
+				FixedU128::saturating_from_rational(4, 100), // target_min_free_unbonded_ratio
+				FixedU128::saturating_from_rational(2, 100), // target_unbonding_to_free_ratio
+				FixedU128::saturating_from_rational(1, 1000), // unbonding_to_free_adjustment
+				FixedU128::saturating_from_rational(2, 100), // base_fee_rate
+			),
+		}),
 	}
 }

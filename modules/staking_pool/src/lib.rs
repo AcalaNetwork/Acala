@@ -1,21 +1,36 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IterableStorageDoubleMap};
 use frame_system::{self as system};
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, Saturating, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
+	traits::{AccountIdConversion, CheckedDiv, One, Saturating, Zero},
+	DispatchError, DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug,
 };
 use sp_std::prelude::*;
 use support::{
-	ExchangeRate, HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall,
-	PolkadotBridgeState, PolkadotBridgeType, Rate, Ratio,
+	ExchangeRate, HomaProtocol, NomineesProvider, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
+	PolkadotBridgeType, Rate, Ratio,
 };
 
 mod mock;
 mod tests;
+
+/// The params related to rebalance per era
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+pub struct Params {
+	pub target_max_free_unbonded_ratio: Ratio,
+	pub target_min_free_unbonded_ratio: Ratio,
+	pub target_unbonding_to_free_ratio: Ratio,
+	pub unbonding_to_free_adjustment: Rate,
+	pub base_fee_rate: Rate,
+}
+
+pub trait FeeModel {
+	fn get_fee_rate(remain_available_percent: Ratio, demand_in_available_percent: Ratio, base_rate: Rate) -> Rate;
+}
 
 type PolkadotAccountIdOf<T> =
 	<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber, EraIndex>>::PolkadotAccountId;
@@ -26,19 +41,15 @@ pub trait Trait: system::Trait {
 	type StakingCurrencyId: Get<CurrencyId>;
 	type LiquidCurrencyId: Get<CurrencyId>;
 	type Nominees: NomineesProvider<PolkadotAccountIdOf<Self>>;
-	type OnCommission: OnCommission<Balance, CurrencyId>;
 	type Bridge: PolkadotBridge<Self::AccountId, Self::BlockNumber, Balance, EraIndex>;
-	type MaxBondRatio: Get<Ratio>;
-	type MinBondRatio: Get<Ratio>;
-	type MaxClaimFee: Get<Rate>;
 	type DefaultExchangeRate: Get<ExchangeRate>;
-	type ClaimFeeReturnRatio: Get<Ratio>;
 
 	/// The staking pool's module id, keep all staking currency belong to Homa
 	/// protocol.
 	type ModuleId: Get<ModuleId>;
 
-	// TODO: add RewardFeeRatio
+	/// Calculation model for unbond fees
+	type FeeModel: FeeModel;
 }
 
 decl_event!(
@@ -49,11 +60,11 @@ decl_event!(
 	{
 		/// [who, bond_staking, issued_liquid]
 		MintLiquid(AccountId, Balance, Balance),
-		/// [who, redeem_amount, unbond_amount]
+		/// [who, redeem_liquid_amount, unbond_staking_amount]
 		RedeemByUnbond(AccountId, Balance, Balance),
-		/// [who, fee_in_liquid, liquid_amount_burned, staking_amount_retrived]
+		/// [who, redeem_liquid_amount, retrieved_staking_amount, fee_in_staking]
 		RedeemByFreeUnbonded(AccountId, Balance, Balance, Balance),
-		/// [who, target_era, fee, redeem_amount, unbond_amount]
+		/// [who, target_era, fee, redeem_liquid_amount, claimed_staking_amount, fee_in_staking]
 		RedeemByClaimUnbonding(AccountId, EraIndex, Balance, Balance, Balance),
 	}
 );
@@ -72,7 +83,7 @@ decl_storage! {
 		pub CurrentEra get(fn current_era): EraIndex;
 
 		pub NextEraUnbond get(fn next_era_unbond): (Balance, Balance);
-		pub Unbonding get(fn unbonding): map hasher(twox_64_concat) EraIndex => (Balance, Balance); // (value, claimed), value - claimed = unbond to free
+		pub Unbonding get(fn unbonding): map hasher(twox_64_concat) EraIndex => (Balance, Balance, Balance); // (unbounding, claimed, initial_claimed)
 
 		pub ClaimedUnbond get(fn claimed_unbond): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) EraIndex => Balance;
 		pub TotalClaimedUnbonded get(fn total_claimed_unbonded): Balance;
@@ -80,6 +91,23 @@ decl_storage! {
 		pub TotalBonded get(fn total_bonded): Balance;
 		pub UnbondingToFree get(fn unbonding_to_free): Balance;
 		pub FreeUnbonded get(fn free_unbonded): Balance;
+
+		pub GlobalParams get(fn global_params): Params;
+	}
+
+	add_extra_genesis {
+		config(global_params): (Ratio, Ratio, Ratio, Rate, Rate);
+		build(|config: &GenesisConfig| {
+			// TODO: initial params check
+			let (target_max_free_unbonded_ratio, target_min_free_unbonded_ratio, target_unbonding_to_free_ratio, unbonding_to_free_adjustment, base_fee_rate) = config.global_params;
+			GlobalParams::put(Params {
+				target_max_free_unbonded_ratio,
+				target_min_free_unbonded_ratio,
+				target_unbonding_to_free_ratio,
+				unbonding_to_free_adjustment,
+				base_fee_rate,
+			});
+		});
 	}
 }
 
@@ -90,16 +118,13 @@ decl_module! {
 
 		const StakingCurrencyId: CurrencyId = T::StakingCurrencyId::get();
 		const LiquidCurrencyId: CurrencyId = T::LiquidCurrencyId::get();
-		const MaxBondRatio: Ratio = T::MaxBondRatio::get();
-		const MinBondRatio: Ratio = T::MinBondRatio::get();
-		const MaxClaimFee: Rate = T::MaxClaimFee::get();
 		const DefaultExchangeRate: ExchangeRate = T::DefaultExchangeRate::get();
-		const ClaimFeeReturnRatio: Ratio = T::ClaimFeeReturnRatio::get();
 		const ModuleId: ModuleId = T::ModuleId::get();
 	}
 }
 
 impl<T: Trait> Module<T> {
+	/// Module account id
 	pub fn account_id() -> T::AccountId {
 		T::ModuleId::get().into_account()
 	}
@@ -119,7 +144,17 @@ impl<T: Trait> Module<T> {
 			.saturating_add(Self::unbonding_to_free())
 	}
 
-	/// communal_bonded_ratio = communal_bonded / total_communal_balance
+	/// Percentage of free unbonded pool in total communal
+	pub fn get_free_unbonded_ratio() -> Ratio {
+		Ratio::checked_from_rational(Self::free_unbonded(), Self::get_total_communal_balance()).unwrap_or_default()
+	}
+
+	/// Percentage of total unbonding to free in total communal
+	pub fn get_unbonding_to_free_ratio() -> Ratio {
+		Ratio::checked_from_rational(Self::unbonding_to_free(), Self::get_total_communal_balance()).unwrap_or_default()
+	}
+
+	/// Percentage of total communal bonded in total communal
 	pub fn get_communal_bonded_ratio() -> Ratio {
 		Ratio::checked_from_rational(Self::get_communal_bonded(), Self::get_total_communal_balance())
 			.unwrap_or_default()
@@ -193,21 +228,6 @@ impl<T: Trait> Module<T> {
 		})
 	}
 
-	pub fn claim_period_percent(era: EraIndex) -> Ratio {
-		Ratio::checked_from_rational(
-			era.saturating_sub(Self::current_era()),
-			<<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get().saturating_add(EraIndex::one()),
-		)
-		.unwrap_or_default()
-	}
-
-	pub fn calculate_claim_fee(amount: Balance, era: EraIndex) -> Balance {
-		Ratio::one()
-			.saturating_sub(Self::claim_period_percent(era))
-			.saturating_mul(T::MaxClaimFee::get())
-			.saturating_mul_int(amount)
-	}
-
 	/// This function must to be called in `with_transaction_result` scope to
 	/// ensure atomic
 	pub fn redeem_by_unbond(who: &T::AccountId, amount: Balance) -> DispatchResult {
@@ -267,51 +287,67 @@ impl<T: Trait> Module<T> {
 	/// This function must to be called in `with_transaction_result` scope to
 	/// ensure atomic
 	pub fn redeem_by_free_unbonded(who: &T::AccountId, amount: Balance) -> DispatchResult {
-		let mut liquid_amount_to_redeem = amount;
-		let mut fee_in_liquid_currency = sp_std::cmp::min(
-			liquid_amount_to_redeem,
-			Self::calculate_claim_fee(liquid_amount_to_redeem, Self::current_era()),
-		);
-		let mut liquid_amount_to_burn = liquid_amount_to_redeem.saturating_sub(fee_in_liquid_currency);
+		let mut redeem_liquid_amount = amount;
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
-		let mut staking_amount = liquid_exchange_rate
-			.checked_mul_int(liquid_amount_to_burn)
+		let mut demand_staking_amount = liquid_exchange_rate
+			.checked_mul_int(redeem_liquid_amount)
 			.ok_or(Error::<T>::Overflow)?;
-		let free_unbonded_pool = Self::free_unbonded();
 
-		if !staking_amount.is_zero() && !free_unbonded_pool.is_zero() {
-			// if free_unbonded_pool is not enough, need re-calculate
-			if staking_amount > free_unbonded_pool {
-				let ratio = Ratio::checked_from_rational(free_unbonded_pool, staking_amount)
-					.expect("staking_amount is not zero; qed");
-				liquid_amount_to_redeem = ratio.saturating_mul_int(liquid_amount_to_redeem);
-				fee_in_liquid_currency = sp_std::cmp::min(
-					liquid_amount_to_redeem,
-					ratio.saturating_mul_int(fee_in_liquid_currency),
-				);
-				liquid_amount_to_burn = liquid_amount_to_redeem.saturating_sub(fee_in_liquid_currency);
-				staking_amount = free_unbonded_pool;
+		let global_params = Self::global_params();
+		let available_free_unbonded = Self::free_unbonded().saturating_sub(
+			global_params
+				.target_min_free_unbonded_ratio
+				.saturating_mul_int(Self::get_total_communal_balance()),
+		);
+
+		if !demand_staking_amount.is_zero() && !available_free_unbonded.is_zero() {
+			// if available_free_unbonded is not enough, need re-calculate
+			if demand_staking_amount > available_free_unbonded {
+				let ratio = Ratio::checked_from_rational(available_free_unbonded, demand_staking_amount)
+					.expect("demand_staking_amount is not zero; qed");
+				redeem_liquid_amount = ratio.saturating_mul_int(redeem_liquid_amount);
+				demand_staking_amount = available_free_unbonded;
 			}
 
-			let liquid_currency_id = T::LiquidCurrencyId::get();
-			T::Currency::withdraw(liquid_currency_id, who, liquid_amount_to_redeem)
+			let demand_in_available_percent =
+				Ratio::checked_from_rational(demand_staking_amount, available_free_unbonded)
+					.expect("available_free_unbonded is not zero; qed");
+			let remain_available_percent = Self::get_free_unbonded_ratio()
+				.saturating_sub(global_params.target_min_free_unbonded_ratio)
+				.checked_div(
+					&global_params
+						.target_max_free_unbonded_ratio
+						.saturating_sub(global_params.target_min_free_unbonded_ratio),
+				)
+				.unwrap_or_default();
+			let fee_in_staking = T::FeeModel::get_fee_rate(
+				remain_available_percent,
+				demand_in_available_percent,
+				global_params.base_fee_rate,
+			)
+			.saturating_mul_int(demand_staking_amount);
+			let retrieved_staking_amount = demand_staking_amount.saturating_sub(fee_in_staking);
+
+			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, redeem_liquid_amount)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
-			T::Currency::transfer(T::StakingCurrencyId::get(), &Self::account_id(), who, staking_amount)?;
+			T::Currency::transfer(
+				T::StakingCurrencyId::get(),
+				&Self::account_id(),
+				who,
+				retrieved_staking_amount,
+			)?;
 			FreeUnbonded::try_mutate(|free_unbonded| -> DispatchResult {
-				*free_unbonded = free_unbonded.checked_sub(staking_amount).ok_or(Error::<T>::Overflow)?;
+				*free_unbonded = free_unbonded
+					.checked_sub(retrieved_staking_amount)
+					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})?;
 
-			let commission_to_homa = Ratio::one()
-				.saturating_sub(T::ClaimFeeReturnRatio::get())
-				.saturating_mul_int(fee_in_liquid_currency);
-			T::OnCommission::on_commission(liquid_currency_id, commission_to_homa);
-
 			<Module<T>>::deposit_event(RawEvent::RedeemByFreeUnbonded(
 				who.clone(),
-				fee_in_liquid_currency,
-				liquid_amount_to_burn,
-				staking_amount,
+				redeem_liquid_amount,
+				retrieved_staking_amount,
+				fee_in_staking,
 			));
 		}
 
@@ -328,63 +364,67 @@ impl<T: Trait> Module<T> {
 			Error::<T>::InvalidEra,
 		);
 
-		let mut liquid_amount_to_redeem = amount;
-		let mut fee_in_liquid_currency = sp_std::cmp::min(
-			liquid_amount_to_redeem,
-			Self::calculate_claim_fee(liquid_amount_to_redeem, target_era),
-		);
-		let mut liquid_amount_to_burn = liquid_amount_to_redeem.saturating_sub(fee_in_liquid_currency);
-		let mut staking_amount_to_claim = Self::liquid_exchange_rate().saturating_mul_int(liquid_amount_to_burn);
-		let (unbonding_of_target_era, claimed_unbonding_of_target_era) = Self::unbonding(target_era);
-		let available_unclaimed_unbonding = unbonding_of_target_era.saturating_sub(claimed_unbonding_of_target_era);
+		let mut redeem_liquid_amount = amount;
+		let liquid_exchange_rate = Self::liquid_exchange_rate();
+		let mut demand_staking_amount = liquid_exchange_rate
+			.checked_mul_int(redeem_liquid_amount)
+			.ok_or(Error::<T>::Overflow)?;
+		let (unbonding, claimed_unbonding, initial_claimed_unbonding) = Self::unbonding(target_era);
+		let available_unclaimed_unbonding = unbonding.saturating_sub(claimed_unbonding);
 
-		if !staking_amount_to_claim.is_zero() && !available_unclaimed_unbonding.is_zero() {
+		if !demand_staking_amount.is_zero() && !available_unclaimed_unbonding.is_zero() {
 			// if available_unclaimed_unbonding is not enough, need re-calculate
-			if staking_amount_to_claim > available_unclaimed_unbonding {
-				let ratio = Ratio::checked_from_rational(available_unclaimed_unbonding, staking_amount_to_claim)
+			if demand_staking_amount > available_unclaimed_unbonding {
+				let ratio = Ratio::checked_from_rational(available_unclaimed_unbonding, demand_staking_amount)
 					.expect("staking_amount_to_claim is not zero; qed");
-				liquid_amount_to_redeem = ratio.saturating_mul_int(liquid_amount_to_redeem);
-				fee_in_liquid_currency = sp_std::cmp::min(
-					liquid_amount_to_redeem,
-					ratio.saturating_mul_int(fee_in_liquid_currency),
-				);
-				liquid_amount_to_burn = liquid_amount_to_redeem.saturating_sub(fee_in_liquid_currency);
-				staking_amount_to_claim = available_unclaimed_unbonding;
+				redeem_liquid_amount = ratio.saturating_mul_int(redeem_liquid_amount);
+				demand_staking_amount = available_unclaimed_unbonding;
 			}
 
-			let liquid_currency_id = T::LiquidCurrencyId::get();
-			T::Currency::withdraw(liquid_currency_id, who, liquid_amount_to_redeem)
+			let demand_in_available_percent =
+				Ratio::checked_from_rational(demand_staking_amount, available_unclaimed_unbonding)
+					.expect("available_unclaimed_unbonding is not zero; qed");
+			let remain_available_percent = Ratio::checked_from_rational(
+				available_unclaimed_unbonding,
+				unbonding.saturating_sub(initial_claimed_unbonding),
+			)
+			.unwrap_or_default();
+			let global_params = Self::global_params();
+			let fee_in_staking = T::FeeModel::get_fee_rate(
+				remain_available_percent,
+				demand_in_available_percent,
+				global_params.base_fee_rate,
+			)
+			.saturating_mul_int(demand_staking_amount);
+			let claimed_staking_amount = demand_staking_amount.saturating_sub(fee_in_staking);
+
+			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, redeem_liquid_amount)
 				.map_err(|_| Error::<T>::LiquidCurrencyNotEnough)?;
 			<ClaimedUnbond<T>>::try_mutate(who, target_era, |claimed_unbond| -> DispatchResult {
 				*claimed_unbond = claimed_unbond
-					.checked_add(staking_amount_to_claim)
+					.checked_add(claimed_staking_amount)
 					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})?;
-			Unbonding::try_mutate(target_era, |(_, claimed_unbonding)| -> DispatchResult {
+			Unbonding::try_mutate(target_era, |(_, claimed_unbonding, _)| -> DispatchResult {
 				*claimed_unbonding = claimed_unbonding
-					.checked_add(staking_amount_to_claim)
+					.checked_add(claimed_staking_amount)
 					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})?;
 			UnbondingToFree::try_mutate(|unbonding_to_free| -> DispatchResult {
 				*unbonding_to_free = unbonding_to_free
-					.checked_sub(staking_amount_to_claim)
+					.checked_sub(claimed_staking_amount)
 					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})?;
 
-			let commission_to_homa = Ratio::one()
-				.saturating_sub(T::ClaimFeeReturnRatio::get())
-				.saturating_mul_int(fee_in_liquid_currency);
-			T::OnCommission::on_commission(liquid_currency_id, commission_to_homa);
-
 			<Module<T>>::deposit_event(RawEvent::RedeemByClaimUnbonding(
 				who.clone(),
 				target_era,
-				fee_in_liquid_currency,
-				liquid_amount_to_burn,
-				staking_amount_to_claim,
+				redeem_liquid_amount,
+				claimed_staking_amount,
+				fee_in_staking,
 			));
 		}
 
@@ -399,7 +439,10 @@ impl<T: Trait> Module<T> {
 		if !total_to_unbond.is_zero() && T::Bridge::unbond(total_to_unbond).is_ok() {
 			NextEraUnbond::kill();
 			TotalBonded::mutate(|bonded| *bonded = bonded.saturating_sub(total_to_unbond));
-			Unbonding::insert(unbonded_era_index, (total_to_unbond, claimed_to_unbond));
+			Unbonding::insert(
+				unbonded_era_index,
+				(total_to_unbond, claimed_to_unbond, claimed_to_unbond),
+			);
 			UnbondingToFree::mutate(|unbonding| {
 				*unbonding = unbonding.saturating_add(total_to_unbond.saturating_sub(claimed_to_unbond))
 			});
@@ -422,7 +465,7 @@ impl<T: Trait> Module<T> {
 		// #3: withdraw available from bridge ledger and update unbonded at this era
 		let bridge_available = T::Bridge::balance().saturating_sub(bridge_ledger.total);
 		if T::Bridge::receive_from_bridge(&Self::account_id(), bridge_available).is_ok() {
-			let (total_unbonded, claimed_unbonded) = Self::unbonding(era);
+			let (total_unbonded, claimed_unbonded, _) = Self::unbonding(era);
 			let claimed_unbonded_added = bridge_available.min(claimed_unbonded);
 			let free_unbonded_added = bridge_available.saturating_sub(claimed_unbonded_added);
 			if !claimed_unbonded_added.is_zero() {
@@ -437,32 +480,27 @@ impl<T: Trait> Module<T> {
 			Unbonding::remove(era);
 		}
 
-		// #4: according to the communal_bonded_ratio, decide to
-		// bond extra amount to bridge or unbond system bonded to free pool at this era
-		let communal_bonded_ratio = Self::get_communal_bonded_ratio();
-		let max_bond_ratio = T::MaxBondRatio::get();
-		let min_bond_ratio = T::MinBondRatio::get();
+		// #4: according to the pool adjustment params, bond and unbond at this era
 		let total_communal_balance = Self::get_total_communal_balance();
-		if communal_bonded_ratio > max_bond_ratio {
-			// unbond some to free pool
-			let unbond_to_free = communal_bonded_ratio
-				.saturating_sub(max_bond_ratio)
-				.saturating_mul_int(total_communal_balance)
-				.min(Self::get_communal_bonded());
+		let global_params = Self::global_params();
+		let current_free_unbonded_ratio = Self::get_free_unbonded_ratio();
+		let current_unbonding_to_free_ratio = Self::get_unbonding_to_free_ratio();
 
-			if !unbond_to_free.is_zero() {
-				NextEraUnbond::mutate(|(unbond, _)| *unbond = unbond.saturating_add(unbond_to_free));
-			}
-		} else if communal_bonded_ratio < min_bond_ratio {
-			// bond more
-			let bond_amount = min_bond_ratio
-				.saturating_sub(communal_bonded_ratio)
-				.saturating_mul_int(total_communal_balance)
-				.min(Self::free_unbonded());
-
+		let bond_rate = current_free_unbonded_ratio.saturating_sub(global_params.target_max_free_unbonded_ratio);
+		let bond_amount = bond_rate.saturating_mul_int(total_communal_balance);
+		if !bond_amount.is_zero() {
 			// bound more amount for staking. if it failed, just that added amount did not
 			// succeed and it should not affect the process. so ignore result to continue.
 			let _ = Self::bond(bond_amount);
+		}
+
+		let unbond_rate = global_params
+			.target_unbonding_to_free_ratio
+			.saturating_sub(current_unbonding_to_free_ratio)
+			.min(global_params.unbonding_to_free_adjustment);
+		let unbond_to_free = unbond_rate.saturating_mul_int(total_communal_balance);
+		if !unbond_to_free.is_zero() {
+			NextEraUnbond::mutate(|(unbond, _)| *unbond = unbond.saturating_add(unbond_to_free));
 		}
 
 		// #5: unbond and update
