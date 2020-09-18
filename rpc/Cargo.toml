@@ -30,3 +30,4 @@ dev-runtime = { path = "../runtime/dev" }
 runtime-common = { path = "../runtime/common" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
+module-dex-rpc = { path = "../modules/dex/rpc" }

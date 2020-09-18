@@ -279,16 +279,21 @@ impl<T: Trait> Module<T> {
 			// account deposit best practice is to ensure that the first transfer received
 			// by treasury account is sufficient to open an account.
 			if *k != treasury_account {
-				// send dust native currency to treasury account
-				let _ = <T as Trait>::Currency::transfer(
+				// send dust native currency to treasury account.
+				// transfer all free balances from a new account to treasury account, so it
+				// shouldn't fail. but even it failed, leave some dust storage is not a critical
+				// issue, just open account without reserve NewAccountDeposit.
+				if <T as Trait>::Currency::transfer(
 					native_currency_id,
 					k,
 					&treasury_account,
 					<T as Trait>::Currency::free_balance(native_currency_id, k),
-				);
-
-				// remove the account info pretend that opening account has never happened
-				system::Account::<T>::remove(k);
+				)
+				.is_ok()
+				{
+					// remove the account info pretend that opening account has never happened
+					system::Account::<T>::remove(k);
+				}
 			}
 		}
 	}
@@ -314,6 +319,9 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 				if amount >= supply_amount_needed {
 					// successful swap will cause changes in native currency,
 					// which also means that it will open a new account
+					// exchange token to native currency and open account.
+					// if it failed, leave some dust storage is not a critical issue,
+					// just open account without reserve NewAccountDeposit.
 					let _ = T::DEX::exchange_currency(
 						who.clone(),
 						currency_id,
@@ -326,6 +334,9 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 					// transfer all token as dust to treasury account.
 					let treasury_account = Self::treasury_account_id();
 					if *who != treasury_account {
+						// transfer all free balances from a new account to treasury account, so it
+						// shouldn't fail. but even it failed, leave some dust storage is not a critical
+						// issue, just open account without reserve NewAccountDeposit.
 						let _ = <T as Trait>::Currency::transfer(currency_id, who, &treasury_account, amount);
 					}
 				}

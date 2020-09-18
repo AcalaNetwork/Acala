@@ -167,7 +167,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	type AuctionId = AuctionId;
 
 	fn new_collateral_auction(
-		_who: &AccountId,
+		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
 		_amount: Self::Balance,
 		_target: Self::Balance,

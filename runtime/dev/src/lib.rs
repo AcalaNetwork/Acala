@@ -139,6 +139,7 @@ where
 	GetModuleId: Get<ModuleId>,
 {
 	fn on_commission(currency_id: CurrencyId, amount: Balance) {
+		// this shouldn't overflow. but if it does, we will just burn the commission
 		let _ = Currencies::deposit(currency_id, &GetModuleId::get().into_account(), amount);
 	}
 }
