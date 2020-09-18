@@ -198,6 +198,7 @@ impl orml_oracle::Trait<orml_oracle::Instance1> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
+	type WeightInfo = ();
 }
 pub type ModuleOracle = orml_oracle::Module<Runtime, orml_oracle::Instance1>;
 

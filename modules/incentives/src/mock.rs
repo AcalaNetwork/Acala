@@ -182,6 +182,7 @@ impl orml_rewards::Trait for Runtime {
 	type Balance = Balance;
 	type PoolId = PoolId;
 	type Handler = IncentivesModule;
+	type WeightInfo = ();
 }
 pub type RewardsModule = orml_rewards::Module<Runtime>;
 
