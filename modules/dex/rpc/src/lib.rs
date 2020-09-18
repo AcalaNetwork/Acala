@@ -89,9 +89,10 @@ where
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(||
+		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.
-			self.client.info().best_hash));
+			self.client.info().best_hash,
+		));
 
 		let amount: Balance = TryFrom::try_from(target_currency_amount.into_u256()).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),
@@ -115,9 +116,10 @@ where
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(||
+		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.
-			self.client.info().best_hash));
+			self.client.info().best_hash,
+		));
 
 		let amount: Balance = TryFrom::try_from(supply_currency_amount.into_u256()).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),
