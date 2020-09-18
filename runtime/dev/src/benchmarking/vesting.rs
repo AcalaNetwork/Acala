@@ -75,7 +75,7 @@ runtime_benchmarks! {
 		let to: AccountId = account("to", u, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 
-		let _ = Vesting::vested_transfer(RawOrigin::Signed(from).into(), to_lookup, schedule.clone());
+		Vesting::vested_transfer(RawOrigin::Signed(from).into(), to_lookup, schedule.clone())?;
 		System::set_block_number(schedule.end().unwrap() + 1u32);
 	}: _(RawOrigin::Signed(to.clone()))
 	verify {
@@ -107,7 +107,7 @@ runtime_benchmarks! {
 		let to_lookup = lookup_of_account(to.clone());
 
 		for _ in 0..10 {
-			let _ = Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone());
+			Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone())?;
 		}
 		System::set_block_number(schedule.end().unwrap() + 1u32);
 	}: claim(RawOrigin::Signed(to.clone()))

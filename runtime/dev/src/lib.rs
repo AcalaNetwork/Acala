@@ -679,6 +679,7 @@ impl orml_authority::Trait for Runtime {
 	type Scheduler = Scheduler;
 	type AsOriginId = AuthoritysOriginId;
 	type AuthorityConfig = AuthorityConfigImpl;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -722,6 +723,7 @@ impl orml_oracle::Trait<AcalaDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
+	type WeightInfo = ();
 }
 
 type BandDataProvider = orml_oracle::Instance2;
@@ -733,6 +735,7 @@ impl orml_oracle::Trait<BandDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
+	type WeightInfo = ();
 }
 
 create_median_value_data_provider!(
@@ -827,6 +830,7 @@ impl orml_gradually_update::Trait for Runtime {
 	type Event = Event;
 	type UpdateFrequency = UpdateFrequency;
 	type DispatchOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1023,6 +1027,7 @@ impl orml_rewards::Trait for Runtime {
 	type Balance = Balance;
 	type PoolId = module_incentives::PoolId;
 	type Handler = Incentives;
+	type WeightInfo = ();
 }
 
 parameter_types! {
