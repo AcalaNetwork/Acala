@@ -806,7 +806,7 @@ impl EnsureOrigin<Origin> for EnsureRootOrAcalaTreasury {
 
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
-			RawOrigin::Root => Ok(ZeroAccountId::get()),
+			RawOrigin::Root => Ok(AcalaTreasuryModuleId::get().into_account()),
 			RawOrigin::Signed(caller) => {
 				if caller == AcalaTreasuryModuleId::get().into_account() {
 					Ok(caller)
