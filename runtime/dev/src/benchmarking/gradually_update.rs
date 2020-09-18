@@ -1,7 +1,6 @@
 use crate::{GraduallyUpdate, Origin, Runtime, System, UpdateFrequency};
 
 use frame_support::traits::OnFinalize;
-use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
@@ -24,7 +23,7 @@ runtime_benchmarks! {
 			target_value: vec![u as u8],
 			per_block: vec![1],
 		};
-	}: _(RawOrigin::Root, update)
+	}: _(Origin::root(), update)
 
 	// cancel gradually update
 	cancel_gradually_update {

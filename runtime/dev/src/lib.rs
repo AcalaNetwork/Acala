@@ -37,7 +37,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-use frame_system::{EnsureOneOf, EnsureRoot};
+use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
@@ -51,7 +51,9 @@ use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
-	traits::{Contains, ContainsLengthBound, Filter, Get, KeyOwnerProofSystem, LockIdentifier, Randomness},
+	traits::{
+		Contains, ContainsLengthBound, EnsureOrigin, Filter, Get, KeyOwnerProofSystem, LockIdentifier, Randomness,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		IdentityFee, Weight,
@@ -798,6 +800,30 @@ impl orml_currencies::Trait for Runtime {
 	type WeightInfo = ();
 }
 
+pub struct EnsureRootOrAcalaTreasury;
+impl EnsureOrigin<Origin> for EnsureRootOrAcalaTreasury {
+	type Success = AccountId;
+
+	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
+		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
+			RawOrigin::Root => Ok(ZeroAccountId::get()),
+			RawOrigin::Signed(caller) => {
+				if caller == AcalaTreasuryModuleId::get().into_account() {
+					Ok(caller)
+				} else {
+					Err(Origin::from(Some(caller)))
+				}
+			}
+			r => Err(Origin::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> Origin {
+		Origin::from(RawOrigin::Signed(Default::default()))
+	}
+}
+
 parameter_types! {
 	pub const MinVestedTransfer: Balance = 100 * DOLLARS;
 }
@@ -806,6 +832,7 @@ impl orml_vesting::Trait for Runtime {
 	type Event = Event;
 	type Currency = pallet_balances::Module<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
+	type VestedTransferOrigin = EnsureRootOrAcalaTreasury;
 	type WeightInfo = ();
 }
 
