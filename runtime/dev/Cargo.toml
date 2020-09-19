@@ -95,6 +95,7 @@ module-honzon-benchmarking = { path = "../../modules/honzon/benchmarking", defau
 module-cdp-engine-benchmarking = { path = "../../modules/cdp_engine/benchmarking", default-features = false, optional = true }
 module-emergency-shutdown-benchmarking = { path = "../../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
 module-auction-manager-benchmarking = { path = "../../modules/auction_manager/benchmarking", default-features = false, optional = true }
+module-nft-benchmarking = { path = "../../modules/nft/benchmarking", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -210,6 +211,7 @@ runtime-benchmarks = [
 	"module-dex/runtime-benchmarks",
 	"module-emergency-shutdown-benchmarking",
 	"module-honzon-benchmarking",
+	"module-nft-benchmarking",
 ]
 # When enabled, the runtime api will not be build.
 #

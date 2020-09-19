@@ -1,8 +1,9 @@
 #![cfg(test)]
 
 use dev_runtime::{
-	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, BlockNumber, Call, CurrencyId, DSWFModuleId,
-	Event, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime, SevenDays, TokenSymbol,
+	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
+	CurrencyId, DSWFModuleId, Event, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime,
+	SevenDays, TokenSymbol, NFT,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -1043,5 +1044,52 @@ fn test_authority_module() {
 				5,
 			));
 			assert!(last_event() == event);
+		});
+}
+
+#[test]
+fn test_nft_module() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				GetNativeCurrencyId::get(),
+				NewAccountDeposit::get(),
+			),
+			(
+				AccountId::from(ALICE),
+				CurrencyId::Token(TokenSymbol::ACA),
+				amount(1000),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), amount(1000));
+			assert_ok!(NFT::create_class(
+				origin_of(AccountId::from(ALICE)),
+				vec![1],
+				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable)
+			));
+			assert_ok!(NFT::mint(
+				origin_of(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				0,
+				vec![1],
+				1
+			));
+			assert_ok!(NFT::burn(origin_of(AccountId::from(BOB)), (0, 0)));
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 0);
+			assert_ok!(NFT::destroy_class(
+				origin_of(AccountId::from(ALICE)),
+				0,
+				AccountId::from(BOB)
+			));
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateClassDeposit::get());
+			assert_eq!(
+				Balances::reserved_balance(AccountId::from(BOB)),
+				NewAccountDeposit::get()
+			);
+			// CreateClassDeposit::get() + NewAccountDeposit::get() = 6000000000000000
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 999994000000000000000);
 		});
 }

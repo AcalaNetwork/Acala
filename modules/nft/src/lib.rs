@@ -5,6 +5,7 @@ use enumflags2::BitFlags;
 use frame_support::{
 	decl_error, decl_event, decl_module, ensure,
 	traits::{Get, IsType},
+	weights::constants::WEIGHT_PER_MICROS,
 };
 use frame_system::ensure_signed;
 use orml_nft::CID;
@@ -29,7 +30,7 @@ pub enum ClassProperty {
 }
 
 #[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
-pub struct Properties(BitFlags<ClassProperty>);
+pub struct Properties(pub BitFlags<ClassProperty>);
 
 impl Eq for Properties {}
 impl Encode for Properties {
@@ -127,8 +128,23 @@ decl_module! {
 		/// The NFT's module id
 		const ModuleId: ModuleId = T::ModuleId::get();
 
-
-		#[weight = 10_000]
+		/// Create NFT class, tokens belong to the class.
+		///
+		/// - `metadata`: external metadata
+		/// - `properties`: class property, include `Transferable` `Burnable`
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads: 2
+		/// - Db writes: 3
+		/// -------------------
+		/// Base Weight:
+		///		- best case: 231.1 µs
+		///		- worst case: 233.7 µs
+		/// # </weight>
+		#[weight = 233 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 3)]
 		pub fn create_class(origin, metadata: CID, properties: Properties) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -136,7 +152,9 @@ decl_module! {
 				let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
 				let deposit = T::CreateClassDeposit::get();
 				<T as Trait>::Currency::transfer(&who, &owner, deposit)?;
-				<T as Trait>::Currency::reserve(&owner, deposit)?;
+				// `owner` must be a new account, so the free balance will reserve `NewAccountDeposit`.
+				// use `free_balance(owner)` instead of `deposit`
+				<T as Trait>::Currency::reserve(&owner, <T as Trait>::Currency::free_balance(&owner))?;
 				//	Depends on https://github.com/paritytech/substrate/issues/7139
 				//	For now, use origin as owner and skip the proxy part
 				//	pallet_proxy::Module<T>::add_proxy(owner, origin, Default::default(), 0)
@@ -150,7 +168,25 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		/// Mint NFT token
+		///
+		/// - `to`: the token owner's account
+		/// - `class_id`: token belong to the class id
+		/// - `metadata`: external metadata
+		/// - `quantity`: token quantity
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads: 3
+		/// - Db writes: 5
+		/// -------------------
+		/// Base Weight:
+		///		- best case: 202 µs
+		///		- worst case: 208 µs
+		/// # </weight>
+		#[weight = 208 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 5)]
 		pub fn mint(origin, to: T::AccountId, class_id: <T as orml_nft::Trait>::ClassId, metadata: CID, quantity: u32) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -174,7 +210,23 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		/// Transfer NFT token to another account
+		///
+		/// - `to`: the token owner's account
+		/// - `token`: (class_id, token_id)
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads: 3
+		/// - Db writes: 3
+		/// -------------------
+		/// Base Weight:
+		///		- best case: 97.81 µs
+		///		- worst case: 99.99 µs
+		/// # </weight>
+		#[weight = 100 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 3)]
 		pub fn transfer(origin, to: T::AccountId, token: (<T as orml_nft::Trait>::ClassId, <T as orml_nft::Trait>::TokenId)) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -192,7 +244,22 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		/// Burn NFT token
+		///
+		/// - `token`: (class_id, token_id)
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads: 5
+		/// - Db writes: 5
+		/// -------------------
+		/// Base Weight:
+		///		- best case: 261.2 µs
+		///		- worst case: 261.4 µs
+		/// # </weight>
+		#[weight = 261 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(5, 5)]
 		pub fn burn(origin, token: (<T as orml_nft::Trait>::ClassId, <T as orml_nft::Trait>::TokenId)) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -217,7 +284,23 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		/// Destroy NFT class
+		///
+		/// - `class_id`: destroy class id
+		/// - `dest`: transfer reserve balance from sub_account to dest
+		///
+		/// # <weight>
+		/// - Preconditions:
+		/// 	- T::Currency is orml_currencies
+		/// - Complexity: `O(1)`
+		/// - Db reads: 3
+		/// - Db writes: 3
+		/// -------------------
+		/// Base Weight:
+		///		- best case: 224.3 µs
+		///		- worst case: 224.7 µs
+		/// # </weight>
+		#[weight = 224 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 3)]
 		pub fn destroy_class(origin, class_id: <T as orml_nft::Trait>::ClassId, dest: T::AccountId) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
