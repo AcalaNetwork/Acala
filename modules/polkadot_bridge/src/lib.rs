@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, Parameter};
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::BasicCurrency;
@@ -7,13 +8,26 @@ use orml_utilities::with_transaction_result;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
-	DispatchResult, FixedPointNumber,
+	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, prelude::*};
+use std::collections::HashMap;
 use support::{
 	OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType, PolkadotStakingLedger,
 	PolkadotUnlockChunk, Rate,
 };
+
+/// The params related to rebalance per era
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+pub struct AccountStatus {
+	/// Bonded amount
+	pub bonded: Balance,
+	/// Free amount
+	pub available: Balance,
+	/// Unbonding list
+	pub unbonding: Vec<(EraIndex, Balance)>,
+	pub mock_reward_rate: Rate,
+}
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -45,13 +59,11 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as PolkadotBridge {
-		pub Bonded get(fn bonded): Balance;	// active
-		pub Available get(fn available): Balance; // balance - bonded
-		pub Unbonding get(fn unbonding): Vec<(Balance, EraIndex)>;
 		pub CurrentEra get(fn current_era): EraIndex;
 		pub EraStartBlockNumber get(fn era_start_block_number): T::BlockNumber;
 		pub ForcedEra get(fn forced_era): Option<T::BlockNumber>;
-		pub MockRewardRate get(fn mock_reward_rate) config(): Option<Rate>;
+
+		pub SubAccounts get(fn sub_accounts): map hasher(twox_64_concat) u32 => AccountStatus;
 	}
 }
 
@@ -64,23 +76,30 @@ decl_module! {
 		const EraLength: T::BlockNumber = T::EraLength::get();
 
 		#[weight = 10_000]
-		pub fn set_mock_reward_rate(origin, mock_reward_rate: Option<Rate>) {
+		pub fn set_mock_reward_rate(origin, account_index: u32, reward_rate: Rate) {
 			with_transaction_result(|| {
 				ensure_root(origin)?;
-				if let Some(mock_reward_rate) = mock_reward_rate {
-					MockRewardRate::put(mock_reward_rate);
-				} else {
-					MockRewardRate::kill();
-				}
+				SubAccounts::mutate(account_index, |status| {
+					status.mock_reward_rate = reward_rate;
+				});
 				Ok(())
 			})?;
 		}
 
+
+		fn transfer_to_bridge(from: &T::AccountId, amount: Balance) -> DispatchResult {
+			Self::transfer_to_sub_account(0, from, amount)
+		}
+
+		fn receive_from_bridge(to: &T::AccountId, amount: Balance) -> DispatchResult {
+			Self::receive_from_sub_account(0, to, amount)
+		}
+
 		#[weight = 10_000]
-		pub fn simulate_bond(origin, amount: Balance) {
+		pub fn simulate_bond_extra(origin, amount: Balance) {
 			with_transaction_result(|| {
 				ensure_root(origin)?;
-				Self::bond_extra(amount)?;
+				<Self as PolkadotBridgeCall<_, _, _, _>>::bond_extra(amount)?;
 				Ok(())
 			})?;
 		}
@@ -89,7 +108,16 @@ decl_module! {
 		pub fn simulate_unbond(origin, amount: Balance) {
 			with_transaction_result(|| {
 				ensure_root(origin)?;
-				Self::unbond(amount)?;
+				<Self as PolkadotBridgeCall<_, _, _, _>>::unbond(amount)?;
+				Ok(())
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn simulate_rebond(origin, amount: Balance) {
+			with_transaction_result(|| {
+				ensure_signed(origin)?;
+				<Self as PolkadotBridgeCall<_, _, _, _>>::rebond(amount)?;
 				Ok(())
 			})?;
 		}
@@ -97,40 +125,52 @@ decl_module! {
 		#[weight = 10_000]
 		pub fn simulate_withdraw_unbonded(origin) {
 			with_transaction_result(|| {
+				ensure_signed(origin)?;
+				<Self as PolkadotBridgeCall<_, _, _, _>>::withdraw_unbonded();
+				Ok(())
+			})?;
+		}
+
+		#[weight = 10_000]
+		pub fn simulate_payout_nominator(origin) {
+			with_transaction_result(|| {
+				ensure_signed(origin)?;
+				<Self as PolkadotBridgeCall<_, _, _, _>>::payout_nominator();
+				Ok(())
+			})?;
+		}
+
+
+
+
+
+
+		#[weight = 10_000]
+		pub fn simulate_withdraw_unbonded(origin) {
+			with_transaction_result(|| {
 				// ignore because we don't care who send the message
 				let _ = ensure_signed(origin)?;
-				Self::withdraw_unbonded();
+				<Self as PolkadotBridgeCall<_, _, _, _>>::withdraw_unbonded();
 				Ok(())
 			})?;
 		}
 
 		#[weight = 10_000]
-		pub fn simulate_slash(origin, amount: Balance) {
+		pub fn simulate_slash_sub_account(origin, account_index: u32, amount: Balance) {
 			with_transaction_result(|| {
 				ensure_root(origin)?;
-				Bonded::mutate(|balance| *balance = balance.saturating_sub(amount));
+				SubAccounts::mutate(account_index, |status| {
+					status.bonded = status.bonded.saturating_sub(amount);
+				});
 				Ok(())
 			})?;
 		}
 
 		#[weight = 10_000]
-		pub fn simualte_receive(origin, to: T::AccountId, amount: Balance) {
+		pub fn simualte_receive_from_sub_account(origin, account_index: u32, to: T::AccountId, amount: Balance) {
 			with_transaction_result(|| {
 				ensure_root(origin)?;
-				let new_available = Self::available().checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
-				T::DOTCurrency::deposit(&to, amount)?;
-				Available::put(new_available);
-				Ok(())
-			})?;
-		}
-
-		#[weight = 10_000]
-		pub fn simulate_redeem(origin, _to: T::PolkadotAccountId, amount: Balance) {
-			with_transaction_result(|| {
-				let from = ensure_signed(origin)?;
-				let new_available = Self::available().checked_add(amount).ok_or(Error::<T>::Overflow)?;
-				T::DOTCurrency::withdraw(&from, amount)?;
-				Available::put(new_available);
+				Self::receive_from_sub_account(account_index, to, amount)?;
 				Ok(())
 			})?;
 		}
@@ -173,6 +213,138 @@ impl<T: Trait> Module<T> {
 		<EraStartBlockNumber<T>>::put(now);
 		T::OnNewEra::on_new_era(new_era);
 	}
+
+	/// simulate bond extra by sub account
+	fn sub_account_bond_extra(account_index: u32, amount: Balance) -> DispatchResult {
+		if !amount.is_zero() {
+			SubAccounts::try_mutate(account_index, |status| -> DispatchResult {
+				status.available = status.available.checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
+				status.bonded = status.bonded.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+				Ok(())
+			})?;
+		}
+
+		Ok(())
+	}
+
+	/// simulate unbond by sub account
+	fn sub_account_unbond(account_index: u32, amount: Balance) -> DispatchResult {
+		if !amount.is_zero() {
+			SubAccounts::try_mutate(account_index, |status| -> DispatchResult {
+				status.bonded = status.bonded.checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
+				let current_era = Self::current_era();
+				let unbonded_era_index = current_era + T::BondingDuration::get();
+				status.unbonding.push((unbonded_era_index, amount));
+				debug::debug!(
+					target: "polkadot bridge simulator",
+					"sub account {:?} unbond: {:?} at {:?}",
+					account_index, amount, current_era,
+				);
+
+				Ok(())
+			})?;
+		}
+
+		Ok(())
+	}
+
+	/// simulate rebond by sub account
+	fn sub_account_rebond(account_index: u32, amount: Balance) -> DispatchResult {
+		SubAccounts::try_mutate(account_index, |status| -> DispatchResult {
+			let mut unbonding = status.unbonding.clone();
+			let mut bonded = status.bonded;
+			let mut rebond_balance: Balance = Zero::zero();
+
+			while let Some(last) = unbonding.last_mut() {
+				if rebond_balance + last.1 <= amount {
+					rebond_balance += last.1;
+					bonded += last.1;
+					unbonding.pop();
+				} else {
+					let diff = amount - rebond_balance;
+
+					rebond_balance += diff;
+					bonded += diff;
+					last.1 -= diff;
+				}
+
+				if rebond_balance >= amount {
+					break;
+				}
+			}
+			ensure!(rebond_balance >= amount, Error::<T>::NotEnough);
+			if !rebond_balance.is_zero() {
+				status.bonded = bonded;
+				status.unbonding = unbonding;
+
+				debug::debug!(
+					target: "polkadot bridge simulator",
+					"sub account {:?} rebond: {:?}",
+					account_index, rebond_balance,
+				);
+			}
+
+			Ok(())
+		})
+	}
+
+	/// simulate withdraw unbonded by sub account
+	fn sub_account_withdraw_unbonded(account_index: u32) {
+		SubAccounts::mutate(account_index, |status| {
+			let current_era = Self::current_era();
+			let mut available = status.available;
+			let unbonding = status
+				.unbonding
+				.clone()
+				.into_iter()
+				.filter(|(era_index, value)| {
+					if *era_index > current_era {
+						true
+					} else {
+						available = available.saturating_add(*value);
+						false
+					}
+				})
+				.collect::<Vec<_>>();
+
+			status.available = available;
+			status.unbonding = unbonding;
+		});
+	}
+
+	/// simulate receive staking reward by sub account
+	fn sub_account_payout_nominator(account_index: u32) {
+		SubAccounts::mutate(account_index, |status| {
+			let reward = status.mock_reward_rate.saturating_mul_int(status.bonded);
+			status.available = status.available.saturating_add(reward);
+
+			debug::debug!(
+				target: "polkadot bridge simulator",
+				"sub account {:?} get reward: {:?}",
+				account_index, reward,
+			);
+		});
+	}
+
+	/// simulate nominate by sub account
+	fn sub_account_nominate(_account_index: u32, _targets: Vec<T::PolkadotAccountId>) {}
+
+	/// simulate transfer dot from acala to parachain sub account in polkadot
+	fn transfer_to_sub_account(account_index: u32, from: &T::AccountId, amount: Balance) -> DispatchResult {
+		T::DOTCurrency::withdraw(from, amount)?;
+		SubAccounts::mutate(account_index, |status| {
+			status.available = status.available.saturating_add(amount);
+		});
+		Ok(())
+	}
+
+	/// simulate receive dot from parachain sub account in polkadot to acala
+	fn receive_from_sub_account(account_index: u32, to: &T::AccountId, amount: Balance) -> DispatchResult {
+		SubAccounts::try_mutate(account_index, |status| -> DispatchResult {
+			status.available = status.available.checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
+			T::DOTCurrency::deposit(&to, amount)
+		})
+	}
 }
 
 impl<T: Trait> PolkadotBridgeType<T::BlockNumber, EraIndex> for Module<T> {
@@ -182,167 +354,92 @@ impl<T: Trait> PolkadotBridgeType<T::BlockNumber, EraIndex> for Module<T> {
 }
 
 impl<T: Trait> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraIndex> for Module<T> {
-	// simulate bond extra
 	fn bond_extra(amount: Balance) -> DispatchResult {
-		let free_balance = Self::available();
-
-		if !amount.is_zero() {
-			ensure!(free_balance >= amount, Error::<T>::NotEnough);
-			Bonded::mutate(|balance| *balance += amount);
-			Available::mutate(|balance| *balance -= amount);
-
-			debug::debug!(
-				target: "polkadot bridge simulator",
-				"bond extra: {:?}",
-				amount,
-			);
-		}
-
-		Ok(())
+		Self::sub_account_bond_extra(0, amount)
 	}
 
-	// simulate unbond
 	fn unbond(amount: Balance) -> DispatchResult {
-		let bonded = Self::bonded();
-
-		if !amount.is_zero() {
-			ensure!(bonded >= amount, Error::<T>::NotEnough);
-			let mut unbonding = Self::unbonding();
-			let current_era = Self::current_era();
-			let unbonded_era_index = current_era + T::BondingDuration::get();
-			unbonding.push((amount, unbonded_era_index));
-
-			Bonded::mutate(|bonded| *bonded -= amount);
-			Unbonding::put(unbonding);
-
-			debug::debug!(
-				target: "polkadot bridge simulator",
-				"unbond: {:?} at {:?}",
-				amount, current_era,
-			);
-		}
-
-		Ok(())
+		Self::sub_account_unbond(0, amount)
 	}
 
-	// simulate rebond
 	fn rebond(amount: Balance) -> DispatchResult {
-		let mut unbonding = Self::unbonding();
-		let mut bonded = Self::bonded();
-		let mut rebond_balance: Balance = Zero::zero();
-
-		while let Some(last) = unbonding.last_mut() {
-			if rebond_balance + last.0 <= amount {
-				rebond_balance += last.0;
-				bonded += last.0;
-				unbonding.pop();
-			} else {
-				let diff = amount - rebond_balance;
-
-				rebond_balance += diff;
-				bonded += diff;
-				last.0 -= diff;
-			}
-
-			if rebond_balance >= amount {
-				break;
-			}
-		}
-		ensure!(rebond_balance >= amount, Error::<T>::NotEnough);
-		if !rebond_balance.is_zero() {
-			Bonded::put(bonded);
-			Unbonding::put(unbonding);
-
-			debug::debug!(
-				target: "polkadot bridge simulator",
-				"rebond: {:?}",
-				rebond_balance,
-			);
-		}
-		Ok(())
+		Self::sub_account_rebond(0, amount)
 	}
 
-	// simulate withdraw unbonded
 	fn withdraw_unbonded() {
-		let current_era = Self::current_era();
-		let mut available = Self::available();
-		let unbonding = Self::unbonding()
-			.into_iter()
-			.filter(|(value, era_index)| {
-				if *era_index > current_era {
-					true
-				} else {
-					available = available.saturating_add(*value);
-					false
-				}
-			})
-			.collect::<Vec<_>>();
-
-		Available::put(available);
-		Unbonding::put(unbonding);
+		Self::sub_account_withdraw_unbonded(0)
 	}
 
-	// simulate receive staking reward
 	fn payout_nominator() {
-		if let Some(mock_reward_rate) = Self::mock_reward_rate() {
-			let reward = mock_reward_rate.saturating_mul_int(Self::bonded());
-			Available::mutate(|balance| *balance = balance.saturating_add(reward));
-
-			debug::debug!(
-				target: "polkadot bridge simulator",
-				"get reward: {:?}",
-				reward,
-			);
-		}
+		Self::sub_account_payout_nominator(0)
 	}
 
-	fn nominate(_targets: Vec<Self::PolkadotAccountId>) {}
+	fn nominate(targets: Vec<Self::PolkadotAccountId>) {
+		Self::sub_account_nominate(0, targets)
+	}
 
-	// simulate transfer dot from acala to parachain account in polkadot
 	fn transfer_to_bridge(from: &T::AccountId, amount: Balance) -> DispatchResult {
-		T::DOTCurrency::withdraw(from, amount)?;
-		Available::mutate(|balance| *balance = balance.saturating_add(amount));
-		Ok(())
+		Self::transfer_to_sub_account(0, from, amount)
 	}
 
-	// simulate receive dot from parachain account in polkadot to acala
 	fn receive_from_bridge(to: &T::AccountId, amount: Balance) -> DispatchResult {
-		let new_available = Self::available().checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
-		Available::put(new_available);
-		T::DOTCurrency::deposit(&to, amount)?;
-		Ok(())
+		Self::receive_from_sub_account(0, to, amount)
 	}
 }
 
 impl<T: Trait> PolkadotBridgeState<Balance, EraIndex> for Module<T> {
 	fn ledger() -> PolkadotStakingLedger<Balance, EraIndex> {
-		let active = Self::bonded();
-		let mut total = active;
-		let unlocking = Self::unbonding()
-			.into_iter()
-			.map(|(balance, era_index)| {
-				total = total.saturating_add(balance);
+		let mut active: Balance = Zero::zero();
+		let mut total: Balance = Zero::zero();
+		let mut accumulated_unbonding: HashMap<EraIndex, Balance> = HashMap::new();
+
+		for (_, status) in SubAccounts::iter() {
+			active = active.saturating_add(status.bonded);
+
+			for (era_index, amount) in status.unbonding {
+				if let Some(v) = accumulated_unbonding.get_mut(&era_index) {
+					*v = v.saturating_add(amount);
+				} else {
+					accumulated_unbonding.insert(era_index, amount);
+				};
+			}
+		}
+
+		let mut unlocking_list: Vec<(EraIndex, Balance)> = accumulated_unbonding
+			.iter()
+			.map(|(key, value)| (*key, *value))
+			.collect::<Vec<(EraIndex, Balance)>>();
+		unlocking_list.sort_by(|a, b| a.0.cmp(&b.0));
+		let unlocking = unlocking_list
+			.iter()
+			.map(|(era_index, amount)| {
+				total = total.saturating_add(*amount);
 				PolkadotUnlockChunk {
-					value: balance,
-					era: era_index,
+					value: *amount,
+					era: *era_index,
 				}
 			})
-			.collect::<_>();
+			.collect::<Vec<_>>();
 
-		PolkadotStakingLedger {
+		PolkadotStakingLedger::<Balance, EraIndex> {
 			total,
 			active,
 			unlocking,
 		}
 	}
 
+	/// bonded + available + total_unlocking
 	fn balance() -> Balance {
-		// bonded + total_unlocking + available
-		Self::unbonding()
-			.iter()
-			.fold(Self::bonded().saturating_add(Self::available()), |x, (balance, _)| {
-				x.saturating_add(*balance)
-			})
+		SubAccounts::iter().fold(Zero::zero(), |acc, (_, status)| {
+			acc.saturating_add(
+				status
+					.unbonding
+					.iter()
+					.fold(status.bonded.saturating_add(status.available), |x, (_, amount)| {
+						x.saturating_add(*amount)
+					}),
+			)
+		})
 	}
 
 	fn current_era() -> EraIndex {

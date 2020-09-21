@@ -38,10 +38,9 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot};
-use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{create_median_value_data_provider, currency::MultiCurrency, DataFeeder, DataProviderExtended};
+use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
 use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 use pallet_grandpa::fg_primitives;

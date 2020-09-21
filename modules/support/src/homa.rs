@@ -22,7 +22,9 @@ pub struct PolkadotUnlockChunk<Balance, EraIndex> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
 pub struct PolkadotStakingLedger<Balance, EraIndex> {
+	/// Total amount, `active` plus all `unlocking`
 	pub total: Balance,
+	/// Amount at bonded
 	pub active: Balance,
 	pub unlocking: Vec<PolkadotUnlockChunk<Balance, EraIndex>>,
 }

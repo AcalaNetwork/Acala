@@ -1,9 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IterableStorageDoubleMap};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+	IterableStorageDoubleMap,
+};
 use frame_system::{self as system};
-use orml_traits::MultiCurrency;
+use orml_traits::{Change, MultiCurrency};
+use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId, EraIndex};
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, One, Saturating, Zero},
@@ -32,6 +37,9 @@ pub trait FeeModel {
 	fn get_fee_rate(remain_available_percent: Ratio, demand_in_available_percent: Ratio, base_rate: Rate) -> Rate;
 }
 
+type ChangeRate = Change<Rate>;
+type ChangeRatio = Change<Ratio>;
+
 type PolkadotAccountIdOf<T> =
 	<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber, EraIndex>>::PolkadotAccountId;
 
@@ -50,6 +58,8 @@ pub trait Trait: system::Trait {
 
 	/// Calculation model for unbond fees
 	type FeeModel: FeeModel;
+
+	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event!(
@@ -120,6 +130,38 @@ decl_module! {
 		const LiquidCurrencyId: CurrencyId = T::LiquidCurrencyId::get();
 		const DefaultExchangeRate: ExchangeRate = T::DefaultExchangeRate::get();
 		const ModuleId: ModuleId = T::ModuleId::get();
+
+		#[weight = 10000]
+		pub fn set_global_params(
+			origin,
+			target_max_free_unbonded_ratio: ChangeRatio,
+			target_min_free_unbonded_ratio: ChangeRatio,
+			target_unbonding_to_free_ratio: ChangeRatio,
+			unbonding_to_free_adjustment: ChangeRate,
+			base_fee_rate: ChangeRate,
+		) {
+			with_transaction_result(|| {
+				T::UpdateOrigin::ensure_origin(origin)?;
+				GlobalParams::mutate(|params| {
+					if let Change::NewValue(update) = target_max_free_unbonded_ratio {
+						params.target_max_free_unbonded_ratio = update;
+					}
+					if let Change::NewValue(update) = target_min_free_unbonded_ratio {
+						params.target_min_free_unbonded_ratio = update;
+					}
+					if let Change::NewValue(update) = target_unbonding_to_free_ratio {
+						params.target_unbonding_to_free_ratio = update;
+					}
+					if let Change::NewValue(update) = unbonding_to_free_adjustment {
+						params.unbonding_to_free_adjustment = update;
+					}
+					if let Change::NewValue(update) = base_fee_rate {
+						params.base_fee_rate = update;
+					}
+				});
+				Ok(())
+			})?;
+		}
 	}
 }
 
