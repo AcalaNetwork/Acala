@@ -48,6 +48,7 @@ mod tests;
 
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/cdp-engine/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
+const OFFCHAIN_WORKER_LOG_TARGET: &str = "cdp_engine_offchain_worker";
 const LOCK_DURATION: u64 = 100;
 const MAX_ITERATIONS: u32 = 10000;
 
@@ -443,14 +444,14 @@ decl_module! {
 		fn offchain_worker(now: T::BlockNumber) {
 			if let Err(e) = Self::_offchain_worker() {
 				debug::info!(
-					target: "cdp-engine offchain worker",
+					target: OFFCHAIN_WORKER_LOG_TARGET,
 					"cannot run offchain worker at {:?}: {:?}",
 					now,
 					e,
 				);
 			} else {
 				debug::debug!(
-					target: "cdp-engine offchain worker",
+					target: OFFCHAIN_WORKER_LOG_TARGET,
 					"offchain worker start at block: {:?} already done!",
 					now,
 				);
@@ -460,29 +461,34 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) {
+	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: &T::AccountId) {
 		let call = Call::<T>::liquidate(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::info!(
-				target: "cdp-engine offchain worker",
+				target: OFFCHAIN_WORKER_LOG_TARGET,
 				"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
-				who, currency_id,
+				who,
+				currency_id,
 			);
 		}
 	}
 
-	fn submit_unsigned_settlement_tx(currency_id: CurrencyId, who: T::AccountId) {
+	fn submit_unsigned_settlement_tx(currency_id: CurrencyId, who: &T::AccountId) {
 		let call = Call::<T>::settle(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::info!(
-				target: "cdp-engine offchain worker",
+				target: OFFCHAIN_WORKER_LOG_TARGET,
 				"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
-				who, currency_id,
+				who,
+				currency_id,
 			);
 		}
 	}
 
+	#[cfg(feature = "std")]
 	fn _offchain_worker() -> Result<(), OffchainErr> {
+		use wasm_timer::Instant;
+
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		if collateral_currency_ids.len().is_zero() {
 			return Ok(());
@@ -525,13 +531,23 @@ impl<T: Trait> Module<T> {
 			start_key,
 		);
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
+			let start_time = Instant::now();
+
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
 				// liquidate unsafe CDPs before emergency shutdown occurs
-				Self::submit_unsigned_liquidation_tx(currency_id, who);
+				Self::submit_unsigned_liquidation_tx(currency_id, &who);
 			} else if is_shutdown && !debit.is_zero() {
 				// settle CDPs with debit after emergency shutdown occurs.
-				Self::submit_unsigned_settlement_tx(currency_id, who);
+				Self::submit_unsigned_settlement_tx(currency_id, &who);
 			}
+
+			debug::debug!(
+				target: OFFCHAIN_WORKER_LOG_TARGET,
+				"liquidate {:?}-{:?} {:?}",
+				who,
+				currency_id,
+				start_time.elapsed().as_millis()
+			);
 
 			// extend offchain worker lock
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
@@ -540,6 +556,8 @@ impl<T: Trait> Module<T> {
 		// if iteration for map storage finished, clear to be continue record
 		// otherwise, update to be continue record
 		if map_iterator.finished {
+			debug::debug!(target: OFFCHAIN_WORKER_LOG_TARGET, "liquidate finalished",);
+
 			let next_collateral_position =
 				if collateral_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
 					collateral_position + 1

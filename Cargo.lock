@@ -3743,6 +3743,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "wasm-timer",
 ]
 
 [[package]]
@@ -3797,6 +3798,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "wasm-timer",
 ]
 
 [[package]]

@@ -17,6 +17,7 @@ sp-runtime = { version = "2.0.0-rc6", default-features = false }
 sp-std = { version = "2.0.0-rc6", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+wasm-timer = "0.2.4"
 
 [dev-dependencies]
 sp-core = { version = "2.0.0-rc6", default-features = false }
