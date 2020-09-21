@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -22,7 +22,7 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-inspect",
  "acala-service",
@@ -36,7 +36,7 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "derive_more",
  "log",
@@ -52,7 +52,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "dev-runtime",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -1232,7 +1232,7 @@ dependencies = [
 
 [[package]]
 name = "dev-runtime"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
@@ -3685,7 +3685,7 @@ dependencies = [
 
 [[package]]
 name = "module-accounts"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3709,7 +3709,7 @@ dependencies = [
 
 [[package]]
 name = "module-airdrop"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3724,7 +3724,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3747,7 +3747,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager-benchmarking"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -3776,7 +3776,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3801,7 +3801,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine-benchmarking"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -3830,7 +3830,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -3854,7 +3854,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -3877,7 +3877,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-rpc"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -3895,7 +3895,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-rpc-runtime-api"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -3906,7 +3906,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3928,7 +3928,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown-benchmarking"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -3956,7 +3956,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3971,7 +3971,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3995,7 +3995,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon-benchmarking"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4023,7 +4023,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4044,7 +4044,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4066,7 +4066,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4087,7 +4087,7 @@ dependencies = [
 
 [[package]]
 name = "module-polkadot-bridge"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4105,7 +4105,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4123,7 +4123,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4142,7 +4142,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4158,7 +4158,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc-runtime-api"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "module-support",
  "parity-scale-codec",
@@ -4170,7 +4170,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -4181,7 +4181,7 @@ dependencies = [
 
 [[package]]
 name = "module-template"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6112,7 +6112,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "acala-primitives",
  "module-support",
