@@ -3732,7 +3732,6 @@ dependencies = [
  "module-cdp-treasury",
  "module-dex",
  "module-support",
- "module-utilities",
  "orml-auction",
  "orml-tokens",
  "orml-traits",
@@ -3786,7 +3785,6 @@ dependencies = [
  "module-dex",
  "module-loans",
  "module-support",
- "module-utilities",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -4189,17 +4187,6 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "serde",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-utilities"
-version = "0.5.4"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
  "sp-io",
  "sp-runtime",
  "sp-std",
