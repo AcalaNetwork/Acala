@@ -530,33 +530,39 @@ impl<T: Trait> Module<T> {
 			Some(MAX_ITERATIONS),
 			start_key,
 		);
-		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
-			let start_time = Instant::now();
 
+		let start_time = Instant::now();
+		let mut count = 0;
+
+		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
 				// liquidate unsafe CDPs before emergency shutdown occurs
 				Self::submit_unsigned_liquidation_tx(currency_id, &who);
+
+				count += 1;
 			} else if is_shutdown && !debit.is_zero() {
 				// settle CDPs with debit after emergency shutdown occurs.
 				Self::submit_unsigned_settlement_tx(currency_id, &who);
-			}
 
-			debug::debug!(
-				target: OFFCHAIN_WORKER_LOG_TARGET,
-				"liquidate {:?}-{:?} {:?}",
-				who,
-				currency_id,
-				start_time.elapsed().as_millis()
-			);
+				count += 1;
+			}
 
 			// extend offchain worker lock
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
 
+		debug::debug!(
+			target: OFFCHAIN_WORKER_LOG_TARGET,
+			"liquidate {:?} {:?} {:?}",
+			currency_id,
+			count,
+			start_time.elapsed().as_millis()
+		);
+
 		// if iteration for map storage finished, clear to be continue record
 		// otherwise, update to be continue record
 		if map_iterator.finished {
-			debug::debug!(target: OFFCHAIN_WORKER_LOG_TARGET, "liquidate finalished",);
+			debug::debug!(target: OFFCHAIN_WORKER_LOG_TARGET, "liquidate {:?} done", currency_id);
 
 			let next_collateral_position =
 				if collateral_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
