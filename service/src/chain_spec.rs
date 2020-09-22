@@ -230,9 +230,9 @@ fn testnet_genesis(
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus,
-		StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		VestingConfig, DOLLARS,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
+		DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -370,9 +370,6 @@ fn testnet_genesis(
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
 		}),
-		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::saturating_from_rational(1, 100_000_000),
-		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: vec![],
 		}),
@@ -387,11 +384,11 @@ fn testnet_genesis(
 		pallet_evm: Some(Default::default()),
 		module_staking_pool: Some(StakingPoolConfig {
 			global_params: (
-				FixedU128::saturating_from_rational(5, 100), // target_max_free_unbonded_ratio
-				FixedU128::saturating_from_rational(4, 100), // target_min_free_unbonded_ratio
-				FixedU128::saturating_from_rational(2, 100), // target_unbonding_to_free_ratio
+				FixedU128::saturating_from_rational(10, 100), // target_max_free_unbonded_ratio
+				FixedU128::saturating_from_rational(5, 100),  // target_min_free_unbonded_ratio
+				FixedU128::saturating_from_rational(2, 100),  // target_unbonding_to_free_ratio
 				FixedU128::saturating_from_rational(1, 1000), // unbonding_to_free_adjustment
-				FixedU128::saturating_from_rational(2, 100), // base_fee_rate
+				FixedU128::saturating_from_rational(2, 100),  // base_fee_rate
 			),
 		}),
 	}
@@ -408,9 +405,9 @@ fn mandala_genesis(
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
-		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig,
+		StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+		TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -543,9 +540,6 @@ fn mandala_genesis(
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
 		}),
-		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::saturating_from_rational(5, 10000), // 20% APR
-		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: {
 				let airdrop_accounts_json = &include_bytes!("../../resources/mandala-airdrop-accounts.json")[..];
@@ -565,11 +559,11 @@ fn mandala_genesis(
 		pallet_evm: Some(Default::default()),
 		module_staking_pool: Some(StakingPoolConfig {
 			global_params: (
-				FixedU128::saturating_from_rational(5, 100), // target_max_free_unbonded_ratio
-				FixedU128::saturating_from_rational(4, 100), // target_min_free_unbonded_ratio
-				FixedU128::saturating_from_rational(2, 100), // target_unbonding_to_free_ratio
+				FixedU128::saturating_from_rational(10, 100), // target_max_free_unbonded_ratio
+				FixedU128::saturating_from_rational(5, 100),  // target_min_free_unbonded_ratio
+				FixedU128::saturating_from_rational(2, 100),  // target_unbonding_to_free_ratio
 				FixedU128::saturating_from_rational(1, 1000), // unbonding_to_free_adjustment
-				FixedU128::saturating_from_rational(2, 100), // base_fee_rate
+				FixedU128::saturating_from_rational(2, 100),  // base_fee_rate
 			),
 		}),
 	}

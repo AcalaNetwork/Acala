@@ -1042,7 +1042,6 @@ parameter_types! {
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
-	type Event = Event;
 	type DOTCurrency = Currency<Runtime, GetStakingCurrencyId>;
 	type OnNewEra = (NomineesElection, StakingPool);
 	type BondingDuration = PolkadotBondingDuration;
@@ -1052,8 +1051,16 @@ impl module_polkadot_bridge::Trait for Runtime {
 
 pub struct FeeModel;
 impl module_staking_pool::FeeModel for FeeModel {
-	fn get_fee_rate(_: Ratio, _: Ratio, _: Rate) -> Rate {
-		Rate::saturating_from_rational(1, 10)
+	/// Replace by designed
+	/// Linear model:
+	/// fee_rate = base_rate + (100% - base_rate) * (1 -
+	/// remain_available_percent) * demand_in_available_percent
+	fn get_fee_rate(remain_available_percent: Ratio, demand_in_available_percent: Ratio, base_rate: Rate) -> Rate {
+		Rate::one()
+			.saturating_sub(base_rate)
+			.saturating_mul(Rate::one().saturating_sub(remain_available_percent))
+			.saturating_mul(demand_in_available_percent)
+			.saturating_add(base_rate)
 	}
 }
 
@@ -1061,18 +1068,21 @@ parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
+	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
 }
 
 impl module_staking_pool::Trait for Runtime {
 	type Event = Event;
-	type Currency = Currencies;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
-	type Nominees = NomineesElection;
-	type Bridge = PolkadotBridge;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ModuleId = StakingPoolModuleId;
+	type PoolAccountIndexes = PoolAccountIndexes;
+	type UpdateOrigin = EnsureRootOrHalfHomaCouncil;
 	type FeeModel = FeeModel;
+	type Nominees = NomineesElection;
+	type Bridge = PolkadotBridge;
+	type Currency = Currencies;
 }
 
 impl module_homa::Trait for Runtime {
@@ -1232,7 +1242,7 @@ construct_runtime!(
 		Homa: module_homa::{Module, Call},
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>, Config},
-		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
+		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage},
 
 		// ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
