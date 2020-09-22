@@ -68,9 +68,10 @@ where
 		at: Option<<Block as BlockT>::Hash>,
 	) -> Result<BalanceInfo<Balance>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(||
+		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.
-			self.client.info().best_hash));
+			self.client.info().best_hash,
+		));
 
 		api.get_available_unbonded(&at, account).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),
@@ -81,9 +82,10 @@ where
 
 	fn get_liquid_staking_exchange_rate(&self, at: Option<<Block as BlockT>::Hash>) -> Result<ExchangeRate> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(||
+		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.
-			self.client.info().best_hash));
+			self.client.info().best_hash,
+		));
 
 		api.get_liquid_staking_exchange_rate(&at).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),

@@ -13,7 +13,6 @@ use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
-	IterableStorageDoubleMap,
 };
 use frame_system::{
 	self as system, ensure_none,
@@ -21,7 +20,7 @@ use frame_system::{
 };
 use loans::Position;
 use orml_traits::Change;
-use orml_utilities::with_transaction_result;
+use orml_utilities::{with_transaction_result, IterableStorageDoubleMapExtended, OffchainErr};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
@@ -40,7 +39,6 @@ use support::{
 	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
 	RiskManager,
 };
-use utilities::OffchainErr;
 
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
@@ -51,6 +49,7 @@ mod tests;
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/cdp-engine/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
 const LOCK_DURATION: u64 = 100;
+const MAX_ITERATIONS: u32 = 10000;
 
 pub type LoansOf<T> = loans::Module<T>;
 
@@ -494,41 +493,38 @@ impl<T: Trait> Module<T> {
 			return Err(OffchainErr::NotValidator);
 		}
 
-		let collateral_currency_ids = T::CollateralCurrencyIds::get();
-
+		// acquire offchain worker lock
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
 		let mut lock = StorageLock::<'_, Time>::with_deadline(&OFFCHAIN_WORKER_LOCK, lock_expiration);
-
-		// acquire offchain worker lock
 		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
 
-		// get currency_id from offchain worker db to handle
-		let position_storage = StorageValueRef::persistent(&OFFCHAIN_WORKER_DATA);
-		let get_position =
-			position_storage.mutate(
-				|maybe_previous_position: Option<Option<u32>>| match maybe_previous_position {
-					None => {
-						let random_seed = sp_io::offchain::random_seed();
-						let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
-						Ok(rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32))
-					}
-					Some(Some(previous_position)) => {
-						let next_position =
-							if previous_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
-								previous_position + 1
-							} else {
-								0
-							};
-						Ok(next_position)
-					}
-					_ => Err(OffchainErr::OffchainStore),
-				},
-			)?;
-		let position = get_position.map_err(|_| OffchainErr::OffchainStore)?;
-		let currency_id = collateral_currency_ids[(position as usize)];
+		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+		let to_be_continue = StorageValueRef::persistent(&OFFCHAIN_WORKER_DATA);
+
+		// get to_be_continue record
+		let (collateral_position, start_key) =
+			if let Some(Some((last_collateral_position, maybe_last_iterator_previous_key))) =
+				to_be_continue.get::<(u32, Option<Vec<u8>>)>()
+			{
+				(last_collateral_position, maybe_last_iterator_previous_key)
+			} else {
+				let random_seed = sp_io::offchain::random_seed();
+				let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+				(
+					rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32),
+					None,
+				)
+			};
+
+		let currency_id = collateral_currency_ids[(collateral_position as usize)];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
-		for (who, Position { collateral, debit }) in <loans::Positions<T>>::iter_prefix(currency_id) {
+		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
+			currency_id,
+			Some(MAX_ITERATIONS),
+			start_key,
+		);
+		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
 				// liquidate unsafe CDPs before emergency shutdown occurs
 				Self::submit_unsigned_liquidation_tx(currency_id, who);
@@ -540,6 +536,23 @@ impl<T: Trait> Module<T> {
 			// extend offchain worker lock
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
+
+		// if iteration for map storage finished, clear to be continue record
+		// otherwise, update to be continue record
+		if map_iterator.finished {
+			let next_collateral_position =
+				if collateral_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
+					collateral_position + 1
+				} else {
+					0
+				};
+			to_be_continue.set(&(next_collateral_position, Option::<Vec<u8>>::None));
+		} else {
+			to_be_continue.set(&(collateral_position, Some(map_iterator.map_iterator.previous_key)));
+		}
+
+		// Consume the guard but **do not** unlock the underlying lock.
+		guard.forget();
 
 		Ok(())
 	}
