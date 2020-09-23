@@ -574,7 +574,7 @@ fn payout_nominator_work() {
 				.get(&1)
 				.unwrap_or(&Default::default()),
 			Status {
-				bonded: 330,
+				bonded: 303,
 				free: 200,
 				unlocking: vec![],
 			}
@@ -585,7 +585,7 @@ fn payout_nominator_work() {
 				.get(&2)
 				.unwrap_or(&Default::default()),
 			Status {
-				bonded: 110,
+				bonded: 101,
 				free: 300,
 				unlocking: vec![],
 			}
@@ -596,7 +596,7 @@ fn payout_nominator_work() {
 				.get(&3)
 				.unwrap_or(&Default::default()),
 			Status {
-				bonded: 220,
+				bonded: 202,
 				free: 400,
 				unlocking: vec![],
 			}
@@ -910,174 +910,355 @@ fn redeem_by_unbond_work() {
 	});
 }
 
-// #[test]
-// fn redeem_by_free_unbonded_work() {
-// 	ExtBuilder::default().build().execute_with(|| {
-// 		System::set_block_number(1);
+#[test]
+fn redeem_by_free_unbonded_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 
-// 		assert_eq!(StakingPoolModule::mint(&BOB, 1000), Ok(10000));
-// 		assert_ok!(StakingPoolModule::bond_to_bridge(500));
-// 		assert_ok!(CurrenciesModule::transfer(Origin::signed(BOB), ALICE, LDOT,
-// 1000));
+		assert_eq!(StakingPoolModule::mint(&BOB, 1000), Ok(10000));
+		assert_ok!(StakingPoolModule::bond_to_bridge(500));
+		assert_ok!(CurrenciesModule::transfer(Origin::signed(BOB), ALICE, LDOT, 1000));
 
-// 		assert_noop!(
-// 			StakingPoolModule::redeem_by_free_unbonded(&ALICE, 5000),
-// 			Error::<Runtime>::LiquidCurrencyNotEnough,
-// 		);
-// 		assert_eq!(StakingPoolModule::total_bonded(), 500);
-// 		assert_eq!(StakingPoolModule::free_unbonded(), 500);
-// 		assert_eq!(
-// 			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
-// 			500
-// 		);
-// 		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1000);
-// 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 1000);
+		assert_noop!(
+			StakingPoolModule::redeem_by_free_unbonded(&ALICE, 5000),
+			Error::<Runtime>::LiquidCurrencyNotEnough,
+		);
 
-// 		assert_eq!(StakingPoolModule::get_total_communal_balance(), 1000);
-// 		assert_eq!(StakingPoolModule::get_free_unbonded_ratio(),
-// Ratio::saturating_from_rational(500, 1000));
+		assert_eq!(StakingPoolModule::free_unbonded(), 500);
+		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1000);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			500
+		);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 1000);
+		assert_eq!(CurrenciesModule::total_issuance(LDOT), 10000);
 
-// demand_in_available_percent: (1000/10) / (500 - 50)
+		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&ALICE, 1000));
+		let redeem_by_free_unbonded_event_1 =
+			TestEvent::staking_pool(RawEvent::RedeemByFreeUnbonded(ALICE, 1000, 80, 20));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == redeem_by_free_unbonded_event_1));
 
-// remain_available_percent : 100%
+		assert_eq!(StakingPoolModule::free_unbonded(), 420);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			420
+		);
+		assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1080);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 0);
+		assert_eq!(CurrenciesModule::total_issuance(LDOT), 9000);
 
-// assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&ALICE, 1000));
+		assert_eq!(CurrenciesModule::free_balance(DOT, &BOB), 0);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 9000);
 
-// let redeem_by_free_unbonded_event_1 =
-// 	TestEvent::staking_pool(RawEvent::RedeemByFreeUnbonded(ALICE, 100, 900, 90));
-// assert!(System::events()
-// 	.iter()
-// 	.any(|record| record.event == redeem_by_free_unbonded_event_1));
+		// when overflow available
+		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&BOB, 9000));
+		let redeem_by_free_unbonded_event_2 =
+			TestEvent::staking_pool(RawEvent::RedeemByFreeUnbonded(BOB, 3662, 300, 74));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == redeem_by_free_unbonded_event_2));
 
-// assert_eq!(StakingPoolModule::total_bonded(), 500);
-// assert_eq!(StakingPoolModule::free_unbonded(), 410);
-// assert_eq!(
-// 	CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
-// 	410
-// );
-// assert_eq!(CurrenciesModule::free_balance(DOT, &ALICE), 1090);
-// assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 0);
-// assert_eq!(TOTAL_COMMISSION.with(|v| *v.borrow_mut()), 20);
+		assert_eq!(StakingPoolModule::free_unbonded(), 120);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			120
+		);
+		assert_eq!(CurrenciesModule::free_balance(DOT, &BOB), 300);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 5338);
+		assert_eq!(CurrenciesModule::total_issuance(LDOT), 5338);
+	});
+}
 
-// assert_eq!(CurrenciesModule::free_balance(DOT, &BOB), 0);
-// assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 9000);
+#[test]
+fn redeem_by_claim_unbonding_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 
-// assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&BOB, 9000));
-// let redeem_by_free_unbonded_event_2 =
-// 	TestEvent::staking_pool(RawEvent::RedeemByFreeUnbonded(BOB, 451, 4060, 410));
-// assert!(System::events()
-// 	.iter()
-// 	.any(|record| record.event == redeem_by_free_unbonded_event_2));
+		assert_ok!(CurrenciesModule::transfer(Origin::signed(ALICE), BOB, DOT, 1000));
+		assert_eq!(StakingPoolModule::mint(&BOB, 2000), Ok(20000));
+		assert_ok!(StakingPoolModule::bond_to_bridge(1000));
+		assert_ok!(CurrenciesModule::transfer(Origin::signed(BOB), ALICE, LDOT, 1000));
 
-// assert_eq!(StakingPoolModule::total_bonded(), 500);
-// assert_eq!(StakingPoolModule::free_unbonded(), 0);
-// assert_eq!(CurrenciesModule::free_balance(DOT,
-// &StakingPoolModule::account_id()), 0); assert_eq!(CurrenciesModule::
-// free_balance(DOT, &BOB), 410); assert_eq!(CurrenciesModule::
-// free_balance(LDOT, &BOB), 4489); assert_eq!(TOTAL_COMMISSION.with(|v|
-// *v.borrow_mut()), 110); 	});
-// }
+		TotalBonded::mutate(|bonded| *bonded -= 500);
+		Unbonding::insert(4, (500, 0, 0));
+		UnbondingToFree::put(500);
 
-// #[test]
-// fn redeem_by_claim_unbonding_work() {
-// 	ExtBuilder::default().build().execute_with(|| {
-// 		System::set_block_number(1);
-// 		assert_ok!(CurrenciesModule::transfer(Some(ALICE).into(), BOB, DOT, 1000));
-// 		assert_eq!(StakingPoolModule::mint(&BOB, 2000), Ok(20000));
-// 		assert_ok!(StakingPoolModule::bond(1000));
-// 		assert_ok!(CurrenciesModule::transfer(Some(BOB).into(), ALICE, LDOT, 1000));
+		assert_eq!(StakingPoolModule::unbonding(4), (500, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 500);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 1000);
+		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 4), 0);
+		assert_eq!(CurrenciesModule::total_issuance(LDOT), 20000);
 
-// 		TotalBonded::mutate(|bonded| *bonded -= 500);
-// 		Unbonding::insert(2, (500, 0));
-// 		UnbondingToFree::put(500);
+		assert_eq!(StakingPoolModule::current_era(), 0);
+		assert_noop!(
+			StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 0, BondingDuration::get() + 1),
+			Error::<Runtime>::InvalidEra,
+		);
 
-// 		assert_eq!(StakingPoolModule::total_bonded(), 500);
-// 		assert_eq!(StakingPoolModule::free_unbonded(), 1000);
-// 		assert_eq!(StakingPoolModule::unbonding(2), (500, 0));
-// 		assert_eq!(StakingPoolModule::unbonding_to_free(), 500);
-// 		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 2), 0);
-// 		assert_eq!(TOTAL_COMMISSION.with(|v| *v.borrow_mut()), 0);
-// 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 1000);
-// 		assert_eq!(StakingPoolModule::current_era(), 0);
+		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 1000, 4));
+		let redeem_by_claimed_unbonding_event_1 =
+			TestEvent::staking_pool(RawEvent::RedeemByClaimUnbonding(ALICE, 4, 1000, 80, 20));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == redeem_by_claimed_unbonding_event_1));
 
-// 		assert_noop!(
-// 			StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 0,
-// BondingDuration::get() + 1), 			Error::<Runtime>::InvalidEra,
-// 		);
-// 		assert_noop!(
-// 			StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 1001, 2),
-// 			Error::<Runtime>::LiquidCurrencyNotEnough,
-// 		);
+		assert_eq!(StakingPoolModule::unbonding(4), (500, 80, 0));
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 420);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 0);
+		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 4), 80);
+		assert_eq!(CurrenciesModule::total_issuance(LDOT), 19000);
 
-// 		assert_eq!(
-// 			StakingPoolModule::claim_period_percent(2),
-// 			Ratio::saturating_from_rational(2, 4 + 1)
-// 		);
-// 		assert_eq!(StakingPoolModule::calculate_claim_fee(1000, 2), 60);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 19000);
+		assert_eq!(StakingPoolModule::claimed_unbond(&BOB, 4), 0);
 
-// 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 1000, 2));
-// 		let redeem_by_claimed_unbonding_event_1 =
-// 			TestEvent::staking_pool(RawEvent::RedeemByClaimUnbonding(ALICE, 2, 60, 940,
-// 94)); 		assert!(System::events()
-// 			.iter()
-// 			.any(|record| record.event == redeem_by_claimed_unbonding_event_1));
+		// when overflow available
+		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&BOB, 10000, 4));
+		let redeem_by_claimed_unbonding_event_2 =
+			TestEvent::staking_pool(RawEvent::RedeemByClaimUnbonding(BOB, 4, 3910, 316, 79));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == redeem_by_claimed_unbonding_event_2));
 
-// 		assert_eq!(StakingPoolModule::unbonding(2), (500, 94));
-// 		assert_eq!(StakingPoolModule::unbonding_to_free(), 406);
-// 		assert_eq!(StakingPoolModule::claimed_unbond(&ALICE, 2), 94);
-// 		assert_eq!(TOTAL_COMMISSION.with(|v| *v.borrow_mut()), 12);
-// 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 0);
+		assert_eq!(StakingPoolModule::unbonding(4), (500, 396, 0));
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 104);
+		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 15090);
+		assert_eq!(StakingPoolModule::claimed_unbond(&BOB, 4), 316);
+		assert_eq!(CurrenciesModule::total_issuance(LDOT), 15090);
+	});
+}
 
-// 		// over the communal_bonded
-// 		assert_eq!(StakingPoolModule::claimed_unbond(&BOB, 2), 0);
-// 		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 19000);
+#[test]
+fn rebalance_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CurrenciesModule::deposit(DOT, &ALICE, 100000));
+		assert_eq!(StakingPoolModule::mint(&ALICE, 100000), Ok(1000000));
 
-// 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&BOB, 19000, 2));
-// 		let redeem_by_claimed_unbonding_event_2 =
-// 			TestEvent::staking_pool(RawEvent::RedeemByClaimUnbonding(BOB, 2, 258, 4049,
-// 406)); 		assert!(System::events()
-// 			.iter()
-// 			.any(|record| record.event == redeem_by_claimed_unbonding_event_2));
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 0,
+				active: 0,
+				unlocking: vec![],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 100000);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			100000
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 0);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 0);
+		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
 
-// 		assert_eq!(StakingPoolModule::unbonding(2), (500, 500));
-// 		assert_eq!(StakingPoolModule::unbonding_to_free(), 0);
-// 		assert_eq!(StakingPoolModule::claimed_unbond(&BOB, 2), 406);
-// 		assert_eq!(TOTAL_COMMISSION.with(|v| *v.borrow_mut()), 63);
-// 		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 14693);
-// 	});
-// }
+		CurrentEra::put(1);
+		StakingPoolModule::rebalance(1);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 90000,
+				active: 90000,
+				unlocking: vec![],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10000);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10000
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 90000);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 0);
+		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(6), (0, 0, 0));
 
-// #[test]
-// fn rebalance_work() {
-// 	ExtBuilder::default().build().execute_with(|| {
-// 		TotalBonded::put(20000);
-// 		Unbonding::insert(1, (20000, 10000));
-// 		UnbondingToFree::put(10000);
-// 		NextEraUnbond::put((5000, 5000));
+		CurrentEra::put(2);
+		StakingPoolModule::rebalance(2);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 90900,
+				active: 89891,
+				unlocking: vec![PolkadotUnlockChunk { value: 1009, era: 6 },],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10000);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10000
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 89891);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 1009);
+		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(6), (1009, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(7), (0, 0, 0));
 
-// 		assert_eq!(StakingPoolModule::current_era(), 0);
-// 		assert_eq!(StakingPoolModule::total_bonded(), 20000);
-// 		assert_eq!(StakingPoolModule::free_unbonded(), 0);
-// 		assert_eq!(StakingPoolModule::total_claimed_unbonded(), 0);
-// 		assert_eq!(CurrenciesModule::free_balance(DOT,
-// &StakingPoolModule::account_id()), 0); 		assert_eq!(StakingPoolModule::
-// unbonding(1), (20000, 10000)); 		assert_eq!(StakingPoolModule::unbonding(1 +
-// BondingDuration::get()), (0, 0)); 		assert_eq!(StakingPoolModule::
-// next_era_unbond(), (5000, 5000));
+		CurrentEra::put(3);
+		StakingPoolModule::rebalance(3);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 91798,
+				active: 89772,
+				unlocking: vec![
+					PolkadotUnlockChunk { value: 1009, era: 6 },
+					PolkadotUnlockChunk { value: 1017, era: 7 },
+				],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10000);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10000
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 89772);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 2026);
+		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(6), (1009, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(7), (1017, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(8), (0, 0, 0));
 
-// 		CurrentEra::put(1);
-// 		StakingPoolModule::rebalance(1);
+		CurrentEra::put(4);
+		StakingPoolModule::rebalance(4);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 92695,
+				active: 89643,
+				unlocking: vec![
+					PolkadotUnlockChunk { value: 1009, era: 6 },
+					PolkadotUnlockChunk { value: 1017, era: 7 },
+					PolkadotUnlockChunk { value: 1026, era: 8 },
+				],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10000);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10000
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 89643);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 3052);
+		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(6), (1009, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(7), (1017, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(8), (1026, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(9), (0, 0, 0));
 
-// 		assert_eq!(StakingPoolModule::current_era(), 1);
-// 		assert_eq!(StakingPoolModule::total_bonded(), 15000);
-// 		assert_eq!(StakingPoolModule::free_unbonded(), 10000);
-// 		assert_eq!(StakingPoolModule::total_claimed_unbonded(), 10000);
-// 		assert_eq!(
-// 			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
-// 			20000
-// 		);
-// 		assert_eq!(StakingPoolModule::unbonding(1), (0, 0));
-// 		assert_eq!(StakingPoolModule::unbonding(1 + BondingDuration::get()), (5000,
-// 5000)); 		assert_eq!(StakingPoolModule::next_era_unbond(), (0, 0));
-// 	});
-// }
+		CurrentEra::put(5);
+		StakingPoolModule::rebalance(5);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 93591,
+				active: 90484,
+				unlocking: vec![
+					PolkadotUnlockChunk { value: 1009, era: 6 },
+					PolkadotUnlockChunk { value: 1017, era: 7 },
+					PolkadotUnlockChunk { value: 1026, era: 8 },
+					PolkadotUnlockChunk { value: 55, era: 9 },
+				],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10000);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10000
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 90484);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 3107);
+		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(6), (1009, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(7), (1017, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(8), (1026, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(9), (55, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(10), (0, 0, 0));
+
+		CurrentEra::put(6);
+		StakingPoolModule::rebalance(6);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 94045,
+				active: 90911,
+				unlocking: vec![
+					PolkadotUnlockChunk { value: 1017, era: 7 },
+					PolkadotUnlockChunk { value: 1026, era: 8 },
+					PolkadotUnlockChunk { value: 55, era: 9 },
+					PolkadotUnlockChunk { value: 1036, era: 10 },
+				],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10450);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10450
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 90911);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 3134);
+		assert_eq!(StakingPoolModule::unbonding(6), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(7), (1017, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(8), (1026, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(9), (55, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(10), (1036, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(11), (0, 0, 0));
+
+		CurrentEra::put(7);
+		StakingPoolModule::rebalance(7);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 94862,
+				active: 91700,
+				unlocking: vec![
+					PolkadotUnlockChunk { value: 1026, era: 8 },
+					PolkadotUnlockChunk { value: 55, era: 9 },
+					PolkadotUnlockChunk { value: 1036, era: 10 },
+					PolkadotUnlockChunk { value: 1045, era: 11 },
+				],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10541);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10541
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 91700);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 3162);
+		assert_eq!(StakingPoolModule::unbonding(7), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(8), (1026, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(9), (55, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(10), (1036, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(11), (1045, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(12), (0, 0, 0));
+
+		CurrentEra::put(8);
+		StakingPoolModule::rebalance(8);
+		assert_eq!(
+			StakingPoolModule::staking_ledger(),
+			PolkadotStakingLedger {
+				total: 95687,
+				active: 92498,
+				unlocking: vec![
+					PolkadotUnlockChunk { value: 55, era: 9 },
+					PolkadotUnlockChunk { value: 1036, era: 10 },
+					PolkadotUnlockChunk { value: 1045, era: 11 },
+					PolkadotUnlockChunk { value: 1053, era: 12 },
+				],
+			}
+		);
+		assert_eq!(StakingPoolModule::free_unbonded(), 10632);
+		assert_eq!(
+			CurrenciesModule::free_balance(DOT, &StakingPoolModule::account_id()),
+			10632
+		);
+		assert_eq!(StakingPoolModule::total_bonded(), 92498);
+		assert_eq!(StakingPoolModule::unbonding_to_free(), 3189);
+		assert_eq!(StakingPoolModule::unbonding(8), (0, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(9), (55, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(10), (1036, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(11), (1045, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(12), (1053, 0, 0));
+		assert_eq!(StakingPoolModule::unbonding(13), (0, 0, 0));
+	});
+}

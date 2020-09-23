@@ -10,6 +10,8 @@ use frame_system::{self as system};
 use orml_traits::{Change, MultiCurrency};
 use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId, EraIndex};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, One, Saturating, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug,
@@ -25,6 +27,7 @@ mod tests;
 
 /// The params related to rebalance per era
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Params {
 	pub target_max_free_unbonded_ratio: Ratio,
 	pub target_min_free_unbonded_ratio: Ratio,
@@ -120,22 +123,7 @@ decl_storage! {
 		pub UnbondingToFree get(fn unbonding_to_free): Balance;
 		pub FreeUnbonded get(fn free_unbonded): Balance;
 
-		pub GlobalParams get(fn global_params): Params;
-	}
-
-	add_extra_genesis {
-		config(global_params): (Ratio, Ratio, Ratio, Rate, Rate);
-		build(|config: &GenesisConfig| {
-			// TODO: initial params check
-			let (target_max_free_unbonded_ratio, target_min_free_unbonded_ratio, target_unbonding_to_free_ratio, unbonding_to_free_adjustment, base_fee_rate) = config.global_params;
-			GlobalParams::put(Params {
-				target_max_free_unbonded_ratio,
-				target_min_free_unbonded_ratio,
-				target_unbonding_to_free_ratio,
-				unbonding_to_free_adjustment,
-				base_fee_rate,
-			});
-		});
+		pub StakingPoolParams get(fn staking_pool_params) config(): Params;
 	}
 }
 
@@ -160,7 +148,7 @@ decl_module! {
 		const PoolAccountIndexes: Vec<u32> = T::PoolAccountIndexes::get();
 
 		#[weight = 10000]
-		pub fn set_global_params(
+		pub fn set_staking_pool_params(
 			origin,
 			target_max_free_unbonded_ratio: ChangeRatio,
 			target_min_free_unbonded_ratio: ChangeRatio,
@@ -170,7 +158,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
-				GlobalParams::mutate(|params| {
+				StakingPoolParams::mutate(|params| {
 					if let Change::NewValue(update) = target_max_free_unbonded_ratio {
 						params.target_max_free_unbonded_ratio = update;
 					}
@@ -501,26 +489,29 @@ impl<T: Trait> Module<T> {
 		}
 
 		// #4: according to the pool adjustment params, bond and unbond at this era
-		let total_communal_balance = Self::get_total_communal_balance();
-		let global_params = Self::global_params();
-		let current_free_unbonded_ratio = Self::get_free_unbonded_ratio();
-		let current_unbonding_to_free_ratio = Self::get_unbonding_to_free_ratio();
+		let staking_pool_params = Self::staking_pool_params();
+		let bond_rate =
+			Self::get_free_unbonded_ratio().saturating_sub(staking_pool_params.target_max_free_unbonded_ratio);
+		let bond_amount = bond_rate
+			.saturating_mul_int(Self::get_total_communal_balance())
+			.min(Self::free_unbonded());
 
-		let bond_rate = current_free_unbonded_ratio.saturating_sub(global_params.target_max_free_unbonded_ratio);
-		let bond_amount = bond_rate.saturating_mul_int(total_communal_balance);
+		let unbond_rate = staking_pool_params
+			.target_unbonding_to_free_ratio
+			.saturating_sub(Self::get_unbonding_to_free_ratio())
+			.min(staking_pool_params.unbonding_to_free_adjustment);
+		let unbond_amount = unbond_rate
+			.saturating_mul_int(Self::get_total_communal_balance())
+			.min(Self::get_communal_bonded());
+
 		if !bond_amount.is_zero() {
 			// bound more amount for staking. if it failed, just that added amount did not
 			// succeed and it should not affect the process. so ignore result to continue.
 			let _ = Self::bond_to_bridge(bond_amount);
 		}
 
-		let unbond_rate = global_params
-			.target_unbonding_to_free_ratio
-			.saturating_sub(current_unbonding_to_free_ratio)
-			.min(global_params.unbonding_to_free_adjustment);
-		let unbond_to_free = unbond_rate.saturating_mul_int(total_communal_balance);
-		if !unbond_to_free.is_zero() {
-			NextEraUnbond::mutate(|(unbond, _)| *unbond = unbond.saturating_add(unbond_to_free));
+		if !unbond_amount.is_zero() {
+			NextEraUnbond::mutate(|(unbond, _)| *unbond = unbond.saturating_add(unbond_amount));
 		}
 
 		// #5: unbond from bridge
@@ -624,9 +615,9 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 			.checked_mul_int(redeem_liquid_amount)
 			.ok_or(Error::<T>::Overflow)?;
 
-		let global_params = Self::global_params();
+		let staking_pool_params = Self::staking_pool_params();
 		let available_free_unbonded = Self::free_unbonded().saturating_sub(
-			global_params
+			staking_pool_params
 				.target_min_free_unbonded_ratio
 				.saturating_mul_int(Self::get_total_communal_balance()),
 		);
@@ -645,19 +636,19 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 					.expect("available_free_unbonded is not zero; qed");
 			let current_free_unbonded_ratio = Self::get_free_unbonded_ratio();
 			let remain_available_percent = current_free_unbonded_ratio
-				.saturating_sub(global_params.target_min_free_unbonded_ratio)
+				.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio)
 				.checked_div(
 					&sp_std::cmp::max(
-						global_params.target_max_free_unbonded_ratio,
+						staking_pool_params.target_max_free_unbonded_ratio,
 						current_free_unbonded_ratio,
 					)
-					.saturating_sub(global_params.target_min_free_unbonded_ratio),
+					.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio),
 				)
 				.unwrap_or_default();
 			let fee_in_staking = T::FeeModel::get_fee_rate(
 				remain_available_percent,
 				demand_in_available_percent,
-				global_params.base_fee_rate,
+				staking_pool_params.base_fee_rate,
 			)
 			.saturating_mul_int(demand_staking_amount);
 			let retrieved_staking_amount = demand_staking_amount.saturating_sub(fee_in_staking);
@@ -702,7 +693,16 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 			.checked_mul_int(redeem_liquid_amount)
 			.ok_or(Error::<T>::Overflow)?;
 		let (unbonding, claimed_unbonding, initial_claimed_unbonding) = Self::unbonding(target_era);
-		let available_unclaimed_unbonding = unbonding.saturating_sub(claimed_unbonding);
+		let staking_pool_params = Self::staking_pool_params();
+
+		let initial_unclaimed = unbonding.saturating_sub(initial_claimed_unbonding);
+		let unclaimed = unbonding.saturating_sub(claimed_unbonding);
+
+		let available_unclaimed_unbonding = unclaimed.saturating_sub(
+			staking_pool_params
+				.target_min_free_unbonded_ratio
+				.saturating_mul_int(initial_unclaimed),
+		);
 
 		if !demand_staking_amount.is_zero() && !available_unclaimed_unbonding.is_zero() {
 			// if available_unclaimed_unbonding is not enough, need re-calculate
@@ -716,16 +716,25 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 			let demand_in_available_percent =
 				Ratio::checked_from_rational(demand_staking_amount, available_unclaimed_unbonding)
 					.expect("available_unclaimed_unbonding is not zero; qed");
-			let remain_available_percent = Ratio::checked_from_rational(
-				available_unclaimed_unbonding,
-				unbonding.saturating_sub(initial_claimed_unbonding),
-			)
-			.unwrap_or_default();
-			let global_params = Self::global_params();
+
+			let current_unclaimed_ratio = Ratio::checked_from_rational(unclaimed, initial_unclaimed)
+				.expect("if available_unclaimed_unbonding is not zero, initial_unclaimed must not be zero; qed");
+
+			let remain_available_percent = current_unclaimed_ratio
+				.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio)
+				.checked_div(
+					&sp_std::cmp::max(
+						staking_pool_params.target_max_free_unbonded_ratio,
+						current_unclaimed_ratio,
+					)
+					.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio),
+				)
+				.unwrap_or_default();
+
 			let fee_in_staking = T::FeeModel::get_fee_rate(
 				remain_available_percent,
 				demand_in_available_percent,
-				global_params.base_fee_rate,
+				staking_pool_params.base_fee_rate,
 			)
 			.saturating_mul_int(demand_staking_amount);
 			let claimed_staking_amount = demand_staking_amount.saturating_sub(fee_in_staking);

@@ -103,6 +103,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal",
  "module-dex-rpc",
+ "module-staking-pool",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts",

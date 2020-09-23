@@ -383,13 +383,13 @@ fn testnet_genesis(
 		}),
 		pallet_evm: Some(Default::default()),
 		module_staking_pool: Some(StakingPoolConfig {
-			global_params: (
-				FixedU128::saturating_from_rational(10, 100), // target_max_free_unbonded_ratio
-				FixedU128::saturating_from_rational(5, 100),  // target_min_free_unbonded_ratio
-				FixedU128::saturating_from_rational(2, 100),  // target_unbonding_to_free_ratio
-				FixedU128::saturating_from_rational(1, 1000), // unbonding_to_free_adjustment
-				FixedU128::saturating_from_rational(2, 100),  // base_fee_rate
-			),
+			staking_pool_params: module_staking_pool::Params {
+				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
+				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
+				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
+				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
+				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
+			},
 		}),
 	}
 }
@@ -558,13 +558,13 @@ fn mandala_genesis(
 		}),
 		pallet_evm: Some(Default::default()),
 		module_staking_pool: Some(StakingPoolConfig {
-			global_params: (
-				FixedU128::saturating_from_rational(10, 100), // target_max_free_unbonded_ratio
-				FixedU128::saturating_from_rational(5, 100),  // target_min_free_unbonded_ratio
-				FixedU128::saturating_from_rational(2, 100),  // target_unbonding_to_free_ratio
-				FixedU128::saturating_from_rational(1, 1000), // unbonding_to_free_adjustment
-				FixedU128::saturating_from_rational(2, 100),  // base_fee_rate
-			),
+			staking_pool_params: module_staking_pool::Params {
+				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
+				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
+				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
+				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
+				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
+			},
 		}),
 	}
 }

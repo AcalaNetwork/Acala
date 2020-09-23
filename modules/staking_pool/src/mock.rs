@@ -225,7 +225,7 @@ impl PolkadotBridgeCall<AccountId, BlockNumber, Balance, EraIndex> for MockBridg
 			if let Some(status) = old_map.get_mut(&account_index) {
 				status.bonded = status
 					.bonded
-					.saturating_add(Rate::saturating_from_rational(10, 100).saturating_mul_int(status.bonded));
+					.saturating_add(Rate::saturating_from_rational(1, 100).saturating_mul_int(status.bonded));
 			} else {
 				old_map.insert(account_index, Default::default());
 			}
@@ -376,13 +376,13 @@ impl ExtBuilder {
 		.unwrap();
 
 		GenesisConfig {
-			global_params: (
-				Ratio::saturating_from_rational(10, 100),
-				Ratio::saturating_from_rational(5, 100),
-				Ratio::saturating_from_rational(2, 100),
-				Rate::saturating_from_rational(2, 100),
-				Rate::saturating_from_rational(20, 100),
-			),
+			staking_pool_params: Params {
+				target_max_free_unbonded_ratio: Ratio::saturating_from_rational(10, 100),
+				target_min_free_unbonded_ratio: Ratio::saturating_from_rational(5, 100),
+				target_unbonding_to_free_ratio: Ratio::saturating_from_rational(3, 100),
+				unbonding_to_free_adjustment: Rate::saturating_from_rational(1, 100),
+				base_fee_rate: Rate::saturating_from_rational(20, 100),
+			},
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
