@@ -174,7 +174,7 @@ impl frame_system::Trait for Runtime {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = Version;
-	type ModuleToIndex = ModuleToIndex;
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = module_accounts::Module<Runtime>;
@@ -195,16 +195,13 @@ impl pallet_babe::Trait for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
 	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-
 	type KeyOwnerProofSystem = Historical;
-
 	type KeyOwnerProof =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
-
 	type KeyOwnerIdentification =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::IdentificationTuple;
-
 	type HandleEquivocation = pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
+	type WeightInfo = ();
 }
 
 impl pallet_grandpa::Trait for Runtime {
@@ -219,6 +216,8 @@ impl pallet_grandpa::Trait for Runtime {
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::IdentificationTuple;
 
 	type HandleEquivocation = pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
+
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -258,6 +257,9 @@ impl pallet_authorship::Trait for Runtime {
 
 parameter_types! {
 	pub const AcaExistentialDeposit: Balance = 0;
+	// For weight estimation, we assume that the most locks on an individual account will be 50.
+	// This number may need to be adjusted in the future if this assumption no longer holds true.
+	pub const MaxLocks: u32 = 50;
 }
 
 // `module_accounts` handles account opening/reaping, `ExistentialDeposit` in
@@ -270,6 +272,7 @@ impl pallet_balances::Trait for Runtime {
 	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
 	type AccountStore = module_accounts::Module<Runtime>;
+	type MaxLocks = MaxLocks;
 	type WeightInfo = ();
 }
 
@@ -291,11 +294,6 @@ impl pallet_transaction_payment::Trait for Runtime {
 impl pallet_sudo::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
-}
-
-parameter_types! {
-	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
-	pub const GeneralCouncilMaxProposals: u32 = 100;
 }
 
 type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
@@ -340,6 +338,12 @@ type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
 	pallet_collective::EnsureProportionMoreThan<_2, _3, AccountId, TechnicalCommitteeInstance>,
 >;
 
+parameter_types! {
+	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
+	pub const GeneralCouncilMaxProposals: u32 = 100;
+	pub const GeneralCouncilMaxMembers: u32 = 100;
+}
+
 type GeneralCouncilInstance = pallet_collective::Instance1;
 impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Origin = Origin;
@@ -347,6 +351,8 @@ impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = GeneralCouncilMotionDuration;
 	type MaxProposals = GeneralCouncilMaxProposals;
+	type MaxMembers = GeneralCouncilMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
 
@@ -365,6 +371,7 @@ impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
 parameter_types! {
 	pub const HonzonCouncilMotionDuration: BlockNumber = 0;
 	pub const HonzonCouncilMaxProposals: u32 = 100;
+	pub const HonzonCouncilMaxMembers: u32 = 100;
 }
 
 type HonzonCouncilInstance = pallet_collective::Instance2;
@@ -374,6 +381,8 @@ impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = HonzonCouncilMotionDuration;
 	type MaxProposals = HonzonCouncilMaxProposals;
+	type MaxMembers = HonzonCouncilMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
 
@@ -392,6 +401,7 @@ impl pallet_membership::Trait<HonzonCouncilMembershipInstance> for Runtime {
 parameter_types! {
 	pub const HomaCouncilMotionDuration: BlockNumber = 0;
 	pub const HomaCouncilMaxProposals: u32 = 100;
+	pub const HomaCouncilMaxMembers: u32 = 100;
 }
 
 type HomaCouncilInstance = pallet_collective::Instance3;
@@ -401,6 +411,8 @@ impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = HomaCouncilMotionDuration;
 	type MaxProposals = HomaCouncilMaxProposals;
+	type MaxMembers = HomaCouncilMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
 
@@ -419,6 +431,7 @@ impl pallet_membership::Trait<HomaCouncilMembershipInstance> for Runtime {
 parameter_types! {
 	pub const TechnicalCommitteeMotionDuration: BlockNumber = 0;
 	pub const TechnicalCommitteeMaxProposals: u32 = 100;
+	pub const TechnicalCouncilMaxMembers: u32 = 100;
 }
 
 type TechnicalCommitteeInstance = pallet_collective::Instance4;
@@ -428,6 +441,8 @@ impl pallet_collective::Trait<TechnicalCommitteeInstance> for Runtime {
 	type Event = Event;
 	type MotionDuration = TechnicalCommitteeMotionDuration;
 	type MaxProposals = TechnicalCommitteeMaxProposals;
+	type MaxMembers = TechnicalCouncilMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
 
@@ -522,10 +537,16 @@ parameter_types! {
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
 	pub const TipReportDepositBase: Balance = DOLLARS;
-	pub const TipReportDepositPerByte: Balance = CENTS;
-	pub const SevenDays: BlockNumber = DAYS * 7;
+	pub const DataDepositPerByte: Balance = CENTS;
+	pub const SevenDays: BlockNumber = 7 * DAYS;
 	pub const ZeroDay: BlockNumber = 0;
 	pub const OneDay: BlockNumber = DAYS;
+	pub const BountyDepositBase: Balance = DOLLARS;
+	pub const BountyDepositPayoutDelay: BlockNumber = DAYS;
+	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
+	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
+	pub const BountyValueMinimum: Balance = 5 * DOLLARS;
+	pub const MaximumReasonLength: u32 = 16384;
 }
 
 impl pallet_treasury::Trait for Runtime {
@@ -545,13 +566,19 @@ impl pallet_treasury::Trait for Runtime {
 	type TipCountdown = TipCountdown;
 	type TipFindersFee = TipFindersFee;
 	type TipReportDepositBase = TipReportDepositBase;
-	type TipReportDepositPerByte = TipReportDepositPerByte;
+	type DataDepositPerByte = DataDepositPerByte;
 	type Event = Event;
-	type ProposalRejection = ();
+	type OnSlash = ();
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
+	type BountyDepositBase = BountyDepositBase;
+	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
+	type BountyUpdatePeriod = BountyUpdatePeriod;
+	type BountyCuratorDeposit = BountyCuratorDeposit;
+	type BountyValueMinimum = BountyValueMinimum;
+	type MaximumReasonLength = MaximumReasonLength;
 	type BurnDestination = ();
 	type WeightInfo = ();
 }
@@ -795,7 +822,7 @@ parameter_types! {
 impl orml_currencies::Trait for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
-	type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
@@ -838,6 +865,7 @@ impl orml_vesting::Trait for Runtime {
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * MaximumBlockWeight::get();
+	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
 impl pallet_scheduler::Trait for Runtime {
@@ -847,6 +875,7 @@ impl pallet_scheduler::Trait for Runtime {
 	type Call = Call;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
 }
 
@@ -1580,13 +1609,7 @@ impl_runtime_apis! {
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn dispatch_benchmark(
-			pallet: Vec<u8>,
-			benchmark: Vec<u8>,
-			lowest_range_values: Vec<u32>,
-			highest_range_values: Vec<u32>,
-			steps: Vec<u32>,
-			repeat: u32,
-			extra: bool,
+			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
@@ -1619,7 +1642,7 @@ impl_runtime_apis! {
 				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da95ecffd7b6c0f78751baa9d281e0bfa3a6d6f646c70792f74727372790000000000000000000000000000000000000000").to_vec().into(),
 			];
 			let mut batches = Vec::<BenchmarkBatch>::new();
-			let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist, extra);
+			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, dex, Dex);
 			add_benchmark!(params, batches, cdp_treasury, CdpTreasury);
@@ -1628,14 +1651,14 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, emergency_shutdown, EmergencyShutdownBench::<Runtime>);
 			add_benchmark!(params, batches, auction_manager, AuctionManagerBench::<Runtime>);
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
-			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
-			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
+			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
+			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
+			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
 
-			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
-			orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
-			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
+			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
+			// orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
+			// orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
+			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

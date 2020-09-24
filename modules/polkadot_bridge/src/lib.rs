@@ -30,7 +30,7 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		Balance = Balance,
 	{
-		/// [account, amount]
+		/// \[account, amount\]
 		Mint(AccountId, Balance),
 	}
 );

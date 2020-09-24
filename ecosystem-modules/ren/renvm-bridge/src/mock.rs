@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use orml_currencies::BasicCurrencyAdapter;
+use primitives::{Amount, CurrencyId};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
@@ -24,6 +25,8 @@ impl_outer_origin! {
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
+		orml_currencies<T>,
+		orml_tokens<T>,
 		frame_system<T>,
 		pallet_balances<T>,
 		renvm<T>,
@@ -55,7 +58,7 @@ impl frame_system::Trait for Runtime {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
-	type ModuleToIndex = ();
+	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -73,16 +76,13 @@ parameter_types! {
 	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
 }
 
-parameter_types! {
-	pub const GetNativeCurrencyId: u8 = 0;
-}
-
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
+	type MaxLocks = ();
 	type WeightInfo = ();
 }
 pub type Balances = pallet_balances::Module<Runtime>;
@@ -92,9 +92,33 @@ parameter_types! {
 	pub const BurnEventStoreDuration: BlockNumber = 10;
 }
 
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+
+impl orml_tokens::Trait for Runtime {
+	type Event = TestEvent;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type OnReceived = ();
+	type WeightInfo = ();
+}
+pub type Tokens = orml_tokens::Module<Runtime>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
+}
+
+impl orml_currencies::Trait for Runtime {
+	type Event = TestEvent;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
-	type Currency = BasicCurrencyAdapter<Balances, Balance, Balance, i128, BlockNumber>;
+	type Currency = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
 	type PublicKey = RenVmPublicKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = UnsignedPriority;

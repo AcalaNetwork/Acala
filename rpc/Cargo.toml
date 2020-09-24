@@ -5,27 +5,27 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
-jsonrpc-core = "14.2.0"
-jsonrpc-pubsub = "14.2.0"
+jsonrpc-core = "15.0.0"
 codec = { package = "parity-scale-codec", version = "1.3.0" }
 primitives = { package = "acala-primitives", path = "../primitives" }
-sp-api = { version = "2.0.0-rc6" }
-sp-blockchain = { version = "2.0.0-rc6" }
-sp-block-builder = { version = "2.0.0-rc6" }
-sp-consensus = { version = "0.8.0-rc6" }
-sp-consensus-babe = { version = "0.8.0-rc6" }
-sp-transaction-pool = { version = "2.0.0-rc6" }
-sc-client-api = { version = "2.0.0-rc6" }
-sc-consensus-babe = { version = "0.8.0-rc6" }
-sc-consensus-babe-rpc = { version = "0.8.0-rc6" }
-sc-consensus-epochs = { version = "0.8.0-rc6" }
-sc-finality-grandpa = { version = "0.8.0-rc6" }
-sc-finality-grandpa-rpc = { version = "0.8.0-rc6" }
-sc-keystore = { version = "2.0.0-rc6" }
-sc-rpc = { version = "2.0.0-rc6" }
-substrate-frame-rpc-system = { version = "2.0.0-rc6" }
-pallet-transaction-payment-rpc = { version = "2.0.0-rc6" }
-pallet-contracts-rpc = { version = "0.8.0-rc6" }
+sp-api = { version = "2.0.0" }
+sp-blockchain = { version = "2.0.0" }
+sp-block-builder = { version = "2.0.0" }
+sp-runtime = { version = "2.0.0" }
+sp-consensus = { version = "0.8.0" }
+sp-consensus-babe = { version = "0.8.0" }
+sp-transaction-pool = { version = "2.0.0" }
+sc-client-api = { version = "2.0.0" }
+sc-consensus-babe = { version = "0.8.0" }
+sc-consensus-babe-rpc = { version = "0.8.0" }
+sc-consensus-epochs = { version = "0.8.0" }
+sc-finality-grandpa = { version = "0.8.0" }
+sc-finality-grandpa-rpc = { version = "0.8.0" }
+sc-keystore = { version = "2.0.0" }
+sc-rpc = { version = "2.0.0" }
+substrate-frame-rpc-system = { version = "2.0.0" }
+pallet-transaction-payment-rpc = { version = "2.0.0" }
+pallet-contracts-rpc = { version = "0.8.0" }
 dev-runtime = { path = "../runtime/dev" }
 runtime-common = { path = "../runtime/common" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }

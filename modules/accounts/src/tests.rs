@@ -8,8 +8,8 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Accounts, Call, Currencies, DEXModule, ExtBuilder, NewAccountDeposit, Origin, Runtime, System, TimeModule, ACA,
-	ALICE, AUSD, BOB, BTC, CAROL,
+	Accounts, Call, Currencies, DEXModule, ExtBuilder, Moment, NewAccountDeposit, Origin, Runtime, System, TimeModule,
+	ACA, ALICE, AUSD, BOB, BTC, CAROL,
 };
 use orml_traits::MultiCurrency;
 
@@ -47,7 +47,7 @@ fn try_record_free_transfer_when_no_lock() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(TimeModule::now(), 0);
 		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
+		assert_eq!(Accounts::last_free_transfers(ALICE), Vec::<Moment>::new());
 		assert_eq!(Accounts::try_record_free_transfer(&ALICE), false);
 	});
 }
@@ -56,7 +56,7 @@ fn try_record_free_transfer_when_no_lock() {
 fn try_record_free_transfer_over_cap() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
+		assert_eq!(Accounts::last_free_transfers(ALICE), Vec::<Moment>::new());
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
 		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0]);
@@ -73,7 +73,7 @@ fn try_record_free_transfer_over_cap() {
 fn remove_expired_entry() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
+		assert_eq!(Accounts::last_free_transfers(ALICE), Vec::<Moment>::new());
 		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
 		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
 		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);

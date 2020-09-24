@@ -41,11 +41,11 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		CurrencyId = CurrencyId,
 	{
-		/// Authorize someone to operate the loan of specific collateral. [authorizer, authorizee, collateral_type]
+		/// Authorize someone to operate the loan of specific collateral. \[authorizer, authorizee, collateral_type\]
 		Authorization(AccountId, AccountId, CurrencyId),
-		/// Cancel the authorization of specific collateral for someone. [authorizer, authorizee, collateral_type]
+		/// Cancel the authorization of specific collateral for someone. \[authorizer, authorizee, collateral_type\]
 		UnAuthorization(AccountId, AccountId, CurrencyId),
-		/// Cancel all authorization. [authorizer]
+		/// Cancel all authorization. \[authorizer\]
 		UnAuthorizationAll(AccountId),
 	}
 );
