@@ -485,10 +485,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	#[cfg(feature = "std")]
 	fn _offchain_worker() -> Result<(), OffchainErr> {
-		use wasm_timer::Instant;
-
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		if collateral_currency_ids.len().is_zero() {
 			return Ok(());
@@ -531,8 +528,9 @@ impl<T: Trait> Module<T> {
 			start_key,
 		);
 
-		let start_time = Instant::now();
 		let mut count = 0;
+
+		let start_time = sp_io::offchain::timestamp();
 
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
@@ -551,12 +549,16 @@ impl<T: Trait> Module<T> {
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
 
+		let end_time = sp_io::offchain::timestamp();
+
 		debug::debug!(
 			target: OFFCHAIN_WORKER_LOG_TARGET,
-			"liquidate {:?} {:?} {:?}",
+			"liquidate {:?} {:?} {:?} {:?} {:?}",
 			currency_id,
 			count,
-			start_time.elapsed().as_millis()
+			start_time,
+			end_time,
+			end_time.diff(&start_time)
 		);
 
 		// if iteration for map storage finished, clear to be continue record

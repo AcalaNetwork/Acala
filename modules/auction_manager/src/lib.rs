@@ -366,10 +366,7 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
-	#[cfg(feature = "std")]
 	fn _offchain_worker() -> Result<(), OffchainErr> {
-		use wasm_timer::Instant;
-
 		// acquire offchain worker lock.
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
 		let mut lock = StorageLock::<'_, Time>::with_deadline(&OFFCHAIN_WORKER_LOCK, lock_expiration);
@@ -396,17 +393,7 @@ impl<T: Trait> Module<T> {
 				let mut iterator =
 					<DebitAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
 				while let Some((debit_auction_id, _)) = iterator.next() {
-					let start_time = Instant::now();
-
 					Self::submit_cancel_auction_tx(debit_auction_id);
-
-					debug::debug!(
-						target: "auction_manager_offchain_worker",
-						"debit auction: {:?}, cost {:?} ms",
-						debit_auction_id,
-						start_time.elapsed().as_millis()
-					);
-
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
 
@@ -422,17 +409,7 @@ impl<T: Trait> Module<T> {
 				let mut iterator =
 					<SurplusAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
 				while let Some((surplus_auction_id, _)) = iterator.next() {
-					let start_time = Instant::now();
-
 					Self::submit_cancel_auction_tx(surplus_auction_id);
-
-					debug::debug!(
-						target: "auction_manager_offchain_worker",
-						"surplus auction: {:?}, cost {:?} ms",
-						surplus_auction_id,
-						start_time.elapsed().as_millis()
-					);
-
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
 
@@ -456,18 +433,7 @@ impl<T: Trait> Module<T> {
 							continue;
 						}
 					}
-
-					let start_time = Instant::now();
-
 					Self::submit_cancel_auction_tx(collateral_auction_id);
-
-					debug::debug!(
-						target: "auction_manager_offchain_worker",
-						"surplus auction: {:?}, cost {:?} ms",
-						collateral_auction_id,
-						start_time.elapsed().as_millis()
-					);
-
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
 
