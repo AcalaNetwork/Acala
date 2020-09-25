@@ -57,4 +57,4 @@ update: update-orml
 	make check
 
 prepare-wasm:
-	WASM_TARGET_DIRECTORY=${CURDIR} WASM_BUILD_TYPE=release cargo build
+	./scripts/build-only-wasm.sh dev-runtime
