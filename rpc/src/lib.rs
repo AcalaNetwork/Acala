@@ -6,7 +6,7 @@ use primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProvide
 use sc_client_api::light::{Fetcher, RemoteBlockchain};
 use sc_consensus_babe::{Config, Epoch};
 use sc_consensus_epochs::SharedEpochChanges;
-use sc_finality_grandpa::{GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState};
+use sc_finality_grandpa::{FinalityProofProvider, GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState};
 use sc_keystore::KeyStorePtr;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
@@ -16,7 +16,8 @@ use sp_consensus_babe::BabeApi;
 use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
-pub use jsonrpc_pubsub::manager::SubscriptionManager;
+pub use sc_rpc::SubscriptionTaskExecutor;
+
 pub use sc_rpc::DenyUnsafe;
 
 /// A type representing all RPC extensions.
@@ -45,7 +46,7 @@ pub struct BabeDeps {
 }
 
 /// Extra dependencies for GRANDPA
-pub struct GrandpaDeps {
+pub struct GrandpaDeps<B> {
 	/// Voting round info.
 	pub shared_voter_state: SharedVoterState,
 	/// Authority set info.
@@ -53,11 +54,13 @@ pub struct GrandpaDeps {
 	/// Receives notifications about justification events from Grandpa.
 	pub justification_stream: GrandpaJustificationStream<Block>,
 	/// Subscription manager to keep track of pubsub subscribers.
-	pub subscriptions: SubscriptionManager,
+	pub subscription_executor: SubscriptionTaskExecutor,
+	/// Finality proof provider.
+	pub finality_provider: Arc<FinalityProofProvider<B, Block>>,
 }
 
 /// Full client dependencies.
-pub struct FullDeps<C, P, SC> {
+pub struct FullDeps<C, P, SC, B> {
 	/// The client instance to use.
 	pub client: Arc<C>,
 	/// Transaction pool instance.
@@ -69,11 +72,11 @@ pub struct FullDeps<C, P, SC> {
 	/// BABE specific dependencies.
 	pub babe: BabeDeps,
 	/// GRANDPA specific dependencies.
-	pub grandpa: GrandpaDeps,
+	pub grandpa: GrandpaDeps<B>,
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, SC>(deps: FullDeps<C, P, SC>) -> RpcExtension
+pub fn create_full<C, P, SC, B>(deps: FullDeps<C, P, SC, B>) -> RpcExtension
 where
 	C: ProvideRuntimeApi<Block>,
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
@@ -88,6 +91,8 @@ where
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 	SC: SelectChain<Block> + 'static,
+	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+	B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
 	use module_dex_rpc::{Dex, DexApi};
 	use module_staking_pool_rpc::{StakingPool, StakingPoolApi};
@@ -116,7 +121,8 @@ where
 		shared_voter_state,
 		shared_authority_set,
 		justification_stream,
-		subscriptions,
+		subscription_executor,
+		finality_provider,
 	} = grandpa;
 
 	io.extend_with(SystemApi::to_delegate(FullSystem::new(
@@ -143,7 +149,8 @@ where
 		shared_authority_set,
 		shared_voter_state,
 		justification_stream,
-		subscriptions,
+		subscription_executor,
+		finality_provider,
 	)));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 	io.extend_with(DexApi::to_delegate(Dex::new(client.clone())));

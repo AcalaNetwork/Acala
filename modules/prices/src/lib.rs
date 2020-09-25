@@ -53,9 +53,9 @@ pub trait Trait: system::Trait {
 
 decl_event!(
 	pub enum Event {
-		/// Lock price. [currency_id, locked_price]
+		/// Lock price. \[currency_id, locked_price\]
 		LockPrice(CurrencyId, Price),
-		/// Unlock price. [currency_id]
+		/// Unlock price. \[currency_id\]
 		UnlockPrice(CurrencyId),
 	}
 );

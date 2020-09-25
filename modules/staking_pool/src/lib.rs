@@ -47,13 +47,13 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		Balance = Balance,
 	{
-		/// [who, bond_staking, issued_liquid]
+		/// \[who, bond_staking, issued_liquid\]
 		MintLiquid(AccountId, Balance, Balance),
-		/// [who, redeem_amount, unbond_amount]
+		/// \[who, redeem_amount, unbond_amount\]
 		RedeemByUnbond(AccountId, Balance, Balance),
-		/// [who, fee_in_liquid, liquid_amount_burned, staking_amount_retrived]
+		/// \[who, fee_in_liquid, liquid_amount_burned, staking_amount_retrived\]
 		RedeemByFreeUnbonded(AccountId, Balance, Balance, Balance),
-		/// [who, target_era, fee, redeem_amount, unbond_amount]
+		/// \[who, target_era, fee, redeem_amount, unbond_amount\]
 		RedeemByClaimUnbonding(AccountId, EraIndex, Balance, Balance, Balance),
 	}
 );

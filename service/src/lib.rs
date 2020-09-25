@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use acala_primitives::Block;
+use prometheus_endpoint::Registry;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sc_executor::native_executor_instance;
 use sc_finality_grandpa::FinalityProofProvider as GrandpaFinalityProofProvider;
@@ -17,7 +18,10 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 pub use client::*;
 pub use dev_runtime;
 pub use sc_executor::NativeExecutionDispatch;
-pub use sc_service::ChainSpec;
+pub use sc_service::{
+	config::{DatabaseConfig, PrometheusConfig},
+	ChainSpec,
+};
 pub use sp_api::ConstructRuntimeApi;
 
 pub mod chain_spec;
@@ -78,6 +82,7 @@ type LightClient<RuntimeApi, Executor> = sc_service::TLightClientWithBackend<Blo
 
 pub fn new_partial<RuntimeApi, Executor>(
 	config: &mut Configuration,
+	test: bool,
 ) -> Result<
 	PartialComponents<
 		FullClient<RuntimeApi, Executor>,
@@ -86,7 +91,7 @@ pub fn new_partial<RuntimeApi, Executor>(
 		sp_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
 		(
-			impl Fn(acala_rpc::DenyUnsafe, acala_rpc::SubscriptionManager) -> acala_rpc::RpcExtension,
+			impl Fn(acala_rpc::DenyUnsafe, acala_rpc::SubscriptionTaskExecutor) -> acala_rpc::RpcExtension,
 			(
 				sc_consensus_babe::BabeBlockImport<
 					Block,
@@ -96,7 +101,10 @@ pub fn new_partial<RuntimeApi, Executor>(
 				sc_finality_grandpa::LinkHalf<Block, FullClient<RuntimeApi, Executor>, FullSelectChain>,
 				sc_consensus_babe::BabeLink<Block>,
 			),
-			sc_finality_grandpa::SharedVoterState,
+			(
+				sc_finality_grandpa::SharedVoterState,
+				Arc<GrandpaFinalityProofProvider<FullBackend, Block>>,
+			),
 		),
 	>,
 	sc_service::Error,
@@ -106,6 +114,13 @@ where
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
 {
+	if !test {
+		// If we're using prometheus, use a registry with a prefix of `acala`.
+		if let Some(PrometheusConfig { registry, .. }) = config.prometheus_config.as_mut() {
+			*registry = Registry::new_custom(Some("acala".into()), None)?;
+		}
+	}
+
 	let (client, backend, keystore, task_manager) = sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
 	let client = Arc::new(client);
 
@@ -146,9 +161,10 @@ where
 	let justification_stream = grandpa_link.justification_stream();
 	let shared_authority_set = grandpa_link.shared_authority_set().clone();
 	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
+	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
 
 	let import_setup = (block_import, grandpa_link, babe_link.clone());
-	let rpc_setup = shared_voter_state.clone();
+	let rpc_setup = (shared_voter_state.clone(), finality_proof_provider.clone());
 
 	let babe_config = babe_link.config().clone();
 	let shared_epoch_changes = babe_link.epoch_changes().clone();
@@ -159,7 +175,7 @@ where
 		let transaction_pool = transaction_pool.clone();
 		let select_chain = select_chain.clone();
 
-		move |deny_unsafe, subscriptions| -> acala_rpc::RpcExtension {
+		move |deny_unsafe, subscription_executor| -> acala_rpc::RpcExtension {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
 				pool: transaction_pool.clone(),
@@ -174,11 +190,12 @@ where
 					shared_voter_state: shared_voter_state.clone(),
 					shared_authority_set: shared_authority_set.clone(),
 					justification_stream: justification_stream.clone(),
-					subscriptions,
+					subscription_executor,
+					finality_provider: finality_proof_provider.clone(),
 				},
 			};
 
-			acala_rpc::create_full::<_, _, _>(deps)
+			acala_rpc::create_full(deps)
 		}
 	};
 
@@ -210,6 +227,7 @@ pub fn new_full<
 >(
 	mut config: Configuration,
 	with_startup_data: T,
+	test: bool,
 ) -> Result<
 	(
 		TaskManager,
@@ -217,6 +235,7 @@ pub fn new_full<
 		Arc<FullClient<RuntimeApi, Executor>>,
 		Arc<sc_network::NetworkService<Block, <Block as BlockT>::Hash>>,
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
+		sc_service::NetworkStatusSinks<Block>,
 	),
 	ServiceError,
 >
@@ -235,9 +254,9 @@ where
 		transaction_pool,
 		inherent_data_providers,
 		other: (rpc_extensions_builder, import_setup, rpc_setup),
-	} = new_partial::<RuntimeApi, Executor>(&mut config)?;
+	} = new_partial::<RuntimeApi, Executor>(&mut config, test)?;
 
-	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
+	let (shared_voter_state, finality_proof_provider) = rpc_setup;
 
 	let (network, network_status_sinks, system_rpc_tx, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
@@ -281,12 +300,11 @@ where
 		on_demand: None,
 		remote_blockchain: None,
 		telemetry_connection_sinks: telemetry_connection_sinks.clone(),
-		network_status_sinks,
+		network_status_sinks: network_status_sinks.clone(),
 		system_rpc_tx,
 	})?;
 
 	let (block_import, grandpa_link, babe_link) = import_setup;
-	let shared_voter_state = rpc_setup;
 
 	(with_startup_data)(&block_import, &babe_link);
 
@@ -317,39 +335,6 @@ where
 			.spawn_essential_handle()
 			.spawn_blocking("babe-proposer", babe);
 	}
-
-	// // Spawn authority discovery module.
-	// if matches!(role, Role::Authority{..} | Role::Sentry {..}) {
-	// 	let (sentries, authority_discovery_role) = match role {
-	// 		sc_service::config::Role::Authority { ref sentry_nodes } => (
-	// 			sentry_nodes.clone(),
-	// 			sc_authority_discovery::Role::Authority (
-	// 				keystore.clone(),
-	// 			),
-	// 		),
-	// 		sc_service::config::Role::Sentry {..} => (
-	// 			vec![],
-	// 			sc_authority_discovery::Role::Sentry,
-	// 		),
-	// 		_ => unreachable!("Due to outer matches! constraint; qed.")
-	// 	};
-
-	// 	let dht_event_stream = network.event_stream("authority-discovery")
-	// 		.filter_map(|e| async move { match e {
-	// 			Event::Dht(e) => Some(e),
-	// 			_ => None,
-	// 		}}).boxed();
-	// 	let authority_discovery = sc_authority_discovery::AuthorityDiscovery::new(
-	// 		client.clone(),
-	// 		network.clone(),
-	// 		sentries,
-	// 		dht_event_stream,
-	// 		authority_discovery_role,
-	// 		prometheus_registry.clone(),
-	// 	);
-
-	// 	task_manager.spawn_handle().spawn("authority-discovery",
-	// authority_discovery); }
 
 	// if the node isn't actively participating in consensus then it doesn't
 	// need a keystore, regardless of which protocol we use below.
@@ -397,7 +382,14 @@ where
 	}
 
 	network_starter.start_network();
-	Ok((task_manager, inherent_data_providers, client, network, transaction_pool))
+	Ok((
+		task_manager,
+		inherent_data_providers,
+		client,
+		network,
+		transaction_pool,
+		network_status_sinks,
+	))
 }
 
 /// Creates a light service from the configuration.
@@ -525,7 +517,7 @@ where
 
 /// Builds a new object suitable for chain operations.
 pub fn new_chain_ops<Runtime, Executor>(
-	mut config: Configuration,
+	mut config: &mut Configuration,
 ) -> Result<
 	(
 		Arc<FullClient<Runtime, Executor>>,
@@ -547,6 +539,6 @@ where
 		import_queue,
 		task_manager,
 		..
-	} = new_partial::<Runtime, Executor>(&mut config)?;
+	} = new_partial::<Runtime, Executor>(&mut config, false)?;
 	Ok((client, backend, import_queue, task_manager))
 }
