@@ -231,8 +231,8 @@ fn testnet_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus,
-		StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-		DOLLARS,
+		StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -319,8 +319,8 @@ fn testnet_genesis(
 				.iter()
 				.flat_map(|x| {
 					vec![
-						(x.clone(), CurrencyId::DOT, INITIAL_BALANCE),
-						(x.clone(), CurrencyId::XBTC, INITIAL_BALANCE),
+						(x.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
+						(x.clone(), CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
 					]
 				})
 				.collect(),
@@ -328,15 +328,15 @@ fn testnet_genesis(
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::XBTC, DOLLARS),
-				(CurrencyId::RENBTC, DOLLARS),
+				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::Token(TokenSymbol::XBTC), DOLLARS),
+				(CurrencyId::Token(TokenSymbol::RENBTC), DOLLARS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::DOT,
+					CurrencyId::Token(TokenSymbol::DOT),
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
@@ -344,7 +344,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
 				),
 				(
-					CurrencyId::XBTC,
+					CurrencyId::Token(TokenSymbol::XBTC),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
@@ -352,7 +352,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::LDOT,
+					CurrencyId::Token(TokenSymbol::LDOT),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
@@ -360,7 +360,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::RENBTC,
+					CurrencyId::Token(TokenSymbol::RENBTC),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
@@ -401,7 +401,7 @@ fn mandala_genesis(
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
 		PolkadotBridgeConfig, SessionConfig, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
@@ -485,22 +485,22 @@ fn mandala_genesis(
 		}),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: vec![
-				(root_key.clone(), CurrencyId::DOT, INITIAL_BALANCE),
-				(root_key, CurrencyId::XBTC, INITIAL_BALANCE),
+				(root_key.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
+				(root_key, CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
 			],
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::DOT, DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::XBTC, 5 * CENTS),
-				(CurrencyId::RENBTC, 5 * CENTS),
+				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::Token(TokenSymbol::XBTC), 5 * CENTS),
+				(CurrencyId::Token(TokenSymbol::RENBTC), 5 * CENTS),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::DOT,
+					CurrencyId::Token(TokenSymbol::DOT),
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
@@ -508,7 +508,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
 				),
 				(
-					CurrencyId::XBTC,
+					CurrencyId::Token(TokenSymbol::XBTC),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
@@ -516,7 +516,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::LDOT,
+					CurrencyId::Token(TokenSymbol::LDOT),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(120, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
@@ -524,7 +524,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::RENBTC,
+					CurrencyId::Token(TokenSymbol::RENBTC),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),

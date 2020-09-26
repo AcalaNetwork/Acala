@@ -8,6 +8,7 @@ use frame_support::{
 	impl_outer_origin, ord_parameter_types, parameter_types,
 };
 use frame_system::EnsureSignedBy;
+use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
@@ -18,10 +19,10 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const AUSD: CurrencyId = CurrencyId::AUSD;
-pub const BTC: CurrencyId = CurrencyId::XBTC;
-pub const DOT: CurrencyId = CurrencyId::DOT;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -155,8 +156,8 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 
 	fn get_liquidity_pool(currency_id: CurrencyId) -> (Balance, Balance) {
 		match currency_id {
-			CurrencyId::XBTC => (100, 500),
-			CurrencyId::DOT => (100, 400),
+			CurrencyId::Token(TokenSymbol::XBTC) => (100, 500),
+			CurrencyId::Token(TokenSymbol::DOT) => (100, 400),
 			_ => (0, 0),
 		}
 	}

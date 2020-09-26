@@ -1,4 +1,4 @@
-use crate::{AccountId, CurrencyId, Rewards, Runtime, System};
+use crate::{AccountId, CurrencyId, Rewards, Runtime, System, TokenSymbol};
 
 use frame_benchmarking::account;
 use frame_support::storage::StorageMap;
@@ -25,7 +25,7 @@ runtime_benchmarks! {
 		let p in ...;
 		let b in ...;
 		let who: AccountId = account("who", u, SEED);
-		let pool_id = PoolId::Loans(CurrencyId::DOT);
+		let pool_id = PoolId::Loans(CurrencyId::Token(TokenSymbol::DOT));
 
 		orml_rewards::Pools::<Runtime>::mutate(pool_id, |pool_info| {
 			pool_info.total_rewards += 100;
@@ -41,8 +41,8 @@ runtime_benchmarks! {
 		let p in ...;
 		let b in ...;
 		let who: AccountId = account("who", u, SEED);
-		let pool_id_1 = PoolId::Loans(CurrencyId::DOT);
-		let pool_id_2 = PoolId::Loans(CurrencyId::AUSD);
+		let pool_id_1 = PoolId::Loans(CurrencyId::Token(TokenSymbol::DOT));
+		let pool_id_2 = PoolId::Loans(CurrencyId::Token(TokenSymbol::AUSD));
 
 		orml_rewards::Pools::<Runtime>::mutate(pool_id_1, |pool_info| {
 			pool_info.total_rewards += 100;
@@ -61,9 +61,9 @@ runtime_benchmarks! {
 		let p in ...;
 		let b in ...;
 		let who: AccountId = account("who", u, SEED);
-		let pool_id_1 = PoolId::Loans(CurrencyId::DOT);
-		let pool_id_2 = PoolId::Loans(CurrencyId::AUSD);
-		let pool_id_3 = PoolId::Loans(CurrencyId::XBTC);
+		let pool_id_1 = PoolId::Loans(CurrencyId::Token(TokenSymbol::DOT));
+		let pool_id_2 = PoolId::Loans(CurrencyId::Token(TokenSymbol::AUSD));
+		let pool_id_3 = PoolId::Loans(CurrencyId::Token(TokenSymbol::XBTC));
 
 		orml_rewards::Pools::<Runtime>::mutate(pool_id_1, |pool_info| {
 			pool_info.total_rewards += 100;

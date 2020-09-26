@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_oracle::DefaultCombineData;
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
 	traits::{Convert, IdentityLookup},
@@ -32,11 +32,11 @@ pub type AuctionId = u32;
 pub type BlockNumber = u64;
 pub type Share = u64;
 
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const AUSD: CurrencyId = CurrencyId::AUSD;
-pub const BTC: CurrencyId = CurrencyId::XBTC;
-pub const DOT: CurrencyId = CurrencyId::DOT;
-pub const LDOT: CurrencyId = CurrencyId::LDOT;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -304,7 +304,7 @@ impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::XBTC, CurrencyId::DOT];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::DOT)];
 }
 
 impl emergency_shutdown::Trait for Runtime {

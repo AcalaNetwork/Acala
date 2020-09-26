@@ -14,7 +14,7 @@ use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use orml_traits::{DataFeeder, MultiCurrency};
-use primitives::{AuctionId, Balance, CurrencyId};
+use primitives::{AuctionId, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{DispatchError, FixedPointNumber};
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, Price};
 
@@ -102,14 +102,14 @@ benchmarks! {
 
 		// set balance
 		<T as auction_manager::Trait>::Currency::deposit(stable_currency_id, &bidder, dollar(80))?;
-		<T as auction_manager::Trait>::Currency::deposit(CurrencyId::DOT, &funder, dollar(1))?;
-		<T as auction_manager::Trait>::CDPTreasury::deposit_collateral(&funder, CurrencyId::DOT, dollar(1))?;
+		<T as auction_manager::Trait>::Currency::deposit(CurrencyId::Token(TokenSymbol::DOT), &funder, dollar(1))?;
+		<T as auction_manager::Trait>::CDPTreasury::deposit_collateral(&funder, CurrencyId::Token(TokenSymbol::DOT), dollar(1))?;
 
 		// feed price
-		feed_price::<T>(CurrencyId::DOT, Price::saturating_from_integer(120))?;
+		feed_price::<T>(CurrencyId::Token(TokenSymbol::DOT), Price::saturating_from_integer(120))?;
 
 		// create collateral auction
-		AuctionManager::<T>::new_collateral_auction(&funder, CurrencyId::DOT, dollar(1), dollar(100))?;
+		AuctionManager::<T>::new_collateral_auction(&funder, CurrencyId::Token(TokenSymbol::DOT), dollar(1), dollar(100))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction
