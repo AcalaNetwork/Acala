@@ -64,18 +64,18 @@ sp-transaction-pool = { version = "2.0.0-rc5" }
 substrate-frame-rpc-system = { version = "2.0.0-rc5" }
 
 # Cumulus dependencies
-cumulus-consensus = { git = "https://github.com/paritytech/cumulus" }
-cumulus-collator = { git = "https://github.com/paritytech/cumulus" }
-cumulus-network = { git = "https://github.com/paritytech/cumulus" }
-cumulus-primitives = { git = "https://github.com/paritytech/cumulus" }
-cumulus-service = { git = "https://github.com/paritytech/cumulus" }
+cumulus-consensus = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp" }
+cumulus-collator = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp" }
+cumulus-network = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp" }
+cumulus-primitives = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp" }
+cumulus-service = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp" }
 
 # Polkadot dependencies
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
-polkadot-collator = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
-polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
-polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp" }
+polkadot-collator = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp" }
 
 module-dex-rpc = { path = "modules/dex/rpc" }
 module-support = { path = "modules/support" }
@@ -182,6 +182,7 @@ members = [
 	"orml/utilities",
 	"orml/vesting",
 	"orml/xtokens",
+	"orml/xmulticurrency",
 	"runtime",
 	"inspect",
 	"ecosystem-modules/template/template",

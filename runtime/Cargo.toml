@@ -53,16 +53,19 @@ sp-transaction-pool = { version = "2.0.0-rc5", default-features = false }
 sp-version = { version = "2.0.0-rc5", default-features = false }
 
 # Cumulus dependencies
-cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", default-features = false }
-cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false }
-cumulus-primitives = { git = "https://github.com/paritytech/cumulus", default-features = false }
-cumulus-runtime = { git = "https://github.com/paritytech/cumulus", default-features = false }
-cumulus-upward-message = { git = "https://github.com/paritytech/cumulus", default-features = false }
-parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false }
+cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp", default-features = false }
+cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp", default-features = false }
+cumulus-primitives = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp", default-features = false }
+cumulus-runtime = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp", default-features = false }
+# cumulus-upward-message = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp", default-features = false }
+parachain-info = { git = "https://github.com/paritytech/cumulus", branch = "gav-xcmp", default-features = false }
 
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
-
-rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp", default-features = false }
+rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp", default-features = false }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp", default-features = false }
+pallet-xcm-handler  = { git = "https://github.com/paritytech/polkadot", branch = "gav-xcmp", default-features = false }
 
 orml-auction = { path = "../orml/auction", default-features = false }
 orml-benchmarking = { path = "../orml/benchmarking", default-features = false, optional = true }
@@ -74,6 +77,7 @@ orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-traits = { path = "../orml/traits", default-features = false }
 orml-vesting = { path = "../orml/vesting", default-features = false }
 orml-xtokens = { path = "../orml/xtokens", default-features = false }
+orml-xmulticurrency = { path = "../orml/xmulticurrency", default-features = false }
 
 module-accounts = { path = "../modules/accounts", default-features = false }
 module-airdrop = { path = "../modules/airdrop", default-features = false }
@@ -153,9 +157,13 @@ std = [
 	"cumulus-parachain-upgrade/std",
 	"cumulus-primitives/std",
 	"cumulus-runtime/std",
-	"cumulus-upward-message/std",
+	# "cumulus-upward-message/std",
 	"parachain-info/std",
 	"polkadot-parachain/std",
+	"xcm/std",
+	"xcm-executor/std",
+	"xcm-builder/std",
+	"pallet-xcm-handler/std",
 
 	"orml-auction/std",
 	"orml-benchmarking/std",
@@ -167,6 +175,7 @@ std = [
 	"orml-traits/std",
 	"orml-vesting/std",
 	"orml-xtokens/std",
+	"orml-xmulticurrency/std",
 
 	"module-accounts/std",
 	"module-airdrop/std",
@@ -208,6 +217,6 @@ runtime-benchmarks = [
 ]
 
 # Will be enabled by the `wasm-builder` when building the runtime for WASM.
-runtime-wasm = [
-	"cumulus-upward-message/runtime-wasm",
-]
+# runtime-wasm = [
+# 	"cumulus-upward-message/runtime-wasm",
+# ]
