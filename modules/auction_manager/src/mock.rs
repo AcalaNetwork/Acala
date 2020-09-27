@@ -19,7 +19,6 @@ pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type AuctionId = u32;
 pub type Amount = i64;
-pub type Share = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;

@@ -30,7 +30,6 @@ pub type AccountIndex = u32;
 pub type AccountId = u128;
 pub type AuctionId = u32;
 pub type BlockNumber = u64;
-pub type Share = u64;
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
