@@ -7,13 +7,12 @@ use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, pa
 use frame_system::EnsureSignedBy;
 use primitives::TokenSymbol;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchResult, Perbill};
 use sp_std::cell::RefCell;
 use support::{AuctionManager, Rate};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type Share = u128;
 pub type Amount = i128;
 pub type AuctionId = u32;
 
@@ -25,6 +24,8 @@ pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
+pub const DOT_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::DOT, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -165,14 +166,11 @@ parameter_types! {
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type Share = Share;
 	type EnabledCurrencyIds = EnabledCurrencyIds;
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = DEXModuleId;
-	type OnAddLiquidity = ();
-	type OnRemoveLiquidity = ();
 }
 pub type DexModule = Module<Runtime>;
 

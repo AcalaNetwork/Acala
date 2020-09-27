@@ -249,13 +249,10 @@ impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
 	type EnabledCurrencyIds = CollateralCurrencyIds;
-	type Share = Share;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = DEXModuleId;
-	type OnAddLiquidity = ();
-	type OnRemoveLiquidity = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
 

@@ -81,7 +81,7 @@ pub enum TokenSymbol {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	Token(TokenSymbol),
-	DEXShare(TokenSymbol),
+	DEXShare(TokenSymbol, TokenSymbol),
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

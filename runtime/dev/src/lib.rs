@@ -1029,14 +1029,11 @@ parameter_types! {
 impl module_dex::Trait for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type Share = Share;
 	type EnabledCurrencyIds = EnabledCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CdpTreasury;
 	type ModuleId = DEXModuleId;
-	type OnAddLiquidity = module_incentives::OnAddLiquidity<Runtime>;
-	type OnRemoveLiquidity = module_incentives::OnRemoveLiquidity<Runtime>;
 }
 
 parameter_types! {

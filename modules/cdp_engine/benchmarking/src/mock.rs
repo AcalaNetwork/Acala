@@ -196,14 +196,11 @@ parameter_types! {
 impl dex::Trait for Runtime {
 	type Event = ();
 	type Currency = Currencies;
-	type Share = Share;
 	type EnabledCurrencyIds = CollateralCurrencyIds;
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = DEXModuleId;
-	type OnAddLiquidity = ();
-	type OnRemoveLiquidity = ();
 }
 pub type DexModule = dex::Module<Runtime>;
 

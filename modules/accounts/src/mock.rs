@@ -24,6 +24,8 @@ pub const CAROL: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const ACA_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::ACA, TokenSymbol::AUSD);
+pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -207,14 +209,11 @@ parameter_types! {
 impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
-	type Share = Share;
 	type EnabledCurrencyIds = EnabledCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = MockCDPTreasury;
 	type ModuleId = DEXModuleId;
-	type OnAddLiquidity = ();
-	type OnRemoveLiquidity = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
 
