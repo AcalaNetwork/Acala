@@ -116,6 +116,7 @@ parameter_types! {
 	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
 	pub const HonzonTreasuryModuleId: ModuleId = ModuleId(*b"aca/hztr");
 	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
+	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
 	// Decentralized Sovereign Wealth Fund
 	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"aca/phre";
@@ -130,6 +131,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StakingPoolModuleId::get().into_account(),
 		HonzonTreasuryModuleId::get().into_account(),
 		HomaTreasuryModuleId::get().into_account(),
+		IncentivesModuleId::get().into_account(),
 		DSWFModuleId::get().into_account(),
 		ZeroAccountId::get(),
 	]
@@ -1089,6 +1091,7 @@ parameter_types! {
 }
 
 impl module_incentives::Trait for Runtime {
+	type Event = Event;
 	type LoansIncentivePool = ZeroAccountId;
 	type DexIncentivePool = ZeroAccountId;
 	type HomaIncentivePool = ZeroAccountId;
@@ -1100,6 +1103,7 @@ impl module_incentives::Trait for Runtime {
 	type Currency = Currencies;
 	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
+	type ModuleId = IncentivesModuleId;
 }
 
 impl module_airdrop::Trait for Runtime {
@@ -1298,7 +1302,7 @@ construct_runtime!(
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
-		Incentives: module_incentives::{Module, Storage, Call},
+		Incentives: module_incentives::{Module, Storage, Call, Event<T>},
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
 		Homa: module_homa::{Module, Call},
 		NomineesElection: module_nominees_election::{Module, Call, Storage},

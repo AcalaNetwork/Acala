@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	impl_outer_origin, ord_parameter_types, parameter_types,
+	impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 };
 use frame_system::EnsureSignedBy;
 use primitives::TokenSymbol;
@@ -23,6 +23,7 @@ pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -33,6 +34,14 @@ mod incentives {
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+impl_outer_event! {
+	pub enum TestEvent for Runtime {
+		frame_system<T>,
+		incentives<T>,
+		orml_tokens<T>,
+	}
 }
 
 parameter_types! {
@@ -52,7 +61,7 @@ impl frame_system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
@@ -69,9 +78,10 @@ impl frame_system::Trait for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 }
+pub type System = frame_system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -194,6 +204,7 @@ parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const IncentiveCurrencyId: CurrencyId = ACA;
 	pub const SavingCurrencyId: CurrencyId = AUSD;
+	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
 }
 
 ord_parameter_types! {
@@ -201,6 +212,7 @@ ord_parameter_types! {
 }
 
 impl Trait for Runtime {
+	type Event = TestEvent;
 	type LoansIncentivePool = LoansIncentivePool;
 	type DexIncentivePool = DexIncentivePool;
 	type HomaIncentivePool = HomaIncentivePool;
@@ -212,6 +224,7 @@ impl Trait for Runtime {
 	type Currency = TokensModule;
 	type DEX = MockDEX;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type ModuleId = IncentivesModuleId;
 }
 
 pub type IncentivesModule = Module<Runtime>;
