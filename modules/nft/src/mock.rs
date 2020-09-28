@@ -5,8 +5,6 @@ use super::*;
 use crate as nft;
 use codec::{Decode, Encode};
 use frame_support::{
-	assert_noop, assert_ok,
-	dispatch::DispatchError,
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
 	traits::{Filter, InstanceFilter},
 	weights::Weight,
@@ -86,12 +84,12 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 impl pallet_balances::Trait for Runtime {
-	type MaxLocks = ();
 	type Balance = Balance;
 	type Event = TestEvent;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
+	type MaxLocks = ();
 	type WeightInfo = ();
 }
 impl pallet_utility::Trait for Runtime {
@@ -184,7 +182,6 @@ impl orml_currencies::Trait for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
-pub type CurrenciesModule = orml_currencies::Module<Runtime>;
 
 parameter_types! {
 	pub const CreateClassDeposit: Balance = 200;
@@ -202,7 +199,7 @@ impl Trait for Runtime {
 }
 pub type NFTModule = Module<Runtime>;
 
-impl orml_non_fungible_token::Trait for Runtime {
+impl orml_nft::Trait for Runtime {
 	type ClassId = u64;
 	type TokenId = u64;
 	type ClassData = ClassData;
@@ -216,21 +213,15 @@ use pallet_utility::Call as UtilityCall;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CLASS_ID: <Runtime as orml_non_fungible_token::Trait>::ClassId = 0;
-pub const CLASS_ID_NOT_EXIST: <Runtime as orml_non_fungible_token::Trait>::ClassId = 1;
-pub const TOKEN_ID: <Runtime as orml_non_fungible_token::Trait>::TokenId = 0;
-pub const TOKEN_ID_NOT_EXIST: <Runtime as orml_non_fungible_token::Trait>::TokenId = 1;
+pub const CLASS_ID: <Runtime as orml_nft::Trait>::ClassId = 0;
+pub const CLASS_ID_NOT_EXIST: <Runtime as orml_nft::Trait>::ClassId = 1;
+pub const TOKEN_ID: <Runtime as orml_nft::Trait>::TokenId = 0;
+pub const TOKEN_ID_NOT_EXIST: <Runtime as orml_nft::Trait>::TokenId = 1;
 
-pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
-}
+pub struct ExtBuilder;
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			endowed_accounts: vec![
-				(ALICE, CurrencyId::ACA, 1000),
-			],
-		}
+		ExtBuilder
 	}
 }
 
@@ -240,8 +231,8 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(ALICE, 100000)],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
@@ -250,4 +241,11 @@ impl ExtBuilder {
 		ext.execute_with(|| System::set_block_number(1));
 		ext
 	}
+}
+
+pub fn last_event() -> TestEvent {
+	frame_system::Module::<Runtime>::events()
+		.pop()
+		.expect("Event expected")
+		.event
 }

@@ -12,17 +12,15 @@ sp-runtime = { version = "2.0.0-rc6", default-features = false }
 frame-support = { version = "2.0.0-rc6", default-features = false }
 frame-system = { version = "2.0.0-rc6", default-features = false }
 pallet-proxy = { version = "2.0.0-rc6", default-features = false }
-staking-pool = { package = "module-staking-pool", path = "../staking_pool", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-utilities = { path = "../../orml/utilities", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-orml-non-fungible-token = { path = "../../orml/non-fungible-token", default-features = false }
+orml-nft = { path = "../../orml/nft", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
-pallet-balances = { version = "2.0.0", default-features = false }
+pallet-balances = { version = "2.0.0" }
 pallet-utility = { version = "2.0.0", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
@@ -37,10 +35,8 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-proxy/std",
-	"staking-pool/std",
-	"support/std",
 	"primitives/std",
 	"orml-utilities/std",
 	"orml-traits/std",
-	"orml-non-fungible-token/std",
+	"orml-nft/std",
 ]

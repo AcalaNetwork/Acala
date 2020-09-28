@@ -1186,7 +1186,7 @@ impl module_nft::Trait for Runtime {
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 }
 
-impl orml_non_fungible_token::Trait for Runtime {
+impl orml_nft::Trait for Runtime {
 	type ClassId = u64;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData;
@@ -1341,7 +1341,7 @@ construct_runtime!(
 		GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		Rewards: orml_rewards::{Module, Storage, Call},
-		NFT: orml_non_fungible_token::{Module, Storage},
+		OrmlNFT: orml_nft::{Module, Storage},
 
 		// acala modules
 		Prices: module_prices::{Module, Storage, Call, Event},
@@ -1359,7 +1359,7 @@ construct_runtime!(
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
-		AcalaNft: module_nft::{Module, Call, Event<T>},
+		AcalaNFT: module_nft::{Module, Call, Event<T>},
 
 		// ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
