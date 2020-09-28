@@ -3984,6 +3984,7 @@ name = "module-nft"
 version = "0.6.0"
 dependencies = [
  "acala-primitives",
+ "enumflags2",
  "frame-support",
  "frame-system",
  "orml-currencies",

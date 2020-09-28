@@ -207,9 +207,6 @@ impl orml_nft::Trait for Runtime {
 }
 
 use frame_system::Call as SystemCall;
-use pallet_balances::Call as BalancesCall;
-use pallet_proxy::Call as ProxyCall;
-use pallet_utility::Call as UtilityCall;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;

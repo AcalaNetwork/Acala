@@ -25,7 +25,11 @@ fn class_id_account() -> AccountId {
 #[test]
 fn create_class_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NFTModule::create_class(Origin::signed(ALICE), vec![1], vec![]));
+		assert_ok!(NFTModule::create_class(
+			Origin::signed(ALICE),
+			vec![1],
+			Default::default()
+		));
 		let event = TestEvent::nft(RawEvent::CreatedClass(ALICE, CLASS_ID));
 		assert_eq!(last_event(), event);
 
@@ -41,22 +45,9 @@ fn create_class_should_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			NFTModule::create_class(
-				Origin::signed(ALICE),
-				vec![1],
-				vec![
-					ClassProperty::Burnable,
-					ClassProperty::Burnable,
-					ClassProperty::Burnable
-				]
-			),
-			Error::<Runtime>::InvalidPropertiesLength
-		);
-
-		assert_noop!(
-			NFTModule::create_class(
 				Origin::signed(BOB),
 				vec![1],
-				vec![ClassProperty::Burnable, ClassProperty::Transferable]
+				Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 			),
 			pallet_balances::Error::<Runtime, _>::InsufficientBalance
 		);
@@ -69,7 +60,7 @@ fn mint_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		let event = TestEvent::nft(RawEvent::CreatedClass(ALICE, CLASS_ID));
 		assert_eq!(last_event(), event);
@@ -91,7 +82,7 @@ fn mint_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_noop!(
 			NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID_NOT_EXIST, vec![1], 2),
@@ -117,7 +108,7 @@ fn transfer_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 2));
 
@@ -137,7 +128,7 @@ fn transfer_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 1));
 		assert_noop!(
@@ -155,7 +146,11 @@ fn transfer_should_fail() {
 	});
 
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NFTModule::create_class(Origin::signed(ALICE), vec![1], vec![]));
+		assert_ok!(NFTModule::create_class(
+			Origin::signed(ALICE),
+			vec![1],
+			Default::default()
+		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 1));
 		assert_noop!(
 			NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)),
@@ -170,7 +165,7 @@ fn burn_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 1));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
@@ -190,7 +185,7 @@ fn burn_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 1));
 		assert_noop!(
@@ -213,7 +208,11 @@ fn burn_should_fail() {
 	});
 
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NFTModule::create_class(Origin::signed(ALICE), vec![1], vec![]));
+		assert_ok!(NFTModule::create_class(
+			Origin::signed(ALICE),
+			vec![1],
+			Default::default()
+		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 1));
 		assert_noop!(
 			NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)),
@@ -228,7 +227,7 @@ fn destroy_class_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 1));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
@@ -248,7 +247,7 @@ fn destroy_class_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			vec![1],
-			vec![ClassProperty::Burnable, ClassProperty::Transferable]
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_ok!(NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 1));
 		assert_noop!(
@@ -263,7 +262,7 @@ fn destroy_class_should_fail() {
 
 		assert_noop!(
 			NFTModule::destroy_class(Origin::signed(ALICE), CLASS_ID, BOB),
-			orml_nft::Error::<Runtime>::CannotDestroyClass
+			Error::<Runtime>::CannotDestroyClass
 		);
 
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));

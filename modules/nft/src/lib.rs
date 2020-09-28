@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use enumflags2::BitFlags;
 use frame_support::{
 	decl_error, decl_event, decl_module, ensure,
 	traits::{Get, IsType},
@@ -14,17 +15,35 @@ use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	ModuleId, RuntimeDebug,
 };
-use sp_std::vec::Vec;
 
 mod mock;
 mod tests;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[repr(u8)]
+#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
 pub enum ClassProperty {
 	/// Token can be transferred
-	Transferable,
+	Transferable = 0b00000001,
 	/// Token can be burned
-	Burnable,
+	Burnable = 0b00000010,
+}
+
+#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
+pub struct Properties(BitFlags<ClassProperty>);
+
+impl Eq for Properties {}
+impl Encode for Properties {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.bits().using_encoded(f)
+	}
+}
+impl Decode for Properties {
+	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
+		let field = u8::decode(input)?;
+		Ok(Self(
+			<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,
+		))
+	}
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
@@ -32,7 +51,7 @@ pub struct ClassData {
 	/// The minimum balance to create class
 	pub deposit: Balance,
 	/// Property of token
-	pub properties: Vec<ClassProperty>,
+	pub properties: Properties,
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
@@ -69,8 +88,6 @@ decl_error! {
 		TokenIdNotFound,
 		/// The operator is not the owner of the token and has no permission
 		NoPermission,
-		/// The length of class properties is invalid
-		InvalidPropertiesLength,
 		/// Property of class don't support transfer
 		NonTransferable,
 		/// Property of class don't support burn
@@ -112,11 +129,9 @@ decl_module! {
 
 
 		#[weight = 10_000]
-		pub fn create_class(origin, metadata: CID, properties: Vec<ClassProperty>) {
+		pub fn create_class(origin, metadata: CID, properties: Properties) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				// ensure properties.len <= ClassProperty item
-				ensure!(properties.len() <= 2, Error::<T>::InvalidPropertiesLength);
 				let next_id = orml_nft::Module::<T>::next_class_id();
 				let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
 				let deposit = T::CreateClassDeposit::get();
@@ -125,7 +140,7 @@ decl_module! {
 				//	Depends on https://github.com/paritytech/substrate/issues/7139
 				//	For now, use origin as owner and skip the proxy part
 				//	pallet_proxy::Module<T>::add_proxy(owner, origin, Default::default(), 0)
-				let data = ClassData{deposit, properties};
+				let data = ClassData { deposit, properties };
 				let data = T::ConvertClassData::from(data);
 				let data = Into::<<T as orml_nft::Trait>::ClassData>::into(data);
 				orml_nft::Module::<T>::create_class(&who, metadata, data)?;
@@ -165,7 +180,7 @@ decl_module! {
 				let who = ensure_signed(origin)?;
 				let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 				let data: T::ConvertClassData = From::from(class_info.data);
-				ensure!(data.into().properties.contains(&ClassProperty::Transferable), Error::<T>::NonTransferable);
+				ensure!(data.into().properties.0.contains(ClassProperty::Transferable), Error::<T>::NonTransferable);
 
 				let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
 				ensure!(who == token_info.owner, Error::<T>::NoPermission);
@@ -183,7 +198,7 @@ decl_module! {
 				let who = ensure_signed(origin)?;
 				let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 				let data: T::ConvertClassData = From::from(class_info.data);
-				ensure!(data.into().properties.contains(&ClassProperty::Burnable), Error::<T>::NonBurnable);
+				ensure!(data.into().properties.0.contains(ClassProperty::Burnable), Error::<T>::NonBurnable);
 
 				let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
 				ensure!(who == token_info.owner, Error::<T>::NoPermission);
@@ -211,8 +226,6 @@ decl_module! {
 				let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
 				let data: T::ConvertClassData = From::from(class_info.data);
 				let data: ClassData = data.into();
-				// reserve balance should equal CreateClassDeposit.
-				ensure!(data.deposit == <T as Trait>::Currency::reserved_balance(&owner), Error::<T>::CannotDestroyClass);
 				<T as Trait>::Currency::unreserve(&owner, data.deposit);
 				<T as Trait>::Currency::transfer(&owner, &dest, data.deposit)?;
 

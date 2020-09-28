@@ -1359,7 +1359,7 @@ construct_runtime!(
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
-		AcalaNFT: module_nft::{Module, Call, Event<T>},
+		NFT: module_nft::{Module, Call, Event<T>},
 
 		// ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
