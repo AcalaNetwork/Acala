@@ -207,6 +207,8 @@ decl_module! {
 				let owner: T::AccountId = T::ModuleId::get().into_sub_account(token.0);
 				let data: T::ConvertTokenData = From::from(token_info.data);
 				let data: TokenData = data.into();
+				// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
+				// `transfer` not do this check.
 				<T as Trait>::Currency::unreserve(&owner, data.deposit);
 				<T as Trait>::Currency::transfer(&owner, &who, data.deposit)?;
 
@@ -226,6 +228,8 @@ decl_module! {
 				let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
 				let data: T::ConvertClassData = From::from(class_info.data);
 				let data: ClassData = data.into();
+				// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
+				// `transfer` not do this check.
 				<T as Trait>::Currency::unreserve(&owner, data.deposit);
 				<T as Trait>::Currency::transfer(&owner, &dest, data.deposit)?;
 
