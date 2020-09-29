@@ -9,7 +9,7 @@ use frame_support::{
 use frame_system::ensure_signed;
 use orml_traits::{MultiCurrency, RewardHandler};
 use orml_utilities::with_transaction_result;
-use primitives::{Amount, Balance, CurrencyId, Share};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
 	FixedPointNumber, ModuleId, RuntimeDebug,
@@ -48,14 +48,16 @@ decl_event!(
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
-		/// Deposit DEX LP share. \[who, lp_currency_id, deposit_amount\]
-		DepositDEXLP(AccountId, CurrencyId, Balance),
+		/// Deposit DEX share. \[who, lp_currency_id, deposit_amount\]
+		DepositDexShare(AccountId, CurrencyId, Balance),
 		/// Withdraw DEX LP share. \[who, lp_currency_id, withdraw_amount\]
 		WithdrawDEXLP(AccountId, CurrencyId, Balance),
 	}
 );
 
-pub trait Trait: frame_system::Trait + orml_rewards::Trait<Share = Share, Balance = Balance, PoolId = PoolId> {
+pub trait Trait:
+	frame_system::Trait + orml_rewards::Trait<Share = Balance, Balance = Balance, PoolId = PoolId>
+{
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
 	/// The vault account to keep rewards for type LoansIncentive PoolId
@@ -143,7 +145,7 @@ decl_module! {
 				T::Currency::transfer(lp_currency_id, &who, &Self::account_id(), amount)?;
 				OnAddLiquidity::<T>::happened(&(who.clone(), lp_currency_id, amount.unique_saturated_into()));
 
-				Self::deposit_event(RawEvent::DepositDEXLP(
+				Self::deposit_event(RawEvent::DepositDexShare(
 					who,
 					lp_currency_id,
 					amount,
@@ -157,14 +159,12 @@ decl_module! {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
-				let share_amount: Share = amount.unique_saturated_into();
 				ensure!(
-					<orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexIncentive(lp_currency_id), &who).0 >= share_amount
-					&& <orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexSaving(lp_currency_id), &who).0 >= share_amount,
+					<orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexIncentive(lp_currency_id), &who).0 >= amount
+					&& <orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexSaving(lp_currency_id), &who).0 >= amount,
 					Error::<T>::NotEnough,
 				);
-
-				OnRemoveLiquidity::<T>::happened(&(who.clone(), lp_currency_id, share_amount));
+				OnRemoveLiquidity::<T>::happened(&(who.clone(), lp_currency_id, amount));
 				T::Currency::transfer(lp_currency_id, &Self::account_id(), &who, amount)?;
 
 				Self::deposit_event(RawEvent::WithdrawDEXLP(
@@ -242,8 +242,8 @@ decl_module! {
 }
 
 pub struct OnAddLiquidity<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> Happened<(T::AccountId, CurrencyId, Share)> for OnAddLiquidity<T> {
-	fn happened(info: &(T::AccountId, CurrencyId, Share)) {
+impl<T: Trait> Happened<(T::AccountId, CurrencyId, Balance)> for OnAddLiquidity<T> {
+	fn happened(info: &(T::AccountId, CurrencyId, Balance)) {
 		let (who, currency_id, increase_share) = info;
 		<orml_rewards::Module<T>>::add_share(who, PoolId::DexIncentive(*currency_id), *increase_share);
 		<orml_rewards::Module<T>>::add_share(who, PoolId::DexSaving(*currency_id), *increase_share);
@@ -251,8 +251,8 @@ impl<T: Trait> Happened<(T::AccountId, CurrencyId, Share)> for OnAddLiquidity<T>
 }
 
 pub struct OnRemoveLiquidity<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> Happened<(T::AccountId, CurrencyId, Share)> for OnRemoveLiquidity<T> {
-	fn happened(info: &(T::AccountId, CurrencyId, Share)) {
+impl<T: Trait> Happened<(T::AccountId, CurrencyId, Balance)> for OnRemoveLiquidity<T> {
+	fn happened(info: &(T::AccountId, CurrencyId, Balance)) {
 		let (who, currency_id, decrease_share) = info;
 		<orml_rewards::Module<T>>::remove_share(who, PoolId::DexIncentive(*currency_id), *decrease_share);
 		<orml_rewards::Module<T>>::remove_share(who, PoolId::DexSaving(*currency_id), *decrease_share);
@@ -285,7 +285,7 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
-	type Share = Share;
+	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;

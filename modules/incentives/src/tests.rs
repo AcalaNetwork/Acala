@@ -49,10 +49,10 @@ fn deposit_dex_lp_works() {
 			BTC_AUSD_LP,
 			10000
 		));
-		let deposit_dex_lp_event = TestEvent::incentives(RawEvent::DepositDEXLP(ALICE, BTC_AUSD_LP, 10000));
+		let deposit_dex_share_event = TestEvent::incentives(RawEvent::DepositDexShare(ALICE, BTC_AUSD_LP, 10000));
 		assert!(System::events()
 			.iter()
-			.any(|record| record.event == deposit_dex_lp_event));
+			.any(|record| record.event == deposit_dex_share_event));
 
 		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 0);
 		assert_eq!(

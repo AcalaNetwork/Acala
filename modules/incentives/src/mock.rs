@@ -189,7 +189,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 }
 
 impl orml_rewards::Trait for Runtime {
-	type Share = Share;
+	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
 	type Handler = IncentivesModule;

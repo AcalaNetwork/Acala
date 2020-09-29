@@ -1079,7 +1079,7 @@ impl module_accounts::Trait for Runtime {
 }
 
 impl orml_rewards::Trait for Runtime {
-	type Share = Share;
+	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = module_incentives::PoolId;
 	type Handler = Incentives;
