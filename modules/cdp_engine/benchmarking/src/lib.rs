@@ -18,7 +18,7 @@ use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
 use dex::Module as Dex;
 use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use support::{Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(cdp_engine::Module<T>);
@@ -80,7 +80,7 @@ benchmarks! {
 		let u in 0 .. 1000;
 	}: _(
 		RawOrigin::Root,
-		CurrencyId::DOT,
+		CurrencyId::Token(TokenSymbol::DOT),
 		Change::NewValue(Some(Rate::saturating_from_rational(1, 1000000))),
 		Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 		Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),

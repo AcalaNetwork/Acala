@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::DataFeeder;
+use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
 use support::ExchangeRate;
@@ -13,11 +14,11 @@ use support::ExchangeRate;
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const AUSD: CurrencyId = CurrencyId::AUSD;
-pub const BTC: CurrencyId = CurrencyId::XBTC;
-pub const DOT: CurrencyId = CurrencyId::DOT;
-pub const LDOT: CurrencyId = CurrencyId::LDOT;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;

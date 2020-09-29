@@ -10,7 +10,7 @@ use frame_support::{
 	weights::Weight,
 	RuntimeDebug,
 };
-use primitives::{Amount, BlockNumber, CurrencyId};
+use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -172,7 +172,7 @@ impl orml_tokens::Trait for Runtime {
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
 impl orml_currencies::Trait for Runtime {

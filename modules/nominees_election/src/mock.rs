@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
-use primitives::{Amount, CurrencyId};
+use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
@@ -13,8 +13,8 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const LDOT: CurrencyId = CurrencyId::LDOT;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;

@@ -10,6 +10,171 @@ use orml_traits::MultiCurrency;
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 
 #[test]
+fn deposit_dex_lp_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE, 10000));
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 10000);
+		assert_eq!(
+			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
+			0
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 0,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 0,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			(0, 0)
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			(0, 0)
+		);
+
+		assert_ok!(IncentivesModule::deposit_dex_lp(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			10000
+		));
+		let deposit_dex_share_event = TestEvent::incentives(RawEvent::DepositDexShare(ALICE, BTC_AUSD_LP, 10000));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == deposit_dex_share_event));
+
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 0);
+		assert_eq!(
+			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
+			10000
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 10000,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 10000,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			(10000, 0)
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			(10000, 0)
+		);
+	});
+}
+
+#[test]
+fn withdraw_dex_lp_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE, 10000));
+
+		assert_noop!(
+			IncentivesModule::withdraw_dex_lp(Origin::signed(BOB), BTC_AUSD_LP, 10000),
+			Error::<Runtime>::NotEnough,
+		);
+
+		assert_ok!(IncentivesModule::deposit_dex_lp(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			10000
+		));
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 0);
+		assert_eq!(
+			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
+			10000
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 10000,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 10000,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			(10000, 0)
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			(10000, 0)
+		);
+
+		assert_ok!(IncentivesModule::withdraw_dex_lp(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			8000
+		));
+		let withdraw_dex_lp_event = TestEvent::incentives(RawEvent::WithdrawDEXLP(ALICE, BTC_AUSD_LP, 8000));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == withdraw_dex_lp_event));
+
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 8000);
+		assert_eq!(
+			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
+			2000
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 2000,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)),
+			PoolInfo {
+				total_shares: 2000,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			(2000, 0)
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			(2000, 0)
+		);
+	});
+}
+
+#[test]
 fn update_loans_incentive_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(

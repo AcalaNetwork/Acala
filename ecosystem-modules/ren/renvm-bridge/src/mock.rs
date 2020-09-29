@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use orml_currencies::BasicCurrencyAdapter;
-use primitives::{Amount, CurrencyId};
+use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
@@ -105,7 +105,7 @@ impl orml_tokens::Trait for Runtime {
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
 impl orml_currencies::Trait for Runtime {

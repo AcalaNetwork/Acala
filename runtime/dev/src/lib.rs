@@ -72,7 +72,7 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
 pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
-	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature,
+	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol,
 };
 pub use runtime_common::{ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
 
@@ -117,6 +117,7 @@ parameter_types! {
 	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
 	pub const HonzonTreasuryModuleId: ModuleId = ModuleId(*b"aca/hztr");
 	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
+	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
 	// Decentralized Sovereign Wealth Fund
 	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"aca/phre";
@@ -132,6 +133,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StakingPoolModuleId::get().into_account(),
 		HonzonTreasuryModuleId::get().into_account(),
 		HomaTreasuryModuleId::get().into_account(),
+		IncentivesModuleId::get().into_account(),
 		DSWFModuleId::get().into_account(),
 		ZeroAccountId::get(),
 	]
@@ -816,9 +818,9 @@ impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider 
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::ACA;
-	pub const GetStableCurrencyId: CurrencyId = CurrencyId::AUSD;
-	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::LDOT;
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 }
 
 impl orml_currencies::Trait for Runtime {
@@ -984,7 +986,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::RENBTC];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::RENBTC)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1025,20 +1027,17 @@ impl module_emergency_shutdown::Trait for Runtime {
 
 parameter_types! {
 	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::LDOT, CurrencyId::ACA, CurrencyId::RENBTC];
+	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::ACA), CurrencyId::Token(TokenSymbol::RENBTC)];
 }
 
 impl module_dex::Trait for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type Share = Share;
 	type EnabledCurrencyIds = EnabledCurrencyIds;
 	type GetBaseCurrencyId = GetStableCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CdpTreasury;
 	type ModuleId = DEXModuleId;
-	type OnAddLiquidity = module_incentives::OnAddLiquidity<Runtime>;
-	type OnRemoveLiquidity = module_incentives::OnRemoveLiquidity<Runtime>;
 }
 
 parameter_types! {
@@ -1061,7 +1060,7 @@ parameter_types! {
 	pub const FreeTransferPeriod: BlockNumber = DAYS;
 	pub const FreeTransferDeposit: Balance = DOLLARS;
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::AUSD, CurrencyId::LDOT, CurrencyId::DOT, CurrencyId::XBTC, CurrencyId::RENBTC];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
@@ -1082,7 +1081,7 @@ impl module_accounts::Trait for Runtime {
 }
 
 impl orml_rewards::Trait for Runtime {
-	type Share = Share;
+	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = module_incentives::PoolId;
 	type Handler = Incentives;
@@ -1094,6 +1093,7 @@ parameter_types! {
 }
 
 impl module_incentives::Trait for Runtime {
+	type Event = Event;
 	type LoansIncentivePool = ZeroAccountId;
 	type DexIncentivePool = ZeroAccountId;
 	type HomaIncentivePool = ZeroAccountId;
@@ -1105,6 +1105,7 @@ impl module_incentives::Trait for Runtime {
 	type Currency = Currencies;
 	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
+	type ModuleId = IncentivesModuleId;
 }
 
 impl module_airdrop::Trait for Runtime {
@@ -1126,8 +1127,8 @@ impl module_polkadot_bridge::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::LDOT;
-	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::DOT;
+	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100); // 95%
 	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100); // 80%
 	pub MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100); // 5%
@@ -1220,7 +1221,7 @@ impl pallet_proxy::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::RENBTC;
+	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
 	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 3;
@@ -1353,7 +1354,7 @@ construct_runtime!(
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 		Accounts: module_accounts::{Module, Call, Storage},
-		Incentives: module_incentives::{Module, Storage, Call},
+		Incentives: module_incentives::{Module, Storage, Call, Event<T>},
 		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
 		Homa: module_homa::{Module, Call},
 		NomineesElection: module_nominees_election::{Module, Call, Storage},

@@ -1,5 +1,5 @@
 use super::utils::{lookup_of_account, set_balance};
-use crate::{AcaExistentialDeposit, AccountId, Amount, Balance, Currencies, CurrencyId, Runtime, DOLLARS};
+use crate::{AcaExistentialDeposit, AccountId, Amount, Balance, Currencies, CurrencyId, Runtime, TokenSymbol, DOLLARS};
 
 use sp_std::prelude::*;
 
@@ -30,7 +30,7 @@ runtime_benchmarks! {
 		let d in ...;
 
 		let amount: Balance = DOLLARS.saturating_mul(d.into());
-		let currency_id = CurrencyId::DOT;
+		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
 		let from = account("from", u, SEED);
 		set_balance(currency_id, &from, amount);
 
@@ -48,7 +48,7 @@ runtime_benchmarks! {
 
 		let aca_existential_deposit = AcaExistentialDeposit::get();
 		let amount: Balance = aca_existential_deposit.saturating_mul(e.into());
-		let native_currency_id = CurrencyId::ACA;
+		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let from = account("from", u, SEED);
 		set_balance(native_currency_id, &from, amount);
 
@@ -68,7 +68,7 @@ runtime_benchmarks! {
 
 		let aca_existential_deposit = AcaExistentialDeposit::get();
 		let amount: Balance = aca_existential_deposit.saturating_mul(e.into());
-		let native_currency_id = CurrencyId::ACA;
+		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let from = account("from", u, SEED);
 		set_balance(native_currency_id, &from, amount);
 
@@ -86,7 +86,7 @@ runtime_benchmarks! {
 
 		let balance: Balance = DOLLARS.saturating_mul(d.into());
 		let amount: Amount = balance.unique_saturated_into();
-		let currency_id = CurrencyId::DOT;
+		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
 		let who: AccountId = account("who", u, SEED);
 		let who_lookup = lookup_of_account(who.clone());
 	}: update_balance(RawOrigin::Root, who_lookup, currency_id, amount)
@@ -103,7 +103,7 @@ runtime_benchmarks! {
 		let aca_existential_deposit = AcaExistentialDeposit::get();
 		let balance: Balance = aca_existential_deposit.saturating_mul(e.into());
 		let amount: Amount = balance.unique_saturated_into();
-		let native_currency_id = CurrencyId::ACA;
+		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let who: AccountId = account("who", u, SEED);
 		let who_lookup = lookup_of_account(who.clone());
 	}: update_balance(RawOrigin::Root, who_lookup, native_currency_id, amount)
@@ -120,7 +120,7 @@ runtime_benchmarks! {
 		let aca_existential_deposit = AcaExistentialDeposit::get();
 		let balance: Balance = aca_existential_deposit.saturating_mul(e.into());
 		let amount: Amount = balance.unique_saturated_into();
-		let native_currency_id = CurrencyId::ACA;
+		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let who: AccountId = account("who", u, SEED);
 		let who_lookup = lookup_of_account(who.clone());
 		set_balance(native_currency_id, &who, balance);

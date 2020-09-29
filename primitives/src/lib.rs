@@ -68,13 +68,20 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum CurrencyId {
+pub enum TokenSymbol {
 	ACA = 0,
 	AUSD = 1,
 	DOT = 2,
 	XBTC = 3,
 	LDOT = 4,
 	RENBTC = 5,
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum CurrencyId {
+	Token(TokenSymbol),
+	DEXShare(TokenSymbol, TokenSymbol),
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

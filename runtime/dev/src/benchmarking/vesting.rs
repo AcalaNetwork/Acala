@@ -1,7 +1,7 @@
 use super::utils::{dollars, lookup_of_account, set_aca_balance};
 use crate::{
 	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Currencies, CurrencyId, NewAccountDeposit, Runtime, System,
-	Vesting,
+	TokenSymbol, Vesting,
 };
 
 use sp_std::prelude::*;
@@ -53,7 +53,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(from), to_lookup, schedule.clone())
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::total_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::total_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap()
 		);
 	}
@@ -83,7 +83,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(to.clone()))
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap() - NewAccountDeposit::get()
 		);
 	}
@@ -116,7 +116,7 @@ runtime_benchmarks! {
 	}: claim(RawOrigin::Signed(to.clone()))
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap() * 10 - NewAccountDeposit::get()
 		);
 	}
@@ -140,7 +140,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, to_lookup, vec![schedule.clone()])
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap()
 		);
 	}
@@ -171,7 +171,7 @@ runtime_benchmarks! {
 	}: update_vesting_schedules(RawOrigin::Root, to_lookup, schedules)
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap() * 10
 		);
 	}

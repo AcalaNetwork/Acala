@@ -430,7 +430,7 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 			AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 20), None).is_ok(),
 			true
 		);
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(CAROL), BTC, 100, 1000));
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(CAROL), BTC_AUSD_LP, 100, 1000));
 		assert_eq!(DEXModule::get_target_amount(BTC, AUSD, 100), 500);
 
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);

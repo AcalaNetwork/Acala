@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::Amount;
+use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
@@ -16,9 +17,9 @@ pub type PolkadotAccountId = u128;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const DOT: CurrencyId = CurrencyId::DOT;
-pub const LDOT: CurrencyId = CurrencyId::LDOT;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
