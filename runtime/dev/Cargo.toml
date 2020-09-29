@@ -31,6 +31,7 @@ pallet-indices = { version = "2.0.0", default-features = false }
 pallet-membership = { version = "2.0.0", default-features = false }
 pallet-multisig = { version = "2.0.0", default-features = false }
 pallet-offences = { version = "2.0.0", default-features = false }
+pallet-proxy = { version = "2.0.0", default-features = false }
 pallet-randomness-collective-flip = { version = "2.0.0", default-features = false }
 pallet-recovery = { version = "2.0.0", default-features = false }
 pallet-scheduler = { version = "2.0.0", default-features = false }
@@ -69,6 +70,7 @@ orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
+orml-nft= { path = "../../orml/nft", default-features = false }
 
 module-accounts = { path = "../../modules/accounts", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
@@ -80,6 +82,7 @@ module-dex-rpc-runtime-api = { path = "../../modules/dex/rpc/runtime-api", defau
 module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
+module-nft = { path = "../../modules/nft", default-features = false }
 module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
@@ -130,6 +133,7 @@ std = [
 	"pallet-indices/std",
 	"pallet-membership/std",
 	"pallet-multisig/std",
+	"pallet-proxy/std",
 	"pallet-randomness-collective-flip/std",
 	"pallet-recovery/std",
 	"pallet-scheduler/std",
@@ -164,6 +168,7 @@ std = [
 	"orml-traits/std",
 	"orml-vesting/std",
 	"orml-rewards/std",
+	"orml-nft/std",
 
 	"module-accounts/std",
 	"module-airdrop/std",
@@ -175,6 +180,7 @@ std = [
 	"module-emergency-shutdown/std",
 	"module-honzon/std",
 	"module-loans/std",
+	"module-nft/std",
 	"module-prices/std",
 	"module-incentives/std",
 	"module-support/std",

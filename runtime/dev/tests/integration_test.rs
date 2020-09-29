@@ -760,7 +760,7 @@ fn test_authority_module() {
 			// delay < SevenDays
 			let event = Event::pallet_scheduler(pallet_scheduler::RawEvent::Dispatched(
 				(2, 1),
-				Some([32, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				Some([33, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
 				Err(DispatchError::BadOrigin),
 			));
 			assert!(last_event() == event);
@@ -777,7 +777,7 @@ fn test_authority_module() {
 			run_to_block(SevenDays::get() + 2);
 			let event = Event::pallet_scheduler(pallet_scheduler::RawEvent::Dispatched(
 				(151202, 0),
-				Some([32, 160, 78, 2, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				Some([33, 160, 78, 2, 0, 0, 0, 2, 0, 0, 0].to_vec()),
 				Ok(()),
 			));
 			assert!(last_event() == event);

@@ -1206,6 +1206,7 @@ dependencies = [
  "module-honzon-benchmarking",
  "module-incentives",
  "module-loans",
+ "module-nft",
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
@@ -1217,6 +1218,7 @@ dependencies = [
  "orml-benchmarking",
  "orml-currencies",
  "orml-gradually-update",
+ "orml-nft",
  "orml-oracle",
  "orml-oracle-rpc-runtime-api",
  "orml-rewards",
@@ -1237,6 +1239,7 @@ dependencies = [
  "pallet-membership",
  "pallet-multisig",
  "pallet-offences",
+ "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-recovery",
  "pallet-scheduler",
@@ -3977,6 +3980,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-nft"
+version = "0.6.0"
+dependencies = [
+ "acala-primitives",
+ "enumflags2",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-nft",
+ "orml-tokens",
+ "orml-traits",
+ "orml-utilities",
+ "pallet-balances",
+ "pallet-proxy",
+ "pallet-utility",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-nominees-election"
 version = "0.6.1"
 dependencies = [
@@ -4347,7 +4374,7 @@ checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
 
 [[package]]
 name = "orml-auction"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4363,7 +4390,7 @@ dependencies = [
 
 [[package]]
 name = "orml-authority"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4380,7 +4407,7 @@ dependencies = [
 
 [[package]]
 name = "orml-benchmarking"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4397,7 +4424,7 @@ dependencies = [
 
 [[package]]
 name = "orml-currencies"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4415,6 +4442,19 @@ dependencies = [
 
 [[package]]
 name = "orml-gradually-update"
+version = "0.3.1-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-nft"
 version = "0.2.1-dev"
 dependencies = [
  "frame-support",
@@ -4428,7 +4468,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4446,7 +4486,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4460,7 +4500,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc-runtime-api"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -4469,7 +4509,7 @@ dependencies = [
 
 [[package]]
 name = "orml-rewards"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4485,7 +4525,7 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4503,7 +4543,7 @@ dependencies = [
 
 [[package]]
 name = "orml-traits"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4518,7 +4558,7 @@ dependencies = [
 
 [[package]]
 name = "orml-utilities"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4533,7 +4573,7 @@ dependencies = [
 
 [[package]]
 name = "orml-vesting"
-version = "0.2.1-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4835,6 +4875,22 @@ dependencies = [
  "parity-scale-codec",
  "sp-runtime",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-proxy"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "571d7344b2cef892424f0c55fb5b6e6059fd111a543678c764daa3218c5554d6"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
