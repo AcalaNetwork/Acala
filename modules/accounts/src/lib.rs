@@ -183,7 +183,7 @@ decl_module! {
 		///
 		/// - `recipient`: the account as recipient to receive remaining currencies of the account will be killed,
 		///					None means no recipient is specified.
-		#[weight = 0]
+		#[weight = 10_000]
 		fn close_account(origin, recipient: Option<T::AccountId>) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;

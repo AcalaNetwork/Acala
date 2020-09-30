@@ -556,16 +556,8 @@ parameter_types! {
 impl pallet_treasury::Trait for Runtime {
 	type ModuleId = AcalaTreasuryModuleId;
 	type Currency = Balances;
-	type ApproveOrigin = EnsureOneOf<
-		AccountId,
-		EnsureRoot<AccountId>,
-		pallet_collective::EnsureMembers<_4, AccountId, GeneralCouncilInstance>,
-	>;
-	type RejectOrigin = EnsureOneOf<
-		AccountId,
-		EnsureRoot<AccountId>,
-		pallet_collective::EnsureMembers<_2, AccountId, GeneralCouncilInstance>,
-	>;
+	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
+	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Tippers = GeneralCouncilProvider;
 	type TipCountdown = TipCountdown;
 	type TipFindersFee = TipFindersFee;
