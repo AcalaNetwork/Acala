@@ -109,7 +109,7 @@ decl_module! {
 impl<T: Trait> Module<T> {}
 
 impl<T: Trait> PriceProvider<CurrencyId> for Module<T> {
-	/// get related price between two currency types
+	/// get relative price between two currency types
 	fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
 		if let (Some(base_price), Some(quote_price)) =
 			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
