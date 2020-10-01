@@ -623,7 +623,9 @@ impl<T: Trait> Module<T> {
 
 						payment = payment
 							.checked_sub(refund)
-							.expect("new bid payment greater or equal to last bid payment; qed");
+							// This should never fail because new bid payment are always greater or equal to last bid
+							// payment.
+							.ok_or(Error::<T>::InvalidBidPrice)?;
 					}
 
 					// transfer remain payment from new bidder to CDP treasury
@@ -775,7 +777,9 @@ impl<T: Trait> Module<T> {
 						collateral_auction.currency_id,
 						T::GetStableCurrencyId::get(),
 						collateral_auction.amount,
-					) {
+					)
+					.unwrap_or_default()
+			{
 				// try trade with DEX
 				if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
 					collateral_auction.currency_id,
