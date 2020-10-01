@@ -134,16 +134,24 @@ fn make_sure_get_supply_amount_needed_can_affort_target() {
 		));
 
 		let target_amount_btc_ausd = 90000000000000;
-		let surply_amount_btc_ausd = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_ausd);
-		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_ausd) >= target_amount_btc_ausd);
+		let surply_amount_btc_ausd = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_ausd).unwrap();
+		assert!(
+			DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_ausd).unwrap()
+				>= target_amount_btc_ausd
+		);
 
 		let target_amount_ausd_dot = 8000000000000;
-		let surply_amount_ausd_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_ausd_dot);
-		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_ausd_dot) >= target_amount_ausd_dot);
+		let surply_amount_ausd_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_ausd_dot).unwrap();
+		assert!(
+			DexModule::get_target_amount_available(BTC, AUSD, surply_amount_ausd_dot).unwrap()
+				>= target_amount_ausd_dot
+		);
 
 		let target_amount_btc_dot = 60000000000;
-		let surply_amount_btc_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_dot);
-		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_dot) >= target_amount_btc_dot);
+		let surply_amount_btc_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_dot).unwrap();
+		assert!(
+			DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_dot).unwrap() >= target_amount_btc_dot
+		);
 	});
 }
 
@@ -367,7 +375,7 @@ fn get_supply_amount_work() {
 			10000,
 			10000
 		));
-		let supply_amount = DexModule::get_supply_amount(BTC, AUSD, 4950);
+		let supply_amount = DexModule::get_supply_amount(BTC, AUSD, 4950).unwrap();
 		assert_eq!(
 			DexModule::exchange_currency(BOB, BTC, supply_amount, AUSD, 4950).is_ok(),
 			true

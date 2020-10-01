@@ -312,32 +312,34 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 			let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, new_account_deposit);
 			let amount = <T as Trait>::Currency::free_balance(currency_id, who);
 
-			let is_slippage_acceptable = !supply_amount_needed.is_zero()
-				&& T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed)
-					.map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get());
-			if is_slippage_acceptable {
-				if amount >= supply_amount_needed {
-					// successful swap will cause changes in native currency,
-					// which also means that it will open a new account
-					// exchange token to native currency and open account.
-					// if it failed, leave some dust storage is not a critical issue,
-					// just open account without reserve NewAccountDeposit.
-					let _ = T::DEX::exchange_currency(
-						who.clone(),
-						currency_id,
-						supply_amount_needed,
-						native_currency_id,
-						new_account_deposit,
-					);
-				} else {
-					// open account will fail because there's no enough native token,
-					// transfer all token as dust to treasury account.
-					let treasury_account = Self::treasury_account_id();
-					if *who != treasury_account {
-						// transfer all free balances from a new account to treasury account, so it
-						// shouldn't fail. but even it failed, leave some dust storage is not a critical
-						// issue, just open account without reserve NewAccountDeposit.
-						let _ = <T as Trait>::Currency::transfer(currency_id, who, &treasury_account, amount);
+			if let Some(supply_amount_needed) = supply_amount_needed {
+				let slippage = T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed);
+				if let Some(slippage) = slippage {
+					if slippage <= T::MaxSlippageSwapWithDEX::get() {
+						if amount >= supply_amount_needed {
+							// successful swap will cause changes in native currency,
+							// which also means that it will open a new account
+							// exchange token to native currency and open account.
+							// if it failed, leave some dust storage is not a critical issue,
+							// just open account without reserve NewAccountDeposit.
+							let _ = T::DEX::exchange_currency(
+								who.clone(),
+								currency_id,
+								supply_amount_needed,
+								native_currency_id,
+								new_account_deposit,
+							);
+						} else {
+							// open account will fail because there's no enough native token,
+							// transfer all token as dust to treasury account.
+							let treasury_account = Self::treasury_account_id();
+							if *who != treasury_account {
+								// transfer all free balances from a new account to treasury account, so it
+								// shouldn't fail. but even it failed, leave some dust storage is not a critical
+								// issue, just open account without reserve NewAccountDeposit.
+								let _ = <T as Trait>::Currency::transfer(currency_id, who, &treasury_account, amount);
+							}
+						}
 					}
 				}
 			}
@@ -522,21 +524,22 @@ where
 					let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, balance_fee);
 
 					// the balance is sufficient and slippage is acceptable
-					if !supply_amount_needed.is_zero()
-						&& currency_amount >= supply_amount_needed
-						&& T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed)
-							.map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
-						&& T::DEX::exchange_currency(
-							who.clone(),
-							currency_id,
-							supply_amount_needed,
-							native_currency_id,
-							balance_fee,
-						)
-						.is_ok()
-					{
-						// successfully swap, break iteration
-						break;
+					if let Some(supply_amount_needed) = supply_amount_needed {
+						if currency_amount >= supply_amount_needed
+							&& T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed)
+								.map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
+							&& T::DEX::exchange_currency(
+								who.clone(),
+								currency_id,
+								supply_amount_needed,
+								native_currency_id,
+								balance_fee,
+							)
+							.is_ok()
+						{
+							// successfully swap, break iteration
+							break;
+						}
 					}
 				}
 			}

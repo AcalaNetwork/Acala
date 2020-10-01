@@ -71,7 +71,7 @@ impl From<Error> for i64 {
 	}
 }
 
-impl<C, Block, CurrencyId, Balance> DexApi<<Block as BlockT>::Hash, CurrencyId, Balance, BalanceInfo<Balance>>
+impl<C, Block, CurrencyId, Balance> DexApi<<Block as BlockT>::Hash, CurrencyId, Balance, Option<BalanceInfo<Balance>>>
 	for Dex<C, Block>
 where
 	Block: BlockT,
@@ -87,7 +87,7 @@ where
 		target_currency_id: CurrencyId,
 		target_currency_amount: NumberOrHex,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<BalanceInfo<Balance>> {
+	) -> Result<Option<BalanceInfo<Balance>>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.
@@ -114,7 +114,7 @@ where
 		target_currency_id: CurrencyId,
 		supply_currency_amount: NumberOrHex,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<BalanceInfo<Balance>> {
+	) -> Result<Option<BalanceInfo<Balance>>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.

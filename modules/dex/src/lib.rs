@@ -227,8 +227,9 @@ decl_module! {
 						Error::<T>::InvalidLiquidityIncrement,
 					);
 
-					T::Currency::transfer(other_currency_id, &who, &Self::account_id(), other_currency_increment)?;
-					T::Currency::transfer(base_currency_id, &who, &Self::account_id(), base_currency_increment)?;
+					let module_account_id = Self::account_id();
+					T::Currency::transfer(other_currency_id, &who, &module_account_id, other_currency_increment)?;
+					T::Currency::transfer(base_currency_id, &who, &module_account_id, base_currency_increment)?;
 					T::Currency::deposit(lp_share_currency_id, &who, share_increment)?;
 
 					*other_currency_amount = other_currency_amount.saturating_add(other_currency_increment);
@@ -284,8 +285,10 @@ decl_module! {
 					let withdraw_base_currency_amount = proportion.saturating_mul_int(*base_currency_amount);
 
 					T::Currency::withdraw(lp_share_currency_id, &who, remove_share)?;
-					T::Currency::transfer(other_currency_id, &Self::account_id(), &who, withdraw_other_currency_amount)?;
-					T::Currency::transfer(base_currency_id, &Self::account_id(), &who, withdraw_base_currency_amount)?;
+
+					let module_account_id = Self::account_id();
+					T::Currency::transfer(other_currency_id, &module_account_id, &who, withdraw_other_currency_amount)?;
+					T::Currency::transfer(base_currency_id, &module_account_id, &who, withdraw_base_currency_amount)?;
 
 					*other_currency_amount = other_currency_amount.saturating_sub(withdraw_other_currency_amount);
 					*base_currency_amount = base_currency_amount.saturating_sub(withdraw_base_currency_amount);
@@ -399,9 +402,10 @@ impl<T: Trait> Module<T> {
 			Error::<T>::UnacceptablePrice,
 		);
 
+		let module_account_id = Self::account_id();
 		// transfer token between account and dex and update liquidity pool
-		T::Currency::transfer(other_currency_id, who, &Self::account_id(), other_currency_amount)?;
-		T::Currency::transfer(base_currency_id, &Self::account_id(), who, base_currency_amount)?;
+		T::Currency::transfer(other_currency_id, who, &module_account_id, other_currency_amount)?;
+		T::Currency::transfer(base_currency_id, &module_account_id, who, base_currency_amount)?;
 
 		LiquidityPool::mutate(other_currency_id, |(other, base)| {
 			*other = other.saturating_add(other_currency_amount);
@@ -431,8 +435,9 @@ impl<T: Trait> Module<T> {
 			Error::<T>::UnacceptablePrice,
 		);
 
-		T::Currency::transfer(base_currency_id, who, &Self::account_id(), base_currency_amount)?;
-		T::Currency::transfer(other_currency_id, &Self::account_id(), who, other_currency_amount)?;
+		let module_account_id = Self::account_id();
+		T::Currency::transfer(base_currency_id, who, &module_account_id, base_currency_amount)?;
+		T::Currency::transfer(other_currency_id, &module_account_id, who, other_currency_amount)?;
 		LiquidityPool::mutate(other_currency_id, |(other, base)| {
 			*other = other.saturating_sub(other_currency_amount);
 			*base = base.saturating_add(base_currency_amount);
@@ -470,15 +475,16 @@ impl<T: Trait> Module<T> {
 			Error::<T>::UnacceptablePrice,
 		);
 
+		let module_account_id = Self::account_id();
 		T::Currency::transfer(
 			supply_other_currency_id,
 			who,
-			&Self::account_id(),
+			&module_account_id,
 			supply_other_currency_amount,
 		)?;
 		T::Currency::transfer(
 			target_other_currency_id,
-			&Self::account_id(),
+			&module_account_id,
 			who,
 			target_other_currency_amount,
 		)?;
@@ -536,17 +542,17 @@ impl<T: Trait> Module<T> {
 		Ok(target_turnover)
 	}
 
-	// get the minimum amount of supply currency needed for the target currency
-	// amount return 0 means cannot exchange
+	/// get the minimum amount of supply currency needed for the target currency
+	/// amount return None means cannot exchange
 	pub fn get_supply_amount_needed(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
-	) -> Balance {
+	) -> Option<Balance> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let fee_rate = T::GetExchangeFee::get();
-		if supply_currency_id == target_currency_id {
-			Zero::zero()
+		let val = if supply_currency_id == target_currency_id {
+			return None;
 		} else if target_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(supply_currency_id);
 			Self::calculate_swap_supply_amount(
@@ -578,20 +584,21 @@ impl<T: Trait> Module<T> {
 				intermediate_base_currency_amount,
 				fee_rate,
 			)
-		}
+		};
+		Some(val)
 	}
 
-	// get the maximum amount of target currency you can get for the supply currency
-	// amount return 0 means cannot exchange
+	/// get the maximum amount of target currency you can get for the supply
+	/// currency amount return None means cannot exchange
 	pub fn get_target_amount_available(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
-	) -> Balance {
+	) -> Option<Balance> {
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let fee_rate = T::GetExchangeFee::get();
-		if supply_currency_id == target_currency_id {
-			Zero::zero()
+		let val = if supply_currency_id == target_currency_id {
+			return None;
 		} else if target_currency_id == base_currency_id {
 			let (other_currency_pool, base_currency_pool) = Self::liquidity_pool(supply_currency_id);
 			Self::calculate_swap_target_amount(
@@ -623,7 +630,8 @@ impl<T: Trait> Module<T> {
 				intermediate_base_currency_amount,
 				fee_rate,
 			)
-		}
+		};
+		Some(val)
 	}
 }
 
@@ -632,7 +640,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
-	) -> Balance {
+	) -> Option<Balance> {
 		Self::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
 	}
 
@@ -640,7 +648,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
-	) -> Balance {
+	) -> Option<Balance> {
 		Self::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
 	}
 
@@ -651,13 +659,15 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 		target_currency_id: CurrencyId,
 		acceptable_target_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		Self::do_exchange(
-			&who,
-			supply_currency_id,
-			supply_amount,
-			target_currency_id,
-			acceptable_target_amount,
-		)
+		with_transaction_result(|| {
+			Self::do_exchange(
+				&who,
+				supply_currency_id,
+				supply_amount,
+				target_currency_id,
+				acceptable_target_amount,
+			)
+		})
 	}
 
 	// do not consider the fee rate
