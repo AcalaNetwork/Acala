@@ -142,11 +142,11 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 
 pub struct MockDEX;
 impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
-	fn get_target_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Balance {
+	fn get_target_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_supply_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Balance {
+	fn get_supply_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
