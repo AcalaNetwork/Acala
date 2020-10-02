@@ -32,9 +32,7 @@ benchmarks! {
 
 	// create NFT class
 	create_class {
-		let u in 0 .. 1000;
-
-		let caller: T::AccountId = account("caller", u, SEED);
+		let caller: T::AccountId = account("caller", 0, SEED);
 		let base_currency_amount = dollar(1000);
 
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
@@ -42,11 +40,10 @@ benchmarks! {
 
 	// mint NFT token
 	mint {
-		let u in 0 .. 1000;
 		let i in 1 .. 1000;
 
-		let caller: T::AccountId = account("caller", u, SEED);
-		let to: T::AccountId = account("to", u, SEED);
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let to: T::AccountId = account("to", 0, SEED);
 
 		let base_currency_amount = dollar(1000);
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
@@ -56,10 +53,8 @@ benchmarks! {
 
 	// transfer NFT token to another account
 	transfer {
-		let u in 0 .. 1000;
-
-		let caller: T::AccountId = account("caller", u, SEED);
-		let to: T::AccountId = account("to", u, SEED);
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let to: T::AccountId = account("to", 0, SEED);
 
 		let base_currency_amount = dollar(1000);
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
@@ -70,10 +65,8 @@ benchmarks! {
 
 	// burn NFT token
 	burn {
-		let u in 0 .. 1000;
-
-		let caller: T::AccountId = account("caller", u, SEED);
-		let to: T::AccountId = account("to", u, SEED);
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let to: T::AccountId = account("to", 0, SEED);
 
 		let base_currency_amount = dollar(1000);
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
@@ -84,10 +77,8 @@ benchmarks! {
 
 	// destroy NFT class
 	destroy_class {
-		let u in 0 .. 1000;
-
-		let caller: T::AccountId = account("caller", u, SEED);
-		let to: T::AccountId = account("to", u, SEED);
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let to: T::AccountId = account("to", 0, SEED);
 
 		let base_currency_amount = dollar(1000);
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;

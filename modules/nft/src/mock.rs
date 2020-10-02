@@ -196,6 +196,7 @@ impl Trait for Runtime {
 	type ConvertTokenData = TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = NativeCurrency;
+	type WeightInfo = ();
 }
 pub type NFTModule = Module<Runtime>;
 

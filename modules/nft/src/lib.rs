@@ -5,7 +5,7 @@ use enumflags2::BitFlags;
 use frame_support::{
 	decl_error, decl_event, decl_module, ensure,
 	traits::{Get, IsType},
-	weights::constants::WEIGHT_PER_MICROS,
+	weights::Weight,
 };
 use frame_system::ensure_signed;
 use orml_nft::CID;
@@ -17,8 +17,17 @@ use sp_runtime::{
 	ModuleId, RuntimeDebug,
 };
 
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn create_class() -> Weight;
+	fn mint(i: u32) -> Weight;
+	fn transfer() -> Weight;
+	fn burn() -> Weight;
+	fn destroy_class() -> Weight;
+}
 
 #[repr(u8)]
 #[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
@@ -113,7 +122,11 @@ pub trait Trait: frame_system::Trait + orml_nft::Trait + pallet_proxy::Trait {
 	type ConvertTokenData: IsType<<Self as orml_nft::Trait>::TokenData> + IsType<TokenData>;
 	/// The NFT's module id
 	type ModuleId: Get<ModuleId>;
+	///  Currency type for reserve/unreserve balance to
+	/// create_class/mint/burn/destroy_class
 	type Currency: BasicReservableCurrency<Self::AccountId, Balance = Balance>;
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_module! {
@@ -146,7 +159,7 @@ decl_module! {
 		///		- best case: 231.1 µs
 		///		- worst case: 233.7 µs
 		/// # </weight>
-		#[weight = 233 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 4)]
+		#[weight = <T as Trait>::WeightInfo::create_class()]
 		pub fn create_class(origin, metadata: CID, properties: Properties) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -188,7 +201,7 @@ decl_module! {
 		///		- best case: 202 µs
 		///		- worst case: 208 µs
 		/// # </weight>
-		#[weight = 208 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, (4 + 2 * quantity).into())]
+		#[weight = <T as Trait>::WeightInfo::mint(*quantity)]
 		pub fn mint(origin, to: T::AccountId, class_id: <T as orml_nft::Trait>::ClassId, metadata: CID, quantity: u32) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -229,7 +242,7 @@ decl_module! {
 		///		- best case: 97.81 µs
 		///		- worst case: 99.99 µs
 		/// # </weight>
-		#[weight = 100 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 3)]
+		#[weight = <T as Trait>::WeightInfo::transfer()]
 		pub fn transfer(origin, to: T::AccountId, token: (<T as orml_nft::Trait>::ClassId, <T as orml_nft::Trait>::TokenId)) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -262,7 +275,7 @@ decl_module! {
 		///		- best case: 261.2 µs
 		///		- worst case: 261.4 µs
 		/// # </weight>
-		#[weight = 261 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(5, 5)]
+		#[weight = <T as Trait>::WeightInfo::burn()]
 		pub fn burn(origin, token: (<T as orml_nft::Trait>::ClassId, <T as orml_nft::Trait>::TokenId)) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -303,7 +316,7 @@ decl_module! {
 		///		- best case: 224.3 µs
 		///		- worst case: 224.7 µs
 		/// # </weight>
-		#[weight = 224 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 3)]
+		#[weight = <T as Trait>::WeightInfo::destroy_class()]
 		pub fn destroy_class(origin, class_id: <T as orml_nft::Trait>::ClassId, dest: T::AccountId) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;

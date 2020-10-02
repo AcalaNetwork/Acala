@@ -49,6 +49,9 @@ use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthority
 use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
+/// Weights for pallets used in the runtime.
+mod weights;
+
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
 	traits::{
@@ -1185,6 +1188,7 @@ impl module_nft::Trait for Runtime {
 	type ConvertTokenData = module_nft::TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = Currency<Runtime, GetNativeCurrencyId>;
+	type WeightInfo = weights::nft::WeightInfo<Runtime>;
 }
 
 impl orml_nft::Trait for Runtime {
