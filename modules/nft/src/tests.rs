@@ -90,6 +90,11 @@ fn mint_should_fail() {
 		);
 
 		assert_noop!(
+			NFTModule::mint(Origin::signed(BOB), BOB, CLASS_ID, vec![1], 0),
+			Error::<Runtime>::InvalidQuantity
+		);
+
+		assert_noop!(
 			NFTModule::mint(Origin::signed(BOB), BOB, CLASS_ID, vec![1], 2),
 			Error::<Runtime>::NoPermission
 		);

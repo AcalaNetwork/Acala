@@ -89,6 +89,8 @@ decl_error! {
 		TokenIdNotFound,
 		/// The operator is not the owner of the token and has no permission
 		NoPermission,
+		/// Quantity is invalid. need >= 1
+		InvalidQuantity,
 		/// Property of class don't support transfer
 		NonTransferable,
 		/// Property of class don't support burn
@@ -137,14 +139,14 @@ decl_module! {
 		/// - Preconditions:
 		/// 	- T::Currency is orml_currencies
 		/// - Complexity: `O(1)`
-		/// - Db reads: 2
-		/// - Db writes: 3
+		/// - Db reads: 3
+		/// - Db writes: 4
 		/// -------------------
 		/// Base Weight:
 		///		- best case: 231.1 µs
 		///		- worst case: 233.7 µs
 		/// # </weight>
-		#[weight = 233 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(2, 3)]
+		#[weight = 233 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 4)]
 		pub fn create_class(origin, metadata: CID, properties: Properties) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -179,17 +181,18 @@ decl_module! {
 		/// - Preconditions:
 		/// 	- T::Currency is orml_currencies
 		/// - Complexity: `O(1)`
-		/// - Db reads: 3
-		/// - Db writes: 5
+		/// - Db reads: 4
+		/// - Db writes: 4
 		/// -------------------
 		/// Base Weight:
 		///		- best case: 202 µs
 		///		- worst case: 208 µs
 		/// # </weight>
-		#[weight = 208 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(3, 5)]
+		#[weight = 208 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(4, (4 + 2 * quantity).into())]
 		pub fn mint(origin, to: T::AccountId, class_id: <T as orml_nft::Trait>::ClassId, metadata: CID, quantity: u32) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
+				ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
 				let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 				ensure!(who == class_info.owner, Error::<T>::NoPermission);
 				let deposit = T::CreateTokenDeposit::get();
