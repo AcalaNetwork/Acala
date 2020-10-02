@@ -4021,6 +4021,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-proxy",
+ "pallet-utility",
  "parity-scale-codec",
  "serde",
  "sp-core",

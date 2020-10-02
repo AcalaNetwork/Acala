@@ -96,6 +96,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(caller), 0.into(), to)
 }
 
+#[cfg(feature = "runtime-benchmarks")]
 #[cfg(test)]
 mod tests {
 	use super::*;
