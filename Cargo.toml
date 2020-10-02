@@ -182,7 +182,7 @@ members = [
 	"orml/utilities",
 	"orml/vesting",
 	"orml/xtokens",
-	"orml/xmulticurrency",
+	"orml/xcm-support",
 	"runtime",
 	"inspect",
 	"ecosystem-modules/template/template",

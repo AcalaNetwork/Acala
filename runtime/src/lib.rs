@@ -25,13 +25,12 @@ use sp_runtime::traits::{
 use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
-	DispatchResult,
 	generic, impl_opaque_keys,
 	traits::AccountIdConversion,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
-use sp_std::{prelude::*, convert::TryFrom};
+use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -45,20 +44,19 @@ use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 
-use xcm::v0::{Xcm, Junction, MultiAsset, MultiLocation, NetworkId};
-use xcm_executor::{
-	XcmExecutor, Config,
-	traits::{NativeAsset, IsConcrete},
-};
-use xcm_builder::{
-	ParentIsDefault, SiblingParachainConvertsVia, AccountId32Aliases, LocationInverter,
-	SovereignSignedViaLocation, SiblingParachainAsNative,
-	RelayChainAsNative, SignedAccountId32AsNative,
+use orml_xcm_support::{
+	GeneralKeyCurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter,
+	XcmHandler as HandleXcm,
 };
 use polkadot_parachain::primitives::Sibling;
-use orml_xmulticurrency::{MultiCurrencyAdapter, CurrencyIdConversion, XcmHandler as HandleXcm, IsConcreteWithGeneralKey};
+use xcm::v0::{Junction, MultiLocation, NetworkId, Xcm};
+use xcm_builder::{
+	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
+};
+use xcm_executor::{traits::NativeAsset, Config, XcmExecutor};
 
-use cumulus_primitives::{relay_chain::Balance as RelayChainBalance, ParaId};
+use cumulus_primitives::relay_chain::Balance as RelayChainBalance;
 
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
@@ -1102,9 +1100,9 @@ parameter_types! {
 	});
 	pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
 	pub RelayChainOrigin: Origin = cumulus_message_broker::Origin::Relay.into();
-	pub Ancestry: MultiLocation = Junction::Parachain {
-		id: ParachainInfo::parachain_id().into()
-	}.into();
+	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
+		id: ParachainInfo::get().into(),
+	});
 }
 
 pub type LocationConverter = (
@@ -1113,19 +1111,14 @@ pub type LocationConverter = (
 	AccountId32Aliases<AcalaNetwork, AccountId>,
 );
 
-pub struct CurrencyIdConverter;
-impl CurrencyIdConversion<CurrencyId> for CurrencyIdConverter {
-	fn from_asset(asset: &MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset::ConcreteFungible { id: location, .. } = asset {
-			if let MultiLocation::X1(Junction::GeneralKey(key)) = location {
-				return CurrencyId::try_from(key.clone()).ok()
-			}
-		}
-		None
-	}
-}
-
-pub type LocalAssetTransactor = MultiCurrencyAdapter<Currencies, IsConcreteWithGeneralKey<CurrencyId>, LocationConverter, AccountId, CurrencyIdConverter, CurrencyId>;
+pub type LocalAssetTransactor = MultiCurrencyAdapter<
+	Currencies,
+	IsConcreteWithGeneralKey<CurrencyId>,
+	LocationConverter,
+	AccountId,
+	GeneralKeyCurrencyIdConverter<CurrencyId>,
+	CurrencyId,
+>;
 
 pub type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
@@ -1140,6 +1133,7 @@ impl Config for XcmConfig {
 	type XcmSender = MessageBroker;
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = LocalOriginConverter;
+	//TODO: might need to add other assets based on orml-tokens
 	type IsReserve = NativeAsset;
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;

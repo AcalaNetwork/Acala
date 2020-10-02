@@ -146,7 +146,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "orml-vesting",
- "orml-xmulticurrency",
+ "orml-xcm-support",
  "orml-xtokens",
  "pallet-authorship",
  "pallet-babe",
@@ -4443,9 +4443,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "orml-xmulticurrency"
+name = "orml-xcm-support"
 version = "0.1.3-dev"
 dependencies = [
+ "frame-support",
  "orml-traits",
  "parity-scale-codec",
  "sp-runtime",
@@ -4464,7 +4465,7 @@ dependencies = [
  "frame-system",
  "orml-tokens",
  "orml-utilities",
- "orml-xmulticurrency",
+ "orml-xcm-support",
  "parity-scale-codec",
  "polkadot-core-primitives",
  "serde",

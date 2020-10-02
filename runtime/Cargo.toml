@@ -77,7 +77,7 @@ orml-tokens = { path = "../orml/tokens", default-features = false }
 orml-traits = { path = "../orml/traits", default-features = false }
 orml-vesting = { path = "../orml/vesting", default-features = false }
 orml-xtokens = { path = "../orml/xtokens", default-features = false }
-orml-xmulticurrency = { path = "../orml/xmulticurrency", default-features = false }
+orml-xcm-support = { path = "../orml/xcm-support", default-features = false }
 
 module-accounts = { path = "../modules/accounts", default-features = false }
 module-airdrop = { path = "../modules/airdrop", default-features = false }
@@ -175,7 +175,7 @@ std = [
 	"orml-traits/std",
 	"orml-vesting/std",
 	"orml-xtokens/std",
-	"orml-xmulticurrency/std",
+	"orml-xcm-support/std",
 
 	"module-accounts/std",
 	"module-airdrop/std",
