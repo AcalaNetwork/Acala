@@ -44,10 +44,7 @@ use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 
-use orml_xcm_support::{
-	GeneralKeyCurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter,
-	XcmHandler as HandleXcm,
-};
+use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, XcmHandler as HandleXcm};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction, MultiLocation, NetworkId, Xcm};
 use xcm_builder::{
@@ -1103,6 +1100,7 @@ parameter_types! {
 	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
 		id: ParachainInfo::get().into(),
 	});
+	pub const RelayChainCurrencyId: CurrencyId = CurrencyId::DOT;
 }
 
 pub type LocationConverter = (
@@ -1116,7 +1114,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	IsConcreteWithGeneralKey<CurrencyId>,
 	LocationConverter,
 	AccountId,
-	GeneralKeyCurrencyIdConverter<CurrencyId>,
+	CurrencyIdConverter<CurrencyId, RelayChainCurrencyId>,
 	CurrencyId,
 >;
 
