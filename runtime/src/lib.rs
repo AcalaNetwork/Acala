@@ -1033,10 +1033,6 @@ impl cumulus_message_broker::Trait for Runtime {
 
 impl parachain_info::Trait for Runtime {}
 
-// parameter_types! {
-// 	pub const RelayChainCurrencyId: CurrencyId = CurrencyId::DOT;
-// }
-
 pub struct RelayToNative;
 impl Convert<RelayChainBalance, Balance> for RelayToNative {
 	fn convert(val: u128) -> Balance {
@@ -1056,9 +1052,7 @@ impl Convert<Balance, RelayChainBalance> for NativeToRelay {
 }
 
 parameter_types! {
-	pub const AnyRelayChain: NetworkId = NetworkId::Any;
-	// TODO: if kusama, change to `KSM`
-	pub RelayChainCurrencyKey: Vec<u8> = "DOT".into();
+	pub const PolkadotNetworkId: NetworkId = NetworkId::Polkadot;
 }
 
 pub struct XcmHandlerWrapper;
@@ -1080,21 +1074,15 @@ impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
 impl orml_xtokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
-	// type RelayChainCurrencyId = RelayChainCurrencyId;
-	type FromRelayChainBalance = RelayToNative;
 	type ToRelayChainBalance = NativeToRelay;
-	//TODO: might need to be changed to polkadot or ksm
 	type AccountId32Convert = AccountId32Convert;
-	type RelayChainCurrencyKey = RelayChainCurrencyKey;
-	type RelayChainNetworkId = AnyRelayChain;
+	//TODO: change network id if kusama
+	type RelayChainNetworkId = PolkadotNetworkId;
 	type ParaId = ParachainInfo;
 	type XcmHandler = XcmHandlerWrapper;
 }
 
 parameter_types! {
-	pub AcalaLocation: MultiLocation = MultiLocation::X2(Junction::Parent, Junction::Parachain {
-		id: ParachainInfo::get().into(),
-	});
 	pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
 	pub RelayChainOrigin: Origin = cumulus_message_broker::Origin::Relay.into();
 	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
