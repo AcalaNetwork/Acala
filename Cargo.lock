@@ -1208,6 +1208,7 @@ dependencies = [
  "module-incentives",
  "module-loans",
  "module-nft",
+ "module-nft-benchmarking",
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
@@ -3993,6 +3994,31 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "orml-utilities",
+ "pallet-balances",
+ "pallet-proxy",
+ "pallet-utility",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-nft-benchmarking"
+version = "0.6.1"
+dependencies = [
+ "acala-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-nft",
+ "module-support",
+ "orml-currencies",
+ "orml-nft",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-proxy",
  "pallet-utility",

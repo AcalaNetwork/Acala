@@ -49,6 +49,9 @@ use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthority
 use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
+/// Weights for pallets used in the runtime.
+mod weights;
+
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
 	traits::{
@@ -1176,7 +1179,8 @@ impl module_nft::Trait for Runtime {
 	type ConvertClassData = module_nft::ClassData;
 	type ConvertTokenData = module_nft::TokenData;
 	type ModuleId = NftModuleId;
-	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
+	type Currency = Currency<Runtime, GetNativeCurrencyId>;
+	type WeightInfo = weights::nft::WeightInfo<Runtime>;
 }
 
 impl orml_nft::Trait for Runtime {
@@ -1667,11 +1671,13 @@ impl_runtime_apis! {
 			use module_cdp_engine_benchmarking::Module as CdpEngineBench;
 			use module_emergency_shutdown_benchmarking::Module as EmergencyShutdownBench;
 			use module_auction_manager_benchmarking::Module as AuctionManagerBench;
+			use module_nft_benchmarking::Module as NftBench;
 
 			impl module_honzon_benchmarking::Trait for Runtime {}
 			impl module_cdp_engine_benchmarking::Trait for Runtime {}
 			impl module_emergency_shutdown_benchmarking::Trait for Runtime {}
 			impl module_auction_manager_benchmarking::Trait for Runtime {}
+			impl module_nft_benchmarking::Trait for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -1699,6 +1705,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, cdp_engine, CdpEngineBench::<Runtime>);
 			add_benchmark!(params, batches, emergency_shutdown, EmergencyShutdownBench::<Runtime>);
 			add_benchmark!(params, batches, auction_manager, AuctionManagerBench::<Runtime>);
+			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
 			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);

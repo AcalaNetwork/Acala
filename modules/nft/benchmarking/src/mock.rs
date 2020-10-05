@@ -1,11 +1,12 @@
+//! Mocks for the NFT benchmarking.
+
 #![cfg(test)]
 
 use super::*;
 
-use crate as nft;
 use codec::{Decode, Encode};
 use frame_support::{
-	impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
+	impl_outer_dispatch, impl_outer_origin, parameter_types,
 	traits::{Filter, InstanceFilter},
 	weights::Weight,
 	RuntimeDebug,
@@ -15,23 +16,13 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
+	ModuleId, Perbill,
 };
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
 }
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		pallet_balances<T>,
-		pallet_proxy<T>,
-		pallet_utility,
-		orml_tokens<T>,
-		orml_currencies<T>,
-		nft<T>,
-	}
-}
+
 impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
 		frame_system::System,
@@ -64,7 +55,7 @@ impl frame_system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = ();
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type DbWeight = ();
@@ -85,7 +76,7 @@ parameter_types! {
 }
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
-	type Event = TestEvent;
+	type Event = ();
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
@@ -93,7 +84,7 @@ impl pallet_balances::Trait for Runtime {
 	type WeightInfo = ();
 }
 impl pallet_utility::Trait for Runtime {
-	type Event = TestEvent;
+	type Event = ();
 	type Call = Call;
 	type WeightInfo = ();
 }
@@ -140,7 +131,7 @@ impl Filter<Call> for BaseFilter {
 	}
 }
 impl pallet_proxy::Trait for Runtime {
-	type Event = TestEvent;
+	type Event = ();
 	type Call = Call;
 	type Currency = Balances;
 	type ProxyType = ProxyType;
@@ -162,7 +153,7 @@ type Proxy = pallet_proxy::Module<Runtime>;
 pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = TestEvent;
+	type Event = ();
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -176,7 +167,7 @@ parameter_types! {
 }
 
 impl orml_currencies::Trait for Runtime {
-	type Event = TestEvent;
+	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -188,17 +179,15 @@ parameter_types! {
 	pub const CreateTokenDeposit: Balance = 100;
 	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
 }
-impl Trait for Runtime {
-	type Event = TestEvent;
+impl module_nft::Trait for Runtime {
+	type Event = ();
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ConvertClassData = ClassData;
 	type ConvertTokenData = TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = NativeCurrency;
-	type WeightInfo = ();
 }
-pub type NFTModule = Module<Runtime>;
 
 impl orml_nft::Trait for Runtime {
 	type ClassId = u64;
@@ -209,41 +198,14 @@ impl orml_nft::Trait for Runtime {
 
 use frame_system::Call as SystemCall;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CLASS_ID: <Runtime as orml_nft::Trait>::ClassId = 0;
-pub const CLASS_ID_NOT_EXIST: <Runtime as orml_nft::Trait>::ClassId = 1;
-pub const TOKEN_ID: <Runtime as orml_nft::Trait>::TokenId = 0;
-pub const TOKEN_ID_NOT_EXIST: <Runtime as orml_nft::Trait>::TokenId = 1;
+impl crate::Trait for Runtime {}
 
-pub struct ExtBuilder;
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		ExtBuilder
-	}
-}
-
-impl ExtBuilder {
-	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap();
-
-		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, 100000)],
-		}
-		.assimilate_storage(&mut t)
+pub fn new_test_ext() -> sp_io::TestExternalities {
+	let mut t = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
 		.unwrap();
 
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
-}
-
-pub fn last_event() -> TestEvent {
-	frame_system::Module::<Runtime>::events()
-		.pop()
-		.expect("Event expected")
-		.event
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }
