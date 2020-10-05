@@ -879,6 +879,13 @@ parameter_types! {
 	pub const UpdateFrequency: BlockNumber = 10;
 }
 
+impl orml_gradually_update::Trait for Runtime {
+	type Event = Event;
+	type UpdateFrequency = UpdateFrequency;
+	type DispatchOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
@@ -1722,6 +1729,7 @@ impl_runtime_apis! {
 			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
 
 			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
+			// orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
 			// orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
 			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
