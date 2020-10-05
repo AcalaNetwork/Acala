@@ -808,6 +808,8 @@ fn test_cdp_engine_module() {
 
 #[test]
 fn test_authority_module() {
+	const AUTHORITY_ORIGIN_ID: u8 = 30u8;
+
 	ExtBuilder::default()
 		.balances(vec![
 			(
@@ -899,7 +901,7 @@ fn test_authority_module() {
 				}),
 				1,
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			run_to_block(2);
 			assert_eq!(
@@ -917,10 +919,10 @@ fn test_authority_module() {
 			// delay < SevenDays
 			let event = Event::pallet_scheduler(pallet_scheduler::RawEvent::Dispatched(
 				(2, 1),
-				Some([33, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				Some([AUTHORITY_ORIGIN_ID, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
 				Err(DispatchError::BadOrigin),
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			// delay = SevenDays
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -934,10 +936,10 @@ fn test_authority_module() {
 			run_to_block(SevenDays::get() + 2);
 			let event = Event::pallet_scheduler(pallet_scheduler::RawEvent::Dispatched(
 				(151202, 0),
-				Some([33, 160, 78, 2, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				Some([AUTHORITY_ORIGIN_ID, 160, 78, 2, 0, 0, 0, 2, 0, 0, 0].to_vec()),
 				Ok(()),
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			// with_delayed_origin = false
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -951,7 +953,7 @@ fn test_authority_module() {
 				OriginCaller::system(RawOrigin::Root),
 				3,
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			run_to_block(SevenDays::get() + 3);
 			let event = Event::pallet_scheduler(pallet_scheduler::RawEvent::Dispatched(
@@ -959,7 +961,7 @@ fn test_authority_module() {
 				Some([0, 0, 3, 0, 0, 0].to_vec()),
 				Ok(()),
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			// fast_track_scheduled_dispatch
 			assert_ok!(AuthorityModule::fast_track_scheduled_dispatch(
@@ -992,7 +994,7 @@ fn test_authority_module() {
 				}),
 				4,
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			let schedule_origin = {
 				let origin: <Runtime as orml_authority::Trait>::Origin = From::from(Origin::root());
@@ -1019,7 +1021,7 @@ fn test_authority_module() {
 				}),
 				4,
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			assert_ok!(AuthorityModule::schedule_dispatch(
 				Origin::root(),
@@ -1032,7 +1034,7 @@ fn test_authority_module() {
 				OriginCaller::system(RawOrigin::Root),
 				5,
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 
 			assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
 				Origin::root(),
@@ -1043,7 +1045,7 @@ fn test_authority_module() {
 				OriginCaller::system(RawOrigin::Root),
 				5,
 			));
-			assert!(last_event() == event);
+			assert_eq!(last_event(), event);
 		});
 }
 
