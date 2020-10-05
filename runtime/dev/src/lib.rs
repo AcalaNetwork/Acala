@@ -801,7 +801,7 @@ impl module_prices::Trait for Runtime {
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
 	type GetStakingCurrencyId = GetStakingCurrencyId;
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
-	type LockOrigin = EnsureRootOrHalfGeneralCouncil;
+	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
 }
 
