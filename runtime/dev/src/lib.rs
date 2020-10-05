@@ -1300,6 +1300,7 @@ construct_runtime!(
 		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
+		GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
 
 		// Consensus & Staking
 		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
