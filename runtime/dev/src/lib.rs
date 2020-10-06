@@ -1296,6 +1296,16 @@ construct_runtime!(
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 
+		// Tokens & Related
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+
+		Accounts: module_accounts::{Module, Call, Storage},
+		Currencies: orml_currencies::{Module, Call, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
+
+		AcalaTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
+
 		// Utility
 		Utility: pallet_utility::{Module, Call, Event},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
@@ -1313,16 +1323,6 @@ construct_runtime!(
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Historical: pallet_session_historical::{Module},
-
-		// Tokens & Related
-		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-
-		Accounts: module_accounts::{Module, Call, Storage},
-		Currencies: orml_currencies::{Module, Call, Event<T>},
-		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
-
-		AcalaTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 
 		// Governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
