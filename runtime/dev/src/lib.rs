@@ -1383,8 +1383,6 @@ construct_runtime!(
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-
-		TransactionPayment: pallet_transaction_payment::{Module, Storage}, // TODO: #433 remove this
 	}
 );
 
@@ -1575,7 +1573,7 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-			TransactionPayment::query_info(uxt, len)
+			<pallet_transaction_payment::Module<Runtime>>::query_info(uxt, len)
 		}
 	}
 
