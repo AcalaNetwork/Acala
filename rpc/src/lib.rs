@@ -92,7 +92,7 @@ where
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
 	C::Api: frontier_rpc_primitives::EthereumRuntimeRPCApi<Block>,
-	P: TransactionPool<Block=Block> + Sync + Send + 'static,
+	P: TransactionPool<Block = Block> + Sync + Send + 'static,
 	SC: SelectChain<Block> + 'static,
 	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
 	B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,

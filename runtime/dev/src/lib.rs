@@ -57,8 +57,8 @@ use pallet_evm::{Account as EVMAccount, EnsureAddressTruncated, FeeCalculator, H
 pub use frame_support::{
 	construct_runtime, debug, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier,
-		Randomness, FindAuthor,
+		Contains, ContainsLengthBound, EnsureOrigin, Filter, FindAuthor, Get, IsType, KeyOwnerProofSystem,
+		LockIdentifier, Randomness,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},

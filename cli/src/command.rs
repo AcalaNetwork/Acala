@@ -121,11 +121,13 @@ pub fn run() -> sc_cli::Result<()> {
 			runner.async_run(|config| {
 				let chain_spec = config.chain_spec.cloned_box();
 				let network_config = config.network.clone();
-				let (task_manager, _, client, _, _, network_status_sinks) = service::new_full::<
-					service::dev_runtime::RuntimeApi,
-					service::DevExecutor,
-					_,
-				>(config, cli.run.ethereum_rpc, |_, _| (), false)?;
+				let (task_manager, _, client, _, _, network_status_sinks) =
+					service::new_full::<service::dev_runtime::RuntimeApi, service::DevExecutor, _>(
+						config,
+						cli.run.ethereum_rpc,
+						|_, _| (),
+						false,
+					)?;
 
 				Ok((
 					cmd.run(chain_spec, network_config, client, network_status_sinks),
