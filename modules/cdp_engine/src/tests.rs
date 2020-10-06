@@ -130,7 +130,7 @@ fn set_collateral_params_work() {
 		assert_noop!(
 			CDPEngineModule::set_collateral_params(
 				Origin::signed(1),
-				CurrencyId::LDOT,
+				LDOT,
 				Change::NoChange,
 				Change::NoChange,
 				Change::NoChange,

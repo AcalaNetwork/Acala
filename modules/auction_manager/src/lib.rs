@@ -18,17 +18,17 @@ use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::Get,
 	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
-	IterableStorageMap,
 };
 use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
-use orml_utilities::with_transaction_result;
+use orml_utilities::{with_transaction_result, IterableStorageMapExtended, OffchainErr};
 use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
+		storage::StorageValueRef,
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
@@ -43,13 +43,14 @@ use sp_std::{
 	prelude::*,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate};
-use utilities::OffchainErr;
 
 mod mock;
 mod tests;
 
+const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/auction-manager/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
 const LOCK_DURATION: u64 = 100;
+const MAX_ITERATIONS: u32 = 10000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -202,21 +203,21 @@ decl_event!(
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
-		/// Collateral auction created. [auction_id, collateral_type, collateral_amount, target_bid_price]
+		/// Collateral auction created. \[auction_id, collateral_type, collateral_amount, target_bid_price\]
 		NewCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
-		/// Debit auction created. [auction_id, initial_supply_amount, fix_payment_amount]
+		/// Debit auction created. \[auction_id, initial_supply_amount, fix_payment_amount\]
 		NewDebitAuction(AuctionId, Balance, Balance),
-		/// Surplus auction created. [auction_id, fix_surplus_amount]
+		/// Surplus auction created. \[auction_id, fix_surplus_amount\]
 		NewSurplusAuction(AuctionId, Balance),
-		/// Active auction cancelled. [auction_id]
+		/// Active auction cancelled. \[auction_id\]
 		CancelAuction(AuctionId),
-		/// Collateral auction dealt. [auction_id, collateral_type, collateral_amount, winner, payment_amount]
+		/// Collateral auction dealt. \[auction_id, collateral_type, collateral_amount, winner, payment_amount\]
 		CollateralAuctionDealt(AuctionId, CurrencyId, Balance, AccountId, Balance),
-		/// Surplus auction dealt. [auction_id, surplus_amount, winner, payment_amount]
+		/// Surplus auction dealt. \[auction_id, surplus_amount, winner, payment_amount\]
 		SurplusAuctionDealt(AuctionId, Balance, AccountId, Balance),
-		/// Debit auction dealt. [auction_id, debit_currency_amount, winner, payment_amount]
+		/// Debit auction dealt. \[auction_id, debit_currency_amount, winner, payment_amount\]
 		DebitAuctionDealt(AuctionId, Balance, AccountId, Balance),
-		/// Dex take collateral auction. [auction_id, collateral_type, collateral_amount, turnover]
+		/// Dex take collateral auction. \[auction_id, collateral_type, collateral_amount, turnover\]
 		DEXTakeCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
 	}
 );
@@ -366,32 +367,62 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn _offchain_worker() -> Result<(), OffchainErr> {
+		// acquire offchain worker lock.
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
 		let mut lock = StorageLock::<'_, Time>::with_deadline(&OFFCHAIN_WORKER_LOCK, lock_expiration);
-
-		// acquire offchain worker lock.
 		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
 
-		let random_seed = sp_io::offchain::random_seed();
-		let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+		let mut to_be_continue = StorageValueRef::persistent(&OFFCHAIN_WORKER_DATA);
+
+		// get to_be_continue record,
+		// if it exsits, iterator map storage start with previous key
+		let (auction_type_num, start_key) = if let Some(Some((auction_type_num, last_iterator_previous_key))) =
+			to_be_continue.get::<(u32, Vec<u8>)>()
+		{
+			(auction_type_num, Some(last_iterator_previous_key))
+		} else {
+			let random_seed = sp_io::offchain::random_seed();
+			let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
+			(rng.pick_u32(2), None)
+		};
 
 		// Randomly choose to start iterations to cancel collateral/surplus/debit
 		// auctions
-		match rng.pick_u32(2) {
+		match auction_type_num {
 			0 => {
-				for (debit_auction_id, _) in <DebitAuctions<T>>::iter() {
+				let mut iterator =
+					<DebitAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+				while let Some((debit_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(debit_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
+
+				// if iteration for map storage finished, clear to be continue record
+				// otherwise, update to be continue record
+				if iterator.finished {
+					to_be_continue.clear();
+				} else {
+					to_be_continue.set(&(auction_type_num, iterator.storage_map_iterator.previous_key));
+				}
 			}
 			1 => {
-				for (surplus_auction_id, _) in <SurplusAuctions<T>>::iter() {
+				let mut iterator =
+					<SurplusAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+				while let Some((surplus_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(surplus_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
+
+				if iterator.finished {
+					to_be_continue.clear();
+				} else {
+					to_be_continue.set(&(auction_type_num, iterator.storage_map_iterator.previous_key));
+				}
 			}
 			_ => {
-				for (collateral_auction_id, _) in <CollateralAuctions<T>>::iter() {
+				let mut iterator =
+					<CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+				while let Some((collateral_auction_id, _)) = iterator.next() {
 					if let (Some(collateral_auction), Some((_, last_bid_price))) = (
 						Self::collateral_auctions(collateral_auction_id),
 						Self::get_last_bid(collateral_auction_id),
@@ -405,8 +436,17 @@ impl<T: Trait> Module<T> {
 					Self::submit_cancel_auction_tx(collateral_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
+
+				if iterator.finished {
+					to_be_continue.clear();
+				} else {
+					to_be_continue.set(&(auction_type_num, iterator.storage_map_iterator.previous_key));
+				}
 			}
 		}
+
+		// Consume the guard but **do not** unlock the underlying lock.
+		guard.forget();
 
 		Ok(())
 	}
@@ -583,7 +623,9 @@ impl<T: Trait> Module<T> {
 
 						payment = payment
 							.checked_sub(refund)
-							.expect("new bid payment greater or equal to last bid payment; qed");
+							// This should never fail because new bid payment are always greater or equal to last bid
+							// payment.
+							.ok_or(Error::<T>::InvalidBidPrice)?;
 					}
 
 					// transfer remain payment from new bidder to CDP treasury
@@ -735,7 +777,9 @@ impl<T: Trait> Module<T> {
 						collateral_auction.currency_id,
 						T::GetStableCurrencyId::get(),
 						collateral_auction.amount,
-					) {
+					)
+					.unwrap_or_default()
+			{
 				// try trade with DEX
 				if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
 					collateral_auction.currency_id,
@@ -745,16 +789,19 @@ impl<T: Trait> Module<T> {
 					// swap successfully, will not deal
 					should_deal = false;
 
-					// refund stable currency to the last bidder
-					// it currently cannot fail, it is ok to ignore the error in this case
+					// refund stable currency to the last bidder, it shouldn't fail and affect the
+					// process. but even it failed, just the winner did not get the amount. it can
+					// be fixed by treasury council.
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
 					if collateral_auction.in_reverse_stage(amount) {
-						// refund extra stable currency to recipient, ignore result to continue
+						// refund extra stable currency to recipient
 						let refund_amount = amount
 							.checked_sub(collateral_auction.target)
 							.expect("ensured amount > target; qed");
-						// it currently cannot fail, it is ok to ignore the error in this case
+						// it shouldn't fail and affect the process.
+						// but even it failed, just the winner did not get the amount. it can be fixed
+						// by treasury council.
 						let _ = T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
 					}
 
@@ -768,7 +815,9 @@ impl<T: Trait> Module<T> {
 			}
 
 			if should_deal {
-				// transfer collateral to winner from CDP treasury, ignore result to continue
+				// transfer collateral to winner from CDP treasury, it shouldn't fail and affect
+				// the process. but even it failed, just the winner did not get the amount. it
+				// can be fixed by treasury council.
 				let _ = T::CDPTreasury::withdraw_collateral(
 					&bidder,
 					collateral_auction.currency_id,
@@ -804,9 +853,9 @@ impl<T: Trait> Module<T> {
 		winner: Option<(T::AccountId, Balance)>,
 	) {
 		if let Some((bidder, _)) = winner {
-			// issue native token to winner
-			// it currently cannot fail, it is ok to ignore the error in this case
-			// TODO: transfer from RESERVED TREASURY instead of issuing
+			// issue native token to winner, it shouldn't fail and affect the process.
+			// but even it failed, just the winner did not get the amount. it can be fixed
+			// by treasury council. TODO: transfer from RESERVED TREASURY instead of issuing
 			let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
 
 			<Module<T>>::deposit_event(RawEvent::DebitAuctionDealt(
@@ -828,8 +877,9 @@ impl<T: Trait> Module<T> {
 		winner: Option<(T::AccountId, Balance)>,
 	) {
 		if let Some((bidder, bid_price)) = winner {
-			// deposit unbacked stable token to winner by CDP treasury
-			// it currently cannot fail, it is ok to ignore the error in this case
+			// deposit unbacked stable token to winner by CDP treasury, it shouldn't fail
+			// and affect the process. but even it failed, just the winner did not get the
+			// amount. it can be fixed by treasury council.
 			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
 
 			<Module<T>>::deposit_event(RawEvent::SurplusAuctionDealt(

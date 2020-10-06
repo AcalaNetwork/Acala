@@ -5,7 +5,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, CAROL, DOT, LDOT,
+	DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, BOB, BTC, BTC_AUSD_LP, CAROL,
+	DOT, DOT_AUSD_LP, LDOT,
 };
 
 #[test]
@@ -121,28 +122,36 @@ fn make_sure_get_supply_amount_needed_can_affort_target() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(DexModule::add_liquidity(
 			Origin::signed(ALICE),
-			BTC,
+			BTC_AUSD_LP,
 			500000000000,
 			100000000000000000
 		));
 		assert_ok!(DexModule::add_liquidity(
 			Origin::signed(BOB),
-			DOT,
+			DOT_AUSD_LP,
 			80000000000,
 			4000000000000000
 		));
 
 		let target_amount_btc_ausd = 90000000000000;
-		let surply_amount_btc_ausd = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_ausd);
-		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_ausd) >= target_amount_btc_ausd);
+		let surply_amount_btc_ausd = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_ausd).unwrap();
+		assert!(
+			DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_ausd).unwrap()
+				>= target_amount_btc_ausd
+		);
 
 		let target_amount_ausd_dot = 8000000000000;
-		let surply_amount_ausd_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_ausd_dot);
-		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_ausd_dot) >= target_amount_ausd_dot);
+		let surply_amount_ausd_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_ausd_dot).unwrap();
+		assert!(
+			DexModule::get_target_amount_available(BTC, AUSD, surply_amount_ausd_dot).unwrap()
+				>= target_amount_ausd_dot
+		);
 
 		let target_amount_btc_dot = 60000000000;
-		let surply_amount_btc_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_dot);
-		assert!(DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_dot) >= target_amount_btc_dot);
+		let surply_amount_btc_dot = DexModule::get_supply_amount_needed(BTC, AUSD, target_amount_btc_dot).unwrap();
+		assert!(
+			DexModule::get_target_amount_available(BTC, AUSD, surply_amount_btc_dot).unwrap() >= target_amount_btc_dot
+		);
 	});
 }
 
@@ -154,30 +163,35 @@ fn add_liquidity_work() {
 			DexModule::add_liquidity(Origin::signed(ALICE), AUSD, 10000, 2000),
 			Error::<Runtime>::CurrencyIdNotAllowed,
 		);
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			10000,
+			10000000
+		));
 
-		let add_liquidity_event = TestEvent::dex(RawEvent::AddLiquidity(ALICE, BTC, 10000, 10000000, 10000000));
+		let add_liquidity_event = TestEvent::dex(RawEvent::AddLiquidity(ALICE, BTC_AUSD_LP, 10000, 10000000, 10000000));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == add_liquidity_event));
 
 		assert_eq!(DexModule::liquidity_pool(BTC), (10000, 10000000));
-		assert_eq!(DexModule::total_shares(BTC), 10000000);
-		assert_eq!(DexModule::shares(BTC, ALICE), 10000000);
-		assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC, 1, 1000));
+		assert_eq!(Tokens::total_issuance(BTC_AUSD_LP), 10000000);
+		assert_eq!(Tokens::free_balance(BTC_AUSD_LP, &ALICE), 10000000);
+		assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC_AUSD_LP, 1, 1000));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10001, 10001000));
-		assert_eq!(DexModule::total_shares(BTC), 10001000);
-		assert_eq!(DexModule::shares(BTC, BOB), 1000);
+		assert_eq!(Tokens::total_issuance(BTC_AUSD_LP), 10001000);
+		assert_eq!(Tokens::free_balance(BTC_AUSD_LP, &BOB), 1000);
 		assert_noop!(
-			DexModule::add_liquidity(Origin::signed(BOB), BTC, 1, 999),
+			DexModule::add_liquidity(Origin::signed(BOB), BTC_AUSD_LP, 1, 999),
 			Error::<Runtime>::InvalidLiquidityIncrement,
 		);
 		assert_eq!(DexModule::liquidity_pool(BTC), (10001, 10001000));
-		assert_eq!(DexModule::total_shares(BTC), 10001000);
-		assert_eq!(DexModule::shares(BTC, BOB), 1000);
-		assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC, 2, 1000));
+		assert_eq!(Tokens::total_issuance(BTC_AUSD_LP), 10001000);
+		assert_eq!(Tokens::free_balance(BTC_AUSD_LP, &BOB), 1000);
+		assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC_AUSD_LP, 2, 1000));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10002, 10002000));
-		assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC, 1, 1001));
+		assert_ok!(DexModule::add_liquidity(Origin::signed(BOB), BTC_AUSD_LP, 1, 1001));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10003, 10003000));
 	});
 }
@@ -187,25 +201,31 @@ fn withdraw_liquidity_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_eq!(DexModule::liquidity_pool(BTC), (0, 0));
-		assert_eq!(DexModule::total_shares(BTC), 0);
-		assert_eq!(DexModule::shares(BTC, ALICE), 0);
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
+		assert_eq!(Tokens::total_issuance(BTC_AUSD_LP), 0);
+		assert_eq!(Tokens::free_balance(BTC_AUSD_LP, &ALICE), 0);
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			10000,
+			10000000
+		));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10000, 10000000));
-		assert_eq!(DexModule::total_shares(BTC), 10000000);
-		assert_eq!(DexModule::shares(BTC, ALICE), 10000000);
-		assert_ok!(DexModule::withdraw_liquidity(Origin::signed(ALICE), BTC, 10000));
+		assert_eq!(Tokens::total_issuance(BTC_AUSD_LP), 10000000);
+		assert_eq!(Tokens::free_balance(BTC_AUSD_LP, &ALICE), 10000000);
+		assert_ok!(DexModule::withdraw_liquidity(Origin::signed(ALICE), BTC_AUSD_LP, 10000));
 
-		let withdraw_liquidity_event = TestEvent::dex(RawEvent::WithdrawLiquidity(ALICE, BTC, 10, 10000, 10000));
+		let withdraw_liquidity_event =
+			TestEvent::dex(RawEvent::WithdrawLiquidity(ALICE, BTC_AUSD_LP, 10, 10000, 10000));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == withdraw_liquidity_event));
 
 		assert_eq!(DexModule::liquidity_pool(BTC), (9990, 9990000));
-		assert_eq!(DexModule::total_shares(BTC), 9990000);
-		assert_eq!(DexModule::shares(BTC, ALICE), 9990000);
-		assert_ok!(DexModule::withdraw_liquidity(Origin::signed(ALICE), BTC, 100));
-		assert_eq!(DexModule::total_shares(BTC), 9989900);
-		assert_eq!(DexModule::shares(BTC, ALICE), 9989900);
+		assert_eq!(Tokens::total_issuance(BTC_AUSD_LP), 9990000);
+		assert_eq!(Tokens::free_balance(BTC_AUSD_LP, &ALICE), 9990000);
+		assert_ok!(DexModule::withdraw_liquidity(Origin::signed(ALICE), BTC_AUSD_LP, 100));
+		assert_eq!(Tokens::total_issuance(BTC_AUSD_LP), 9989900);
+		assert_eq!(Tokens::free_balance(BTC_AUSD_LP, &ALICE), 9989900);
 	});
 }
 
@@ -213,7 +233,12 @@ fn withdraw_liquidity_work() {
 fn swap_other_to_base_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000000));
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			10000,
+			10000000
+		));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10000, 10000000));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, BTC, 10000));
 		assert_eq!(Tokens::free_balance(BTC, &CAROL), 10000);
@@ -243,7 +268,12 @@ fn swap_other_to_base_work() {
 fn swap_base_to_other_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000));
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			10000,
+			10000
+		));
 		assert_eq!(DexModule::liquidity_pool(BTC), (10000, 10000));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, AUSD, 10000));
 		assert_eq!(Tokens::free_balance(BTC, &CAROL), 0);
@@ -273,8 +303,13 @@ fn swap_base_to_other_work() {
 fn swap_other_to_other_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 100, 10000));
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 1000, 10000));
+		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC_AUSD_LP, 100, 10000));
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			DOT_AUSD_LP,
+			1000,
+			10000
+		));
 		assert_eq!(DexModule::liquidity_pool(BTC), (100, 10000));
 		assert_eq!(DexModule::liquidity_pool(DOT), (1000, 10000));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, DOT, 1000));
@@ -305,8 +340,13 @@ fn swap_other_to_other_work() {
 #[test]
 fn do_exchange_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 100, 10000));
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 1000, 10000));
+		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC_AUSD_LP, 100, 10000));
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			DOT_AUSD_LP,
+			1000,
+			10000
+		));
 		assert_ok!(Tokens::transfer(Origin::signed(BOB), CAROL, BTC, 100));
 		assert_noop!(
 			DexModule::do_exchange(&CAROL, AUSD, 10000, LDOT, 1000),
@@ -329,8 +369,13 @@ fn do_exchange_work() {
 #[test]
 fn get_supply_amount_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 10000, 10000));
-		let supply_amount = DexModule::get_supply_amount(BTC, AUSD, 4950);
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC_AUSD_LP,
+			10000,
+			10000
+		));
+		let supply_amount = DexModule::get_supply_amount(BTC, AUSD, 4950).unwrap();
 		assert_eq!(
 			DexModule::exchange_currency(BOB, BTC, supply_amount, AUSD, 4950).is_ok(),
 			true
@@ -341,8 +386,8 @@ fn get_supply_amount_work() {
 #[test]
 fn get_exchange_slippage_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC, 100, 1000));
-		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT, 200, 2000));
+		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), BTC_AUSD_LP, 100, 1000));
+		assert_ok!(DexModule::add_liquidity(Origin::signed(ALICE), DOT_AUSD_LP, 200, 2000));
 		assert_eq!(DexModule::get_exchange_slippage(BTC, BTC, 100), None);
 		assert_eq!(DexModule::get_exchange_slippage(ACA, AUSD, 100), Some(Ratio::one()));
 		assert_eq!(DexModule::get_exchange_slippage(BTC, AUSD, 0), Some(Ratio::zero()));

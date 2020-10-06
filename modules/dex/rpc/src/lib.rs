@@ -71,7 +71,7 @@ impl From<Error> for i64 {
 	}
 }
 
-impl<C, Block, CurrencyId, Balance> DexApi<<Block as BlockT>::Hash, CurrencyId, Balance, BalanceInfo<Balance>>
+impl<C, Block, CurrencyId, Balance> DexApi<<Block as BlockT>::Hash, CurrencyId, Balance, Option<BalanceInfo<Balance>>>
 	for Dex<C, Block>
 where
 	Block: BlockT,
@@ -87,11 +87,12 @@ where
 		target_currency_id: CurrencyId,
 		target_currency_amount: NumberOrHex,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<BalanceInfo<Balance>> {
+	) -> Result<Option<BalanceInfo<Balance>>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(||
+		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.
-			self.client.info().best_hash));
+			self.client.info().best_hash,
+		));
 
 		let amount: Balance = TryFrom::try_from(target_currency_amount.into_u256()).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),
@@ -113,11 +114,12 @@ where
 		target_currency_id: CurrencyId,
 		supply_currency_amount: NumberOrHex,
 		at: Option<<Block as BlockT>::Hash>,
-	) -> Result<BalanceInfo<Balance>> {
+	) -> Result<Option<BalanceInfo<Balance>>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(||
+		let at = BlockId::hash(at.unwrap_or(
 			// If the block hash is not supplied assume the best block.
-			self.client.info().best_hash));
+			self.client.info().best_hash,
+		));
 
 		let amount: Balance = TryFrom::try_from(supply_currency_amount.into_u256()).map_err(|e| RpcError {
 			code: ErrorCode::ServerError(Error::RuntimeError.into()),

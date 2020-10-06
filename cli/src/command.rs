@@ -80,6 +80,7 @@ pub fn run() -> sc_cli::Result<()> {
 					config,
 					cli.run.ethereum_rpc,
 					|_, _| (),
+					false,
 				)
 				.map(|r| r.0),
 			})
@@ -110,33 +111,74 @@ pub fn run() -> sc_cli::Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
 		}
+
+		Some(Subcommand::BuildSyncSpec(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
+			runner.async_run(|config| {
+				let chain_spec = config.chain_spec.cloned_box();
+				let network_config = config.network.clone();
+				let (task_manager, _, client, _, _, network_status_sinks) = service::new_full::<
+					service::dev_runtime::RuntimeApi,
+					service::DevExecutor,
+					_,
+				>(config, cli.run.ethereum_rpc, |_, _| (), false)?;
+
+				Ok((
+					cmd.run(chain_spec, network_config, client, network_status_sinks),
+					task_manager,
+				))
+			})
+		}
+
 		Some(Subcommand::CheckBlock(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
 			runner.async_run(|mut config| {
 				let (client, _, import_queue, task_manager) =
 					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
-
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
 		}
+
 		Some(Subcommand::ExportBlocks(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
 			runner.async_run(|mut config| {
 				let (client, _, _, task_manager) =
 					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
 				Ok((cmd.run(client, config.database), task_manager))
 			})
 		}
+
 		Some(Subcommand::ExportState(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
 			runner.async_run(|mut config| {
 				let (client, _, _, task_manager) =
 					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
 				Ok((cmd.run(client, config.chain_spec), task_manager))
 			})
 		}
+
 		Some(Subcommand::ImportBlocks(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
 			runner.async_run(|mut config| {
 				let (client, _, import_queue, task_manager) =
 					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
@@ -147,8 +189,13 @@ pub fn run() -> sc_cli::Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run(config.database))
 		}
+
 		Some(Subcommand::Revert(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
 			runner.async_run(|mut config| {
 				let (client, backend, _, task_manager) =
 					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;

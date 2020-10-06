@@ -77,13 +77,13 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		supply_currency_amount: Balance,
-	) -> Balance;
+	) -> Option<Balance>;
 
 	fn get_supply_amount(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		target_currency_amount: Balance,
-	) -> Balance;
+	) -> Option<Balance>;
 
 	fn exchange_currency(
 		who: AccountId,
@@ -110,16 +110,16 @@ where
 		_supply_currency_id: CurrencyId,
 		_target_currency_id: CurrencyId,
 		_supply_currency_amount: Balance,
-	) -> Balance {
-		Default::default()
+	) -> Option<Balance> {
+		Some(Default::default())
 	}
 
 	fn get_supply_amount(
 		_supply_currency_id: CurrencyId,
 		_target_currency_id: CurrencyId,
 		_target_currency_amount: Balance,
-	) -> Balance {
-		Default::default()
+	) -> Option<Balance> {
+		Some(Default::default())
 	}
 
 	fn exchange_currency(

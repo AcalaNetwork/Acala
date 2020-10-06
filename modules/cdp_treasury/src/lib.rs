@@ -62,7 +62,7 @@ pub trait Trait: system::Trait {
 decl_event!(
 	pub enum Event {
 		/// The fixed size for collateral auction under specific collateral type
-		/// updated. [collateral_type, new_size]
+		/// updated. \[collateral_type, new_size\]
 		CollateralAuctionMaximumSizeUpdated(CurrencyId, Balance),
 	}
 );

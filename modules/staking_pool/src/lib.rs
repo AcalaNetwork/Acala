@@ -47,13 +47,13 @@ decl_event!(
 		<T as system::Trait>::AccountId,
 		Balance = Balance,
 	{
-		/// [who, bond_staking, issued_liquid]
+		/// \[who, bond_staking, issued_liquid\]
 		MintLiquid(AccountId, Balance, Balance),
-		/// [who, redeem_amount, unbond_amount]
+		/// \[who, redeem_amount, unbond_amount\]
 		RedeemByUnbond(AccountId, Balance, Balance),
-		/// [who, fee_in_liquid, liquid_amount_burned, staking_amount_retrived]
+		/// \[who, fee_in_liquid, liquid_amount_burned, staking_amount_retrived\]
 		RedeemByFreeUnbonded(AccountId, Balance, Balance, Balance),
-		/// [who, target_era, fee, redeem_amount, unbond_amount]
+		/// \[who, target_era, fee, redeem_amount, unbond_amount\]
 		RedeemByClaimUnbonding(AccountId, EraIndex, Balance, Balance, Balance),
 	}
 );
@@ -460,7 +460,8 @@ impl<T: Trait> Module<T> {
 				.saturating_mul_int(total_communal_balance)
 				.min(Self::free_unbonded());
 
-			// ignore result to continue
+			// bound more amount for staking. if it failed, just that added amount did not
+			// succeed and it should not affect the process. so ignore result to continue.
 			let _ = Self::bond(bond_amount);
 		}
 

@@ -1,5 +1,8 @@
 use super::utils::{dollars, lookup_of_account, set_aca_balance};
-use crate::{AccountId, Currencies, CurrencyId, NewAccountDeposit, Runtime, System, Vesting};
+use crate::{
+	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Currencies, CurrencyId, NewAccountDeposit, Runtime, System,
+	TokenSymbol, Vesting,
+};
 
 use sp_std::prelude::*;
 
@@ -41,8 +44,8 @@ runtime_benchmarks! {
 			per_period: dollars(a),
 		};
 
-		let from = account("from", u, SEED);
 		// extra 1 dollar to pay fees
+		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
 		set_aca_balance(&from, schedule.total_amount().unwrap() + dollars(1u32));
 
 		let to: AccountId = account("to", u, SEED);
@@ -50,7 +53,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(from), to_lookup, schedule.clone())
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::total_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::total_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap()
 		);
 	}
@@ -68,19 +71,19 @@ runtime_benchmarks! {
 			per_period: dollars(a),
 		};
 
-		let from = account("from", u, SEED);
+		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
 		// extra 1 dollar to pay fees
 		set_aca_balance(&from, schedule.total_amount().unwrap() + dollars(1u32));
 
 		let to: AccountId = account("to", u, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 
-		let _ = Vesting::vested_transfer(RawOrigin::Signed(from).into(), to_lookup, schedule.clone());
+		Vesting::vested_transfer(RawOrigin::Signed(from).into(), to_lookup, schedule.clone())?;
 		System::set_block_number(schedule.end().unwrap() + 1u32);
 	}: _(RawOrigin::Signed(to.clone()))
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap() - NewAccountDeposit::get()
 		);
 	}
@@ -99,7 +102,7 @@ runtime_benchmarks! {
 			per_period: dollars(a),
 		};
 
-		let from = account("from", u, SEED);
+		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
 		// extra 1 dollar to pay fees
 		set_aca_balance(&from, schedule.total_amount().unwrap() * 10 + dollars(1u32));
 
@@ -107,13 +110,13 @@ runtime_benchmarks! {
 		let to_lookup = lookup_of_account(to.clone());
 
 		for _ in 0..10 {
-			let _ = Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone());
+			Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone())?;
 		}
 		System::set_block_number(schedule.end().unwrap() + 1u32);
 	}: claim(RawOrigin::Signed(to.clone()))
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap() * 10 - NewAccountDeposit::get()
 		);
 	}
@@ -137,7 +140,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, to_lookup, vec![schedule.clone()])
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap()
 		);
 	}
@@ -168,7 +171,7 @@ runtime_benchmarks! {
 	}: update_vesting_schedules(RawOrigin::Root, to_lookup, schedules)
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
 			schedule.total_amount().unwrap() * 10
 		);
 	}

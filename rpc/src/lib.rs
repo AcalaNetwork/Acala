@@ -3,22 +3,22 @@
 #![warn(missing_docs)]
 
 use primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Hash, Nonce};
-use sc_client_api::backend::{AuxStore, Backend, StateBackend, StorageProvider};
+use sc_client_api::backend::{AuxStore, StorageProvider};
 use sc_client_api::light::{Fetcher, RemoteBlockchain};
 use sc_consensus_babe::{Config, Epoch};
 use sc_consensus_epochs::SharedEpochChanges;
-use sc_finality_grandpa::{GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState};
+use sc_finality_grandpa::{FinalityProofProvider, GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState};
 use sc_keystore::KeyStorePtr;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
-use sp_runtime::traits::BlakeTwo256;
 use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
-pub use jsonrpc_pubsub::manager::SubscriptionManager;
+pub use sc_rpc::SubscriptionTaskExecutor;
+
 pub use sc_rpc::DenyUnsafe;
 
 /// A type representing all RPC extensions.
@@ -47,7 +47,7 @@ pub struct BabeDeps {
 }
 
 /// Extra dependencies for GRANDPA
-pub struct GrandpaDeps {
+pub struct GrandpaDeps<B> {
 	/// Voting round info.
 	pub shared_voter_state: SharedVoterState,
 	/// Authority set info.
@@ -55,11 +55,13 @@ pub struct GrandpaDeps {
 	/// Receives notifications about justification events from Grandpa.
 	pub justification_stream: GrandpaJustificationStream<Block>,
 	/// Subscription manager to keep track of pubsub subscribers.
-	pub subscriptions: SubscriptionManager,
+	pub subscription_executor: SubscriptionTaskExecutor,
+	/// Finality proof provider.
+	pub finality_provider: Arc<FinalityProofProvider<B, Block>>,
 }
 
 /// Full client dependencies.
-pub struct FullDeps<C, P, SC> {
+pub struct FullDeps<C, P, SC, B> {
 	/// The client instance to use.
 	pub client: Arc<C>,
 	/// Transaction pool instance.
@@ -71,28 +73,29 @@ pub struct FullDeps<C, P, SC> {
 	/// BABE specific dependencies.
 	pub babe: BabeDeps,
 	/// GRANDPA specific dependencies.
-	pub grandpa: GrandpaDeps,
+	pub grandpa: GrandpaDeps<B>,
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, SC, BE>(deps: FullDeps<C, P, SC>, enable_ethereum_rpc: bool) -> RpcExtension
+pub fn create_full<C, P, SC, B>(deps: FullDeps<C, P, SC, B>, enable_ethereum_rpc: bool) -> RpcExtension
 where
-	BE: Backend<Block> + 'static,
-	BE::State: StateBackend<BlakeTwo256>,
-	C: ProvideRuntimeApi<Block> + StorageProvider<Block, BE> + AuxStore,
+	C: ProvideRuntimeApi<Block>,
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
 	C: Send + Sync + 'static,
+	C: StorageProvider<Block, B> + AuxStore,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
-	C::Api: frontier_rpc_primitives::EthereumRuntimeRPCApi<Block>,
 	C::Api: module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
-	P: TransactionPool<Block = Block> + Sync + Send + 'static,
+	C::Api: frontier_rpc_primitives::EthereumRuntimeRPCApi<Block>,
+	P: TransactionPool<Block=Block> + Sync + Send + 'static,
 	SC: SelectChain<Block> + 'static,
+	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+	B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
 	use frontier_rpc::{EthApi, EthApiServer, NetApi, NetApiServer};
 	use module_dex_rpc::{Dex, DexApi};
@@ -122,7 +125,8 @@ where
 		shared_voter_state,
 		shared_authority_set,
 		justification_stream,
-		subscriptions,
+		subscription_executor,
+		finality_provider,
 	} = grandpa;
 
 	io.extend_with(SystemApi::to_delegate(FullSystem::new(
@@ -149,7 +153,8 @@ where
 		shared_authority_set,
 		shared_voter_state,
 		justification_stream,
-		subscriptions,
+		subscription_executor,
+		finality_provider,
 	)));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 
@@ -159,12 +164,11 @@ where
 	if enable_ethereum_rpc {
 		io.extend_with(EthApiServer::to_delegate(EthApi::new(
 			client.clone(),
-			select_chain.clone(),
 			pool,
 			dev_runtime::TransactionConverter,
 			false,
 		)));
-		io.extend_with(NetApiServer::to_delegate(NetApi::new(client, select_chain)));
+		io.extend_with(NetApiServer::to_delegate(NetApi::new(client)));
 	}
 
 	io

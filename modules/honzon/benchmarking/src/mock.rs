@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_oracle::DefaultCombineData;
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
 	traits::IdentityLookup,
@@ -31,11 +31,11 @@ pub type AccountId = u128;
 pub type AuctionId = u32;
 pub type BlockNumber = u64;
 
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const AUSD: CurrencyId = CurrencyId::AUSD;
-pub const BTC: CurrencyId = CurrencyId::XBTC;
-pub const DOT: CurrencyId = CurrencyId::DOT;
-pub const LDOT: CurrencyId = CurrencyId::LDOT;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -56,7 +56,7 @@ impl frame_system::Trait for Runtime {
 	type MaximumBlockLength = ();
 	type AvailableBlockRatio = ();
 	type Version = ();
-	type ModuleToIndex = ();
+	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = (PalletBalances,);
@@ -73,6 +73,7 @@ impl orml_tokens::Trait for Runtime {
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type OnReceived = ();
+	type WeightInfo = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -86,11 +87,12 @@ impl pallet_balances::Trait for Runtime {
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
+	type MaxLocks = ();
+	type WeightInfo = ();
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency =
-	orml_currencies::BasicCurrencyAdapter<PalletBalances, Balance, Balance, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;

@@ -21,7 +21,7 @@ use cdp_engine::Module as CdpEngine;
 use honzon::Module as Honzon;
 use honzon::*;
 use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
-use primitives::{Amount, CurrencyId};
+use primitives::{Amount, CurrencyId, TokenSymbol};
 use support::{ExchangeRate, Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(honzon::Module<T>);
@@ -46,7 +46,7 @@ benchmarks! {
 
 		let caller: T::AccountId = account("caller", u, SEED);
 		let to: T::AccountId = account("to", u, SEED);
-	}: _(RawOrigin::Signed(caller), CurrencyId::DOT, to)
+	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to)
 
 	unauthorize {
 		let u in 0 .. 1000;
@@ -55,10 +55,10 @@ benchmarks! {
 		let to: T::AccountId = account("to", u, SEED);
 		Honzon::<T>::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
-			CurrencyId::DOT,
+			CurrencyId::Token(TokenSymbol::DOT),
 			to.clone()
 		)?;
-	}: _(RawOrigin::Signed(caller), CurrencyId::DOT, to)
+	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to)
 
 	unauthorize_all {
 		let u in 0 .. 1000;

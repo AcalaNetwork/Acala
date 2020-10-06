@@ -33,9 +33,16 @@ fn inject_liquidity<T: Trait>(
 		max_other_currency_amount.unique_saturated_into(),
 	)?;
 
+	let lp_share_currency_id = match (currency_id, base_currency_id) {
+		(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
+			CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol)
+		}
+		_ => return Err("invalid currency id"),
+	};
+
 	Dex::<T>::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
-		currency_id,
+		lp_share_currency_id,
 		max_amount,
 		max_other_currency_amount,
 	)?;
@@ -72,7 +79,11 @@ benchmarks! {
 		let maker: T::AccountId = account("maker", u, SEED);
 		let currency_id = T::EnabledCurrencyIds::get()[0];
 		inject_liquidity::<T>(maker.clone(), currency_id, dollar(100), dollar(10000))?;
-	}: withdraw_liquidity(RawOrigin::Signed(maker), currency_id, dollar(50).unique_saturated_into())
+		let lp_share_currency_id = match (currency_id, T::GetBaseCurrencyId::get()) {
+			(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol),
+			_ => return Err("invalid currency id"),
+		};
+	}: withdraw_liquidity(RawOrigin::Signed(maker), lp_share_currency_id, dollar(50).unique_saturated_into())
 
 	// `swap_currency`, best case:
 	// swap other currency to base currency
