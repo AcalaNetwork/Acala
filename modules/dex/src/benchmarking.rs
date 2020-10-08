@@ -22,7 +22,7 @@ fn inject_liquidity<T: Trait>(
 	currency_id: CurrencyId,
 	max_amount: Balance,
 	max_other_currency_amount: Balance,
-) -> Result<(), &'static str> {
+) -> Result<CurrencyId, &'static str> {
 	let base_currency_id = T::GetBaseCurrencyId::get();
 
 	// set balance
@@ -47,7 +47,7 @@ fn inject_liquidity<T: Trait>(
 		max_other_currency_amount,
 	)?;
 
-	Ok(())
+	Ok(lp_share_currency_id)
 }
 
 benchmarks! {
@@ -56,10 +56,8 @@ benchmarks! {
 	// `add_liquidity`, worst case:
 	// already have other makers
 	add_liquidity {
-		let u in 0 .. 1000;
-
-		let first_maker: T::AccountId = account("first_maker", u, SEED);
-		let second_maker: T::AccountId = account("second_maker", u, SEED);
+		let first_maker: T::AccountId = account("first_maker", 0, SEED);
+		let second_maker: T::AccountId = account("second_maker", 0, SEED);
 		let currency_id = T::EnabledCurrencyIds::get()[0];
 		let base_currency_id = T::GetBaseCurrencyId::get();
 		let other_currency_amount = dollar(100);
@@ -70,28 +68,20 @@ benchmarks! {
 		T::Currency::update_balance(base_currency_id, &second_maker, base_currency_amount.unique_saturated_into())?;
 
 		// first maker inject liquidity
-		inject_liquidity::<T>(first_maker.clone(), currency_id, dollar(100), dollar(10000))?;
-	}: add_liquidity(RawOrigin::Signed(second_maker), currency_id, other_currency_amount, base_currency_amount)
+		let lp_share_currency_id = inject_liquidity::<T>(first_maker.clone(), currency_id, dollar(100), dollar(10000))?;
+	}: add_liquidity(RawOrigin::Signed(second_maker), lp_share_currency_id, other_currency_amount, base_currency_amount)
 
 	withdraw_liquidity {
-		let u in 0 .. 1000;
-
-		let maker: T::AccountId = account("maker", u, SEED);
+		let maker: T::AccountId = account("maker", 0, SEED);
 		let currency_id = T::EnabledCurrencyIds::get()[0];
-		inject_liquidity::<T>(maker.clone(), currency_id, dollar(100), dollar(10000))?;
-		let lp_share_currency_id = match (currency_id, T::GetBaseCurrencyId::get()) {
-			(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol),
-			_ => return Err("invalid currency id"),
-		};
+		let lp_share_currency_id = inject_liquidity::<T>(maker.clone(), currency_id, dollar(100), dollar(10000))?;
 	}: withdraw_liquidity(RawOrigin::Signed(maker), lp_share_currency_id, dollar(50).unique_saturated_into())
 
 	// `swap_currency`, best case:
 	// swap other currency to base currency
-	swap_other_to_base {
-		let u in 0 .. 1000;
-
-		let maker: T::AccountId = account("maker", u, SEED);
-		let trader: T::AccountId = account("trader", u, SEED);
+	swap_currency_other_to_base {
+		let maker: T::AccountId = account("maker", 0, SEED);
+		let trader: T::AccountId = account("trader", 0, SEED);
 		let currency_id = T::EnabledCurrencyIds::get()[0];
 		let base_currency_id = T::GetBaseCurrencyId::get();
 
@@ -101,11 +91,9 @@ benchmarks! {
 
 	// `swap_currency`, best case:
 	// swap base currency to other currency
-	swap_base_to_other {
-		let u in 0 .. 1000;
-
-		let maker: T::AccountId = account("maker", u, SEED);
-		let trader: T::AccountId = account("trader", u, SEED);
+	swap_currency_base_to_other {
+		let maker: T::AccountId = account("maker", 0, SEED);
+		let trader: T::AccountId = account("trader", 0, SEED);
 		let currency_id = T::EnabledCurrencyIds::get()[0];
 		let base_currency_id = T::GetBaseCurrencyId::get();
 
@@ -115,11 +103,9 @@ benchmarks! {
 
 	// `swap_currency`, worst case:
 	// swap other currency to another currency
-	swap_other_to_other {
-		let u in 0 .. 1000;
-
-		let maker: T::AccountId = account("maker", u, SEED);
-		let trader: T::AccountId = account("trader", u, SEED);
+	swap_currency_other_to_other {
+		let maker: T::AccountId = account("maker", 0, SEED);
+		let trader: T::AccountId = account("trader", 0, SEED);
 		let currency_id = T::EnabledCurrencyIds::get()[0];
 		let another_currency_id = T::EnabledCurrencyIds::get()[1];
 
@@ -164,9 +150,9 @@ mod tests {
 	}
 
 	#[test]
-	fn swap_other_to_other() {
+	fn swap_currency_other_to_other() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_swap_other_to_other::<Runtime>());
+			assert_ok!(test_benchmark_swap_currency_other_to_other::<Runtime>());
 		});
 	}
 }
