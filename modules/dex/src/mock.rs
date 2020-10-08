@@ -171,6 +171,7 @@ impl Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = DEXModuleId;
+	type WeightInfo = ();
 }
 pub type DexModule = Module<Runtime>;
 
