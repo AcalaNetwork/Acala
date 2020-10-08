@@ -187,6 +187,7 @@ impl module_nft::Trait for Runtime {
 	type ConvertTokenData = TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = NativeCurrency;
+	type WeightInfo = ();
 }
 
 impl orml_nft::Trait for Runtime {
@@ -201,7 +202,7 @@ use frame_system::Call as SystemCall;
 impl crate::Trait for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
+	let t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
 		.unwrap();
 

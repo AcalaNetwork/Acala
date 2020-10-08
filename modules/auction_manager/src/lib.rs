@@ -17,7 +17,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::Get,
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{
 	self as system, ensure_none,
@@ -44,8 +44,15 @@ use sp_std::{
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate};
 
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn cancel_surplus_auction() -> Weight;
+	fn cancel_debit_auction() -> Weight;
+	fn cancel_collateral_auction() -> Weight;
+}
 
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/auction-manager/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
@@ -193,6 +200,9 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 
 	/// Emergency shutdown.
 	type EmergencyShutdown: EmergencyShutdown;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -316,7 +326,8 @@ decl_module! {
 		///		- debit auction worst case: 66.04 µs
 		///		- collateral auction worst case: 197.5 µs
 		/// # </weight>
-		#[weight = (198 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(15, 10), DispatchClass::Operational)]
+		/// Use the collateral auction worst case as default weight.
+		#[weight = (T::WeightInfo::cancel_collateral_auction(), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionId) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;

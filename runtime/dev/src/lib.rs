@@ -910,6 +910,7 @@ impl module_auction_manager::Trait for Runtime {
 	type PriceSource = Prices;
 	type UnsignedPriority = AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
+	type WeightInfo = weights::auction_manager::WeightInfo<Runtime>;
 }
 
 impl module_loans::Trait for Runtime {
@@ -1005,10 +1006,12 @@ impl module_cdp_engine::Trait for Runtime {
 	type DEX = Dex;
 	type UnsignedPriority = CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
+	type WeightInfo = weights::cdp_engine::WeightInfo<Runtime>;
 }
 
 impl module_honzon::Trait for Runtime {
 	type Event = Event;
+	type WeightInfo = weights::honzon::WeightInfo<Runtime>;
 }
 
 impl module_emergency_shutdown::Trait for Runtime {
@@ -1018,6 +1021,7 @@ impl module_emergency_shutdown::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
 	type ShutdownOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::emergency_shutdown::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1033,6 +1037,7 @@ impl module_dex::Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CdpTreasury;
 	type ModuleId = DEXModuleId;
+	type WeightInfo = weights::dex::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1048,6 +1053,7 @@ impl module_cdp_treasury::Trait for Runtime {
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type WeightInfo = weights::cdp_treasury::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1692,16 +1698,7 @@ impl_runtime_apis! {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
-			use module_honzon_benchmarking::Module as HonzonBench;
-			use module_cdp_engine_benchmarking::Module as CdpEngineBench;
-			use module_emergency_shutdown_benchmarking::Module as EmergencyShutdownBench;
-			use module_auction_manager_benchmarking::Module as AuctionManagerBench;
 			use module_nft_benchmarking::Module as NftBench;
-
-			impl module_honzon_benchmarking::Trait for Runtime {}
-			impl module_cdp_engine_benchmarking::Trait for Runtime {}
-			impl module_emergency_shutdown_benchmarking::Trait for Runtime {}
-			impl module_auction_manager_benchmarking::Trait for Runtime {}
 			impl module_nft_benchmarking::Trait for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1725,12 +1722,13 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, dex, Dex);
-			add_benchmark!(params, batches, cdp_treasury, CdpTreasury);
-			add_benchmark!(params, batches, honzon, HonzonBench::<Runtime>);
-			add_benchmark!(params, batches, cdp_engine, CdpEngineBench::<Runtime>);
-			add_benchmark!(params, batches, emergency_shutdown, EmergencyShutdownBench::<Runtime>);
-			add_benchmark!(params, batches, auction_manager, AuctionManagerBench::<Runtime>);
 			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
+			orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
+			orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
+			orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
+			orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
+			orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
+
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
 			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);

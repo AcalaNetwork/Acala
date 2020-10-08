@@ -1,5 +1,13 @@
 #![cfg(feature = "runtime-benchmarks")]
 
+// module benchmarking
+pub mod auction_manager;
+pub mod cdp_engine;
+pub mod cdp_treasury;
+pub mod emergency_shutdown;
+pub mod honzon;
+
+// orml benchmarking
 pub mod auction;
 pub mod authority;
 pub mod currencies;

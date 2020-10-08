@@ -12,9 +12,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::constants::WEIGHT_PER_MICROS,
-};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use orml_utilities::with_transaction_result;
@@ -27,8 +25,15 @@ use sp_std::prelude::Vec;
 use support::{CDPTreasury, DEXManager, Price, Rate, Ratio};
 
 mod benchmarking;
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn add_liquidity() -> Weight;
+	fn withdraw_liquidity() -> Weight;
+	fn swap_currency() -> Weight;
+}
 
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -51,6 +56,9 @@ pub trait Trait: system::Trait {
 
 	/// The DEX's module id, keep all assets in DEX.
 	type ModuleId: Get<ModuleId>;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -131,7 +139,7 @@ decl_module! {
 		///		- swap other to base: 175.8 µs
 		///		- swap other to other: 199.7 µs
 		/// # </weight>
-		#[weight = 200 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(9, 6)]
+		#[weight = <T as Trait>::WeightInfo::swap_currency()]
 		pub fn swap_currency(
 			origin,
 			supply_currency_id: CurrencyId,
@@ -169,7 +177,7 @@ decl_module! {
 		///		- best case: 177.6 µs
 		///		- worst case: 205.7 µs
 		/// # </weight>
-		#[weight = 206 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 9)]
+		#[weight = T::WeightInfo::add_liquidity()]
 		pub fn add_liquidity(
 			origin,
 			lp_share_currency_id: CurrencyId,
@@ -264,7 +272,7 @@ decl_module! {
 		///		- best case: 240.1 µs
 		///		- worst case: 248.2 µs
 		/// # </weight>
-		#[weight = 248 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(11, 9)]
+		#[weight = T::WeightInfo::withdraw_liquidity()]
 		pub fn withdraw_liquidity(origin, lp_share_currency_id: CurrencyId, #[compact] remove_share: Balance) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;

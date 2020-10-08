@@ -12,7 +12,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{
 	self as system, ensure_none,
@@ -43,8 +43,17 @@ use support::{
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn set_collateral_params() -> Weight;
+	fn set_global_params() -> Weight;
+	fn liquidate_by_auction() -> Weight;
+	fn liquidate_by_dex() -> Weight;
+	fn settle() -> Weight;
+}
 
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/cdp-engine/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
@@ -98,6 +107,9 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait
 
 	/// Emergency shutdown.
 	type EmergencyShutdown: EmergencyShutdown;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 /// Liquidation strategy available
@@ -281,7 +293,7 @@ decl_module! {
 		///		- liquidate by auction: 200.1 µs
 		///		- liquidate by dex: 325.3 µs
 		/// # </weight>
-		#[weight = (325 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(19, 14), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::liquidate_by_dex(), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -312,7 +324,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 161.5 µs
 		/// # </weight>
-		#[weight = (162 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 6), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::settle(), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -339,7 +351,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 24.16 µs
 		/// # </weight>
-		#[weight = (24 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::set_global_params(), DispatchClass::Operational)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -370,7 +382,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 76.08 µs
 		/// # </weight>
-		#[weight = (76 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::set_collateral_params(), DispatchClass::Operational)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,

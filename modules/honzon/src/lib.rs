@@ -10,22 +10,30 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::Get,
-	weights::{constants::WEIGHT_PER_MICROS, Weight},
-};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
 use frame_system::{self as system, ensure_signed};
 use orml_utilities::with_transaction_result;
 use primitives::{Amount, CurrencyId};
 use sp_runtime::{traits::Zero, DispatchResult};
 use support::EmergencyShutdown;
 
+mod default_weight;
 mod mock;
 mod tests;
 
+pub trait WeightInfo {
+	fn authorize() -> Weight;
+	fn unauthorize() -> Weight;
+	fn unauthorize_all(c: u32) -> Weight;
+	fn adjust_loan() -> Weight;
+	fn transfer_loan_from() -> Weight;
+}
+
 pub trait Trait: system::Trait + cdp_engine::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -80,7 +88,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 246.2 µs
 		/// # </weight>
-		#[weight = 246 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(17, 9)]
+		#[weight = <T as Trait>::WeightInfo::adjust_loan()]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyId,
@@ -112,7 +120,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 178.2 µs
 		/// # </weight>
-		#[weight = 75 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(13, 6)]
+		#[weight = <T as Trait>::WeightInfo::transfer_loan_from()]
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyId,
@@ -139,7 +147,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 27.82 µs
 		/// # </weight>
-		#[weight = 28 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = <T as Trait>::WeightInfo::authorize()]
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyId,
@@ -165,7 +173,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 28.14 µs
 		/// # </weight>
-		#[weight = 28 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1)]
+		#[weight = <T as Trait>::WeightInfo::unauthorize()]
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyId,
@@ -188,9 +196,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 0 + 3.8 * M + 128.4 * C µs
 		/// # </weight>
-		#[weight = T::DbWeight::get().reads_writes(0, 1) +
-			((WEIGHT_PER_MICROS as u64) * 128).saturating_mul(Weight::from(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32))
-		]
+		#[weight = <T as Trait>::WeightInfo::unauthorize_all(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32)]
 		pub fn unauthorize_all(origin) {
 			with_transaction_result(|| {
 				let from = ensure_signed(origin)?;
