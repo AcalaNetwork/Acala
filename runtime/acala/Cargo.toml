@@ -1,5 +1,5 @@
 [package]
-name = "dev-runtime"
+name = "acala-runtime"
 version = "0.6.1"
 authors = ["Acala Developers"]
 edition = "2018"
@@ -100,9 +100,6 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 runtime-common = { path = "../common", default-features = false }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
-
-# TODO: remove this once this is merged and deployed https://github.com/paritytech/substrate/pull/6995
-primitive-types = { version = "0.7.2", default-features = false, features = ["byteorder"] }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }

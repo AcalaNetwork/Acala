@@ -30,20 +30,26 @@ members = [
 	"inspect",
 	"primitives",
 	"rpc",
-	"runtime/common",
-	"runtime/dev",
 	"service",
+
+	"runtime/common",
+	"runtime/mandala",
+	"runtime/karura",
+	"runtime/acala",
 
 	"orml/auction",
 	"orml/authority",
 	"orml/benchmarking",
 	"orml/currencies",
 	"orml/gradually-update",
+	"orml/nft",
 	"orml/oracle",
 	"orml/rewards",
 	"orml/tokens",
 	"orml/traits",
+	"orml/utilities",
 	"orml/vesting",
+
 	"ecosystem-modules/template/template",
 	"ecosystem-modules/ren/renvm-bridge",
 ]

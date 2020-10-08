@@ -15,8 +15,10 @@ use sp_core::traits::BareCryptoStorePtr;
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
+pub use acala_runtime;
 pub use client::*;
-pub use dev_runtime;
+pub use karura_runtime;
+pub use mandala_runtime;
 pub use sc_executor::NativeExecutionDispatch;
 pub use sc_service::{
 	config::{DatabaseConfig, PrometheusConfig},
@@ -28,9 +30,23 @@ pub mod chain_spec;
 mod client;
 
 native_executor_instance!(
-	pub DevExecutor,
-	dev_runtime::api::dispatch,
-	dev_runtime::native_version,
+	pub MandalaExecutor,
+	mandala_runtime::api::dispatch,
+	mandala_runtime::native_version,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
+
+native_executor_instance!(
+	pub KaruraExecutor,
+	karura_runtime::api::dispatch,
+	karura_runtime::native_version,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
+
+native_executor_instance!(
+	pub AcalaExecutor,
+	acala_runtime::api::dispatch,
+	acala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
 );
 
@@ -213,20 +229,8 @@ where
 }
 
 /// Creates a full service from the configuration.
-pub fn new_full<
-	RuntimeApi,
-	Executor,
-	T: FnOnce(
-		&sc_consensus_babe::BabeBlockImport<
-			Block,
-			FullClient<RuntimeApi, Executor>,
-			FullGrandpaBlockImport<RuntimeApi, Executor>,
-		>,
-		&sc_consensus_babe::BabeLink<Block>,
-	),
->(
+pub fn new_full<RuntimeApi, Executor>(
 	mut config: Configuration,
-	with_startup_data: T,
 	test: bool,
 ) -> Result<
 	(
@@ -305,8 +309,6 @@ where
 	})?;
 
 	let (block_import, grandpa_link, babe_link) = import_setup;
-
-	(with_startup_data)(&block_import, &babe_link);
 
 	if let sc_service::config::Role::Authority { .. } = &role {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
@@ -541,4 +543,25 @@ where
 		..
 	} = new_partial::<Runtime, Executor>(&mut config, false)?;
 	Ok((client, backend, import_queue, task_manager))
+}
+
+/// Build a new light node.
+pub fn build_light(config: Configuration) -> Result<TaskManager, ServiceError> {
+	if config.chain_spec.is_acala() {
+		new_light::<acala_runtime::RuntimeApi, AcalaExecutor>(config).map(|r| r.0)
+	} else if config.chain_spec.is_karura() {
+		new_light::<karura_runtime::RuntimeApi, KaruraExecutor>(config).map(|r| r.0)
+	} else {
+		new_light::<mandala_runtime::RuntimeApi, AcalaExecutor>(config).map(|r| r.0)
+	}
+}
+
+pub fn build_full(config: Configuration, test: bool) -> Result<TaskManager, ServiceError> {
+	if config.chain_spec.is_acala() {
+		new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, test).map(|r| r.0)
+	} else if config.chain_spec.is_karura() {
+		new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, test).map(|r| r.0)
+	} else {
+		new_full::<mandala_runtime::RuntimeApi, AcalaExecutor>(config, test).map(|r| r.0)
+	}
 }

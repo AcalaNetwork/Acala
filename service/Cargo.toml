@@ -46,8 +46,11 @@ module-dex-rpc = { path = "../modules/dex/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 acala-primitives = { path = "../primitives" }
 acala-rpc = { path = "../rpc" }
-dev-runtime = { path = "../runtime/dev" }
+
 runtime-common = { path = "../runtime/common" }
+mandala-runtime = { path = "../runtime/mandala" }
+karura-runtime = { path = "../runtime/karura" }
+acala-runtime = { path = "../runtime/acala" }
 
 [dev-dependencies]
 sc-consensus-babe = { version = "0.8.0", features = ["test-helpers"] }
@@ -56,5 +59,7 @@ sc-consensus-babe = { version = "0.8.0", features = ["test-helpers"] }
 default = ["std"]
 std = []
 runtime-benchmarks = [
-	"dev-runtime/runtime-benchmarks",
+	"mandala-runtime/runtime-benchmarks",
+	"karura-runtime/runtime-benchmarks",
+	"acala-runtime/runtime-benchmarks",
 ]
