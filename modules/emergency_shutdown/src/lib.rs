@@ -16,7 +16,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{self as system, ensure_signed};
 use orml_utilities::with_transaction_result;
@@ -25,8 +25,15 @@ use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
 use support::{AuctionManager, CDPTreasury, EmergencyShutdown, PriceProvider, Ratio};
 
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn emergency_shutdown(c: u32) -> Weight;
+	fn open_collateral_refund() -> Weight;
+	fn refund_collaterals(c: u32) -> Weight;
+}
 
 pub trait Trait: system::Trait + loans::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -47,6 +54,9 @@ pub trait Trait: system::Trait + loans::Trait {
 	/// The origin which may trigger emergency shutdown. Root can always do
 	/// this.
 	type ShutdownOrigin: EnsureOrigin<Self::Origin>;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -113,13 +123,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 148.3 µs
 		/// # </weight>
-		#[weight = (
-			148 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
-				1 + (T::CollateralCurrencyIds::get().len() as u64),
-				5 + (T::CollateralCurrencyIds::get().len() as u64),
-			),
-			DispatchClass::Operational,
-		)]
+		#[weight = (T::WeightInfo::emergency_shutdown(T::CollateralCurrencyIds::get().len() as u32), DispatchClass::Operational)]
 		pub fn emergency_shutdown(origin) {
 			with_transaction_result(|| {
 				T::ShutdownOrigin::ensure_origin(origin)?;
@@ -154,13 +158,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 71.8 µs
 		/// # </weight>
-		#[weight = (
-			72 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
-				2 + 2 * (T::CollateralCurrencyIds::get().len() as u64),
-				1,
-			),
-			DispatchClass::Operational,
-		)]
+		#[weight = (T::WeightInfo::open_collateral_refund(), DispatchClass::Operational)]
 		pub fn open_collateral_refund(origin) {
 			with_transaction_result(|| {
 				T::ShutdownOrigin::ensure_origin(origin)?;
@@ -213,10 +211,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 455.1 µs
 		/// # </weight>
-		#[weight = 455 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(
-			3 + 3 * (T::CollateralCurrencyIds::get().len() as u64),
-			3 * (T::CollateralCurrencyIds::get().len() as u64)
-		)]
+		#[weight = T::WeightInfo::refund_collaterals(T::CollateralCurrencyIds::get().len() as u32)]
 		pub fn refund_collaterals(origin, #[compact] amount: Balance) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;

@@ -138,6 +138,7 @@ impl auction_manager::Trait for Runtime {
 	type PriceSource = prices::Module<Runtime>;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdownModule;
+	type WeightInfo = ();
 }
 pub type AuctionManagerModule = auction_manager::Module<Runtime>;
 
@@ -170,6 +171,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type WeightInfo = ();
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -258,6 +260,7 @@ impl emergency_shutdown::Trait for Runtime {
 	type CDPTreasury = CDPTreasuryModule;
 	type AuctionManagerHandler = AuctionManagerModule;
 	type ShutdownOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
 }
 pub type EmergencyShutdownModule = emergency_shutdown::Module<Runtime>;
 

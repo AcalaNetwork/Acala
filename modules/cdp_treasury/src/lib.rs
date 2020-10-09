@@ -12,7 +12,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -25,8 +25,16 @@ use sp_runtime::{
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
 mod benchmarking;
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn auction_surplus() -> Weight;
+	fn auction_debit() -> Weight;
+	fn auction_collateral() -> Weight;
+	fn set_collateral_auction_maximum_size() -> Weight;
+}
 
 pub trait Trait: system::Trait {
 	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
@@ -57,6 +65,9 @@ pub trait Trait: system::Trait {
 	/// The CDP treasury's module id, keep surplus and collateral assets from
 	/// liquidation.
 	type ModuleId: Get<ModuleId>;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -116,7 +127,7 @@ decl_module! {
 		/// The CDP treasury's module id, keep surplus and collateral assets from liquidation.
 		const ModuleId: ModuleId = T::ModuleId::get();
 
-		#[weight = 10_000]
+		#[weight = T::WeightInfo::auction_surplus()]
 		pub fn auction_surplus(origin, amount: Balance) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
@@ -128,7 +139,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = T::WeightInfo::auction_debit()]
 		pub fn auction_debit(origin, amount: Balance, initial_price: Balance) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
@@ -140,7 +151,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = T::WeightInfo::auction_collateral()]
 		pub fn auction_collateral(origin, currency_id: CurrencyId, amount: Balance, target: Balance, splited: bool) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
@@ -168,7 +179,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 24.64 µs
 		/// # </weight>
-		#[weight = (16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::set_collateral_auction_maximum_size(), DispatchClass::Operational)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;

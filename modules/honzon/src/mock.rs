@@ -240,6 +240,7 @@ impl cdp_treasury::Trait for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type WeightInfo = ();
 }
 pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
@@ -268,6 +269,7 @@ impl cdp_engine::Trait for Runtime {
 	type DEX = ();
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type WeightInfo = ();
 }
 pub type CDPEngineModule = cdp_engine::Module<Runtime>;
 
@@ -284,6 +286,7 @@ where
 
 impl Trait for Runtime {
 	type Event = TestEvent;
+	type WeightInfo = ();
 }
 pub type HonzonModule = Module<Runtime>;
 

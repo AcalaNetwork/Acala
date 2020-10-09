@@ -135,6 +135,7 @@ impl dex::Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = DEXModuleId;
+	type WeightInfo = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
 
@@ -213,6 +214,7 @@ impl Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type WeightInfo = ();
 }
 pub type CDPTreasuryModule = Module<Runtime>;
 
