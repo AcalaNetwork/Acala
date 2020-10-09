@@ -120,6 +120,7 @@ impl Trait for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureSignedBy<One, AccountId>;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
+	type WeightInfo = ();
 }
 pub type PricesModule = Module<Runtime>;
 

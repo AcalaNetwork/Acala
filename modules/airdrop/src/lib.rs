@@ -36,7 +36,7 @@ decl_event!(
 	{
 		/// \[to, currency_id, amount\]
 		Airdrop(AccountId, AirDropCurrencyId, Balance),
-		/// [to, currency_id, amount]
+		/// \[to, currency_id, amount\]
 		UpdateAirdrop(AccountId, AirDropCurrencyId, Balance),
 	}
 );

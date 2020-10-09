@@ -16,7 +16,7 @@ use frame_support::{
 		Currency, ExistenceRequirement, Get, Happened, Imbalance, LockIdentifier, OnKilledAccount, OnUnbalanced,
 		StoredMap, Time, WithdrawReason, WithdrawReasons,
 	},
-	weights::{DispatchInfo, PostDispatchInfo},
+	weights::{DispatchInfo, PostDispatchInfo, Weight},
 	IsSubType,
 };
 use frame_system::{self as system, ensure_signed, AccountInfo};
@@ -37,8 +37,15 @@ use sp_std::convert::Infallible;
 use sp_std::prelude::*;
 use support::{DEXManager, Ratio};
 
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn enable_free_transfer() -> Weight;
+	fn disable_free_transfers() -> Weight;
+	fn close_account(c: u32) -> Weight;
+}
 
 const ACCOUNTS_ID: LockIdentifier = *b"ACA/acct";
 
@@ -96,6 +103,9 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 
 	/// The max slippage allowed when swap open account deposit or fee with DEX
 	type MaxSlippageSwapWithDEX: Get<Ratio>;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_error! {
@@ -151,8 +161,8 @@ decl_module! {
 		/// Freeze some native currency to be able to free transfer.
 		///
 		/// The dispatch origin of this call must be Signed.
-		#[weight = 10_000]
-		fn enable_free_transfer(origin) {
+		#[weight = <T as Trait>::WeightInfo::enable_free_transfer()]
+		pub fn enable_free_transfer(origin) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				let native_currency_id = T::NativeCurrencyId::get();
@@ -167,8 +177,8 @@ decl_module! {
 		/// Unlock free transfer deposit.
 		///
 		/// The dispatch origin of this call must be Signed.
-		#[weight = 10_000]
-		fn disable_free_transfers(origin) {
+		#[weight = <T as Trait>::WeightInfo::disable_free_transfers()]
+		pub fn disable_free_transfers(origin) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				<T as Trait>::Currency::remove_lock(ACCOUNTS_ID, T::NativeCurrencyId::get(), &who);
@@ -183,8 +193,8 @@ decl_module! {
 		///
 		/// - `recipient`: the account as recipient to receive remaining currencies of the account will be killed,
 		///					None means no recipient is specified.
-		#[weight = 10_000]
-		fn close_account(origin, recipient: Option<T::AccountId>) {
+		#[weight = <T as Trait>::WeightInfo::close_account(T::AllNonNativeCurrencyIds::get().len() as u32)]
+		pub fn close_account(origin, recipient: Option<T::AccountId>) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
