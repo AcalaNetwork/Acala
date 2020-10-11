@@ -1,7 +1,7 @@
 use super::utils::{dollars, lookup_of_account, set_aca_balance};
 use crate::{
-	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Currencies, CurrencyId, NewAccountDeposit, Runtime, System,
-	TokenSymbol, Vesting,
+	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Currencies, CurrencyId, MinVestedTransfer,
+	NewAccountDeposit, Runtime, System, TokenSymbol, Vesting,
 };
 
 use sp_std::prelude::*;
@@ -16,29 +16,18 @@ use orml_vesting::VestingScheduleOf;
 type Schedule = VestingScheduleOf<Runtime>;
 
 const SEED: u32 = 0;
-const MAX_PERIOD: u32 = 1000;
-const MAX_PERIOD_COUNT: u32 = 1000;
-const MAX_PER_PERIOD: u32 = 1000;
 
 runtime_benchmarks! {
 	{ Runtime, orml_vesting }
 
-	_ {
-		let p in 1 .. MAX_PERIOD => ();
-		let c in 1 .. MAX_PERIOD_COUNT => ();
-		let a in 1 .. MAX_PER_PERIOD => ();
-	}
+	_ {}
 
 	vested_transfer {
-		let p in ...;
-		let c in ...;
-		let a in ...;
-
 		let schedule = Schedule {
 			start: 0,
-			period: p,
-			period_count: c,
-			per_period: dollars(a),
+			period: 2,
+			period_count: 3,
+			per_period: MinVestedTransfer::get(),
 		};
 
 		// extra 1 dollar to pay fees
@@ -56,16 +45,13 @@ runtime_benchmarks! {
 	}
 
 	claim {
-		let p in ...;
-		let c in ...;
-		let a in ...;
 		let i in 1 .. orml_vesting::MAX_VESTINGS as u32;
 
-		let schedule = Schedule {
+		let mut schedule = Schedule {
 			start: 0,
-			period: p,
-			period_count: c,
-			per_period: dollars(a),
+			period: 2,
+			period_count: 3,
+			per_period: MinVestedTransfer::get(),
 		};
 
 		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
@@ -76,6 +62,7 @@ runtime_benchmarks! {
 		let to_lookup = lookup_of_account(to.clone());
 
 		for _ in 0..i {
+			schedule.start = i;
 			Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone())?;
 		}
 		System::set_block_number(schedule.end().unwrap() + 1u32);
@@ -88,16 +75,13 @@ runtime_benchmarks! {
 	}
 
 	update_vesting_schedules {
-		let p in ...;
-		let c in ...;
-		let a in ...;
 		let i in 1 .. orml_vesting::MAX_VESTINGS as u32;
 
-		let schedule = Schedule {
+		let mut schedule = Schedule {
 			start: 0,
-			period: p,
-			period_count: c,
-			per_period: dollars(a),
+			period: 2,
+			period_count: 3,
+			per_period: MinVestedTransfer::get(),
 		};
 
 		let to: AccountId = account("to", 0, SEED);
@@ -106,6 +90,7 @@ runtime_benchmarks! {
 
 		let mut schedules = vec![];
 		for _ in 0..i {
+			schedule.start = i;
 			schedules.push(schedule.clone());
 		}
 	}: _(RawOrigin::Root, to_lookup, schedules)

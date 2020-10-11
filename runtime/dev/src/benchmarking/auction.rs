@@ -1,21 +1,26 @@
-use super::utils::set_balance;
-use crate::{Auction, AuctionId, AuctionManager, CdpTreasury, CurrencyId, Runtime, TokenSymbol, DOLLARS};
-use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
+use crate::{
+	Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, CurrencyId, Runtime, System, TokenSymbol,
+	DOLLARS,
+};
 
+use super::utils::set_balance;
+use frame_benchmarking::account;
+use frame_support::traits::OnFinalize;
+use frame_system::RawOrigin;
+use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
+use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
-use frame_benchmarking::account;
-use frame_system::RawOrigin;
-
-use orml_benchmarking::runtime_benchmarks;
-
 const SEED: u32 = 0;
+const MAX_DOLLARS: u32 = 1000;
+const MAX_AUCTION_ID: u32 = 100;
 
 runtime_benchmarks! {
 	{ Runtime, orml_auction }
 
 	_ {
 		let d in 1 .. MAX_DOLLARS => ();
+		let c in 1 .. MAX_AUCTION_ID => ();
 	}
 
 	// `bid` a collateral auction, best cases:
@@ -117,6 +122,24 @@ runtime_benchmarks! {
 		AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
+
+	on_finalize {
+		let c in ...;
+
+		let bidder = account("bidder", 0, SEED);
+		let fix_debit_amount = DOLLARS.saturating_mul(100);
+		let initial_amount = DOLLARS.saturating_mul(10);
+		let auction_id: AuctionId = 0;
+		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &bidder, fix_debit_amount * c as u128);
+
+		System::set_block_number(1);
+		for auction_id in 0 .. c {
+			AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount)?;
+			Auction::bid(RawOrigin::Signed(bidder.clone()).into(), auction_id, fix_debit_amount)?;
+		}
+	}: {
+		Auction::on_finalize(System::block_number() + AuctionTimeToClose::get());
+	}
 }
 
 #[cfg(test)]
@@ -170,6 +193,13 @@ mod tests {
 	fn bid_debit_auction() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_bid_debit_auction());
+		});
+	}
+
+	#[test]
+	fn on_finalize() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_on_finalize());
 		});
 	}
 }

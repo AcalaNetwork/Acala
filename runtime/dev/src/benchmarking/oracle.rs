@@ -21,12 +21,11 @@ runtime_benchmarks_instance! {
 	}: _(Origin::root(), values)
 
 	on_finalize {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let mut values = vec![];
 
-		for i in 0 .. c {
-			values.push((currency_ids[i as usize], Price::one()));
+		for currency_id in currency_ids {
+			values.push((currency_id, Price::one()));
 		}
 		System::set_block_number(1);
 		AcalaOracle::feed_values(Origin::root(), values)?;

@@ -15,23 +15,19 @@ runtime_benchmarks! {
 
 	// gradually update numeric parameter
 	gradually_update {
-		let u in ...;
-
 		System::set_block_number(1);
 		let update = orml_gradually_update::GraduallyUpdate {
 			key: vec![1],
-			target_value: vec![u as u8],
+			target_value: vec![10],
 			per_block: vec![1],
 		};
 	}: _(Origin::root(), update)
 
 	// cancel gradually update
 	cancel_gradually_update {
-		let u in ...;
-
 		let update = orml_gradually_update::GraduallyUpdate {
 			key: vec![1],
-			target_value: vec![u as u8],
+			target_value: vec![10],
 			per_block: vec![1],
 		};
 		GraduallyUpdate::gradually_update(Origin::root(), update.clone())?;
@@ -45,7 +41,7 @@ runtime_benchmarks! {
 		for i in 1..u {
 			let update = orml_gradually_update::GraduallyUpdate {
 				key: vec![1],
-				target_value: vec![u as u8],
+				target_value: vec![200],
 				per_block: vec![i as u8],
 			};
 			GraduallyUpdate::gradually_update(Origin::root(), update)?;
