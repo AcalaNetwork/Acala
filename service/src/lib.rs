@@ -16,7 +16,6 @@ use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
 pub use client::*;
-pub use dev_runtime;
 pub use sc_executor::NativeExecutionDispatch;
 pub use sc_service::{
 	config::{DatabaseConfig, PrometheusConfig},
@@ -24,13 +23,33 @@ pub use sc_service::{
 };
 pub use sp_api::ConstructRuntimeApi;
 
-pub mod chain_spec;
+pub use acala_runtime;
+pub use karura_runtime;
+pub use mandala_runtime;
+
+pub mod acala_chain_spec;
 mod client;
+pub mod karura_chain_spec;
+pub mod mandala_chain_spec;
 
 native_executor_instance!(
-	pub DevExecutor,
-	dev_runtime::api::dispatch,
-	dev_runtime::native_version,
+	pub AcalaExecutor,
+	acala_runtime::api::dispatch,
+	acala_runtime::native_version,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
+
+native_executor_instance!(
+	pub KaruraExecutor,
+	karura_runtime::api::dispatch,
+	karura_runtime::native_version,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
+
+native_executor_instance!(
+	pub MandalaExecutor,
+	mandala_runtime::api::dispatch,
+	mandala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
 );
 
@@ -516,29 +535,53 @@ where
 }
 
 /// Builds a new object suitable for chain operations.
-pub fn new_chain_ops<Runtime, Executor>(
+pub fn new_chain_ops(
 	mut config: &mut Configuration,
 ) -> Result<
 	(
-		Arc<FullClient<Runtime, Executor>>,
+		Arc<Client>,
 		Arc<FullBackend>,
 		sp_consensus::import_queue::BasicQueue<Block, sp_trie::PrefixedMemoryDB<BlakeTwo256>>,
 		TaskManager,
 	),
 	ServiceError,
->
-where
-	Runtime: ConstructRuntimeApi<Block, FullClient<Runtime, Executor>> + Send + Sync + 'static,
-	Runtime::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
-	Executor: NativeExecutionDispatch + 'static,
-{
+> {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	let PartialComponents {
-		client,
-		backend,
-		import_queue,
-		task_manager,
-		..
-	} = new_partial::<Runtime, Executor>(&mut config, false)?;
-	Ok((client, backend, import_queue, task_manager))
+	if config.chain_spec.is_acala() {
+		let PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(&mut config, false)?;
+		Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
+	} else if config.chain_spec.is_karura() {
+		let PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(&mut config, false)?;
+		Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
+	} else if config.chain_spec.is_mandala() {
+		let PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(&mut config, false)?;
+		Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
+	} else {
+		let PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(&mut config, false)?;
+		Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
+	}
 }

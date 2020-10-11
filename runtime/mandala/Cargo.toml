@@ -1,5 +1,5 @@
 [package]
-name = "dev-runtime"
+name = "mandala-runtime"
 version = "0.6.1"
 authors = ["Acala Developers"]
 edition = "2018"

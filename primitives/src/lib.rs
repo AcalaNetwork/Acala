@@ -75,6 +75,9 @@ pub enum TokenSymbol {
 	XBTC = 3,
 	LDOT = 4,
 	RENBTC = 5,
+	KAR = 6,
+	KSM = 7,
+	LKSM = 8,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

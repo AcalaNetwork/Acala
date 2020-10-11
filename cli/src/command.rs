@@ -5,6 +5,13 @@ use crate::cli::{Cli, Subcommand};
 use sc_cli::{Role, RuntimeVersion, SubstrateCli};
 use service::IdentifyVariant;
 
+fn get_exec_name() -> Option<String> {
+	std::env::current_exe()
+		.ok()
+		.and_then(|pb| pb.file_name().map(|s| s.to_os_string()))
+		.and_then(|s| s.into_string().ok())
+}
+
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
 		"Acala Node".into()
@@ -30,20 +37,47 @@ impl SubstrateCli for Cli {
 		2019
 	}
 
+	fn executable_name() -> String {
+		"acala".into()
+	}
+
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
+		let id = if id == "" {
+			let n = get_exec_name().unwrap_or_default();
+			["acala", "karura", "mandala"]
+				.iter()
+				.cloned()
+				.find(|&chain| n.starts_with(chain))
+				.unwrap_or("acala")
+		} else {
+			id
+		};
+
 		Ok(match id {
-			"dev" => Box::new(service::chain_spec::development_testnet_config()?),
-			"local" => Box::new(service::chain_spec::local_testnet_config()?),
-			"" | "mandala" => Box::new(service::chain_spec::mandala_testnet_config()?),
-			"mandala-latest" => Box::new(service::chain_spec::latest_mandala_testnet_config()?),
-			path => Box::new(service::chain_spec::DevChainSpec::from_json_file(
+			"" | "mandala" => Box::new(service::mandala_chain_spec::testnet_config()?),
+			"mandala-dev" | "dev" => Box::new(service::mandala_chain_spec::development_testnet_config()?),
+			"mandala-local" | "local" => Box::new(service::mandala_chain_spec::local_testnet_config()?),
+			"mandala-latest" => Box::new(service::mandala_chain_spec::latest_testnet_config()?),
+			"acala" => Box::new(service::acala_chain_spec::latest_testnet_config()?),
+			"acala-dev" => Box::new(service::acala_chain_spec::development_testnet_config()?),
+			"acala-local" => Box::new(service::acala_chain_spec::local_testnet_config()?),
+			"karura" => Box::new(service::karura_chain_spec::latest_testnet_config()?),
+			"karura-dev" => Box::new(service::karura_chain_spec::development_testnet_config()?),
+			"karura-local" => Box::new(service::karura_chain_spec::local_testnet_config()?),
+			path => Box::new(service::mandala_chain_spec::MandalaChainSpec::from_json_file(
 				std::path::PathBuf::from(path),
 			)?),
 		})
 	}
 
-	fn native_runtime_version(_: &Box<dyn sc_service::ChainSpec>) -> &'static RuntimeVersion {
-		&service::dev_runtime::VERSION
+	fn native_runtime_version(spec: &Box<dyn service::ChainSpec>) -> &'static RuntimeVersion {
+		if spec.is_acala() {
+			&service::acala_runtime::VERSION
+		} else if spec.is_karura() {
+			&service::karura_runtime::VERSION
+		} else {
+			&service::mandala_runtime::VERSION
+		}
 	}
 }
 
@@ -74,9 +108,10 @@ pub fn run() -> sc_cli::Result<()> {
 
 			runner.run_node_until_exit(|config| match config.role {
 				Role::Light => {
-					service::new_light::<service::dev_runtime::RuntimeApi, service::DevExecutor>(config).map(|r| r.0)
+					service::new_light::<service::mandala_runtime::RuntimeApi, service::MandalaExecutor>(config)
+						.map(|r| r.0)
 				}
-				_ => service::new_full::<service::dev_runtime::RuntimeApi, service::DevExecutor, _>(
+				_ => service::new_full::<service::mandala_runtime::RuntimeApi, service::MandalaExecutor, _>(
 					config,
 					|_, _| (),
 					false,
@@ -92,7 +127,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.sync_run(|config| {
-				cmd.run::<service::dev_runtime::Block, service::dev_runtime::RuntimeApi, service::DevExecutor>(config)
+				cmd.run::<service::mandala_runtime::Block, service::mandala_runtime::RuntimeApi, service::MandalaExecutor>(config)
 			})
 		}
 
@@ -102,7 +137,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			runner.sync_run(|config| cmd.run::<service::dev_runtime::Block, service::DevExecutor>(config))
+			runner.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config))
 		}
 
 		Some(Subcommand::Key(cmd)) => cmd.run(),
@@ -124,9 +159,10 @@ pub fn run() -> sc_cli::Result<()> {
 			runner.async_run(|config| {
 				let chain_spec = config.chain_spec.cloned_box();
 				let network_config = config.network.clone();
+
 				let (task_manager, _, client, _, _, network_status_sinks) = service::new_full::<
-					service::dev_runtime::RuntimeApi,
-					service::DevExecutor,
+					service::mandala_runtime::RuntimeApi,
+					service::MandalaExecutor,
 					_,
 				>(config, |_, _| (), false)?;
 
@@ -144,8 +180,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, import_queue, task_manager) =
-					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				let (client, _, import_queue, task_manager) = service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
 		}
@@ -157,8 +192,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, _, task_manager) =
-					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				let (client, _, _, task_manager) = service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, config.database), task_manager))
 			})
 		}
@@ -170,8 +204,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, _, task_manager) =
-					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				let (client, _, _, task_manager) = service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, config.chain_spec), task_manager))
 			})
 		}
@@ -183,8 +216,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, import_queue, task_manager) =
-					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				let (client, _, import_queue, task_manager) = service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
 		}
@@ -201,8 +233,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, backend, _, task_manager) =
-					service::new_chain_ops::<service::dev_runtime::RuntimeApi, service::DevExecutor>(&mut config)?;
+				let (client, backend, _, task_manager) = service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, backend), task_manager))
 			})
 		}

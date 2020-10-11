@@ -31,7 +31,9 @@ members = [
 	"primitives",
 	"rpc",
 	"runtime/common",
-	"runtime/dev",
+	"runtime/acala",
+	"runtime/karura",
+	"runtime/mandala",
 	"service",
 
 	"orml/auction",

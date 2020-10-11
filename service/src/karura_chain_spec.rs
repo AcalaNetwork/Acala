@@ -11,8 +11,8 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::IdentifyAccount, FixedPointNumber, FixedU128, Perbill};
 
-// The URL for the telemetry server.
-const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
+// The URL for the karura telemetry server.
+const KARURA_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Node `ChainSpec` extensions.
 ///
@@ -27,11 +27,11 @@ pub struct Extensions {
 	pub bad_blocks: sc_client_api::BadBlocks<acala_primitives::Block>,
 }
 
-/// The `ChainSpec parametrised for dev/mandala runtime`.
-pub type DevChainSpec = sc_service::GenericChainSpec<dev_runtime::GenesisConfig, Extensions>;
+/// The `ChainSpec parametrised for karura runtime`.
+pub type KaruraChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
-fn dev_session_keys(grandpa: GrandpaId, babe: BabeId) -> dev_runtime::SessionKeys {
-	dev_runtime::SessionKeys { grandpa, babe }
+fn karura_session_keys(grandpa: GrandpaId, babe: BabeId) -> karura_runtime::SessionKeys {
+	karura_runtime::SessionKeys { grandpa, babe }
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -59,17 +59,17 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 	)
 }
 
-/// Development testnet config (single validator Alice)
-pub fn development_testnet_config() -> Result<DevChainSpec, String> {
+/// Karura development testnet config (single validator Alice)
+pub fn development_testnet_config() -> Result<KaruraChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "ACA".into());
+	properties.insert("tokenSymbol".into(), "KAR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = dev_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
+	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
-	Ok(DevChainSpec::from_genesis(
-		"Development",
-		"dev",
+	Ok(KaruraChainSpec::from_genesis(
+		"Karura Development",
+		"karura_development",
 		ChainType::Development,
 		move || {
 			testnet_genesis(
@@ -96,17 +96,17 @@ pub fn development_testnet_config() -> Result<DevChainSpec, String> {
 	))
 }
 
-/// Local testnet config (multivalidator Alice + Bob)
-pub fn local_testnet_config() -> Result<DevChainSpec, String> {
+/// Karura Local testnet config (multivalidator Alice + Bob)
+pub fn local_testnet_config() -> Result<KaruraChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "ACA".into());
+	properties.insert("tokenSymbol".into(), "KAR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = dev_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
+	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
-	Ok(DevChainSpec::from_genesis(
-		"Local",
-		"local",
+	Ok(KaruraChainSpec::from_genesis(
+		"Karura Local",
+		"karura_local",
 		ChainType::Local,
 		move || {
 			testnet_genesis(
@@ -141,17 +141,17 @@ pub fn local_testnet_config() -> Result<DevChainSpec, String> {
 	))
 }
 
-/// Latest Mandala testnet config
-pub fn latest_mandala_testnet_config() -> Result<DevChainSpec, String> {
+/// Latest Karura testnet config
+pub fn latest_testnet_config() -> Result<KaruraChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "ACA".into());
+	properties.insert("tokenSymbol".into(), "KAR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = dev_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
+	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
-	Ok(DevChainSpec::from_genesis(
-		"Acala Mandala TC5",
-		"mandala5",
+	Ok(KaruraChainSpec::from_genesis(
+		"Karura TC5",
+		"karura_tc5",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -166,7 +166,7 @@ pub fn latest_mandala_testnet_config() -> Result<DevChainSpec, String> {
 		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//babe"
 		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
 		move || {
-			mandala_genesis(
+			karura_genesis(
 				wasm_binary,
 				vec![
 					(
@@ -207,16 +207,11 @@ pub fn latest_mandala_testnet_config() -> Result<DevChainSpec, String> {
 				.parse()
 				.unwrap(),
 		],
-		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
+		TelemetryEndpoints::new(vec![(KARURA_TELEMETRY_URL.into(), 0)]).ok(),
 		Some("mandala5"),
 		Some(properties),
 		Default::default(),
 	))
-}
-
-/// Mandala testnet generator
-pub fn mandala_testnet_config() -> Result<DevChainSpec, String> {
-	DevChainSpec::from_json_bytes(&include_bytes!("../../resources/mandala-dist.json")[..])
 }
 
 fn testnet_genesis(
@@ -225,8 +220,8 @@ fn testnet_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	enable_println: bool,
-) -> dev_runtime::GenesisConfig {
-	use dev_runtime::{
+) -> karura_runtime::GenesisConfig {
+	use karura_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
@@ -240,7 +235,7 @@ fn testnet_genesis(
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
-	dev_runtime::GenesisConfig {
+	karura_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
@@ -262,7 +257,7 @@ fn testnet_genesis(
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), x.0.clone(), dev_session_keys(x.2.clone(), x.3.clone())))
+				.map(|x| (x.0.clone(), x.0.clone(), karura_session_keys(x.2.clone(), x.3.clone())))
 				.collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
@@ -319,7 +314,7 @@ fn testnet_genesis(
 				.iter()
 				.flat_map(|x| {
 					vec![
-						(x.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
+						(x.clone(), CurrencyId::Token(TokenSymbol::KSM), INITIAL_BALANCE),
 						(x.clone(), CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
 					]
 				})
@@ -328,7 +323,7 @@ fn testnet_genesis(
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::Token(TokenSymbol::KSM), DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::Token(TokenSymbol::XBTC), DOLLARS),
 				(CurrencyId::Token(TokenSymbol::RENBTC), DOLLARS),
 			],
@@ -336,7 +331,7 @@ fn testnet_genesis(
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::Token(TokenSymbol::DOT),
+					CurrencyId::Token(TokenSymbol::KSM),
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
@@ -352,7 +347,7 @@ fn testnet_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::Token(TokenSymbol::LDOT),
+					CurrencyId::Token(TokenSymbol::LKSM),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
@@ -388,14 +383,14 @@ fn testnet_genesis(
 	}
 }
 
-fn mandala_genesis(
+fn karura_genesis(
 	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	enable_println: bool,
-) -> dev_runtime::GenesisConfig {
-	use dev_runtime::{
+) -> karura_runtime::GenesisConfig {
+	use karura_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
@@ -409,7 +404,7 @@ fn mandala_genesis(
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
-	dev_runtime::GenesisConfig {
+	karura_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
@@ -431,7 +426,7 @@ fn mandala_genesis(
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), x.0.clone(), dev_session_keys(x.2.clone(), x.3.clone())))
+				.map(|x| (x.0.clone(), x.0.clone(), karura_session_keys(x.2.clone(), x.3.clone())))
 				.collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
@@ -485,14 +480,14 @@ fn mandala_genesis(
 		}),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: vec![
-				(root_key.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
+				(root_key.clone(), CurrencyId::Token(TokenSymbol::KSM), INITIAL_BALANCE),
 				(root_key, CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
 			],
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
+				(CurrencyId::Token(TokenSymbol::KSM), DOLLARS), // (currency_id, max size of a collateral auction)
 				(CurrencyId::Token(TokenSymbol::XBTC), 5 * CENTS),
 				(CurrencyId::Token(TokenSymbol::RENBTC), 5 * CENTS),
 			],
@@ -500,7 +495,7 @@ fn mandala_genesis(
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::Token(TokenSymbol::DOT),
+					CurrencyId::Token(TokenSymbol::KSM),
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
@@ -516,7 +511,7 @@ fn mandala_genesis(
 					10_000_000 * DOLLARS,
 				),
 				(
-					CurrencyId::Token(TokenSymbol::LDOT),
+					CurrencyId::Token(TokenSymbol::LKSM),
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(120, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),

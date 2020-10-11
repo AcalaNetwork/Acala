@@ -16,6 +16,7 @@ sp-core = { version = "2.0.0" }
 sp-finality-grandpa = { version = "2.0.0" }
 sp-runtime = { version = "2.0.0" }
 sp-inherents = { version = "2.0.0" }
+sp-storage = { version = "2.0.0" }
 sc-finality-grandpa = { version = "0.8.0" }
 sc-chain-spec = { version = "2.0.0" }
 sc-client-api = { version = "2.0.0" }
@@ -46,7 +47,10 @@ module-dex-rpc = { path = "../modules/dex/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 acala-primitives = { path = "../primitives" }
 acala-rpc = { path = "../rpc" }
-dev-runtime = { path = "../runtime/dev" }
+
+acala-runtime = { path = "../runtime/acala" }
+karura-runtime = { path = "../runtime/karura" }
+mandala-runtime = { path = "../runtime/mandala" }
 runtime-common = { path = "../runtime/common" }
 
 [dev-dependencies]
@@ -56,5 +60,7 @@ sc-consensus-babe = { version = "0.8.0", features = ["test-helpers"] }
 default = ["std"]
 std = []
 runtime-benchmarks = [
-	"dev-runtime/runtime-benchmarks",
+	"acala-runtime/runtime-benchmarks",
+	"karura-runtime/runtime-benchmarks",
+	"mandala-runtime/runtime-benchmarks",
 ]
