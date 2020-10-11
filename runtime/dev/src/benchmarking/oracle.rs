@@ -1,6 +1,4 @@
-use crate::{
-	AcalaDataProvider, AcalaOracle, FixedPointNumber, Origin, Price, Runtime, System, CollateralCurrencyIds,
-};
+use crate::{AcalaDataProvider, AcalaOracle, CollateralCurrencyIds, FixedPointNumber, Origin, Price, Runtime, System};
 
 use frame_support::traits::OnFinalize;
 use orml_benchmarking::runtime_benchmarks_instance;
