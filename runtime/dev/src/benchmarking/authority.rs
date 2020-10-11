@@ -5,30 +5,21 @@ use sp_std::prelude::*;
 
 use frame_support::traits::{schedule::DispatchTime, OriginTrait};
 use frame_system::RawOrigin;
-
 use orml_benchmarking::runtime_benchmarks;
-
-const MAX_PERBILL: u32 = 1000;
 
 runtime_benchmarks! {
 	{ Runtime, orml_authority }
 
-	_ {
-		let u in 1 .. MAX_PERBILL => ();
-	}
+	_ {}
 
 	// dispatch a dispatchable as other origin
 	dispatch_as {
-		let u in ...;
-
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(u)));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
 	}: _(RawOrigin::Root, AuthoritysOriginId::Root, Box::new(ensure_root_call.clone()))
 
 	// schdule a dispatchable to be dispatched at later block.
 	schedule_dispatch_without_delay {
-		let u in ...;
-
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(u)));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
 		let call = Call::Authority(orml_authority::Call::dispatch_as(
 			AuthoritysOriginId::Root,
 			Box::new(ensure_root_call.clone()),
@@ -37,16 +28,13 @@ runtime_benchmarks! {
 
 	// schdule a dispatchable to be dispatched at later block.
 	// ensure that the delay is reached when scheduling
-		schedule_dispatch_with_delay {
-			let u in ...;
-
-			let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(u)));
-			let call = Call::Authority(orml_authority::Call::dispatch_as(
-				AuthoritysOriginId::Root,
-				Box::new(ensure_root_call.clone()),
-			));
-		}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, true, Box::new(call.clone()))
-
+	schedule_dispatch_with_delay {
+		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let call = Call::Authority(orml_authority::Call::dispatch_as(
+			AuthoritysOriginId::Root,
+			Box::new(ensure_root_call.clone()),
+		));
+	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, true, Box::new(call.clone()))
 
 	// TODO
 	// fast_track_scheduled_dispatch {
@@ -58,9 +46,7 @@ runtime_benchmarks! {
 
 	// cancel a scheduled dispatchable
 	cancel_scheduled_dispatch {
-		let u in ...;
-
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(u)));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
 		let call = Call::Authority(orml_authority::Call::dispatch_as(
 			AuthoritysOriginId::Root,
 			Box::new(ensure_root_call.clone()),
