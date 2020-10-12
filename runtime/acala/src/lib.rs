@@ -802,6 +802,7 @@ impl module_prices::Trait for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type WeightInfo = weights::prices::WeightInfo<Runtime>;
 }
 
 pub struct LiquidStakingExchangeRateProvider;
@@ -1056,19 +1057,12 @@ impl module_cdp_treasury::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const FreeTransferCount: u8 = 3;
-	pub const FreeTransferPeriod: BlockNumber = DAYS;
-	pub const FreeTransferDeposit: Balance = DOLLARS;
 	// All currency types except for native currency, Sort by fee charge order
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
 impl module_accounts::Trait for Runtime {
-	type FreeTransferCount = FreeTransferCount;
-	type FreeTransferPeriod = FreeTransferPeriod;
-	type FreeTransferDeposit = FreeTransferDeposit;
-	type Time = Timestamp;
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Currencies;
@@ -1078,6 +1072,7 @@ impl module_accounts::Trait for Runtime {
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type WeightInfo = weights::accounts::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Trait for Runtime {
@@ -1106,6 +1101,7 @@ impl module_incentives::Trait for Runtime {
 	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
 	type ModuleId = IncentivesModuleId;
+	type WeightInfo = weights::incentives::WeightInfo<Runtime>;
 }
 
 impl module_airdrop::Trait for Runtime {
@@ -1727,6 +1723,9 @@ impl_runtime_apis! {
 			// orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
 			// orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
 			// orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
+			// orml_add_benchmark!(params, batches, accounts, benchmarking::accounts);
+			// orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
+			// orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 
 			// orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
