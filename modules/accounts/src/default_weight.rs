@@ -3,10 +3,10 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::weights::{Weight, constants::RocksDbWeight as DbWeight};
+use frame_support::weights::{constants::RocksDbWeight as DbWeight, Weight};
 
 impl crate::WeightInfo for () {
-	fn close_account(c: u32, ) -> Weight {
+	fn close_account(c: u32) -> Weight {
 		(268_142_000 as Weight)
 			.saturating_add((106_505_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(DbWeight::get().reads(6 as Weight))
