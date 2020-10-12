@@ -226,6 +226,7 @@ impl prices::Trait for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureSignedBy<One, AccountId>;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
+	type WeightInfo = ();
 }
 
 pub struct MockConvert;

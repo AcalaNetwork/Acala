@@ -4,6 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get, Happened},
+	weights::Weight,
 	IterableStorageMap,
 };
 use frame_system::ensure_signed;
@@ -17,8 +18,19 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use support::{CDPTreasury, DEXManager, EmergencyShutdown, Rate};
 
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn deposit_dex_lp() -> Weight;
+	fn withdraw_dex_lp() -> Weight;
+	fn claim_rewards() -> Weight;
+	fn update_loans_incentive_rewards(c: u32) -> Weight;
+	fn update_dex_incentive_rewards(c: u32) -> Weight;
+	fn update_homa_incentive_reward() -> Weight;
+	fn update_dex_saving_rates(c: u32) -> Weight;
+}
 
 /// PoolId for various rewards pools
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -96,6 +108,9 @@ pub trait Trait:
 
 	/// The module id, keep DEXShare LP.
 	type ModuleId: Get<ModuleId>;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -138,7 +153,7 @@ decl_module! {
 		/// The saving reward type (should be AUSD)
 		const SavingCurrencyId: CurrencyId = T::SavingCurrencyId::get();
 
-		#[weight = 10_000]
+		#[weight = <T as Trait>::WeightInfo::deposit_dex_lp()]
 		pub fn deposit_dex_lp(origin, lp_currency_id: CurrencyId, amount: Balance) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -154,7 +169,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = <T as Trait>::WeightInfo::withdraw_dex_lp()]
 		pub fn withdraw_dex_lp(origin, lp_currency_id: CurrencyId, amount: Balance) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -176,7 +191,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = <T as Trait>::WeightInfo::claim_rewards()]
 		pub fn claim_rewards(origin, pool_id: T::PoolId) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
@@ -185,7 +200,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = <T as Trait>::WeightInfo::update_loans_incentive_rewards(updates.len() as u32)]
 		pub fn update_loans_incentive_rewards(
 			origin,
 			updates: Vec<(CurrencyId, Balance)>,
@@ -199,7 +214,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = <T as Trait>::WeightInfo::update_dex_incentive_rewards(updates.len() as u32)]
 		pub fn update_dex_incentive_rewards(
 			origin,
 			updates: Vec<(CurrencyId, Balance)>,
@@ -213,7 +228,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = <T as Trait>::WeightInfo::update_homa_incentive_reward()]
 		pub fn update_homa_incentive_reward(
 			origin,
 			update: Balance,
@@ -225,7 +240,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = <T as Trait>::WeightInfo::update_dex_saving_rates(updates.len() as u32)]
 		pub fn update_dex_saving_rates(
 			origin,
 			updates: Vec<(CurrencyId, Rate)>,

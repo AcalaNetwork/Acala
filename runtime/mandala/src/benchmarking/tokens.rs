@@ -10,27 +10,21 @@ use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 
 const SEED: u32 = 0;
-const MAX_USER_INDEX: u32 = 1000;
-const MAX_DOLLARS: u32 = 1000;
 
 runtime_benchmarks! {
 	{ Runtime, orml_tokens }
 
 	_ {
-		let u in 1 .. MAX_USER_INDEX => ();
 		let d in 1 .. MAX_DOLLARS => ();
 	}
 
 	transfer {
-		let u in ...;
-		let d in ...;
+		let amount: Balance = DOLLARS.saturating_mul(d);
 
-		let amount: Balance = DOLLARS.saturating_mul(d.into());
-
-		let from = account("from", u, SEED);
+		let from = account("from", 0, SEED);
 		set_ausd_balance(&from, amount);
 
-		let to: AccountId = account("to", u, SEED);
+		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 	}: _(RawOrigin::Signed(from), to_lookup, CurrencyId::Token(TokenSymbol::AUSD), amount)
 	verify {
@@ -38,15 +32,12 @@ runtime_benchmarks! {
 	}
 
 	transfer_all {
-		let u in ...;
-		let d in ...;
+		let amount: Balance = DOLLARS.saturating_mul(d);
 
-		let amount: Balance = DOLLARS.saturating_mul(d.into());
-
-		let from = account("from", u, SEED);
+		let from = account("from", 0, SEED);
 		set_ausd_balance(&from, amount);
 
-		let to: AccountId = account("to", u, SEED);
+		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to);
 	}: _(RawOrigin::Signed(from.clone()), to_lookup, CurrencyId::Token(TokenSymbol::AUSD))
 	verify {

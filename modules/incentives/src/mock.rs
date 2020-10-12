@@ -225,6 +225,7 @@ impl Trait for Runtime {
 	type DEX = MockDEX;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type ModuleId = IncentivesModuleId;
+	type WeightInfo = ();
 }
 
 pub type IncentivesModule = Module<Runtime>;

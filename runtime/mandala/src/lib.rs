@@ -803,6 +803,7 @@ impl module_prices::Trait for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type WeightInfo = weights::prices::WeightInfo<Runtime>;
 }
 
 pub struct LiquidStakingExchangeRateProvider;
@@ -1072,6 +1073,7 @@ impl module_accounts::Trait for Runtime {
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type WeightInfo = weights::accounts::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Trait for Runtime {
@@ -1100,6 +1102,7 @@ impl module_incentives::Trait for Runtime {
 	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
 	type ModuleId = IncentivesModuleId;
+	type WeightInfo = weights::incentives::WeightInfo<Runtime>;
 }
 
 impl module_airdrop::Trait for Runtime {
@@ -1721,6 +1724,9 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
 			orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
 			orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
+			orml_add_benchmark!(params, batches, accounts, benchmarking::accounts);
+			orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
+			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
