@@ -8,83 +8,10 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Accounts, Call, Currencies, DEXModule, ExtBuilder, Moment, NewAccountDeposit, Origin, Runtime, System, TimeModule,
-	ACA, ACA_AUSD_LP, ALICE, AUSD, BOB, BTC, BTC_AUSD_LP, CAROL,
+	Accounts, Call, Currencies, DEXModule, ExtBuilder, NewAccountDeposit, Origin, Runtime, System, ACA, ACA_AUSD_LP,
+	ALICE, AUSD, BOB, BTC, BTC_AUSD_LP, CAROL,
 };
 use orml_traits::MultiCurrency;
-
-#[test]
-fn enable_free_transfer_require_deposit() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			Accounts::enable_free_transfer(Origin::signed(BOB)),
-			Error::<Runtime>::NotEnoughBalance
-		);
-	});
-}
-
-#[test]
-fn enable_free_transfer_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(()));
-	});
-}
-
-#[test]
-fn disable_free_transfers_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(()));
-		assert_ok!(Accounts::disable_free_transfers(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
-	});
-}
-
-#[test]
-fn try_record_free_transfer_when_no_lock() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
-		assert_eq!(Accounts::last_free_transfers(ALICE), Vec::<Moment>::new());
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), false);
-	});
-}
-
-#[test]
-fn try_record_free_transfer_over_cap() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::last_free_transfers(ALICE), Vec::<Moment>::new());
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0]);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0]);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), false);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-	});
-}
-
-#[test]
-fn remove_expired_entry() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::last_free_transfers(ALICE), Vec::<Moment>::new());
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-		TimeModule::set_timestamp(100);
-		assert_eq!(TimeModule::now(), 100);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![100]);
-	});
-}
 
 const CALL: &<Runtime as system::Trait>::Call = &Call::Currencies(orml_currencies::Call::transfer(BOB, AUSD, 12));
 
@@ -126,81 +53,6 @@ fn charges_fee() {
 		assert_eq!(
 			Currencies::free_balance(ACA, &ALICE),
 			(100000 - fee - fee2).unique_saturated_into()
-		);
-	});
-}
-
-#[test]
-fn enabled_free_transaction_not_charges_fee() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL, &INFO, 23)
-				.unwrap()
-				.priority,
-			0
-		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000.unique_saturated_into());
-	});
-}
-
-#[test]
-fn enabled_free_transaction_charges_tip() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(100)
-				.validate(&ALICE, CALL, &INFO, 23)
-				.unwrap()
-				.priority,
-			100
-		);
-		assert_eq!(
-			Currencies::free_balance(ACA, &ALICE),
-			(100000 - 100).unique_saturated_into()
-		);
-	});
-}
-
-#[test]
-fn enabled_free_transaction_charges_other_call() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		let fee = 23 * 2 + 1000; // len * byte + weight
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL2, &INFO, 23)
-				.unwrap()
-				.priority,
-			fee
-		);
-		assert_eq!(
-			Currencies::free_balance(ACA, &ALICE),
-			(100000 - fee).unique_saturated_into()
-		);
-	});
-}
-
-#[test]
-fn enabled_free_transaction_charges_other_call_with_tip_and_native_currency_is_enough() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		let fee = 23 * 2 + 1000 + 100; // len * byte + weight + tip
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(100)
-				.validate(&ALICE, CALL2, &INFO, 23)
-				.unwrap()
-				.priority,
-			fee
-		);
-		assert_eq!(
-			Currencies::free_balance(ACA, &ALICE),
-			(100000 - fee).unique_saturated_into()
 		);
 	});
 }

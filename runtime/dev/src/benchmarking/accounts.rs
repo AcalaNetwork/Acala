@@ -1,4 +1,4 @@
-use crate::{AccountId, Accounts, AllNonNativeCurrencyIds, Balance, GetNativeCurrencyId, Runtime, DOLLARS};
+use crate::{AccountId, AllNonNativeCurrencyIds, Balance, GetNativeCurrencyId, Runtime, DOLLARS};
 
 use super::utils::set_balance;
 use frame_benchmarking::account;
@@ -17,19 +17,6 @@ runtime_benchmarks! {
 	{ Runtime, module_accounts }
 
 	_ {}
-
-	enable_free_transfer {
-		let caller: AccountId = account("caller", 0, SEED);
-		let native_currency_id = GetNativeCurrencyId::get();
-		set_balance(native_currency_id, &caller, dollar(1000));
-	}: _(RawOrigin::Signed(caller))
-
-	disable_free_transfers {
-		let caller: AccountId = account("caller", 0, SEED);
-		let native_currency_id = GetNativeCurrencyId::get();
-		set_balance(native_currency_id, &caller, dollar(1000));
-		Accounts::enable_free_transfer(RawOrigin::Signed(caller.clone()).into())?;
-	}: _(RawOrigin::Signed(caller))
 
 	close_account {
 		let c in 0 .. AllNonNativeCurrencyIds::get().len().saturating_sub(1) as u32;
@@ -55,20 +42,6 @@ mod tests {
 			.build_storage::<Runtime>()
 			.unwrap()
 			.into()
-	}
-
-	#[test]
-	fn test_enable_free_transfer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_enable_free_transfer());
-		});
-	}
-
-	#[test]
-	fn test_disable_free_transfers() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_disable_free_transfers());
-		});
 	}
 
 	#[test]
