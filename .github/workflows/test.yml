@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: [self-hosted, linux]
+    env:
+      SCCACHE_CACHE_SIZE: "50G"
     steps:
     - uses: actions/checkout@v2
       with:
