@@ -81,7 +81,7 @@ decl_event!(
 	{
 		/// Position updated. \[owner, collateral_type, collateral_adjustment, debit_adjustment\]
 		PositionUpdated(AccountId, CurrencyId, Amount, Amount),
-		/// Confiscate CDP's collateral assets and eliminate its debit. [owner, collateral_type, confiscated_collateral_amount, deduct_debit_amount]
+		/// Confiscate CDP's collateral assets and eliminate its debit. \[owner, collateral_type, confiscated_collateral_amount, deduct_debit_amount\]
 		ConfiscateCollateralAndDebit(AccountId, CurrencyId, Balance, Balance),
 		/// Transfer loan. \[from, to, currency_id\]
 		TransferLoan(AccountId, AccountId, CurrencyId),

@@ -58,7 +58,6 @@ runtime_benchmarks! {
 	_ {}
 
 	set_collateral_params {
-		let u in 0 .. 1000;
 	}: _(
 		RawOrigin::Root,
 		CurrencyId::Token(TokenSymbol::DOT),
@@ -70,7 +69,6 @@ runtime_benchmarks! {
 	)
 
 	set_global_params {
-		let u in 0 .. 1000;
 	}: _(RawOrigin::Root, Rate::saturating_from_rational(1, 1000000))
 
 	// `liquidate` by_auction

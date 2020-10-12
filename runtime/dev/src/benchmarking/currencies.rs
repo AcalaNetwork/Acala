@@ -11,30 +11,20 @@ use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 
 const SEED: u32 = 0;
-const MAX_USER_INDEX: u32 = 1000;
-const MAX_DOLLARS: u32 = 1000;
-const MAX_ACA_EXISTENTIAL_DEPOSIT: u32 = 1000;
 
 runtime_benchmarks! {
 	{ Runtime, orml_currencies }
 
-	_ {
-		let u in 1 .. MAX_USER_INDEX => ();
-		let d in 1 .. MAX_DOLLARS => ();
-		let e in 2 .. MAX_ACA_EXISTENTIAL_DEPOSIT => ();
-	}
+	_ {}
 
 	// `transfer` non-native currency
 	transfer_non_native_currency {
-		let u in ...;
-		let d in ...;
-
-		let amount: Balance = DOLLARS.saturating_mul(d.into());
+		let amount: Balance = DOLLARS.saturating_mul(1000);
 		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
-		let from = account("from", u, SEED);
+		let from = account("from", 0, SEED);
 		set_balance(currency_id, &from, amount);
 
-		let to: AccountId = account("to", u, SEED);
+		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 	}: transfer(RawOrigin::Signed(from), to_lookup, currency_id, amount)
 	verify {
@@ -42,17 +32,15 @@ runtime_benchmarks! {
 	}
 
 	// `transfer` native currency and in worst case
+	#[extra]
 	transfer_native_currency_worst_case {
-		let u in ...;
-		let e in ...;
-
 		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let amount: Balance = aca_existential_deposit.saturating_mul(e.into());
+		let amount: Balance = aca_existential_deposit.saturating_mul(1000);
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
-		let from = account("from", u, SEED);
+		let from = account("from", 0, SEED);
 		set_balance(native_currency_id, &from, amount);
 
-		let to: AccountId = account("to", u, SEED);
+		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 	}: transfer(RawOrigin::Signed(from), to_lookup, native_currency_id, amount)
 	verify {
@@ -63,16 +51,13 @@ runtime_benchmarks! {
 	// * will create the `to` account.
 	// * will kill the `from` account.
 	transfer_native_currency {
-		let u in ...;
-		let e in ...;
-
 		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let amount: Balance = aca_existential_deposit.saturating_mul(e.into());
+		let amount: Balance = aca_existential_deposit.saturating_mul(1000);
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
-		let from = account("from", u, SEED);
+		let from = account("from", 0, SEED);
 		set_balance(native_currency_id, &from, amount);
 
-		let to: AccountId = account("to", u, SEED);
+		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 	}: _(RawOrigin::Signed(from), to_lookup, amount)
 	verify {
@@ -81,13 +66,10 @@ runtime_benchmarks! {
 
 	// `update_balance` for non-native currency
 	update_balance_non_native_currency {
-		let u in ...;
-		let d in ...;
-
-		let balance: Balance = DOLLARS.saturating_mul(d.into());
+		let balance: Balance = DOLLARS.saturating_mul(2);
 		let amount: Amount = balance.unique_saturated_into();
 		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
-		let who: AccountId = account("who", u, SEED);
+		let who: AccountId = account("who", 0, SEED);
 		let who_lookup = lookup_of_account(who.clone());
 	}: update_balance(RawOrigin::Root, who_lookup, currency_id, amount)
 	verify {
@@ -97,14 +79,11 @@ runtime_benchmarks! {
 	// `update_balance` for native currency
 	// * will create the `who` account.
 	update_balance_native_currency_creating {
-		let u in ...;
-		let e in ...;
-
 		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let balance: Balance = aca_existential_deposit.saturating_mul(e.into());
+		let balance: Balance = aca_existential_deposit.saturating_mul(1000);
 		let amount: Amount = balance.unique_saturated_into();
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
-		let who: AccountId = account("who", u, SEED);
+		let who: AccountId = account("who", 0, SEED);
 		let who_lookup = lookup_of_account(who.clone());
 	}: update_balance(RawOrigin::Root, who_lookup, native_currency_id, amount)
 	verify {
@@ -114,14 +93,11 @@ runtime_benchmarks! {
 	// `update_balance` for native currency
 	// * will kill the `who` account.
 	update_balance_native_currency_killing {
-		let u in ...;
-		let e in ...;
-
 		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let balance: Balance = aca_existential_deposit.saturating_mul(e.into());
+		let balance: Balance = aca_existential_deposit.saturating_mul(1000);
 		let amount: Amount = balance.unique_saturated_into();
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
-		let who: AccountId = account("who", u, SEED);
+		let who: AccountId = account("who", 0, SEED);
 		let who_lookup = lookup_of_account(who.clone());
 		set_balance(native_currency_id, &who, balance);
 	}: update_balance(RawOrigin::Root, who_lookup, native_currency_id, -amount)

@@ -13,7 +13,7 @@
 use frame_support::{
 	decl_event, decl_module, decl_storage,
 	traits::{EnsureOrigin, Get},
-	weights::DispatchClass,
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{self as system};
 use orml_traits::{DataFeeder, DataProvider};
@@ -22,8 +22,14 @@ use primitives::CurrencyId;
 use sp_runtime::traits::{CheckedDiv, CheckedMul};
 use support::{ExchangeRateProvider, Price, PriceProvider};
 
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn lock_price() -> Weight;
+	fn unlock_price() -> Weight;
+}
 
 pub trait Trait: system::Trait {
 	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
@@ -49,6 +55,9 @@ pub trait Trait: system::Trait {
 	/// The provider of the exchange rate between liquid currency and staking
 	/// currency.
 	type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -81,8 +90,8 @@ decl_module! {
 		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
-		#[weight = (10_000, DispatchClass::Operational)]
-		fn lock_price(origin, currency_id: CurrencyId) {
+		#[weight = (T::WeightInfo::lock_price(), DispatchClass::Operational)]
+		pub fn lock_price(origin, currency_id: CurrencyId) {
 			with_transaction_result(|| {
 				T::LockOrigin::ensure_origin(origin)?;
 				<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
@@ -95,8 +104,8 @@ decl_module! {
 		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
-		#[weight = (10_000, DispatchClass::Operational)]
-		fn unlock_price(origin, currency_id: CurrencyId) {
+		#[weight = (T::WeightInfo::unlock_price(), DispatchClass::Operational)]
+		pub fn unlock_price(origin, currency_id: CurrencyId) {
 			with_transaction_result(|| {
 				T::LockOrigin::ensure_origin(origin)?;
 				<Module<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);

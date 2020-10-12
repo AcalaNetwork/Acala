@@ -221,6 +221,7 @@ impl Trait for Runtime {
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = TreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type WeightInfo = ();
 }
 pub type Accounts = Module<Runtime>;
 

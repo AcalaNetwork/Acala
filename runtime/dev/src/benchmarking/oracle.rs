@@ -1,61 +1,37 @@
-use crate::{
-	AcalaDataProvider, AcalaOracle, CurrencyId, FixedPointNumber, Origin, Price, Runtime, System, TokenSymbol,
-};
+use crate::{AcalaDataProvider, AcalaOracle, CollateralCurrencyIds, FixedPointNumber, Origin, Price, Runtime, System};
 
 use frame_support::traits::OnFinalize;
 use orml_benchmarking::runtime_benchmarks_instance;
 use sp_std::prelude::*;
 
-const MAX_PRICE: u32 = 1000;
-
 runtime_benchmarks_instance! {
 	{ Runtime, orml_oracle, AcalaDataProvider }
 
-	_ {
-		let u in 1 .. MAX_PRICE => ();
-	}
+	_ {}
 
-	// feed values with one price
+	// feed values
 	feed_values {
-		let u in ...;
-	}: _(Origin::root(), vec![(CurrencyId::Token(TokenSymbol::AUSD), Price::saturating_from_integer(u))])
+		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let currency_ids = CollateralCurrencyIds::get();
+		let mut values = vec![];
 
-	// feed values with two price
-	feed_values_with_two_price {
-		let u in ...;
-	}: feed_values(Origin::root(), vec![(CurrencyId::Token(TokenSymbol::AUSD), Price::saturating_from_integer(u)), (CurrencyId::Token(TokenSymbol::ACA), Price::saturating_from_integer(u))])
-
-	// feed values with three price
-	feed_values_with_three_price {
-		let u in ...;
-	}: feed_values(Origin::root(), vec![(CurrencyId::Token(TokenSymbol::AUSD), Price::saturating_from_integer(u)), (CurrencyId::Token(TokenSymbol::ACA), Price::saturating_from_integer(u)), (CurrencyId::Token(TokenSymbol::LDOT), Price::saturating_from_integer(u))])
-
-		on_finalize_with_zero {
-			let u in ...;
-
-			System::set_block_number(u);
-		}: {
-			AcalaOracle::on_finalize(System::block_number());
+		for i in 0 .. c {
+			values.push((currency_ids[i as usize], Price::one()));
 		}
+	}: _(Origin::root(), values)
 
-	on_finalize_with_one {
-		let u in ...;
+	on_finalize {
+		let currency_ids = CollateralCurrencyIds::get();
+		let mut values = vec![];
 
-		System::set_block_number(u);
-		AcalaOracle::feed_values(Origin::root(), vec![(CurrencyId::Token(TokenSymbol::AUSD), Price::saturating_from_integer(u))])?;
+		for currency_id in currency_ids {
+			values.push((currency_id, Price::one()));
+		}
+		System::set_block_number(1);
+		AcalaOracle::feed_values(Origin::root(), values)?;
 	}: {
 		AcalaOracle::on_finalize(System::block_number());
 	}
-
-	on_finalize_with_two {
-		let u in ...;
-
-		System::set_block_number(u);
-		AcalaOracle::feed_values(Origin::root(), vec![(CurrencyId::Token(TokenSymbol::AUSD), Price::saturating_from_integer(u)), (CurrencyId::Token(TokenSymbol::ACA), Price::saturating_from_integer(u))])?;
-	}: {
-		AcalaOracle::on_finalize(System::block_number());
-	}
-
 }
 
 #[cfg(test)]
@@ -78,37 +54,9 @@ mod tests {
 	}
 
 	#[test]
-	fn test_feed_values_with_two_price() {
+	fn test_on_finalize() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_feed_values_with_two_price());
-		});
-	}
-
-	#[test]
-	fn test_feed_values_with_three_price() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_feed_values_with_three_price());
-		});
-	}
-
-	#[test]
-	fn test_on_finalize_with_zero() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_finalize_with_zero());
-		});
-	}
-
-	#[test]
-	fn test_on_finalize_with_one() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_finalize_with_one());
-		});
-	}
-
-	#[test]
-	fn test_on_finalize_with_two() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_finalize_with_two());
+			assert_ok!(test_benchmark_on_finalize());
 		});
 	}
 }
