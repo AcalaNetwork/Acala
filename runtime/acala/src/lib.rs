@@ -80,7 +80,6 @@ pub use primitives::{
 pub use runtime_common::{ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
 
 mod authority;
-mod benchmarking;
 mod constants;
 
 /// This runtime version.
@@ -1719,16 +1718,16 @@ impl_runtime_apis! {
 
 			add_benchmark!(params, batches, dex, Dex);
 			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
-			orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
-			orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
-			orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
-			orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
-			orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
-			orml_add_benchmark!(params, batches, accounts, benchmarking::accounts);
-			orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
-			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
+			// orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
+			// orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
+			// orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
+			// orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
+			// orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
+			// orml_add_benchmark!(params, batches, accounts, benchmarking::accounts);
+			// orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
+			// orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 
-			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
+			// orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
 			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
 			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);

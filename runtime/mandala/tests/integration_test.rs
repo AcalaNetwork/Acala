@@ -1,15 +1,15 @@
 #![cfg(test)]
 
-use dev_runtime::{
-	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
-	CurrencyId, DSWFModuleId, Event, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime,
-	SevenDays, TokenSymbol, NFT,
-};
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{schedule::DispatchTime, OnFinalize, OnInitialize, OriginTrait},
 };
 use frame_system::RawOrigin;
+use mandala_runtime::{
+	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
+	CurrencyId, DSWFModuleId, Event, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime,
+	SevenDays, TokenSymbol, NFT,
+};
 use module_cdp_engine::LiquidationStrategy;
 use module_support::CDPTreasury;
 use module_support::{Price, Rate, Ratio, RiskManager};

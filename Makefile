@@ -4,8 +4,8 @@ run: githooks
 toolchain:
 	./scripts/init.sh
 
-build-wasm: githooks
-	WASM_BUILD_TYPE=release cargo build
+build-full: githooks
+	cargo build
 
 check: githooks
 	SKIP_WASM_BUILD= cargo check
@@ -43,7 +43,7 @@ GITHOOKS_DEST = $(patsubst githooks/%, .git/hooks/%, $(GITHOOKS_SRC))
 
 githooks: .git/hooks $(GITHOOKS_DEST)
 
-init: toolchain submodule build-wasm
+init: toolchain submodule build-full
 
 submodule:
 	git submodule update --init --recursive
@@ -56,5 +56,11 @@ update: update-orml
 	cargo update
 	make check
 
-prepare-wasm:
-	./scripts/build-only-wasm.sh dev-runtime
+build-wasm-mandala:
+	./scripts/build-only-wasm.sh mandala-runtime
+
+build-wasm-karura:
+	./scripts/build-only-wasm.sh karura-runtime
+
+build-wasm-acala:
+	./scripts/build-only-wasm.sh acala-runtime

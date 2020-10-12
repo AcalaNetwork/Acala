@@ -126,13 +126,17 @@ pub trait ClientHandle {
 /// A client instance of Acala.
 #[derive(Clone)]
 pub enum Client {
-	Dev(Arc<crate::FullClient<dev_runtime::RuntimeApi, crate::DevExecutor>>),
+	Mandala(Arc<crate::FullClient<mandala_runtime::RuntimeApi, crate::MandalaExecutor>>),
+	Karura(Arc<crate::FullClient<karura_runtime::RuntimeApi, crate::KaruraExecutor>>),
+	Acala(Arc<crate::FullClient<acala_runtime::RuntimeApi, crate::AcalaExecutor>>),
 }
 
 impl ClientHandle for Client {
 	fn execute_with<T: ExecuteWithClient>(&self, t: T) -> T::Output {
 		match self {
-			Self::Dev(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
+			Self::Mandala(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
+			Self::Karura(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
+			Self::Acala(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
 		}
 	}
 }
