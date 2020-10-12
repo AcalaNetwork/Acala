@@ -1057,19 +1057,12 @@ impl module_cdp_treasury::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const FreeTransferCount: u8 = 3;
-	pub const FreeTransferPeriod: BlockNumber = DAYS;
-	pub const FreeTransferDeposit: Balance = DOLLARS;
 	// All currency types except for native currency, Sort by fee charge order
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
 impl module_accounts::Trait for Runtime {
-	type FreeTransferCount = FreeTransferCount;
-	type FreeTransferPeriod = FreeTransferPeriod;
-	type FreeTransferDeposit = FreeTransferDeposit;
-	type Time = Timestamp;
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Currencies;
