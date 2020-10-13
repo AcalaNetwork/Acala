@@ -1,4 +1,4 @@
-use acala_primitives::AccountId;
+use acala_primitives::{AccountId, AirDropCurrencyId};
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -101,7 +101,7 @@ fn acala_genesis(
 	enable_println: bool,
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
+		get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance,
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
@@ -110,6 +110,16 @@ fn acala_genesis(
 	};
 
 	let new_account_deposit = NewAccountDeposit::get();
+	let	airdrop_accounts = {
+		let airdrop_accounts_json = &include_bytes!("../../../resources/mandala-airdrop-accounts.json")[..];
+		let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
+			serde_json::from_slice(airdrop_accounts_json).unwrap();
+		airdrop_accounts
+			.into_iter()
+			.filter(|(_, currency_id, _)| *currency_id == AirDropCurrencyId::ACA)
+			.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
+			.collect::<Vec<_>>()
+	};
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
@@ -131,6 +141,7 @@ fn acala_genesis(
 						.iter()
 						.map(|x| (x.clone(), new_account_deposit)),
 				)
+				.chain(airdrop_accounts)
 				.collect(),
 		}),
 		pallet_session: Some(SessionConfig {
@@ -241,17 +252,6 @@ fn acala_genesis(
 		}),
 		module_polkadot_bridge: Some(PolkadotBridgeConfig {
 			mock_reward_rate: FixedU128::saturating_from_rational(5, 10000), // 20% APR
-		}),
-		module_airdrop: Some(AirDropConfig {
-			airdrop_accounts: {
-				let airdrop_accounts_json = &include_bytes!("../../../resources/mandala-airdrop-accounts.json")[..];
-				let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
-					serde_json::from_slice(airdrop_accounts_json).unwrap();
-				airdrop_accounts
-					.into_iter()
-					.filter(|(_, currency_id, _)| *currency_id == AirDropCurrencyId::ACA)
-					.collect::<Vec<_>>()
-			},
 		}),
 		orml_oracle_Instance1: Some(AcalaOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
