@@ -74,8 +74,8 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
 pub use primitives::{
-	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
-	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol,
+	AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
+	EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol,
 };
 pub use runtime_common::{ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
 
@@ -1104,10 +1104,6 @@ impl module_incentives::Trait for Runtime {
 	type WeightInfo = weights::incentives::WeightInfo<Runtime>;
 }
 
-impl module_airdrop::Trait for Runtime {
-	type Event = Event;
-}
-
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
 	pub const EraLength: BlockNumber = DAYS;
@@ -1372,7 +1368,6 @@ construct_runtime!(
 
 		// Acala Other
 		Incentives: module_incentives::{Module, Storage, Call, Event<T>},
-		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
 		NFT: module_nft::{Module, Call, Event<T>},
 
 		// Ecosystem modules
