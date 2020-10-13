@@ -338,7 +338,7 @@ impl<T: Trait> Module<T> {
 				.saturating_mul(fee_denominator.unique_saturated_into())
 				.saturating_add(supply_amount_with_fee);
 
-			numerator.checked_div(denominator).unwrap_or_else(|| Zero::zero())
+			numerator.checked_div(denominator).unwrap_or_else(Zero::zero)
 		}
 	}
 
@@ -358,9 +358,8 @@ impl<T: Trait> Module<T> {
 			numerator
 				.checked_div(denominator)
 				.and_then(|r| r.checked_add(One::one()))
-				.unwrap_or_else(|| Zero::zero()) // add 1 to result so that correct the possible
-			                     // losses
-			                     // caused by remainder discarding in
+				.unwrap_or_else(Zero::zero) // add 1 to result so that correct the possible
+			                // losses caused by remainder discarding in
 		}
 	}
 
@@ -384,8 +383,7 @@ impl<T: Trait> Module<T> {
 
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
-				let price_impact =
-					Ratio::checked_from_rational(target_amount, target_pool).unwrap_or_else(|| Ratio::zero());
+				let price_impact = Ratio::checked_from_rational(target_amount, target_pool).unwrap_or_else(Ratio::zero);
 				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
 			}
 
@@ -416,7 +414,7 @@ impl<T: Trait> Module<T> {
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
 				let price_impact =
-					Ratio::checked_from_rational(supply_amounts[i], target_pool).unwrap_or_else(|| Ratio::zero());
+					Ratio::checked_from_rational(supply_amounts[i], target_pool).unwrap_or_else(Ratio::zero);
 				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
 			};
 
