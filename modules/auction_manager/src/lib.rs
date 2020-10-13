@@ -56,8 +56,9 @@ pub trait WeightInfo {
 
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/auction-manager/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
+const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/auction-manager/max-iterations/";
 const LOCK_DURATION: u64 = 100;
-const MAX_ITERATIONS: u32 = 10000;
+const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -397,12 +398,19 @@ impl<T: Trait> Module<T> {
 			(rng.pick_u32(2), None)
 		};
 
+		// get the max iterationns config
+		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.get::<u32>()
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+
+		debug::debug!(target: "auction-manager offchain worker", "max iterations is {:?}", max_iterations);
+
 		// Randomly choose to start iterations to cancel collateral/surplus/debit
 		// auctions
 		match auction_type_num {
 			0 => {
 				let mut iterator =
-					<DebitAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+					<DebitAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
 				while let Some((debit_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(debit_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
@@ -418,7 +426,7 @@ impl<T: Trait> Module<T> {
 			}
 			1 => {
 				let mut iterator =
-					<SurplusAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+					<SurplusAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
 				while let Some((surplus_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(surplus_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
@@ -432,7 +440,7 @@ impl<T: Trait> Module<T> {
 			}
 			_ => {
 				let mut iterator =
-					<CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+					<CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
 				while let Some((collateral_auction_id, _)) = iterator.next() {
 					if let (Some(collateral_auction), Some((_, last_bid_price))) = (
 						Self::collateral_auctions(collateral_auction_id),

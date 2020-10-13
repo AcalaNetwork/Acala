@@ -57,8 +57,9 @@ pub trait WeightInfo {
 
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/cdp-engine/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
+const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/cdp-engine/max-iterations/";
 const LOCK_DURATION: u64 = 100;
-const MAX_ITERATIONS: u32 = 10000;
+const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 pub type LoansOf<T> = loans::Module<T>;
 
@@ -528,12 +529,19 @@ impl<T: Trait> Module<T> {
 				)
 			};
 
+		// get the max iterationns config
+		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.get::<u32>()
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+
 		let currency_id = collateral_currency_ids[(collateral_position as usize)];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
+		debug::debug!(target: "cdp-engine offchain worker", "max iterations is {:?}", max_iterations);
+
 		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
 			currency_id,
-			Some(MAX_ITERATIONS),
+			max_iterations,
 			start_key,
 		);
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
