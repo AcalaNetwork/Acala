@@ -102,7 +102,7 @@ runtime-common = { path = "../common", default-features = false }
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 
 [build-dependencies]
-wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }
+wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "2.0.0" }
 
 [dev-dependencies]
 sp-io = { version = "2.0.0" }
