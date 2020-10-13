@@ -58,7 +58,7 @@ const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/auction-manager/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
 const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/auction-manager/max-iterations/";
 const LOCK_DURATION: u64 = 100;
-const DEFAULT_MAX_ITERATIONS: u32 = 10000;
+const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -402,6 +402,8 @@ impl<T: Trait> Module<T> {
 		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+
+		debug::debug!(target: "auction-manager offchain worker", "max iterations is {:?}", max_iterations);
 
 		// Randomly choose to start iterations to cancel collateral/surplus/debit
 		// auctions
