@@ -23,7 +23,7 @@ use sp_runtime::{
 use sp_std::{prelude::*, vec};
 use support::{DEXManager, Price, Ratio};
 
-// mod benchmarking;
+mod benchmarking;
 mod default_weight;
 mod mock;
 // mod tests;
@@ -338,7 +338,7 @@ impl<T: Trait> Module<T> {
 				.saturating_mul(fee_denominator.unique_saturated_into())
 				.saturating_add(supply_amount_with_fee);
 
-			numerator.checked_div(denominator).unwrap_or(Zero::zero())
+			numerator.checked_div(denominator).unwrap_or_else(|| Zero::zero())
 		}
 	}
 
@@ -358,8 +358,9 @@ impl<T: Trait> Module<T> {
 			numerator
 				.checked_div(denominator)
 				.and_then(|r| r.checked_add(One::one()))
-				.unwrap_or(Zero::zero()) // add 1 to result so that correct the possible losses
-			             // caused by remainder discarding in
+				.unwrap_or_else(|| Zero::zero()) // add 1 to result so that correct the possible
+			                     // losses
+			                     // caused by remainder discarding in
 		}
 	}
 
@@ -383,7 +384,8 @@ impl<T: Trait> Module<T> {
 
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
-				let price_impact = Ratio::checked_from_rational(target_amount, target_pool).unwrap_or(Ratio::zero());
+				let price_impact =
+					Ratio::checked_from_rational(target_amount, target_pool).unwrap_or_else(|| Ratio::zero());
 				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
 			}
 
@@ -414,7 +416,7 @@ impl<T: Trait> Module<T> {
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
 				let price_impact =
-					Ratio::checked_from_rational(supply_amounts[i], target_pool).unwrap_or(Ratio::zero());
+					Ratio::checked_from_rational(supply_amounts[i], target_pool).unwrap_or_else(|| Ratio::zero());
 				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
 			};
 
@@ -476,7 +478,7 @@ impl<T: Trait> Module<T> {
 			let actual_target_amount = amounts[amounts.len() - 1];
 
 			T::Currency::transfer(path[0], who, &module_account_id, supply_amount)?;
-			Self::_swap_by_path(path.clone(), amounts.clone());
+			Self::_swap_by_path(path.clone(), amounts);
 			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
 			Self::deposit_event(RawEvent::Swap(who.clone(), path, supply_amount, actual_target_amount));
@@ -498,7 +500,7 @@ impl<T: Trait> Module<T> {
 			let actual_supply_amount = amounts[0];
 
 			T::Currency::transfer(path[0], who, &module_account_id, actual_supply_amount)?;
-			Self::_swap_by_path(path.clone(), amounts.clone());
+			Self::_swap_by_path(path.clone(), amounts);
 			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
 			Self::deposit_event(RawEvent::Swap(who.clone(), path, actual_supply_amount, target_amount));

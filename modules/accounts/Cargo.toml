@@ -13,7 +13,6 @@ frame-system = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 pallet-transaction-payment = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
-pallet-timestamp = { version = "2.0.0", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
@@ -39,7 +38,6 @@ std = [
 	"orml-currencies/std",
 	"pallet-transaction-payment/std",
 	"pallet-balances/std",
-	"pallet-timestamp/std",
 	"primitives/std",
 	"support/std",
 	"orml-traits/std",

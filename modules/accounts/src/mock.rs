@@ -15,7 +15,6 @@ use support::Ratio;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type Moment = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -125,18 +124,6 @@ impl orml_currencies::Trait for Runtime {
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 parameter_types! {
-	pub const MinimumPeriod: Moment = 5;
-}
-
-impl pallet_timestamp::Trait for Runtime {
-	type Moment = Moment;
-	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
-	type WeightInfo = ();
-}
-pub type TimeModule = pallet_timestamp::Module<Runtime>;
-
-parameter_types! {
 	pub const TransactionByteFee: Balance = 2;
 }
 
@@ -175,9 +162,6 @@ impl dex::Trait for Runtime {
 pub type DEXModule = dex::Module<Runtime>;
 
 parameter_types! {
-	pub const FreeTransferCount: u8 = 3;
-	pub const FreeTransferPeriod: Moment = 100;
-	pub const FreeTransferDeposit: Balance = 200;
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, BTC];
 	pub const NewAccountDeposit: Balance = 100;
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
@@ -186,10 +170,6 @@ parameter_types! {
 }
 
 impl Trait for Runtime {
-	type FreeTransferCount = FreeTransferCount;
-	type FreeTransferPeriod = FreeTransferPeriod;
-	type Time = TimeModule;
-	type FreeTransferDeposit = FreeTransferDeposit;
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
@@ -200,6 +180,7 @@ impl Trait for Runtime {
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = TreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type WeightInfo = ();
 }
 pub type Accounts = Module<Runtime>;
 
