@@ -68,7 +68,6 @@ dependencies = [
  "acala-primitives",
  "dev-runtime",
  "jsonrpc-core",
- "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts-rpc",
@@ -103,7 +102,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
- "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts",
@@ -1199,7 +1197,6 @@ dependencies = [
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
  "module-dex",
- "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
  "module-homa",
@@ -3777,7 +3774,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "module-cdp-treasury",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -3788,35 +3784,6 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-dex-rpc"
-version = "0.6.1"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "module-dex-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-dex-rpc-runtime-api"
-version = "0.6.1"
-dependencies = [
- "parity-scale-codec",
- "serde",
- "sp-api",
  "sp-runtime",
  "sp-std",
 ]

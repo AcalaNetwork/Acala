@@ -16,7 +16,12 @@ impl crate::WeightInfo for () {
 			.saturating_add(DbWeight::get().reads(9 as Weight))
 			.saturating_add(DbWeight::get().writes(7 as Weight))
 	}
-	fn swap_currency() -> Weight {
+	fn swap_with_exact_supply() -> Weight {
+		(409_297_000 as Weight)
+			.saturating_add(DbWeight::get().reads(9 as Weight))
+			.saturating_add(DbWeight::get().writes(6 as Weight))
+	}
+	fn swap_with_exact_target() -> Weight {
 		(409_297_000 as Weight)
 			.saturating_add(DbWeight::get().reads(9 as Weight))
 			.saturating_add(DbWeight::get().writes(6 as Weight))

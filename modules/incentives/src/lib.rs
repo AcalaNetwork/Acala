@@ -39,6 +39,8 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Share amount is not enough
 		NotEnough,
+		/// Invalid currency id
+		InvalidCurrencyId,
 	}
 }
 
@@ -48,10 +50,10 @@ decl_event!(
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
-		/// Deposit DEX share. \[who, lp_currency_id, deposit_amount\]
-		DepositDexShare(AccountId, CurrencyId, Balance),
-		/// Withdraw DEX LP share. \[who, lp_currency_id, withdraw_amount\]
-		WithdrawDEXLP(AccountId, CurrencyId, Balance),
+		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
+		DepositDEXShare(AccountId, CurrencyId, Balance),
+		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
+		WithdrawDEXShare(AccountId, CurrencyId, Balance),
 	}
 );
 
@@ -139,15 +141,21 @@ decl_module! {
 		const SavingCurrencyId: CurrencyId = T::SavingCurrencyId::get();
 
 		#[weight = 10_000]
-		pub fn deposit_dex_lp(origin, lp_currency_id: CurrencyId, amount: Balance) {
+		pub fn deposit_dex_share(origin, currency_id: CurrencyId, amount: Balance) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				T::Currency::transfer(lp_currency_id, &who, &Self::account_id(), amount)?;
-				OnAddLiquidity::<T>::happened(&(who.clone(), lp_currency_id, amount.unique_saturated_into()));
 
-				Self::deposit_event(RawEvent::DepositDexShare(
+				match currency_id {
+					CurrencyId::DEXShare(_, _) => {},
+					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
+				}
+
+				T::Currency::transfer(currency_id, &who, &Self::account_id(), amount)?;
+				OnAddLiquidity::<T>::happened(&(who.clone(), currency_id, amount.unique_saturated_into()));
+
+				Self::deposit_event(RawEvent::DepositDEXShare(
 					who,
-					lp_currency_id,
+					currency_id,
 					amount,
 				));
 				Ok(())
@@ -155,21 +163,26 @@ decl_module! {
 		}
 
 		#[weight = 10_000]
-		pub fn withdraw_dex_lp(origin, lp_currency_id: CurrencyId, amount: Balance) {
+		pub fn withdraw_dex_share(origin, currency_id: CurrencyId, amount: Balance) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
+				match currency_id {
+					CurrencyId::DEXShare(_, _) => {},
+					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
+				}
+
 				ensure!(
-					<orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexIncentive(lp_currency_id), &who).0 >= amount
-					&& <orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexSaving(lp_currency_id), &who).0 >= amount,
+					<orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexIncentive(currency_id), &who).0 >= amount
+					&& <orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexSaving(currency_id), &who).0 >= amount,
 					Error::<T>::NotEnough,
 				);
-				OnRemoveLiquidity::<T>::happened(&(who.clone(), lp_currency_id, amount));
-				T::Currency::transfer(lp_currency_id, &Self::account_id(), &who, amount)?;
+				OnRemoveLiquidity::<T>::happened(&(who.clone(), currency_id, amount));
+				T::Currency::transfer(currency_id, &Self::account_id(), &who, amount)?;
 
-				Self::deposit_event(RawEvent::WithdrawDEXLP(
+				Self::deposit_event(RawEvent::WithdrawDEXShare(
 					who,
-					lp_currency_id,
+					currency_id,
 					amount,
 				));
 				Ok(())
@@ -207,6 +220,11 @@ decl_module! {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
 				for (currency_id, amount) in updates {
+					match currency_id {
+						CurrencyId::DEXShare(_, _) => {},
+						_ => return Err(Error::<T>::InvalidCurrencyId.into()),
+					}
+
 					DEXIncentiveRewards::insert(currency_id, amount);
 				}
 				Ok(())
@@ -233,6 +251,11 @@ decl_module! {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
 				for (currency_id, rate) in updates {
+					match currency_id {
+						CurrencyId::DEXShare(_, _) => {},
+						_ => return Err(Error::<T>::InvalidCurrencyId.into()),
+					}
+
 					DEXSavingRates::insert(currency_id, rate);
 				}
 				Ok(())
@@ -318,6 +341,7 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 								accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
 							}
 						}
+
 						PoolId::DexIncentive(currency_id) => {
 							let incentive_reward = Self::dex_incentive_rewards(currency_id);
 
@@ -334,19 +358,40 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 								accumulated_incentive = accumulated_incentive.saturating_add(incentive_reward);
 							}
 						}
-						PoolId::DexSaving(currency_id) => {
-							let (_, stable_token_amount) = T::DEX::get_liquidity_pool(currency_id);
-							let saving_reward =
-								Self::dex_saving_rates(currency_id).saturating_mul_int(stable_token_amount);
 
-							if !saving_reward.is_zero()
-								&& T::CDPTreasury::issue_debit(&T::DexIncentivePool::get(), saving_reward, false)
-									.is_ok()
-							{
-								callback(pool_id, saving_reward);
-								accumulated_saving = accumulated_saving.saturating_add(saving_reward);
+						PoolId::DexSaving(currency_id) => {
+							let dex_saving_rate = Self::dex_saving_rates(currency_id);
+							if !dex_saving_rate.is_zero() {
+								if let CurrencyId::DEXShare(token_symbol_a, token_symbol_b) = currency_id {
+									let (currency_id_a, currency_id_b) =
+										(CurrencyId::Token(token_symbol_a), CurrencyId::Token(token_symbol_b));
+
+									// accumulate saving reward only for liquidity pool of saving currency id
+									let saving_currency_amount = if currency_id_a == saving_currency_id {
+										T::DEX::get_liquidity_pool(saving_currency_id, currency_id_b).0
+									} else if currency_id_b == saving_currency_id {
+										T::DEX::get_liquidity_pool(saving_currency_id, currency_id_a).0
+									} else {
+										Zero::zero()
+									};
+
+									if !saving_currency_amount.is_zero() {
+										let saving_reward = dex_saving_rate.saturating_mul_int(saving_currency_amount);
+										if T::CDPTreasury::issue_debit(
+											&T::DexIncentivePool::get(),
+											saving_reward,
+											false,
+										)
+										.is_ok()
+										{
+											callback(pool_id, saving_reward);
+											accumulated_saving = accumulated_saving.saturating_add(saving_reward);
+										}
+									}
+								}
 							}
 						}
+
 						PoolId::Homa => {
 							let incentive_reward = Self::homa_incentive_reward();
 

@@ -39,7 +39,6 @@ impl_outer_event! {
 		frame_system<T>,
 		dex<T>,
 		orml_tokens<T>,
-		cdp_treasury,
 	}
 }
 
@@ -93,29 +92,6 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-ord_parameter_types! {
-	pub const One: AccountId = 1;
-}
-
-parameter_types! {
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const MaxAuctionsCount: u32 = 10_000;
-	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
-}
-
-impl cdp_treasury::Trait for Runtime {
-	type Event = TestEvent;
-	type Currency = Tokens;
-	type GetStableCurrencyId = GetStableCurrencyId;
-	type AuctionManagerHandler = MockAuctionManagerHandler;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type DEX = ();
-	type MaxAuctionsCount = MaxAuctionsCount;
-	type ModuleId = CDPTreasuryModuleId;
-	type WeightInfo = ();
-}
-pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
-
 pub struct MockAuctionManagerHandler;
 impl AuctionManager<AccountId> for MockAuctionManagerHandler {
 	type CurrencyId = CurrencyId;
@@ -158,19 +134,18 @@ thread_local! {
 }
 
 parameter_types! {
-	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
-	pub EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
+	pub const GetExchangeFee: (u32, u32) = (1, 100);
+	pub const TradingPathLimit: usize = 3;
+	pub EnabledTradingPairs : Vec<(CurrencyId, CurrencyId)> = vec![(AUSD, BTC), (AUSD, DOT), (BTC, DOT)];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type EnabledCurrencyIds = EnabledCurrencyIds;
-	type GetBaseCurrencyId = GetBaseCurrencyId;
+	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = CDPTreasuryModule;
+	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
 }
