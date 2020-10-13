@@ -1,5 +1,5 @@
 run: githooks
-	SKIP_WASM_BUILD= cargo run -- --dev --execution=native -lruntime=debug
+	SKIP_WASM_BUILD= cargo run -- --dev -lruntime=debug
 
 toolchain:
 	./scripts/init.sh
@@ -14,10 +14,7 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
 check-debug:
-	RUSTFLAGS="-Z external-macro-backtrace" BUILD_DUMMY_WASM_BINARY= cargo +nightly check
-
-check-dummy:
-	BUILD_DUMMY_WASM_BINARY= cargo check
+	RUSTFLAGS="-Z external-macro-backtrace" SKIP_WASM_BUILD= cargo +nightly check
 
 test: githooks
 	SKIP_WASM_BUILD= cargo test --all
