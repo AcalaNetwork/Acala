@@ -233,6 +233,7 @@ dependencies = [
  "sp-offchain",
  "sp-runtime",
  "sp-session",
+ "sp-storage",
  "sp-transaction-pool",
  "sp-trie",
  "substrate-prometheus-endpoint",

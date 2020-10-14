@@ -1,11 +1,17 @@
 //! Acala Client abstractions.
 
-use acala_primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Nonce};
+use acala_primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Hash, Header, Nonce};
 use runtime_common::TimeStampedPrice;
-use sc_client_api::{Backend as BackendT, BlockchainEvents};
-use sp_api::{CallApiAt, ProvideRuntimeApi};
+use sc_client_api::{Backend as BackendT, BlockchainEvents, KeyIterator};
+use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
+use sp_consensus::BlockStatus;
+use sp_runtime::{
+	generic::{BlockId, SignedBlock},
+	traits::{BlakeTwo256, Block as BlockT},
+	Justification,
+};
+use sp_storage::{ChildInfo, PrefixedStorageKey, StorageData, StorageKey};
 use std::sync::Arc;
 
 /// A set of APIs that polkadot-like runtimes must implement.
@@ -137,6 +143,220 @@ impl ClientHandle for Client {
 			Self::Mandala(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
 			Self::Karura(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
 			Self::Acala(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
+		}
+	}
+}
+
+impl sc_client_api::UsageProvider<Block> for Client {
+	fn usage_info(&self) -> sc_client_api::ClientInfo<Block> {
+		match self {
+			Self::Mandala(client) => client.usage_info(),
+			Self::Karura(client) => client.usage_info(),
+			Self::Acala(client) => client.usage_info(),
+		}
+	}
+}
+
+impl sc_client_api::BlockBackend<Block> for Client {
+	fn block_body(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Vec<<Block as BlockT>::Extrinsic>>> {
+		match self {
+			Self::Mandala(client) => client.block_body(id),
+			Self::Karura(client) => client.block_body(id),
+			Self::Acala(client) => client.block_body(id),
+		}
+	}
+
+	fn block(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<SignedBlock<Block>>> {
+		match self {
+			Self::Mandala(client) => client.block(id),
+			Self::Karura(client) => client.block(id),
+			Self::Acala(client) => client.block(id),
+		}
+	}
+
+	fn block_status(&self, id: &BlockId<Block>) -> sp_blockchain::Result<BlockStatus> {
+		match self {
+			Self::Mandala(client) => client.block_status(id),
+			Self::Karura(client) => client.block_status(id),
+			Self::Acala(client) => client.block_status(id),
+		}
+	}
+
+	fn justification(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Justification>> {
+		match self {
+			Self::Mandala(client) => client.justification(id),
+			Self::Karura(client) => client.justification(id),
+			Self::Acala(client) => client.justification(id),
+		}
+	}
+
+	fn block_hash(&self, number: NumberFor<Block>) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
+		match self {
+			Self::Mandala(client) => client.block_hash(number),
+			Self::Karura(client) => client.block_hash(number),
+			Self::Acala(client) => client.block_hash(number),
+		}
+	}
+}
+
+impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
+	fn storage(&self, id: &BlockId<Block>, key: &StorageKey) -> sp_blockchain::Result<Option<StorageData>> {
+		match self {
+			Self::Mandala(client) => client.storage(id, key),
+			Self::Karura(client) => client.storage(id, key),
+			Self::Acala(client) => client.storage(id, key),
+		}
+	}
+
+	fn storage_keys(&self, id: &BlockId<Block>, key_prefix: &StorageKey) -> sp_blockchain::Result<Vec<StorageKey>> {
+		match self {
+			Self::Mandala(client) => client.storage_keys(id, key_prefix),
+			Self::Karura(client) => client.storage_keys(id, key_prefix),
+			Self::Acala(client) => client.storage_keys(id, key_prefix),
+		}
+	}
+
+	fn storage_hash(
+		&self,
+		id: &BlockId<Block>,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
+		match self {
+			Self::Mandala(client) => client.storage_hash(id, key),
+			Self::Karura(client) => client.storage_hash(id, key),
+			Self::Acala(client) => client.storage_hash(id, key),
+		}
+	}
+
+	fn storage_pairs(
+		&self,
+		id: &BlockId<Block>,
+		key_prefix: &StorageKey,
+	) -> sp_blockchain::Result<Vec<(StorageKey, StorageData)>> {
+		match self {
+			Self::Mandala(client) => client.storage_pairs(id, key_prefix),
+			Self::Karura(client) => client.storage_pairs(id, key_prefix),
+			Self::Acala(client) => client.storage_pairs(id, key_prefix),
+		}
+	}
+
+	fn storage_keys_iter<'a>(
+		&self,
+		id: &BlockId<Block>,
+		prefix: Option<&'a StorageKey>,
+		start_key: Option<&StorageKey>,
+	) -> sp_blockchain::Result<KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
+		match self {
+			Self::Mandala(client) => client.storage_keys_iter(id, prefix, start_key),
+			Self::Karura(client) => client.storage_keys_iter(id, prefix, start_key),
+			Self::Acala(client) => client.storage_keys_iter(id, prefix, start_key),
+		}
+	}
+
+	fn child_storage(
+		&self,
+		id: &BlockId<Block>,
+		child_info: &ChildInfo,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<StorageData>> {
+		match self {
+			Self::Mandala(client) => client.child_storage(id, child_info, key),
+			Self::Karura(client) => client.child_storage(id, child_info, key),
+			Self::Acala(client) => client.child_storage(id, child_info, key),
+		}
+	}
+
+	fn child_storage_keys(
+		&self,
+		id: &BlockId<Block>,
+		child_info: &ChildInfo,
+		key_prefix: &StorageKey,
+	) -> sp_blockchain::Result<Vec<StorageKey>> {
+		match self {
+			Self::Mandala(client) => client.child_storage_keys(id, child_info, key_prefix),
+			Self::Karura(client) => client.child_storage_keys(id, child_info, key_prefix),
+			Self::Acala(client) => client.child_storage_keys(id, child_info, key_prefix),
+		}
+	}
+
+	fn child_storage_hash(
+		&self,
+		id: &BlockId<Block>,
+		child_info: &ChildInfo,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
+		match self {
+			Self::Mandala(client) => client.child_storage_hash(id, child_info, key),
+			Self::Karura(client) => client.child_storage_hash(id, child_info, key),
+			Self::Acala(client) => client.child_storage_hash(id, child_info, key),
+		}
+	}
+
+	fn max_key_changes_range(
+		&self,
+		first: NumberFor<Block>,
+		last: BlockId<Block>,
+	) -> sp_blockchain::Result<Option<(NumberFor<Block>, BlockId<Block>)>> {
+		match self {
+			Self::Mandala(client) => client.max_key_changes_range(first, last),
+			Self::Karura(client) => client.max_key_changes_range(first, last),
+			Self::Acala(client) => client.max_key_changes_range(first, last),
+		}
+	}
+
+	fn key_changes(
+		&self,
+		first: NumberFor<Block>,
+		last: BlockId<Block>,
+		storage_key: Option<&PrefixedStorageKey>,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Vec<(NumberFor<Block>, u32)>> {
+		match self {
+			Self::Mandala(client) => client.key_changes(first, last, storage_key, key),
+			Self::Karura(client) => client.key_changes(first, last, storage_key, key),
+			Self::Acala(client) => client.key_changes(first, last, storage_key, key),
+		}
+	}
+}
+
+impl sp_blockchain::HeaderBackend<Block> for Client {
+	fn header(&self, id: BlockId<Block>) -> sp_blockchain::Result<Option<Header>> {
+		match self {
+			Self::Mandala(client) => client.header(&id),
+			Self::Karura(client) => client.header(&id),
+			Self::Acala(client) => client.header(&id),
+		}
+	}
+
+	fn info(&self) -> sp_blockchain::Info<Block> {
+		match self {
+			Self::Mandala(client) => client.info(),
+			Self::Karura(client) => client.info(),
+			Self::Acala(client) => client.info(),
+		}
+	}
+
+	fn status(&self, id: BlockId<Block>) -> sp_blockchain::Result<sp_blockchain::BlockStatus> {
+		match self {
+			Self::Mandala(client) => client.status(id),
+			Self::Karura(client) => client.status(id),
+			Self::Acala(client) => client.status(id),
+		}
+	}
+
+	fn number(&self, hash: Hash) -> sp_blockchain::Result<Option<BlockNumber>> {
+		match self {
+			Self::Mandala(client) => client.number(hash),
+			Self::Karura(client) => client.number(hash),
+			Self::Acala(client) => client.number(hash),
+		}
+	}
+
+	fn hash(&self, number: BlockNumber) -> sp_blockchain::Result<Option<Hash>> {
+		match self {
+			Self::Mandala(client) => client.hash(number),
+			Self::Karura(client) => client.hash(number),
+			Self::Acala(client) => client.hash(number),
 		}
 	}
 }
