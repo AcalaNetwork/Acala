@@ -11,6 +11,10 @@ sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 
+pallet-evm = { version = "2.0.0", default-features = false }
+
+orml-traits = { path = "../../orml/traits", default-features = false }
+
 [features]
 default = ["std"]
 std = [
@@ -18,4 +22,6 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"sp-std/std",
+	"pallet-evm/std",
+	"orml-traits/std",
 ]

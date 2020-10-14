@@ -4356,6 +4356,8 @@ version = "0.6.1"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
+ "orml-traits",
+ "pallet-evm",
  "parity-scale-codec",
  "sp-runtime",
  "sp-std",
