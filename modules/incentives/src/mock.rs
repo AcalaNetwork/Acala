@@ -153,11 +153,11 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		}
 	}
 
-	fn get_swap_target_amount(_: Vec<CurrencyId>, _: Balance) -> Option<Balance> {
+	fn get_swap_target_amount(_: Vec<CurrencyId>, _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(_: Vec<CurrencyId>, _: Balance) -> Option<Balance> {
+	fn get_swap_supply_amount(_: Vec<CurrencyId>, _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 

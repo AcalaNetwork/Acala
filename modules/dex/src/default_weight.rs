@@ -11,7 +11,7 @@ impl crate::WeightInfo for () {
 			.saturating_add(DbWeight::get().reads(11 as Weight))
 			.saturating_add(DbWeight::get().writes(7 as Weight))
 	}
-	fn withdraw_liquidity() -> Weight {
+	fn remove_liquidity() -> Weight {
 		(414_245_000 as Weight)
 			.saturating_add(DbWeight::get().reads(9 as Weight))
 			.saturating_add(DbWeight::get().writes(7 as Weight))

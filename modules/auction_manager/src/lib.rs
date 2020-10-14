@@ -788,6 +788,7 @@ impl<T: Trait> Module<T> {
 					< T::DEX::get_swap_target_amount(
 						vec![collateral_auction.currency_id, T::GetStableCurrencyId::get()],
 						collateral_auction.amount,
+						None,
 					)
 					.unwrap_or_default()
 			{

@@ -58,11 +58,11 @@ benchmarks! {
 		inject_liquidity::<T>(first_maker.clone(), currency_id_a, currency_id_b, dollar(100), dollar(10000))?;
 	}: add_liquidity(RawOrigin::Signed(second_maker), currency_id_a, currency_id_b, amount_a, amount_b)
 
-	withdraw_liquidity {
+	remove_liquidity {
 		let maker: T::AccountId = account("maker", 0, SEED);
 		let (currency_id_a, currency_id_b) = T::EnabledTradingPairs::get()[0];
 		inject_liquidity::<T>(maker.clone(), currency_id_a, currency_id_b, dollar(100), dollar(10000))?;
-	}: withdraw_liquidity(RawOrigin::Signed(maker), currency_id_a, currency_id_b, dollar(50).unique_saturated_into())
+	}: remove_liquidity(RawOrigin::Signed(maker), currency_id_a, currency_id_b, dollar(50).unique_saturated_into())
 }
 
 #[cfg(test)]
@@ -79,9 +79,9 @@ mod tests {
 	}
 
 	#[test]
-	fn withdraw_liquidity() {
+	fn remove_liquidity() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_withdraw_liquidity::<Runtime>());
+			assert_ok!(test_benchmark_remove_liquidity::<Runtime>());
 		});
 	}
 }

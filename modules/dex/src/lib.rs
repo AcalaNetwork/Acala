@@ -26,11 +26,11 @@ use support::{DEXManager, Price, Ratio};
 mod benchmarking;
 mod default_weight;
 mod mock;
-// mod tests;
+mod tests;
 
 pub trait WeightInfo {
 	fn add_liquidity() -> Weight;
-	fn withdraw_liquidity() -> Weight;
+	fn remove_liquidity() -> Weight;
 	fn swap_with_exact_supply() -> Weight;
 	fn swap_with_exact_target() -> Weight;
 }
@@ -46,7 +46,8 @@ pub trait Trait: system::Trait {
 
 	/// Trading fee rate
 	/// The first item of the tuple is the numerator of the fee rate, second
-	/// item is the denominator, fee_rate = numerator / denominator
+	/// item is the denominator, fee_rate = numerator / denominator,
+	/// use (u32, u32) over `Rate` type to minimize internal division operation.
 	type GetExchangeFee: Get<(u32, u32)>;
 
 	/// The limit for length of trading path
@@ -79,8 +80,6 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Not the enable trading pair
 		TradingPairNotAllowed,
-		/// The actual transaction price will be lower than the acceptable price
-		UnacceptablePrice,
 		/// The increment of liquidity is invalid
 		InvalidLiquidityIncrement,
 		/// Invalid currency id
@@ -93,6 +92,12 @@ decl_error! {
 		ExcessiveSupplyAmount,
 		/// The swap will cause unacceptable price impact
 		ExceedPriceImpactLimit,
+		/// Liquidity is not enough
+		InsufficientLiquidity,
+		/// The supply amount is zero
+		ZeroSupplyAmount,
+		/// The target amount is zero
+		ZeroTargetAmount,
 	}
 }
 
@@ -179,17 +184,9 @@ decl_module! {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
-				ensure!(
-					T::EnabledTradingPairs::get().contains(&(currency_id_a, currency_id_b))
-					|| T::EnabledTradingPairs::get().contains(&(currency_id_b, currency_id_a)),
-					Error::<T>::TradingPairNotAllowed,
-				);
-
+				let lp_share_currency_id = Self::get_dex_share_currency_id(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+				ensure!(Self::is_enabled_trading_pair(currency_id_a, currency_id_b), Error::<T>::TradingPairNotAllowed);
 				let (currency_id_0, currency_id_1) = Self::sort_currency_id(currency_id_a, currency_id_b);
-				let lp_share_currency_id = match (currency_id_0, currency_id_1) {
-					(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => CurrencyId::DEXShare(token_symbol_0, token_symbol_1),
-					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-				};
 				let (max_amount_0, max_amount_1) = if currency_id_a == currency_id_0 {
 					(max_amount_a, max_amount_b)
 				} else {
@@ -257,27 +254,23 @@ decl_module! {
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
 		/// - `remove_share`: liquidity amount to remove.
-		#[weight = T::WeightInfo::withdraw_liquidity()]
-		pub fn withdraw_liquidity(origin, currency_id_a: CurrencyId, currency_id_b: CurrencyId, #[compact] remove_share: Balance) {
+		#[weight = T::WeightInfo::remove_liquidity()]
+		pub fn remove_liquidity(origin, currency_id_a: CurrencyId, currency_id_b: CurrencyId, #[compact] remove_share: Balance) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				if remove_share.is_zero() { return Ok(()); }
 
+				let lp_share_currency_id = Self::get_dex_share_currency_id(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 				let (currency_id_0, currency_id_1) = Self::sort_currency_id(currency_id_a, currency_id_b);
-				let lp_share_currency_id = match (currency_id_0, currency_id_1) {
-					(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => CurrencyId::DEXShare(token_symbol_0, token_symbol_1),
-					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-				};
 
 				LiquidityPool::try_mutate((currency_id_0, currency_id_1), |(pool_0, pool_1)| -> DispatchResult {
 					let total_shares = T::Currency::total_issuance(lp_share_currency_id);
 					let proportion = Ratio::checked_from_rational(remove_share, total_shares).unwrap_or_default();
 					let pool_0_decrement = proportion.saturating_mul_int(*pool_0);
 					let pool_1_decrement = proportion.saturating_mul_int(*pool_1);
+					let module_account_id = Self::account_id();
 
 					T::Currency::withdraw(lp_share_currency_id, &who, remove_share)?;
-
-					let module_account_id = Self::account_id();
 					T::Currency::transfer(currency_id_0, &module_account_id, &who, pool_0_decrement)?;
 					T::Currency::transfer(currency_id_1, &module_account_id, &who, pool_1_decrement)?;
 
@@ -311,6 +304,22 @@ impl<T: Trait> Module<T> {
 		} else {
 			(currency_id_a, currency_id_b)
 		}
+	}
+
+	fn get_dex_share_currency_id(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<CurrencyId> {
+		let (currency_id_0, currency_id_1) = Self::sort_currency_id(currency_id_a, currency_id_b);
+		match (currency_id_0, currency_id_1) {
+			(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => {
+				Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
+			}
+			_ => None,
+		}
+	}
+
+	fn is_enabled_trading_pair(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> bool {
+		let enabled_trading_pairs = T::EnabledTradingPairs::get();
+		enabled_trading_pairs.contains(&(currency_id_a, currency_id_b))
+			|| enabled_trading_pairs.contains(&(currency_id_b, currency_id_a))
 	}
 
 	fn get_liquidity(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
@@ -364,7 +373,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn get_target_amounts(
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		supply_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
@@ -378,8 +387,17 @@ impl<T: Trait> Module<T> {
 
 		let mut i: usize = 0;
 		while i + 1 < path_length {
+			ensure!(
+				Self::is_enabled_trading_pair(path[i], path[i + 1]),
+				Error::<T>::TradingPairNotAllowed
+			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i], path[i + 1]);
+			ensure!(
+				!supply_pool.is_zero() && !target_pool.is_zero(),
+				Error::<T>::InsufficientLiquidity
+			);
 			let target_amount = Self::get_target_amount(supply_pool, target_pool, target_amounts[i]);
+			ensure!(!target_amount.is_zero(), Error::<T>::ZeroTargetAmount);
 
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
@@ -395,7 +413,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn get_supply_amounts(
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		target_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
@@ -409,7 +427,17 @@ impl<T: Trait> Module<T> {
 
 		let mut i: usize = path_length - 1;
 		while i > 0 {
+			ensure!(
+				Self::is_enabled_trading_pair(path[i - 1], path[i]),
+				Error::<T>::TradingPairNotAllowed
+			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i - 1], path[i]);
+			ensure!(
+				!supply_pool.is_zero() && !target_pool.is_zero(),
+				Error::<T>::InsufficientLiquidity
+			);
+			let supply_amount = Self::get_supply_amount(supply_pool, target_pool, supply_amounts[i]);
+			ensure!(!supply_amount.is_zero(), Error::<T>::ZeroSupplyAmount);
 
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
@@ -418,7 +446,6 @@ impl<T: Trait> Module<T> {
 				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
 			};
 
-			let supply_amount = Self::get_supply_amount(supply_pool, target_pool, supply_amounts[i]);
 			supply_amounts[i - 1] = supply_amount;
 			i -= 1;
 		}
@@ -444,7 +471,7 @@ impl<T: Trait> Module<T> {
 		});
 	}
 
-	fn _swap_by_path(path: Vec<CurrencyId>, amounts: Vec<Balance>) {
+	fn _swap_by_path(path: &[CurrencyId], amounts: &[Balance]) {
 		let mut i: usize = 0;
 		while i + 1 < path.len() {
 			let (supply_currency_id, target_currency_id) = (path[i], path[i + 1]);
@@ -467,7 +494,7 @@ impl<T: Trait> Module<T> {
 		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		with_transaction_result(|| {
-			let amounts = Self::get_target_amounts(path.clone(), supply_amount, price_impact_limit)?;
+			let amounts = Self::get_target_amounts(&path, supply_amount, price_impact_limit)?;
 			ensure!(
 				amounts[amounts.len() - 1] >= min_target_amount,
 				Error::<T>::InsufficientTargetAmount
@@ -476,7 +503,7 @@ impl<T: Trait> Module<T> {
 			let actual_target_amount = amounts[amounts.len() - 1];
 
 			T::Currency::transfer(path[0], who, &module_account_id, supply_amount)?;
-			Self::_swap_by_path(path.clone(), amounts);
+			Self::_swap_by_path(&path, &amounts);
 			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
 			Self::deposit_event(RawEvent::Swap(who.clone(), path, supply_amount, actual_target_amount));
@@ -492,13 +519,13 @@ impl<T: Trait> Module<T> {
 		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		with_transaction_result(|| {
-			let amounts = Self::get_supply_amounts(path.clone(), target_amount, price_impact_limit)?;
+			let amounts = Self::get_supply_amounts(&path, target_amount, price_impact_limit)?;
 			ensure!(amounts[0] <= max_supply_amount, Error::<T>::ExcessiveSupplyAmount);
 			let module_account_id = Self::account_id();
 			let actual_supply_amount = amounts[0];
 
 			T::Currency::transfer(path[0], who, &module_account_id, actual_supply_amount)?;
-			Self::_swap_by_path(path.clone(), amounts);
+			Self::_swap_by_path(&path, &amounts);
 			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
 			Self::deposit_event(RawEvent::Swap(who.clone(), path, actual_supply_amount, target_amount));
@@ -512,14 +539,22 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 		Self::get_liquidity(currency_id_a, currency_id_b)
 	}
 
-	fn get_swap_target_amount(path: Vec<CurrencyId>, supply_amount: Balance) -> Option<Balance> {
-		Self::get_target_amounts(path, supply_amount, None)
+	fn get_swap_target_amount(
+		path: Vec<CurrencyId>,
+		supply_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> Option<Balance> {
+		Self::get_target_amounts(&path, supply_amount, price_impact_limit)
 			.ok()
 			.map(|amounts| amounts[amounts.len() - 1])
 	}
 
-	fn get_swap_supply_amount(path: Vec<CurrencyId>, target_amount: Balance) -> Option<Balance> {
-		Self::get_supply_amounts(path, target_amount, None)
+	fn get_swap_supply_amount(
+		path: Vec<CurrencyId>,
+		target_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> Option<Balance> {
+		Self::get_supply_amounts(&path, target_amount, price_impact_limit)
 			.ok()
 			.map(|amounts| amounts[0])
 	}
