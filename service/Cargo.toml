@@ -38,6 +38,7 @@ pallet-contracts-rpc-runtime-api = { version = "0.8.0" }
 pallet-contracts = { version = "2.0.0" }
 sp-offchain = { version = "2.0.0" }
 sp-session = { version = "2.0.0" }
+sp-storage = { version = "2.0.0" }
 sp-transaction-pool = { version = "2.0.0" }
 sp-blockchain = { version = "2.0.0" }
 

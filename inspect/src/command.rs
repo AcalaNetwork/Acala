@@ -3,35 +3,41 @@
 use crate::cli::{InspectCmd, InspectSubCmd};
 use crate::Inspector;
 use sc_cli::{CliConfiguration, ImportParams, Result, SharedParams};
-use sc_service::{new_full_client, Configuration, NativeExecutionDispatch};
+use sc_client_api::BlockBackend;
+use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Block;
 use std::str::FromStr;
+use std::sync::Arc;
 
 impl InspectCmd {
 	/// Run the inspect command, passing the inspector.
-	pub fn run<B, RA, EX>(&self, config: Configuration) -> Result<()>
+	pub fn run<B, CL>(&self, client: Arc<CL>) -> Result<()>
 	where
 		B: Block,
 		B::Hash: FromStr,
-		RA: Send + Sync + 'static,
-		EX: NativeExecutionDispatch + 'static,
+		CL: BlockBackend<B> + HeaderBackend<B> + 'static,
 	{
-		let client = new_full_client::<B, RA, EX>(&config)?;
-		let inspect = Inspector::<B>::new(client);
+		match Arc::try_unwrap(client) {
+			Ok(cli) => {
+				let inspect = Inspector::<B>::new(cli);
 
-		match &self.command {
-			InspectSubCmd::Block { input } => {
-				let input = input.parse()?;
-				let res = inspect.block(input).map_err(|e| format!("{}", e))?;
-				println!("{}", res);
-				Ok(())
+				match &self.command {
+					InspectSubCmd::Block { input } => {
+						let input = input.parse()?;
+						let res = inspect.block(input).map_err(|e| format!("{}", e))?;
+						println!("{}", res);
+						Ok(())
+					}
+					InspectSubCmd::Extrinsic { input } => {
+						let input = input.parse()?;
+						let res = inspect.extrinsic(input).map_err(|e| format!("{}", e))?;
+						println!("{}", res);
+						Ok(())
+					}
+				}
 			}
-			InspectSubCmd::Extrinsic { input } => {
-				let input = input.parse()?;
-				let res = inspect.extrinsic(input).map_err(|e| format!("{}", e))?;
-				println!("{}", res);
-				Ok(())
-			}
+
+			Err(_) => Err("Client try_unwrap failed".into()),
 		}
 	}
 }

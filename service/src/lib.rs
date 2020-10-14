@@ -518,31 +518,46 @@ where
 }
 
 /// Builds a new object suitable for chain operations.
-pub fn new_chain_ops<Runtime, Executor>(
+pub fn new_chain_ops(
 	mut config: &mut Configuration,
 ) -> Result<
 	(
-		Arc<FullClient<Runtime, Executor>>,
+		Arc<Client>,
 		Arc<FullBackend>,
 		sp_consensus::import_queue::BasicQueue<Block, sp_trie::PrefixedMemoryDB<BlakeTwo256>>,
 		TaskManager,
 	),
 	ServiceError,
->
-where
-	Runtime: ConstructRuntimeApi<Block, FullClient<Runtime, Executor>> + Send + Sync + 'static,
-	Runtime::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
-	Executor: NativeExecutionDispatch + 'static,
-{
+> {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	let PartialComponents {
-		client,
-		backend,
-		import_queue,
-		task_manager,
-		..
-	} = new_partial::<Runtime, Executor>(&mut config, false)?;
-	Ok((client, backend, import_queue, task_manager))
+	if config.chain_spec.is_mandala() {
+		let PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false)?;
+		Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
+	} else if config.chain_spec.is_karura() {
+		let PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false)?;
+		Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
+	} else {
+		let PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false)?;
+		Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
+	}
 }
 
 /// Build a new light node.
@@ -552,16 +567,25 @@ pub fn build_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 	} else if config.chain_spec.is_karura() {
 		new_light::<karura_runtime::RuntimeApi, KaruraExecutor>(config).map(|r| r.0)
 	} else {
-		new_light::<mandala_runtime::RuntimeApi, AcalaExecutor>(config).map(|r| r.0)
+		new_light::<mandala_runtime::RuntimeApi, MandalaExecutor>(config).map(|r| r.0)
 	}
 }
 
-pub fn build_full(config: Configuration, test: bool) -> Result<TaskManager, ServiceError> {
+pub fn build_full(
+	config: Configuration,
+	test: bool,
+) -> Result<(Arc<Client>, sc_service::NetworkStatusSinks<Block>, TaskManager), ServiceError> {
 	if config.chain_spec.is_acala() {
-		new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, test).map(|r| r.0)
+		let (task_manager, _, client, _, _, network_status_sinks) =
+			new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, test)?;
+		Ok((Arc::new(Client::Acala(client)), network_status_sinks, task_manager))
 	} else if config.chain_spec.is_karura() {
-		new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, test).map(|r| r.0)
+		let (task_manager, _, client, _, _, network_status_sinks) =
+			new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, test)?;
+		Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
 	} else {
-		new_full::<mandala_runtime::RuntimeApi, AcalaExecutor>(config, test).map(|r| r.0)
+		let (task_manager, _, client, _, _, network_status_sinks) =
+			new_full::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, test)?;
+		Ok((Arc::new(Client::Mandala(client)), network_status_sinks, task_manager))
 	}
 }
