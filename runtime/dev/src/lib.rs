@@ -52,6 +52,7 @@ use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 mod weights;
 
 use frontier_rpc_primitives::TransactionStatus;
+use module_support::evm::MultiCurrencyPrecompile;
 use pallet_evm::{Account as EVMAccount, EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 
 pub use frame_support::{
@@ -1281,7 +1282,7 @@ impl pallet_evm::Trait for Runtime {
 	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
 	type Currency = Balances;
 	type Event = Event;
-	type Precompiles = ();
+	type Precompiles = (MultiCurrencyPrecompile<AccountId, HashedAddressMapping<BlakeTwo256>, CurrencyId, Currencies>,);
 	type ChainId = ChainId;
 }
 

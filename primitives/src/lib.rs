@@ -6,6 +6,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	MultiSignature, RuntimeDebug,
 };
+use sp_std::convert::TryFrom;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -82,6 +83,21 @@ pub enum TokenSymbol {
 pub enum CurrencyId {
 	Token(TokenSymbol),
 	DEXShare(TokenSymbol, TokenSymbol),
+}
+
+impl TryFrom<u8> for CurrencyId {
+	type Error = ();
+	fn try_from(u: u8) -> Result<Self, Self::Error> {
+		match u {
+			0 => Ok(CurrencyId::Token(TokenSymbol::ACA)),
+			1 => Ok(CurrencyId::Token(TokenSymbol::AUSD)),
+			2 => Ok(CurrencyId::Token(TokenSymbol::DOT)),
+			3 => Ok(CurrencyId::Token(TokenSymbol::XBTC)),
+			4 => Ok(CurrencyId::Token(TokenSymbol::LDOT)),
+			5 => Ok(CurrencyId::Token(TokenSymbol::RENBTC)),
+			_ => Err(()),
+		}
+	}
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
