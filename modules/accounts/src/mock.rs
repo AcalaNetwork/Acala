@@ -7,7 +7,7 @@ use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 	weights::IdentityFee,
 };
-use primitives::{Amount, TokenSymbol};
+use primitives::{Amount, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
 use sp_std::cell::RefCell;
@@ -147,7 +147,7 @@ parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: usize = 3;
-	pub EnabledTradingPairs : Vec<(CurrencyId, CurrencyId)> = vec![(AUSD, ACA), (AUSD, BTC)];
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, ACA), TradingPair::new(AUSD, BTC)];
 }
 
 impl dex::Trait for Runtime {

@@ -18,9 +18,9 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const AUSD_XBTC_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC);
-pub const AUSD_DOT_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::DOT);
-pub const XBTC_DOT_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::DOT);
+pub const AUSD_XBTC_PAIR: TradingPair = TradingPair(AUSD, XBTC);
+pub const AUSD_DOT_PAIR: TradingPair = TradingPair(AUSD, DOT);
+pub const DOT_XBTC_PAIR: TradingPair = TradingPair(DOT, XBTC);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -94,7 +94,7 @@ thread_local! {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: usize = 3;
-	pub EnabledTradingPairs : Vec<(CurrencyId, CurrencyId)> = vec![(AUSD, XBTC), (AUSD, DOT), (XBTC, DOT)];
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![AUSD_DOT_PAIR, AUSD_XBTC_PAIR, DOT_XBTC_PAIR];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 

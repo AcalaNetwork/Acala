@@ -108,3 +108,26 @@ pub enum DataProviderId {
 	Acala = 1,
 	Band = 2,
 }
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TradingPair(pub CurrencyId, pub CurrencyId);
+
+impl TradingPair {
+	pub fn new(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Self {
+		if currency_id_a > currency_id_b {
+			TradingPair(currency_id_b, currency_id_a)
+		} else {
+			TradingPair(currency_id_a, currency_id_b)
+		}
+	}
+
+	pub fn get_dex_share_currency_id(&self) -> Option<CurrencyId> {
+		match (self.0, self.1) {
+			(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => {
+				Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
+			}
+			_ => None,
+		}
+	}
+}

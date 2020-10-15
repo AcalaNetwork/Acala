@@ -22,7 +22,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
 };
-use sp_std::vec;
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
 mod benchmarking;
@@ -312,7 +311,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 
 		T::DEX::swap_with_exact_supply(
 			&Self::account_id(),
-			vec![currency_id, T::GetStableCurrencyId::get()],
+			&[currency_id, T::GetStableCurrencyId::get()],
 			supply_amount,
 			min_target_amount,
 			price_impact_limit,
@@ -334,7 +333,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 
 		T::DEX::swap_with_exact_target(
 			&Self::account_id(),
-			vec![currency_id, T::GetStableCurrencyId::get()],
+			&[currency_id, T::GetStableCurrencyId::get()],
 			target_amount,
 			max_supply_amount,
 			price_impact_limit,

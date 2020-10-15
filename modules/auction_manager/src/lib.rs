@@ -41,7 +41,6 @@ use sp_runtime::{
 use sp_std::{
 	cmp::{Eq, PartialEq},
 	prelude::*,
-	vec,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate};
 
@@ -786,7 +785,7 @@ impl<T: Trait> Module<T> {
 			if !collateral_auction.in_reverse_stage(bid_price)
 				&& bid_price
 					< T::DEX::get_swap_target_amount(
-						vec![collateral_auction.currency_id, T::GetStableCurrencyId::get()],
+						&[collateral_auction.currency_id, T::GetStableCurrencyId::get()],
 						collateral_auction.amount,
 						None,
 					)

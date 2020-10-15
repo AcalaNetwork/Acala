@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use primitives::TokenSymbol;
+use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
@@ -122,7 +122,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: usize = 3;
-	pub EnabledTradingPairs : Vec<(CurrencyId, CurrencyId)> = vec![(AUSD, BTC)];
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 

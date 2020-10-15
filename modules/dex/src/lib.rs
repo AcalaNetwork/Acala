@@ -2,7 +2,7 @@
 //!
 //! ## Overview
 //!
-//! Built-in decentralized exchange modules in Acala network, the trading
+//! Built-in decentralized exchange modules in Acala network, the swap
 //! mechanism refers to the design of Uniswap V2. In addition to being used for
 //! trading, DEX also participates in CDP liquidation, which is faster than
 //! liquidation by auction when the liquidity is sufficient. And providing
@@ -15,7 +15,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, t
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use orml_utilities::with_transaction_result;
-use primitives::{Balance, CurrencyId};
+use primitives::{Balance, CurrencyId, TradingPair};
 use sp_runtime::{
 	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
@@ -42,7 +42,7 @@ pub trait Trait: system::Trait {
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 	/// Allowed trading pair list.
-	type EnabledTradingPairs: Get<Vec<(CurrencyId, CurrencyId)>>;
+	type EnabledTradingPairs: Get<Vec<TradingPair>>;
 
 	/// Trading fee rate
 	/// The first item of the tuple is the numerator of the fee rate, second
@@ -105,7 +105,7 @@ decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
 		/// Liquidity pool for specific pair(a tuple consisting of two sorted CurrencyIds).
 		/// (CurrencyId_0, CurrencyId_1) -> (Amount_0, Amount_1)
-		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) (CurrencyId, CurrencyId) => (Balance, Balance);
+		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) TradingPair => (Balance, Balance);
 	}
 }
 
@@ -116,7 +116,7 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Allowed trading pair list
-		const EnabledTradingPairs: Vec<(CurrencyId, CurrencyId)> = T::EnabledTradingPairs::get();
+		const EnabledTradingPairs: Vec<TradingPair> = T::EnabledTradingPairs::get();
 
 		/// Trading fee rate
 		const GetExchangeFee: (u32, u32) = T::GetExchangeFee::get();
@@ -141,7 +141,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				let _ = Self::do_swap_with_exact_supply(&who, path, supply_amount, min_target_amount, None)?;
+				let _ = Self::do_swap_with_exact_supply(&who, &path, supply_amount, min_target_amount, None)?;
 				Ok(())
 			})?;
 		}
@@ -160,7 +160,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				let _ = Self::do_swap_with_exact_target(&who, path, target_amount, max_supply_amount, None)?;
+				let _ = Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)?;
 				Ok(())
 			})?;
 		}
@@ -183,18 +183,17 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
+				let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+				ensure!(T::EnabledTradingPairs::get().contains(&trading_pair), Error::<T>::TradingPairNotAllowed);
 
-				let lp_share_currency_id = Self::get_dex_share_currency_id(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-				ensure!(Self::is_enabled_trading_pair(currency_id_a, currency_id_b), Error::<T>::TradingPairNotAllowed);
-				let (currency_id_0, currency_id_1) = Self::sort_currency_id(currency_id_a, currency_id_b);
-				let (max_amount_0, max_amount_1) = if currency_id_a == currency_id_0 {
-					(max_amount_a, max_amount_b)
-				} else {
-					(max_amount_b, max_amount_a)
-				};
-
-				LiquidityPool::try_mutate((currency_id_0, currency_id_1), |(pool_0, pool_1)| -> DispatchResult {
+				LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+					let lp_share_currency_id = trading_pair.get_dex_share_currency_id().ok_or(Error::<T>::InvalidCurrencyId)?;
 					let total_shares = T::Currency::total_issuance(lp_share_currency_id);
+					let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.0 {
+						(max_amount_a, max_amount_b)
+					} else {
+						(max_amount_b, max_amount_a)
+					};
 					let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
 						if total_shares.is_zero() {
 							// initialize this liquidity pool, the initial share is equal to the max value between base currency amount and other currency amount
@@ -228,8 +227,8 @@ decl_module! {
 					);
 
 					let module_account_id = Self::account_id();
-					T::Currency::transfer(currency_id_0, &who, &module_account_id, pool_0_increment)?;
-					T::Currency::transfer(currency_id_1, &who, &module_account_id, pool_1_increment)?;
+					T::Currency::transfer(trading_pair.0, &who, &module_account_id, pool_0_increment)?;
+					T::Currency::transfer(trading_pair.1, &who, &module_account_id, pool_1_increment)?;
 					T::Currency::deposit(lp_share_currency_id, &who, share_increment)?;
 
 					*pool_0 = pool_0.saturating_add(pool_0_increment);
@@ -237,9 +236,9 @@ decl_module! {
 
 					Self::deposit_event(RawEvent::AddLiquidity(
 						who,
-						currency_id_0,
+						trading_pair.0,
 						pool_0_increment,
-						currency_id_1,
+						trading_pair.1,
 						pool_1_increment,
 						share_increment,
 					));
@@ -259,11 +258,10 @@ decl_module! {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				if remove_share.is_zero() { return Ok(()); }
+				let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
 
-				let lp_share_currency_id = Self::get_dex_share_currency_id(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-				let (currency_id_0, currency_id_1) = Self::sort_currency_id(currency_id_a, currency_id_b);
-
-				LiquidityPool::try_mutate((currency_id_0, currency_id_1), |(pool_0, pool_1)| -> DispatchResult {
+				LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+					let lp_share_currency_id = trading_pair.get_dex_share_currency_id().ok_or(Error::<T>::InvalidCurrencyId)?;
 					let total_shares = T::Currency::total_issuance(lp_share_currency_id);
 					let proportion = Ratio::checked_from_rational(remove_share, total_shares).unwrap_or_default();
 					let pool_0_decrement = proportion.saturating_mul_int(*pool_0);
@@ -271,17 +269,17 @@ decl_module! {
 					let module_account_id = Self::account_id();
 
 					T::Currency::withdraw(lp_share_currency_id, &who, remove_share)?;
-					T::Currency::transfer(currency_id_0, &module_account_id, &who, pool_0_decrement)?;
-					T::Currency::transfer(currency_id_1, &module_account_id, &who, pool_1_decrement)?;
+					T::Currency::transfer(trading_pair.0, &module_account_id, &who, pool_0_decrement)?;
+					T::Currency::transfer(trading_pair.1, &module_account_id, &who, pool_1_decrement)?;
 
 					*pool_0 = pool_0.saturating_sub(pool_0_decrement);
 					*pool_1 = pool_1.saturating_sub(pool_1_decrement);
 
 					Self::deposit_event(RawEvent::RemoveLiquidity(
 						who,
-						currency_id_0,
+						trading_pair.0,
 						pool_0_decrement,
-						currency_id_1,
+						trading_pair.1,
 						pool_1_decrement,
 						remove_share,
 					));
@@ -297,36 +295,10 @@ impl<T: Trait> Module<T> {
 		T::ModuleId::get().into_account()
 	}
 
-	/// Sort currency id by ascending order.
-	fn sort_currency_id(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (CurrencyId, CurrencyId) {
-		if currency_id_a > currency_id_b {
-			(currency_id_b, currency_id_a)
-		} else {
-			(currency_id_a, currency_id_b)
-		}
-	}
-
-	fn get_dex_share_currency_id(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<CurrencyId> {
-		let (currency_id_0, currency_id_1) = Self::sort_currency_id(currency_id_a, currency_id_b);
-		match (currency_id_0, currency_id_1) {
-			(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => {
-				Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
-			}
-			_ => None,
-		}
-	}
-
-	fn is_enabled_trading_pair(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> bool {
-		let enabled_trading_pairs = T::EnabledTradingPairs::get();
-		enabled_trading_pairs.contains(&(currency_id_a, currency_id_b))
-			|| enabled_trading_pairs.contains(&(currency_id_b, currency_id_a))
-	}
-
 	fn get_liquidity(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
-		let (currency_id_0, currency_id_1) = Self::sort_currency_id(currency_id_a, currency_id_b);
-		let (pool_0, pool_1) = Self::liquidity_pool((currency_id_0, currency_id_1));
-
-		if currency_id_a == currency_id_0 {
+		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+		let (pool_0, pool_1) = Self::liquidity_pool(trading_pair);
+		if currency_id_a == trading_pair.0 {
 			(pool_0, pool_1)
 		} else {
 			(pool_1, pool_0)
@@ -388,7 +360,7 @@ impl<T: Trait> Module<T> {
 		let mut i: usize = 0;
 		while i + 1 < path_length {
 			ensure!(
-				Self::is_enabled_trading_pair(path[i], path[i + 1]),
+				T::EnabledTradingPairs::get().contains(&TradingPair::new(path[i], path[i + 1])),
 				Error::<T>::TradingPairNotAllowed
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i], path[i + 1]);
@@ -428,7 +400,7 @@ impl<T: Trait> Module<T> {
 		let mut i: usize = path_length - 1;
 		while i > 0 {
 			ensure!(
-				Self::is_enabled_trading_pair(path[i - 1], path[i]),
+				T::EnabledTradingPairs::get().contains(&TradingPair::new(path[i - 1], path[i])),
 				Error::<T>::TradingPairNotAllowed
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i - 1], path[i]);
@@ -459,9 +431,9 @@ impl<T: Trait> Module<T> {
 		supply_increment: Balance,
 		target_decrement: Balance,
 	) {
-		let (currency_id_0, currency_id_1) = Self::sort_currency_id(supply_currency_id, target_currency_id);
-		LiquidityPool::mutate((currency_id_0, currency_id_1), |(pool_0, pool_1)| {
-			if supply_currency_id == currency_id_0 {
+		let trading_pair = TradingPair::new(supply_currency_id, target_currency_id);
+		LiquidityPool::mutate(trading_pair, |(pool_0, pool_1)| {
+			if supply_currency_id == trading_pair.0 {
 				*pool_0 = pool_0.saturating_add(supply_increment);
 				*pool_1 = pool_1.saturating_sub(target_decrement);
 			} else {
@@ -488,7 +460,7 @@ impl<T: Trait> Module<T> {
 
 	fn do_swap_with_exact_supply(
 		who: &T::AccountId,
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
 		price_impact_limit: Option<Ratio>,
@@ -506,14 +478,19 @@ impl<T: Trait> Module<T> {
 			Self::_swap_by_path(&path, &amounts);
 			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
-			Self::deposit_event(RawEvent::Swap(who.clone(), path, supply_amount, actual_target_amount));
+			Self::deposit_event(RawEvent::Swap(
+				who.clone(),
+				path.to_vec(),
+				supply_amount,
+				actual_target_amount,
+			));
 			Ok(actual_target_amount)
 		})
 	}
 
 	fn do_swap_with_exact_target(
 		who: &T::AccountId,
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
 		price_impact_limit: Option<Ratio>,
@@ -528,7 +505,12 @@ impl<T: Trait> Module<T> {
 			Self::_swap_by_path(&path, &amounts);
 			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
-			Self::deposit_event(RawEvent::Swap(who.clone(), path, actual_supply_amount, target_amount));
+			Self::deposit_event(RawEvent::Swap(
+				who.clone(),
+				path.to_vec(),
+				actual_supply_amount,
+				target_amount,
+			));
 			Ok(actual_supply_amount)
 		})
 	}
@@ -540,7 +522,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 	}
 
 	fn get_swap_target_amount(
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		supply_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> Option<Balance> {
@@ -550,7 +532,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 	}
 
 	fn get_swap_supply_amount(
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		target_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> Option<Balance> {
@@ -561,7 +543,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 
 	fn swap_with_exact_supply(
 		who: &T::AccountId,
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
 		gas_price_limit: Option<Ratio>,
@@ -571,7 +553,7 @@ impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 
 	fn swap_with_exact_target(
 		who: &T::AccountId,
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
 		gas_price_limit: Option<Ratio>,

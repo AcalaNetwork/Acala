@@ -76,20 +76,20 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
 	fn get_swap_target_amount(
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		supply_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> Option<Balance>;
 
 	fn get_swap_supply_amount(
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		target_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> Option<Balance>;
 
 	fn swap_with_exact_supply(
 		who: &AccountId,
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
 		gas_price_limit: Option<Ratio>,
@@ -97,7 +97,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 
 	fn swap_with_exact_target(
 		who: &AccountId,
-		path: Vec<CurrencyId>,
+		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
 		gas_price_limit: Option<Ratio>,
@@ -113,7 +113,7 @@ where
 	}
 
 	fn get_swap_target_amount(
-		_path: Vec<CurrencyId>,
+		_path: &[CurrencyId],
 		_supply_amount: Balance,
 		_price_impact_limit: Option<Ratio>,
 	) -> Option<Balance> {
@@ -121,7 +121,7 @@ where
 	}
 
 	fn get_swap_supply_amount(
-		_path: Vec<CurrencyId>,
+		_path: &[CurrencyId],
 		_target_amount: Balance,
 		_price_impact_limit: Option<Ratio>,
 	) -> Option<Balance> {
@@ -130,7 +130,7 @@ where
 
 	fn swap_with_exact_supply(
 		_who: &AccountId,
-		_path: Vec<CurrencyId>,
+		_path: &[CurrencyId],
 		_supply_amount: Balance,
 		_min_target_amount: Balance,
 		_gas_price_limit: Option<Ratio>,
@@ -140,7 +140,7 @@ where
 
 	fn swap_with_exact_target(
 		_who: &AccountId,
-		_path: Vec<CurrencyId>,
+		_path: &[CurrencyId],
 		_target_amount: Balance,
 		_max_supply_amount: Balance,
 		_gas_price_limit: Option<Ratio>,

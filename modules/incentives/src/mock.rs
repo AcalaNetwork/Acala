@@ -153,17 +153,17 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		}
 	}
 
-	fn get_swap_target_amount(_: Vec<CurrencyId>, _: Balance, _: Option<Ratio>) -> Option<Balance> {
+	fn get_swap_target_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(_: Vec<CurrencyId>, _: Balance, _: Option<Ratio>) -> Option<Balance> {
+	fn get_swap_supply_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 
 	fn swap_with_exact_supply(
 		_: &AccountId,
-		_: Vec<CurrencyId>,
+		_: &[CurrencyId],
 		_: Balance,
 		_: Balance,
 		_: Option<Ratio>,
@@ -173,7 +173,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 
 	fn swap_with_exact_target(
 		_: &AccountId,
-		_: Vec<CurrencyId>,
+		_: &[CurrencyId],
 		_: Balance,
 		_: Balance,
 		_: Option<Ratio>,

@@ -46,23 +46,23 @@ benchmarks! {
 	add_liquidity {
 		let first_maker: T::AccountId = account("first_maker", 0, SEED);
 		let second_maker: T::AccountId = account("second_maker", 0, SEED);
-		let (currency_id_a, currency_id_b) = T::EnabledTradingPairs::get()[0];
+		let trading_pair = T::EnabledTradingPairs::get()[0];
 		let amount_a = dollar(100);
 		let amount_b = dollar(10000);
 
 		// set balance
-		T::Currency::update_balance(currency_id_a, &second_maker, amount_a.unique_saturated_into())?;
-		T::Currency::update_balance(currency_id_b, &second_maker, amount_b.unique_saturated_into())?;
+		T::Currency::update_balance(trading_pair.0, &second_maker, amount_a.unique_saturated_into())?;
+		T::Currency::update_balance(trading_pair.1, &second_maker, amount_b.unique_saturated_into())?;
 
 		// first maker inject liquidity
-		inject_liquidity::<T>(first_maker.clone(), currency_id_a, currency_id_b, dollar(100), dollar(10000))?;
-	}: add_liquidity(RawOrigin::Signed(second_maker), currency_id_a, currency_id_b, amount_a, amount_b)
+		inject_liquidity::<T>(first_maker.clone(), trading_pair.0, trading_pair.1, dollar(100), dollar(10000))?;
+	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b)
 
 	remove_liquidity {
 		let maker: T::AccountId = account("maker", 0, SEED);
-		let (currency_id_a, currency_id_b) = T::EnabledTradingPairs::get()[0];
-		inject_liquidity::<T>(maker.clone(), currency_id_a, currency_id_b, dollar(100), dollar(10000))?;
-	}: remove_liquidity(RawOrigin::Signed(maker), currency_id_a, currency_id_b, dollar(50).unique_saturated_into())
+		let trading_pair = T::EnabledTradingPairs::get()[0];
+		inject_liquidity::<T>(maker.clone(), trading_pair.0, trading_pair.1, dollar(100), dollar(10000))?;
+	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, dollar(50).unique_saturated_into())
 }
 
 #[cfg(test)]

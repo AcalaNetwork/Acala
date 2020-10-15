@@ -258,7 +258,7 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 			// should handle by the currencies module.
 			let _ = T::DEX::swap_with_exact_target(
 				who,
-				trading_path,
+				&trading_path,
 				T::NewAccountDeposit::get(),
 				<T as Trait>::Currency::free_balance(currency_id, who),
 				Some(T::MaxSlippageSwapWithDEX::get()),
@@ -426,7 +426,7 @@ where
 
 				if T::DEX::swap_with_exact_target(
 					who,
-					trading_path,
+					&trading_path,
 					balance_fee,
 					<T as Trait>::Currency::free_balance(currency_id, who),
 					price_impact_limit,
