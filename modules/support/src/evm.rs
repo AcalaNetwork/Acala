@@ -2,25 +2,24 @@ use codec::FullCodec;
 
 use pallet_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
 use sp_runtime::traits::MaybeSerializeDeserialize;
-use sp_std::{
-	convert::{TryFrom, TryInto},
-	fmt::Debug,
-	marker::PhantomData,
-	prelude::*,
-	result,
-};
+use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency;
 
 /// The `MultiCurrency` impl precompile.
 ///
+/// `input` components bytes length:
+/// - Action type: 1.
+/// - Currency Id: 4.
+/// - Account Id: 20.
+/// - Amount: 16.
+///
+/// All `input` data start with `action_byte ++ currency_id_bytes`;
+///
 /// The 1st byte of `input` indicates action.
-/// - `0`: Query total issuance. In this case, the 2nd byte is `currency_id`.
-/// - `1`: Query balance. In this case, the 2nd byte is `currency_id`, and the
-///   rest 20 bytes is `account_id`. In total the `input` should be 22 bytes.
-/// - `2`: Transfer. In this case, the 2nd byte is `currency_id`, and then 20
-///   bytes as `from`, which follows 20 bytes as `to`, and the rest 16 bytes as
-///   `amount`. In total the `input` should be 58 bytes.
+/// - `0`: Query total issuance. 5 bytes in total.
+/// - `1`: Query balance. Rest bytes: `account_id`. 25 bytes in total.
+/// - `2`: Transfer. Rest bytes: `from ++ to ++ amount`. 61 bytes in total.
 pub struct MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC>(
 	PhantomData<(AccountId, AccountIdConverter, CurrencyId, MC)>,
 );
@@ -47,18 +46,22 @@ impl<AccountId, AccountIdConverter, CurrencyId, MC> Precompile
 	for MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC>
 where
 	AccountIdConverter: AddressMapping<AccountId>,
-	CurrencyId: FullCodec + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug + TryFrom<u8>,
+	CurrencyId: FullCodec + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug,
 	MC: MultiCurrency<AccountId, CurrencyId = CurrencyId>,
 {
 	fn execute(input: &[u8], _target_gas: Option<usize>) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		//TODO: evaluate cost
 
-		if input.len() <= 1 {
+		if input.len() <= 5 {
 			return Err(ExitError::Other("invalid input"));
 		}
 
 		let action: Action = input[0].into();
-		let currency_id: CurrencyId = input[1].try_into().map_err(|_| ExitError::Other("invalid currency"))?;
+
+		let mut currency_id_bytes = [0u8; 4];
+		currency_id_bytes[..].copy_from_slice(&input[1..5]);
+		let currency_id: CurrencyId =
+			CurrencyId::decode(&mut &currency_id_bytes[..]).map_err(|_| ExitError::Other("invalid currency"))?;
 
 		match action {
 			Action::QueryTotalIssuance => {
@@ -66,24 +69,24 @@ where
 				Ok((ExitSucceed::Returned, total_issuance, 0))
 			}
 			Action::QueryBalance => {
-				if input.len() != 22 {
+				if input.len() != 25 {
 					return Err(ExitError::Other("invalid input"));
 				}
 
-				let who = account_id_from_slice::<_, AccountIdConverter>(&input[2..23]);
+				let who = account_id_from_slice::<_, AccountIdConverter>(&input[5..26]);
 				let balance = vec_u8_from_balance(MC::total_balance(currency_id, &who))?;
 
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
 			Action::Transfer => {
-				if input.len() != 58 {
+				if input.len() != 61 {
 					return Err(ExitError::Other("invalid input"));
 				}
 
-				let from = account_id_from_slice::<_, AccountIdConverter>(&input[2..22]);
-				let to = account_id_from_slice::<_, AccountIdConverter>(&input[22..42]);
+				let from = account_id_from_slice::<_, AccountIdConverter>(&input[5..25]);
+				let to = account_id_from_slice::<_, AccountIdConverter>(&input[25..45]);
 				let mut amount_bytes = [0u8; 16];
-				amount_bytes[..].copy_from_slice(&input[42..]);
+				amount_bytes[..].copy_from_slice(&input[45..]);
 				let amount = u128::from_be_bytes(amount_bytes)
 					.try_into()
 					.map_err(|_| ExitError::Other("u128 to balance failed"))?;
