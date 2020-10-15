@@ -23,6 +23,24 @@ pub struct MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC
 	PhantomData<(AccountId, AccountIdConverter, CurrencyId, MC)>,
 );
 
+enum Action {
+	QueryTotalIssuance,
+	QueryBalance,
+	Transfer,
+	Unknown,
+}
+
+impl From<u8> for Action {
+	fn from(a: u8) -> Self {
+		match a {
+			0 => Action::QueryTotalIssuance,
+			1 => Action::QueryBalance,
+			2 => Action::Transfer,
+			_ => Action::Unknown,
+		}
+	}
+}
+
 impl<AccountId, AccountIdConverter, CurrencyId, MC> Precompile
 	for MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC>
 where
@@ -39,50 +57,46 @@ where
 
 		let mut action_byte = [0u8; 1];
 		action_byte[..].copy_from_slice(&input[0..1]);
-		let action = u8::from_be_bytes(action_byte);
+		let action: Action = u8::from_be_bytes(action_byte).into();
 
 		let mut currency_id_byte = [0u8; 1];
 		currency_id_byte[..].copy_from_slice(&input[1..2]);
 		let currency_id: CurrencyId = u8::from_be_bytes(currency_id_byte).into();
 
-		// Query total issuance.
-		if action == 0 {
-			let total_issuance = vec_u8_from_balance(MC::total_issuance(currency_id))?;
-			return Ok((ExitSucceed::Returned, total_issuance, 0));
-		}
-
-		// Query balance.
-		if action == 1 {
-			if input.len() != 22 {
-				return Err(ExitError::Other("invalid input"));
+		match action {
+			Action::QueryTotalIssuance => {
+				let total_issuance = vec_u8_from_balance(MC::total_issuance(currency_id))?;
+				Ok((ExitSucceed::Returned, total_issuance, 0))
 			}
+			Action::QueryBalance => {
+				if input.len() != 22 {
+					return Err(ExitError::Other("invalid input"));
+				}
 
-			let who = account_id_from_slice::<_, AccountIdConverter>(&input[2..23]);
-			let balance = vec_u8_from_balance(MC::total_balance(currency_id, &who))?;
+				let who = account_id_from_slice::<_, AccountIdConverter>(&input[2..23]);
+				let balance = vec_u8_from_balance(MC::total_balance(currency_id, &who))?;
 
-			return Ok((ExitSucceed::Returned, balance, 0));
-		}
-
-		// Transfer.
-		if action == 2 {
-			if input.len() != 58 {
-				return Err(ExitError::Other("invalid input"));
+				Ok((ExitSucceed::Returned, balance, 0))
 			}
+			Action::Transfer => {
+				if input.len() != 58 {
+					return Err(ExitError::Other("invalid input"));
+				}
 
-			let from = account_id_from_slice::<_, AccountIdConverter>(&input[2..22]);
-			let to = account_id_from_slice::<_, AccountIdConverter>(&input[22..42]);
-			let mut amount_bytes = [0u8; 16];
-			amount_bytes[..].copy_from_slice(&input[42..]);
-			let amount = u128::from_be_bytes(amount_bytes)
-				.try_into()
-				.map_err(|_| ExitError::Other("u128 to balance failed"))?;
+				let from = account_id_from_slice::<_, AccountIdConverter>(&input[2..22]);
+				let to = account_id_from_slice::<_, AccountIdConverter>(&input[22..42]);
+				let mut amount_bytes = [0u8; 16];
+				amount_bytes[..].copy_from_slice(&input[42..]);
+				let amount = u128::from_be_bytes(amount_bytes)
+					.try_into()
+					.map_err(|_| ExitError::Other("u128 to balance failed"))?;
 
-			MC::transfer(currency_id, &from, &to, amount).map_err(|e| ExitError::Other(e.into()))?;
+				MC::transfer(currency_id, &from, &to, amount).map_err(|e| ExitError::Other(e.into()))?;
 
-			return Ok((ExitSucceed::Returned, vec![], 0));
+				Ok((ExitSucceed::Returned, vec![], 0))
+			}
+			Action::Unknown => Err(ExitError::Other("unknown action")),
 		}
-
-		Err(ExitError::Other("unknown action"))
 	}
 }
 
