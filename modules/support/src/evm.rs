@@ -1,14 +1,10 @@
 use codec::FullCodec;
 
-use pallet_evm::{ExitError, ExitSucceed, Precompile};
+use pallet_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
 use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency;
-
-pub trait AccountIdConversion<AccountId> {
-	fn from_eth_address(address: &[u8; 20]) -> AccountId;
-}
 
 /// The `MultiCurrency` impl precompile.
 ///
@@ -44,7 +40,7 @@ impl From<u8> for Action {
 impl<AccountId, AccountIdConverter, CurrencyId, MC> Precompile
 	for MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC>
 where
-	AccountIdConverter: AccountIdConversion<AccountId>,
+	AccountIdConverter: AddressMapping<AccountId>,
 	CurrencyId: FullCodec + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug + From<u8>,
 	MC: MultiCurrency<AccountId, CurrencyId = CurrencyId>,
 {
@@ -55,13 +51,8 @@ where
 			return Err(ExitError::Other("invalid input"));
 		}
 
-		let mut action_byte = [0u8; 1];
-		action_byte[..].copy_from_slice(&input[0..1]);
-		let action: Action = u8::from_be_bytes(action_byte).into();
-
-		let mut currency_id_byte = [0u8; 1];
-		currency_id_byte[..].copy_from_slice(&input[1..2]);
-		let currency_id: CurrencyId = u8::from_be_bytes(currency_id_byte).into();
+		let action: Action = input[0].into();
+		let currency_id: CurrencyId = input[1].into();
 
 		match action {
 			Action::QueryTotalIssuance => {
@@ -100,10 +91,10 @@ where
 	}
 }
 
-fn account_id_from_slice<AccountId, AccountIdConverter: AccountIdConversion<AccountId>>(src: &[u8]) -> AccountId {
+fn account_id_from_slice<AccountId, AccountIdConverter: AddressMapping<AccountId>>(src: &[u8]) -> AccountId {
 	let mut address = [0u8; 20];
 	address[..].copy_from_slice(src);
-	AccountIdConverter::from_eth_address(&address)
+	AccountIdConverter::into_account_id(address.into())
 }
 
 fn vec_u8_from_balance<Balance: TryInto<u128>>(b: Balance) -> result::Result<Vec<u8>, ExitError> {
