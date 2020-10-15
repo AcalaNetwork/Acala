@@ -44,10 +44,13 @@ use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, currency::MultiCurrency, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
+use pallet_evm::{Account as EVMAccount, EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
+
+use module_support::evm::MultiCurrencyPrecompile;
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -1286,7 +1289,7 @@ impl pallet_evm::Trait for Runtime {
 	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
 	type Currency = Balances;
 	type Event = Event;
-	type Precompiles = ();
+	type Precompiles = (MultiCurrencyPrecompile<AccountId, HashedAddressMapping<BlakeTwo256>, CurrencyId, Currencies>,);
 	type ChainId = ChainId;
 }
 

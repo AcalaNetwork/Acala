@@ -2,7 +2,13 @@ use codec::FullCodec;
 
 use pallet_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
 use sp_runtime::traits::MaybeSerializeDeserialize;
-use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	fmt::Debug,
+	marker::PhantomData,
+	prelude::*,
+	result,
+};
 
 use orml_traits::MultiCurrency;
 
@@ -41,7 +47,7 @@ impl<AccountId, AccountIdConverter, CurrencyId, MC> Precompile
 	for MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC>
 where
 	AccountIdConverter: AddressMapping<AccountId>,
-	CurrencyId: FullCodec + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug + From<u8>,
+	CurrencyId: FullCodec + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug + TryFrom<u8>,
 	MC: MultiCurrency<AccountId, CurrencyId = CurrencyId>,
 {
 	fn execute(input: &[u8], _target_gas: Option<usize>) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
@@ -52,7 +58,7 @@ where
 		}
 
 		let action: Action = input[0].into();
-		let currency_id: CurrencyId = input[1].into();
+		let currency_id: CurrencyId = input[1].try_into().map_err(|_| ExitError::Other("invalid currency"))?;
 
 		match action {
 			Action::QueryTotalIssuance => {
