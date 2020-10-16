@@ -5,11 +5,10 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use primitives::TokenSymbol;
+use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
-use support::Rate;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -21,7 +20,6 @@ pub const BOB: AccountId = 1;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
-pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -121,19 +119,19 @@ impl orml_currencies::Trait for Runtime {
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 parameter_types! {
-	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
+	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const TradingPathLimit: usize = 3;
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
 impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
-	type EnabledCurrencyIds = EnabledCurrencyIds;
-	type GetBaseCurrencyId = GetStableCurrencyId;
+	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = CDPTreasuryModule;
+	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
 }
@@ -141,6 +139,7 @@ pub type DEXModule = dex::Module<Runtime>;
 
 thread_local! {
 	pub static TOTAL_COLLATERAL_AUCTION: RefCell<u32> = RefCell::new(0);
+	pub static TOTAL_COLLATERAL_IN_AUCTION: RefCell<Balance> = RefCell::new(0);
 	pub static TOTAL_DEBIT_AUCTION: RefCell<u32> = RefCell::new(0);
 	pub static TOTAL_SURPLUS_AUCTION: RefCell<u32> = RefCell::new(0);
 }
@@ -154,10 +153,11 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	fn new_collateral_auction(
 		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
-		_amount: Self::Balance,
+		amount: Self::Balance,
 		_target: Self::Balance,
 	) -> DispatchResult {
 		TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut() += 1);
+		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut() += amount);
 		Ok(())
 	}
 
@@ -176,7 +176,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		Default::default()
+		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut())
 	}
 
 	fn get_total_surplus_in_auction() -> Self::Balance {

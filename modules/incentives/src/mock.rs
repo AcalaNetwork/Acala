@@ -24,6 +24,7 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
+pub const DOT_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::DOT, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -142,34 +143,42 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 
 pub struct MockDEX;
 impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
-	fn get_target_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Option<Balance> {
+	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
+		match (currency_id_a, currency_id_b) {
+			(AUSD, BTC) => (500, 100),
+			(AUSD, DOT) => (400, 100),
+			(BTC, AUSD) => (100, 500),
+			(DOT, AUSD) => (100, 400),
+			_ => (0, 0),
+		}
+	}
+
+	fn get_swap_target_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_supply_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Option<Balance> {
+	fn get_swap_supply_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn exchange_currency(
-		_: AccountId,
-		_: CurrencyId,
+	fn swap_with_exact_supply(
+		_: &AccountId,
+		_: &[CurrencyId],
 		_: Balance,
-		_: CurrencyId,
 		_: Balance,
+		_: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
 
-	fn get_exchange_slippage(_: CurrencyId, _: CurrencyId, _: Balance) -> Option<Ratio> {
+	fn swap_with_exact_target(
+		_: &AccountId,
+		_: &[CurrencyId],
+		_: Balance,
+		_: Balance,
+		_: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
-	}
-
-	fn get_liquidity_pool(currency_id: CurrencyId) -> (Balance, Balance) {
-		match currency_id {
-			CurrencyId::Token(TokenSymbol::XBTC) => (100, 500),
-			CurrencyId::Token(TokenSymbol::DOT) => (100, 400),
-			_ => (0, 0),
-		}
 	}
 }
 

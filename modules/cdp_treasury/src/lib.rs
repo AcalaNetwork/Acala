@@ -213,6 +213,12 @@ impl<T: Trait> Module<T> {
 		T::Currency::free_balance(currency_id, &Self::account_id())
 	}
 
+	/// Get collateral amount not in auction
+	pub fn total_collaterals_not_in_auction(currency_id: CurrencyId) -> Balance {
+		T::Currency::free_balance(currency_id, &Self::account_id())
+			.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
+	}
+
 	fn offset_surplus_and_debit() {
 		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
 
@@ -289,21 +295,48 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 }
 
 impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
-	fn swap_collateral_to_stable(
+	/// Swap exact amount of collateral in auction to stable,
+	/// return actual target stable amount
+	fn swap_exact_collateral_in_auction_to_stable(
 		currency_id: CurrencyId,
 		supply_amount: Balance,
-		target_amount: Balance,
+		min_target_amount: Balance,
+		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		ensure!(
-			Self::total_collaterals(currency_id) >= supply_amount,
+			Self::total_collaterals(currency_id) >= supply_amount
+				&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_amount,
 			Error::<T>::CollateralNotEnough,
 		);
-		T::DEX::exchange_currency(
-			Self::account_id(),
-			currency_id,
+
+		T::DEX::swap_with_exact_supply(
+			&Self::account_id(),
+			&[currency_id, T::GetStableCurrencyId::get()],
 			supply_amount,
-			T::GetStableCurrencyId::get(),
+			min_target_amount,
+			price_impact_limit,
+		)
+	}
+
+	/// swap collateral which not in auction to get exact stable,
+	/// return actual supply collateral amount
+	fn swap_collateral_not_in_auction_with_exact_stable(
+		currency_id: CurrencyId,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		ensure!(
+			Self::total_collaterals_not_in_auction(currency_id) >= max_supply_amount,
+			Error::<T>::CollateralNotEnough,
+		);
+
+		T::DEX::swap_with_exact_target(
+			&Self::account_id(),
+			&[currency_id, T::GetStableCurrencyId::get()],
 			target_amount,
+			max_supply_amount,
+			price_impact_limit,
 		)
 	}
 
@@ -315,9 +348,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		splited: bool,
 	) -> DispatchResult {
 		ensure!(
-			Self::total_collaterals(currency_id)
-				.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
-				>= amount,
+			Self::total_collaterals_not_in_auction(currency_id) >= amount,
 			Error::<T>::CollateralNotEnough,
 		);
 

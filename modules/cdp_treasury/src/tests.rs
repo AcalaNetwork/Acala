@@ -169,18 +169,46 @@ fn get_debit_proportion_work() {
 }
 
 #[test]
-fn swap_collateral_to_stable_work() {
+fn swap_collateral_not_in_auction_with_exact_stable_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC_AUSD_LP, 100, 1000));
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, AUSD, 100, 1000));
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 0);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 100));
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 100);
+		assert_noop!(
+			CDPTreasuryModule::swap_collateral_not_in_auction_with_exact_stable(BTC, 499, 101, None),
+			Error::<Runtime>::CollateralNotEnough,
+		);
+
+		assert_ok!(CDPTreasuryModule::swap_collateral_not_in_auction_with_exact_stable(
+			BTC, 499, 100, None
+		));
+		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 499);
+	});
+}
+
+#[test]
+fn swap_exact_collateral_in_auction_to_stable_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, AUSD, 100, 1000));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 100));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_stable(BTC, 101, 500),
+			CDPTreasuryModule::swap_exact_collateral_in_auction_to_stable(BTC, 100, 500, None),
 			Error::<Runtime>::CollateralNotEnough,
 		);
-		assert_ok!(CDPTreasuryModule::swap_collateral_to_stable(BTC, 100, 500));
+		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
+			BTC, 100, 1000, ALICE, true
+		));
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 100);
+
+		assert_ok!(CDPTreasuryModule::swap_exact_collateral_in_auction_to_stable(
+			BTC, 100, 500, None
+		));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 500);
 	});
@@ -201,6 +229,7 @@ fn create_collateral_auctions_work() {
 			BTC, 1000, 1000, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 1);
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1000);
 
 		// set collateral auction maximum size
 		assert_ok!(CDPTreasuryModule::set_collateral_auction_maximum_size(
@@ -215,6 +244,7 @@ fn create_collateral_auctions_work() {
 			BTC, 200, 1000, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 2);
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1200);
 
 		// not exceed lots count cap
 		// auction + 4
@@ -222,6 +252,7 @@ fn create_collateral_auctions_work() {
 			BTC, 1000, 1000, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 6);
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 2200);
 
 		// exceed lots count cap
 		// auction + 5
@@ -229,6 +260,7 @@ fn create_collateral_auctions_work() {
 			BTC, 2000, 1000, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 11);
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 4200);
 	});
 }
 

@@ -29,6 +29,4 @@ pallet-contracts-rpc = { version = "0.8.0" }
 
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
-module-dex-rpc = { path = "../modules/dex/rpc" }
-
 runtime-common = { path = "../runtime/common" }

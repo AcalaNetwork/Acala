@@ -34,7 +34,7 @@ use sp_runtime::{
 	FixedPointOperand, ModuleId,
 };
 use sp_std::convert::Infallible;
-use sp_std::prelude::*;
+use sp_std::{prelude::*, vec};
 use support::{DEXManager, Ratio};
 
 mod default_weight;
@@ -56,8 +56,11 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
 	/// Native currency id, the actual received currency type as fee for
-	/// treasury.
+	/// treasury. Should be ACA
 	type NativeCurrencyId: Get<CurrencyId>;
+
+	/// Stable currency id, should be AUSD
+	type StableCurrencyId: Get<CurrencyId>;
 
 	/// Currency to transfer, reserve/unreserve, lock/unlock assets
 	type Currency: MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
@@ -114,8 +117,11 @@ decl_module! {
 		/// All non-native currency ids in Acala.
 		const AllNonNativeCurrencyIds: Vec<CurrencyId> = T::AllNonNativeCurrencyIds::get();
 
-		/// Native currency id, the actual received currency type as fee for treasury
+		/// Native currency id, the actual received currency type as fee for treasury.
 		const NativeCurrencyId: CurrencyId = T::NativeCurrencyId::get();
+
+		/// Stable currency id.
+		const StableCurrencyId: CurrencyId = T::StableCurrencyId::get();
 
 		/// Deposit for opening account, would be reserved until account closed.
 		const NewAccountDeposit: Balance = T::NewAccountDeposit::get();
@@ -234,46 +240,29 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 		let native_currency_id = T::NativeCurrencyId::get();
 
 		if !<Self as StoredMap<_, _>>::is_explicit(who) && currency_id != native_currency_id {
-			let new_account_deposit = T::NewAccountDeposit::get();
-			let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, new_account_deposit);
-			let amount = <T as Trait>::Currency::free_balance(currency_id, who);
+			let stable_currency_id = T::StableCurrencyId::get();
+			let trading_path = if currency_id == stable_currency_id {
+				vec![stable_currency_id, native_currency_id]
+			} else {
+				vec![currency_id, stable_currency_id, native_currency_id]
+			};
 
-			if let Some(supply_amount_needed) = supply_amount_needed {
-				let slippage = T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed);
-				if let Some(slippage) = slippage {
-					if slippage <= T::MaxSlippageSwapWithDEX::get() {
-						if amount >= supply_amount_needed {
-							// successful swap will cause changes in native currency,
-							// which also means that it will open a new account
-							// exchange token to native currency and open account.
-							// if it failed, leave some dust storage is not a critical issue,
-							// just open account without reserve NewAccountDeposit.
-							let _ = T::DEX::exchange_currency(
-								who.clone(),
-								currency_id,
-								supply_amount_needed,
-								native_currency_id,
-								new_account_deposit,
-							);
-						} else {
-							// open account will fail because there's no enough native token,
-							// transfer all token as dust to treasury account.
-							let treasury_account = Self::treasury_account_id();
-							if *who != treasury_account {
-								// transfer all free balances from a new account to treasury account, so it
-								// shouldn't fail. but even it failed, leave some dust storage is not a critical
-								// issue, just open account without reserve NewAccountDeposit.
-								let _ = <T as Trait>::Currency::transfer(currency_id, who, &treasury_account, amount);
-							}
-						}
-					}
-				}
-			}
-
-			// Note: Don't recycle non-native token to avoid unreasonable loss
+			// Successful swap will cause changes in native currency,
+			// which also means that it will open a new account
+			// exchange token to native currency and open account.
+			// If swap failed, will leave some dust storage is not a critical issue,
+			// just open account without reserve NewAccountDeposit.
+			// Don't recycle non-native to avoid unreasonable loss
 			// due to insufficient liquidity of DEX, can try to open this
-			// account again later. This may leave some dust account data of
-			// non-native token, then consider repeat it by other methods.
+			// account again later. If want to recycle dust non-native,
+			// should handle by the currencies module.
+			let _ = T::DEX::swap_with_exact_target(
+				who,
+				&trading_path,
+				T::NewAccountDeposit::get(),
+				<T as Trait>::Currency::free_balance(currency_id, who),
+				Some(T::MaxSlippageSwapWithDEX::get()),
+			);
 		}
 	}
 }
@@ -419,7 +408,9 @@ where
 		// try to use non-native currency to swap native currency by exchange with DEX
 		if !native_is_enough {
 			let native_currency_id = T::NativeCurrencyId::get();
+			let stable_currency_id = T::StableCurrencyId::get();
 			let other_currency_ids = T::AllNonNativeCurrencyIds::get();
+			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
 			// Note: in fact, just obtain the gap between of fee and usable native currency
 			// amount, but `Currency` does not expose interface to get usable balance by
 			// specific reason. Here try to swap the whole fee by non-native currency.
@@ -427,26 +418,23 @@ where
 
 			// iterator non-native currencies to get enough fee
 			for currency_id in other_currency_ids {
-				let currency_amount = <T as Trait>::Currency::free_balance(currency_id, who);
-				let supply_amount_needed = T::DEX::get_supply_amount(currency_id, native_currency_id, balance_fee);
+				let trading_path = if currency_id == stable_currency_id {
+					vec![stable_currency_id, native_currency_id]
+				} else {
+					vec![currency_id, stable_currency_id, native_currency_id]
+				};
 
-				// the balance is sufficient and slippage is acceptable
-				if let Some(supply_amount_needed) = supply_amount_needed {
-					if currency_amount >= supply_amount_needed
-						&& T::DEX::get_exchange_slippage(currency_id, native_currency_id, supply_amount_needed)
-							.map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
-						&& T::DEX::exchange_currency(
-							who.clone(),
-							currency_id,
-							supply_amount_needed,
-							native_currency_id,
-							balance_fee,
-						)
-						.is_ok()
-					{
-						// successfully swap, break iteration
-						break;
-					}
+				if T::DEX::swap_with_exact_target(
+					who,
+					&trading_path,
+					balance_fee,
+					<T as Trait>::Currency::free_balance(currency_id, who),
+					price_impact_limit,
+				)
+				.is_ok()
+				{
+					// successfully swap, break iteration
+					break;
 				}
 			}
 		}

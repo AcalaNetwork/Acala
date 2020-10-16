@@ -792,35 +792,36 @@ impl<T: Trait> Module<T> {
 			// if bid_price doesn't reach target and trading with DEX will get better result
 			if !collateral_auction.in_reverse_stage(bid_price)
 				&& bid_price
-					< T::DEX::get_target_amount(
-						collateral_auction.currency_id,
-						T::GetStableCurrencyId::get(),
+					< T::DEX::get_swap_target_amount(
+						&[collateral_auction.currency_id, T::GetStableCurrencyId::get()],
 						collateral_auction.amount,
+						None,
 					)
 					.unwrap_or_default()
 			{
-				// try trade with DEX
-				if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
+				// try swap collateral in auction with DEX to get stable
+				if let Ok(stable_amount) = T::CDPTreasury::swap_exact_collateral_in_auction_to_stable(
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 					Zero::zero(),
+					None,
 				) {
 					// swap successfully, will not deal
 					should_deal = false;
 
 					// refund stable currency to the last bidder, it shouldn't fail and affect the
-					// process. but even it failed, just the winner did not get the amount. it can
-					// be fixed by treasury council.
+					// process. but even it failed, just the winner did not get the bid price. it
+					// can be fixed by treasury council.
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
-					if collateral_auction.in_reverse_stage(amount) {
+					if collateral_auction.in_reverse_stage(stable_amount) {
 						// refund extra stable currency to recipient
-						let refund_amount = amount
+						let refund_amount = stable_amount
 							.checked_sub(collateral_auction.target)
-							.expect("ensured amount > target; qed");
+							.expect("ensured stable_amount > target; qed");
 						// it shouldn't fail and affect the process.
-						// but even it failed, just the winner did not get the amount. it can be fixed
-						// by treasury council.
+						// but even it failed, just the winner did not get the refund amount. it can be
+						// fixed by treasury council.
 						let _ = T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
 					}
 
@@ -828,7 +829,7 @@ impl<T: Trait> Module<T> {
 						auction_id,
 						collateral_auction.currency_id,
 						collateral_auction.amount,
-						amount,
+						stable_amount,
 					));
 				}
 			}
