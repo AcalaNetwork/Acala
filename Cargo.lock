@@ -67,7 +67,6 @@ version = "0.6.1"
 dependencies = [
  "acala-primitives",
  "jsonrpc-core",
- "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts-rpc",
@@ -112,7 +111,6 @@ dependencies = [
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
  "module-dex",
- "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
  "module-homa",
@@ -201,7 +199,6 @@ dependencies = [
  "hex-literal 0.3.1",
  "karura-runtime",
  "mandala-runtime",
- "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts",
@@ -2785,7 +2782,6 @@ dependencies = [
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
  "module-dex",
- "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
  "module-homa",
@@ -3529,7 +3525,6 @@ dependencies = [
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
  "module-dex",
- "module-dex-rpc-runtime-api",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
  "module-homa",
@@ -3971,7 +3966,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "module-cdp-treasury",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -3982,35 +3976,6 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-dex-rpc"
-version = "0.6.1"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "module-dex-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-dex-rpc-runtime-api"
-version = "0.6.1"
-dependencies = [
- "parity-scale-codec",
- "serde",
- "sp-api",
  "sp-runtime",
  "sp-std",
 ]
@@ -4595,7 +4560,7 @@ checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
 
 [[package]]
 name = "orml-auction"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4611,7 +4576,7 @@ dependencies = [
 
 [[package]]
 name = "orml-authority"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4628,7 +4593,7 @@ dependencies = [
 
 [[package]]
 name = "orml-benchmarking"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4645,7 +4610,7 @@ dependencies = [
 
 [[package]]
 name = "orml-currencies"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4663,7 +4628,7 @@ dependencies = [
 
 [[package]]
 name = "orml-gradually-update"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4689,7 +4654,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4707,7 +4672,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4721,7 +4686,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc-runtime-api"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -4730,7 +4695,7 @@ dependencies = [
 
 [[package]]
 name = "orml-rewards"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4746,7 +4711,7 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4764,7 +4729,7 @@ dependencies = [
 
 [[package]]
 name = "orml-traits"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4779,7 +4744,7 @@ dependencies = [
 
 [[package]]
 name = "orml-utilities"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4794,7 +4759,7 @@ dependencies = [
 
 [[package]]
 name = "orml-vesting"
-version = "0.3.2-dev"
+version = "0.3.1-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",

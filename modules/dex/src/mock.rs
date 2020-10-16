@@ -3,29 +3,24 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
-use primitives::TokenSymbol;
+use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchResult, Perbill};
+use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
-use support::{AuctionManager, Rate};
 
-pub type AccountId = u128;
 pub type BlockNumber = u64;
-pub type Amount = i128;
-pub type AuctionId = u32;
+pub type AccountId = u128;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CAROL: AccountId = 3;
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
-pub const DOT_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::DOT, TokenSymbol::AUSD);
+pub const AUSD_XBTC_PAIR: TradingPair = TradingPair(AUSD, XBTC);
+pub const AUSD_DOT_PAIR: TradingPair = TradingPair(AUSD, DOT);
+pub const DOT_XBTC_PAIR: TradingPair = TradingPair(DOT, XBTC);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -39,7 +34,6 @@ impl_outer_event! {
 		frame_system<T>,
 		dex<T>,
 		orml_tokens<T>,
-		cdp_treasury,
 	}
 }
 
@@ -48,7 +42,7 @@ impl_outer_origin! {
 }
 
 parameter_types! {
-	pub const BlockHashCount: u64 = 250;
+	pub const BlockHashCount: BlockNumber = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
@@ -93,84 +87,23 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-ord_parameter_types! {
-	pub const One: AccountId = 1;
-}
-
-parameter_types! {
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub const MaxAuctionsCount: u32 = 10_000;
-	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
-}
-
-impl cdp_treasury::Trait for Runtime {
-	type Event = TestEvent;
-	type Currency = Tokens;
-	type GetStableCurrencyId = GetStableCurrencyId;
-	type AuctionManagerHandler = MockAuctionManagerHandler;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type DEX = ();
-	type MaxAuctionsCount = MaxAuctionsCount;
-	type ModuleId = CDPTreasuryModuleId;
-	type WeightInfo = ();
-}
-pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
-
-pub struct MockAuctionManagerHandler;
-impl AuctionManager<AccountId> for MockAuctionManagerHandler {
-	type CurrencyId = CurrencyId;
-	type Balance = Balance;
-	type AuctionId = AuctionId;
-	fn new_collateral_auction(
-		_refund_recipient: &AccountId,
-		_currency_id: Self::CurrencyId,
-		_amount: Self::Balance,
-		_target: Self::Balance,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) -> DispatchResult {
-		unimplemented!()
-	}
-	fn new_surplus_auction(_amount: Self::Balance) -> DispatchResult {
-		unimplemented!()
-	}
-	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		unimplemented!()
-	}
-	fn get_total_surplus_in_auction() -> Self::Balance {
-		unimplemented!()
-	}
-	fn get_total_debit_in_auction() -> Self::Balance {
-		unimplemented!()
-	}
-	fn get_total_target_in_auction() -> Self::Balance {
-		unimplemented!()
-	}
-}
-
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
 parameter_types! {
-	pub const GetBaseCurrencyId: CurrencyId = AUSD;
-	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 100);
-	pub EnabledCurrencyIds : Vec<CurrencyId> = vec![BTC, DOT];
+	pub const GetExchangeFee: (u32, u32) = (1, 100);
+	pub const TradingPathLimit: usize = 3;
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![AUSD_DOT_PAIR, AUSD_XBTC_PAIR, DOT_XBTC_PAIR];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type EnabledCurrencyIds = EnabledCurrencyIds;
-	type GetBaseCurrencyId = GetBaseCurrencyId;
+	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = CDPTreasuryModule;
+	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
 }
@@ -186,8 +119,8 @@ impl Default for ExtBuilder {
 			endowed_accounts: vec![
 				(ALICE, AUSD, 1_000_000_000_000_000_000u128),
 				(BOB, AUSD, 1_000_000_000_000_000_000u128),
-				(ALICE, BTC, 1_000_000_000_000_000_000u128),
-				(BOB, BTC, 1_000_000_000_000_000_000u128),
+				(ALICE, XBTC, 1_000_000_000_000_000_000u128),
+				(BOB, XBTC, 1_000_000_000_000_000_000u128),
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],

@@ -277,23 +277,6 @@ decl_module! {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::CDPTreasury is module_cdp_treasury
-		/// 	- T::DEX is module_dex
-		/// - Complexity: `O(1)`
-		/// - Db reads:
-		///		- liquidate by auction: 19
-		///		- liquidate by dex: 19
-		/// - Db writes:
-		///		- liquidate by auction: 14
-		///		- liquidate by dex: 14
-		/// -------------------
-		/// Base Weight:
-		///		- liquidate by auction: 200.1 µs
-		///		- liquidate by dex: 325.3 µs
-		/// # </weight>
 		#[weight = (T::WeightInfo::liquidate_by_dex(), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
@@ -318,7 +301,6 @@ decl_module! {
 		/// # <weight>
 		/// - Preconditions:
 		/// 	- T::CDPTreasury is module_cdp_treasury
-		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
 		/// - Db reads: 10
 		/// - Db writes: 6
@@ -672,7 +654,6 @@ impl<T: Trait> Module<T> {
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
-		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		// ensure the cdp is unsafe
 		ensure!(
@@ -685,40 +666,26 @@ impl<T: Trait> Module<T> {
 
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
-		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 
-		// if collateral can swap enough native token in DEX and exchange
-		// slippage is below the limit, directly exchange with DEX, otherwise create
-		// collateral auctions.
+		// try use collateral to swap enough native token in DEX when the price impact
+		// is below the limit, otherwise create collateral auctions.
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
-			if let Some(supply_collateral_amount) = supply_collateral_amount {
-				if collateral >= supply_collateral_amount {
-					// ensure have sufficient collateral
-					if let Some(slippage) =
-						T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount)
-					{
-						if slippage <= T::MaxSlippageSwapWithDEX::get() {
-							// slippage is acceptable
-							<T as Trait>::CDPTreasury::swap_collateral_to_stable(
-								currency_id,
-								supply_collateral_amount,
-								target_stable_amount,
-							)?;
+			// swap exact stable with DEX in limit of price impact
+			if let Ok(actual_supply_collateral) =
+				<T as Trait>::CDPTreasury::swap_collateral_not_in_auction_with_exact_stable(
+					currency_id,
+					target_stable_amount,
+					collateral,
+					Some(T::MaxSlippageSwapWithDEX::get()),
+				) {
+				// refund remain collateral to CDP owner
+				let refund_collateral_amount = collateral
+					.checked_sub(actual_supply_collateral)
+					.expect("swap succecced means collateral >= actual_supply_collateral; qed");
 
-							// refund remain collateral to CDP owner
-							let refund_collateral_amount = collateral
-								.checked_sub(supply_collateral_amount)
-								.expect("ensured collateral >= supply_collateral_amount on exchange; qed");
-							<T as Trait>::CDPTreasury::withdraw_collateral(
-								&who,
-								currency_id,
-								refund_collateral_amount,
-							)?;
+				<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 
-							return Ok(LiquidationStrategy::Exchange);
-						}
-					}
-				}
+				return Ok(LiquidationStrategy::Exchange);
 			}
 
 			// create collateral auctions by cdp treasury

@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use primitives::TokenSymbol;
+use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
@@ -26,7 +26,6 @@ pub const CAROL: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
-pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -159,18 +158,18 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const TradingPathLimit: usize = 3;
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
 }
 
 impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type EnabledCurrencyIds = EnabledCurrencyIds;
-	type GetBaseCurrencyId = GetStableCurrencyId;
+	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = CDPTreasuryModule;
+	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
 }

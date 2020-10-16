@@ -6,12 +6,12 @@
 use frame_support::weights::{constants::RocksDbWeight as DbWeight, Weight};
 
 impl crate::WeightInfo for () {
-	fn deposit_dex_lp() -> Weight {
+	fn deposit_dex_share() -> Weight {
 		(219_025_000 as Weight)
 			.saturating_add(DbWeight::get().reads(7 as Weight))
 			.saturating_add(DbWeight::get().writes(6 as Weight))
 	}
-	fn withdraw_dex_lp() -> Weight {
+	fn withdraw_dex_share() -> Weight {
 		(373_854_000 as Weight)
 			.saturating_add(DbWeight::get().reads(6 as Weight))
 			.saturating_add(DbWeight::get().writes(6 as Weight))

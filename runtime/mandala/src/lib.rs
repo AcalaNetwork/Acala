@@ -75,7 +75,7 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
 pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
-	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol,
+	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
 
@@ -1026,17 +1026,23 @@ impl module_emergency_shutdown::Trait for Runtime {
 }
 
 parameter_types! {
-	pub GetExchangeFee: Rate = Rate::saturating_from_rational(1, 1000);
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::ACA), CurrencyId::Token(TokenSymbol::RENBTC)];
+	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
+	pub const TradingPathLimit: usize = 3;
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::DOT)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::XBTC)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::RENBTC)),
+	];
 }
 
 impl module_dex::Trait for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type EnabledCurrencyIds = EnabledCurrencyIds;
-	type GetBaseCurrencyId = GetStableCurrencyId;
+	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = CdpTreasury;
+	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = weights::dex::WeightInfo<Runtime>;
 }
@@ -1066,6 +1072,7 @@ parameter_types! {
 impl module_accounts::Trait for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
+	type StableCurrencyId = GetStableCurrencyId;
 	type Currency = Currencies;
 	type DEX = Dex;
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
@@ -1601,35 +1608,6 @@ impl_runtime_apis! {
 				DataProviderId::Band => BandOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
 			}
-		}
-	}
-
-	impl module_dex_rpc_runtime_api::DexApi<
-		Block,
-		CurrencyId,
-		Balance,
-	> for Runtime {
-		fn get_supply_amount(
-			supply_currency_id: CurrencyId,
-			target_currency_id: CurrencyId,
-			target_currency_amount: Balance,
-		) -> Option<module_dex_rpc_runtime_api::BalanceInfo<Balance>> {
-			Dex::get_supply_amount_needed(supply_currency_id, target_currency_id, target_currency_amount)
-				.map(|amount| module_dex_rpc_runtime_api::BalanceInfo {
-					amount
-				})
-		}
-
-		fn get_target_amount(
-			supply_currency_id: CurrencyId,
-			target_currency_id: CurrencyId,
-			supply_currency_amount: Balance,
-		) -> Option<module_dex_rpc_runtime_api::BalanceInfo<Balance>> {
-			Dex::get_target_amount_available(supply_currency_id, target_currency_id, supply_currency_amount)
-				.map(|amount| module_dex_rpc_runtime_api::BalanceInfo {
-					amount
-				})
-
 		}
 	}
 

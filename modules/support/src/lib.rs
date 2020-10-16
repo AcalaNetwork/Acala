@@ -73,75 +73,79 @@ pub trait AuctionManager<AccountId> {
 }
 
 pub trait DEXManager<AccountId, CurrencyId, Balance> {
-	fn get_target_amount(
-		supply_currency_id: CurrencyId,
-		target_currency_id: CurrencyId,
-		supply_currency_amount: Balance,
-	) -> Option<Balance>;
+	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
-	fn get_supply_amount(
-		supply_currency_id: CurrencyId,
-		target_currency_id: CurrencyId,
-		target_currency_amount: Balance,
-	) -> Option<Balance>;
-
-	fn exchange_currency(
-		who: AccountId,
-		supply_currency_id: CurrencyId,
+	fn get_swap_target_amount(
+		path: &[CurrencyId],
 		supply_amount: Balance,
-		target_currency_id: CurrencyId,
-		acceptable_target_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> Option<Balance>;
+
+	fn get_swap_supply_amount(
+		path: &[CurrencyId],
+		target_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> Option<Balance>;
+
+	fn swap_with_exact_supply(
+		who: &AccountId,
+		path: &[CurrencyId],
+		supply_amount: Balance,
+		min_target_amount: Balance,
+		gas_price_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError>;
 
-	fn get_exchange_slippage(
-		supply_currency_id: CurrencyId,
-		target_currency_id: CurrencyId,
-		supply_amount: Balance,
-	) -> Option<Ratio>;
-
-	fn get_liquidity_pool(currency_id: CurrencyId) -> (Balance, Balance);
+	fn swap_with_exact_target(
+		who: &AccountId,
+		path: &[CurrencyId],
+		target_amount: Balance,
+		max_supply_amount: Balance,
+		gas_price_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError>;
 }
 
 impl<AccountId, CurrencyId, Balance> DEXManager<AccountId, CurrencyId, Balance> for ()
 where
 	Balance: Default,
 {
-	fn get_target_amount(
-		_supply_currency_id: CurrencyId,
-		_target_currency_id: CurrencyId,
-		_supply_currency_amount: Balance,
-	) -> Option<Balance> {
-		Some(Default::default())
+	fn get_liquidity_pool(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> (Balance, Balance) {
+		Default::default()
 	}
 
-	fn get_supply_amount(
-		_supply_currency_id: CurrencyId,
-		_target_currency_id: CurrencyId,
-		_target_currency_amount: Balance,
-	) -> Option<Balance> {
-		Some(Default::default())
-	}
-
-	fn exchange_currency(
-		_who: AccountId,
-		_supply_currency_id: CurrencyId,
+	fn get_swap_target_amount(
+		_path: &[CurrencyId],
 		_supply_amount: Balance,
-		_target_currency_id: CurrencyId,
-		_acceptable_target_amount: Balance,
+		_price_impact_limit: Option<Ratio>,
+	) -> Option<Balance> {
+		Some(Default::default())
+	}
+
+	fn get_swap_supply_amount(
+		_path: &[CurrencyId],
+		_target_amount: Balance,
+		_price_impact_limit: Option<Ratio>,
+	) -> Option<Balance> {
+		Some(Default::default())
+	}
+
+	fn swap_with_exact_supply(
+		_who: &AccountId,
+		_path: &[CurrencyId],
+		_supply_amount: Balance,
+		_min_target_amount: Balance,
+		_gas_price_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 
-	fn get_exchange_slippage(
-		_supply_currency_id: CurrencyId,
-		_target_currency_id: CurrencyId,
-		_supply_amount: Balance,
-	) -> Option<Ratio> {
-		None
-	}
-
-	fn get_liquidity_pool(_currency_id: CurrencyId) -> (Balance, Balance) {
-		Default::default()
+	fn swap_with_exact_target(
+		_who: &AccountId,
+		_path: &[CurrencyId],
+		_target_amount: Balance,
+		_max_supply_amount: Balance,
+		_gas_price_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		Ok(Default::default())
 	}
 }
 
@@ -187,11 +191,20 @@ pub trait CDPTreasury<AccountId> {
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn swap_collateral_to_stable(
+	fn swap_exact_collateral_in_auction_to_stable(
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
-		target_amount: Self::Balance,
+		min_target_amount: Self::Balance,
+		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
+
+	fn swap_collateral_not_in_auction_with_exact_stable(
+		currency_id: Self::CurrencyId,
+		target_amount: Self::Balance,
+		max_supply_amount: Self::Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Self::Balance, DispatchError>;
+
 	fn create_collateral_auctions(
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,

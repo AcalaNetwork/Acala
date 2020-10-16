@@ -198,7 +198,6 @@ impl dex::Trait for Runtime {
 	type EnabledCurrencyIds = CollateralCurrencyIds;
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = CDPTreasuryModule;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
 }

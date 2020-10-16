@@ -7,11 +7,11 @@ use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 	weights::IdentityFee,
 };
-use primitives::{Amount, TokenSymbol};
+use primitives::{Amount, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
 use sp_std::cell::RefCell;
-use support::{CDPTreasury, Rate, Ratio};
+use support::Ratio;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -22,8 +22,6 @@ pub const CAROL: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
-pub const ACA_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::ACA, TokenSymbol::AUSD);
-pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -137,46 +135,6 @@ impl pallet_transaction_payment::Trait for Runtime {
 	type FeeMultiplierUpdate = ();
 }
 
-pub struct MockCDPTreasury;
-impl CDPTreasury<AccountId> for MockCDPTreasury {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-
-	fn get_surplus_pool() -> Self::Balance {
-		Default::default()
-	}
-	fn get_debit_pool() -> Self::Balance {
-		Default::default()
-	}
-	fn get_total_collaterals(_: Self::CurrencyId) -> Self::Balance {
-		Default::default()
-	}
-	fn get_debit_proportion(_: Self::Balance) -> Ratio {
-		Default::default()
-	}
-	fn on_system_debit(_: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-	fn on_system_surplus(_: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-	fn issue_debit(_: &AccountId, _: Self::Balance, _: bool) -> DispatchResult {
-		Ok(())
-	}
-	fn burn_debit(_: &AccountId, _: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-	fn deposit_surplus(_: &AccountId, _: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-	fn deposit_collateral(_: &AccountId, _: Self::CurrencyId, _: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-	fn withdraw_collateral(_: &AccountId, _: Self::CurrencyId, _: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-}
-
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
@@ -186,19 +144,18 @@ ord_parameter_types! {
 }
 
 parameter_types! {
-	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
-	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![ACA, BTC];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const TradingPathLimit: usize = 3;
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, ACA), TradingPair::new(AUSD, BTC)];
 }
 
 impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
-	type EnabledCurrencyIds = EnabledCurrencyIds;
-	type GetBaseCurrencyId = GetStableCurrencyId;
+	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = MockCDPTreasury;
+	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
 }
@@ -209,11 +166,13 @@ parameter_types! {
 	pub const NewAccountDeposit: Balance = 100;
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
+	pub const StableCurrencyId: CurrencyId = AUSD;
 }
 
 impl Trait for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
+	type StableCurrencyId = StableCurrencyId;
 	type Currency = Currencies;
 	type DEX = DEXModule;
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;

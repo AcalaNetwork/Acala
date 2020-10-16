@@ -7,6 +7,7 @@ use super::utils::set_balance;
 use core::convert::TryInto;
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
+use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{traits::UniqueSaturatedInto, FixedPointNumber};
@@ -23,23 +24,13 @@ fn inject_liquidity(
 	let base_currency_id = GetStableCurrencyId::get();
 
 	// set balance
-	set_balance(currency_id, &maker, max_amount.unique_saturated_into());
-	set_balance(
-		base_currency_id,
-		&maker,
-		max_other_currency_amount.unique_saturated_into(),
-	);
-
-	let lp_share_currency_id = match (currency_id, base_currency_id) {
-		(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
-			CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol)
-		}
-		_ => return Err("invalid currency id"),
-	};
+	set_balance(currency_id, &maker, max_other_currency_amount.unique_saturated_into());
+	set_balance(base_currency_id, &maker, max_amount.unique_saturated_into());
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
-		lp_share_currency_id,
+		base_currency_id,
+		currency_id,
 		max_amount,
 		max_other_currency_amount,
 	)?;
@@ -125,7 +116,7 @@ runtime_benchmarks! {
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
 		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
-
+		let base_currency_id = GetStableCurrencyId::get();
 		let max_slippage_swap_with_dex = MaxSlippageSwapWithDEX::get();
 		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(min_debit_value * 10);
 		let base_amount_in_dex = collateral_amount_in_dex * 2;
@@ -164,7 +155,7 @@ runtime_benchmarks! {
 		)?;
 	}: liquidate(RawOrigin::None, currency_id, owner)
 	verify {
-		let (other_currency_amount, base_currency_amount) = Dex::liquidity_pool(currency_id);
+		let (other_currency_amount, base_currency_amount) = Dex::get_liquidity_pool(currency_id, base_currency_id);
 		assert!(other_currency_amount > collateral_amount_in_dex);
 		assert!(base_currency_amount < base_amount_in_dex);
 	}
