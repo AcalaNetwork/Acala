@@ -19,7 +19,7 @@ use cdp_engine::*;
 use dex::Module as Dex;
 use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use support::{Price, Rate, Ratio};
+use support::{DEXManager, Price, Rate, Ratio};
 
 pub struct Module<T: Trait>(cdp_engine::Module<T>);
 
@@ -49,7 +49,7 @@ fn inject_liquidity<T: Trait>(
 	max_amount: Balance,
 	max_other_currency_amount: Balance,
 ) -> Result<(), &'static str> {
-	let base_currency_id = <T as dex::Trait>::GetBaseCurrencyId::get();
+	let base_currency_id = <T as cdp_engine::Trait>::GetStableCurrencyId::get();
 
 	// set balance
 	<T as dex::Trait>::Currency::update_balance(currency_id, &maker, max_amount.unique_saturated_into())?;
@@ -61,6 +61,7 @@ fn inject_liquidity<T: Trait>(
 
 	Dex::<T>::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
+		base_currency_id,
 		currency_id,
 		max_amount,
 		max_other_currency_amount,
@@ -144,6 +145,7 @@ benchmarks! {
 		let owner: T::AccountId = account("owner", u, SEED);
 		let funder: T::AccountId = account("funder", u, SEED);
 		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let base_currency_id: CurrencyId = <T as cdp_engine::Trait>::GetStableCurrencyId::get();
 		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
@@ -189,7 +191,7 @@ benchmarks! {
 		)?;
 	}: liquidate(RawOrigin::None, currency_id, owner)
 	verify {
-		let (other_currency_amount, base_currency_amount) = Dex::<T>::liquidity_pool(currency_id);
+		let (other_currency_amount, base_currency_amount) = Dex::<T>::get_liquidity_pool(base_currency_id, currency_id);
 		assert!(other_currency_amount > collateral_amount_in_dex);
 		assert!(base_currency_amount < base_amount_in_dex);
 	}

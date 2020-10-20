@@ -14,12 +14,17 @@ impl<T: frame_system::Trait> module_dex::WeightInfo for WeightInfo<T> {
 			.saturating_add(DbWeight::get().reads(11 as Weight))
 			.saturating_add(DbWeight::get().writes(7 as Weight))
 	}
-	fn withdraw_liquidity() -> Weight {
+	fn remove_liquidity() -> Weight {
 		(414_245_000 as Weight)
 			.saturating_add(DbWeight::get().reads(9 as Weight))
 			.saturating_add(DbWeight::get().writes(7 as Weight))
 	}
-	fn swap_currency() -> Weight {
+	fn swap_with_exact_supply() -> Weight {
+		(409_297_000 as Weight)
+			.saturating_add(DbWeight::get().reads(9 as Weight))
+			.saturating_add(DbWeight::get().writes(6 as Weight))
+	}
+	fn swap_with_exact_target() -> Weight {
 		(409_297_000 as Weight)
 			.saturating_add(DbWeight::get().reads(9 as Weight))
 			.saturating_add(DbWeight::get().writes(6 as Weight))

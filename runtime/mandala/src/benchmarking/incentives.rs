@@ -1,5 +1,6 @@
 use crate::{
-	AccountId, Balance, CollateralCurrencyIds, CurrencyId, Incentives, Rate, Rewards, Runtime, TokenSymbol, DOLLARS,
+	AccountId, Balance, CollateralCurrencyIds, CurrencyId, GetStableCurrencyId, Incentives, Rate, Rewards, Runtime,
+	TokenSymbol, DOLLARS,
 };
 
 use super::utils::set_balance;
@@ -23,15 +24,15 @@ runtime_benchmarks! {
 
 	_ {}
 
-	deposit_dex_lp {
+	deposit_dex_share {
 		let caller: AccountId = account("caller", 0, SEED);
 		set_balance(BTC_AUSD_LP, &caller, dollar(10000));
 	}: _(RawOrigin::Signed(caller), BTC_AUSD_LP, dollar(10000))
 
-	withdraw_dex_lp {
+	withdraw_dex_share {
 		let caller: AccountId = account("caller", 0, SEED);
 		set_balance(BTC_AUSD_LP, &caller, dollar(10000));
-		Incentives::deposit_dex_lp(
+		Incentives::deposit_dex_share(
 			RawOrigin::Signed(caller.clone()).into(),
 			BTC_AUSD_LP,
 			dollar(10000)
@@ -64,10 +65,17 @@ runtime_benchmarks! {
 		let currency_ids = CollateralCurrencyIds::get();
 		let caller: AccountId = account("caller", 0, SEED);
 		let mut values = vec![];
+		let base_currency_id = GetStableCurrencyId::get();
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			values.push((currency_id, dollar(100)));
+			let lp_share_currency_id = match (currency_id, base_currency_id) {
+				(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
+					CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol)
+				}
+				_ => return Err("invalid currency id"),
+			};
+			values.push((lp_share_currency_id, dollar(100)));
 		}
 	}: _(RawOrigin::Root, values)
 
@@ -79,10 +87,17 @@ runtime_benchmarks! {
 		let currency_ids = CollateralCurrencyIds::get();
 		let caller: AccountId = account("caller", 0, SEED);
 		let mut values = vec![];
+		let base_currency_id = GetStableCurrencyId::get();
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			values.push((currency_id, Rate::default()));
+			let lp_share_currency_id = match (currency_id, base_currency_id) {
+				(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
+					CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol)
+				}
+				_ => return Err("invalid currency id"),
+			};
+			values.push((lp_share_currency_id, Rate::default()));
 		}
 	}: _(RawOrigin::Root, values)
 }
@@ -100,16 +115,16 @@ mod tests {
 	}
 
 	#[test]
-	fn test_deposit_dex_lp() {
+	fn test_deposit_dex_share() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_deposit_dex_lp());
+			assert_ok!(test_benchmark_deposit_dex_share());
 		});
 	}
 
 	#[test]
-	fn test_withdraw_dex_lp() {
+	fn test_withdraw_dex_share() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_withdraw_dex_lp());
+			assert_ok!(test_benchmark_withdraw_dex_share());
 		});
 	}
 
