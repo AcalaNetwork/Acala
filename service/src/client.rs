@@ -22,9 +22,9 @@ pub trait RuntimeApiCollection:
 	+ sp_finality_grandpa::GrandpaApi<Block>
 	+ sp_block_builder::BlockBuilder<Block>
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
-	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber>
 	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
+	+ module_accounts_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 	+ module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>
 	+ sp_api::Metadata<Block>
@@ -43,9 +43,9 @@ where
 		+ sp_finality_grandpa::GrandpaApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
-		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber>
 		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
+		+ module_accounts_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 		+ module_dex_rpc::DexRuntimeApi<Block, CurrencyId, Balance>
 		+ sp_api::Metadata<Block>

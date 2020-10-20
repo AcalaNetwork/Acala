@@ -67,11 +67,11 @@ version = "0.6.1"
 dependencies = [
  "acala-primitives",
  "jsonrpc-core",
+ "module-accounts-rpc",
  "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts-rpc",
- "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "runtime-common",
  "sc-client-api",
@@ -105,6 +105,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "module-accounts",
+ "module-accounts-rpc-runtime-api",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -163,8 +164,6 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
  "parity-scale-codec",
@@ -201,12 +200,12 @@ dependencies = [
  "hex-literal 0.3.1",
  "karura-runtime",
  "mandala-runtime",
+ "module-accounts-rpc-runtime-api",
  "module-dex-rpc",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts",
  "pallet-contracts-rpc-runtime-api",
- "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
  "sc-basic-authorship",
@@ -2778,6 +2777,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "module-accounts",
+ "module-accounts-rpc-runtime-api",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -2836,8 +2836,6 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
  "parity-scale-codec",
@@ -3522,6 +3520,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "module-accounts",
+ "module-accounts-rpc-runtime-api",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -3580,8 +3579,6 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
  "parity-scale-codec",
@@ -3802,6 +3799,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-accounts-rpc-runtime-api",
  "module-dex",
  "module-support",
  "orml-currencies",
@@ -3809,11 +3807,42 @@ dependencies = [
  "orml-traits",
  "orml-utilities",
  "pallet-balances",
- "pallet-transaction-payment",
  "parity-scale-codec",
  "serde",
+ "smallvec 1.4.2",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-accounts-rpc"
+version = "0.6.1"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "module-accounts-rpc-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-accounts-rpc-runtime-api"
+version = "0.6.1"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "sp-api",
  "sp-runtime",
  "sp-std",
 ]
@@ -5246,57 +5275,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
-]
-
-[[package]]
-name = "pallet-transaction-payment"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9fe2fc67f2eb123199a5b8fb89a8e1c30e5d6d6b1d98e0330bac85c0d8c46f1"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "smallvec 1.4.2",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-transaction-payment-rpc"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90fb0463589eeb1be8a3237e7260d139240e7d113950904f5a3cae5502576078"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
-]
-
-[[package]]
-name = "pallet-transaction-payment-rpc-runtime-api"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76c8b6676df5a4b411a283b9ea22551094710180fa5caebeae9eea8e9dbfa620"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
