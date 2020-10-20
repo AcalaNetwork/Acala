@@ -22,9 +22,9 @@ use frame_support::{
 	IsSubType, StorageMap,
 };
 use frame_system::{self as system, ensure_signed, AccountInfo};
-use module_accounts_rpc_runtime_api::RuntimeDispatchInfo;
 use orml_traits::{MultiCurrency, MultiLockableCurrency, MultiReservableCurrency, OnReceived};
 use orml_utilities::with_transaction_result;
+use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{

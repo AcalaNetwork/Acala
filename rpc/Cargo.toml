@@ -25,8 +25,8 @@ sc-keystore = { version = "2.0.0" }
 sc-rpc = { version = "2.0.0" }
 substrate-frame-rpc-system = { version = "2.0.0" }
 pallet-contracts-rpc = { version = "0.8.0" }
+pallet-transaction-payment-rpc = { version = "2.0.0" }
 
-module-accounts-rpc = { path = "../modules/accounts/rpc" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 runtime-common = { path = "../runtime/common" }

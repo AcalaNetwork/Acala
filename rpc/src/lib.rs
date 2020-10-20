@@ -83,8 +83,8 @@ where
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber>,
+	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
-	C::Api: module_accounts_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
@@ -93,10 +93,10 @@ where
 	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
 	B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
-	use module_accounts_rpc::{TransactionPayment, TransactionPaymentApi};
 	use module_staking_pool_rpc::{StakingPool, StakingPoolApi};
 	use orml_oracle_rpc::{Oracle, OracleApi};
 	use pallet_contracts_rpc::{Contracts, ContractsApi};
+	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 	use sc_consensus_babe_rpc::BabeRpcHandler;
 	use sc_finality_grandpa_rpc::{GrandpaApi, GrandpaRpcHandler};
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
@@ -163,7 +163,7 @@ where
 	C: HeaderBackend<Block>,
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
-	C::Api: module_accounts_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	F: Fetcher<Block> + 'static,
 	P: TransactionPool + 'static,
 {
