@@ -32,6 +32,8 @@ impl sp_std::fmt::Debug for EcdsaSignature {
 	}
 }
 
+type DestAddress = Vec<u8>;
+
 pub trait Trait: system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type Currency: BasicCurrency<Self::AccountId, Balance = Balance>;
@@ -55,14 +57,13 @@ decl_storage! {
 		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
 
 		/// Record burn event details
-		BurnEvents get(fn burn_events): map hasher(twox_64_concat) T::BlockNumber => Vec<([u8; 20], Balance)>
+		BurnEvents get(fn burn_events): map hasher(twox_64_concat) T::BlockNumber => Vec<(DestAddress, Balance)>
 	}
 }
 
 decl_event!(
 	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
-		DestAddress = [u8; 20],
 	{
 		/// Asset minted. \[owner, amount\]
 		Minted(AccountId, Balance),
@@ -108,7 +109,7 @@ decl_module! {
 		#[weight = 10_000]
 		fn burn(
 			origin,
-			to: [u8; 20],
+			to: DestAddress,
 			#[compact] amount: Balance,
 		) {
 			let sender = ensure_signed(origin)?;
@@ -116,7 +117,7 @@ decl_module! {
 			T::Currency::withdraw(&sender, amount)?;
 			BurnEvents::<T>::append(
 				<frame_system::Module<T>>::block_number() + T::BurnEventStoreDuration::get(),
-				(to, amount),
+				(&to, amount),
 			);
 
 			Self::deposit_event(RawEvent::Burnt(sender, to, amount));
