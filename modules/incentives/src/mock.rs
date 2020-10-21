@@ -5,9 +5,10 @@
 use super::*;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	impl_outer_origin, ord_parameter_types, parameter_types,
+	impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 };
 use frame_system::EnsureSignedBy;
+use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
@@ -18,10 +19,12 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const AUSD: CurrencyId = CurrencyId::AUSD;
-pub const BTC: CurrencyId = CurrencyId::XBTC;
-pub const DOT: CurrencyId = CurrencyId::DOT;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
+pub const DOT_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::DOT, TokenSymbol::AUSD);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -32,6 +35,14 @@ mod incentives {
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
+}
+
+impl_outer_event! {
+	pub enum TestEvent for Runtime {
+		frame_system<T>,
+		incentives<T>,
+		orml_tokens<T>,
+	}
 }
 
 parameter_types! {
@@ -51,13 +62,13 @@ impl frame_system::Trait for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
-	type ModuleToIndex = ();
+	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -68,9 +79,10 @@ impl frame_system::Trait for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 }
+pub type System = frame_system::Module<Runtime>;
 
 impl orml_tokens::Trait for Runtime {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -131,34 +143,42 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 
 pub struct MockDEX;
 impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
-	fn get_target_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Balance {
+	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
+		match (currency_id_a, currency_id_b) {
+			(AUSD, BTC) => (500, 100),
+			(AUSD, DOT) => (400, 100),
+			(BTC, AUSD) => (100, 500),
+			(DOT, AUSD) => (100, 400),
+			_ => (0, 0),
+		}
+	}
+
+	fn get_swap_target_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_supply_amount(_: CurrencyId, _: CurrencyId, _: Balance) -> Balance {
+	fn get_swap_supply_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn exchange_currency(
-		_: AccountId,
-		_: CurrencyId,
+	fn swap_with_exact_supply(
+		_: &AccountId,
+		_: &[CurrencyId],
 		_: Balance,
-		_: CurrencyId,
 		_: Balance,
+		_: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
 
-	fn get_exchange_slippage(_: CurrencyId, _: CurrencyId, _: Balance) -> Option<Ratio> {
+	fn swap_with_exact_target(
+		_: &AccountId,
+		_: &[CurrencyId],
+		_: Balance,
+		_: Balance,
+		_: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
-	}
-
-	fn get_liquidity_pool(currency_id: CurrencyId) -> (Balance, Balance) {
-		match currency_id {
-			CurrencyId::XBTC => (100, 500),
-			CurrencyId::DOT => (100, 400),
-			_ => (0, 0),
-		}
 	}
 }
 
@@ -178,7 +198,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 }
 
 impl orml_rewards::Trait for Runtime {
-	type Share = Share;
+	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
 	type Handler = IncentivesModule;
@@ -193,6 +213,7 @@ parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const IncentiveCurrencyId: CurrencyId = ACA;
 	pub const SavingCurrencyId: CurrencyId = AUSD;
+	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
 }
 
 ord_parameter_types! {
@@ -200,6 +221,7 @@ ord_parameter_types! {
 }
 
 impl Trait for Runtime {
+	type Event = TestEvent;
 	type LoansIncentivePool = LoansIncentivePool;
 	type DexIncentivePool = DexIncentivePool;
 	type HomaIncentivePool = HomaIncentivePool;
@@ -211,6 +233,8 @@ impl Trait for Runtime {
 	type Currency = TokensModule;
 	type DEX = MockDEX;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type ModuleId = IncentivesModuleId;
+	type WeightInfo = ();
 }
 
 pub type IncentivesModule = Module<Runtime>;

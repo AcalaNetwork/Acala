@@ -8,83 +8,11 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Accounts, Call, Currencies, DEXModule, ExtBuilder, NewAccountDeposit, Origin, Runtime, System, TimeModule, ACA,
-	ALICE, AUSD, BOB, BTC, CAROL,
+	Accounts, Call, Currencies, DEXModule, ExtBuilder, MaximumBlockWeight, NewAccountDeposit, Origin, Runtime, System,
+	ACA, ALICE, AUSD, BOB, BTC, CAROL,
 };
 use orml_traits::MultiCurrency;
-
-#[test]
-fn enable_free_transfer_require_deposit() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			Accounts::enable_free_transfer(Origin::signed(BOB)),
-			Error::<Runtime>::NotEnoughBalance
-		);
-	});
-}
-
-#[test]
-fn enable_free_transfer_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(()));
-	});
-}
-
-#[test]
-fn disable_free_transfers_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), Some(()));
-		assert_ok!(Accounts::disable_free_transfers(Origin::signed(ALICE)));
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
-	});
-}
-
-#[test]
-fn try_record_free_transfer_when_no_lock() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::free_transfer_enabled_accounts(ALICE), None);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), false);
-	});
-}
-
-#[test]
-fn try_record_free_transfer_over_cap() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0]);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0]);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), false);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-	});
-}
-
-#[test]
-fn remove_expired_entry() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TimeModule::now(), 0);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![]);
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![0, 0, 0]);
-		TimeModule::set_timestamp(100);
-		assert_eq!(TimeModule::now(), 100);
-		assert_eq!(Accounts::try_record_free_transfer(&ALICE), true);
-		assert_eq!(Accounts::last_free_transfers(ALICE), vec![100]);
-	});
-}
+use sp_runtime::testing::TestXt;
 
 const CALL: &<Runtime as system::Trait>::Call = &Call::Currencies(orml_currencies::Call::transfer(BOB, AUSD, 12));
 
@@ -126,81 +54,6 @@ fn charges_fee() {
 		assert_eq!(
 			Currencies::free_balance(ACA, &ALICE),
 			(100000 - fee - fee2).unique_saturated_into()
-		);
-	});
-}
-
-#[test]
-fn enabled_free_transaction_not_charges_fee() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL, &INFO, 23)
-				.unwrap()
-				.priority,
-			0
-		);
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000.unique_saturated_into());
-	});
-}
-
-#[test]
-fn enabled_free_transaction_charges_tip() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(100)
-				.validate(&ALICE, CALL, &INFO, 23)
-				.unwrap()
-				.priority,
-			100
-		);
-		assert_eq!(
-			Currencies::free_balance(ACA, &ALICE),
-			(100000 - 100).unique_saturated_into()
-		);
-	});
-}
-
-#[test]
-fn enabled_free_transaction_charges_other_call() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		let fee = 23 * 2 + 1000; // len * byte + weight
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, CALL2, &INFO, 23)
-				.unwrap()
-				.priority,
-			fee
-		);
-		assert_eq!(
-			Currencies::free_balance(ACA, &ALICE),
-			(100000 - fee).unique_saturated_into()
-		);
-	});
-}
-
-#[test]
-fn enabled_free_transaction_charges_other_call_with_tip_and_native_currency_is_enough() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Accounts::enable_free_transfer(Origin::signed(ALICE)));
-
-		let fee = 23 * 2 + 1000 + 100; // len * byte + weight + tip
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(100)
-				.validate(&ALICE, CALL2, &INFO, 23)
-				.unwrap()
-				.priority,
-			fee
-		);
-		assert_eq!(
-			Currencies::free_balance(ACA, &ALICE),
-			(100000 - fee).unique_saturated_into()
 		);
 	});
 }
@@ -264,20 +117,30 @@ fn open_account_failed_when_transfer_native() {
 fn open_account_successfully_when_transfer_non_native() {
 	ExtBuilder::default().build().execute_with(|| {
 		// add liquidity to dex
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, 10000, 100));
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, 10, 200));
-		assert_eq!(DEXModule::liquidity_pool(ACA).0, 10000);
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 10000, 100));
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, AUSD, 10, 200));
 
 		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			0
+		);
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 100));
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (10, 200));
+
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(BTC, &ALICE, &BOB, 10));
+
 		assert_eq!(Accounts::is_explicit(&BOB), true);
-		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 1497);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 9);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
 		assert_eq!(
 			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
 			100
 		);
-		assert_eq!(DEXModule::liquidity_pool(ACA).0, 8403);
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (9900, 102));
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (11, 198));
 	});
 }
 
@@ -285,18 +148,24 @@ fn open_account_successfully_when_transfer_non_native() {
 fn open_account_failed_when_transfer_non_native() {
 	ExtBuilder::default().build().execute_with(|| {
 		// inject liquidity to dex
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, 200, 100));
-		assert_eq!(DEXModule::liquidity_pool(ACA).0, 200);
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 200, 100));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (200, 100));
 
 		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
 		assert_eq!(Accounts::is_explicit(&BOB), false);
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 99));
-		assert_eq!(Accounts::is_explicit(&BOB), false);
-		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
-			99
+			0
+		);
+
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 99));
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 99);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(AUSD, &Accounts::treasury_account_id()),
+			0
 		);
 	});
 }
@@ -477,8 +346,8 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
 
 		// add liquidity to DEX
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, 10000, 1000));
-		assert_eq!(DEXModule::liquidity_pool(ACA), (10000, 1000));
+		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 10000, 1000));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 
 		let fee = 500 * 2 + 1000; // len * byte + weight
 		assert_eq!(
@@ -489,8 +358,161 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 			fee
 		);
 
-		assert_eq!(Currencies::free_balance(ACA, &BOB), 7);
+		assert_eq!(Currencies::free_balance(ACA, &BOB), 0);
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 749);
-		assert_eq!(DEXModule::liquidity_pool(ACA), (10000 - 7 - 2000, 1251));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000, 1251));
 	});
+}
+
+#[test]
+fn query_info_works() {
+	ExtBuilder::default()
+		.base_weight(5)
+		.byte_fee(1)
+		.weight_fee(2)
+		.build()
+		.execute_with(|| {
+			let call = Call::PalletBalances(pallet_balances::Call::transfer(2, 69));
+			let origin = 111111;
+			let extra = ();
+			let xt = TestXt::new(call, Some((origin, extra)));
+			let info = xt.get_dispatch_info();
+			let ext = xt.encode();
+			let len = ext.len() as u32;
+
+			// all fees should be x1.5
+			NextFeeMultiplier::put(Multiplier::saturating_from_rational(3, 2));
+
+			assert_eq!(
+				Accounts::query_info(xt, len),
+				RuntimeDispatchInfo {
+					weight: info.weight,
+					class: info.class,
+					partial_fee: 5 * 2 /* base * weight_fee */
+						+ len as u128  /* len * 1 */
+						+ info.weight.min(MaximumBlockWeight::get() as u64) as u128 * 2 * 3 / 2 /* weight */
+				},
+			);
+		});
+}
+
+#[test]
+fn compute_fee_works_without_multiplier() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Next fee multiplier is zero
+			assert_eq!(NextFeeMultiplier::get(), Multiplier::one());
+
+			// Tip only, no fees works
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::No,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 10), 10);
+			// No tip, only base fee works
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+			// Tip + base fee works
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 69), 169);
+			// Len (byte fee) + base fee works
+			assert_eq!(Module::<Runtime>::compute_fee(42, &dispatch_info, 0), 520);
+			// Weight fee + base fee works
+			let dispatch_info = DispatchInfo {
+				weight: 1000,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 1100);
+		});
+}
+
+#[test]
+fn compute_fee_works_with_multiplier() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Add a next fee multiplier. Fees will be x3/2.
+			NextFeeMultiplier::put(Multiplier::saturating_from_rational(3, 2));
+			// Base fee is unaffected by multiplier
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+
+			// Everything works together :)
+			let dispatch_info = DispatchInfo {
+				weight: 123,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			// 123 weight, 456 length, 100 base
+			assert_eq!(
+				Module::<Runtime>::compute_fee(456, &dispatch_info, 789),
+				100 + (3 * 123 / 2) + 4560 + 789,
+			);
+		});
+}
+
+#[test]
+fn compute_fee_works_with_negative_multiplier() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Add a next fee multiplier. All fees will be x1/2.
+			NextFeeMultiplier::put(Multiplier::saturating_from_rational(1, 2));
+
+			// Base fee is unaffected by multiplier.
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+
+			// Everything works together.
+			let dispatch_info = DispatchInfo {
+				weight: 123,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			// 123 weight, 456 length, 100 base
+			assert_eq!(
+				Module::<Runtime>::compute_fee(456, &dispatch_info, 789),
+				100 + (123 / 2) + 4560 + 789,
+			);
+		});
+}
+
+#[test]
+fn compute_fee_does_not_overflow() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Overflow is handled
+			let dispatch_info = DispatchInfo {
+				weight: Weight::max_value(),
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(
+				Module::<Runtime>::compute_fee(<u32>::max_value(), &dispatch_info, <u128>::max_value()),
+				<u128>::max_value()
+			);
+		});
 }

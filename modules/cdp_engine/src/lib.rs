@@ -12,7 +12,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{
 	self as system, ensure_none,
@@ -28,11 +28,11 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, UniqueSaturatedInto, Zero},
+	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
+	DispatchError, DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
 };
 use sp_std::{marker, prelude::*};
 use support::{
@@ -43,13 +43,23 @@ use support::{
 mod debit_exchange_rate_convertor;
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 
+mod default_weight;
 mod mock;
 mod tests;
 
+pub trait WeightInfo {
+	fn set_collateral_params() -> Weight;
+	fn set_global_params() -> Weight;
+	fn liquidate_by_auction() -> Weight;
+	fn liquidate_by_dex() -> Weight;
+	fn settle() -> Weight;
+}
+
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/cdp-engine/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
+const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/cdp-engine/max-iterations/";
 const LOCK_DURATION: u64 = 100;
-const MAX_ITERATIONS: u32 = 10000;
+const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 pub type LoansOf<T> = loans::Module<T>;
 
@@ -98,6 +108,9 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait
 
 	/// Emergency shutdown.
 	type EmergencyShutdown: EmergencyShutdown;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 /// Liquidation strategy available
@@ -148,21 +161,21 @@ decl_event!(
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
-		/// Liquidate the unsafe CDP. [collateral_type, owner, collateral_amount, bad_debt_value, liquidation_strategy]
+		/// Liquidate the unsafe CDP. \[collateral_type, owner, collateral_amount, bad_debt_value, liquidation_strategy\]
 		LiquidateUnsafeCDP(CurrencyId, AccountId, Balance, Balance, LiquidationStrategy),
 		/// Settle the CDP has debit. [collateral_type, owner]
 		SettleCDPInDebit(CurrencyId, AccountId),
-		/// The stability fee for specific collateral type updated. [collateral_type, new_stability_fee]
+		/// The stability fee for specific collateral type updated. \[collateral_type, new_stability_fee\]
 		StabilityFeeUpdated(CurrencyId, Option<Rate>),
-		/// The liquidation fee for specific collateral type updated. [collateral_type, new_liquidation_ratio]
+		/// The liquidation fee for specific collateral type updated. \[collateral_type, new_liquidation_ratio\]
 		LiquidationRatioUpdated(CurrencyId, Option<Ratio>),
-		/// The liquidation penalty rate for specific collateral type updated. [collateral_type, new_liquidation_panelty]
+		/// The liquidation penalty rate for specific collateral type updated. \[collateral_type, new_liquidation_panelty\]
 		LiquidationPenaltyUpdated(CurrencyId, Option<Rate>),
-		/// The required collateral penalty rate for specific collateral type updated. [collateral_type, new_required_collateral_ratio]
+		/// The required collateral penalty rate for specific collateral type updated. \[collateral_type, new_required_collateral_ratio\]
 		RequiredCollateralRatioUpdated(CurrencyId, Option<Ratio>),
-		/// The hard cap of total debit value for specific collateral type updated. [collateral_type, new_total_debit_value]
+		/// The hard cap of total debit value for specific collateral type updated. \[collateral_type, new_total_debit_value\]
 		MaximumTotalDebitValueUpdated(CurrencyId, Balance),
-		/// The global stability fee for all types of collateral updated. [new_global_stability_fee]
+		/// The global stability fee for all types of collateral updated. \[new_global_stability_fee\]
 		GlobalStabilityFeeUpdated(Rate),
 	}
 );
@@ -264,24 +277,7 @@ decl_module! {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::CDPTreasury is module_cdp_treasury
-		/// 	- T::DEX is module_dex
-		/// - Complexity: `O(1)`
-		/// - Db reads:
-		///		- liquidate by auction: 19
-		///		- liquidate by dex: 19
-		/// - Db writes:
-		///		- liquidate by auction: 14
-		///		- liquidate by dex: 14
-		/// -------------------
-		/// Base Weight:
-		///		- liquidate by auction: 200.1 µs
-		///		- liquidate by dex: 325.3 µs
-		/// # </weight>
-		#[weight = (325 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(19, 14), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::liquidate_by_dex(), DispatchClass::Operational)]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -305,14 +301,13 @@ decl_module! {
 		/// # <weight>
 		/// - Preconditions:
 		/// 	- T::CDPTreasury is module_cdp_treasury
-		/// 	- T::DEX is module_dex
 		/// - Complexity: `O(1)`
 		/// - Db reads: 10
 		/// - Db writes: 6
 		/// -------------------
 		/// Base Weight: 161.5 µs
 		/// # </weight>
-		#[weight = (162 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(10, 6), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::settle(), DispatchClass::Operational)]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
@@ -339,7 +334,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 24.16 µs
 		/// # </weight>
-		#[weight = (24 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::set_global_params(), DispatchClass::Operational)]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
@@ -370,7 +365,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 76.08 µs
 		/// # </weight>
-		#[weight = (76 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(1, 1), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::set_collateral_params(), DispatchClass::Operational)]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
@@ -516,12 +511,19 @@ impl<T: Trait> Module<T> {
 				)
 			};
 
+		// get the max iterationns config
+		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.get::<u32>()
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+
 		let currency_id = collateral_currency_ids[(collateral_position as usize)];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
+		debug::debug!(target: "cdp-engine offchain worker", "max iterations is {:?}", max_iterations);
+
 		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
 			currency_id,
-			Some(MAX_ITERATIONS),
+			max_iterations,
 			start_key,
 		);
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
@@ -652,7 +654,6 @@ impl<T: Trait> Module<T> {
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
-		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		// ensure the cdp is unsafe
 		ensure!(
@@ -665,46 +666,39 @@ impl<T: Trait> Module<T> {
 
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
-		let supply_collateral_amount = T::DEX::get_supply_amount(currency_id, stable_currency_id, target_stable_amount);
 
-		// if collateral can swap enough native token in DEX and exchange
-		// slippage is below the limit, directly exchange with DEX, otherwise create
-		// collateral auctions.
-		let liquidation_strategy: LiquidationStrategy = if !supply_collateral_amount.is_zero() 	// supply_collateral_amount must not be zero
-			&& collateral >= supply_collateral_amount									// ensure have sufficient collateral
-			&& T::DEX::get_exchange_slippage(currency_id, stable_currency_id, supply_collateral_amount).map_or(false, |s| s <= T::MaxSlippageSwapWithDEX::get())
-		// slippage is acceptable
-		{
-			LiquidationStrategy::Exchange
-		} else {
-			LiquidationStrategy::Auction
-		};
-
-		match liquidation_strategy {
-			LiquidationStrategy::Exchange => {
-				<T as Trait>::CDPTreasury::swap_collateral_to_stable(
+		// try use collateral to swap enough native token in DEX when the price impact
+		// is below the limit, otherwise create collateral auctions.
+		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
+			// swap exact stable with DEX in limit of price impact
+			if let Ok(actual_supply_collateral) =
+				<T as Trait>::CDPTreasury::swap_collateral_not_in_auction_with_exact_stable(
 					currency_id,
-					supply_collateral_amount,
 					target_stable_amount,
-				)?;
-
+					collateral,
+					Some(T::MaxSlippageSwapWithDEX::get()),
+				) {
 				// refund remain collateral to CDP owner
 				let refund_collateral_amount = collateral
-					.checked_sub(supply_collateral_amount)
-					.expect("ensured collateral >= supply_collateral_amount on exchange; qed");
+					.checked_sub(actual_supply_collateral)
+					.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+
 				<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
+
+				return Ok(LiquidationStrategy::Exchange);
 			}
-			LiquidationStrategy::Auction => {
-				// create collateral auctions by cdp treasury
-				<T as Trait>::CDPTreasury::create_collateral_auctions(
-					currency_id,
-					collateral,
-					target_stable_amount,
-					who.clone(),
-					true,
-				)?;
-			}
-		}
+
+			// create collateral auctions by cdp treasury
+			<T as Trait>::CDPTreasury::create_collateral_auctions(
+				currency_id,
+				collateral,
+				target_stable_amount,
+				who.clone(),
+				true,
+			)?;
+
+			Ok(LiquidationStrategy::Auction)
+		})()?;
 
 		Self::deposit_event(RawEvent::LiquidateUnsafeCDP(
 			currency_id,

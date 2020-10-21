@@ -5,22 +5,21 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
+use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
-use support::Rate;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i64;
-pub type Share = u64;
 pub type AuctionId = u32;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = CurrencyId::ACA;
-pub const AUSD: CurrencyId = CurrencyId::AUSD;
-pub const BTC: CurrencyId = CurrencyId::XBTC;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -67,7 +66,7 @@ impl frame_system::Trait for Runtime {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
-	type ModuleToIndex = ();
+	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -100,11 +99,11 @@ impl pallet_balances::Trait for Runtime {
 	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
+	type MaxLocks = ();
 	type WeightInfo = ();
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-pub type AdaptedBasicCurrency =
-	orml_currencies::BasicCurrencyAdapter<PalletBalances, Balance, Balance, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
@@ -120,28 +119,27 @@ impl orml_currencies::Trait for Runtime {
 pub type Currencies = orml_currencies::Module<Runtime>;
 
 parameter_types! {
-	pub GetExchangeFee: Rate = Rate::saturating_from_rational(0, 100);
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub EnabledCurrencyIds: Vec<CurrencyId> = vec![BTC];
+	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const TradingPathLimit: usize = 3;
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
 impl dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
-	type Share = Share;
-	type EnabledCurrencyIds = EnabledCurrencyIds;
-	type GetBaseCurrencyId = GetStableCurrencyId;
+	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
-	type CDPTreasury = CDPTreasuryModule;
+	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
-	type OnAddLiquidity = ();
-	type OnRemoveLiquidity = ();
+	type WeightInfo = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
 
 thread_local! {
 	pub static TOTAL_COLLATERAL_AUCTION: RefCell<u32> = RefCell::new(0);
+	pub static TOTAL_COLLATERAL_IN_AUCTION: RefCell<Balance> = RefCell::new(0);
 	pub static TOTAL_DEBIT_AUCTION: RefCell<u32> = RefCell::new(0);
 	pub static TOTAL_SURPLUS_AUCTION: RefCell<u32> = RefCell::new(0);
 }
@@ -155,10 +153,11 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	fn new_collateral_auction(
 		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
-		_amount: Self::Balance,
+		amount: Self::Balance,
 		_target: Self::Balance,
 	) -> DispatchResult {
 		TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut() += 1);
+		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut() += amount);
 		Ok(())
 	}
 
@@ -177,7 +176,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		Default::default()
+		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut())
 	}
 
 	fn get_total_surplus_in_auction() -> Self::Balance {
@@ -215,6 +214,7 @@ impl Trait for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type WeightInfo = ();
 }
 pub type CDPTreasuryModule = Module<Runtime>;
 

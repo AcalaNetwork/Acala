@@ -12,7 +12,7 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -25,8 +25,16 @@ use sp_runtime::{
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
 mod benchmarking;
+mod default_weight;
 mod mock;
 mod tests;
+
+pub trait WeightInfo {
+	fn auction_surplus() -> Weight;
+	fn auction_debit() -> Weight;
+	fn auction_collateral() -> Weight;
+	fn set_collateral_auction_maximum_size() -> Weight;
+}
 
 pub trait Trait: system::Trait {
 	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
@@ -57,12 +65,15 @@ pub trait Trait: system::Trait {
 	/// The CDP treasury's module id, keep surplus and collateral assets from
 	/// liquidation.
 	type ModuleId: Get<ModuleId>;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_event!(
 	pub enum Event {
 		/// The fixed size for collateral auction under specific collateral type
-		/// updated. [collateral_type, new_size]
+		/// updated. \[collateral_type, new_size\]
 		CollateralAuctionMaximumSizeUpdated(CurrencyId, Balance),
 	}
 );
@@ -116,7 +127,7 @@ decl_module! {
 		/// The CDP treasury's module id, keep surplus and collateral assets from liquidation.
 		const ModuleId: ModuleId = T::ModuleId::get();
 
-		#[weight = 10_000]
+		#[weight = T::WeightInfo::auction_surplus()]
 		pub fn auction_surplus(origin, amount: Balance) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
@@ -128,7 +139,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = T::WeightInfo::auction_debit()]
 		pub fn auction_debit(origin, amount: Balance, initial_price: Balance) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
@@ -140,7 +151,7 @@ decl_module! {
 			})?;
 		}
 
-		#[weight = 10_000]
+		#[weight = T::WeightInfo::auction_collateral()]
 		pub fn auction_collateral(origin, currency_id: CurrencyId, amount: Balance, target: Balance, splited: bool) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
@@ -168,7 +179,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 24.64 µs
 		/// # </weight>
-		#[weight = (16 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(0, 1), DispatchClass::Operational)]
+		#[weight = (T::WeightInfo::set_collateral_auction_maximum_size(), DispatchClass::Operational)]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
@@ -200,6 +211,12 @@ impl<T: Trait> Module<T> {
 	/// Get total collateral amount of cdp treasury module.
 	pub fn total_collaterals(currency_id: CurrencyId) -> Balance {
 		T::Currency::free_balance(currency_id, &Self::account_id())
+	}
+
+	/// Get collateral amount not in auction
+	pub fn total_collaterals_not_in_auction(currency_id: CurrencyId) -> Balance {
+		T::Currency::free_balance(currency_id, &Self::account_id())
+			.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
 	}
 
 	fn offset_surplus_and_debit() {
@@ -278,21 +295,48 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 }
 
 impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
-	fn swap_collateral_to_stable(
+	/// Swap exact amount of collateral in auction to stable,
+	/// return actual target stable amount
+	fn swap_exact_collateral_in_auction_to_stable(
 		currency_id: CurrencyId,
 		supply_amount: Balance,
-		target_amount: Balance,
+		min_target_amount: Balance,
+		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		ensure!(
-			Self::total_collaterals(currency_id) >= supply_amount,
+			Self::total_collaterals(currency_id) >= supply_amount
+				&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_amount,
 			Error::<T>::CollateralNotEnough,
 		);
-		T::DEX::exchange_currency(
-			Self::account_id(),
-			currency_id,
+
+		T::DEX::swap_with_exact_supply(
+			&Self::account_id(),
+			&[currency_id, T::GetStableCurrencyId::get()],
 			supply_amount,
-			T::GetStableCurrencyId::get(),
+			min_target_amount,
+			price_impact_limit,
+		)
+	}
+
+	/// swap collateral which not in auction to get exact stable,
+	/// return actual supply collateral amount
+	fn swap_collateral_not_in_auction_with_exact_stable(
+		currency_id: CurrencyId,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		ensure!(
+			Self::total_collaterals_not_in_auction(currency_id) >= max_supply_amount,
+			Error::<T>::CollateralNotEnough,
+		);
+
+		T::DEX::swap_with_exact_target(
+			&Self::account_id(),
+			&[currency_id, T::GetStableCurrencyId::get()],
 			target_amount,
+			max_supply_amount,
+			price_impact_limit,
 		)
 	}
 
@@ -304,9 +348,7 @@ impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
 		splited: bool,
 	) -> DispatchResult {
 		ensure!(
-			Self::total_collaterals(currency_id)
-				.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
-				>= amount,
+			Self::total_collaterals_not_in_auction(currency_id) >= amount,
 			Error::<T>::CollateralNotEnough,
 		);
 

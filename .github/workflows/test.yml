@@ -10,23 +10,18 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: [self-hosted, linux]
+    env:
+      SCCACHE_CACHE_SIZE: "50G"
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-    - name: Cache cargo registry and index
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ runner.os }}-cargo
     - name: Install toolchain
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2020-06-04
+        toolchain: nightly-2020-09-27
         components: rustfmt
         target: wasm32-unknown-unknown
         default: true
@@ -41,4 +36,4 @@ jobs:
     - name: Run tests
       run: cargo test --all
     - name: Run benchmarking tests
-      run: cargo test --features runtime-benchmarks -p dev-runtime benchmarking
+      run: cargo test --features runtime-benchmarks -p mandala-runtime benchmarking

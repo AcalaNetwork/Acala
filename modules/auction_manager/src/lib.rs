@@ -17,7 +17,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::Get,
-	weights::{constants::WEIGHT_PER_MICROS, DispatchClass},
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{
 	self as system, ensure_none,
@@ -44,13 +44,21 @@ use sp_std::{
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate};
 
+mod default_weight;
 mod mock;
 mod tests;
 
+pub trait WeightInfo {
+	fn cancel_surplus_auction() -> Weight;
+	fn cancel_debit_auction() -> Weight;
+	fn cancel_collateral_auction() -> Weight;
+}
+
 const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/auction-manager/data/";
 const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
+const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/auction-manager/max-iterations/";
 const LOCK_DURATION: u64 = 100;
-const MAX_ITERATIONS: u32 = 10000;
+const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
@@ -193,6 +201,9 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 
 	/// Emergency shutdown.
 	type EmergencyShutdown: EmergencyShutdown;
+
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -203,21 +214,21 @@ decl_event!(
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
-		/// Collateral auction created. [auction_id, collateral_type, collateral_amount, target_bid_price]
+		/// Collateral auction created. \[auction_id, collateral_type, collateral_amount, target_bid_price\]
 		NewCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
-		/// Debit auction created. [auction_id, initial_supply_amount, fix_payment_amount]
+		/// Debit auction created. \[auction_id, initial_supply_amount, fix_payment_amount\]
 		NewDebitAuction(AuctionId, Balance, Balance),
-		/// Surplus auction created. [auction_id, fix_surplus_amount]
+		/// Surplus auction created. \[auction_id, fix_surplus_amount\]
 		NewSurplusAuction(AuctionId, Balance),
-		/// Active auction cancelled. [auction_id]
+		/// Active auction cancelled. \[auction_id\]
 		CancelAuction(AuctionId),
-		/// Collateral auction dealt. [auction_id, collateral_type, collateral_amount, winner, payment_amount]
+		/// Collateral auction dealt. \[auction_id, collateral_type, collateral_amount, winner, payment_amount\]
 		CollateralAuctionDealt(AuctionId, CurrencyId, Balance, AccountId, Balance),
-		/// Surplus auction dealt. [auction_id, surplus_amount, winner, payment_amount]
+		/// Surplus auction dealt. \[auction_id, surplus_amount, winner, payment_amount\]
 		SurplusAuctionDealt(AuctionId, Balance, AccountId, Balance),
-		/// Debit auction dealt. [auction_id, debit_currency_amount, winner, payment_amount]
+		/// Debit auction dealt. \[auction_id, debit_currency_amount, winner, payment_amount\]
 		DebitAuctionDealt(AuctionId, Balance, AccountId, Balance),
-		/// Dex take collateral auction. [auction_id, collateral_type, collateral_amount, turnover]
+		/// Dex take collateral auction. \[auction_id, collateral_type, collateral_amount, turnover\]
 		DEXTakeCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
 	}
 );
@@ -316,7 +327,8 @@ decl_module! {
 		///		- debit auction worst case: 66.04 µs
 		///		- collateral auction worst case: 197.5 µs
 		/// # </weight>
-		#[weight = (198 * WEIGHT_PER_MICROS + T::DbWeight::get().reads_writes(15, 10), DispatchClass::Operational)]
+		/// Use the collateral auction worst case as default weight.
+		#[weight = (T::WeightInfo::cancel_collateral_auction(), DispatchClass::Operational)]
 		pub fn cancel(origin, id: AuctionId) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;
@@ -386,12 +398,19 @@ impl<T: Trait> Module<T> {
 			(rng.pick_u32(2), None)
 		};
 
+		// get the max iterationns config
+		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.get::<u32>()
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+
+		debug::debug!(target: "auction-manager offchain worker", "max iterations is {:?}", max_iterations);
+
 		// Randomly choose to start iterations to cancel collateral/surplus/debit
 		// auctions
 		match auction_type_num {
 			0 => {
 				let mut iterator =
-					<DebitAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+					<DebitAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
 				while let Some((debit_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(debit_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
@@ -407,7 +426,7 @@ impl<T: Trait> Module<T> {
 			}
 			1 => {
 				let mut iterator =
-					<SurplusAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+					<SurplusAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
 				while let Some((surplus_auction_id, _)) = iterator.next() {
 					Self::submit_cancel_auction_tx(surplus_auction_id);
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
@@ -421,7 +440,7 @@ impl<T: Trait> Module<T> {
 			}
 			_ => {
 				let mut iterator =
-					<CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(Some(MAX_ITERATIONS), start_key);
+					<CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
 				while let Some((collateral_auction_id, _)) = iterator.next() {
 					if let (Some(collateral_auction), Some((_, last_bid_price))) = (
 						Self::collateral_auctions(collateral_auction_id),
@@ -623,7 +642,9 @@ impl<T: Trait> Module<T> {
 
 						payment = payment
 							.checked_sub(refund)
-							.expect("new bid payment greater or equal to last bid payment; qed");
+							// This should never fail because new bid payment are always greater or equal to last bid
+							// payment.
+							.ok_or(Error::<T>::InvalidBidPrice)?;
 					}
 
 					// transfer remain payment from new bidder to CDP treasury
@@ -771,33 +792,36 @@ impl<T: Trait> Module<T> {
 			// if bid_price doesn't reach target and trading with DEX will get better result
 			if !collateral_auction.in_reverse_stage(bid_price)
 				&& bid_price
-					< T::DEX::get_target_amount(
-						collateral_auction.currency_id,
-						T::GetStableCurrencyId::get(),
+					< T::DEX::get_swap_target_amount(
+						&[collateral_auction.currency_id, T::GetStableCurrencyId::get()],
 						collateral_auction.amount,
-					) {
-				// try trade with DEX
-				if let Ok(amount) = T::CDPTreasury::swap_collateral_to_stable(
+						None,
+					)
+					.unwrap_or_default()
+			{
+				// try swap collateral in auction with DEX to get stable
+				if let Ok(stable_amount) = T::CDPTreasury::swap_exact_collateral_in_auction_to_stable(
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 					Zero::zero(),
+					None,
 				) {
 					// swap successfully, will not deal
 					should_deal = false;
 
 					// refund stable currency to the last bidder, it shouldn't fail and affect the
-					// process. but even it failed, just the winner did not get the amount. it can
-					// be fixed by treasury council.
+					// process. but even it failed, just the winner did not get the bid price. it
+					// can be fixed by treasury council.
 					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 
-					if collateral_auction.in_reverse_stage(amount) {
+					if collateral_auction.in_reverse_stage(stable_amount) {
 						// refund extra stable currency to recipient
-						let refund_amount = amount
+						let refund_amount = stable_amount
 							.checked_sub(collateral_auction.target)
-							.expect("ensured amount > target; qed");
+							.expect("ensured stable_amount > target; qed");
 						// it shouldn't fail and affect the process.
-						// but even it failed, just the winner did not get the amount. it can be fixed
-						// by treasury council.
+						// but even it failed, just the winner did not get the refund amount. it can be
+						// fixed by treasury council.
 						let _ = T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
 					}
 
@@ -805,7 +829,7 @@ impl<T: Trait> Module<T> {
 						auction_id,
 						collateral_auction.currency_id,
 						collateral_auction.amount,
-						amount,
+						stable_amount,
 					));
 				}
 			}

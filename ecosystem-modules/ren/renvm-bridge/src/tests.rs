@@ -39,7 +39,7 @@ fn burn_works() {
 		);
 		assert_eq!(Balances::free_balance(issuer.clone()), 5000);
 
-		let to: [u8; 20] = [0; 20];
+		let to: Vec<u8> = vec![2, 3, 4];
 		assert_eq!(RenVmBridge::burn_events(10), vec![]);
 		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 1000));
 		assert_eq!(Balances::free_balance(&issuer), 4000);
