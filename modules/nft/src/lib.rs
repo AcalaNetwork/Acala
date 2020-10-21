@@ -2,11 +2,7 @@
 
 use codec::{Decode, Encode};
 use enumflags2::BitFlags;
-use frame_support::{
-	decl_error, decl_event, decl_module, ensure,
-	traits::{Get, IsType},
-	weights::Weight,
-};
+use frame_support::{decl_error, decl_event, decl_module, ensure, traits::Get, weights::Weight};
 use frame_system::ensure_signed;
 use orml_nft::CID;
 use orml_traits::{BasicCurrency, BasicReservableCurrency};
@@ -110,16 +106,14 @@ decl_error! {
 	}
 }
 
-pub trait Trait: frame_system::Trait + orml_nft::Trait + pallet_proxy::Trait {
+pub trait Trait:
+	frame_system::Trait + orml_nft::Trait<ClassData = ClassData, TokenData = TokenData> + pallet_proxy::Trait
+{
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 	/// The minimum balance to create class
 	type CreateClassDeposit: Get<Balance>;
 	/// The minimum balance to create token
 	type CreateTokenDeposit: Get<Balance>;
-	/// Convert between ClassData and orml_nft::Trait::ClassData
-	type ConvertClassData: IsType<<Self as orml_nft::Trait>::ClassData> + IsType<ClassData>;
-	/// Convert between TokenData and orml_nft::Trait::TokenData
-	type ConvertTokenData: IsType<<Self as orml_nft::Trait>::TokenData> + IsType<TokenData>;
 	/// The NFT's module id
 	type ModuleId: Get<ModuleId>;
 	///  Currency type for reserve/unreserve balance to
@@ -174,8 +168,6 @@ decl_module! {
 				//	For now, use origin as owner and skip the proxy part
 				//	pallet_proxy::Module<T>::add_proxy(owner, origin, Default::default(), 0)
 				let data = ClassData { deposit, properties };
-				let data = T::ConvertClassData::from(data);
-				let data = Into::<<T as orml_nft::Trait>::ClassData>::into(data);
 				orml_nft::Module::<T>::create_class(&who, metadata, data)?;
 
 				Self::deposit_event(RawEvent::CreatedClass(who, next_id));
@@ -215,8 +207,6 @@ decl_module! {
 				<T as Trait>::Currency::reserve(&owner, total_deposit)?;
 
 				let data = TokenData { deposit };
-				let data = T::ConvertTokenData::from(data);
-				let data = Into::<<T as orml_nft::Trait>::TokenData>::into(data);
 				for _ in 0..quantity {
 					orml_nft::Module::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
 				}
@@ -247,8 +237,8 @@ decl_module! {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-				let data: T::ConvertClassData = From::from(class_info.data);
-				ensure!(data.into().properties.0.contains(ClassProperty::Transferable), Error::<T>::NonTransferable);
+				let data = class_info.data;
+				ensure!(data.properties.0.contains(ClassProperty::Transferable), Error::<T>::NonTransferable);
 
 				let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
 				ensure!(who == token_info.owner, Error::<T>::NoPermission);
@@ -280,16 +270,15 @@ decl_module! {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-				let data: T::ConvertClassData = From::from(class_info.data);
-				ensure!(data.into().properties.0.contains(ClassProperty::Burnable), Error::<T>::NonBurnable);
+				let data = class_info.data;
+				ensure!(data.properties.0.contains(ClassProperty::Burnable), Error::<T>::NonBurnable);
 
 				let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
 				ensure!(who == token_info.owner, Error::<T>::NoPermission);
 
 				orml_nft::Module::<T>::burn(&who, token)?;
 				let owner: T::AccountId = T::ModuleId::get().into_sub_account(token.0);
-				let data: T::ConvertTokenData = From::from(token_info.data);
-				let data: TokenData = data.into();
+				let data = token_info.data;
 				// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
 				// `transfer` not do this check.
 				<T as Trait>::Currency::unreserve(&owner, data.deposit);
@@ -325,8 +314,7 @@ decl_module! {
 				ensure!(class_info.total_issuance == Zero::zero(), Error::<T>::CannotDestroyClass);
 
 				let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
-				let data: T::ConvertClassData = From::from(class_info.data);
-				let data: ClassData = data.into();
+				let data = class_info.data;
 				// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
 				// `transfer` not do this check.
 				<T as Trait>::Currency::unreserve(&owner, data.deposit);
