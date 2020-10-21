@@ -328,7 +328,7 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
 
-	fn accumulate_reward(now: T::BlockNumber, callback: impl Fn(PoolId, Balance)) -> Vec<(CurrencyId, Balance)> {
+	fn accumulate_reward(now: T::BlockNumber, mut callback: impl FnMut(PoolId, Balance)) -> Vec<(CurrencyId, Balance)> {
 		let mut accumulated_rewards: Vec<(CurrencyId, Balance)> = vec![];
 
 		if !T::EmergencyShutdown::is_shutdown() && now % T::AccumulatePeriod::get() == Zero::zero() {
