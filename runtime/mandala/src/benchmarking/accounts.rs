@@ -1,7 +1,8 @@
-use crate::{AccountId, AllNonNativeCurrencyIds, Balance, GetNativeCurrencyId, Runtime, DOLLARS};
+use crate::{AccountId, Accounts, AllNonNativeCurrencyIds, Balance, GetNativeCurrencyId, Runtime, System, DOLLARS};
 
 use super::utils::set_balance;
 use frame_benchmarking::account;
+use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
@@ -30,6 +31,11 @@ runtime_benchmarks! {
 			set_balance(currency_id, &caller, dollar(1000));
 		}
 	}: _(RawOrigin::Signed(caller), None)
+
+	on_finalize {
+	}: {
+		Accounts::on_finalize(System::block_number());
+	}
 }
 
 #[cfg(test)]
@@ -48,6 +54,13 @@ mod tests {
 	fn test_close_account() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_close_account());
+		});
+	}
+
+	#[test]
+	fn test_on_finalize() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_on_finalize());
 		});
 	}
 }

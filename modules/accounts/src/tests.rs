@@ -8,10 +8,11 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Accounts, Call, Currencies, DEXModule, ExtBuilder, NewAccountDeposit, Origin, Runtime, System, ACA, ALICE, AUSD,
-	BOB, BTC, CAROL,
+	Accounts, Call, Currencies, DEXModule, ExtBuilder, MaximumBlockWeight, NewAccountDeposit, Origin, Runtime, System,
+	ACA, ALICE, AUSD, BOB, BTC, CAROL,
 };
 use orml_traits::MultiCurrency;
+use sp_runtime::testing::TestXt;
 
 const CALL: &<Runtime as system::Trait>::Call = &Call::Currencies(orml_currencies::Call::transfer(BOB, AUSD, 12));
 
@@ -361,4 +362,157 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 749);
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000, 1251));
 	});
+}
+
+#[test]
+fn query_info_works() {
+	ExtBuilder::default()
+		.base_weight(5)
+		.byte_fee(1)
+		.weight_fee(2)
+		.build()
+		.execute_with(|| {
+			let call = Call::PalletBalances(pallet_balances::Call::transfer(2, 69));
+			let origin = 111111;
+			let extra = ();
+			let xt = TestXt::new(call, Some((origin, extra)));
+			let info = xt.get_dispatch_info();
+			let ext = xt.encode();
+			let len = ext.len() as u32;
+
+			// all fees should be x1.5
+			NextFeeMultiplier::put(Multiplier::saturating_from_rational(3, 2));
+
+			assert_eq!(
+				Accounts::query_info(xt, len),
+				RuntimeDispatchInfo {
+					weight: info.weight,
+					class: info.class,
+					partial_fee: 5 * 2 /* base * weight_fee */
+						+ len as u128  /* len * 1 */
+						+ info.weight.min(MaximumBlockWeight::get() as u64) as u128 * 2 * 3 / 2 /* weight */
+				},
+			);
+		});
+}
+
+#[test]
+fn compute_fee_works_without_multiplier() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Next fee multiplier is zero
+			assert_eq!(NextFeeMultiplier::get(), Multiplier::one());
+
+			// Tip only, no fees works
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::No,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 10), 10);
+			// No tip, only base fee works
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+			// Tip + base fee works
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 69), 169);
+			// Len (byte fee) + base fee works
+			assert_eq!(Module::<Runtime>::compute_fee(42, &dispatch_info, 0), 520);
+			// Weight fee + base fee works
+			let dispatch_info = DispatchInfo {
+				weight: 1000,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 1100);
+		});
+}
+
+#[test]
+fn compute_fee_works_with_multiplier() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Add a next fee multiplier. Fees will be x3/2.
+			NextFeeMultiplier::put(Multiplier::saturating_from_rational(3, 2));
+			// Base fee is unaffected by multiplier
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+
+			// Everything works together :)
+			let dispatch_info = DispatchInfo {
+				weight: 123,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			// 123 weight, 456 length, 100 base
+			assert_eq!(
+				Module::<Runtime>::compute_fee(456, &dispatch_info, 789),
+				100 + (3 * 123 / 2) + 4560 + 789,
+			);
+		});
+}
+
+#[test]
+fn compute_fee_works_with_negative_multiplier() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Add a next fee multiplier. All fees will be x1/2.
+			NextFeeMultiplier::put(Multiplier::saturating_from_rational(1, 2));
+
+			// Base fee is unaffected by multiplier.
+			let dispatch_info = DispatchInfo {
+				weight: 0,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+
+			// Everything works together.
+			let dispatch_info = DispatchInfo {
+				weight: 123,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			// 123 weight, 456 length, 100 base
+			assert_eq!(
+				Module::<Runtime>::compute_fee(456, &dispatch_info, 789),
+				100 + (123 / 2) + 4560 + 789,
+			);
+		});
+}
+
+#[test]
+fn compute_fee_does_not_overflow() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			// Overflow is handled
+			let dispatch_info = DispatchInfo {
+				weight: Weight::max_value(),
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(
+				Module::<Runtime>::compute_fee(<u32>::max_value(), &dispatch_info, <u128>::max_value()),
+				<u128>::max_value()
+			);
+		});
 }

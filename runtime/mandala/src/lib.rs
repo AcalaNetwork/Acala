@@ -38,6 +38,7 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
+use module_accounts::{Multiplier, TargetedFeeAdjustment};
 use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
@@ -47,7 +48,6 @@ use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
-use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -288,14 +288,6 @@ parameter_types! {
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
-}
-
-impl pallet_transaction_payment::Trait for Runtime {
-	type Currency = Balances;
-	type OnTransactionPayment = AcalaTreasury;
-	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = WeightToFee;
-	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 }
 
 impl pallet_sudo::Trait for Runtime {
@@ -1073,7 +1065,12 @@ impl module_accounts::Trait for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
-	type Currency = Currencies;
+	type Currency = Balances;
+	type MultiCurrency = Currencies;
+	type OnTransactionPayment = AcalaTreasury;
+	type TransactionByteFee = TransactionByteFee;
+	type WeightToFee = WeightToFee;
+	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
 	type KillAccount = frame_system::CallKillAccount<Runtime>;
@@ -1265,7 +1262,7 @@ impl pallet_contracts::Trait for Runtime {
 	type SurchargeReward = SurchargeReward;
 	type MaxDepth = pallet_contracts::DefaultMaxDepth;
 	type MaxValueSize = pallet_contracts::DefaultMaxValueSize;
-	type WeightPrice = pallet_transaction_payment::Module<Self>;
+	type WeightPrice = module_accounts::Module<Self>;
 }
 
 /// Fixed gas price of `1`.
@@ -1392,8 +1389,6 @@ construct_runtime!(
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-
-		TransactionPayment: pallet_transaction_payment::{Module, Storage}, // TODO: #433 remove this
 	}
 );
 
@@ -1584,7 +1579,7 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-			TransactionPayment::query_info(uxt, len)
+			Accounts::query_info(uxt, len)
 		}
 	}
 
