@@ -16,22 +16,25 @@ use frame_support::{
 		Currency, ExistenceRequirement, Get, Happened, Imbalance, OnKilledAccount, OnUnbalanced, StoredMap,
 		WithdrawReason,
 	},
-	weights::{DispatchInfo, PostDispatchInfo, Weight},
-	IsSubType,
+	weights::{
+		DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, Weight, WeightToFeeCoefficient, WeightToFeePolynomial,
+	},
+	IsSubType, StorageMap,
 };
 use frame_system::{self as system, ensure_signed, AccountInfo};
 use orml_traits::{MultiCurrency, MultiLockableCurrency, MultiReservableCurrency, OnReceived};
 use orml_utilities::with_transaction_result;
+use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, CheckedSub, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating,
+		AccountIdConversion, CheckedSub, Convert, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating,
 		SignedExtension, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointOperand, ModuleId,
+	FixedPointNumber, FixedPointOperand, FixedU128, ModuleId, Perquintill,
 };
 use sp_std::convert::Infallible;
 use sp_std::{prelude::*, vec};
@@ -43,15 +46,158 @@ mod tests;
 
 pub trait WeightInfo {
 	fn close_account(c: u32) -> Weight;
+	fn on_finalize() -> Weight;
 }
 
-type PalletBalanceOf<T> =
-	<<T as pallet_transaction_payment::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
-type NegativeImbalanceOf<T> = <<T as pallet_transaction_payment::Trait>::Currency as Currency<
-	<T as system::Trait>::AccountId,
->>::NegativeImbalance;
+/// Fee multiplier.
+pub type Multiplier = FixedU128;
 
-pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_currencies::Trait {
+type PalletBalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::NegativeImbalance;
+
+/// A struct to update the weight multiplier per block. It implements
+/// `Convert<Multiplier, Multiplier>`, meaning that it can convert the previous
+/// multiplier to the next one. This should be called on `on_finalize` of a
+/// block, prior to potentially cleaning the weight data from the system module.
+///
+/// given:
+///     s = previous block weight
+///     s'= ideal block weight
+///     m = maximum block weight
+///     diff = (s - s')/m
+///     v = 0.00001
+///     t1 = (v * diff)
+///     t2 = (v * diff)^2 / 2
+/// then:
+///     next_multiplier = prev_multiplier * (1 + t1 + t2)
+///
+/// Where `(s', v)` must be given as the `Get` implementation of the `T` generic
+/// type. Moreover, `M` must provide the minimum allowed value for the
+/// multiplier. Note that a runtime should ensure with tests that the
+/// combination of this `M` and `V` is not such that the multiplier can drop to
+/// zero and never recover.
+///
+/// note that `s'` is interpreted as a portion in the _normal transaction_
+/// capacity of the block. For example, given `s' == 0.25` and
+/// `AvailableBlockRatio = 0.75`, then the target fullness is _0.25 of the
+/// normal capacity_ and _0.1875 of the entire block_.
+///
+/// This implementation implies the bound:
+/// - `v ≤ p / k * (s − s')`
+/// - or, solving for `p`: `p >= v * k * (s - s')`
+///
+/// where `p` is the amount of change over `k` blocks.
+///
+/// Hence:
+/// - in a fully congested chain: `p >= v * k * (1 - s')`.
+/// - in an empty chain: `p >= v * k * (-s')`.
+///
+/// For example, when all blocks are full and there are 28800 blocks per day
+/// (default in `substrate-node`) and v == 0.00001, s' == 0.1875, we'd have:
+///
+/// p >= 0.00001 * 28800 * 0.8125
+/// p >= 0.234
+///
+/// Meaning that fees can change by around ~23% per day, given extreme
+/// congestion.
+///
+/// More info can be found at:
+/// https://w3f-research.readthedocs.io/en/latest/polkadot/Token%20Economics.html
+pub struct TargetedFeeAdjustment<T, S, V, M>(sp_std::marker::PhantomData<(T, S, V, M)>);
+
+/// Something that can convert the current multiplier to the next one.
+pub trait MultiplierUpdate: Convert<Multiplier, Multiplier> {
+	/// Minimum multiplier
+	fn min() -> Multiplier;
+	/// Target block saturation level
+	fn target() -> Perquintill;
+	/// Variability factor
+	fn variability() -> Multiplier;
+}
+
+impl MultiplierUpdate for () {
+	fn min() -> Multiplier {
+		Default::default()
+	}
+	fn target() -> Perquintill {
+		Default::default()
+	}
+	fn variability() -> Multiplier {
+		Default::default()
+	}
+}
+
+impl<T, S, V, M> MultiplierUpdate for TargetedFeeAdjustment<T, S, V, M>
+where
+	T: frame_system::Trait,
+	S: Get<Perquintill>,
+	V: Get<Multiplier>,
+	M: Get<Multiplier>,
+{
+	fn min() -> Multiplier {
+		M::get()
+	}
+	fn target() -> Perquintill {
+		S::get()
+	}
+	fn variability() -> Multiplier {
+		V::get()
+	}
+}
+
+impl<T, S, V, M> Convert<Multiplier, Multiplier> for TargetedFeeAdjustment<T, S, V, M>
+where
+	T: frame_system::Trait,
+	S: Get<Perquintill>,
+	V: Get<Multiplier>,
+	M: Get<Multiplier>,
+{
+	fn convert(previous: Multiplier) -> Multiplier {
+		// Defensive only. The multiplier in storage should always be at most positive.
+		// Nonetheless we recover here in case of errors, because any value below this
+		// would be stale and can never change.
+		let min_multiplier = M::get();
+		let previous = previous.max(min_multiplier);
+
+		// the computed ratio is only among the normal class.
+		let normal_max_weight = <T as frame_system::Trait>::AvailableBlockRatio::get()
+			* <T as frame_system::Trait>::MaximumBlockWeight::get();
+		let normal_block_weight = <frame_system::Module<T>>::block_weight()
+			.get(frame_support::weights::DispatchClass::Normal)
+			.min(normal_max_weight);
+
+		let s = S::get();
+		let v = V::get();
+
+		let target_weight = (s * normal_max_weight) as u128;
+		let block_weight = normal_block_weight as u128;
+
+		// determines if the first_term is positive
+		let positive = block_weight >= target_weight;
+		let diff_abs = block_weight.max(target_weight) - block_weight.min(target_weight);
+
+		// defensive only, a test case assures that the maximum weight diff can fit in
+		// Multiplier without any saturation.
+		let diff = Multiplier::saturating_from_rational(diff_abs, normal_max_weight.max(1));
+		let diff_squared = diff.saturating_mul(diff);
+
+		let v_squared_2 = v.saturating_mul(v) / Multiplier::saturating_from_integer(2);
+
+		let first_term = v.saturating_mul(diff);
+		let second_term = v_squared_2.saturating_mul(diff_squared);
+
+		if positive {
+			let excess = first_term.saturating_add(second_term).saturating_mul(previous);
+			previous.saturating_add(excess).max(min_multiplier)
+		} else {
+			// Defensive-only: first_term > second_term. Safe subtraction.
+			let negative = first_term.saturating_sub(second_term).saturating_mul(previous);
+			previous.saturating_sub(negative).max(min_multiplier)
+		}
+	}
+}
+
+pub trait Trait: system::Trait + orml_currencies::Trait {
 	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
@@ -62,9 +208,27 @@ pub trait Trait: system::Trait + pallet_transaction_payment::Trait + orml_curren
 	/// Stable currency id, should be AUSD
 	type StableCurrencyId: Get<CurrencyId>;
 
+	/// The currency type in which fees will be paid.
+	type Currency: Currency<Self::AccountId> + Send + Sync;
+
 	/// Currency to transfer, reserve/unreserve, lock/unlock assets
-	type Currency: MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
+	type MultiCurrency: MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
 		+ MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+	/// Handler for the unbalanced reduction when taking transaction fees. This
+	/// is either one or two separate imbalances, the first is the transaction
+	/// fee paid, the second is the tip paid, if any.
+	type OnTransactionPayment: OnUnbalanced<NegativeImbalanceOf<Self>>;
+
+	/// The fee to be paid for making a transaction; the per-byte portion.
+	type TransactionByteFee: Get<PalletBalanceOf<Self>>;
+
+	/// Convert a weight value into a deductible fee based on the currency type.
+	type WeightToFee: WeightToFeePolynomial<Balance = PalletBalanceOf<Self>>;
+
+	/// Update the multiplier of the next block, based on the previous block's
+	/// weight.
+	type FeeMultiplierUpdate: MultiplierUpdate;
 
 	/// DEX to exchange currencies.
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
@@ -107,7 +271,9 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Accounts {}
+	trait Store for Module<T: Trait> as Accounts {
+		pub NextFeeMultiplier get(fn next_fee_multiplier): Multiplier = Multiplier::saturating_from_integer(1);
+	}
 }
 
 decl_module! {
@@ -132,6 +298,13 @@ decl_module! {
 		/// The max slippage allowed when swap open account deposit or fee with DEX
 		const MaxSlippageSwapWithDEX: Ratio = T::MaxSlippageSwapWithDEX::get();
 
+		/// The fee to be paid for making a transaction; the per-byte portion.
+		const TransactionByteFee: PalletBalanceOf<T> = T::TransactionByteFee::get();
+
+		/// The polynomial that is applied in order to derive fee from weight.
+		const WeightToFee: Vec<WeightToFeeCoefficient<PalletBalanceOf<T>>> =
+			T::WeightToFee::polynomial().to_vec();
+
 		/// Kill self account from system.
 		///
 		/// The dispatch origin of this call must be Signed.
@@ -152,7 +325,7 @@ decl_module! {
 
 				let native_currency_id = T::NativeCurrencyId::get();
 				let new_account_deposit = T::NewAccountDeposit::get();
-				let total_reserved_native = <T as Trait>::Currency::reserved_balance(native_currency_id, &who);
+				let total_reserved_native = <T as Trait>::MultiCurrency::reserved_balance(native_currency_id, &who);
 
 				// ensure total reserved native is lte new account deposit,
 				// otherwise think the account still has active reserved kept by some bussiness.
@@ -164,21 +337,21 @@ decl_module! {
 				let recipient = recipient.unwrap_or_else(|| treasury_account.clone());
 
 				// unreserve all reserved native currency
-				<T as Trait>::Currency::unreserve(native_currency_id, &who, total_reserved_native);
+				<T as Trait>::MultiCurrency::unreserve(native_currency_id, &who, total_reserved_native);
 
 				// transfer all free to recipient
-				<T as Trait>::Currency::transfer(native_currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(native_currency_id, &who))?;
+				<T as Trait>::MultiCurrency::transfer(native_currency_id, &who, &recipient, <T as Trait>::MultiCurrency::free_balance(native_currency_id, &who))?;
 
 				// handle other non-native currencies
 				for currency_id in T::AllNonNativeCurrencyIds::get() {
 					// ensure the account has no active reserved of non-native token
 					ensure!(
-						<T as Trait>::Currency::reserved_balance(currency_id, &who).is_zero(),
+						<T as Trait>::MultiCurrency::reserved_balance(currency_id, &who).is_zero(),
 						Error::<T>::StillHasActiveReserved,
 					);
 
 					// transfer all free to recipient
-					<T as Trait>::Currency::transfer(currency_id, &who, &recipient, <T as Trait>::Currency::free_balance(currency_id, &who))?;
+					<T as Trait>::MultiCurrency::transfer(currency_id, &who, &recipient, <T as Trait>::MultiCurrency::free_balance(currency_id, &who))?;
 				}
 
 				// finally kill the account
@@ -186,6 +359,56 @@ decl_module! {
 
 				Ok(())
 			})?;
+		}
+
+		/// `on_initialize` to return the weight used in `on_finalize`.
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			<T as Trait>::WeightInfo::on_finalize()
+		}
+
+		fn on_finalize() {
+			NextFeeMultiplier::mutate(|fm| {
+				*fm = T::FeeMultiplierUpdate::convert(*fm);
+			});
+		}
+
+		fn integrity_test() {
+			// given weight == u64, we build multipliers from `diff` of two weight values, which can
+			// at most be MaximumBlockWeight. Make sure that this can fit in a multiplier without
+			// loss.
+			use sp_std::convert::TryInto;
+			assert!(
+				<Multiplier as sp_runtime::traits::Bounded>::max_value() >=
+				Multiplier::checked_from_integer(
+					<T as frame_system::Trait>::MaximumBlockWeight::get().try_into().unwrap()
+				).unwrap(),
+			);
+
+			// This is the minimum value of the multiplier. Make sure that if we collapse to this
+			// value, we can recover with a reasonable amount of traffic. For this test we assert
+			// that if we collapse to minimum, the trend will be positive with a weight value
+			// which is 1% more than the target.
+			let min_value = T::FeeMultiplierUpdate::min();
+			let mut target =
+				T::FeeMultiplierUpdate::target() *
+				(T::AvailableBlockRatio::get() * T::MaximumBlockWeight::get());
+
+			// add 1 percent;
+			let addition = target / 100;
+			if addition == 0 {
+				// this is most likely because in a test setup we set everything to ().
+				return;
+			}
+			target += addition;
+
+			sp_io::TestExternalities::new_empty().execute_with(|| {
+				<frame_system::Module<T>>::set_block_limits(target, 0);
+				let next = T::FeeMultiplierUpdate::convert(min_value);
+				assert!(next > min_value, "The minimum bound of the multiplier is too low. When \
+					block saturation is more than target by 1% and multiplier is minimal then \
+					the multiplier doesn't increase."
+				);
+			})
 		}
 	}
 }
@@ -202,7 +425,7 @@ impl<T: Trait> Module<T> {
 	/// transferred to treasury instead.
 	fn open_account(k: &T::AccountId) {
 		let native_currency_id = T::NativeCurrencyId::get();
-		if <T as Trait>::Currency::reserve(native_currency_id, k, T::NewAccountDeposit::get()).is_ok() {
+		if <T as Trait>::MultiCurrency::reserve(native_currency_id, k, T::NewAccountDeposit::get()).is_ok() {
 			T::OnCreatedAccount::happened(&k);
 		} else {
 			let treasury_account = Self::treasury_account_id();
@@ -215,11 +438,11 @@ impl<T: Trait> Module<T> {
 				// transfer all free balances from a new account to treasury account, so it
 				// shouldn't fail. but even it failed, leave some dust storage is not a critical
 				// issue, just open account without reserve NewAccountDeposit.
-				if <T as Trait>::Currency::transfer(
+				if <T as Trait>::MultiCurrency::transfer(
 					native_currency_id,
 					k,
 					&treasury_account,
-					<T as Trait>::Currency::free_balance(native_currency_id, k),
+					<T as Trait>::MultiCurrency::free_balance(native_currency_id, k),
 				)
 				.is_ok()
 				{
@@ -260,7 +483,7 @@ impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
 				who,
 				&trading_path,
 				T::NewAccountDeposit::get(),
-				<T as Trait>::Currency::free_balance(currency_id, who),
+				<T as Trait>::MultiCurrency::free_balance(currency_id, who),
 				Some(T::MaxSlippageSwapWithDEX::get()),
 			);
 		}
@@ -349,6 +572,141 @@ impl<T: Trait> OnKilledAccount<T::AccountId> for Module<T> {
 	fn on_killed_account(_who: &T::AccountId) {}
 }
 
+impl<T: Trait> Module<T>
+where
+	PalletBalanceOf<T>: FixedPointOperand,
+{
+	/// Query the data that we know about the fee of a given `call`.
+	///
+	/// This module is not and cannot be aware of the internals of a signed
+	/// extension, for example a tip. It only interprets the extrinsic as some
+	/// encoded value and accounts for its weight and length, the runtime's
+	/// extrinsic base weight, and the current fee multiplier.
+	///
+	/// All dispatchables must be annotated with weight and will have some fee
+	/// info. This function always returns.
+	pub fn query_info<Extrinsic: GetDispatchInfo>(
+		unchecked_extrinsic: Extrinsic,
+		len: u32,
+	) -> RuntimeDispatchInfo<PalletBalanceOf<T>>
+	where
+		T: Send + Sync,
+		PalletBalanceOf<T>: Send + Sync,
+		T::Call: Dispatchable<Info = DispatchInfo>,
+	{
+		// NOTE: we can actually make it understand `ChargeTransactionPayment`, but
+		// would be some hassle for sure. We have to make it aware of the index of
+		// `ChargeTransactionPayment` in `Extra`. Alternatively, we could actually
+		// execute the tx's per-dispatch and record the balance of the sender before and
+		// after the pipeline.. but this is way too much hassle for a very very little
+		// potential gain in the future.
+		let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(&unchecked_extrinsic);
+
+		let partial_fee = Self::compute_fee(len, &dispatch_info, 0u32.into());
+		let DispatchInfo { weight, class, .. } = dispatch_info;
+
+		RuntimeDispatchInfo {
+			weight,
+			class,
+			partial_fee,
+		}
+	}
+
+	/// Compute the final fee value for a particular transaction.
+	///
+	/// The final fee is composed of:
+	///   - `base_fee`: This is the minimum amount a user pays for a
+	///     transaction. It is declared as a base _weight_ in the runtime and
+	///     converted to a fee using `WeightToFee`.
+	///   - `len_fee`: The length fee, the amount paid for the encoded length
+	///     (in bytes) of the transaction.
+	///   - `weight_fee`: This amount is computed based on the weight of the
+	///     transaction. Weight accounts for the execution time of a
+	///     transaction.
+	///   - `targeted_fee_adjustment`: This is a multiplier that can tune the
+	///     final fee based on the congestion of the network.
+	///   - (Optional) `tip`: If included in the transaction, the tip will be
+	///     added on top. Only signed transactions can have a tip.
+	///
+	/// The base fee and adjusted weight and length fees constitute the
+	/// _inclusion fee,_ which is the minimum fee for a transaction to be
+	/// included in a block.
+	///
+	/// ```ignore
+	/// inclusion_fee = base_fee + len_fee + [targeted_fee_adjustment * weight_fee];
+	/// final_fee = inclusion_fee + tip;
+	/// ```
+	pub fn compute_fee(len: u32, info: &DispatchInfoOf<T::Call>, tip: PalletBalanceOf<T>) -> PalletBalanceOf<T>
+	where
+		T::Call: Dispatchable<Info = DispatchInfo>,
+	{
+		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee)
+	}
+
+	/// Compute the actual post dispatch fee for a particular transaction.
+	///
+	/// Identical to `compute_fee` with the only difference that the post
+	/// dispatch corrected weight is used for the weight fee calculation.
+	pub fn compute_actual_fee(
+		len: u32,
+		info: &DispatchInfoOf<T::Call>,
+		post_info: &PostDispatchInfoOf<T::Call>,
+		tip: PalletBalanceOf<T>,
+	) -> PalletBalanceOf<T>
+	where
+		T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+	{
+		Self::compute_fee_raw(len, post_info.calc_actual_weight(info), tip, post_info.pays_fee(info))
+	}
+
+	fn compute_fee_raw(len: u32, weight: Weight, tip: PalletBalanceOf<T>, pays_fee: Pays) -> PalletBalanceOf<T> {
+		if pays_fee == Pays::Yes {
+			let len = <PalletBalanceOf<T>>::from(len);
+			let per_byte = T::TransactionByteFee::get();
+
+			// length fee. this is not adjusted.
+			let fixed_len_fee = per_byte.saturating_mul(len);
+
+			// the adjustable part of the fee.
+			let unadjusted_weight_fee = Self::weight_to_fee(weight);
+			let multiplier = Self::next_fee_multiplier();
+			// final adjusted weight fee.
+			let adjusted_weight_fee = multiplier.saturating_mul_int(unadjusted_weight_fee);
+
+			let base_fee = Self::weight_to_fee(T::ExtrinsicBaseWeight::get());
+			base_fee
+				.saturating_add(fixed_len_fee)
+				.saturating_add(adjusted_weight_fee)
+				.saturating_add(tip)
+		} else {
+			tip
+		}
+	}
+
+	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
+		// cap the weight to the maximum defined in runtime, otherwise it will be the
+		// `Bounded` maximum of its data type, which is not desired.
+		let capped_weight = weight.min(<T as frame_system::Trait>::MaximumBlockWeight::get());
+		T::WeightToFee::calc(&capped_weight)
+	}
+}
+
+impl<T> Convert<Weight, PalletBalanceOf<T>> for Module<T>
+where
+	T: Trait,
+	PalletBalanceOf<T>: FixedPointOperand,
+{
+	/// Compute the fee for the specified weight.
+	///
+	/// This fee is already adjusted by the per block fee adjustment factor and
+	/// is therefore the share that the weight contributes to the overall fee of
+	/// a transaction. It is mainly for informational purposes and not used in
+	/// the actual fee calculation.
+	fn convert(weight: Weight) -> PalletBalanceOf<T> {
+		NextFeeMultiplier::get().saturating_mul_int(Self::weight_to_fee(weight))
+	}
+}
+
 /// Require the transactor pay for themselves and maybe include a tip to gain
 /// additional priority in the queue.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
@@ -384,7 +742,7 @@ where
 	) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
 		// pay any fees.
 		let tip = self.0;
-		let fee = <pallet_transaction_payment::Module<T>>::compute_fee(len as u32, info, tip);
+		let fee = Module::<T>::compute_fee(len as u32, info, tip);
 
 		let reason = if tip.is_zero() {
 			WithdrawReason::TransactionPayment.into()
@@ -393,16 +751,10 @@ where
 		};
 
 		// check native balance if is enough
-		let native_is_enough = <T as pallet_transaction_payment::Trait>::Currency::free_balance(who)
+		let native_is_enough = <T as Trait>::Currency::free_balance(who)
 			.checked_sub(&fee)
 			.map_or(false, |new_free_balance| {
-				<T as pallet_transaction_payment::Trait>::Currency::ensure_can_withdraw(
-					who,
-					fee,
-					reason,
-					new_free_balance,
-				)
-				.is_ok()
+				<T as Trait>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
 			});
 
 		// try to use non-native currency to swap native currency by exchange with DEX
@@ -428,7 +780,7 @@ where
 					who,
 					&trading_path,
 					balance_fee,
-					<T as Trait>::Currency::free_balance(currency_id, who),
+					<T as Trait>::MultiCurrency::free_balance(currency_id, who),
 					price_impact_limit,
 				)
 				.is_ok()
@@ -440,12 +792,7 @@ where
 		}
 
 		// withdraw native currency as fee
-		match <T as pallet_transaction_payment::Trait>::Currency::withdraw(
-			who,
-			fee,
-			reason,
-			ExistenceRequirement::KeepAlive,
-		) {
+		match <T as Trait>::Currency::withdraw(who, fee, reason, ExistenceRequirement::KeepAlive) {
 			Ok(imbalance) => Ok((fee, Some(imbalance))),
 			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
@@ -529,27 +876,25 @@ where
 	) -> Result<(), TransactionValidityError> {
 		let (tip, who, imbalance, fee) = pre;
 		if let Some(payed) = imbalance {
-			let actual_fee =
-				<pallet_transaction_payment::Module<T>>::compute_actual_fee(len as u32, info, post_info, tip);
+			let actual_fee = Module::<T>::compute_actual_fee(len as u32, info, post_info, tip);
 			let refund = fee.saturating_sub(actual_fee);
-			let actual_payment =
-				match <T as pallet_transaction_payment::Trait>::Currency::deposit_into_existing(&who, refund) {
-					Ok(refund_imbalance) => {
-						// The refund cannot be larger than the up front payed max weight.
-						// `PostDispatchInfo::calc_unspent` guards against such a case.
-						match payed.offset(refund_imbalance) {
-							Ok(actual_payment) => actual_payment,
-							Err(_) => return Err(InvalidTransaction::Payment.into()),
-						}
+			let actual_payment = match <T as Trait>::Currency::deposit_into_existing(&who, refund) {
+				Ok(refund_imbalance) => {
+					// The refund cannot be larger than the up front payed max weight.
+					// `PostDispatchInfo::calc_unspent` guards against such a case.
+					match payed.offset(refund_imbalance) {
+						Ok(actual_payment) => actual_payment,
+						Err(_) => return Err(InvalidTransaction::Payment.into()),
 					}
-					// We do not recreate the account using the refund. The up front payment
-					// is gone in that case.
-					Err(_) => payed,
-				};
+				}
+				// We do not recreate the account using the refund. The up front payment
+				// is gone in that case.
+				Err(_) => payed,
+			};
 			let imbalances = actual_payment.split(tip);
 
-			// distribute fee by `pallet_transaction_payment`
-			<T as pallet_transaction_payment::Trait>::OnTransactionPayment::on_unbalanceds(
+			// distribute fee
+			<T as Trait>::OnTransactionPayment::on_unbalanceds(
 				Some(imbalances.0).into_iter().chain(Some(imbalances.1)),
 			);
 		}

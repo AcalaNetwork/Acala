@@ -161,7 +161,6 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
@@ -2832,7 +2831,6 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
@@ -3575,7 +3573,6 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
@@ -3804,9 +3801,10 @@ dependencies = [
  "orml-traits",
  "orml-utilities",
  "pallet-balances",
- "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "serde",
+ "smallvec 1.4.2",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -4641,7 +4639,7 @@ dependencies = [
 
 [[package]]
 name = "orml-nft"
-version = "0.3.2-dev"
+version = "0.2.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5211,24 +5209,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
-]
-
-[[package]]
-name = "pallet-transaction-payment"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9fe2fc67f2eb123199a5b8fb89a8e1c30e5d6d6b1d98e0330bac85c0d8c46f1"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "smallvec 1.4.2",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
