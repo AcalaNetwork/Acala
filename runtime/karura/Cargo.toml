@@ -1,6 +1,6 @@
 [package]
 name = "karura-runtime"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Acala Developers"]
 edition = "2018"
 build = "build.rs"
