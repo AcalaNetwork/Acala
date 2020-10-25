@@ -24,7 +24,6 @@ use sp_runtime::{
 use sp_std::{convert::TryInto, prelude::*, vec};
 use support::{DEXManager, Price, Ratio};
 
-mod benchmarking;
 mod default_weight;
 mod mock;
 mod tests;
