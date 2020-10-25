@@ -88,7 +88,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 602,
+	spec_version: 604,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1182,8 +1182,6 @@ impl module_nft::Trait for Runtime {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ConvertClassData = module_nft::ClassData;
-	type ConvertTokenData = module_nft::TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = Currency<Runtime, GetNativeCurrencyId>;
 	type WeightInfo = weights::nft::WeightInfo<Runtime>;
