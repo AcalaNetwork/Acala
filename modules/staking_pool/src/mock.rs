@@ -8,7 +8,11 @@ use frame_system::EnsureSignedBy;
 use primitives::Amount;
 use primitives::TokenSymbol;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{CheckedAdd, CheckedMul, CheckedSub, IdentityLookup},
+	FixedPointOperand, Perbill,
+};
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
 use support::PolkadotStakingLedger;
@@ -313,16 +317,24 @@ impl PolkadotBridgeState<Balance, EraIndex> for MockBridge {
 impl PolkadotBridge<AccountId, BlockNumber, Balance, EraIndex> for MockBridge {}
 
 pub struct MockFeeModel;
-impl FeeModel for MockFeeModel {
+impl<Balance: FixedPointOperand> FeeModel<Balance> for MockFeeModel {
 	/// Linear model:
 	/// fee_rate = base_rate + (100% - base_rate) * (1 -
 	/// remain_available_percent) * demand_in_available_percent
-	fn get_fee_rate(remain_available_percent: Ratio, demand_in_available_percent: Ratio, base_rate: Rate) -> Rate {
-		Rate::one()
-			.saturating_sub(base_rate)
-			.saturating_mul(Rate::one().saturating_sub(remain_available_percent))
-			.saturating_mul(demand_in_available_percent)
-			.saturating_add(base_rate)
+	fn get_fee(
+		remain_available_percent: Ratio,
+		available_amount: Balance,
+		request_amount: Balance,
+		base_rate: Rate,
+	) -> Option<Balance> {
+		let demand_in_available_percent = Ratio::checked_from_rational(request_amount, available_amount)?;
+		let fee_rate = Rate::one()
+			.checked_sub(&base_rate)
+			.and_then(|n| n.checked_mul(&Rate::one().saturating_sub(remain_available_percent)))
+			.and_then(|n| n.checked_mul(&demand_in_available_percent))
+			.and_then(|n| n.checked_add(&base_rate))?;
+
+		fee_rate.checked_mul_int(request_amount)
 	}
 }
 

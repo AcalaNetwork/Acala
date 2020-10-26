@@ -36,8 +36,13 @@ pub struct Params {
 	pub base_fee_rate: Rate,
 }
 
-pub trait FeeModel {
-	fn get_fee_rate(remain_available_percent: Ratio, demand_in_available_percent: Ratio, base_rate: Rate) -> Rate;
+pub trait FeeModel<Balance> {
+	fn get_fee(
+		remain_available_percent: Ratio,
+		available_amount: Balance,
+		request_amount: Balance,
+		base_rate: Rate,
+	) -> Option<Balance>;
 }
 
 type ChangeRate = Change<Rate>;
@@ -70,7 +75,7 @@ pub trait Trait: system::Trait {
 	type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 	/// Calculation model for unbond fees
-	type FeeModel: FeeModel;
+	type FeeModel: FeeModel<Balance>;
 
 	/// The nominees selected by governance of Homa protocol.
 	type Nominees: NomineesProvider<PolkadotAccountIdOf<Self>>;
@@ -106,6 +111,8 @@ decl_error! {
 		LiquidCurrencyNotEnough,
 		InvalidEra,
 		Overflow,
+		GetFeeFailed,
+		InvalidConfig,
 	}
 }
 
@@ -158,7 +165,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				T::UpdateOrigin::ensure_origin(origin)?;
-				StakingPoolParams::mutate(|params| {
+				StakingPoolParams::try_mutate(|params| -> DispatchResult {
 					if let Change::NewValue(update) = target_max_free_unbonded_ratio {
 						params.target_max_free_unbonded_ratio = update;
 					}
@@ -174,8 +181,10 @@ decl_module! {
 					if let Change::NewValue(update) = base_fee_rate {
 						params.base_fee_rate = update;
 					}
-				});
-				Ok(())
+
+					ensure!(params.target_min_free_unbonded_ratio < params.target_max_free_unbonded_ratio, Error::<T>::InvalidConfig);
+					Ok(())
+				})
 			})?;
 		}
 	}
@@ -631,9 +640,9 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 				demand_staking_amount = available_free_unbonded;
 			}
 
-			let demand_in_available_percent =
-				Ratio::checked_from_rational(demand_staking_amount, available_free_unbonded)
-					.expect("available_free_unbonded is not zero; qed");
+			// let demand_in_available_percent =
+			// 	Ratio::checked_from_rational(demand_staking_amount, available_free_unbonded)
+			// 		.expect("available_free_unbonded is not zero; qed");
 			let current_free_unbonded_ratio = Self::get_free_unbonded_ratio();
 			let remain_available_percent = current_free_unbonded_ratio
 				.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio)
@@ -644,13 +653,15 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 					)
 					.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio),
 				)
-				.unwrap_or_default();
-			let fee_in_staking = T::FeeModel::get_fee_rate(
+				.expect("shouldn't panic expect the fee config is incorrect; qed");
+			let fee_in_staking = T::FeeModel::get_fee(
 				remain_available_percent,
-				demand_in_available_percent,
+				available_free_unbonded,
+				demand_staking_amount,
 				staking_pool_params.base_fee_rate,
 			)
-			.saturating_mul_int(demand_staking_amount);
+			.ok_or(Error::<T>::GetFeeFailed)?;
+
 			let retrieved_staking_amount = demand_staking_amount.saturating_sub(fee_in_staking);
 
 			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, redeem_liquid_amount)
@@ -713,10 +724,6 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 				demand_staking_amount = available_unclaimed_unbonding;
 			}
 
-			let demand_in_available_percent =
-				Ratio::checked_from_rational(demand_staking_amount, available_unclaimed_unbonding)
-					.expect("available_unclaimed_unbonding is not zero; qed");
-
 			let current_unclaimed_ratio = Ratio::checked_from_rational(unclaimed, initial_unclaimed)
 				.expect("if available_unclaimed_unbonding is not zero, initial_unclaimed must not be zero; qed");
 
@@ -731,12 +738,14 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 				)
 				.unwrap_or_default();
 
-			let fee_in_staking = T::FeeModel::get_fee_rate(
+			let fee_in_staking = T::FeeModel::get_fee(
 				remain_available_percent,
-				demand_in_available_percent,
+				available_unclaimed_unbonding,
+				demand_staking_amount,
 				staking_pool_params.base_fee_rate,
 			)
-			.saturating_mul_int(demand_staking_amount);
+			.ok_or(Error::<T>::GetFeeFailed)?;
+
 			let claimed_staking_amount = demand_staking_amount.saturating_sub(fee_in_staking);
 
 			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, redeem_liquid_amount)

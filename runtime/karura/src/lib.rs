@@ -27,9 +27,9 @@ use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
-	traits::AccountIdConversion,
+	traits::{AccountIdConversion, CheckedAdd, CheckedMul, CheckedSub},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -1110,17 +1110,24 @@ impl module_polkadot_bridge::Trait for Runtime {
 }
 
 pub struct FeeModel;
-impl module_staking_pool::FeeModel for FeeModel {
-	/// TODO:: Will be replaced by designed model
+impl<Balance: FixedPointOperand> module_staking_pool::FeeModel<Balance> for FeeModel {
 	/// Linear model:
 	/// fee_rate = base_rate + (100% - base_rate) * (1 -
 	/// remain_available_percent) * demand_in_available_percent
-	fn get_fee_rate(remain_available_percent: Ratio, demand_in_available_percent: Ratio, base_rate: Rate) -> Rate {
-		Rate::one()
-			.saturating_sub(base_rate)
-			.saturating_mul(Rate::one().saturating_sub(remain_available_percent))
-			.saturating_mul(demand_in_available_percent)
-			.saturating_add(base_rate)
+	fn get_fee(
+		remain_available_percent: Ratio,
+		available_amount: Balance,
+		request_amount: Balance,
+		base_rate: Rate,
+	) -> Option<Balance> {
+		let demand_in_available_percent = Ratio::checked_from_rational(request_amount, available_amount)?;
+		let fee_rate = Rate::one()
+			.checked_sub(&base_rate)
+			.and_then(|n| n.checked_mul(&Rate::one().saturating_sub(remain_available_percent)))
+			.and_then(|n| n.checked_mul(&demand_in_available_percent))
+			.and_then(|n| n.checked_add(&base_rate))?;
+
+		fee_rate.checked_mul_int(request_amount)
 	}
 }
 

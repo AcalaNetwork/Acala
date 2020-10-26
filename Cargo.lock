@@ -6252,6 +6252,7 @@ dependencies = [
  "acala-primitives",
  "module-support",
  "orml-oracle",
+ "sp-runtime",
 ]
 
 [[package]]
