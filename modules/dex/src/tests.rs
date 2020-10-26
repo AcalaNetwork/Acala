@@ -90,6 +90,32 @@ fn get_target_amounts_work() {
 }
 
 #[test]
+fn calculate_amount_for_big_number_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		LiquidityPool::insert(
+			AUSD_DOT_PAIR,
+			(171_000_000_000_000_000_000_000, 56_000_000_000_000_000_000_000),
+		);
+		assert_eq!(
+			DexModule::get_supply_amount(
+				171_000_000_000_000_000_000_000,
+				56_000_000_000_000_000_000_000,
+				1_000_000_000_000_000_000_000
+			),
+			3_140_495_867_768_595_041_323
+		);
+		assert_eq!(
+			DexModule::get_target_amount(
+				171_000_000_000_000_000_000_000,
+				56_000_000_000_000_000_000_000,
+				3_140_495_867_768_595_041_323
+			),
+			1_000_000_000_000_000_000_000
+		);
+	});
+}
+
+#[test]
 fn get_supply_amounts_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		LiquidityPool::insert(AUSD_DOT_PAIR, (50000, 10000));

@@ -183,8 +183,6 @@ impl module_nft::Trait for Runtime {
 	type Event = ();
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ConvertClassData = ClassData;
-	type ConvertTokenData = TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = NativeCurrency;
 	type WeightInfo = ();

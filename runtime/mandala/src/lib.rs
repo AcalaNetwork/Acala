@@ -87,7 +87,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 602,
+	spec_version: 604,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1388,8 +1388,6 @@ impl module_nft::Trait for Runtime {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ConvertClassData = module_nft::ClassData;
-	type ConvertTokenData = module_nft::TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = Currency<Runtime, GetNativeCurrencyId>;
 	type WeightInfo = weights::nft::WeightInfo<Runtime>;
@@ -1896,8 +1894,8 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, dex, Dex);
 			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
+			orml_add_benchmark!(params, batches, dex, benchmarking::dex);
 			orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
@@ -1908,14 +1906,14 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
-			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
-			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
+			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
+			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
+			orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
 
-			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			// orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
-			// orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
-			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
+			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
+			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
+			orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
+			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
