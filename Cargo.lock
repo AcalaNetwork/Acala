@@ -6250,6 +6250,8 @@ name = "runtime-common"
 version = "0.6.3"
 dependencies = [
  "acala-primitives",
+ "frame-support",
+ "module-staking-pool",
  "module-support",
  "orml-oracle",
  "sp-runtime",
