@@ -18,7 +18,7 @@ service = { package = "acala-service", path = "../service", default-features = f
 substrate-build-script-utils = { version = "2.0.0", default-features = false }
 
 [features]
-default = ["wasmtime", "cli"]
+default = [ "wasmtime", "cli", "with-mandala-runtime" ]
 wasmtime = [ "sc-cli/wasmtime" ]
 cli = [
 	"service",
@@ -28,3 +28,15 @@ cli = [
 	"frame-benchmarking-cli",
 ]
 runtime-benchmarks = [ "service/runtime-benchmarks" ]
+with-mandala-runtime = [
+	"service/with-mandala-runtime",
+]
+with-karura-runtime = [
+	"service/with-karura-runtime",
+]
+with-acala-runtime = [
+	"service/with-acala-runtime",
+]
+with-all-runtime = [
+	"service/with-all-runtime",
+]
