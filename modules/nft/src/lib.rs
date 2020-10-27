@@ -4,7 +4,6 @@ use codec::{Decode, Encode};
 use enumflags2::BitFlags;
 use frame_support::{decl_error, decl_event, decl_module, ensure, traits::Get, weights::Weight};
 use frame_system::ensure_signed;
-use orml_nft::CID;
 use orml_traits::{BasicCurrency, BasicReservableCurrency};
 use orml_utilities::with_transaction_result;
 use primitives::Balance;
@@ -24,6 +23,8 @@ pub trait WeightInfo {
 	fn burn() -> Weight;
 	fn destroy_class() -> Weight;
 }
+
+pub type CID = sp_std::vec::Vec<u8>;
 
 #[repr(u8)]
 #[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
