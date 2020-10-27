@@ -4558,7 +4558,7 @@ checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
 
 [[package]]
 name = "orml-auction"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4574,7 +4574,7 @@ dependencies = [
 
 [[package]]
 name = "orml-authority"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4591,7 +4591,7 @@ dependencies = [
 
 [[package]]
 name = "orml-benchmarking"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4608,7 +4608,7 @@ dependencies = [
 
 [[package]]
 name = "orml-currencies"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4626,7 +4626,7 @@ dependencies = [
 
 [[package]]
 name = "orml-gradually-update"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4639,7 +4639,7 @@ dependencies = [
 
 [[package]]
 name = "orml-nft"
-version = "0.3.2-dev"
+version = "0.3.5-dev"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4652,7 +4652,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4670,7 +4670,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4684,7 +4684,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-rpc-runtime-api"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -4693,7 +4693,7 @@ dependencies = [
 
 [[package]]
 name = "orml-rewards"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4709,7 +4709,7 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4727,7 +4727,7 @@ dependencies = [
 
 [[package]]
 name = "orml-traits"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4742,7 +4742,7 @@ dependencies = [
 
 [[package]]
 name = "orml-utilities"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
@@ -4757,7 +4757,7 @@ dependencies = [
 
 [[package]]
 name = "orml-vesting"
-version = "0.3.2-dev"
+version = "0.3.3-dev"
 dependencies = [
  "clear_on_drop",
  "frame-support",
