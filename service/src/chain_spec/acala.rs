@@ -104,8 +104,8 @@ fn acala_genesis(
 		get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance, BalancesConfig, BandOracleConfig,
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, PolkadotBridgeConfig, SessionConfig, StakerStatus,
-		StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
 		VestingConfig, CENTS, DOLLARS,
 	};
 
@@ -250,9 +250,6 @@ fn acala_genesis(
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
 		}),
-		module_polkadot_bridge: Some(PolkadotBridgeConfig {
-			mock_reward_rate: FixedU128::saturating_from_rational(5, 10000), // 20% APR
-		}),
 		orml_oracle_Instance1: Some(AcalaOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
@@ -262,5 +259,14 @@ fn acala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_evm: Some(Default::default()),
+		module_staking_pool: Some(StakingPoolConfig {
+			staking_pool_params: module_staking_pool::Params {
+				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
+				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
+				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
+				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
+				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
+			},
+		}),
 	}
 }
