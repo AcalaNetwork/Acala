@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use frame_system::{self as system, ensure_none, ensure_signed};
 use orml_traits::BasicCurrency;
 use primitives::Balance;
@@ -46,9 +46,6 @@ pub trait Trait: system::Trait {
 	/// This is exposed so that it can be tuned for particular runtime, when
 	/// multiple modules send unsigned transactions.
 	type UnsignedPriority: Get<TransactionPriority>;
-
-	/// Record burn event details when burn occurs until x blocks have passed
-	type BurnEventStoreDuration: Get<Self::BlockNumber>;
 }
 
 decl_storage! {
@@ -57,7 +54,9 @@ decl_storage! {
 		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
 
 		/// Record burn event details
-		BurnEvents get(fn burn_events): map hasher(twox_64_concat) T::BlockNumber => Vec<(DestAddress, Balance)>
+		BurnEvents get(fn burn_events): map hasher(twox_64_concat) u32 => Option<(DestAddress, Balance)>;
+		/// Next burn event ID
+		NextBurnEventId get(fn next_burn_event_id): u32;
 	}
 }
 
@@ -78,6 +77,8 @@ decl_error! {
 		InvalidMintSignature,
 		/// The mint signature has already been used.
 		SignatureAlreadyUsed,
+		/// Burn ID overflow.
+		BurnIdOverflow,
 	}
 }
 
@@ -114,22 +115,16 @@ decl_module! {
 		) {
 			let sender = ensure_signed(origin)?;
 
-			T::Currency::withdraw(&sender, amount)?;
-			BurnEvents::<T>::append(
-				<frame_system::Module<T>>::block_number() + T::BurnEventStoreDuration::get(),
-				(&to, amount),
-			);
+			NextBurnEventId::try_mutate(|id| -> DispatchResult {
+				let this_id = *id;
+				*id = id.checked_add(1).ok_or(Error::<T>::BurnIdOverflow)?;
 
-			Self::deposit_event(RawEvent::Burnt(sender, to, amount));
-		}
+				T::Currency::withdraw(&sender, amount)?;
+				BurnEvents::insert(this_id, (&to, amount));
+				Self::deposit_event(RawEvent::Burnt(sender, to, amount));
 
-		/// dummy `on_initialize` to return the weight used in `on_finalize`.
-		fn on_initialize(now: T::BlockNumber) -> Weight {
-			0
-		}
-
-		fn on_finalize(now: T::BlockNumber) {
-			BurnEvents::<T>::remove(now);
+				Ok(())
+			})?;
 		}
 	}
 }
