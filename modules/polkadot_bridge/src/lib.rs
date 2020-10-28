@@ -18,7 +18,7 @@ use support::{
 
 /// The params related to rebalance per era
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
-pub struct AccountStatus {
+pub struct SubAccountStatus {
 	/// Bonded amount
 	pub bonded: Balance,
 	/// Free amount
@@ -50,7 +50,7 @@ decl_storage! {
 		pub EraStartBlockNumber get(fn era_start_block_number): T::BlockNumber;
 		pub ForcedEra get(fn forced_era): Option<T::BlockNumber>;
 
-		pub SubAccounts get(fn sub_accounts): map hasher(twox_64_concat) u32 => AccountStatus;
+		pub SubAccounts get(fn sub_accounts): map hasher(twox_64_concat) u32 => SubAccountStatus;
 	}
 }
 

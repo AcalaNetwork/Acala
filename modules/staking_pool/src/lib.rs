@@ -640,9 +640,6 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 				demand_staking_amount = available_free_unbonded;
 			}
 
-			// let demand_in_available_percent =
-			// 	Ratio::checked_from_rational(demand_staking_amount, available_free_unbonded)
-			// 		.expect("available_free_unbonded is not zero; qed");
 			let current_free_unbonded_ratio = Self::get_free_unbonded_ratio();
 			let remain_available_percent = current_free_unbonded_ratio
 				.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio)
