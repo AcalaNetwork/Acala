@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, traits::OnFinalize, unsigned::ValidateUnsigned};
+use frame_support::{assert_noop, assert_ok, unsigned::ValidateUnsigned};
 use hex_literal::hex;
 use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, RenvmBridgeCall};
 use sp_core::H256;
@@ -40,17 +40,16 @@ fn burn_works() {
 		assert_eq!(Balances::free_balance(issuer.clone()), 5000);
 
 		let to: Vec<u8> = vec![2, 3, 4];
-		assert_eq!(RenVmBridge::burn_events(10), vec![]);
+		assert_eq!(RenVmBridge::burn_events(0), None);
 		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 1000));
 		assert_eq!(Balances::free_balance(&issuer), 4000);
-		assert_eq!(RenVmBridge::burn_events(10), vec![(to.clone(), 1000)]);
+		assert_eq!(RenVmBridge::burn_events(0), Some((to.clone(), 1000)));
+		assert_eq!(RenVmBridge::next_burn_event_id(), 1);
 
 		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 2000));
 		assert_eq!(Balances::free_balance(&issuer), 2000);
-		assert_eq!(RenVmBridge::burn_events(10), vec![(to.clone(), 1000), (to.clone(), 2000)]);
-
-		RenVmBridge::on_finalize(10);
-		assert_eq!(RenVmBridge::burn_events(10), vec![]);
+		assert_eq!(RenVmBridge::burn_events(1), Some((to.clone(), 2000)));
+		assert_eq!(RenVmBridge::next_burn_event_id(), 2);
 	});
 }
 
