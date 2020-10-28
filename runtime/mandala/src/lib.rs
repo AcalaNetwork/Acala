@@ -88,7 +88,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 604,
+	spec_version: 605,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1089,7 +1089,7 @@ impl orml_rewards::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const AccumulatePeriod: BlockNumber = HOURS;
+	pub const AccumulatePeriod: BlockNumber = MINUTES;
 }
 
 impl module_incentives::Trait for Runtime {
