@@ -1088,7 +1088,7 @@ impl orml_rewards::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const AccumulatePeriod: BlockNumber = HOURS;
+	pub const AccumulatePeriod: BlockNumber = MINUTES;
 }
 
 impl module_incentives::Trait for Runtime {
