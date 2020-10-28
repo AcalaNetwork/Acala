@@ -1225,7 +1225,6 @@ parameter_types! {
 	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
 	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 3;
-	pub const BurnEventStoreDuration: BlockNumber = DAYS;
 }
 
 impl ecosystem_renvm_bridge::Trait for Runtime {
@@ -1234,7 +1233,6 @@ impl ecosystem_renvm_bridge::Trait for Runtime {
 	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = RenvmBridgeUnsignedPriority;
-	type BurnEventStoreDuration = BurnEventStoreDuration;
 }
 
 parameter_types! {
