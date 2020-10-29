@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok, unsigned::ValidateUnsigned};
 use hex_literal::hex;
-use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, RenvmBridgeCall};
+use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, RenvmBridgeCall, System};
 use sp_core::H256;
 use sp_runtime::transaction_validity::TransactionValidityError;
 
@@ -43,12 +43,14 @@ fn burn_works() {
 		assert_eq!(RenVmBridge::burn_events(0), None);
 		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 1000));
 		assert_eq!(Balances::free_balance(&issuer), 4000);
-		assert_eq!(RenVmBridge::burn_events(0), Some((to.clone(), 1000)));
+		assert_eq!(RenVmBridge::burn_events(0), Some((0, to.clone(), 1000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 1);
+
+		System::set_block_number(15);
 
 		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 2000));
 		assert_eq!(Balances::free_balance(&issuer), 2000);
-		assert_eq!(RenVmBridge::burn_events(1), Some((to.clone(), 2000)));
+		assert_eq!(RenVmBridge::burn_events(1), Some((15, to.clone(), 2000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 2);
 	});
 }

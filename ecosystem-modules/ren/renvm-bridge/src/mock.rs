@@ -123,6 +123,7 @@ impl Trait for Runtime {
 	type UnsignedPriority = UnsignedPriority;
 }
 pub type RenVmBridge = Module<Runtime>;
+pub type System = frame_system::Module<Runtime>;
 
 pub struct ExtBuilder();
 

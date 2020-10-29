@@ -54,7 +54,7 @@ decl_storage! {
 		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
 
 		/// Record burn event details
-		BurnEvents get(fn burn_events): map hasher(twox_64_concat) u32 => Option<(DestAddress, Balance)>;
+		BurnEvents get(fn burn_events): map hasher(twox_64_concat) u32 => Option<(T::BlockNumber, DestAddress, Balance)>;
 		/// Next burn event ID
 		NextBurnEventId get(fn next_burn_event_id): u32;
 	}
@@ -120,7 +120,7 @@ decl_module! {
 				*id = id.checked_add(1).ok_or(Error::<T>::BurnIdOverflow)?;
 
 				T::Currency::withdraw(&sender, amount)?;
-				BurnEvents::insert(this_id, (&to, amount));
+				BurnEvents::<T>::insert(this_id, (frame_system::Module::<T>::block_number(), &to, amount));
 				Self::deposit_event(RawEvent::Burnt(sender, to, amount));
 
 				Ok(())
