@@ -50,13 +50,21 @@ impl SubstrateCli for Cli {
 		};
 
 		Ok(match id {
+			#[cfg(feature = "with-mandala-runtime")]
 			"dev" => Box::new(chain_spec::mandala::development_testnet_config()?),
+			#[cfg(feature = "with-mandala-runtime")]
 			"local" => Box::new(chain_spec::mandala::local_testnet_config()?),
+			#[cfg(feature = "with-mandala-runtime")]
 			"mandala" => Box::new(chain_spec::mandala::mandala_testnet_config()?),
+			#[cfg(feature = "with-mandala-runtime")]
 			"mandala-latest" => Box::new(chain_spec::mandala::latest_mandala_testnet_config()?),
+			#[cfg(feature = "with-karura-runtime")]
 			"karura" => Box::new(chain_spec::karura::karura_config()?),
+			#[cfg(feature = "with-karura-runtime")]
 			"karura-latest" => Box::new(chain_spec::karura::latest_karura_config()?),
+			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
+			#[cfg(feature = "with-acala-runtime")]
 			"acala-latest" => Box::new(chain_spec::acala::latest_acala_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
@@ -69,11 +77,27 @@ impl SubstrateCli for Cli {
 				};
 
 				if starts_with("karura") {
-					Box::new(chain_spec::karura::ChainSpec::from_json_file(path)?)
+					#[cfg(feature = "with-karura-runtime")]
+					{
+						Box::new(chain_spec::karura::ChainSpec::from_json_file(path)?)
+					}
+
+					#[cfg(not(feature = "with-karura-runtime"))]
+					return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
 				} else if starts_with("acala") {
-					Box::new(chain_spec::acala::ChainSpec::from_json_file(path)?)
+					#[cfg(feature = "with-acala-runtime")]
+					{
+						Box::new(chain_spec::acala::ChainSpec::from_json_file(path)?)
+					}
+					#[cfg(not(feature = "with-acala-runtime"))]
+					return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
 				} else {
-					Box::new(chain_spec::mandala::ChainSpec::from_json_file(path)?)
+					#[cfg(feature = "with-mandala-runtime")]
+					{
+						Box::new(chain_spec::mandala::ChainSpec::from_json_file(path)?)
+					}
+					#[cfg(not(feature = "with-mandala-runtime"))]
+					return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
 				}
 			}
 		})
@@ -81,11 +105,20 @@ impl SubstrateCli for Cli {
 
 	fn native_runtime_version(spec: &Box<dyn sc_service::ChainSpec>) -> &'static RuntimeVersion {
 		if spec.is_mandala() {
-			&service::mandala_runtime::VERSION
+			#[cfg(feature = "with-mandala-runtime")]
+			return &service::mandala_runtime::VERSION;
+			#[cfg(not(feature = "with-mandala-runtime"))]
+			panic!("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.");
 		} else if spec.is_karura() {
-			&service::karura_runtime::VERSION
+			#[cfg(feature = "with-karura-runtime")]
+			return &service::karura_runtime::VERSION;
+			#[cfg(not(feature = "with-karura-runtime"))]
+			panic!("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.");
 		} else {
-			&service::acala_runtime::VERSION
+			#[cfg(feature = "with-acala-runtime")]
+			return &service::acala_runtime::VERSION;
+			#[cfg(not(feature = "with-acala-runtime"))]
+			panic!("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.");
 		}
 	}
 }
