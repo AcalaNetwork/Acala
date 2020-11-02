@@ -31,25 +31,25 @@ fn burn_works() {
 		assert_ok!(
 			mint_ren_btc(
 				issuer.clone(),
-				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-				5000,
-				hex!["e96cc92771222bd8f674ddf4ef6a4264e38030e90380fb215cb145591ed803e9"],
-				EcdsaSignature(hex!["1beaeea7cb5433659979ba0ba17bc0174c87b6208ea0fa82e1478a74b3ded5a27324239b8f0ef31f54cc56deb32bb8962803ecf399eac7ade08f291ae03f6a1f1c"]),
+				hex!["4fe557069c2424260b9d0cca31049e70ede95c49964578044d80c74f3a118505"],
+				93802,
+				hex!["64c1212efd301721c9343fdf299f022778ea336608c1ae089136045b8d6f3e5c"],
+				EcdsaSignature(hex!["5566d8eb9fec05a6636381302ad7dd6b28a0ec62e6e45038fbb095c6503ee08a69a450c566ce60ccca1233d32c24a366176d189bbe5613ae633ce3ae4b6b9a7e1b"]),
 			)
 		);
-		assert_eq!(Balances::free_balance(issuer.clone()), 5000);
+		assert_eq!(Balances::free_balance(issuer.clone()), 93802);
 
 		let to: Vec<u8> = vec![2, 3, 4];
 		assert_eq!(RenVmBridge::burn_events(0), None);
 		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 1000));
-		assert_eq!(Balances::free_balance(&issuer), 4000);
+		assert_eq!(Balances::free_balance(&issuer), 92802);
 		assert_eq!(RenVmBridge::burn_events(0), Some((0, to.clone(), 1000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 1);
 
 		System::set_block_number(15);
 
 		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 2000));
-		assert_eq!(Balances::free_balance(&issuer), 2000);
+		assert_eq!(Balances::free_balance(&issuer), 90802);
 		assert_eq!(RenVmBridge::burn_events(1), Some((15, to.clone(), 2000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 2);
 	});
@@ -59,51 +59,51 @@ fn burn_works() {
 fn verify_signature_works() {
 	assert_ok!(
 		RenVmBridge::verify_signature(
-			&hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-			5000,
+			&hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
+			93963,
 			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["e96cc92771222bd8f674ddf4ef6a4264e38030e90380fb215cb145591ed803e9"],
-			&hex!["1beaeea7cb5433659979ba0ba17bc0174c87b6208ea0fa82e1478a74b3ded5a27324239b8f0ef31f54cc56deb32bb8962803ecf399eac7ade08f291ae03f6a1f1c"],
+			&hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
+			&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"],
 		)
 	);
 
 	assert_ok!(
 		RenVmBridge::verify_signature(
-			&hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-			5000,
+			&hex!["ad8fae51f70e3a013962934614201466076fec72eb60f74183f3059d6ad2c4c1"],
+			86129,
 			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["6d9b77f6070c8dd4e6e6ad2217d6aa6ef48a06e27a3c4a189e0a9f2c59db409e"],
-			&hex!["130bef45db4f2b7ccf2689cfd8214e7dbdeb4263de1c26bcd1c702ce4a4093b97d49c835f8225e52103047eef3feca2e41681ea5a27dc6ab84a26efc49f05f971b"],
+			&hex!["1cdb2d4388e10ce8f89613f06a0d03a2d3fbcfd334d81d4564f7e1bfc5ebc9bb"],
+			&hex!["87f068a20cfaf7752151320dcfde3994f2861cb4dd36aa73a947f23f92f135507607c997b450053914f2e9313ea2d1abf3326a7984341fdf47e4e21f33b54cda1b"],
 		)
 	);
 
 	assert_ok!(
 		RenVmBridge::verify_signature(
-			&hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-			6000,
+			&hex!["1a98ccc4004f71c29c3ae3ee3a8fe51ece4a0eda383443aa8aaafeec4fd55247"],
+			80411,
 			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["7c5e9fad22654694c5bbbce509c2003b10cf90798cd84b1fb1851cdfba58d52e"],
-			&hex!["776abdea3287da906a5c72dd08f9be1b0a160374ae7045b028a17098f98970245d173aa73d1e8ae99adf23ccf92030e6c4a390c62952f1dffb37bbcfde4bef171b"],
+			&hex!["d45761c6d5123a10c5f707472613451de1e738b544acfbdd4b2680754ed2008a"],
+			&hex!["1281893709fd7f4e1d65147a948d9884adf65bb9bcb587ea32e2f3b633fa1e1f2d82488ae89105004a301eda66ef8e5f036b705716f1df42d357647e09dd3e581c"],
 		)
 	);
 
 	assert_ok!(
 		RenVmBridge::verify_signature(
-			&hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-			95000,
+			&hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
+			87266,
 			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["81e25aafbe2fb3ea02de043f5e13118c087a12d6871198cc97d160180fafcca2"],
-			&hex!["09f05f67a282e483d7e064ad1f2382dfedf6df11f55d42c86a47e6f54e0dd004280b395a923a8a60a93b6986217bb67adb4cc066ad4444dc28ec92d1de23b5f11b"],
+			&hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
+			&hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"],
 		)
 	);
 
 	assert_ok!(
 		RenVmBridge::verify_signature(
-			&hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-			5000,
+			&hex!["046076abc0c7e2bd8cc15b9e22ed97deff2d8e2acfe3bec1ffbbd0255b2a094c"],
+			87403,
 			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["6bed1f11a3d904a7e5b555a2524b2ce1a8bdbfa10f68dcb93f32b25c8df74c5a"],
-			&hex!["0a8167a494b8e3e0e45e50f9650537ebecefb688bc870777c6ef5f3722d932a516c3cced274b6550384eba9c59556083312dd5f1fdebcfadf0cb04a372207e271c"],
+			&hex!["64962866cd5245005a06b8a10ac57626f176bc1c8e340a008c4a765a56aa4a6f"],
+			&hex!["63f68adcda25db1de27b0edeb0439f7d971a22afeebb5ddb07ed05d4b07ac4fd1f78e5ecd4f2d6a21aabcc73027e8b977f9a688ae16db5aaf6c0d0021e85e3f41b"],
 		)
 	);
 }
@@ -116,34 +116,34 @@ fn mint_works() {
 		assert_ok!(
 			mint_ren_btc(
 				to.clone(),
-				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-				5000,
-				hex!["e96cc92771222bd8f674ddf4ef6a4264e38030e90380fb215cb145591ed803e9"],
-				EcdsaSignature(hex!["1beaeea7cb5433659979ba0ba17bc0174c87b6208ea0fa82e1478a74b3ded5a27324239b8f0ef31f54cc56deb32bb8962803ecf399eac7ade08f291ae03f6a1f1c"]),
+				hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
+				93963,
+				hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
+				EcdsaSignature(hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]),
 			)
 		);
 
-		assert_eq!(Balances::free_balance(to.clone()), 5000);
+		assert_eq!(Balances::free_balance(to.clone()), 93963);
 
 		assert_ok!(
 			mint_ren_btc(
 				to.clone(),
-				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-				95000,
-				hex!["81e25aafbe2fb3ea02de043f5e13118c087a12d6871198cc97d160180fafcca2"],
-				EcdsaSignature(hex!["09f05f67a282e483d7e064ad1f2382dfedf6df11f55d42c86a47e6f54e0dd004280b395a923a8a60a93b6986217bb67adb4cc066ad4444dc28ec92d1de23b5f11b"]),
+				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
+				87266,
+				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
+				EcdsaSignature(hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]),
 			)
 		);
 
-		assert_eq!(Balances::free_balance(to.clone()), 5000 + 95000);
+		assert_eq!(Balances::free_balance(to.clone()), 93963 + 87266);
 
 		assert_noop!(
 			mint_ren_btc(
 				to.clone(),
-				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-				95000,
-				hex!["81e25aafbe2fb3ea02de043f5e13118c087a12d6871198cc97d160180fafcca2"],
-				EcdsaSignature(hex!["09f05f67a282e483d7e064ad1f2382dfedf6df11f55d42c86a47e6f54e0dd004280b395a923a8a60a93b6986217bb67adb4cc066ad4444dc28ec92d1de23b5f11b"]),
+				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
+				87266,
+				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
+				EcdsaSignature(hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]),
 			),
 			TransactionValidityError::Invalid(InvalidTransaction::Stale)
 		);
@@ -151,10 +151,10 @@ fn mint_works() {
 		assert_noop!(
 			mint_ren_btc(
 				to.clone(),
-				hex!["c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"],
-				95000,
-				hex!["81e25aafbe2fb3ea02de043f5e13118c087a12d6871198cc97d160180fafcca2"],
-				EcdsaSignature(hex!["000000000000000000e064ad1f2382dfedf6df11f55d42c86a47e6f54e0dd004280b395a923a8a60a93b6986217bb67adb4cc066ad4444dc28ec92d1de23b5f11b"]),
+				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
+				87266,
+				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
+				EcdsaSignature(hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]),
 			),
 			TransactionValidityError::Invalid(InvalidTransaction::BadProof)
 		);
