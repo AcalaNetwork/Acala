@@ -73,7 +73,7 @@ impl frame_system::Trait for Runtime {
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 0;
 	pub const RenVmPublicKey: [u8; 20] = hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
-	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
+	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
 impl pallet_balances::Trait for Runtime {
