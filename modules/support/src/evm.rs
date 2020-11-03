@@ -51,7 +51,7 @@ where
 		//TODO: evaluate cost
 
 		debug::info!("----------------------------------------------------------------");
-		debug::info!(">>> input: {:?}", input.clone());
+		debug::info!(">>> input: {:?}", input);
 
 		if input.len() < 5 {
 			return Err(ExitError::Other("invalid input"));
@@ -80,8 +80,8 @@ where
 				let who = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
 				let balance = vec_u8_from_balance(MC::total_balance(currency_id, &who))?;
 
-				debug::info!(">>> account id: {:?}", who.clone());
-				debug::info!(">>> balance: {:?}", balance.clone());
+				debug::info!(">>> account id: {:?}", who);
+				debug::info!(">>> balance: {:?}", balance);
 
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
@@ -99,8 +99,8 @@ where
 					.try_into()
 					.map_err(|_| ExitError::Other("u128 to balance failed"))?;
 
-				debug::info!(">>> from: {:?}", from.clone());
-				debug::info!(">>> to: {:?}", to.clone());
+				debug::info!(">>> from: {:?}", from);
+				debug::info!(">>> to: {:?}", to);
 				debug::info!(">>> amount: {:?}", amount);
 
 				MC::transfer(currency_id, &from, &to, amount).map_err(|e| ExitError::Other(e.into()))?;
