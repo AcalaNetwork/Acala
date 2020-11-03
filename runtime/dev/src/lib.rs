@@ -1267,7 +1267,7 @@ pub struct FixedGasPrice;
 
 impl FeeCalculator for FixedGasPrice {
 	fn min_gas_price() -> U256 {
-		1_000_000_000.into()
+		1.into()
 	}
 }
 
