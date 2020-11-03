@@ -112,6 +112,7 @@ dependencies = [
  "orml-oracle-rpc",
  "pallet-contracts",
  "pallet-contracts-rpc-runtime-api",
+ "pallet-evm",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
@@ -139,6 +140,7 @@ dependencies = [
  "sp-offchain",
  "sp-runtime",
  "sp-session",
+ "sp-std",
  "sp-transaction-pool",
  "sp-trie",
  "substrate-prometheus-endpoint 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4356,7 +4358,10 @@ version = "0.6.1"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
+ "orml-traits",
+ "pallet-evm",
  "parity-scale-codec",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]

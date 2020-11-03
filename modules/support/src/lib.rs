@@ -14,6 +14,9 @@ pub use homa::{
 	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
 };
 
+pub mod evm;
+pub use evm::MultiCurrencyPrecompile;
+
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
 pub type Ratio = FixedU128;
