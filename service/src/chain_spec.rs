@@ -223,7 +223,7 @@ pub fn mandala_testnet_config() -> Result<DevChainSpec, String> {
 
 pub fn evm_genesis_accounts() -> BTreeMap<H160, GenesisAccount> {
 	let contracts_json = &include_bytes!("../../predeploy-contracts/resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
+	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).expect("predeploy contracts byte codes must be valid");
 	let mut accounts = BTreeMap::new();
 	let mut start_address = 1024;
 	for (_, code_string) in contracts {
