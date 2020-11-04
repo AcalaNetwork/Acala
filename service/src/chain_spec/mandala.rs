@@ -1,17 +1,14 @@
 use acala_primitives::AccountId;
 use hex_literal::hex;
 use pallet_evm::GenesisAccount;
-use sc_chain_spec::{ChainSpecExtension, ChainType};
+use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{crypto::UncheckedInto, sr25519, Bytes, Pair, Public, H160};
+use sp_core::{crypto::UncheckedInto, sr25519, Bytes, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{traits::IdentifyAccount, FixedPointNumber, FixedU128, Perbill};
+use sp_runtime::{FixedPointNumber, FixedU128, Perbill};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
-
-// The URL for the telemetry server.
-const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
@@ -180,7 +177,7 @@ pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
 }
 
 pub fn evm_genesis_accounts() -> BTreeMap<H160, GenesisAccount> {
-	let contracts_json = &include_bytes!("../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
 	let mut start_address = 1024;
