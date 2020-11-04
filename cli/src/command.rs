@@ -104,21 +104,21 @@ impl SubstrateCli for Cli {
 	}
 
 	fn native_runtime_version(spec: &Box<dyn sc_service::ChainSpec>) -> &'static RuntimeVersion {
-		if spec.is_mandala() {
-			#[cfg(feature = "with-mandala-runtime")]
-			return &service::mandala_runtime::VERSION;
-			#[cfg(not(feature = "with-mandala-runtime"))]
-			panic!("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.");
+		if spec.is_acala() {
+			#[cfg(feature = "with-acala-runtime")]
+			return &service::acala_runtime::VERSION;
+			#[cfg(not(feature = "with-acala-runtime"))]
+			panic!("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.");
 		} else if spec.is_karura() {
 			#[cfg(feature = "with-karura-runtime")]
 			return &service::karura_runtime::VERSION;
 			#[cfg(not(feature = "with-karura-runtime"))]
 			panic!("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.");
 		} else {
-			#[cfg(feature = "with-acala-runtime")]
-			return &service::acala_runtime::VERSION;
-			#[cfg(not(feature = "with-acala-runtime"))]
-			panic!("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.");
+			#[cfg(feature = "with-mandala-runtime")]
+			return &service::mandala_runtime::VERSION;
+			#[cfg(not(feature = "with-mandala-runtime"))]
+			panic!("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.");
 		}
 	}
 }
