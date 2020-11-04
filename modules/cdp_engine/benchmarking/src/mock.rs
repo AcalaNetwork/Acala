@@ -199,6 +199,7 @@ impl dex::Trait for Runtime {
 	type GetBaseCurrencyId = GetBaseCurrencyId;
 	type GetExchangeFee = GetExchangeFee;
 	type ModuleId = DEXModuleId;
+	type DEXIncentives = ();
 	type WeightInfo = ();
 }
 pub type DexModule = dex::Module<Runtime>;

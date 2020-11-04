@@ -65,6 +65,7 @@ fn inject_liquidity<T: Trait>(
 		currency_id,
 		max_amount,
 		max_other_currency_amount,
+		false,
 	)?;
 
 	Ok(())

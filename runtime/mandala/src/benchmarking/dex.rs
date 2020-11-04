@@ -35,6 +35,7 @@ fn inject_liquidity(
 		currency_id_b,
 		max_amount_a,
 		max_amount_b,
+		false,
 	)?;
 
 	Ok(())
@@ -59,13 +60,13 @@ runtime_benchmarks! {
 
 		// first maker inject liquidity
 		inject_liquidity(first_maker.clone(), trading_pair.0, trading_pair.1, amount_a, amount_b)?;
-	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b)
+	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b, false)
 
 	remove_liquidity {
 		let maker: AccountId = account("maker", 0, SEED);
 		let trading_pair = EnabledTradingPairs::get()[0];
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, dollars(100u32), dollars(10000u32))?;
-	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, dollars(50u32).unique_saturated_into())
+	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, dollars(50u32).unique_saturated_into(), false)
 
 	swap_with_exact_supply {
 		let u in 2 .. TradingPathLimit::get() as u32;
