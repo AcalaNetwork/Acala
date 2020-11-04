@@ -39,10 +39,9 @@ use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
-use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{create_median_value_data_provider, currency::MultiCurrency, DataFeeder, DataProviderExtended};
+use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
 use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 use pallet_grandpa::fg_primitives;
@@ -79,7 +78,7 @@ pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
 	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
-pub use runtime_common::{ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
+pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
 
 mod authority;
 mod benchmarking;
@@ -90,7 +89,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 602,
+	spec_version: 606,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -142,17 +141,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		DSWFModuleId::get().into_account(),
 		ZeroAccountId::get(),
 	]
-}
-
-pub struct DealWithCommission<GetModuleId>(sp_std::marker::PhantomData<GetModuleId>);
-impl<GetModuleId> OnCommission<Balance, CurrencyId> for DealWithCommission<GetModuleId>
-where
-	GetModuleId: Get<ModuleId>,
-{
-	fn on_commission(currency_id: CurrencyId, amount: Balance) {
-		// this shouldn't overflow. but if it does, we will just burn the commission
-		let _ = Currencies::deposit(currency_id, &GetModuleId::get().into_account(), amount);
-	}
 }
 
 parameter_types! {
@@ -1091,7 +1079,7 @@ impl orml_rewards::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const AccumulatePeriod: BlockNumber = HOURS;
+	pub const AccumulatePeriod: BlockNumber = MINUTES;
 }
 
 impl module_incentives::Trait for Runtime {
@@ -1121,7 +1109,6 @@ parameter_types! {
 }
 
 impl module_polkadot_bridge::Trait for Runtime {
-	type Event = Event;
 	type DOTCurrency = Currency<Runtime, GetStakingCurrencyId>;
 	type OnNewEra = (NomineesElection, StakingPool);
 	type BondingDuration = PolkadotBondingDuration;
@@ -1132,27 +1119,22 @@ impl module_polkadot_bridge::Trait for Runtime {
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-	pub MaxBondRatio: Ratio = Ratio::saturating_from_rational(95, 100); // 95%
-	pub MinBondRatio: Ratio = Ratio::saturating_from_rational(80, 100); // 80%
-	pub MaxClaimFee: Rate = Rate::saturating_from_rational(5, 100); // 5%
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
-	pub ClaimFeeReturnRatio: Ratio = Ratio::saturating_from_rational(98, 100); // 98%
+	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
 }
 
 impl module_staking_pool::Trait for Runtime {
 	type Event = Event;
-	type Currency = Currencies;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
-	type Nominees = NomineesElection;
-	type OnCommission = DealWithCommission<HomaTreasuryModuleId>;
-	type Bridge = PolkadotBridge;
-	type MaxBondRatio = MaxBondRatio;
-	type MinBondRatio = MinBondRatio;
-	type MaxClaimFee = MaxClaimFee;
 	type DefaultExchangeRate = DefaultExchangeRate;
-	type ClaimFeeReturnRatio = ClaimFeeReturnRatio;
 	type ModuleId = StakingPoolModuleId;
+	type PoolAccountIndexes = PoolAccountIndexes;
+	type UpdateOrigin = EnsureRootOrHalfHomaCouncil;
+	type FeeModel = CurveFeeModel;
+	type Nominees = NomineesElection;
+	type Bridge = PolkadotBridge;
+	type Currency = Currencies;
 }
 
 impl module_homa::Trait for Runtime {
@@ -1184,8 +1166,6 @@ impl module_nft::Trait for Runtime {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ConvertClassData = module_nft::ClassData;
-	type ConvertTokenData = module_nft::TokenData;
 	type ModuleId = NftModuleId;
 	type Currency = Currency<Runtime, GetNativeCurrencyId>;
 	type WeightInfo = weights::nft::WeightInfo<Runtime>;
@@ -1227,9 +1207,8 @@ impl pallet_proxy::Trait for Runtime {
 parameter_types! {
 	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
-	pub const RENBTCIdentifier: [u8; 32] = hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
+	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 3;
-	pub const BurnEventStoreDuration: BlockNumber = DAYS;
 }
 
 impl ecosystem_renvm_bridge::Trait for Runtime {
@@ -1238,7 +1217,6 @@ impl ecosystem_renvm_bridge::Trait for Runtime {
 	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = RenvmBridgeUnsignedPriority;
-	type BurnEventStoreDuration = BurnEventStoreDuration;
 }
 
 parameter_types! {
@@ -1374,8 +1352,8 @@ construct_runtime!(
 		// Homa
 		Homa: module_homa::{Module, Call},
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
-		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>},
-		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage, Event<T>, Config},
+		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>, Config},
+		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage},
 
 		// Acala Other
 		Incentives: module_incentives::{Module, Storage, Call, Event<T>},
@@ -1692,8 +1670,8 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, dex, Dex);
 			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
+			orml_add_benchmark!(params, batches, dex, benchmarking::dex);
 			orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
@@ -1704,14 +1682,14 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
-			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
-			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
+			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
+			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
+			orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
 
-			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			// orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
-			// orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
-			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
+			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
+			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
+			orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
+			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

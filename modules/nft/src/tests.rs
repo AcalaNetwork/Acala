@@ -3,8 +3,8 @@
 #![cfg(test)]
 
 use super::*;
+use frame_support::StorageMap;
 use frame_support::{assert_noop, assert_ok};
-use frame_support::{StorageMap, StorageValue};
 use mock::{
 	last_event, AccountId, ExtBuilder, NFTModule, Origin, Runtime, TestEvent, ALICE, BOB, CLASS_ID, CLASS_ID_NOT_EXIST,
 	TOKEN_ID, TOKEN_ID_NOT_EXIST,
@@ -99,7 +99,9 @@ fn mint_should_fail() {
 			Error::<Runtime>::NoPermission
 		);
 
-		orml_nft::NextTokenId::<Runtime>::mutate(|id| *id = <Runtime as orml_nft::Trait>::TokenId::max_value());
+		orml_nft::NextTokenId::<Runtime>::mutate(CLASS_ID, |id| {
+			*id = <Runtime as orml_nft::Trait>::TokenId::max_value()
+		});
 		assert_noop!(
 			NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID, vec![1], 2),
 			orml_nft::Error::<Runtime>::NoAvailableTokenId

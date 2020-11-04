@@ -130,16 +130,22 @@ pub trait ClientHandle {
 /// A client instance of Acala.
 #[derive(Clone)]
 pub enum Client {
+	#[cfg(feature = "with-mandala-runtime")]
 	Mandala(Arc<crate::FullClient<mandala_runtime::RuntimeApi, crate::MandalaExecutor>>),
+	#[cfg(feature = "with-karura-runtime")]
 	Karura(Arc<crate::FullClient<karura_runtime::RuntimeApi, crate::KaruraExecutor>>),
+	#[cfg(feature = "with-acala-runtime")]
 	Acala(Arc<crate::FullClient<acala_runtime::RuntimeApi, crate::AcalaExecutor>>),
 }
 
 impl ClientHandle for Client {
 	fn execute_with<T: ExecuteWithClient>(&self, t: T) -> T::Output {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => T::execute_with_client::<_, _, crate::FullBackend>(t, client.clone()),
 		}
 	}
@@ -148,8 +154,11 @@ impl ClientHandle for Client {
 impl sc_client_api::UsageProvider<Block> for Client {
 	fn usage_info(&self) -> sc_client_api::ClientInfo<Block> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.usage_info(),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.usage_info(),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.usage_info(),
 		}
 	}
@@ -158,40 +167,55 @@ impl sc_client_api::UsageProvider<Block> for Client {
 impl sc_client_api::BlockBackend<Block> for Client {
 	fn block_body(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Vec<<Block as BlockT>::Extrinsic>>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.block_body(id),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.block_body(id),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.block_body(id),
 		}
 	}
 
 	fn block(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<SignedBlock<Block>>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.block(id),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.block(id),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.block(id),
 		}
 	}
 
 	fn block_status(&self, id: &BlockId<Block>) -> sp_blockchain::Result<BlockStatus> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.block_status(id),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.block_status(id),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.block_status(id),
 		}
 	}
 
 	fn justification(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Justification>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.justification(id),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.justification(id),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.justification(id),
 		}
 	}
 
 	fn block_hash(&self, number: NumberFor<Block>) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.block_hash(number),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.block_hash(number),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.block_hash(number),
 		}
 	}
@@ -200,16 +224,22 @@ impl sc_client_api::BlockBackend<Block> for Client {
 impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 	fn storage(&self, id: &BlockId<Block>, key: &StorageKey) -> sp_blockchain::Result<Option<StorageData>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.storage(id, key),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.storage(id, key),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.storage(id, key),
 		}
 	}
 
 	fn storage_keys(&self, id: &BlockId<Block>, key_prefix: &StorageKey) -> sp_blockchain::Result<Vec<StorageKey>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.storage_keys(id, key_prefix),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.storage_keys(id, key_prefix),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.storage_keys(id, key_prefix),
 		}
 	}
@@ -220,8 +250,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.storage_hash(id, key),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.storage_hash(id, key),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.storage_hash(id, key),
 		}
 	}
@@ -232,8 +265,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<(StorageKey, StorageData)>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.storage_pairs(id, key_prefix),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.storage_pairs(id, key_prefix),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.storage_pairs(id, key_prefix),
 		}
 	}
@@ -245,8 +281,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		start_key: Option<&StorageKey>,
 	) -> sp_blockchain::Result<KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.storage_keys_iter(id, prefix, start_key),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.storage_keys_iter(id, prefix, start_key),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.storage_keys_iter(id, prefix, start_key),
 		}
 	}
@@ -258,8 +297,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<StorageData>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.child_storage(id, child_info, key),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.child_storage(id, child_info, key),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.child_storage(id, child_info, key),
 		}
 	}
@@ -271,8 +313,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<StorageKey>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.child_storage_keys(id, child_info, key_prefix),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.child_storage_keys(id, child_info, key_prefix),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.child_storage_keys(id, child_info, key_prefix),
 		}
 	}
@@ -284,8 +329,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.child_storage_hash(id, child_info, key),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.child_storage_hash(id, child_info, key),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.child_storage_hash(id, child_info, key),
 		}
 	}
@@ -296,8 +344,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		last: BlockId<Block>,
 	) -> sp_blockchain::Result<Option<(NumberFor<Block>, BlockId<Block>)>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.max_key_changes_range(first, last),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.max_key_changes_range(first, last),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.max_key_changes_range(first, last),
 		}
 	}
@@ -310,8 +361,11 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Vec<(NumberFor<Block>, u32)>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.key_changes(first, last, storage_key, key),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.key_changes(first, last, storage_key, key),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.key_changes(first, last, storage_key, key),
 		}
 	}
@@ -320,40 +374,55 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 impl sp_blockchain::HeaderBackend<Block> for Client {
 	fn header(&self, id: BlockId<Block>) -> sp_blockchain::Result<Option<Header>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.header(&id),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.header(&id),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.header(&id),
 		}
 	}
 
 	fn info(&self) -> sp_blockchain::Info<Block> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.info(),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.info(),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.info(),
 		}
 	}
 
 	fn status(&self, id: BlockId<Block>) -> sp_blockchain::Result<sp_blockchain::BlockStatus> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.status(id),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.status(id),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.status(id),
 		}
 	}
 
 	fn number(&self, hash: Hash) -> sp_blockchain::Result<Option<BlockNumber>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.number(hash),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.number(hash),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.number(hash),
 		}
 	}
 
 	fn hash(&self, number: BlockNumber) -> sp_blockchain::Result<Option<Hash>> {
 		match self {
+			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.hash(number),
+			#[cfg(feature = "with-karura-runtime")]
 			Self::Karura(client) => client.hash(number),
+			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.hash(number),
 		}
 	}
