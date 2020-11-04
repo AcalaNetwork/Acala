@@ -1,12 +1,14 @@
 use acala_primitives::AccountId;
 use hex_literal::hex;
+use pallet_evm::GenesisAccount;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{crypto::UncheckedInto, sr25519};
+use sp_core::{crypto::UncheckedInto, sr25519, Bytes, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{FixedPointNumber, FixedU128, Perbill};
+use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
 use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
@@ -174,6 +176,25 @@ pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../resources/mandala-dist.json")[..])
 }
 
+pub fn evm_genesis_accounts() -> BTreeMap<H160, GenesisAccount> {
+	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
+	let mut accounts = BTreeMap::new();
+	let mut start_address = 1024;
+	for (_, code_string) in contracts {
+		let account = GenesisAccount {
+			nonce: 0.into(),
+			balance: 0.into(),
+			storage: BTreeMap::new(),
+			code: Bytes::from_str(&code_string).unwrap().0,
+		};
+		let addr = H160::from_low_u64_be(start_address);
+		accounts.insert(addr, account);
+		start_address += 1;
+	}
+	accounts
+}
+
 fn testnet_genesis(
 	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
@@ -183,8 +204,8 @@ fn testnet_genesis(
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
+		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig, GeneralCouncilMembershipConfig,
+		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig,
 		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
 		VestingConfig, DOLLARS,
@@ -336,7 +357,9 @@ fn testnet_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
-		pallet_evm: Some(Default::default()),
+		pallet_evm: Some(EVMConfig {
+			accounts: evm_genesis_accounts(),
+		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
@@ -358,7 +381,7 @@ fn mandala_genesis(
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
-		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId,
+		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig,
 		StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
@@ -511,7 +534,9 @@ fn mandala_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
-		pallet_evm: Some(Default::default()),
+		pallet_evm: Some(EVMConfig {
+			accounts: evm_genesis_accounts(),
+		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),

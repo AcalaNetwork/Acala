@@ -203,6 +203,7 @@ dependencies = [
  "orml-oracle-rpc",
  "pallet-contracts",
  "pallet-contracts-rpc-runtime-api",
+ "pallet-evm",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
@@ -230,6 +231,7 @@ dependencies = [
  "sp-offchain",
  "sp-runtime",
  "sp-session",
+ "sp-std",
  "sp-storage",
  "sp-transaction-pool",
  "sp-trie",
@@ -4300,7 +4302,10 @@ version = "0.6.3"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
+ "orml-traits",
+ "pallet-evm",
  "parity-scale-codec",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]
