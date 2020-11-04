@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata, U256,
+	OpaqueMetadata, H160, U256,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, Saturating,
@@ -72,6 +72,7 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
+use frame_support::traits::CurrencyToVote;
 pub use primitives::{
 	AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
 	EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
@@ -604,15 +605,14 @@ impl CurrencyToVoteHandler {
 	}
 }
 
-impl Convert<Balance, u64> for CurrencyToVoteHandler {
-	fn convert(x: Balance) -> u64 {
-		(x / Self::factor()) as u64
+impl CurrencyToVote<Balance> for CurrencyToVoteHandler {
+	fn to_vote(value: Balance, _issuance: Balance) -> u64 {
+		(value / Self::factor()) as u64
 	}
-}
 
-impl Convert<u128, Balance> for CurrencyToVoteHandler {
-	fn convert(x: u128) -> Balance {
-		x * Self::factor()
+	/// Convert u128 to balance.
+	fn to_currency(value: u128, _issuance: Balance) -> Balance {
+		value * Self::factor()
 	}
 }
 
@@ -1650,6 +1650,53 @@ impl_runtime_apis! {
 		) -> pallet_contracts_primitives::RentProjectionResult<BlockNumber> {
 			Contracts::rent_projection(address)
 		}
+	}
+
+	impl eth_rpc_runtime_api::EthereumApi<Block> for Runtime {
+		fn call(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: U256,
+			gas_limit: U256,
+			gas_price: U256,
+			nonce: Option<U256>,
+		) -> Result<(Vec<u8>, U256), sp_runtime::DispatchError> {
+			EVM::execute_call(
+				from,
+				to,
+				data,
+				value,
+				gas_limit.low_u32(),
+				gas_price,
+				nonce,
+				false,
+			)
+			.map(|(_, value, gas_used, _)| (value, gas_used))
+			.map_err(|err| err.into())
+		}
+
+		fn create(
+			from: H160,
+			data: Vec<u8>,
+			value: U256,
+			gas_limit: U256,
+			gas_price: U256,
+			nonce: Option<U256>,
+		) -> Result<(H160, U256), sp_runtime::DispatchError> {
+			EVM::execute_create(
+				from,
+				data,
+				value,
+				gas_limit.low_u32(),
+				gas_price,
+				nonce,
+				false
+			)
+			.map(|(_, value, gas_used, _)| (value, gas_used))
+			.map_err(|err| err.into())
+		}
+
 	}
 
 	// benchmarks for acala modules

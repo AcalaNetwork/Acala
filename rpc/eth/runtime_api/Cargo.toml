@@ -1,0 +1,24 @@
+[package]
+name = "eth-rpc-runtime-api"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+description = "Ethereum RPC (web3) compatibility layer for Substrate."
+license = "GPL-3.0"
+
+[dependencies]
+sp-runtime = { version = "2.0.0", default-features = false }
+sp-api = { version = "2.0.0", default-features = false }
+sp-std = { version = "2.0.0", default-features = false }
+sp-core = { version = "2.0.0", default-features = false }
+ethereum-types = { version = "0.9", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"sp-runtime/std",
+	"sp-api/std",
+	"sp-std/std",
+	"sp-core/std",
+	"ethereum-types/std",
+]
