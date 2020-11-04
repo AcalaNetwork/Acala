@@ -206,6 +206,7 @@ dependencies = [
  "orml-oracle-rpc",
  "pallet-contracts",
  "pallet-contracts-rpc-runtime-api",
+ "pallet-evm",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
