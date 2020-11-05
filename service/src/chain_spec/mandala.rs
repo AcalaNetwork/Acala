@@ -1,16 +1,16 @@
 use acala_primitives::AccountId;
 use hex_literal::hex;
-use pallet_evm::GenesisAccount;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{crypto::UncheckedInto, sr25519, Bytes, H160};
+use sp_core::{crypto::UncheckedInto, sr25519};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{FixedPointNumber, FixedU128, Perbill};
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
-use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
+use crate::chain_spec::{
+	evm_genesis_accounts, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
+};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
@@ -174,25 +174,6 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 
 pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../resources/mandala-dist.json")[..])
-}
-
-pub fn evm_genesis_accounts() -> BTreeMap<H160, GenesisAccount> {
-	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
-	let mut accounts = BTreeMap::new();
-	let mut start_address = 1024;
-	for (_, code_string) in contracts {
-		let account = GenesisAccount {
-			nonce: 0.into(),
-			balance: 0.into(),
-			storage: BTreeMap::new(),
-			code: Bytes::from_str(&code_string).unwrap().0,
-		};
-		let addr = H160::from_low_u64_be(start_address);
-		accounts.insert(addr, account);
-		start_address += 1;
-	}
-	accounts
 }
 
 fn testnet_genesis(
