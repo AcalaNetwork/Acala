@@ -11,8 +11,8 @@ fn claim_account_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(EvmAccounts::claim_account(
 			Origin::signed(ALICE::get()),
-			sig::<Runtime>(&alice(), &ALICE::get().encode(), &[][..]),
-			eth(&alice())
+			eth(&alice()),
+			sig::<Runtime>(&alice(), &ALICE::get().encode(), &[][..])
 		));
 		let event = TestEvent::evm_accounts(RawEvent::ClaimAccount(ALICE::get(), eth(&alice())));
 		assert!(System::events().iter().any(|record| record.event == event));
@@ -25,26 +25,26 @@ fn claim_account_should_not_work() {
 		assert_noop!(
 			EvmAccounts::claim_account(
 				Origin::signed(ALICE::get()),
-				sig::<Runtime>(&alice(), &ALICE::get().encode(), &vec![1][..]),
-				eth(&alice())
+				eth(&alice()),
+				sig::<Runtime>(&alice(), &ALICE::get().encode(), &vec![1][..])
 			),
-			Error::<Runtime>::BadAddress
+			Error::<Runtime>::InvalidSignature
 		);
 		assert_noop!(
 			EvmAccounts::claim_account(
 				Origin::signed(ALICE::get()),
-				sig::<Runtime>(&alice(), &BOB::get().encode(), &[][..]),
-				eth(&alice())
+				eth(&alice()),
+				sig::<Runtime>(&alice(), &BOB::get().encode(), &[][..])
 			),
-			Error::<Runtime>::BadAddress
+			Error::<Runtime>::InvalidSignature
 		);
 		assert_noop!(
 			EvmAccounts::claim_account(
 				Origin::signed(ALICE::get()),
-				sig::<Runtime>(&alice(), &ALICE::get().encode(), &[][..]),
-				eth(&bob())
+				eth(&bob()),
+				sig::<Runtime>(&alice(), &ALICE::get().encode(), &[][..])
 			),
-			Error::<Runtime>::BadAddress
+			Error::<Runtime>::InvalidSignature
 		);
 	});
 }

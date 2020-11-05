@@ -10,7 +10,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{Currency, ExistenceRequirement, Get, Happened, ReservableCurrency},
+	traits::{Currency, ExistenceRequirement, Get, Happened, ReservableCurrency, StoredMap},
 	weights::Weight,
 	StorageMap,
 };
@@ -19,7 +19,6 @@ use orml_utilities::with_transaction_result;
 use pallet_evm::AddressMapping;
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
-use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::vec::Vec;
 
 mod default_weight;
@@ -86,8 +85,8 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Bad signature
 		BadSignature,
-		/// Bad address
-		BadAddress,
+		/// Invalid signature
+		InvalidSignature,
 		/// Account ref count is not zero
 		NonZeroRefCount,
 		/// Account still has active reserved
@@ -108,18 +107,18 @@ decl_module! {
 		fn deposit_event() = default;
 
 		#[weight = T::WeightInfo::claim_account()]
-		pub fn claim_account(origin, eth_signature: EcdsaSignature, eth_address: EvmAddress) {
+		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
 				// recover evm address from signature
 				let address = Self::eth_recover(&eth_signature, &who.using_encoded(to_ascii_hex), &[][..]).ok_or(Error::<T>::BadSignature)?;
-				ensure!(eth_address == address, Error::<T>::BadAddress);
+				ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
 				// check if the evm padded address already exists
 				let account_id = T::AddressMapping::into_account_id(eth_address);
 				let mut nonce = <T as frame_system::Trait>::Index::default();
-				if frame_system::Account::<T>::contains_key(account_id.clone()) {
+				if frame_system::Module::<T>::is_explicit(&account_id) {
 					// move all fund to origin
 					// check must allow death,
 					// if currencies has locks, means ref_count shouldn't be zero, can not close the account.
@@ -148,19 +147,19 @@ decl_module! {
 					// finally kill the account
 					T::KillAccount::happened(&account_id);
 
-					EvmAddresses::<T>::remove(account_id.clone());
+					EvmAddresses::<T>::remove(&account_id);
 				}
 				//	make the origin nonce the max between origin amd evm padded address
 				let origin_nonce = frame_system::Module::<T>::account_nonce(&who);
 				if origin_nonce < nonce {
-					for _ in 0..(origin_nonce - nonce).unique_saturated_into() {
-						frame_system::Module::<T>::inc_account_nonce(&who);
-					}
+					frame_system::Account::<T>::mutate(&who, |v| {
+						v.nonce = nonce;
+					});
 				}
 
 				// update accounts
 				Accounts::<T>::mutate(eth_address, |v| *v = who.clone());
-				EvmAddresses::<T>::insert(who.clone(), eth_address);
+				EvmAddresses::<T>::insert(&who, eth_address);
 
 				Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
 				Ok(())
