@@ -8,6 +8,9 @@ edition = "2018"
 module-support = { path = "../../modules/support", default-features = false }
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+sp-runtime = { version = "2.0.0", default-features = false }
+frame-support = { version = "2.0.0", default-features = false }
+module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
 
 [features]
 default = ["std"]
@@ -15,4 +18,7 @@ std = [
 	"module-support/std",
 	"orml-oracle/std",
 	"primitives/std",
+	"sp-runtime/std",
+	"frame-support/std",
+	"module-staking-pool/std",
 ]

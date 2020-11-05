@@ -73,7 +73,7 @@ impl frame_system::Trait for Runtime {
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 0;
 	pub const RenVmPublicKey: [u8; 20] = hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
-	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["0000000000000000000000000a9add98c076448cbcfacf5e457da12ddbef4a8f"];
+	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -89,7 +89,6 @@ pub type Balances = pallet_balances::Module<Runtime>;
 
 parameter_types! {
 	pub const UnsignedPriority: u64 = 1 << 20;
-	pub const BurnEventStoreDuration: BlockNumber = 10;
 }
 
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
@@ -122,9 +121,9 @@ impl Trait for Runtime {
 	type PublicKey = RenVmPublicKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = UnsignedPriority;
-	type BurnEventStoreDuration = BurnEventStoreDuration;
 }
 pub type RenVmBridge = Module<Runtime>;
+pub type System = frame_system::Module<Runtime>;
 
 pub struct ExtBuilder();
 

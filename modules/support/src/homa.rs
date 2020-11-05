@@ -22,7 +22,9 @@ pub struct PolkadotUnlockChunk<Balance, EraIndex> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
 pub struct PolkadotStakingLedger<Balance, EraIndex> {
+	/// Total amount, `active` plus all `unlocking`
 	pub total: Balance,
+	/// Amount at bonded
 	pub active: Balance,
 	pub unlocking: Vec<PolkadotUnlockChunk<Balance, EraIndex>>,
 }
@@ -36,19 +38,19 @@ pub trait PolkadotBridgeType<BlockNumber, EraIndex> {
 pub trait PolkadotBridgeCall<AccountId, BlockNumber, Balance, EraIndex>:
 	PolkadotBridgeType<BlockNumber, EraIndex>
 {
-	fn bond_extra(amount: Balance) -> DispatchResult;
-	fn unbond(amount: Balance) -> DispatchResult;
-	fn rebond(amount: Balance) -> DispatchResult;
-	fn withdraw_unbonded();
-	fn nominate(targets: Vec<Self::PolkadotAccountId>);
-	fn transfer_to_bridge(from: &AccountId, amount: Balance) -> DispatchResult;
-	fn receive_from_bridge(to: &AccountId, amount: Balance) -> DispatchResult;
-	fn payout_nominator();
+	fn bond_extra(account_index: u32, amount: Balance) -> DispatchResult;
+	fn unbond(account_index: u32, amount: Balance) -> DispatchResult;
+	fn rebond(account_index: u32, amount: Balance) -> DispatchResult;
+	fn withdraw_unbonded(account_index: u32);
+	fn nominate(account_index: u32, targets: Vec<Self::PolkadotAccountId>);
+	fn transfer_to_bridge(account_index: u32, from: &AccountId, amount: Balance) -> DispatchResult;
+	fn receive_from_bridge(account_index: u32, to: &AccountId, amount: Balance) -> DispatchResult;
+	fn payout_nominator(account_index: u32);
 }
 
 pub trait PolkadotBridgeState<Balance, EraIndex> {
-	fn ledger() -> PolkadotStakingLedger<Balance, EraIndex>;
-	fn balance() -> Balance;
+	fn staking_ledger(account_index: u32) -> PolkadotStakingLedger<Balance, EraIndex>;
+	fn balance(account_index: u32) -> Balance;
 	fn current_era() -> EraIndex;
 }
 

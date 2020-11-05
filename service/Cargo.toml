@@ -36,30 +36,47 @@ frame-system-rpc-runtime-api = { version = "2.0.0" }
 pallet-contracts-rpc-runtime-api = { version = "0.8.0" }
 pallet-contracts = { version = "2.0.0" }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0" }
+pallet-evm = { version = "2.0.0" }
 sp-offchain = { version = "2.0.0" }
 sp-session = { version = "2.0.0" }
 sp-storage = { version = "2.0.0" }
 sp-transaction-pool = { version = "2.0.0" }
 sp-blockchain = { version = "2.0.0" }
+sp-std = { version = "2.0.0" }
 
+module-staking-pool = { path = "../modules/staking_pool" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 acala-primitives = { path = "../primitives" }
 acala-rpc = { path = "../rpc" }
 
 runtime-common = { path = "../runtime/common" }
-mandala-runtime = { path = "../runtime/mandala" }
-karura-runtime = { path = "../runtime/karura" }
-acala-runtime = { path = "../runtime/acala" }
+mandala-runtime = { path = "../runtime/mandala", optional = true }
+karura-runtime = { path = "../runtime/karura", optional = true }
+acala-runtime = { path = "../runtime/acala", optional = true }
 
 [dev-dependencies]
 sc-consensus-babe = { version = "0.8.0", features = ["test-helpers"] }
 
 [features]
-default = ["std"]
+default = ["std", "with-mandala-runtime"]
 std = []
 runtime-benchmarks = [
 	"mandala-runtime/runtime-benchmarks",
 	"karura-runtime/runtime-benchmarks",
 	"acala-runtime/runtime-benchmarks",
+]
+with-mandala-runtime = [
+	"mandala-runtime",
+]
+with-karura-runtime = [
+	"karura-runtime",
+]
+with-acala-runtime = [
+	"acala-runtime",
+]
+with-all-runtime = [
+	"with-mandala-runtime",
+	"with-karura-runtime",
+	"with-acala-runtime",
 ]

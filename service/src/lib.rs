@@ -15,10 +15,15 @@ use sp_core::traits::BareCryptoStorePtr;
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
-pub use acala_runtime;
 pub use client::*;
+
+#[cfg(feature = "with-acala-runtime")]
+pub use acala_runtime;
+#[cfg(feature = "with-karurua-runtime")]
 pub use karura_runtime;
+#[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;
+
 pub use sc_executor::NativeExecutionDispatch;
 pub use sc_service::{
 	config::{DatabaseConfig, PrometheusConfig},
@@ -29,6 +34,7 @@ pub use sp_api::ConstructRuntimeApi;
 pub mod chain_spec;
 mod client;
 
+#[cfg(feature = "with-mandala-runtime")]
 native_executor_instance!(
 	pub MandalaExecutor,
 	mandala_runtime::api::dispatch,
@@ -36,6 +42,7 @@ native_executor_instance!(
 	frame_benchmarking::benchmarking::HostFunctions,
 );
 
+#[cfg(feature = "with-karura-runtime")]
 native_executor_instance!(
 	pub KaruraExecutor,
 	karura_runtime::api::dispatch,
@@ -43,6 +50,7 @@ native_executor_instance!(
 	frame_benchmarking::benchmarking::HostFunctions,
 );
 
+#[cfg(feature = "with-acala-runtime")]
 native_executor_instance!(
 	pub AcalaExecutor,
 	acala_runtime::api::dispatch,
@@ -531,43 +539,67 @@ pub fn new_chain_ops(
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
 	if config.chain_spec.is_mandala() {
-		let PartialComponents {
-			client,
-			backend,
-			import_queue,
-			task_manager,
-			..
-		} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false)?;
-		Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
+		#[cfg(feature = "with-mandala-runtime")]
+		{
+			let PartialComponents {
+				client,
+				backend,
+				import_queue,
+				task_manager,
+				..
+			} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false)?;
+			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
+		}
+		#[cfg(not(feature = "with-mandala-runtime"))]
+		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		let PartialComponents {
-			client,
-			backend,
-			import_queue,
-			task_manager,
-			..
-		} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false)?;
-		Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
+		#[cfg(feature = "with-kaura-runtime")]
+		{
+			let PartialComponents {
+				client,
+				backend,
+				import_queue,
+				task_manager,
+				..
+			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false)?;
+			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
+		}
+		#[cfg(not(feature = "with-kaura-runtime"))]
+		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
-		let PartialComponents {
-			client,
-			backend,
-			import_queue,
-			task_manager,
-			..
-		} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false)?;
-		Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
+		#[cfg(feature = "with-acala-runtime")]
+		{
+			let PartialComponents {
+				client,
+				backend,
+				import_queue,
+				task_manager,
+				..
+			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false)?;
+			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
+		}
+		#[cfg(not(feature = "with-acala-runtime"))]
+		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	}
 }
 
 /// Build a new light node.
 pub fn build_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 	if config.chain_spec.is_acala() {
-		new_light::<acala_runtime::RuntimeApi, AcalaExecutor>(config).map(|r| r.0)
+		#[cfg(feature = "with-acala-runtime")]
+		return new_light::<acala_runtime::RuntimeApi, AcalaExecutor>(config).map(|r| r.0);
+		#[cfg(not(feature = "with-acala-runtime"))]
+		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		new_light::<karura_runtime::RuntimeApi, KaruraExecutor>(config).map(|r| r.0)
+		#[cfg(feature = "with-kaura-runtime")]
+		return new_light::<karura_runtime::RuntimeApi, KaruraExecutor>(config).map(|r| r.0);
+		#[cfg(not(feature = "with-kaura-runtime"))]
+		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
-		new_light::<mandala_runtime::RuntimeApi, MandalaExecutor>(config).map(|r| r.0)
+		#[cfg(feature = "with-mandala-runtime")]
+		return new_light::<mandala_runtime::RuntimeApi, MandalaExecutor>(config).map(|r| r.0);
+		#[cfg(not(feature = "with-mandala-runtime"))]
+		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	}
 }
 
@@ -576,16 +608,31 @@ pub fn build_full(
 	test: bool,
 ) -> Result<(Arc<Client>, sc_service::NetworkStatusSinks<Block>, TaskManager), ServiceError> {
 	if config.chain_spec.is_acala() {
-		let (task_manager, _, client, _, _, network_status_sinks) =
-			new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, test)?;
-		Ok((Arc::new(Client::Acala(client)), network_status_sinks, task_manager))
+		#[cfg(feature = "with-acala-runtime")]
+		{
+			let (task_manager, _, client, _, _, network_status_sinks) =
+				new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, test)?;
+			Ok((Arc::new(Client::Acala(client)), network_status_sinks, task_manager))
+		}
+		#[cfg(not(feature = "with-acala-runtime"))]
+		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		let (task_manager, _, client, _, _, network_status_sinks) =
-			new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, test)?;
-		Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
+		#[cfg(feature = "with-kaura-runtime")]
+		{
+			let (task_manager, _, client, _, _, network_status_sinks) =
+				new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, test)?;
+			Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
+		}
+		#[cfg(not(feature = "with-kaura-runtime"))]
+		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
-		let (task_manager, _, client, _, _, network_status_sinks) =
-			new_full::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, test)?;
-		Ok((Arc::new(Client::Mandala(client)), network_status_sinks, task_manager))
+		#[cfg(feature = "with-mandala-runtime")]
+		{
+			let (task_manager, _, client, _, _, network_status_sinks) =
+				new_full::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, test)?;
+			Ok((Arc::new(Client::Mandala(client)), network_status_sinks, task_manager))
+		}
+		#[cfg(not(feature = "with-mandala-runtime"))]
+		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	}
 }
