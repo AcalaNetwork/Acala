@@ -5,6 +5,7 @@ use pallet_evm::{
 	precompiles::{Precompile, Precompiles},
 	ExitError, ExitSucceed,
 };
+use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
 use sp_std::{marker::PhantomData, prelude::*};
 
@@ -27,7 +28,7 @@ impl<MultiCurrencyPrecompile: Precompile> Precompiles for AllPrecompiles<MultiCu
 		target_gas: Option<usize>,
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
 		EthereumPrecompiles::execute(address, input, target_gas).or_else(|| {
-			if address == H160::from_low_u64_be(1024) {
+			if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {
 				Some(MultiCurrencyPrecompile::execute(input, target_gas))
 			} else {
 				None

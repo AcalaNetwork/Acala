@@ -1,6 +1,6 @@
 //! Acala chain configurations.
 
-use acala_primitives::{AccountId, AccountPublic};
+use acala_primitives::{AccountId, AccountPublic, PREDEPLOY_ADDRESS_START};
 use pallet_evm::GenesisAccount;
 use sc_chain_spec::ChainSpecExtension;
 use serde::{Deserialize, Serialize};
@@ -62,7 +62,7 @@ pub fn evm_genesis_accounts() -> BTreeMap<H160, GenesisAccount> {
 	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
-	let mut start_address = 2048;
+	let mut start_address = PREDEPLOY_ADDRESS_START;
 	for (_, code_string) in contracts {
 		let account = GenesisAccount {
 			nonce: 0.into(),
