@@ -836,7 +836,7 @@ fn test_cdp_engine_module() {
 
 #[test]
 fn test_authority_module() {
-	const AUTHORITY_ORIGIN_ID: u8 = 30u8;
+	const AUTHORITY_ORIGIN_ID: u8 = 31u8;
 
 	ExtBuilder::default()
 		.balances(vec![

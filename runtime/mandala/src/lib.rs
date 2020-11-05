@@ -39,12 +39,13 @@ use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
+use module_evm_accounts::EvmAddressMapping;
 use module_support::OnCommission;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, currency::MultiCurrency, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
-use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
+use pallet_evm::{EnsureAddressTruncated, FeeCalculator};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -1080,6 +1081,15 @@ impl module_accounts::Trait for Runtime {
 	type WeightInfo = weights::accounts::WeightInfo<Runtime>;
 }
 
+impl module_evm_accounts::Trait for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type KillAccount = <Runtime as module_accounts::Trait>::KillAccount;
+	type NewAccountDeposit = NewAccountDeposit;
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type WeightInfo = ();
+}
+
 impl orml_rewards::Trait for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
@@ -1281,7 +1291,7 @@ impl pallet_evm::Trait for Runtime {
 	type FeeCalculator = FixedGasPrice;
 	type CallOrigin = EnsureAddressTruncated;
 	type WithdrawOrigin = EnsureAddressTruncated;
-	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
+	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type Event = Event;
 	type Precompiles = ();
@@ -1304,6 +1314,7 @@ construct_runtime!(
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 
 		Accounts: module_accounts::{Module, Call, Storage},
+		EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
