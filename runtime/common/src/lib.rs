@@ -6,6 +6,8 @@ use frame_support::parameter_types;
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
 use sp_runtime::{traits::Saturating, FixedPointNumber, FixedPointOperand};
 
+pub mod precompile;
+
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
 parameter_types! {

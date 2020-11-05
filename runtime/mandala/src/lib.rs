@@ -48,8 +48,6 @@ use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
 
-use module_support::evm::MultiCurrencyPrecompile;
-
 /// Weights for pallets used in the runtime.
 mod weights;
 
@@ -1259,6 +1257,13 @@ parameter_types! {
 	pub const ChainId: u64 = 42;
 }
 
+pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::MultiCurrencyPrecompile<
+	AccountId,
+	HashedAddressMapping<BlakeTwo256>,
+	CurrencyId,
+	Currencies,
+>;
+
 impl pallet_evm::Trait for Runtime {
 	type FeeCalculator = FixedGasPrice;
 	type CallOrigin = EnsureAddressTruncated;
@@ -1266,7 +1271,7 @@ impl pallet_evm::Trait for Runtime {
 	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
 	type Currency = Balances;
 	type Event = Event;
-	type Precompiles = (MultiCurrencyPrecompile<AccountId, HashedAddressMapping<BlakeTwo256>, CurrencyId, Currencies>,);
+	type Precompiles = runtime_common::precompile::AllPrecompiles<MultiCurrencyPrecompile>;
 	type ChainId = ChainId;
 }
 

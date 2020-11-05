@@ -6259,7 +6259,12 @@ dependencies = [
  "module-staking-pool",
  "module-support",
  "orml-oracle",
+ "orml-traits",
+ "pallet-evm",
+ "parity-scale-codec",
+ "sp-core",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

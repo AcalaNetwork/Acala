@@ -5,20 +5,32 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
-module-support = { path = "../../modules/support", default-features = false }
-orml-oracle = { path = "../../orml/oracle", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
+sp-std = { version = "2.0.0", default-features = false }
+sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
+pallet-evm = { version = "2.0.0", default-features = false }
+
+orml-oracle = { path = "../../orml/oracle", default-features = false }
+orml-traits = { path = "../../orml/traits", default-features = false }
+
+module-support = { path = "../../modules/support", default-features = false }
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
 
 [features]
 default = ["std"]
 std = [
-	"module-support/std",
-	"orml-oracle/std",
-	"primitives/std",
+	"codec/std",
+	"sp-core/std",
+	"sp-std/std",
 	"sp-runtime/std",
 	"frame-support/std",
+	"pallet-evm/std",
+	"orml-oracle/std",
+	"orml-traits/std",
+	"module-support/std",
+	"primitives/std",
 	"module-staking-pool/std",
 ]
