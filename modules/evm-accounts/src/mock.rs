@@ -91,7 +91,7 @@ impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Balances;
 	type NewAccountDeposit = NewAccountDeposit;
-	type AddressMapping = EvmAccountsModule;
+	type AddressMapping = EvmAddressMapping<Runtime>;
 	type KillAccount = ();
 	type WeightInfo = ();
 }

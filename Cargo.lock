@@ -3518,6 +3518,7 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
+ "libsecp256k1",
  "module-accounts",
  "module-airdrop",
  "module-auction-manager",

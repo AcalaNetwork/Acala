@@ -105,6 +105,7 @@ wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "2.
 
 [dev-dependencies]
 sp-io = { version = "2.0.0" }
+libsecp256k1 = { version = "0.3.4" }
 
 [features]
 default = ["std"]

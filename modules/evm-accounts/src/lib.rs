@@ -188,7 +188,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	// Constructs the message that Ethereum RPC's `personal_sign` and `eth_sign`
 	// would sign.
-	fn ethereum_signable_message(what: &[u8], extra: &[u8]) -> Vec<u8> {
+	pub fn ethereum_signable_message(what: &[u8], extra: &[u8]) -> Vec<u8> {
 		let prefix = b"acala evm:";
 		let mut l = prefix.len() + what.len() + extra.len();
 		let mut rev = Vec::new();
@@ -206,7 +206,7 @@ impl<T: Trait> Module<T> {
 
 	// Attempts to recover the Ethereum address from a message signature signed by
 	// using the Ethereum RPC's `personal_sign` and `eth_sign`.
-	fn eth_recover(s: &EcdsaSignature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
+	pub fn eth_recover(s: &EcdsaSignature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
 		let msg = keccak_256(&Self::ethereum_signable_message(what, extra));
 		let mut res = EvmAddress::default();
 		res.0
@@ -221,8 +221,8 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-//pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> AddressMapping<AccountId32> for Module<T> {
+pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
+impl<T: Trait> AddressMapping<AccountId32> for EvmAddressMapping<T> {
 	fn into_account_id(address: H160) -> AccountId32 {
 		if Accounts::<T>::contains_key(address) {
 			let acc = Accounts::<T>::get(address);
