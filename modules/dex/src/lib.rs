@@ -29,8 +29,8 @@ mod mock;
 mod tests;
 
 pub trait WeightInfo {
-	fn add_liquidity() -> Weight;
-	fn remove_liquidity() -> Weight;
+	fn add_liquidity(deposit: bool) -> Weight;
+	fn remove_liquidity(by_withdraw: bool) -> Weight;
 	fn swap_with_exact_supply() -> Weight;
 	fn swap_with_exact_target() -> Weight;
 }
@@ -176,7 +176,7 @@ decl_module! {
 		/// - `max_amount_a`: maximum currency A amount allowed to inject to liquidity pool.
 		/// - `max_amount_b`: maximum currency A amount allowed to inject to liquidity pool.
 		/// - `deposit_increment_share`: this flag indicates whether to deposit added lp shares to obtain incentives
-		#[weight = T::WeightInfo::add_liquidity()]
+		#[weight = T::WeightInfo::add_liquidity(*deposit_increment_share)]
 		pub fn add_liquidity(
 			origin,
 			currency_id_a: CurrencyId,
@@ -198,7 +198,7 @@ decl_module! {
 		/// - `currency_id_b`: currency id B.
 		/// - `remove_share`: liquidity amount to remove.
 		/// - `by_withdraw`: this flag indicates whether to withdraw share which is on incentives.
-		#[weight = T::WeightInfo::remove_liquidity()]
+		#[weight = T::WeightInfo::remove_liquidity(*by_withdraw)]
 		pub fn remove_liquidity(
 			origin,
 			currency_id_a: CurrencyId,

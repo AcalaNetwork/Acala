@@ -9,15 +9,27 @@ use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Trait> module_dex::WeightInfo for WeightInfo<T> {
-	fn add_liquidity() -> Weight {
-		(362_483_000 as Weight)
-			.saturating_add(DbWeight::get().reads(11 as Weight))
-			.saturating_add(DbWeight::get().writes(7 as Weight))
+	fn add_liquidity(deposit: bool) -> Weight {
+		if deposit {
+			(127_000_000 as Weight)
+				.saturating_add(DbWeight::get().reads(16 as Weight))
+				.saturating_add(DbWeight::get().writes(12 as Weight))
+		} else {
+			(82_000_000 as Weight)
+				.saturating_add(DbWeight::get().reads(10 as Weight))
+				.saturating_add(DbWeight::get().writes(7 as Weight))
+		}
 	}
-	fn remove_liquidity() -> Weight {
-		(414_245_000 as Weight)
-			.saturating_add(DbWeight::get().reads(9 as Weight))
-			.saturating_add(DbWeight::get().writes(7 as Weight))
+	fn remove_liquidity(by_withdraw: bool) -> Weight {
+		if by_withdraw {
+			(139_000_000 as Weight)
+				.saturating_add(DbWeight::get().reads(14 as Weight))
+				.saturating_add(DbWeight::get().writes(12 as Weight))
+		} else {
+			(83_000_000 as Weight)
+				.saturating_add(DbWeight::get().reads(9 as Weight))
+				.saturating_add(DbWeight::get().writes(7 as Weight))
+		}
 	}
 	fn swap_with_exact_supply() -> Weight {
 		(409_297_000 as Weight)
