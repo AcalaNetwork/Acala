@@ -5,9 +5,11 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::Balance;
+use sp_core::H160;
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use std::str::FromStr;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -91,11 +93,11 @@ impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Balances;
 	type NewAccountDeposit = NewAccountDeposit;
-	type AddressMapping = EvmAddressMapping<Runtime>;
+	type AddressMapping = EvmAccountsModule;
 	type KillAccount = ();
 	type WeightInfo = ();
 }
-pub type EvmAccounts = Module<Runtime>;
+pub type EvmAccountsModule = Module<Runtime>;
 
 pub struct ExtBuilder();
 
@@ -107,9 +109,15 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(bob_account_id(), 100000)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
@@ -141,4 +149,8 @@ pub fn alice() -> secp256k1::SecretKey {
 
 pub fn bob() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+}
+
+pub fn bob_account_id() -> AccountId {
+	<Runtime as evm_accounts::Trait>::AddressMapping::into_account_id(eth(&bob()))
 }

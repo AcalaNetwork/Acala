@@ -19,6 +19,7 @@ use orml_utilities::with_transaction_result;
 use pallet_evm::AddressMapping;
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
+use sp_runtime::traits::Zero;
 use sp_std::vec::Vec;
 
 mod default_weight;
@@ -38,7 +39,7 @@ pub struct EcdsaSignature(pub [u8; 65]);
 
 impl PartialEq for EcdsaSignature {
 	fn eq(&self, other: &Self) -> bool {
-		&self.0[..] == &other.0[..]
+		self.0[..] == other.0[..]
 	}
 }
 
@@ -83,6 +84,8 @@ decl_event!(
 decl_error! {
 	/// Error for evm accounts module.
 	pub enum Error for Module<T: Trait> {
+		/// Eth address has mapped
+		EthAddressHasMapped,
 		/// Bad signature
 		BadSignature,
 		/// Invalid signature
@@ -106,10 +109,18 @@ decl_module! {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
+		/// Deposit for opening account, would be reserved until account closed.
+		const NewAccountDeposit: BalanceOf<T> = T::NewAccountDeposit::get();
+
+		/// Claim account mapping between Substrate accounts and EVM accounts.
+		/// Ensure eth_address has not been mapped.
 		#[weight = T::WeightInfo::claim_account()]
 		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
+
+				// ensure eth_address has not been mapped
+				ensure!(!Accounts::<T>::contains_key(eth_address), Error::<T>::EthAddressHasMapped);
 
 				// recover evm address from signature
 				let address = Self::eth_recover(&eth_signature, &who.using_encoded(to_ascii_hex), &[][..]).ok_or(Error::<T>::BadSignature)?;
@@ -138,16 +149,19 @@ decl_module! {
 					);
 
 					// unreserve all reserved currency
-					T::Currency::unreserve(&account_id, total_reserved);
+					if total_reserved > Zero::zero() {
+						T::Currency::unreserve(&account_id, total_reserved);
+					}
 
 					// transfer all free to origin
-					T::Currency::transfer(&account_id, &who, T::Currency::free_balance(&account_id), ExistenceRequirement::AllowDeath)?;
+					let free_balance = T::Currency::free_balance(&account_id);
+					if free_balance > Zero::zero() {
+						T::Currency::transfer(&account_id, &who, free_balance, ExistenceRequirement::AllowDeath)?;
+					}
 
 					nonce = frame_system::Module::<T>::account_nonce(&account_id);
 					// finally kill the account
 					T::KillAccount::happened(&account_id);
-
-					EvmAddresses::<T>::remove(&account_id);
 				}
 				//	make the origin nonce the max between origin amd evm padded address
 				let origin_nonce = frame_system::Module::<T>::account_nonce(&who);
@@ -158,7 +172,10 @@ decl_module! {
 				}
 
 				// update accounts
-				Accounts::<T>::mutate(eth_address, |v| *v = who.clone());
+				if EvmAddresses::<T>::contains_key(&who) {
+					Accounts::<T>::remove(Self::evm_addresses(&who));
+				}
+				Accounts::<T>::insert(eth_address, &who);
 				EvmAddresses::<T>::insert(&who, eth_address);
 
 				Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
@@ -196,13 +213,19 @@ impl<T: Trait> Module<T> {
 			.copy_from_slice(&keccak_256(&secp256k1_ecdsa_recover(&s.0, &msg).ok()?[..])[12..]);
 		Some(res)
 	}
+
+	fn on_killed_account(who: &T::AccountId) {
+		// Here should be no balance, if there is, it will be burned
+		Accounts::<T>::remove(Self::evm_addresses(who));
+		EvmAddresses::<T>::remove(who);
+	}
 }
 
-pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> AddressMapping<AccountId32> for EvmAddressMapping<T> {
+//pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
+impl<T: Trait> AddressMapping<AccountId32> for Module<T> {
 	fn into_account_id(address: H160) -> AccountId32 {
 		if Accounts::<T>::contains_key(address) {
-			let acc = Module::<T>::accounts(address);
+			let acc = Accounts::<T>::get(address);
 			let mut data = [0u8; 32];
 			data.copy_from_slice(&acc.encode());
 			AccountId32::from(Into::<[u8; 32]>::into(data))
@@ -212,6 +235,13 @@ impl<T: Trait> AddressMapping<AccountId32> for EvmAddressMapping<T> {
 			data[4..24].copy_from_slice(&address[..]);
 			AccountId32::from(Into::<[u8; 32]>::into(data))
 		}
+	}
+}
+
+pub struct OnKillAccount<T>(sp_std::marker::PhantomData<T>);
+impl<T: Trait> Happened<T::AccountId> for OnKillAccount<T> {
+	fn happened(who: &T::AccountId) {
+		Module::<T>::on_killed_account(&who);
 	}
 }
 
