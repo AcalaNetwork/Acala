@@ -9,7 +9,6 @@ use sp_core::H160;
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-use std::str::FromStr;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
