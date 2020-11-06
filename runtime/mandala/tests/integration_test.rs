@@ -1,22 +1,21 @@
 #![cfg(test)]
 
+use frame_support::dispatch::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{schedule::DispatchTime, OnFinalize, OnInitialize, OriginTrait},
 };
 use frame_system::RawOrigin;
-use sp_io::hashing::keccak_256;
-use frame_support::dispatch::Encode;
-use module_evm_accounts::{EvmAddress, EcdsaSignature, to_ascii_hex};
 use mandala_runtime::{
 	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
-	CurrencyId, DSWFModuleId, Event, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime,
-	SevenDays, TokenSymbol, NFT, EvmAccounts,
+	CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller,
+	Perbill, Runtime, SevenDays, TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
+use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
 	DispatchError, DispatchResult, FixedPointNumber,
@@ -145,24 +144,6 @@ fn amount(amount: u128) -> u128 {
 	amount.saturating_mul(Price::accuracy())
 }
 
-fn public(secret: &secp256k1::SecretKey) -> secp256k1::PublicKey {
-	secp256k1::PublicKey::from_secret_key(secret)
-}
-fn eth(secret: &secp256k1::SecretKey) -> EvmAddress {
-	EvmAddress::from_slice(&keccak_256(&public(secret).serialize()[1..65])[12..])
-}
-fn sig<T: module_evm_accounts::Trait>(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
-	let msg = keccak_256(&module_evm_accounts::Module::<T>::ethereum_signable_message(
-		&to_ascii_hex(what)[..],
-		extra,
-	));
-	let (sig, recovery_id) = secp256k1::sign(&secp256k1::Message::parse(&msg), secret);
-	let mut r = [0u8; 65];
-	r[0..64].copy_from_slice(&sig.serialize()[..]);
-	r[64] = recovery_id.serialize();
-	EcdsaSignature(r)
-}
-
 fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
@@ -172,7 +153,7 @@ fn bob() -> secp256k1::SecretKey {
 }
 
 pub fn bob_account_id() -> AccountId {
-	let address = eth(&bob());
+	let address = EvmAccounts::eth_address(&bob());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -1173,10 +1154,13 @@ fn test_evm_accounts_module() {
 			assert_eq!(Balances::free_balance(bob_account_id()), 999999000000000000000);
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
-				eth(&alice()),
-				sig::<Runtime>(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_address(&alice()),
+				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			let event = Event::module_evm_accounts(module_evm_accounts::RawEvent::ClaimAccount(AccountId::from(ALICE), eth(&alice())));
+			let event = Event::module_evm_accounts(module_evm_accounts::RawEvent::ClaimAccount(
+				AccountId::from(ALICE),
+				EvmAccounts::eth_address(&alice()),
+			));
 			assert_eq!(last_event(), event);
 
 			// claim another eth address
@@ -1184,8 +1168,8 @@ fn test_evm_accounts_module() {
 			assert_eq!(Balances::free_balance(&bob_account_id()), 999999000000000000000);
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
-				eth(&bob()),
-				sig::<Runtime>(&bob(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_address(&bob()),
+				EvmAccounts::eth_sign(&bob(), &AccountId::from(ALICE).encode(), &[][..])
 			));
 			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 999999000000000000000);
 			assert_eq!(Balances::free_balance(bob_account_id()), 0);

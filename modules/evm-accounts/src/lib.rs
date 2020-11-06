@@ -214,6 +214,21 @@ impl<T: Trait> Module<T> {
 		Some(res)
 	}
 
+	pub fn eth_public(secret: &secp256k1::SecretKey) -> secp256k1::PublicKey {
+		secp256k1::PublicKey::from_secret_key(secret)
+	}
+	pub fn eth_address(secret: &secp256k1::SecretKey) -> EvmAddress {
+		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
+	}
+	pub fn eth_sign(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
+		let msg = keccak_256(&Self::ethereum_signable_message(&to_ascii_hex(what)[..], extra));
+		let (sig, recovery_id) = secp256k1::sign(&secp256k1::Message::parse(&msg), secret);
+		let mut r = [0u8; 65];
+		r[0..64].copy_from_slice(&sig.serialize()[..]);
+		r[64] = recovery_id.serialize();
+		EcdsaSignature(r)
+	}
+
 	fn on_killed_account(who: &T::AccountId) {
 		// Here should be no balance, if there is, it will be burned
 		Accounts::<T>::remove(Self::evm_addresses(who));

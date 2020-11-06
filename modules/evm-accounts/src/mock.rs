@@ -123,24 +123,6 @@ impl ExtBuilder {
 	}
 }
 
-pub fn public(secret: &secp256k1::SecretKey) -> secp256k1::PublicKey {
-	secp256k1::PublicKey::from_secret_key(secret)
-}
-pub fn eth(secret: &secp256k1::SecretKey) -> EvmAddress {
-	EvmAddress::from_slice(&keccak_256(&public(secret).serialize()[1..65])[12..])
-}
-pub fn sig<T: Trait>(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
-	let msg = keccak_256(&<super::Module<T>>::ethereum_signable_message(
-		&to_ascii_hex(what)[..],
-		extra,
-	));
-	let (sig, recovery_id) = secp256k1::sign(&secp256k1::Message::parse(&msg), secret);
-	let mut r = [0u8; 65];
-	r[0..64].copy_from_slice(&sig.serialize()[..]);
-	r[64] = recovery_id.serialize();
-	EcdsaSignature(r)
-}
-
 pub fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
@@ -150,7 +132,7 @@ pub fn bob() -> secp256k1::SecretKey {
 }
 
 pub fn bob_account_id() -> AccountId {
-	let address = eth(&bob());
+	let address = EvmAccountsModule::eth_address(&bob());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);

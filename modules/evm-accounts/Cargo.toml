@@ -8,7 +8,7 @@ edition = "2018"
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
-libsecp256k1 = { version = "0.3.4", optional = true }
+libsecp256k1 = { version = "0.3.4", default-features = false, features = ["hmac"] }
 sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
@@ -25,9 +25,9 @@ pallet-balances = { version = "2.0.0" }
 default = ["std"]
 std = [
 	"codec/std",
+	"libsecp256k1/std",
 	"sp-core/std",
 	"sp-runtime/std",
-	"libsecp256k1",
 	"sp-io/std",
 	"sp-std/std",
 	"frame-support/std",
