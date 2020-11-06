@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::weights::{Weight, constants::RocksDbWeight as DbWeight};
+use frame_support::weights::{constants::RocksDbWeight as DbWeight, Weight};
 
 use sp_std::marker::PhantomData;
 
