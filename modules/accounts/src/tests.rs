@@ -117,8 +117,22 @@ fn open_account_failed_when_transfer_native() {
 fn open_account_successfully_when_transfer_non_native() {
 	ExtBuilder::default().build().execute_with(|| {
 		// add liquidity to dex
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 10000, 100));
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, AUSD, 10, 200));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			ACA,
+			AUSD,
+			10000,
+			100,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC,
+			AUSD,
+			10,
+			200,
+			false
+		));
 
 		assert_eq!(Accounts::is_explicit(&BOB), false);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(BTC, &BOB), 0);
@@ -148,7 +162,14 @@ fn open_account_successfully_when_transfer_non_native() {
 fn open_account_failed_when_transfer_non_native() {
 	ExtBuilder::default().build().execute_with(|| {
 		// inject liquidity to dex
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 200, 100));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			ACA,
+			AUSD,
+			200,
+			100,
+			false
+		));
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (200, 100));
 
 		assert_eq!(Accounts::is_explicit(&Accounts::treasury_account_id()), false);
@@ -346,7 +367,14 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
 
 		// add liquidity to DEX
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 10000, 1000));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			ACA,
+			AUSD,
+			10000,
+			1000,
+			false
+		));
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 
 		let fee = 500 * 2 + 1000; // len * byte + weight

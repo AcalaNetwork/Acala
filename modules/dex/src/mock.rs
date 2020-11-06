@@ -4,10 +4,10 @@
 
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use orml_traits::MultiReservableCurrency;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
-use sp_std::cell::RefCell;
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -87,8 +87,16 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+pub struct MockDEXIncentives;
+impl DEXIncentives<AccountId, CurrencyId, Balance> for MockDEXIncentives {
+	fn do_deposit_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		Tokens::reserve(lp_currency_id, who, amount)
+	}
+
+	fn do_withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		let _ = Tokens::unreserve(lp_currency_id, who, amount);
+		Ok(())
+	}
 }
 
 parameter_types! {
@@ -106,6 +114,7 @@ impl Trait for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
+	type DEXIncentives = MockDEXIncentives;
 }
 pub type DexModule = Module<Runtime>;
 

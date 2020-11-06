@@ -171,7 +171,14 @@ fn get_debit_proportion_work() {
 #[test]
 fn swap_collateral_not_in_auction_with_exact_stable_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, AUSD, 100, 1000));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC,
+			AUSD,
+			100,
+			1000,
+			false
+		));
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 100));
@@ -192,7 +199,14 @@ fn swap_collateral_not_in_auction_with_exact_stable_work() {
 #[test]
 fn swap_exact_collateral_in_auction_to_stable_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DEXModule::add_liquidity(Origin::signed(ALICE), BTC, AUSD, 100, 1000));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC,
+			AUSD,
+			100,
+			1000,
+			false
+		));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 100));

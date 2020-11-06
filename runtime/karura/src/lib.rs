@@ -1023,6 +1023,7 @@ impl module_dex::Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
+	type DEXIncentives = Incentives;
 	type WeightInfo = weights::dex::WeightInfo<Runtime>;
 }
 
@@ -1684,7 +1685,6 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, dex, Dex);
 			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
 			// orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
 			// orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);

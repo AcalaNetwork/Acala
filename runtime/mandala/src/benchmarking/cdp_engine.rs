@@ -33,6 +33,7 @@ fn inject_liquidity(
 		currency_id,
 		max_amount,
 		max_other_currency_amount,
+		false,
 	)?;
 
 	Ok(())

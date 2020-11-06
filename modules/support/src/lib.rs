@@ -228,3 +228,18 @@ pub trait ExchangeRateProvider {
 pub trait EmergencyShutdown {
 	fn is_shutdown() -> bool;
 }
+
+pub trait DEXIncentives<AccountId, CurrencyId, Balance> {
+	fn do_deposit_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
+	fn do_withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
+}
+
+impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balance> for () {
+	fn do_deposit_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn do_withdraw_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
+		Ok(())
+	}
+}
