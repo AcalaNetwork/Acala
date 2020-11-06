@@ -22,15 +22,15 @@ use sp_runtime::{
 	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{DEXManager, Price, Ratio};
+use support::{DEXIncentives, DEXManager, Price, Ratio};
 
 mod default_weight;
 mod mock;
 mod tests;
 
 pub trait WeightInfo {
-	fn add_liquidity() -> Weight;
-	fn remove_liquidity() -> Weight;
+	fn add_liquidity(deposit: bool) -> Weight;
+	fn remove_liquidity(by_withdraw: bool) -> Weight;
 	fn swap_with_exact_supply() -> Weight;
 	fn swap_with_exact_target() -> Weight;
 }
@@ -58,6 +58,9 @@ pub trait Trait: system::Trait {
 
 	/// Weight information for the extrinsics in this module.
 	type WeightInfo: WeightInfo;
+
+	/// DEX incentives
+	type DEXIncentives: DEXIncentives<Self::AccountId, CurrencyId, Balance>;
 }
 
 decl_event!(
@@ -160,8 +163,7 @@ decl_module! {
 		) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				let _ = Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)?;
-				Ok(())
+				Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)
 			})?;
 		}
 
@@ -173,77 +175,19 @@ decl_module! {
 		/// - `currency_id_b`: currency id B.
 		/// - `max_amount_a`: maximum currency A amount allowed to inject to liquidity pool.
 		/// - `max_amount_b`: maximum currency A amount allowed to inject to liquidity pool.
-		#[weight = T::WeightInfo::add_liquidity()]
+		/// - `deposit_increment_share`: this flag indicates whether to deposit added lp shares to obtain incentives
+		#[weight = T::WeightInfo::add_liquidity(*deposit_increment_share)]
 		pub fn add_liquidity(
 			origin,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
 			#[compact] max_amount_a: Balance,
 			#[compact] max_amount_b: Balance,
+			deposit_increment_share: bool,
 		) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
-				ensure!(T::EnabledTradingPairs::get().contains(&trading_pair), Error::<T>::TradingPairNotAllowed);
-
-				LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
-					let lp_share_currency_id = trading_pair.get_dex_share_currency_id().ok_or(Error::<T>::InvalidCurrencyId)?;
-					let total_shares = T::Currency::total_issuance(lp_share_currency_id);
-					let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.0 {
-						(max_amount_a, max_amount_b)
-					} else {
-						(max_amount_b, max_amount_a)
-					};
-					let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
-						if total_shares.is_zero() {
-							// initialize this liquidity pool, the initial share is equal to the max value between base currency amount and other currency amount
-							let initial_share = sp_std::cmp::max(max_amount_0, max_amount_1);
-							(max_amount_0, max_amount_1, initial_share)
-						} else {
-							let price_0_1 = Price::checked_from_rational(*pool_1, *pool_0).unwrap_or_default();
-							let input_price_0_1 = Price::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default();
-
-							if input_price_0_1 <= price_0_1 {
-								// max_amount_0 may be too much, calculate the actual amount_0
-								let price_1_0 = Price::checked_from_rational(*pool_0, *pool_1).unwrap_or_default();
-								let amount_0 = price_1_0.saturating_mul_int(max_amount_1);
-								let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
-									.and_then(|n| n.checked_mul_int(total_shares))
-									.unwrap_or_default();
-								(amount_0, max_amount_1, share_increment)
-							} else {
-								// max_amount_1 is too much, calculate the actual amount_1
-								let amount_1 = price_0_1.saturating_mul_int(max_amount_0);
-								let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
-									.and_then(|n| n.checked_mul_int(total_shares))
-									.unwrap_or_default();
-								(max_amount_0, amount_1, share_increment)
-							}
-						};
-
-					ensure!(
-						!share_increment.is_zero() && !pool_0_increment.is_zero() && !pool_1_increment.is_zero(),
-						Error::<T>::InvalidLiquidityIncrement,
-					);
-
-					let module_account_id = Self::account_id();
-					T::Currency::transfer(trading_pair.0, &who, &module_account_id, pool_0_increment)?;
-					T::Currency::transfer(trading_pair.1, &who, &module_account_id, pool_1_increment)?;
-					T::Currency::deposit(lp_share_currency_id, &who, share_increment)?;
-
-					*pool_0 = pool_0.saturating_add(pool_0_increment);
-					*pool_1 = pool_1.saturating_add(pool_1_increment);
-
-					Self::deposit_event(RawEvent::AddLiquidity(
-						who,
-						trading_pair.0,
-						pool_0_increment,
-						trading_pair.1,
-						pool_1_increment,
-						share_increment,
-					));
-					Ok(())
-				})
+				Self::do_add_liquidity(&who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, deposit_increment_share)
 			})?;
 		}
 
@@ -253,38 +197,18 @@ decl_module! {
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
 		/// - `remove_share`: liquidity amount to remove.
-		#[weight = T::WeightInfo::remove_liquidity()]
-		pub fn remove_liquidity(origin, currency_id_a: CurrencyId, currency_id_b: CurrencyId, #[compact] remove_share: Balance) {
+		/// - `by_withdraw`: this flag indicates whether to withdraw share which is on incentives.
+		#[weight = T::WeightInfo::remove_liquidity(*by_withdraw)]
+		pub fn remove_liquidity(
+			origin,
+			currency_id_a: CurrencyId,
+			currency_id_b: CurrencyId,
+			#[compact] remove_share: Balance,
+			by_withdraw: bool,
+		) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				if remove_share.is_zero() { return Ok(()); }
-				let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
-
-				LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
-					let lp_share_currency_id = trading_pair.get_dex_share_currency_id().ok_or(Error::<T>::InvalidCurrencyId)?;
-					let total_shares = T::Currency::total_issuance(lp_share_currency_id);
-					let proportion = Ratio::checked_from_rational(remove_share, total_shares).unwrap_or_default();
-					let pool_0_decrement = proportion.saturating_mul_int(*pool_0);
-					let pool_1_decrement = proportion.saturating_mul_int(*pool_1);
-					let module_account_id = Self::account_id();
-
-					T::Currency::withdraw(lp_share_currency_id, &who, remove_share)?;
-					T::Currency::transfer(trading_pair.0, &module_account_id, &who, pool_0_decrement)?;
-					T::Currency::transfer(trading_pair.1, &module_account_id, &who, pool_1_decrement)?;
-
-					*pool_0 = pool_0.saturating_sub(pool_0_decrement);
-					*pool_1 = pool_1.saturating_sub(pool_1_decrement);
-
-					Self::deposit_event(RawEvent::RemoveLiquidity(
-						who,
-						trading_pair.0,
-						pool_0_decrement,
-						trading_pair.1,
-						pool_1_decrement,
-						remove_share,
-					));
-					Ok(())
-				})
+				Self::do_remove_liquidity(&who, currency_id_a, currency_id_b, remove_share, by_withdraw)
 			})?;
 		}
 	}
@@ -293,6 +217,131 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	fn account_id() -> T::AccountId {
 		T::ModuleId::get().into_account()
+	}
+
+	fn do_add_liquidity(
+		who: &T::AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+		max_amount_a: Balance,
+		max_amount_b: Balance,
+		deposit_increment_share: bool,
+	) -> DispatchResult {
+		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+		ensure!(
+			T::EnabledTradingPairs::get().contains(&trading_pair),
+			Error::<T>::TradingPairNotAllowed
+		);
+
+		LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+			let lp_share_currency_id = trading_pair
+				.get_dex_share_currency_id()
+				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			let total_shares = T::Currency::total_issuance(lp_share_currency_id);
+			let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.0 {
+				(max_amount_a, max_amount_b)
+			} else {
+				(max_amount_b, max_amount_a)
+			};
+			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
+				if total_shares.is_zero() {
+					// initialize this liquidity pool, the initial share is equal to the max value
+					// between base currency amount and other currency amount
+					let initial_share = sp_std::cmp::max(max_amount_0, max_amount_1);
+					(max_amount_0, max_amount_1, initial_share)
+				} else {
+					let price_0_1 = Price::checked_from_rational(*pool_1, *pool_0).unwrap_or_default();
+					let input_price_0_1 = Price::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default();
+
+					if input_price_0_1 <= price_0_1 {
+						// max_amount_0 may be too much, calculate the actual amount_0
+						let price_1_0 = Price::checked_from_rational(*pool_0, *pool_1).unwrap_or_default();
+						let amount_0 = price_1_0.saturating_mul_int(max_amount_1);
+						let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
+							.and_then(|n| n.checked_mul_int(total_shares))
+							.unwrap_or_default();
+						(amount_0, max_amount_1, share_increment)
+					} else {
+						// max_amount_1 is too much, calculate the actual amount_1
+						let amount_1 = price_0_1.saturating_mul_int(max_amount_0);
+						let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
+							.and_then(|n| n.checked_mul_int(total_shares))
+							.unwrap_or_default();
+						(max_amount_0, amount_1, share_increment)
+					}
+				};
+
+			ensure!(
+				!share_increment.is_zero() && !pool_0_increment.is_zero() && !pool_1_increment.is_zero(),
+				Error::<T>::InvalidLiquidityIncrement,
+			);
+
+			let module_account_id = Self::account_id();
+			T::Currency::transfer(trading_pair.0, who, &module_account_id, pool_0_increment)?;
+			T::Currency::transfer(trading_pair.1, who, &module_account_id, pool_1_increment)?;
+			T::Currency::deposit(lp_share_currency_id, who, share_increment)?;
+
+			*pool_0 = pool_0.saturating_add(pool_0_increment);
+			*pool_1 = pool_1.saturating_add(pool_1_increment);
+
+			if deposit_increment_share {
+				T::DEXIncentives::do_deposit_dex_share(who, lp_share_currency_id, share_increment)?;
+			}
+
+			Self::deposit_event(RawEvent::AddLiquidity(
+				who.clone(),
+				trading_pair.0,
+				pool_0_increment,
+				trading_pair.1,
+				pool_1_increment,
+				share_increment,
+			));
+			Ok(())
+		})
+	}
+
+	fn do_remove_liquidity(
+		who: &T::AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+		remove_share: Balance,
+		by_withdraw: bool,
+	) -> DispatchResult {
+		if remove_share.is_zero() {
+			return Ok(());
+		}
+		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+
+		LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+			let lp_share_currency_id = trading_pair
+				.get_dex_share_currency_id()
+				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			let total_shares = T::Currency::total_issuance(lp_share_currency_id);
+			let proportion = Ratio::checked_from_rational(remove_share, total_shares).unwrap_or_default();
+			let pool_0_decrement = proportion.saturating_mul_int(*pool_0);
+			let pool_1_decrement = proportion.saturating_mul_int(*pool_1);
+			let module_account_id = Self::account_id();
+
+			if by_withdraw {
+				T::DEXIncentives::do_withdraw_dex_share(who, lp_share_currency_id, remove_share)?;
+			}
+			T::Currency::withdraw(lp_share_currency_id, &who, remove_share)?;
+			T::Currency::transfer(trading_pair.0, &module_account_id, &who, pool_0_decrement)?;
+			T::Currency::transfer(trading_pair.1, &module_account_id, &who, pool_1_decrement)?;
+
+			*pool_0 = pool_0.saturating_sub(pool_0_decrement);
+			*pool_1 = pool_1.saturating_sub(pool_1_decrement);
+
+			Self::deposit_event(RawEvent::RemoveLiquidity(
+				who.clone(),
+				trading_pair.0,
+				pool_0_decrement,
+				trading_pair.1,
+				pool_1_decrement,
+				remove_share,
+			));
+			Ok(())
+		})
 	}
 
 	fn get_liquidity(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {

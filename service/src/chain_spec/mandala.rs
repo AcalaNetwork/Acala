@@ -8,9 +8,9 @@ use sp_core::{crypto::UncheckedInto, sr25519, H160, U256};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{FixedPointNumber, FixedU128, Perbill};
 
-use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
-use pallet_evm::GenesisAccount;
-use sp_runtime::sp_std::collections::btree_map::BTreeMap;
+use crate::chain_spec::{
+	evm_genesis_accounts, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
+};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
@@ -197,18 +197,6 @@ fn testnet_genesis(
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
-	let mut evm_accounts: BTreeMap<H160, GenesisAccount> = BTreeMap::new();
-
-	evm_accounts.insert(
-		H160::from(hex!["57d213d0927ccc7596044c6ba013dd05522aacba"]),
-		GenesisAccount {
-			nonce: U256::from(0),
-			balance: U256::from(INITIAL_BALANCE),
-			storage: Default::default(),
-			code: vec![],
-		},
-	);
-
 	mandala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
@@ -350,7 +338,9 @@ fn testnet_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
-		pallet_evm: Some(EVMConfig { accounts: evm_accounts }),
+		pallet_evm: Some(EVMConfig {
+			accounts: evm_genesis_accounts(),
+		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
@@ -372,7 +362,7 @@ fn mandala_genesis(
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
-		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId,
+		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig,
 		StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
@@ -525,7 +515,9 @@ fn mandala_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
-		pallet_evm: Some(Default::default()),
+		pallet_evm: Some(EVMConfig {
+			accounts: evm_genesis_accounts(),
+		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),

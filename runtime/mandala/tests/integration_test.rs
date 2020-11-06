@@ -291,7 +291,8 @@ fn liquidate_cdp() {
 				CurrencyId::Token(TokenSymbol::XBTC),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				amount(100),
-				amount(1_000_000)
+				amount(1_000_000),
+				false,
 			));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
@@ -459,7 +460,8 @@ fn test_dex_module() {
 					CurrencyId::Token(TokenSymbol::XBTC),
 					CurrencyId::Token(TokenSymbol::AUSD),
 					0,
-					10000000
+					10000000,
+					false,
 				),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
@@ -469,7 +471,8 @@ fn test_dex_module() {
 				CurrencyId::Token(TokenSymbol::XBTC),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				10000,
-				10000000
+				10000000,
+				false,
 			));
 
 			let add_liquidity_event = Event::module_dex(module_dex::RawEvent::AddLiquidity(
@@ -507,7 +510,8 @@ fn test_dex_module() {
 				CurrencyId::Token(TokenSymbol::XBTC),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				1,
-				1000
+				1000,
+				false,
 			));
 			assert_eq!(
 				DexModule::get_liquidity_pool(
@@ -533,7 +537,8 @@ fn test_dex_module() {
 					CurrencyId::Token(TokenSymbol::XBTC),
 					CurrencyId::Token(TokenSymbol::AUSD),
 					1,
-					999
+					999,
+					false,
 				),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
@@ -560,7 +565,8 @@ fn test_dex_module() {
 				CurrencyId::Token(TokenSymbol::XBTC),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				2,
-				1000
+				1000,
+				false,
 			));
 			assert_eq!(
 				DexModule::get_liquidity_pool(
@@ -574,7 +580,8 @@ fn test_dex_module() {
 				CurrencyId::Token(TokenSymbol::XBTC),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				1,
-				1001
+				1001,
+				false,
 			));
 			assert_eq!(
 				DexModule::get_liquidity_pool(

@@ -171,6 +171,7 @@ impl dex::Trait for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
+	type DEXIncentives = ();
 	type WeightInfo = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
