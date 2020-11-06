@@ -5,7 +5,6 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use primitives::Balance;
-use sp_core::H160;
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
@@ -151,5 +150,9 @@ pub fn bob() -> secp256k1::SecretKey {
 }
 
 pub fn bob_account_id() -> AccountId {
-	<Runtime as evm_accounts::Trait>::AddressMapping::into_account_id(eth(&bob()))
+	let address = eth(&bob());
+	let mut data = [0u8; 32];
+	data[0..4].copy_from_slice(b"evm:");
+	data[4..24].copy_from_slice(&address[..]);
+	AccountId32::from(Into::<[u8; 32]>::into(data))
 }
