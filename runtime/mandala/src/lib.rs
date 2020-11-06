@@ -1077,7 +1077,7 @@ impl module_evm_accounts::Trait for Runtime {
 	type KillAccount = <Runtime as module_accounts::Trait>::KillAccount;
 	type NewAccountDeposit = NewAccountDeposit;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type WeightInfo = ();
+	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Trait for Runtime {
@@ -1691,6 +1691,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, accounts, benchmarking::accounts);
 			orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
+			orml_add_benchmark!(params, batches, evm_accounts, benchmarking::evm_accounts);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);

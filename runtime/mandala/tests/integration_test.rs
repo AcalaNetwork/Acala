@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use frame_support::dispatch::Encode;
+use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{schedule::DispatchTime, OnFinalize, OnInitialize, OriginTrait},

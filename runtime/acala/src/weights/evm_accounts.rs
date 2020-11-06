@@ -3,9 +3,12 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::weights::{constants::RocksDbWeight as DbWeight, Weight};
+use frame_support::weights::{Weight, constants::RocksDbWeight as DbWeight};
 
-impl crate::WeightInfo for () {
+use sp_std::marker::PhantomData;
+
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Trait> module_evm_accounts::WeightInfo for WeightInfo<T> {
 	fn claim_account() -> Weight {
 		(1_253_760_000 as Weight)
 			.saturating_add(DbWeight::get().reads(3 as Weight))
