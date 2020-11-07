@@ -57,6 +57,7 @@ sp-staking = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-transaction-pool = { version = "2.0.0", default-features = false }
 sp-version = { version = "2.0.0", default-features = false }
+libsecp256k1 = { version = "0.3.4", default-features = false, optional = true }
 
 orml-auction = { path = "../../orml/auction", default-features = false }
 orml-authority = { path = "../../orml/authority", default-features = false }
@@ -78,6 +79,7 @@ module-cdp-engine = { path = "../../modules/cdp_engine", default-features = fals
 module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
+module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
@@ -104,6 +106,7 @@ wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "2.
 
 [dev-dependencies]
 sp-io = { version = "2.0.0" }
+libsecp256k1 = { version = "0.3.4" }
 
 [features]
 default = ["std"]
@@ -172,6 +175,7 @@ std = [
 	"module-cdp-treasury/std",
 	"module-dex/std",
 	"module-emergency-shutdown/std",
+	"module-evm-accounts/std",
 	"module-honzon/std",
 	"module-loans/std",
 	"module-nft/std",
@@ -191,6 +195,7 @@ std = [
 runtime-benchmarks = [
 	"frame-benchmarking",
 	"orml-benchmarking",
+	"libsecp256k1/hmac",
 
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",

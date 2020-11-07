@@ -78,6 +78,7 @@ module-cdp-engine = { path = "../../modules/cdp_engine", default-features = fals
 module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
+module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
@@ -172,6 +173,7 @@ std = [
 	"module-cdp-treasury/std",
 	"module-dex/std",
 	"module-emergency-shutdown/std",
+	"module-evm-accounts/std",
 	"module-honzon/std",
 	"module-loans/std",
 	"module-nft/std",

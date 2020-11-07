@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{schedule::DispatchTime, OnFinalize, OnInitialize, OriginTrait},
@@ -7,13 +8,14 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
-	CurrencyId, DSWFModuleId, Event, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime,
-	SevenDays, TokenSymbol, NFT,
+	CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller,
+	Perbill, Runtime, SevenDays, TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
+use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
 	DispatchError, DispatchResult, FixedPointNumber,
@@ -114,7 +116,9 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| SystemModule::set_block_number(1));
+		ext
 	}
 }
 
@@ -138,6 +142,22 @@ fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 
 fn amount(amount: u128) -> u128 {
 	amount.saturating_mul(Price::accuracy())
+}
+
+fn alice() -> secp256k1::SecretKey {
+	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
+}
+
+fn bob() -> secp256k1::SecretKey {
+	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+}
+
+pub fn bob_account_id() -> AccountId {
+	let address = EvmAccounts::eth_address(&bob());
+	let mut data = [0u8; 32];
+	data[0..4].copy_from_slice(b"evm:");
+	data[4..24].copy_from_slice(&address[..]);
+	AccountId::from(Into::<[u8; 32]>::into(data))
 }
 
 #[test]
@@ -280,7 +300,6 @@ fn liquidate_cdp() {
 		])
 		.build()
 		.execute_with(|| {
-			SystemModule::set_block_number(1);
 			assert_ok!(set_oracle_price(vec![(
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Price::saturating_from_rational(10000, 1)
@@ -433,8 +452,6 @@ fn test_dex_module() {
 		])
 		.build()
 		.execute_with(|| {
-			SystemModule::set_block_number(1);
-
 			assert_eq!(
 				DexModule::get_liquidity_pool(
 					CurrencyId::Token(TokenSymbol::XBTC),
@@ -716,7 +733,6 @@ fn test_cdp_engine_module() {
 		])
 		.build()
 		.execute_with(|| {
-			SystemModule::set_block_number(1);
 			assert_ok!(CdpEngineModule::set_collateral_params(
 				<Runtime as frame_system::Trait>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
@@ -843,7 +859,7 @@ fn test_cdp_engine_module() {
 
 #[test]
 fn test_authority_module() {
-	const AUTHORITY_ORIGIN_ID: u8 = 30u8;
+	const AUTHORITY_ORIGIN_ID: u8 = 31u8;
 
 	ExtBuilder::default()
 		.balances(vec![
@@ -1128,5 +1144,41 @@ fn test_nft_module() {
 			);
 			// CreateClassDeposit::get() + NewAccountDeposit::get() = 6000000000000000
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 999994000000000000000);
+		});
+}
+
+#[test]
+fn test_evm_accounts_module() {
+	ExtBuilder::default()
+		.balances(vec![(
+			bob_account_id(),
+			CurrencyId::Token(TokenSymbol::ACA),
+			amount(1000),
+		)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
+			assert_eq!(Balances::free_balance(bob_account_id()), 999999000000000000000);
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(ALICE)),
+				EvmAccounts::eth_address(&alice()),
+				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+			));
+			let event = Event::module_evm_accounts(module_evm_accounts::RawEvent::ClaimAccount(
+				AccountId::from(ALICE),
+				EvmAccounts::eth_address(&alice()),
+			));
+			assert_eq!(last_event(), event);
+
+			// claim another eth address
+			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 0);
+			assert_eq!(Balances::free_balance(&bob_account_id()), 999999000000000000000);
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(ALICE)),
+				EvmAccounts::eth_address(&bob()),
+				EvmAccounts::eth_sign(&bob(), &AccountId::from(ALICE).encode(), &[][..])
+			));
+			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 999999000000000000000);
+			assert_eq!(Balances::free_balance(bob_account_id()), 0);
 		});
 }
