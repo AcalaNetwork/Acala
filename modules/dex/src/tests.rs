@@ -8,6 +8,7 @@ use mock::{
 	DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR, AUSD_XBTC_PAIR,
 	BOB, DOT, XBTC,
 };
+use orml_traits::MultiReservableCurrency;
 
 #[test]
 fn get_liquidity_work() {
@@ -190,11 +191,11 @@ fn add_liquidity_work() {
 		System::set_block_number(1);
 
 		assert_noop!(
-			DexModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 100_000_000, 100_000_000),
+			DexModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 100_000_000, 100_000_000, false),
 			Error::<Runtime>::TradingPairNotAllowed
 		);
 		assert_noop!(
-			DexModule::add_liquidity(Origin::signed(ALICE), AUSD, DOT, 0, 100_000_000),
+			DexModule::add_liquidity(Origin::signed(ALICE), AUSD, DOT, 0, 100_000_000, false),
 			Error::<Runtime>::InvalidLiquidityIncrement
 		);
 
@@ -205,6 +206,10 @@ fn add_liquidity_work() {
 			Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
 			0
 		);
+		assert_eq!(
+			Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
+			0
+		);
 		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1_000_000_000_000_000_000);
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000);
 
@@ -213,7 +218,8 @@ fn add_liquidity_work() {
 			AUSD,
 			DOT,
 			5_000_000_000_000,
-			1_000_000_000_000
+			1_000_000_000_000,
+			false,
 		));
 		let add_liquidity_event_1 = TestEvent::dex(RawEvent::AddLiquidity(
 			ALICE,
@@ -237,10 +243,18 @@ fn add_liquidity_work() {
 			Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
 			5_000_000_000_000
 		);
+		assert_eq!(
+			Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
+			0
+		);
 		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_995_000_000_000_000);
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 999_999_000_000_000_000);
 		assert_eq!(
 			Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+			0
+		);
+		assert_eq!(
+			Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
 			0
 		);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000);
@@ -251,7 +265,8 @@ fn add_liquidity_work() {
 			AUSD,
 			DOT,
 			50_000_000_000_000,
-			8_000_000_000_000
+			8_000_000_000_000,
+			true,
 		));
 		let add_liquidity_event_2 = TestEvent::dex(RawEvent::AddLiquidity(
 			BOB,
@@ -273,6 +288,10 @@ fn add_liquidity_work() {
 		assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 9_000_000_000_000);
 		assert_eq!(
 			Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+			0
+		);
+		assert_eq!(
+			Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
 			40_000_000_000_000
 		);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 999_960_000_000_000_000);
@@ -290,14 +309,16 @@ fn remove_liquidity_work() {
 			AUSD,
 			DOT,
 			5_000_000_000_000,
-			1_000_000_000_000
+			1_000_000_000_000,
+			false
 		));
 		assert_noop!(
 			DexModule::remove_liquidity(
 				Origin::signed(ALICE),
 				AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(),
 				DOT,
-				100_000_000
+				100_000_000,
+				false,
 			),
 			Error::<Runtime>::InvalidCurrencyId
 		);
@@ -319,7 +340,8 @@ fn remove_liquidity_work() {
 			Origin::signed(ALICE),
 			AUSD,
 			DOT,
-			4_000_000_000_000
+			4_000_000_000_000,
+			false,
 		));
 		let remove_liquidity_event_1 = TestEvent::dex(RawEvent::RemoveLiquidity(
 			ALICE,
@@ -350,7 +372,8 @@ fn remove_liquidity_work() {
 			Origin::signed(ALICE),
 			AUSD,
 			DOT,
-			1_000_000_000_000
+			1_000_000_000_000,
+			false,
 		));
 		let remove_liquidity_event_2 = TestEvent::dex(RawEvent::RemoveLiquidity(
 			ALICE,
@@ -373,6 +396,38 @@ fn remove_liquidity_work() {
 		);
 		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1_000_000_000_000_000_000);
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000);
+
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(BOB),
+			AUSD,
+			DOT,
+			5_000_000_000_000,
+			1_000_000_000_000,
+			true
+		));
+		assert_eq!(
+			Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+			0
+		);
+		assert_eq!(
+			Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+			5_000_000_000_000
+		);
+		assert_ok!(DexModule::remove_liquidity(
+			Origin::signed(BOB),
+			AUSD,
+			DOT,
+			1_000_000_000_000,
+			true,
+		));
+		assert_eq!(
+			Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+			0
+		);
+		assert_eq!(
+			Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+			4_000_000_000_000
+		);
 	});
 }
 
@@ -386,14 +441,16 @@ fn do_swap_with_exact_supply_work() {
 			AUSD,
 			DOT,
 			500_000_000_000_000,
-			100_000_000_000_000
+			100_000_000_000_000,
+			false,
 		));
 		assert_ok!(DexModule::add_liquidity(
 			Origin::signed(ALICE),
 			AUSD,
 			XBTC,
 			100_000_000_000_000,
-			10_000_000_000
+			10_000_000_000,
+			false,
 		));
 
 		assert_eq!(
@@ -515,14 +572,16 @@ fn do_swap_with_exact_target_work() {
 			AUSD,
 			DOT,
 			500_000_000_000_000,
-			100_000_000_000_000
+			100_000_000_000_000,
+			false,
 		));
 		assert_ok!(DexModule::add_liquidity(
 			Origin::signed(ALICE),
 			AUSD,
 			XBTC,
 			100_000_000_000_000,
-			10_000_000_000
+			10_000_000_000,
+			false,
 		));
 
 		assert_eq!(
