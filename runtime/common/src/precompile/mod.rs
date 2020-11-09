@@ -36,3 +36,9 @@ impl<MultiCurrencyPrecompile: Precompile> Precompiles for AllPrecompiles<MultiCu
 		})
 	}
 }
+
+pub fn account_id_from_slice<AccountId, AccountIdConverter: AddressMapping<AccountId>>(src: &[u8]) -> AccountId {
+	let mut address = [0u8; 20];
+	address[..].copy_from_slice(src);
+	AccountIdConverter::into_account_id(address.into())
+}
