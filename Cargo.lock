@@ -66,7 +66,7 @@ name = "acala-rpc"
 version = "0.6.3"
 dependencies = [
  "acala-primitives",
- "eth-rpc",
+ "evm-rpc",
  "jsonrpc-core",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
@@ -98,7 +98,7 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "eth-rpc-runtime-api",
+ "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -196,7 +196,7 @@ dependencies = [
  "acala-primitives",
  "acala-rpc",
  "acala-runtime",
- "eth-rpc-runtime-api",
+ "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
@@ -1505,40 +1505,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eth-rpc"
-version = "0.1.0"
-dependencies = [
- "eth-rpc-runtime-api",
- "ethereum-types",
- "evm 0.18.4",
- "jsonrpc-core",
- "jsonrpc-derive 14.2.2",
- "rustc-hex",
- "sc-client-api",
- "sc-network",
- "sc-rpc",
- "sc-service",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-io",
- "sp-runtime",
- "sp-storage",
- "sp-transaction-pool",
-]
-
-[[package]]
-name = "eth-rpc-runtime-api"
-version = "0.1.0"
-dependencies = [
- "ethereum-types",
- "sp-api",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "ethbloom"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1662,6 +1628,40 @@ dependencies = [
  "evm-core 0.18.3",
  "evm-runtime 0.18.3",
  "primitive-types",
+]
+
+[[package]]
+name = "evm-rpc"
+version = "0.1.0"
+dependencies = [
+ "ethereum-types",
+ "evm 0.18.4",
+ "evm-rpc-runtime-api",
+ "jsonrpc-core",
+ "jsonrpc-derive 14.2.2",
+ "rustc-hex",
+ "sc-client-api",
+ "sc-network",
+ "sc-rpc",
+ "sc-service",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-io",
+ "sp-runtime",
+ "sp-storage",
+ "sp-transaction-pool",
+]
+
+[[package]]
+name = "evm-rpc-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "ethereum-types",
+ "sp-api",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -2941,7 +2941,7 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "eth-rpc-runtime-api",
+ "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -3698,7 +3698,7 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "eth-rpc-runtime-api",
+ "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",

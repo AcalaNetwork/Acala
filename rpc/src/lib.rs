@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 pub use sc_rpc::SubscriptionTaskExecutor;
 
-pub use eth_rpc::{EthApi, EthApiServer, EthereumRuntimeRPCApi};
+pub use evm_rpc::{EVMApi, EVMApiServer, EVMRuntimeRPCApi};
 pub use sc_rpc::DenyUnsafe;
 
 /// A type representing all RPC extensions.
@@ -87,7 +87,7 @@ where
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
-	C::Api: EthereumRuntimeRPCApi<Block>,
+	C::Api: EVMRuntimeRPCApi<Block>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
@@ -154,7 +154,7 @@ where
 	)));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client.clone())));
-	io.extend_with(EthApiServer::to_delegate(EthApi::new(client)));
+	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client)));
 
 	io
 }

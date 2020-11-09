@@ -1,9 +1,7 @@
-mod block_number;
 mod bytes;
 mod call_request;
-mod eth_api;
+mod evm_api;
 
-use block_number::BlockNumber;
 use bytes::Bytes;
 use call_request::CallRequest;
 
@@ -16,9 +14,9 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::{marker::PhantomData, sync::Arc};
 
-pub use crate::eth_api::{EthApi as EthApiT, EthApiServer};
+pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
-pub use eth_rpc_runtime_api::EthereumApi as EthereumRuntimeRPCApi;
+pub use evm_rpc_runtime_api::EVMApi as EVMRuntimeRPCApi;
 
 pub use evm::ExitReason;
 
@@ -30,6 +28,7 @@ fn internal_err<T: ToString>(message: T) -> Error {
 	}
 }
 
+#[allow(dead_code)]
 fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	match reason {
 		ExitReason::Succeed(_) => Ok(()),
@@ -51,12 +50,12 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	}
 }
 
-pub struct EthApi<B, C> {
+pub struct EVMApi<B, C> {
 	client: Arc<C>,
 	_marker: PhantomData<B>,
 }
 
-impl<B, C> EthApi<B, C> {
+impl<B, C> EVMApi<B, C> {
 	pub fn new(client: Arc<C>) -> Self {
 		Self {
 			client,
@@ -65,13 +64,13 @@ impl<B, C> EthApi<B, C> {
 	}
 }
 
-impl<B, C> EthApiT for EthApi<B, C>
+impl<B, C> EVMApiT<B> for EVMApi<B, C>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
-	C::Api: EthereumRuntimeRPCApi<B>,
+	C::Api: EVMRuntimeRPCApi<B>,
 {
-	fn call(&self, request: CallRequest, _: Option<BlockNumber>) -> Result<Bytes> {
+	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -130,7 +129,7 @@ where
 		}
 	}
 
-	fn estimate_gas(&self, request: CallRequest, _: Option<BlockNumber>) -> Result<U256> {
+	fn estimate_gas(&self, request: CallRequest, _: Option<B>) -> Result<U256> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -150,7 +149,7 @@ where
 
 		let used_gas = match to {
 			Some(to) => {
-				let (value, used_gas) = api
+				let (_, used_gas) = api
 					.call(
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),

@@ -73,7 +73,6 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{currency::*, fee::*, time::*};
-use frame_support::traits::CurrencyToVote;
 pub use primitives::{
 	AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
 	EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
@@ -606,14 +605,15 @@ impl CurrencyToVoteHandler {
 	}
 }
 
-impl CurrencyToVote<Balance> for CurrencyToVoteHandler {
-	fn to_vote(value: Balance, _issuance: Balance) -> u64 {
-		(value / Self::factor()) as u64
+impl Convert<Balance, u64> for CurrencyToVoteHandler {
+	fn convert(x: Balance) -> u64 {
+		(x / Self::factor()) as u64
 	}
+}
 
-	/// Convert u128 to balance.
-	fn to_currency(value: u128, _issuance: Balance) -> Balance {
-		value * Self::factor()
+impl Convert<u128, Balance> for CurrencyToVoteHandler {
+	fn convert(x: u128) -> Balance {
+		x * Self::factor()
 	}
 }
 
@@ -1664,7 +1664,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl eth_rpc_runtime_api::EthereumApi<Block> for Runtime {
+	impl evm_rpc_runtime_api::EVMApi<Block> for Runtime {
 		fn call(
 			from: H160,
 			to: H160,

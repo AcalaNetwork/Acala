@@ -1,10 +1,8 @@
 [package]
-name = "eth-rpc-runtime-api"
+name = "evm-rpc-runtime-api"
 version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>"]
+authors = ["Acala Developers"]
 edition = "2018"
-description = "Ethereum RPC (web3) compatibility layer for Substrate."
-license = "GPL-3.0"
 
 [dependencies]
 sp-runtime = { version = "2.0.0", default-features = false }

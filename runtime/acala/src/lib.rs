@@ -1664,7 +1664,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl eth_rpc_runtime_api::EthereumApi<Block> for Runtime {
+	impl evm_rpc_runtime_api::EVMApi<Block> for Runtime {
 		fn call(
 			from: H160,
 			to: H160,
