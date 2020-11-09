@@ -61,13 +61,13 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 impl pallet_balances::Trait for Test {
-	type MaxLocks = ();
 	type Balance = u64;
 	type DustRemoval = ();
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+	type MaxLocks = ();
 }
 
 parameter_types! {
@@ -82,6 +82,7 @@ impl pallet_timestamp::Trait for Test {
 
 /// Fixed gas price of `0`.
 pub struct FixedGasPrice;
+
 impl FeeCalculator for FixedGasPrice {
 	fn min_gas_price() -> U256 {
 		// Gas price is always one token per gas.
@@ -97,11 +98,11 @@ impl Trait for Test {
 
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
 	type Currency = Balances;
-	type Runner = crate::runner::stack::Runner<Self>;
 
 	type Event = Event<Test>;
 	type Precompiles = ();
 	type ChainId = SystemChainId;
+	type Runner = crate::runner::stack::Runner<Self>;
 }
 
 type System = frame_system::Module<Test>;
@@ -115,8 +116,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	accounts.insert(
 		H160::from_str("1000000000000000000000000000000000000001").unwrap(),
 		GenesisAccount {
-			nonce: U256::from(1),
-			balance: U256::from(1000000),
+			nonce: 1,
+			balance: 1000000,
 			storage: Default::default(),
 			code: vec![
 				0x00, // STOP
@@ -126,8 +127,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	accounts.insert(
 		H160::from_str("1000000000000000000000000000000000000002").unwrap(),
 		GenesisAccount {
-			nonce: U256::from(1),
-			balance: U256::from(1000000),
+			nonce: 1,
+			balance: 1000000,
 			storage: Default::default(),
 			code: vec![
 				0xff, // INVALID
@@ -138,7 +139,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut t)
 		.unwrap();
-	GenesisConfig { accounts }.assimilate_storage::<Test>(&mut t).unwrap();
+	GenesisConfig::<Test> { accounts }.assimilate_storage(&mut t).unwrap();
 	t.into()
 }
 
