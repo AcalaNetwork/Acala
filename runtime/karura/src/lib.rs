@@ -1293,8 +1293,8 @@ impl module_evm::Trait for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	type Precompiles = ();
-	type Runner = module_evm::runner::stack::Runner<Self>;
 	type ChainId = ChainId;
+	type Runner = module_evm::runner::stack::Runner<Self>;
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -1392,7 +1392,7 @@ construct_runtime!(
 
 		// Smart contracts
 		Contracts: pallet_contracts::{Module, Call, Config, Storage, Event<T>},
-		EVM: module_evm::{Module, Config, Call, Storage, Event<T>},
+		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
@@ -1680,7 +1680,7 @@ impl_runtime_apis! {
 				to,
 				data,
 				value,
-				gas_limit.low_u32(),
+				gas_limit.saturated_into::<u32>(),
 				Some(gas_price),
 				nonce,
 			)
@@ -1699,7 +1699,7 @@ impl_runtime_apis! {
 				from,
 				data,
 				value,
-				gas_limit.low_u32(),
+				gas_limit.saturated_into::<u32>(),
 				Some(gas_price),
 				nonce,
 			)

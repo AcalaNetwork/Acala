@@ -14,7 +14,7 @@ use frame_support::{
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_evm::{Account, CallInfo, CreateInfo, ExecutionInfo, Log, Vicinity};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::{traits::UniqueSaturatedInto, SaturatedConversion};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
@@ -178,18 +178,18 @@ impl<'vicinity, T: Trait> Backend<'vicinity, T> {
 
 		if current.nonce < new.nonce {
 			// ASSUME: in one single EVM transaction, the nonce will not increase more than
-			// `u128::max_value()`.
-			for _ in 0..(new.nonce - current.nonce).low_u128() {
+			// `u32::max_value()`.
+			for _ in 0u32..(new.nonce - current.nonce).unique_saturated_into() {
 				frame_system::Module::<T>::inc_account_nonce(&account_id);
 			}
 		}
 
 		if current.balance > new.balance {
 			let diff = current.balance - new.balance;
-			T::Currency::slash(&account_id, diff.low_u128().unique_saturated_into());
+			T::Currency::slash(&account_id, diff.saturated_into::<u128>().unique_saturated_into());
 		} else if current.balance < new.balance {
 			let diff = new.balance - current.balance;
-			T::Currency::deposit_creating(&account_id, diff.low_u128().unique_saturated_into());
+			T::Currency::deposit_creating(&account_id, diff.saturated_into::<u128>().unique_saturated_into());
 		}
 	}
 }

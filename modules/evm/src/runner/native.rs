@@ -17,7 +17,7 @@ use frame_support::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::{traits::UniqueSaturatedInto, TransactionOutcome};
+use sp_runtime::{traits::UniqueSaturatedInto, SaturatedConversion, TransactionOutcome};
 use sp_std::{
 	cmp::min, collections::btree_set::BTreeSet, convert::Infallible, marker::PhantomData, mem, rc::Rc, vec::Vec,
 };
@@ -344,7 +344,7 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 		T::Currency::transfer(
 			&source,
 			&target,
-			transfer.value.low_u128().unique_saturated_into(),
+			transfer.value.saturated_into::<u128>().unique_saturated_into(),
 			ExistenceRequirement::AllowDeath,
 		)
 		.map_err(|_| ExitError::OutOfGas)

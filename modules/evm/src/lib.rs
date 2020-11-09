@@ -192,11 +192,11 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 #[cfg(feature = "std")]
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, Serialize, Deserialize)]
 /// Account definition used for genesis block construction.
-pub struct GenesisAccount {
+pub struct GenesisAccount<Balance, Index> {
 	/// Account nonce.
-	pub nonce: U256,
+	pub nonce: Index,
 	/// Account balance.
-	pub balance: U256,
+	pub balance: Balance,
 	/// Full account storage.
 	pub storage: std::collections::BTreeMap<H256, H256>,
 	/// Account code.
@@ -211,20 +211,18 @@ decl_storage! {
 	}
 
 	add_extra_genesis {
-		config(accounts): std::collections::BTreeMap<H160, GenesisAccount>;
-		build(|config: &GenesisConfig| {
+		config(accounts): std::collections::BTreeMap<H160, GenesisAccount<BalanceOf<T>, T::Index>>;
+		build(|config: &GenesisConfig<T>| {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::into_account_id(*address);
 
-				// ASSUME: in one single EVM transaction, the nonce will not increase more than
-				// `u128::max_value()`.
-				for _ in 0..account.nonce.low_u128() {
+				for _ in 0..account.nonce.unique_saturated_into() {
 					frame_system::Module::<T>::inc_account_nonce(&account_id);
 				}
 
 				T::Currency::deposit_creating(
 					&account_id,
-					account.balance.low_u128().unique_saturated_into(),
+					account.balance,
 				);
 
 				AccountCodes::insert(address, &account.code);

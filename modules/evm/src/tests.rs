@@ -32,10 +32,10 @@ parameter_types! {
 impl frame_system::Trait for Test {
 	type BaseCallFilter = ();
 	type Origin = Origin;
+	type Call = OuterCall;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
-	type Call = OuterCall;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
