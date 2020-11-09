@@ -1,24 +1,22 @@
-mod bytes;
-mod call_request;
-mod evm_api;
-
-use bytes::Bytes;
-use call_request::CallRequest;
-
-use rustc_hex::ToHex;
+use std::{marker::PhantomData, sync::Arc};
 
 use ethereum_types::U256;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
+use rustc_hex::ToHex;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use std::{marker::PhantomData, sync::Arc};
+
+use bytes::Bytes;
+use call_request::CallRequest;
+pub use module_evm::ExitReason;
+pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
-pub use evm_rpc_runtime_api::EVMApi as EVMRuntimeRPCApi;
-
-pub use module_evm::ExitReason;
+mod bytes;
+mod call_request;
+mod evm_api;
 
 fn internal_err<T: ToString>(message: T) -> Error {
 	Error {

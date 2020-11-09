@@ -98,7 +98,6 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -117,6 +116,7 @@ dependencies = [
  "module-emergency-shutdown-benchmarking",
  "module-evm",
  "module-evm-accounts",
+ "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -196,13 +196,13 @@ dependencies = [
  "acala-primitives",
  "acala-rpc",
  "acala-runtime",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "karura-runtime",
  "mandala-runtime",
  "module-evm",
+ "module-evm-rpc-runtime-api",
  "module-staking-pool",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
@@ -1598,10 +1598,10 @@ name = "evm-rpc"
 version = "0.1.0"
 dependencies = [
  "ethereum-types",
- "evm-rpc-runtime-api",
  "jsonrpc-core",
  "jsonrpc-derive 14.2.2",
  "module-evm",
+ "module-evm-rpc-runtime-api",
  "rustc-hex",
  "sc-client-api",
  "sc-network",
@@ -1615,18 +1615,6 @@ dependencies = [
  "sp-runtime",
  "sp-storage",
  "sp-transaction-pool",
-]
-
-[[package]]
-name = "evm-rpc-runtime-api"
-version = "0.1.0"
-dependencies = [
- "ethereum-types",
- "sp-api",
- "sp-core",
- "sp-evm",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -2895,7 +2883,6 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -2914,6 +2901,7 @@ dependencies = [
  "module-emergency-shutdown-benchmarking",
  "module-evm",
  "module-evm-accounts",
+ "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -3652,7 +3640,6 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -3672,6 +3659,7 @@ dependencies = [
  "module-emergency-shutdown-benchmarking",
  "module-evm",
  "module-evm-accounts",
+ "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -4214,6 +4202,18 @@ dependencies = [
  "parity-scale-codec",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-evm-rpc-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "ethereum-types",
+ "sp-api",
+ "sp-core",
+ "sp-evm",
  "sp-runtime",
  "sp-std",
 ]

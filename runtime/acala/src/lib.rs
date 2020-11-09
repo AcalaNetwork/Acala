@@ -1665,7 +1665,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl evm_rpc_runtime_api::EVMApi<Block> for Runtime {
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block> for Runtime {
 		fn call(
 			from: H160,
 			to: H160,
