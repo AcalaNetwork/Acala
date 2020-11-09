@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
 use ethereum_types::{H160, U256};
 use sp_std::vec::Vec;
 
