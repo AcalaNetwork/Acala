@@ -39,12 +39,12 @@ use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
+use module_evm::{CallInfo, CreateInfo, EnsureAddressTruncated, FeeCalculator, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
-use pallet_evm::{EnsureAddressTruncated, FeeCalculator};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -1285,7 +1285,7 @@ parameter_types! {
 	pub const ChainId: u64 = 42;
 }
 
-impl pallet_evm::Trait for Runtime {
+impl module_evm::Trait for Runtime {
 	type FeeCalculator = FixedGasPrice;
 	type CallOrigin = EnsureAddressTruncated;
 	type WithdrawOrigin = EnsureAddressTruncated;
@@ -1293,6 +1293,7 @@ impl pallet_evm::Trait for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	type Precompiles = ();
+	type Runner = module_evm::runner::stack::Runner<Self>;
 	type ChainId = ChainId;
 }
 
@@ -1391,7 +1392,7 @@ construct_runtime!(
 
 		// Smart contracts
 		Contracts: pallet_contracts::{Module, Call, Config, Storage, Event<T>},
-		EVM: pallet_evm::{Module, Config, Call, Storage, Event<T>},
+		EVM: module_evm::{Module, Config, Call, Storage, Event<T>},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
@@ -1673,18 +1674,16 @@ impl_runtime_apis! {
 			gas_limit: U256,
 			gas_price: U256,
 			nonce: Option<U256>,
-		) -> Result<(Vec<u8>, U256), sp_runtime::DispatchError> {
-			EVM::execute_call(
+		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			<Runtime as module_evm::Trait>::Runner::call(
 				from,
 				to,
 				data,
 				value,
 				gas_limit.low_u32(),
-				gas_price,
+				Some(gas_price),
 				nonce,
-				false,
 			)
-			.map(|(_, value, gas_used, _)| (value, gas_used))
 			.map_err(|err| err.into())
 		}
 
@@ -1695,17 +1694,15 @@ impl_runtime_apis! {
 			gas_limit: U256,
 			gas_price: U256,
 			nonce: Option<U256>,
-		) -> Result<(H160, U256), sp_runtime::DispatchError> {
-			EVM::execute_create(
+		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			<Runtime as module_evm::Trait>::Runner::create(
 				from,
 				data,
 				value,
 				gas_limit.low_u32(),
-				gas_price,
+				Some(gas_price),
 				nonce,
-				false
 			)
-			.map(|(_, value, gas_used, _)| (value, gas_used))
 			.map_err(|err| err.into())
 		}
 

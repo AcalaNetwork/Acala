@@ -1,7 +1,7 @@
 use codec::FullCodec;
 
 use frame_support::debug;
-use pallet_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
+use module_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
 use sp_core::U256;
 use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -54,7 +54,7 @@ where
 		debug::info!(">>> input: {:?}", input);
 
 		if input.len() < 5 {
-			return Err(ExitError::Other("invalid input"));
+			return Err(ExitError::Other("invalid input".into()));
 		}
 
 		let action: Action = input[0].into();
@@ -62,7 +62,7 @@ where
 		let mut currency_id_bytes = [0u8; 4];
 		currency_id_bytes[..].copy_from_slice(&input[1..5]);
 		let currency_id: CurrencyId =
-			CurrencyId::decode(&mut &currency_id_bytes[..]).map_err(|_| ExitError::Other("invalid currency"))?;
+			CurrencyId::decode(&mut &currency_id_bytes[..]).map_err(|_| ExitError::Other("invalid currency".into()))?;
 
 		debug::info!(">>> currency id: {:?}", currency_id);
 
@@ -74,7 +74,7 @@ where
 			Action::QueryBalance => {
 				// 32 * 2
 				if input.len() < 64 {
-					return Err(ExitError::Other("invalid input"));
+					return Err(ExitError::Other("invalid input".into()));
 				}
 
 				let who = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
@@ -88,7 +88,7 @@ where
 			Action::Transfer => {
 				// 32 * 4
 				if input.len() < 128 {
-					return Err(ExitError::Other("invalid input"));
+					return Err(ExitError::Other("invalid input".into()));
 				}
 
 				let from = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
@@ -97,19 +97,22 @@ where
 				amount_bytes[..].copy_from_slice(&input[96..112]);
 				let amount = u128::from_be_bytes(amount_bytes)
 					.try_into()
-					.map_err(|_| ExitError::Other("u128 to balance failed"))?;
+					.map_err(|_| ExitError::Other("u128 to balance failed".into()))?;
 
 				debug::info!(">>> from: {:?}", from);
 				debug::info!(">>> to: {:?}", to);
 				debug::info!(">>> amount: {:?}", amount);
 
-				MC::transfer(currency_id, &from, &to, amount).map_err(|e| ExitError::Other(e.into()))?;
+				MC::transfer(currency_id, &from, &to, amount).map_err(|e| {
+					let err_msg: &str = e.into();
+					ExitError::Other(err_msg.into())
+				})?;
 
 				debug::info!(">>> transfer success!");
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action")),
+			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }
@@ -121,7 +124,9 @@ fn account_id_from_slice<AccountId, AccountIdConverter: AddressMapping<AccountId
 }
 
 fn vec_u8_from_balance<Balance: TryInto<u128>>(b: Balance) -> result::Result<Vec<u8>, ExitError> {
-	let balance = b.try_into().map_err(|_| ExitError::Other("balance to u128 failed"))?;
+	let balance = b
+		.try_into()
+		.map_err(|_| ExitError::Other("balance to u128 failed".into()))?;
 	let mut be_bytes = [0u8; 32];
 	U256::from(balance).to_big_endian(&mut be_bytes[..]);
 	Ok(be_bytes.to_vec())

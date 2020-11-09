@@ -1,7 +1,7 @@
 //! The precompiles for EVM, includes standard Ethereum precompiles, and more:
 //! - MultiCurrency at address `H160::from_low_u64_be(1024)`.
 
-use pallet_evm::{
+use module_evm::{
 	precompiles::{Precompile, Precompiles},
 	ExitError, ExitSucceed,
 };
@@ -12,10 +12,10 @@ use sp_std::{marker::PhantomData, prelude::*};
 pub mod multicurrency;
 
 pub type EthereumPrecompiles = (
-	pallet_evm::precompiles::ECRecover,
-	pallet_evm::precompiles::Sha256,
-	pallet_evm::precompiles::Ripemd160,
-	pallet_evm::precompiles::Identity,
+	module_evm::precompiles::ECRecover,
+	module_evm::precompiles::Sha256,
+	module_evm::precompiles::Ripemd160,
+	module_evm::precompiles::Identity,
 );
 
 pub struct AllPrecompiles<MultiCurrencyPrecompile>(PhantomData<MultiCurrencyPrecompile>);

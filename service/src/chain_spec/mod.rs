@@ -1,7 +1,7 @@
 //! Acala chain configurations.
 
 use acala_primitives::{AccountId, AccountPublic, PREDEPLOY_ADDRESS_START};
-use pallet_evm::GenesisAccount;
+use module_evm::GenesisAccount;
 use sc_chain_spec::ChainSpecExtension;
 use serde::{Deserialize, Serialize};
 use sp_consensus_babe::AuthorityId as BabeId;

@@ -18,7 +18,7 @@ pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
 pub use evm_rpc_runtime_api::EVMApi as EVMRuntimeRPCApi;
 
-pub use evm::ExitReason;
+pub use module_evm::ExitReason;
 
 fn internal_err<T: ToString>(message: T) -> Error {
 	Error {
@@ -90,7 +90,7 @@ where
 
 		match to {
 			Some(to) => {
-				let (value, _) = api
+				let info = api
 					.call(
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
@@ -104,12 +104,12 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-				// error_on_execution_failure(&exit_reason, &value)?;
+				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
-				Ok(Bytes(value))
+				Ok(Bytes(info.value))
 			}
 			None => {
-				let (value, _) = api
+				let info = api
 					.create(
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
@@ -122,9 +122,9 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-				// error_on_execution_failure(&exit_reason, &[])?;
+				error_on_execution_failure(&info.exit_reason, &[])?;
 
-				Ok(Bytes(value[..].to_vec()))
+				Ok(Bytes(info.value[..].to_vec()))
 			}
 		}
 	}
@@ -149,7 +149,7 @@ where
 
 		let used_gas = match to {
 			Some(to) => {
-				let (_, used_gas) = api
+				let info = api
 					.call(
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
@@ -163,12 +163,12 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-				// error_on_execution_failure(&exit_reason, &value)?;
+				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
-				used_gas
+				info.used_gas
 			}
 			None => {
-				let (_, used_gas) = api
+				let info = api
 					.create(
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
@@ -181,9 +181,9 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-				// error_on_execution_failure(&exit_reason, &[])?;
+				error_on_execution_failure(&info.exit_reason, &[])?;
 
-				used_gas
+				info.used_gas
 			}
 		};
 
