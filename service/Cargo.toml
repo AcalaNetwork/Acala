@@ -49,6 +49,7 @@ module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 acala-primitives = { path = "../primitives" }
 acala-rpc = { path = "../rpc" }
+evm-rpc-runtime-api = { path = "../rpc/evm/runtime_api" }
 
 runtime-common = { path = "../runtime/common" }
 mandala-runtime = { path = "../runtime/mandala", optional = true }

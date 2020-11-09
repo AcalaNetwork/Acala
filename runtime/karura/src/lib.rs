@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata, U256,
+	OpaqueMetadata, H160, U256,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, Saturating,
@@ -1662,6 +1662,53 @@ impl_runtime_apis! {
 		) -> pallet_contracts_primitives::RentProjectionResult<BlockNumber> {
 			Contracts::rent_projection(address)
 		}
+	}
+
+	impl evm_rpc_runtime_api::EVMApi<Block> for Runtime {
+		fn call(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: U256,
+			gas_limit: U256,
+			gas_price: U256,
+			nonce: Option<U256>,
+		) -> Result<(Vec<u8>, U256), sp_runtime::DispatchError> {
+			EVM::execute_call(
+				from,
+				to,
+				data,
+				value,
+				gas_limit.low_u32(),
+				gas_price,
+				nonce,
+				false,
+			)
+			.map(|(_, value, gas_used, _)| (value, gas_used))
+			.map_err(|err| err.into())
+		}
+
+		fn create(
+			from: H160,
+			data: Vec<u8>,
+			value: U256,
+			gas_limit: U256,
+			gas_price: U256,
+			nonce: Option<U256>,
+		) -> Result<(H160, U256), sp_runtime::DispatchError> {
+			EVM::execute_create(
+				from,
+				data,
+				value,
+				gas_limit.low_u32(),
+				gas_price,
+				nonce,
+				false
+			)
+			.map(|(_, value, gas_used, _)| (value, gas_used))
+			.map_err(|err| err.into())
+		}
+
 	}
 
 	// benchmarks for acala modules
