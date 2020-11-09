@@ -99,6 +99,8 @@ module-nft-benchmarking = { path = "../../modules/nft/benchmarking", default-fea
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
+evm-rpc-runtime-api = { path = "../../rpc/evm/runtime_api",  default-features = false }
+
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 
 [build-dependencies]
@@ -189,6 +191,8 @@ std = [
 	"module-polkadot-bridge/std",
 	"primitives/std",
 	"runtime-common/std",
+
+	"evm-rpc-runtime-api/std",
 
 	"ecosystem-renvm-bridge/std",
 ]
