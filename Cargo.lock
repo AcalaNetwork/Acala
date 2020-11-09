@@ -1645,6 +1645,7 @@ dependencies = [
  "sc-rpc",
  "sc-service",
  "serde",
+ "serde_json",
  "sp-api",
  "sp-blockchain",
  "sp-io",

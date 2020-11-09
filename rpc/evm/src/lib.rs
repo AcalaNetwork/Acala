@@ -83,7 +83,7 @@ where
 			nonce,
 		} = request;
 
-		let gas_limit = gas.unwrap_or(U256::max_value()); // TODO: set a limit
+		let gas_limit = gas.unwrap_or_else(U256::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -98,7 +98,7 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or(U256::one()),
+						gas_price.unwrap_or_else(U256::one),
 						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -116,7 +116,7 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or(U256::one()),
+						gas_price.unwrap_or_else(U256::one),
 						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -142,7 +142,7 @@ where
 			nonce,
 		} = request;
 
-		let gas_limit = gas.unwrap_or(U256::max_value()); // TODO: set a limit
+		let gas_limit = gas.unwrap_or_else(U256::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -157,7 +157,7 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or(U256::one()),
+						gas_price.unwrap_or_else(U256::one),
 						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -175,7 +175,7 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or(U256::one()),
+						gas_price.unwrap_or_else(U256::one),
 						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
