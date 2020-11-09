@@ -115,6 +115,7 @@ dependencies = [
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
+ "module-evm-accounts",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -2957,6 +2958,7 @@ dependencies = [
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
+ "module-evm-accounts",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -3703,6 +3705,7 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
+ "libsecp256k1",
  "module-accounts",
  "module-airdrop",
  "module-auction-manager",
@@ -3713,6 +3716,7 @@ dependencies = [
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
+ "module-evm-accounts",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -4210,6 +4214,25 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-evm-accounts"
+version = "0.6.3"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "libsecp256k1",
+ "module-support",
+ "orml-utilities",
+ "pallet-balances",
+ "pallet-evm",
+ "parity-scale-codec",
  "sp-core",
  "sp-io",
  "sp-runtime",
