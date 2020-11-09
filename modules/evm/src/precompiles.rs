@@ -8,6 +8,7 @@ use sp_std::{cmp::min, vec::Vec};
 
 /// Custom precompiles to be used by EVM engine.
 pub trait Precompiles {
+	#![allow(clippy::type_complexity)]
 	/// Try to execute the code address as precompile. If the code address is not
 	/// a precompile or the precompile is not yet available, return `None`.
 	/// Otherwise, calculate the amount of gas needed with given `input` and
@@ -35,7 +36,7 @@ pub trait Precompile {
 #[tuple_types_no_default_trait_bound]
 impl Precompiles for Tuple {
 	for_tuples!( where #( Tuple: Precompile )* );
-
+	#[allow(clippy::type_complexity)]
 	fn execute(
 		address: H160,
 		input: &[u8],

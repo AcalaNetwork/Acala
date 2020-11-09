@@ -1,4 +1,5 @@
 //! Native EVM runner.
+#![allow(clippy::type_complexity)]
 
 use crate::{
 	precompiles::Precompiles, AccountCodes, AccountStorages, AddressMapping, CallInfo, CreateInfo, Error, Event,
@@ -84,7 +85,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			let logs = substate.logs.clone();
 
 			let call_info = CallInfo {
-				exit_reason: reason.clone().into(),
+				exit_reason: reason.clone(),
 				value: out,
 				used_gas,
 				logs,
@@ -152,7 +153,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			let logs = substate.logs.clone();
 
 			let mut create_info = CreateInfo {
-				exit_reason: reason.clone().into(),
+				exit_reason: reason.clone(),
 				value: address,
 				used_gas,
 				logs,
@@ -235,7 +236,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			let logs = substate.logs.clone();
 
 			let mut create_info = CreateInfo {
-				exit_reason: reason.clone().into(),
+				exit_reason: reason.clone(),
 				value: address,
 				used_gas,
 				logs,
@@ -509,7 +510,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 
 		self.transfer(Transfer {
 			source: address,
-			target: target,
+			target,
 			value: balance,
 		})?;
 

@@ -87,7 +87,7 @@ impl<T: Trait> Runner<T> {
 		executor.deposit(source, total_fee.saturating_sub(actual_fee));
 
 		let (values, logs) = executor.deconstruct();
-		let logs_data = logs.into_iter().map(|x| x).collect::<Vec<_>>();
+		let logs_data = logs.into_iter().collect::<Vec<_>>();
 		backend.apply(values, logs_data.clone(), true);
 
 		Ok(ExecutionInfo {
