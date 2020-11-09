@@ -157,6 +157,7 @@ pallet-indices = { git = "https://github.com/paritytech/substrate.git", rev = "b
 pallet-membership = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-multisig = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-offences = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
+pallet-proxy = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-recovery = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
@@ -164,7 +165,6 @@ pallet-session = { git = "https://github.com/paritytech/substrate.git", rev = "b
 pallet-staking = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-sudo = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
-pallet-proxy = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
@@ -210,9 +210,10 @@ sp-sandbox = { git = "https://github.com/paritytech/substrate.git", rev = "b7712
 sp-session = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sp-staking = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sp-std = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
+sp-storage = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sp-timestamp = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
+sp-tracing = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sp-trie = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sp-version = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
-sp-tracing = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }

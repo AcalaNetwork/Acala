@@ -234,7 +234,7 @@ dependencies = [
  "sp-runtime",
  "sp-session",
  "sp-std",
- "sp-storage 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-storage",
  "sp-transaction-pool",
  "sp-trie",
  "substrate-prometheus-endpoint 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1781,7 +1781,7 @@ dependencies = [
  "sp-runtime",
  "sp-runtime-interface",
  "sp-std",
- "sp-storage 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-storage",
 ]
 
 [[package]]
@@ -6737,7 +6737,7 @@ dependencies = [
  "sp-runtime",
  "sp-state-machine",
  "sp-std",
- "sp-storage 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-storage",
  "sp-transaction-pool",
  "sp-trie",
  "sp-utils",
@@ -7892,7 +7892,7 @@ dependencies = [
  "num-traits",
  "parity-scale-codec",
  "serde",
- "sp-debug-derive 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-debug-derive",
  "sp-std",
 ]
 
@@ -8042,11 +8042,11 @@ dependencies = [
  "secrecy",
  "serde",
  "sha2 0.8.2",
- "sp-debug-derive 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-debug-derive",
  "sp-externalities",
  "sp-runtime-interface",
  "sp-std",
- "sp-storage 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-storage",
  "substrate-bip39",
  "thiserror",
  "tiny-bip39",
@@ -8068,17 +8068,6 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a3750b084e0f4677f6e834a974f30b1ba97fc2fe00185c9d03611a2228446dc"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "sp-debug-derive"
-version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5#b7712fed2c58a898f7706e16861d7109c8f585a5"
 dependencies = [
  "proc-macro2",
@@ -8094,7 +8083,7 @@ dependencies = [
  "environmental",
  "parity-scale-codec",
  "sp-std",
- "sp-storage 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-storage",
 ]
 
 [[package]]
@@ -8260,7 +8249,7 @@ dependencies = [
  "sp-externalities",
  "sp-runtime-interface-proc-macro",
  "sp-std",
- "sp-storage 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-storage",
  "sp-tracing",
  "sp-wasm-interface",
  "static_assertions",
@@ -8353,27 +8342,13 @@ source = "git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7
 [[package]]
 name = "sp-storage"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f4625e6f8f40995939560f48f89028f658b7929657c68d01c571c81ab5619ff"
-dependencies = [
- "impl-serde",
- "parity-scale-codec",
- "ref-cast",
- "serde",
- "sp-debug-derive 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "sp-std",
-]
-
-[[package]]
-name = "sp-storage"
-version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5#b7712fed2c58a898f7706e16861d7109c8f585a5"
 dependencies = [
  "impl-serde",
  "parity-scale-codec",
  "ref-cast",
  "serde",
- "sp-debug-derive 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5)",
+ "sp-debug-derive",
  "sp-std",
 ]
 
