@@ -35,11 +35,14 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			message: format!("evm error: {:?}", e),
 			data: Some(Value::String("0x".to_string())),
 		}),
-		ExitReason::Revert(e) => Err(Error {
-			code: ErrorCode::InternalError,
-			message: format!("evm revert: {:?}", e),
-			data: Some(Value::String(data.to_hex())),
-		}),
+		ExitReason::Revert(_) => {
+			let message = String::from_utf8_lossy(&data);
+			Err(Error {
+				code: ErrorCode::InternalError,
+				message: format!("execution revert: {}", message),
+				data: Some(Value::String(data.to_hex())),
+			})
+		}
 		ExitReason::Fatal(e) => Err(Error {
 			code: ErrorCode::InternalError,
 			message: format!("evm fatal: {:?}", e),
