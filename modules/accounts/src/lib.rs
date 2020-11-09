@@ -13,13 +13,13 @@ use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
 	ensure,
 	traits::{
-		Currency, ExistenceRequirement, Get, Happened, Imbalance, OnKilledAccount, OnUnbalanced, StoredMap,
-		WithdrawReason,
+		Currency, ExistenceRequirement, Get, Happened, Imbalance, IsSubType, OnKilledAccount, OnUnbalanced, StoredMap,
+		WithdrawReasons,
 	},
 	weights::{
 		DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, Weight, WeightToFeeCoefficient, WeightToFeePolynomial,
 	},
-	IsSubType, StorageMap,
+	StorageMap,
 };
 use frame_system::{self as system, ensure_signed, AccountInfo};
 use orml_traits::{MultiCurrency, MultiLockableCurrency, MultiReservableCurrency, OnReceived};
@@ -745,9 +745,9 @@ where
 		let fee = Module::<T>::compute_fee(len as u32, info, tip);
 
 		let reason = if tip.is_zero() {
-			WithdrawReason::TransactionPayment.into()
+			WithdrawReasons::TRANSACTION_PAYMENT
 		} else {
-			WithdrawReason::TransactionPayment | WithdrawReason::Tip
+			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
 		// check native balance if is enough
