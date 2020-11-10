@@ -7,12 +7,12 @@ use sc_client_api::light::{Fetcher, RemoteBlockchain};
 use sc_consensus_babe::{Config, Epoch};
 use sc_consensus_epochs::SharedEpochChanges;
 use sc_finality_grandpa::{FinalityProofProvider, GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState};
-use sc_keystore::KeyStorePtr;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
+use sp_keystore::SyncCryptoStorePtr;
 use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
@@ -43,7 +43,7 @@ pub struct BabeDeps {
 	/// BABE pending epoch changes.
 	pub shared_epoch_changes: SharedEpochChanges<Block, Epoch>,
 	/// The keystore that manages the keys of the node.
-	pub keystore: KeyStorePtr,
+	pub keystore: SyncCryptoStorePtr,
 }
 
 /// Extra dependencies for GRANDPA

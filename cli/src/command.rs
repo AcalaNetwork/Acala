@@ -148,9 +148,11 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			runner.run_node_until_exit(|config| match config.role {
-				Role::Light => service::build_light(config),
-				_ => service::build_full(config, false).map(|full| full.2),
+			runner.run_node_until_exit(|config| async move {
+				match config.role {
+					Role::Light => service::build_light(config),
+					_ => service::build_full(config, false).map(|full| full.2),
+				}
 			})
 		}
 
@@ -184,24 +186,6 @@ pub fn run() -> sc_cli::Result<()> {
 		Some(Subcommand::BuildSpec(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
-		}
-
-		Some(Subcommand::BuildSyncSpec(cmd)) => {
-			let runner = cli.create_runner(cmd)?;
-			let chain_spec = &runner.config().chain_spec;
-
-			set_default_ss58_version(chain_spec);
-
-			runner.async_run(|config| {
-				let chain_spec = config.chain_spec.cloned_box();
-				let network_config = config.network.clone();
-				let (client, network_status_sinks, task_manager) = service::build_full(config, false)?;
-
-				Ok((
-					cmd.run(chain_spec, network_config, client, network_status_sinks),
-					task_manager,
-				))
-			})
 		}
 
 		Some(Subcommand::CheckBlock(cmd)) => {
