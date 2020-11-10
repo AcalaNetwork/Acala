@@ -1,15 +1,13 @@
-use codec::FullCodec;
-
 use frame_support::debug;
 use pallet_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
-use sp_core::U256;
-use sp_runtime::traits::MaybeSerializeDeserialize;
-use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_core::{H160, U256};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT;
 
-use primitives::NFTBalance;
 use super::account_id_from_slice;
+use module_support::AccountMapping;
+use primitives::NFTBalance;
 
 /// The `NFT` impl precompile.
 ///
@@ -19,7 +17,9 @@ use super::account_id_from_slice;
 /// -. `0`: Query balance. Rest: `account_id`.
 /// -. `1`: Query owner. Rest `class_id ++ token_id`.
 /// -. `2`: Transfer. Rest: `from ++ to ++ class_id ++ token_id`.
-pub struct NFTPrecompile<AccountId, AccountIdConverter, NFTImpl>(PhantomData<(AccountId, AccountIdConverter, NFTImpl)>);
+pub struct NFTPrecompile<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl>(
+	PhantomData<(AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl)>,
+);
 
 enum Action {
 	QueryBalance,
@@ -39,11 +39,13 @@ impl From<u8> for Action {
 	}
 }
 
-impl<AccountId, AccountIdConverter, NFTImpl> Precompile for NFTPrecompile<AccountId, AccountIdConverter, NFTImpl>
+impl<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl> Precompile
+	for NFTPrecompile<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl>
 where
 	AccountId: Debug + Clone,
 	AccountIdConverter: AddressMapping<AccountId>,
-	NFTImpl: NFT<AccountId>,
+	AccountMappingImpl: AccountMapping<AccountId>,
+	NFTImpl: NFT<AccountId, Balance = NFTBalance, ClassId = u64, TokenId = u64>,
 {
 	fn execute(input: &[u8], _target_gas: Option<usize>) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		debug::info!("----------------------------------------------------------------");
@@ -53,7 +55,6 @@ where
 			return Err(ExitError::Other("invalid input"));
 		}
 		let action: Action = input[0].into();
-		debug::info!("action: {:?}", action);
 
 		match action {
 			Action::QueryBalance => {
@@ -69,7 +70,7 @@ where
 				debug::info!(">>> balance: {:?}", balance);
 
 				Ok((ExitSucceed::Returned, balance, 0))
-			},
+			}
 			Action::QueryOwner => {
 				// 32 * 2
 				if input.len() < 64 {
@@ -79,8 +80,31 @@ where
 				let class_id = u64_from_slice(&input[32..48]);
 				let token_id = u64_from_slice(&input[48..64]);
 
-				let owner = NFTImpl::owner(class_id, token_id);
+				let owner: H160 = if let Some(o) = NFTImpl::owner((class_id, token_id)) {
+					AccountMappingImpl::into_h160(o)
+				} else {
+					Default::default()
+				};
+
+				Ok((ExitSucceed::Returned, owner.as_bytes().to_vec(), 0))
 			}
+			Action::Transfer => {
+				// 32 * 4
+				if input.len() < 128 {
+					return Err(ExitError::Other("invalid input"));
+				}
+
+				let from = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
+				let to = account_id_from_slice::<_, AccountIdConverter>(&input[64..84]);
+				let class_id = u64_from_slice(&input[96..112]);
+				let token_id = u64_from_slice(&input[112..]);
+				NFTImpl::transfer(&from, &to, (class_id, token_id)).map_err(|e| ExitError::Other(e.into()))?;
+
+				debug::info!(">>> transfer success!");
+
+				Ok((ExitSucceed::Returned, vec![], 0))
+			}
+			Action::Unknown => Err(ExitError::Other("unknown action")),
 		}
 	}
 }

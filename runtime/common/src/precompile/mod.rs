@@ -3,13 +3,14 @@
 
 use pallet_evm::{
 	precompiles::{Precompile, Precompiles},
-	ExitError, ExitSucceed,
+	AddressMapping, ExitError, ExitSucceed,
 };
 use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
 use sp_std::{marker::PhantomData, prelude::*};
 
 pub mod multicurrency;
+pub mod nft;
 
 pub type EthereumPrecompiles = (
 	pallet_evm::precompiles::ECRecover,
