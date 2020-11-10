@@ -9,11 +9,11 @@ use sp_std::{cmp::min, vec::Vec};
 /// Custom precompiles to be used by EVM engine.
 pub trait Precompiles {
 	#![allow(clippy::type_complexity)]
-	/// Try to execute the code address as precompile. If the code address is not
-	/// a precompile or the precompile is not yet available, return `None`.
+	/// Try to execute the code address as precompile. If the code address is
+	/// not a precompile or the precompile is not yet available, return `None`.
 	/// Otherwise, calculate the amount of gas needed with given `input` and
-	/// `target_gas`. Return `Some(Ok(status, output, gas_used))` if the execution
-	/// is successful. Otherwise return `Some(Err(_))`.
+	/// `target_gas`. Return `Some(Ok(status, output, gas_used))` if the
+	/// execution is successful. Otherwise return `Some(Err(_))`.
 	fn execute(
 		address: H160,
 		input: &[u8],
@@ -23,9 +23,9 @@ pub trait Precompiles {
 
 /// One single precompile used by EVM engine.
 pub trait Precompile {
-	/// Try to execute the precompile. Calculate the amount of gas needed with given `input` and
-	/// `target_gas`. Return `Ok(status, output, gas_used)` if the execution is
-	/// successful. Otherwise return `Err(_)`.
+	/// Try to execute the precompile. Calculate the amount of gas needed with
+	/// given `input` and `target_gas`. Return `Ok(status, output, gas_used)` if
+	/// the execution is successful. Otherwise return `Err(_)`.
 	fn execute(
 		input: &[u8],
 		target_gas: Option<usize>,

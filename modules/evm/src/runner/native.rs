@@ -343,8 +343,9 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 	}
 
 	fn original_storage(&self, _address: H160, _index: H256) -> H256 {
-		// We do not have the concept of original storage in the native runner, so we always return
-		// empty value. This only affects gas calculation in the current EVM specification.
+		// We do not have the concept of original storage in the native runner, so we
+		// always return empty value. This only affects gas calculation in the current
+		// EVM specification.
 		H256::default()
 	}
 

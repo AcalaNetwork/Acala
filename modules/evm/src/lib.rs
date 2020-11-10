@@ -58,8 +58,8 @@ pub trait EnsureAddressOrigin<OuterOrigin> {
 	fn try_address_origin(address: &H160, origin: OuterOrigin) -> Result<Self::Success, OuterOrigin>;
 }
 
-/// Ensure that the EVM address is the same as the Substrate address. This only works if the account
-/// ID is `H160`.
+/// Ensure that the EVM address is the same as the Substrate address. This only
+/// works if the account ID is `H160`.
 pub struct EnsureAddressSame;
 
 impl<OuterOrigin> EnsureAddressOrigin<OuterOrigin> for EnsureAddressSame
@@ -104,8 +104,8 @@ impl<OuterOrigin, AccountId> EnsureAddressOrigin<OuterOrigin> for EnsureAddressN
 	}
 }
 
-/// Ensure that the address is truncated hash of the origin. Only works if the account id is
-/// `AccountId32`.
+/// Ensure that the address is truncated hash of the origin. Only works if the
+/// account id is `AccountId32`.
 pub struct EnsureAddressTruncated;
 
 impl<OuterOrigin> EnsureAddressOrigin<OuterOrigin> for EnsureAddressTruncated
