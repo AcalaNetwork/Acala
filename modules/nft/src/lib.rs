@@ -354,7 +354,7 @@ impl<T: Trait> NFT<T::AccountId> for Module<T> {
 	type Balance = NFTBalance;
 
 	fn balance(who: &T::AccountId) -> Self::Balance {
-		orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u64
+		orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u128
 	}
 
 	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {

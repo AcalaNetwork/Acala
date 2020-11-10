@@ -19,9 +19,15 @@ pub type EthereumPrecompiles = (
 	pallet_evm::precompiles::Identity,
 );
 
-pub struct AllPrecompiles<MultiCurrencyPrecompile>(PhantomData<MultiCurrencyPrecompile>);
+pub struct AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>(
+	PhantomData<(MultiCurrencyPrecompile, NFTPrecompile)>,
+);
 
-impl<MultiCurrencyPrecompile: Precompile> Precompiles for AllPrecompiles<MultiCurrencyPrecompile> {
+impl<MultiCurrencyPrecompile, NFTPrecompile> Precompiles for AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>
+where
+	MultiCurrencyPrecompile: Precompile,
+	NFTPrecompile: Precompile,
+{
 	#[allow(clippy::type_complexity)]
 	fn execute(
 		address: H160,
@@ -31,6 +37,8 @@ impl<MultiCurrencyPrecompile: Precompile> Precompiles for AllPrecompiles<MultiCu
 		EthereumPrecompiles::execute(address, input, target_gas).or_else(|| {
 			if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {
 				Some(MultiCurrencyPrecompile::execute(input, target_gas))
+			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
+				Some(NFTPrecompile::execute(input, target_gas))
 			} else {
 				None
 			}
