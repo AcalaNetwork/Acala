@@ -13,18 +13,14 @@ sp_api::decl_runtime_apis! {
 			to: H160,
 			data: Vec<u8>,
 			value: U256,
-			gas_limit: U256,
-			gas_price: U256,
-			nonce: Option<U256>,
+			gas_limit: u32,
 		) -> Result<CallInfo, sp_runtime::DispatchError>;
 
 		fn create(
 			from: H160,
 			data: Vec<u8>,
 			value: U256,
-			gas_limit: U256,
-			gas_price: U256,
-			nonce: Option<U256>,
+			gas_limit: u32,
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 	}
 }

@@ -25,7 +25,7 @@ use frame_system::RawOrigin;
 use serde::{Deserialize, Serialize};
 use sp_core::{Hasher, H160, H256, U256};
 use sp_runtime::{
-	traits::{BadOrigin, SaturatedConversion, UniqueSaturatedInto},
+	traits::{BadOrigin, UniqueSaturatedInto},
 	AccountId32,
 };
 use sp_std::vec::Vec;
@@ -296,7 +296,7 @@ decl_module! {
 		}
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
-		#[weight = (*gas_price).saturated_into::<Weight>().saturating_mul(*gas_limit as Weight)]
+		#[weight = *gas_limit as Weight]
 		fn call(
 			origin,
 			source: H160,
@@ -304,8 +304,6 @@ decl_module! {
 			input: Vec<u8>,
 			value: U256,
 			gas_limit: u32,
-			gas_price: U256,
-			nonce: Option<U256>,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
@@ -315,8 +313,6 @@ decl_module! {
 				input,
 				value,
 				gas_limit,
-				Some(gas_price),
-				nonce,
 			)? {
 				CallInfo {
 					exit_reason: ExitReason::Succeed(_),
@@ -334,15 +330,13 @@ decl_module! {
 
 		/// Issue an EVM create operation. This is similar to a contract creation transaction in
 		/// Ethereum.
-		#[weight = (*gas_price).saturated_into::<Weight>().saturating_mul(*gas_limit as Weight)]
+		#[weight = *gas_limit as Weight]
 		fn create(
 			origin,
 			source: H160,
 			init: Vec<u8>,
 			value: U256,
 			gas_limit: u32,
-			gas_price: U256,
-			nonce: Option<U256>,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
@@ -351,8 +345,6 @@ decl_module! {
 				init,
 				value,
 				gas_limit,
-				Some(gas_price),
-				nonce,
 			)? {
 				CreateInfo {
 					exit_reason: ExitReason::Succeed(_),
@@ -374,7 +366,7 @@ decl_module! {
 		}
 
 		/// Issue an EVM create2 operation.
-		#[weight = (*gas_price).saturated_into::<Weight>().saturating_mul(*gas_limit as Weight)]
+		#[weight = *gas_limit as Weight]
 		fn create2(
 			origin,
 			source: H160,
@@ -382,8 +374,6 @@ decl_module! {
 			salt: H256,
 			value: U256,
 			gas_limit: u32,
-			gas_price: U256,
-			nonce: Option<U256>,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
@@ -393,8 +383,6 @@ decl_module! {
 				salt,
 				value,
 				gas_limit,
-				Some(gas_price),
-				nonce,
 			)? {
 				CreateInfo {
 					exit_reason: ExitReason::Succeed(_),

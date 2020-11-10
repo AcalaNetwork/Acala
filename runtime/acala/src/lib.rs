@@ -1671,18 +1671,14 @@ impl_runtime_apis! {
 			to: H160,
 			data: Vec<u8>,
 			value: U256,
-			gas_limit: U256,
-			gas_price: U256,
-			nonce: Option<U256>,
+			gas_limit: u32,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::call(
 				from,
 				to,
 				data,
 				value,
-				gas_limit.saturated_into::<u32>(),
-				Some(gas_price),
-				nonce,
+				gas_limit,
 			)
 			.map_err(|err| err.into())
 		}
@@ -1691,17 +1687,13 @@ impl_runtime_apis! {
 			from: H160,
 			data: Vec<u8>,
 			value: U256,
-			gas_limit: U256,
-			gas_price: U256,
-			nonce: Option<U256>,
+			gas_limit: u32,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::create(
 				from,
 				data,
 				value,
-				gas_limit.saturated_into::<u32>(),
-				Some(gas_price),
-				nonce,
+				gas_limit,
 			)
 			.map_err(|err| err.into())
 		}

@@ -2,7 +2,7 @@
 
 use crate::precompiles::Precompiles;
 use crate::runner::Runner as RunnerT;
-use crate::{AccountCodes, AccountStorages, AddressMapping, Error, Event, FeeCalculator, Module, Trait};
+use crate::{AccountCodes, AccountStorages, AddressMapping, Error, Event, Module, Trait};
 use evm::backend::{Apply, ApplyBackend, Backend as BackendT};
 use evm::executor::StackExecutor;
 use evm::ExitReason;
@@ -25,31 +25,12 @@ pub struct Runner<T: Trait> {
 
 impl<T: Trait> Runner<T> {
 	/// Execute an EVM operation.
-	pub fn execute<F, R>(
-		source: H160,
-		value: U256,
-		gas_limit: u32,
-		gas_price: Option<U256>,
-		nonce: Option<U256>,
-		f: F,
-	) -> Result<ExecutionInfo<R>, Error<T>>
+	pub fn execute<F, R>(source: H160, value: U256, gas_limit: u32, f: F) -> Result<ExecutionInfo<R>, Error<T>>
 	where
 		F: FnOnce(&mut StackExecutor<Backend<T>>) -> (ExitReason, R),
 	{
-		// Gas price check is skipped when performing a gas estimation.
-		let gas_price = match gas_price {
-			Some(gas_price) => {
-				ensure!(
-					gas_price >= T::FeeCalculator::min_gas_price(),
-					Error::<T>::GasPriceTooLow
-				);
-				gas_price
-			}
-			None => Default::default(),
-		};
-
 		let vicinity = Vicinity {
-			gas_price,
+			gas_price: U256::one(),
 			origin: source,
 		};
 
@@ -57,9 +38,7 @@ impl<T: Trait> Runner<T> {
 		let mut executor =
 			StackExecutor::new_with_precompile(&backend, gas_limit as usize, T::config(), T::Precompiles::execute);
 
-		let total_fee = gas_price
-			.checked_mul(U256::from(gas_limit))
-			.ok_or(Error::<T>::FeeOverflow)?;
+		let total_fee = U256::from(gas_limit);
 		let total_payment = value.checked_add(total_fee).ok_or(Error::<T>::PaymentOverflow)?;
 		let source_account = Module::<T>::account_basic(&source);
 		ensure!(source_account.balance >= total_payment, Error::<T>::BalanceLow);
@@ -67,14 +46,10 @@ impl<T: Trait> Runner<T> {
 			.withdraw(source, total_fee)
 			.map_err(|_| Error::<T>::WithdrawFailed)?;
 
-		if let Some(nonce) = nonce {
-			ensure!(source_account.nonce == nonce, Error::<T>::InvalidNonce);
-		}
-
 		let (reason, retv) = f(&mut executor);
 
 		let used_gas = U256::from(executor.used_gas());
-		let actual_fee = executor.fee(gas_price);
+		let actual_fee = executor.fee(U256::one());
 		debug::debug!(
 			target: "evm",
 			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, actual_fee: {}]",
@@ -102,29 +77,14 @@ impl<T: Trait> Runner<T> {
 impl<T: Trait> RunnerT<T> for Runner<T> {
 	type Error = Error<T>;
 
-	fn call(
-		source: H160,
-		target: H160,
-		input: Vec<u8>,
-		value: U256,
-		gas_limit: u32,
-		gas_price: Option<U256>,
-		nonce: Option<U256>,
-	) -> Result<CallInfo, Self::Error> {
-		Self::execute(source, value, gas_limit, gas_price, nonce, |executor| {
+	fn call(source: H160, target: H160, input: Vec<u8>, value: U256, gas_limit: u32) -> Result<CallInfo, Self::Error> {
+		Self::execute(source, value, gas_limit, |executor| {
 			executor.transact_call(source, target, value, input, gas_limit as usize)
 		})
 	}
 
-	fn create(
-		source: H160,
-		init: Vec<u8>,
-		value: U256,
-		gas_limit: u32,
-		gas_price: Option<U256>,
-		nonce: Option<U256>,
-	) -> Result<CreateInfo, Self::Error> {
-		Self::execute(source, value, gas_limit, gas_price, nonce, |executor| {
+	fn create(source: H160, init: Vec<u8>, value: U256, gas_limit: u32) -> Result<CreateInfo, Self::Error> {
+		Self::execute(source, value, gas_limit, |executor| {
 			let address = executor.create_address(evm::CreateScheme::Legacy { caller: source });
 			(
 				executor.transact_create(source, value, init, gas_limit as usize),
@@ -139,11 +99,9 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		salt: H256,
 		value: U256,
 		gas_limit: u32,
-		gas_price: Option<U256>,
-		nonce: Option<U256>,
 	) -> Result<CreateInfo, Self::Error> {
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-		Self::execute(source, value, gas_limit, gas_price, nonce, |executor| {
+		Self::execute(source, value, gas_limit, |executor| {
 			let address = executor.create_address(evm::CreateScheme::Create2 {
 				caller: source,
 				code_hash,

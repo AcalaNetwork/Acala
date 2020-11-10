@@ -2,8 +2,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	precompiles::Precompiles, AccountCodes, AccountStorages, AddressMapping, CallInfo, CreateInfo, Error, Event,
-	FeeCalculator, Log, Module, Runner as RunnerT, Trait, Vicinity,
+	precompiles::Precompiles, AccountCodes, AccountStorages, AddressMapping, CallInfo, CreateInfo, Error, Event, Log,
+	Module, Runner as RunnerT, Trait, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -12,7 +12,6 @@ use evm::{
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config, Handler as HandlerT};
 use frame_support::{
-	ensure,
 	storage::{StorageDoubleMap, StorageMap},
 	traits::{Currency, ExistenceRequirement, Get},
 };
@@ -31,39 +30,13 @@ pub struct Runner<T: Trait> {
 impl<T: Trait> RunnerT<T> for Runner<T> {
 	type Error = Error<T>;
 
-	fn call(
-		source: H160,
-		target: H160,
-		input: Vec<u8>,
-		value: U256,
-		gas_limit: u32,
-		gas_price: Option<U256>,
-		nonce: Option<U256>,
-	) -> Result<CallInfo, Self::Error> {
-		let gas_price = match gas_price {
-			Some(gas_price) => {
-				ensure!(
-					gas_price >= T::FeeCalculator::min_gas_price(),
-					Error::<T>::GasPriceTooLow
-				);
-				gas_price
-			}
-			None => Default::default(),
-		};
-
-		if let Some(nonce) = nonce {
-			ensure!(
-				Module::<T>::account_basic(&source).nonce == nonce,
-				Error::<T>::InvalidNonce
-			);
-		}
-
+	fn call(source: H160, target: H160, input: Vec<u8>, value: U256, gas_limit: u32) -> Result<CallInfo, Self::Error> {
 		let account_id = T::AddressMapping::into_account_id(source);
 		frame_system::Module::<T>::inc_account_nonce(&account_id);
 
 		frame_support::storage::with_transaction(|| {
 			let vicinity = Vicinity {
-				gas_price,
+				gas_price: U256::one(),
 				origin: source,
 			};
 
@@ -100,38 +73,13 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		})
 	}
 
-	fn create(
-		source: H160,
-		init: Vec<u8>,
-		value: U256,
-		gas_limit: u32,
-		gas_price: Option<U256>,
-		nonce: Option<U256>,
-	) -> Result<CreateInfo, Self::Error> {
-		let gas_price = match gas_price {
-			Some(gas_price) => {
-				ensure!(
-					gas_price >= T::FeeCalculator::min_gas_price(),
-					Error::<T>::GasPriceTooLow
-				);
-				gas_price
-			}
-			None => Default::default(),
-		};
-
-		if let Some(nonce) = nonce {
-			ensure!(
-				Module::<T>::account_basic(&source).nonce == nonce,
-				Error::<T>::InvalidNonce
-			);
-		}
-
+	fn create(source: H160, init: Vec<u8>, value: U256, gas_limit: u32) -> Result<CreateInfo, Self::Error> {
 		let account_id = T::AddressMapping::into_account_id(source);
 		frame_system::Module::<T>::inc_account_nonce(&account_id);
 
 		frame_support::storage::with_transaction(|| {
 			let vicinity = Vicinity {
-				gas_price,
+				gas_price: U256::one(),
 				origin: source,
 			};
 
@@ -183,33 +131,13 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		salt: H256,
 		value: U256,
 		gas_limit: u32,
-		gas_price: Option<U256>,
-		nonce: Option<U256>,
 	) -> Result<CreateInfo, Self::Error> {
-		let gas_price = match gas_price {
-			Some(gas_price) => {
-				ensure!(
-					gas_price >= T::FeeCalculator::min_gas_price(),
-					Error::<T>::GasPriceTooLow
-				);
-				gas_price
-			}
-			None => Default::default(),
-		};
-
-		if let Some(nonce) = nonce {
-			ensure!(
-				Module::<T>::account_basic(&source).nonce == nonce,
-				Error::<T>::InvalidNonce
-			);
-		}
-
 		let account_id = T::AddressMapping::into_account_id(source);
 		frame_system::Module::<T>::inc_account_nonce(&account_id);
 
 		frame_support::storage::with_transaction(|| {
 			let vicinity = Vicinity {
-				gas_price,
+				gas_price: U256::one(),
 				origin: source,
 			};
 

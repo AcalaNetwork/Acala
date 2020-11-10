@@ -148,24 +148,20 @@ fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(EVM::call(
 			Origin::root(),
-			H160::default(),
 			H160::from_str("1000000000000000000000000000000000000001").unwrap(),
+			H160::default(),
 			Vec::new(),
 			U256::default(),
 			1000000,
-			U256::default(),
-			None,
 		));
 
 		assert_ok!(EVM::call(
 			Origin::root(),
-			H160::default(),
 			H160::from_str("1000000000000000000000000000000000000002").unwrap(),
+			H160::default(),
 			Vec::new(),
 			U256::default(),
 			1000000,
-			U256::default(),
-			None,
 		));
 	});
 }

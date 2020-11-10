@@ -12,14 +12,10 @@ pub struct CallRequest {
 	pub from: Option<H160>,
 	/// To
 	pub to: Option<H160>,
-	/// Gas Price
-	pub gas_price: Option<U256>,
-	/// Gas
-	pub gas: Option<U256>,
+	/// Gas Limit
+	pub gas_limit: Option<u32>,
 	/// Value
 	pub value: Option<U256>,
 	/// Data
 	pub data: Option<Bytes>,
-	/// Nonce
-	pub nonce: Option<U256>,
 }

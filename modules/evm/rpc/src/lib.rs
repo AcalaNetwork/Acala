@@ -32,7 +32,7 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 		ExitReason::Succeed(_) => Ok(()),
 		ExitReason::Error(e) => Err(Error {
 			code: ErrorCode::InternalError,
-			message: format!("evm error: {:?}", e),
+			message: format!("execution error: {:?}", e),
 			data: Some(Value::String("0x".to_string())),
 		}),
 		ExitReason::Revert(_) => {
@@ -45,7 +45,7 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 		}
 		ExitReason::Fatal(e) => Err(Error {
 			code: ErrorCode::InternalError,
-			message: format!("evm fatal: {:?}", e),
+			message: format!("execution fatal: {:?}", e),
 			data: Some(Value::String("0x".to_string())),
 		}),
 	}
@@ -77,14 +77,12 @@ where
 		let CallRequest {
 			from,
 			to,
-			gas_price,
-			gas,
+			gas_limit,
 			value,
 			data,
-			nonce,
 		} = request;
 
-		let gas_limit = gas.unwrap_or_else(U256::max_value); // TODO: set a limit
+		let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -99,11 +97,9 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or_else(U256::one),
-						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
 				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
@@ -117,11 +113,9 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or_else(U256::one),
-						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
 				error_on_execution_failure(&info.exit_reason, &[])?;
 
@@ -136,14 +130,12 @@ where
 		let CallRequest {
 			from,
 			to,
-			gas_price,
-			gas,
+			gas_limit,
 			value,
 			data,
-			nonce,
 		} = request;
 
-		let gas_limit = gas.unwrap_or_else(U256::max_value); // TODO: set a limit
+		let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -158,11 +150,9 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or_else(U256::one),
-						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
 				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
@@ -176,11 +166,9 @@ where
 						data,
 						value.unwrap_or_default(),
 						gas_limit,
-						gas_price.unwrap_or_else(U256::one),
-						nonce,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
 				error_on_execution_failure(&info.exit_reason, &[])?;
 
