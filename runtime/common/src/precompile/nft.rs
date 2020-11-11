@@ -1,7 +1,6 @@
-use frame_support::debug;
 use pallet_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
 use sp_core::{H160, U256};
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT;
 
@@ -42,15 +41,12 @@ impl From<u8> for Action {
 impl<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl> Precompile
 	for NFTPrecompile<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl>
 where
-	AccountId: Debug + Clone,
+	AccountId: Clone,
 	AccountIdConverter: AddressMapping<AccountId>,
 	AccountMappingImpl: AccountMapping<AccountId>,
 	NFTImpl: NFT<AccountId, Balance = NFTBalance, ClassId = u64, TokenId = u64>,
 {
 	fn execute(input: &[u8], _target_gas: Option<usize>) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
-		debug::info!("----------------------------------------------------------------");
-		debug::info!(">>> input: {:?}", input);
-
 		if input.len() < 2 {
 			return Err(ExitError::Other("invalid input"));
 		}
@@ -66,9 +62,6 @@ where
 				let who = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
 				let balance = vec_u8_from_balance(NFTImpl::balance(&who));
 
-				debug::info!(">>> account id: {:?}", who);
-				debug::info!(">>> balance: {:?}", balance);
-
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
 			Action::QueryOwner => {
@@ -80,16 +73,11 @@ where
 				let class_id = u64_from_slice(&input[32..40]);
 				let token_id = u64_from_slice(&input[64..72]);
 
-				debug::info!(">>> class_id: {:?}", class_id);
-				debug::info!(">>> token_id: {:?}", token_id);
-
 				let owner: H160 = if let Some(o) = NFTImpl::owner((class_id, token_id)) {
 					AccountMappingImpl::into_h160(o)
 				} else {
 					Default::default()
 				};
-
-				debug::info!(">>> owner: {:?}", owner);
 
 				Ok((ExitSucceed::Returned, owner.as_bytes().to_vec(), 0))
 			}
@@ -104,14 +92,7 @@ where
 				let class_id = u64_from_slice(&input[96..104]);
 				let token_id = u64_from_slice(&input[128..136]);
 
-				debug::info!(">>> from: {:?}", from);
-				debug::info!(">>> to: {:?}", to);
-				debug::info!(">>> class_id: {:?}", class_id);
-				debug::info!(">>> token_id: {:?}", token_id);
-
 				NFTImpl::transfer(&from, &to, (class_id, token_id)).map_err(|e| ExitError::Other(e.into()))?;
-
-				debug::info!(">>> transfer success!");
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
