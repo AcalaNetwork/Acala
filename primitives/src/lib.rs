@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod evm;
+
 use codec::{Decode, Encode};
 use sp_runtime::{
 	generic,

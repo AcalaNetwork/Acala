@@ -11,9 +11,9 @@ use frame_support::{
 	storage::{StorageDoubleMap, StorageMap},
 	traits::{Currency, Get},
 };
+use primitives::evm::{Account, CallInfo, CreateInfo, ExecutionInfo, Log, Vicinity};
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_evm::{Account, CallInfo, CreateInfo, ExecutionInfo, Log, Vicinity};
 use sp_runtime::{traits::UniqueSaturatedInto, SaturatedConversion};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;

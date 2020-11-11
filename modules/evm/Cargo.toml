@@ -18,7 +18,6 @@ sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
-sp-evm = { version = "0.8.0", default-features = false, path = "../../primitives/evm" }
 primitive-types = { version = "0.7.0", default-features = false, features = ["rlp", "byteorder"] }
 rlp = { version = "0.4", default-features = false }
 evm = { version = "0.18", default-features = false, features = ["with-codec"] }
@@ -27,6 +26,8 @@ evm-gasometer = { version = "0.18", default-features = false }
 sha3 = { version = "0.8", default-features = false }
 impl-trait-for-tuples = "0.1"
 ripemd160 = { version = "0.9", default-features = false }
+
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [features]
 default = ["std"]
@@ -40,7 +41,6 @@ std = [
 	"pallet-balances/std",
 	"sp-io/std",
 	"sp-std/std",
-	"sp-evm/std",
 	"sha3/std",
 	"rlp/std",
 	"primitive-types/std",
@@ -50,4 +50,5 @@ std = [
 	"evm-gasometer/std",
 	"pallet-timestamp/std",
 	"ripemd160/std",
+	"primitives/std",
 ]

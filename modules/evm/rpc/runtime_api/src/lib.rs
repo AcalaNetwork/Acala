@@ -4,7 +4,7 @@
 use ethereum_types::{H160, U256};
 use sp_std::vec::Vec;
 
-use sp_evm::{CallInfo, CreateInfo};
+use primitives::evm::{CallInfo, CreateInfo};
 
 sp_api::decl_runtime_apis! {
 	pub trait EVMRuntimeRPCApi {

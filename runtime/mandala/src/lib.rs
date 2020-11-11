@@ -38,7 +38,7 @@ use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
-use module_evm::{CallInfo, CreateInfo, EnsureAddressTruncated, Runner};
+use module_evm::{CallInfo, CreateInfo, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
@@ -1247,8 +1247,7 @@ pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::Mu
 >;
 
 impl module_evm::Trait for Runtime {
-	type CallOrigin = EnsureAddressTruncated;
-	type WithdrawOrigin = EnsureAddressTruncated;
+	type CallOrigin = EvmAddressMapping<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type Event = Event;

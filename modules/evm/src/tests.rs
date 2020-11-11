@@ -83,7 +83,6 @@ impl pallet_timestamp::Trait for Test {
 
 impl Trait for Test {
 	type CallOrigin = EnsureAddressRoot<Self::AccountId>;
-	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
 
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
 	type Currency = Balances;
