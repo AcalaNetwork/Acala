@@ -1254,6 +1254,7 @@ pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<
 >;
 
 impl module_evm::Trait for Runtime {
+	type CallOrigin = EnsureAddressTruncated;
 	type WithdrawOrigin = EnsureAddressTruncated;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;

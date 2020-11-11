@@ -1,6 +1,6 @@
 use module_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
 use sp_core::{H160, U256};
-use sp_std::{marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT;
 
@@ -48,7 +48,7 @@ where
 {
 	fn execute(input: &[u8], _target_gas: Option<usize>) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		if input.len() < 2 {
-			return Err(ExitError::Other("invalid input"));
+			return Err(ExitError::Other("invalid input".into()));
 		}
 		let action: Action = input[0].into();
 
@@ -56,7 +56,7 @@ where
 			Action::QueryBalance => {
 				// 32 * 2
 				if input.len() < 64 {
-					return Err(ExitError::Other("invalid input"));
+					return Err(ExitError::Other("invalid input".into()));
 				}
 
 				let who = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
@@ -67,7 +67,7 @@ where
 			Action::QueryOwner => {
 				// 32 * 3
 				if input.len() < 96 {
-					return Err(ExitError::Other("invalid input"));
+					return Err(ExitError::Other("invalid input".into()));
 				}
 
 				let class_id = u64_from_slice(&input[32..40]);
@@ -84,7 +84,7 @@ where
 			Action::Transfer => {
 				// 32 * 5
 				if input.len() < 160 {
-					return Err(ExitError::Other("invalid input"));
+					return Err(ExitError::Other("invalid input".into()));
 				}
 
 				let from = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
@@ -92,11 +92,12 @@ where
 				let class_id = u64_from_slice(&input[96..104]);
 				let token_id = u64_from_slice(&input[128..136]);
 
-				NFTImpl::transfer(&from, &to, (class_id, token_id)).map_err(|e| ExitError::Other(e.into()))?;
+				NFTImpl::transfer(&from, &to, (class_id, token_id))
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action")),
+			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }
