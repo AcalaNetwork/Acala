@@ -20,8 +20,7 @@ use sp_core::{
 	OpaqueMetadata, H160, U256,
 };
 use sp_runtime::traits::{
-	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, Saturating,
-	StaticLookup,
+	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
 };
 use sp_runtime::{
 	create_runtime_str,
@@ -43,7 +42,6 @@ use module_evm_accounts::EvmAddressMapping;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
-use pallet_contracts_rpc_runtime_api::ContractExecResult;
 use pallet_evm::{EnsureAddressTruncated, FeeCalculator};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
@@ -56,7 +54,7 @@ pub use frame_support::{
 	construct_runtime, debug, parameter_types,
 	traits::{
 		Contains, ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier,
-		Randomness,
+		Randomness, U128CurrencyToVote,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -595,28 +593,6 @@ pallet_staking_reward_curve::build! {
 	);
 }
 
-/// Struct that handles the conversion of Balance -> `u64`. This is used for
-/// staking's election calculation.
-pub struct CurrencyToVoteHandler;
-
-impl CurrencyToVoteHandler {
-	fn factor() -> Balance {
-		(Balances::total_issuance() / u64::max_value() as Balance).max(1)
-	}
-}
-
-impl Convert<Balance, u64> for CurrencyToVoteHandler {
-	fn convert(x: Balance) -> u64 {
-		(x / Self::factor()) as u64
-	}
-}
-
-impl Convert<u128, Balance> for CurrencyToVoteHandler {
-	fn convert(x: u128) -> Balance {
-		x * Self::factor()
-	}
-}
-
 parameter_types! {
 	pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
 	pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
@@ -628,12 +604,15 @@ parameter_types! {
 	pub const MaxIterations: u32 = 5;
 	// 0.05%. The higher the value, the more strict solution acceptance becomes.
 	pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
+	pub OffchainSolutionWeightLimit: Weight = MaximumExtrinsicWeight::get()
+		.saturating_sub(BlockExecutionWeight::get())
+		.saturating_sub(ExtrinsicBaseWeight::get());
 }
 
 impl pallet_staking::Trait for Runtime {
 	type Currency = Balances;
 	type UnixTime = Timestamp;
-	type CurrencyToVote = CurrencyToVoteHandler;
+	type CurrencyToVote = U128CurrencyToVote;
 	type RewardRemainder = AcalaTreasury;
 	type Event = Event;
 	type Slash = AcalaTreasury; // send the slashed funds to the pallet treasury.
@@ -653,6 +632,7 @@ impl pallet_staking::Trait for Runtime {
 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
 	type UnsignedPriority = StakingUnsignedPriority;
 	type WeightInfo = ();
+	type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
 }
 
 parameter_types! {
@@ -703,7 +683,7 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	type ModuleId = ElectionsPhragmenModuleId;
 	type Event = Event;
 	type Currency = CurrencyAdapter<Runtime, GetLDOTCurrencyId>;
-	type CurrencyToVote = CurrencyToVoteHandler;
+	type CurrencyToVote = U128CurrencyToVote;
 	type ChangeMembers = HomaCouncil;
 	type InitializeMembers = HomaCouncil;
 	type CandidacyBond = CandidacyBond;
@@ -1269,6 +1249,7 @@ impl pallet_contracts::Trait for Runtime {
 	type MaxDepth = pallet_contracts::DefaultMaxDepth;
 	type MaxValueSize = pallet_contracts::DefaultMaxValueSize;
 	type WeightPrice = module_accounts::Module<Self>;
+	type WeightInfo = ();
 }
 
 /// Fixed gas price of `1`.
@@ -1390,7 +1371,7 @@ construct_runtime!(
 		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
 
 		// Smart contracts
-		Contracts: pallet_contracts::{Module, Call, Config, Storage, Event<T>},
+		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
 		EVM: pallet_evm::{Module, Config, Call, Storage, Event<T>},
 
 		// Dev
@@ -1637,17 +1618,8 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			input_data: Vec<u8>,
-		) -> ContractExecResult {
-			let (exec_result, gas_consumed) =
-				Contracts::bare_call(origin, dest, value, gas_limit, input_data);
-			match exec_result {
-				Ok(v) => ContractExecResult::Success {
-					flags: v.flags.bits(),
-					data: v.data,
-					gas_consumed,
-				},
-				Err(_) => ContractExecResult::Error,
-			}
+		) -> pallet_contracts_primitives::ContractExecResult {
+			Contracts::bare_call(origin, dest, value, gas_limit, input_data)
 		}
 
 		fn get_storage(
