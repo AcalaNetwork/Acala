@@ -72,13 +72,16 @@ where
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
 			Action::QueryOwner => {
-				// 32 * 2
-				if input.len() < 64 {
+				// 32 * 3
+				if input.len() < 96 {
 					return Err(ExitError::Other("invalid input"));
 				}
 
-				let class_id = u64_from_slice(&input[32..48]);
-				let token_id = u64_from_slice(&input[48..64]);
+				let class_id = u64_from_slice(&input[32..40]);
+				let token_id = u64_from_slice(&input[64..72]);
+
+				debug::info!(">>> class_id: {:?}", class_id);
+				debug::info!(">>> token_id: {:?}", token_id);
 
 				let owner: H160 = if let Some(o) = NFTImpl::owner((class_id, token_id)) {
 					AccountMappingImpl::into_h160(o)
@@ -86,18 +89,26 @@ where
 					Default::default()
 				};
 
+				debug::info!(">>> owner: {:?}", owner);
+
 				Ok((ExitSucceed::Returned, owner.as_bytes().to_vec(), 0))
 			}
 			Action::Transfer => {
-				// 32 * 4
-				if input.len() < 128 {
+				// 32 * 5
+				if input.len() < 160 {
 					return Err(ExitError::Other("invalid input"));
 				}
 
 				let from = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
 				let to = account_id_from_slice::<_, AccountIdConverter>(&input[64..84]);
-				let class_id = u64_from_slice(&input[96..112]);
-				let token_id = u64_from_slice(&input[112..]);
+				let class_id = u64_from_slice(&input[96..104]);
+				let token_id = u64_from_slice(&input[128..136]);
+
+				debug::info!(">>> from: {:?}", from);
+				debug::info!(">>> to: {:?}", to);
+				debug::info!(">>> class_id: {:?}", class_id);
+				debug::info!(">>> token_id: {:?}", token_id);
+
 				NFTImpl::transfer(&from, &to, (class_id, token_id)).map_err(|e| ExitError::Other(e.into()))?;
 
 				debug::info!(">>> transfer success!");
@@ -115,6 +126,7 @@ fn vec_u8_from_balance(b: NFTBalance) -> Vec<u8> {
 	be_bytes.to_vec()
 }
 
+/// Note that slice length for `u64` must not exceed 8.
 fn u64_from_slice(src: &[u8]) -> u64 {
 	let mut int = [0u8; 8];
 	int[..].copy_from_slice(src);
