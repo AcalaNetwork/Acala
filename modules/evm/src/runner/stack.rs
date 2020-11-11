@@ -129,7 +129,7 @@ impl<'vicinity, T: Trait> Backend<'vicinity, T> {
 			_marker: PhantomData,
 		}
 	}
-
+	#[allow(clippy::comparison_chain)]
 	fn mutate_account_basic(&self, address: &H160, new: Account) {
 		let account_id = T::AddressMapping::into_account_id(*address);
 		let current = Module::<T>::account_basic(address);

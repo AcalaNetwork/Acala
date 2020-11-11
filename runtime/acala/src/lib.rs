@@ -39,7 +39,7 @@ use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
-use module_evm::{CallInfo, CreateInfo, EnsureAddressTruncated, FeeCalculator, Runner};
+use module_evm::{CallInfo, CreateInfo, EnsureAddressTruncated, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
@@ -1253,22 +1253,11 @@ impl pallet_contracts::Trait for Runtime {
 	type WeightInfo = ();
 }
 
-/// Fixed gas price of `1`.
-pub struct FixedGasPrice;
-
-impl FeeCalculator for FixedGasPrice {
-	fn min_gas_price() -> U256 {
-		// Gas price is always one token per gas.
-		1.into()
-	}
-}
-
 parameter_types! {
 	pub const ChainId: u64 = 42;
 }
 
 impl module_evm::Trait for Runtime {
-	type FeeCalculator = FixedGasPrice;
 	type CallOrigin = EnsureAddressTruncated;
 	type WithdrawOrigin = EnsureAddressTruncated;
 	type AddressMapping = EvmAddressMapping<Runtime>;

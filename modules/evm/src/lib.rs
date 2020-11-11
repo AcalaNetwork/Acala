@@ -33,18 +33,6 @@ use sp_std::vec::Vec;
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
-/// Trait that outputs the current transaction gas price.
-pub trait FeeCalculator {
-	/// Return the minimal required gas price.
-	fn min_gas_price() -> U256;
-}
-
-impl FeeCalculator for () {
-	fn min_gas_price() -> U256 {
-		U256::zero()
-	}
-}
-
 pub trait EnsureAddressOrigin<OuterOrigin> {
 	/// Success return type.
 	type Success;
@@ -56,24 +44,6 @@ pub trait EnsureAddressOrigin<OuterOrigin> {
 
 	/// Try with origin.
 	fn try_address_origin(address: &H160, origin: OuterOrigin) -> Result<Self::Success, OuterOrigin>;
-}
-
-/// Ensure that the EVM address is the same as the Substrate address. This only
-/// works if the account ID is `H160`.
-pub struct EnsureAddressSame;
-
-impl<OuterOrigin> EnsureAddressOrigin<OuterOrigin> for EnsureAddressSame
-where
-	OuterOrigin: Into<Result<RawOrigin<H160>, OuterOrigin>> + From<RawOrigin<H160>>,
-{
-	type Success = H160;
-
-	fn try_address_origin(address: &H160, origin: OuterOrigin) -> Result<H160, OuterOrigin> {
-		origin.into().and_then(|o| match o {
-			RawOrigin::Signed(who) if &who == address => Ok(who),
-			r => Err(OuterOrigin::from(r)),
-		})
-	}
 }
 
 /// Ensure that the origin is root.
@@ -162,9 +132,6 @@ static ISTANBUL_CONFIG: Config = Config::istanbul();
 
 /// EVM module trait
 pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
-	/// Calculator for current gas price.
-	type FeeCalculator: FeeCalculator;
-
 	/// Allow the origin to call on behalf of given address.
 	type CallOrigin: EnsureAddressOrigin<Self::Origin>;
 	/// Allow the origin to withdraw on behalf of given address.
