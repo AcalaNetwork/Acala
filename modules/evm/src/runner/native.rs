@@ -12,6 +12,7 @@ use evm::{
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config, Handler as HandlerT};
 use frame_support::{
+	debug,
 	storage::{StorageDoubleMap, StorageMap},
 	traits::{Currency, ExistenceRequirement, Get},
 };
@@ -31,6 +32,14 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 	type Error = Error<T>;
 
 	fn call(source: H160, target: H160, input: Vec<u8>, value: U256, gas_limit: u32) -> Result<CallInfo, Self::Error> {
+		debug::debug!(
+			target: "evm",
+			"call: source {:?}, target: {:?}, gas_limit: {:?}",
+			source,
+			target,
+			gas_limit,
+		);
+
 		let account_id = T::AddressMapping::into_account_id(source);
 		frame_system::Module::<T>::inc_account_nonce(&account_id);
 
@@ -64,6 +73,12 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				logs,
 			};
 
+			debug::debug!(
+				target: "evm",
+				"call-result: call_info {:?}",
+				call_info
+			);
+
 			match reason {
 				ExitReason::Succeed(_) => TransactionOutcome::Commit(Ok(call_info)),
 				ExitReason::Revert(_) => TransactionOutcome::Rollback(Ok(call_info)),
@@ -74,6 +89,13 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 	}
 
 	fn create(source: H160, init: Vec<u8>, value: U256, gas_limit: u32) -> Result<CreateInfo, Self::Error> {
+		debug::debug!(
+			target: "evm",
+			"create: source {:?}, gas_limit: {:?}",
+			source,
+			gas_limit,
+		);
+
 		let account_id = T::AddressMapping::into_account_id(source);
 		frame_system::Module::<T>::inc_account_nonce(&account_id);
 
@@ -107,6 +129,12 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				logs,
 			};
 
+			debug::debug!(
+				target: "evm",
+				"create-result: create_info {:?}",
+				create_info
+			);
+
 			match reason {
 				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
 					Ok(()) => {
@@ -132,6 +160,13 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		value: U256,
 		gas_limit: u32,
 	) -> Result<CreateInfo, Self::Error> {
+		debug::debug!(
+			target: "evm",
+			"create2: source {:?}, gas_limit: {:?}",
+			source,
+			gas_limit,
+		);
+
 		let account_id = T::AddressMapping::into_account_id(source);
 		frame_system::Module::<T>::inc_account_nonce(&account_id);
 
@@ -169,6 +204,12 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				used_gas,
 				logs,
 			};
+
+			debug::debug!(
+				target: "evm",
+				"create2-result: create_info {:?}",
+				create_info
+			);
 
 			match reason {
 				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
@@ -456,6 +497,12 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		init_code: Vec<u8>,
 		target_gas: Option<usize>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
+		debug::debug!(
+			target: "evm",
+			"handler: create: caller {:?}",
+			caller,
+		);
+
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {
@@ -537,6 +584,12 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		is_static: bool,
 		context: Context,
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
+		debug::debug!(
+			target: "evm",
+			"handler: call: code_address {:?}",
+			code_address,
+		);
+
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {
