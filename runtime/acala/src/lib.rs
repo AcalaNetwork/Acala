@@ -1265,7 +1265,7 @@ impl module_evm::Trait for Runtime {
 	type Event = Event;
 	type Precompiles = ();
 	type ChainId = ChainId;
-	type Runner = module_evm::runner::stack::Runner<Self>;
+	type Runner = module_evm::runner::native::Runner<Self>;
 }
 
 #[allow(clippy::large_enum_variant)]
