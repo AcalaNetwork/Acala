@@ -338,7 +338,7 @@ fn testnet_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
-		pallet_evm: Some(EVMConfig {
+		module_evm: Some(EVMConfig {
 			accounts: evm_genesis_accounts(),
 		}),
 		module_staking_pool: Some(StakingPoolConfig {
@@ -515,7 +515,7 @@ fn mandala_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
-		pallet_evm: Some(EVMConfig {
+		module_evm: Some(EVMConfig {
 			accounts: evm_genesis_accounts(),
 		}),
 		module_staking_pool: Some(StakingPoolConfig {

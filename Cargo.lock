@@ -99,7 +99,6 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -116,7 +115,9 @@ dependencies = [
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
+ "module-evm",
  "module-evm-accounts",
+ "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -150,7 +151,6 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
- "pallet-evm",
  "pallet-grandpa",
  "pallet-indices",
  "pallet-membership",
@@ -197,18 +197,18 @@ dependencies = [
  "acala-primitives",
  "acala-rpc",
  "acala-runtime",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "karura-runtime",
  "mandala-runtime",
+ "module-evm",
+ "module-evm-rpc-runtime-api",
  "module-staking-pool",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
  "pallet-contracts",
  "pallet-contracts-rpc-runtime-api",
- "pallet-evm",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
@@ -1544,6 +1544,7 @@ checksum = "71a6567e6fd35589fea0c63b94b4cf2e55573e413901bdbe60ab15cf0e25e5df"
 dependencies = [
  "crunchy",
  "fixed-hash",
+ "impl-codec",
  "impl-rlp",
  "impl-serde",
  "tiny-keccak",
@@ -1574,6 +1575,7 @@ checksum = "473aecff686bd8e7b9db0165cbbb53562376b39bf35b427f0c60446a9e1634b0"
 dependencies = [
  "ethbloom",
  "fixed-hash",
+ "impl-codec",
  "impl-rlp",
  "impl-serde",
  "primitive-types",
@@ -1588,48 +1590,20 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "evm"
-version = "0.17.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16c8deca0ec3efa361b03d9cae6fe94321a1d2d0a523437edd720b3d140e3c08"
-dependencies = [
- "ethereum",
- "evm-core 0.17.2",
- "evm-gasometer 0.17.2",
- "evm-runtime 0.17.2",
- "log",
- "parity-scale-codec",
- "primitive-types",
- "rlp",
- "serde",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm"
 version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1fc70736bd5ec89622647ea9346b70567557917596a39538d76e8f2a17ff59e"
 dependencies = [
  "ethereum",
- "evm-core 0.18.3",
- "evm-gasometer 0.18.3",
- "evm-runtime 0.18.3",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
  "log",
  "parity-scale-codec",
  "primitive-types",
  "rlp",
  "serde",
  "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-core"
-version = "0.17.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf2d732b3c36df36833761cf67df8f65866be1d368d20508bc3e13e6f256c8c5"
-dependencies = [
- "log",
- "primitive-types",
 ]
 
 [[package]]
@@ -1645,23 +1619,12 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.17.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46de1b91ccd744627484183729f1b5af484b3bf15505007fc28cc54264cb9ea1"
-dependencies = [
- "evm-core 0.17.2",
- "evm-runtime 0.17.2",
- "primitive-types",
-]
-
-[[package]]
-name = "evm-gasometer"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "689c481648c3f45b64b1278077c04284ad535e068c9d6872153c7b74da7ccb03"
 dependencies = [
- "evm-core 0.18.3",
- "evm-runtime 0.18.3",
+ "evm-core",
+ "evm-runtime",
  "primitive-types",
 ]
 
@@ -1670,10 +1633,10 @@ name = "evm-rpc"
 version = "0.1.0"
 dependencies = [
  "ethereum-types",
- "evm 0.18.4",
- "evm-rpc-runtime-api",
  "jsonrpc-core",
  "jsonrpc-derive 14.2.2",
+ "module-evm",
+ "module-evm-rpc-runtime-api",
  "rustc-hex",
  "sc-client-api",
  "sc-network",
@@ -1683,32 +1646,11 @@ dependencies = [
  "serde_json",
  "sp-api",
  "sp-blockchain",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-storage",
  "sp-transaction-pool",
-]
-
-[[package]]
-name = "evm-rpc-runtime-api"
-version = "0.1.0"
-dependencies = [
- "ethereum-types",
- "sp-api",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "evm-runtime"
-version = "0.17.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2c1d1ffe96f833788512c890d702457d790dba4917ac6f64f8f60fbd9bc40b8"
-dependencies = [
- "evm-core 0.17.2",
- "primitive-types",
- "sha3 0.8.2",
 ]
 
 [[package]]
@@ -1717,7 +1659,7 @@ version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61a148ad1b3e0af31aa03c6c3cc9df3a529e279dad8e29b4ef90dccad32601e4"
 dependencies = [
- "evm-core 0.18.3",
+ "evm-core",
  "primitive-types",
  "sha3 0.8.2",
 ]
@@ -3029,7 +2971,6 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -3046,7 +2987,9 @@ dependencies = [
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
+ "module-evm",
  "module-evm-accounts",
+ "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -3080,7 +3023,6 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
- "pallet-evm",
  "pallet-grandpa",
  "pallet-indices",
  "pallet-membership",
@@ -3788,7 +3730,6 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
- "evm-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -3806,7 +3747,9 @@ dependencies = [
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
+ "module-evm",
  "module-evm-accounts",
+ "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
  "module-honzon-benchmarking",
@@ -3840,7 +3783,6 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
- "pallet-evm",
  "pallet-grandpa",
  "pallet-indices",
  "pallet-membership",
@@ -4318,6 +4260,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-evm"
+version = "2.0.0"
+dependencies = [
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "primitive-types",
+ "ripemd160",
+ "rlp",
+ "serde",
+ "sha3 0.8.2",
+ "sp-core",
+ "sp-evm",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-evm-accounts"
 version = "0.6.3"
 dependencies = [
@@ -4325,13 +4292,25 @@ dependencies = [
  "frame-support",
  "frame-system",
  "libsecp256k1",
+ "module-evm",
  "module-support",
  "orml-utilities",
  "pallet-balances",
- "pallet-evm",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-evm-rpc-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "ethereum-types",
+ "sp-api",
+ "sp-core",
+ "sp-evm",
  "sp-runtime",
  "sp-std",
 ]
@@ -4607,8 +4586,8 @@ version = "0.6.3"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
+ "module-evm",
  "orml-traits",
- "pallet-evm",
  "parity-scale-codec",
  "sp-core",
  "sp-runtime",
@@ -5226,29 +5205,6 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-npos-elections",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-evm"
-version = "2.0.0"
-source = "git+https://github.com/paritytech/substrate.git?rev=b7712fed2c58a898f7706e16861d7109c8f585a5#b7712fed2c58a898f7706e16861d7109c8f585a5"
-dependencies = [
- "evm 0.17.3",
- "frame-support",
- "frame-system",
- "impl-trait-for-tuples",
- "pallet-balances",
- "pallet-timestamp",
- "parity-scale-codec",
- "primitive-types",
- "ripemd160",
- "rlp",
- "serde",
- "sha3 0.8.2",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -6581,11 +6537,11 @@ version = "0.6.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
+ "module-evm",
  "module-staking-pool",
  "module-support",
  "orml-oracle",
  "orml-traits",
- "pallet-evm",
  "parity-scale-codec",
  "sp-core",
  "sp-runtime",
@@ -8184,6 +8140,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "sp-evm"
+version = "0.8.0"
+dependencies = [
+ "evm",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-std",
 ]
 
 [[package]]

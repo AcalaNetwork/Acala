@@ -1,7 +1,7 @@
 //! Acala chain configurations.
 
-use acala_primitives::{AccountId, AccountPublic, PREDEPLOY_ADDRESS_START};
-use pallet_evm::GenesisAccount;
+use acala_primitives::{AccountId, AccountPublic, Balance, Nonce, PREDEPLOY_ADDRESS_START};
+use module_evm::GenesisAccount;
 use sc_chain_spec::ChainSpecExtension;
 use serde::{Deserialize, Serialize};
 use sp_consensus_babe::AuthorityId as BabeId;
@@ -58,15 +58,15 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 	)
 }
 
-pub fn evm_genesis_accounts() -> BTreeMap<H160, GenesisAccount> {
+pub fn evm_genesis_accounts() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
 	let mut start_address = PREDEPLOY_ADDRESS_START;
 	for (_, code_string) in contracts {
 		let account = GenesisAccount {
-			nonce: 0.into(),
-			balance: 0.into(),
+			nonce: 0u32,
+			balance: 0u128,
 			storage: BTreeMap::new(),
 			code: Bytes::from_str(&code_string).unwrap().0,
 		};

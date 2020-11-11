@@ -25,7 +25,6 @@ pallet-babe = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 pallet-collective = { version = "2.0.0", default-features = false }
 pallet-elections-phragmen = { version = "2.0.0", default-features = false }
-pallet-evm = { version = "2.0.0", default-features = false }
 pallet-grandpa = { version = "2.0.0", default-features = false }
 pallet-indices = { version = "2.0.0", default-features = false }
 pallet-membership = { version = "2.0.0", default-features = false }
@@ -78,6 +77,7 @@ module-cdp-engine = { path = "../../modules/cdp_engine", default-features = fals
 module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
+module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
@@ -98,7 +98,7 @@ module-nft-benchmarking = { path = "../../modules/nft/benchmarking", default-fea
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
-evm-rpc-runtime-api = { path = "../../rpc/evm/runtime_api",  default-features = false }
+module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 
@@ -127,7 +127,7 @@ std = [
 	"pallet-contracts-rpc-runtime-api/std",
 	"pallet-contracts/std",
 	"pallet-elections-phragmen/std",
-	"pallet-evm/std",
+	"module-evm/std",
 	"pallet-grandpa/std",
 	"pallet-indices/std",
 	"pallet-membership/std",
@@ -190,7 +190,7 @@ std = [
 	"primitives/std",
 	"runtime-common/std",
 
-	"evm-rpc-runtime-api/std",
+	"module-evm-rpc-runtime-api/std",
 
 	"ecosystem-renvm-bridge/std",
 ]

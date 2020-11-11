@@ -15,9 +15,9 @@ use frame_support::{
 	StorageMap,
 };
 use frame_system::ensure_signed;
+use module_evm::AddressMapping;
 use module_support::AccountMapping;
 use orml_utilities::with_transaction_result;
-use pallet_evm::AddressMapping;
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::traits::Zero;

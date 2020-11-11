@@ -1,5 +1,5 @@
 [package]
-name = "evm-rpc-runtime-api"
+name = "module-evm-rpc-runtime-api"
 version = "0.1.0"
 authors = ["Acala Developers"]
 edition = "2018"
@@ -10,6 +10,7 @@ sp-api = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
 ethereum-types = { version = "0.9", default-features = false }
+sp-evm = { path = "../../../../primitives/evm", default-features = false }
 
 [features]
 default = ["std"]
@@ -19,4 +20,5 @@ std = [
 	"sp-std/std",
 	"sp-core/std",
 	"ethereum-types/std",
+	"sp-evm/std",
 ]

@@ -1,4 +1,4 @@
-use pallet_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
+use module_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
 use sp_core::{H160, U256};
 use sp_std::{marker::PhantomData, prelude::*, result};
 

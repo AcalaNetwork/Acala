@@ -36,7 +36,6 @@ frame-system-rpc-runtime-api = { version = "2.0.0" }
 pallet-contracts-rpc-runtime-api = { version = "0.8.0" }
 pallet-contracts = { version = "2.0.0" }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0" }
-pallet-evm = { version = "2.0.0" }
 sp-offchain = { version = "2.0.0" }
 sp-session = { version = "2.0.0" }
 sp-storage = { version = "2.0.0" }
@@ -44,12 +43,13 @@ sp-transaction-pool = { version = "2.0.0" }
 sp-blockchain = { version = "2.0.0" }
 sp-std = { version = "2.0.0" }
 
+module-evm = { path = "../modules/evm" }
 module-staking-pool = { path = "../modules/staking_pool" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 acala-primitives = { path = "../primitives" }
 acala-rpc = { path = "../rpc" }
-evm-rpc-runtime-api = { path = "../rpc/evm/runtime_api" }
+module-evm-rpc-runtime-api = { path = "../modules/evm/rpc/runtime_api" }
 
 runtime-common = { path = "../runtime/common" }
 mandala-runtime = { path = "../runtime/mandala", optional = true }

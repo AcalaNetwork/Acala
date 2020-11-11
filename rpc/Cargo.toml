@@ -31,4 +31,4 @@ pallet-transaction-payment-rpc = { version = "2.0.0" }
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 runtime-common = { path = "../runtime/common" }
-evm-rpc = { path = "evm" }
+evm-rpc = { path = "../modules/evm/rpc" }
