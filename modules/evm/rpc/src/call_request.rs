@@ -1,7 +1,6 @@
 use ethereum_types::{H160, U256};
 use serde::Deserialize;
-
-use crate::bytes::Bytes;
+use sp_core::Bytes;
 
 /// Call request
 #[derive(Debug, Default, PartialEq, Deserialize)]

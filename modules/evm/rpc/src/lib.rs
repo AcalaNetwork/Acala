@@ -5,16 +5,15 @@ use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use rustc_hex::ToHex;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
+use sp_core::Bytes;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
-use bytes::Bytes;
 use call_request::CallRequest;
 pub use module_evm::ExitReason;
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
-mod bytes;
 mod call_request;
 mod evm_api;
 

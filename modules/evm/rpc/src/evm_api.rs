@@ -3,10 +3,11 @@
 use ethereum_types::U256;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
+use sp_core::Bytes;
 
 pub use rpc_impl_EVMApi::gen_server::EVMApi as EVMApiServer;
 
-use crate::{bytes::Bytes, call_request::CallRequest};
+use crate::call_request::CallRequest;
 
 /// EVM rpc interface.
 #[rpc(server)]
