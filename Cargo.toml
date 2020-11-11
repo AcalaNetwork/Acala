@@ -151,7 +151,6 @@ pallet-contracts-primitives = { git = "https://github.com/paritytech/substrate.g
 pallet-contracts-rpc = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-contracts-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
-pallet-evm = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-indices = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 pallet-membership = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }

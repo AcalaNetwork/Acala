@@ -16,7 +16,7 @@ sp-std = { version = "2.0.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-utilities = { path = "../../orml/utilities", default-features = false }
 module-support = { path = "../support", default-features = false }
-pallet-evm = { version = "2.0.0", default-features = false }
+module-evm = { path = "../../modules/evm", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "2.0.0" }
@@ -33,7 +33,7 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"primitives/std",
-	"pallet-evm/std",
+	"module-evm/std",
 	"orml-utilities/std",
 	"module-support/std",
 ]

@@ -10,7 +10,7 @@ sp-std = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
-pallet-evm = { version = "2.0.0", default-features = false }
+module-evm = { path = "../../modules/evm", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
@@ -27,7 +27,7 @@ std = [
 	"sp-std/std",
 	"sp-runtime/std",
 	"frame-support/std",
-	"pallet-evm/std",
+	"module-evm/std",
 	"orml-oracle/std",
 	"orml-traits/std",
 	"module-support/std",
