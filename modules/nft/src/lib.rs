@@ -2,14 +2,16 @@
 
 use codec::{Decode, Encode};
 use enumflags2::BitFlags;
-use frame_support::{decl_error, decl_event, decl_module, ensure, traits::Get, weights::Weight};
+use frame_support::{
+	decl_error, decl_event, decl_module, ensure, traits::Get, weights::Weight, IterableStorageDoubleMap,
+};
 use frame_system::ensure_signed;
-use orml_traits::{BasicCurrency, BasicReservableCurrency};
+use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
 use orml_utilities::with_transaction_result;
-use primitives::Balance;
+use primitives::{Balance, NFTBalance};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
-	ModuleId, RuntimeDebug,
+	DispatchResult, ModuleId, RuntimeDebug,
 };
 
 mod default_weight;
@@ -67,11 +69,14 @@ pub struct TokenData {
 	pub deposit: Balance,
 }
 
+pub type TokenIdOf<T> = <T as orml_nft::Trait>::TokenId;
+pub type ClassIdOf<T> = <T as orml_nft::Trait>::ClassId;
+
 decl_event!(
 	 pub enum Event<T> where
 		<T as frame_system::Trait>::AccountId,
-		<T as orml_nft::Trait>::ClassId,
-		<T as orml_nft::Trait>::TokenId,
+		ClassId = ClassIdOf<T>,
+		TokenId = TokenIdOf<T>,
 	{
 		 /// Created NFT class. \[owner, class_id\]
 		 CreatedClass(AccountId, ClassId),
@@ -195,7 +200,7 @@ decl_module! {
 		///		- worst case: 208 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::mint(*quantity)]
-		pub fn mint(origin, to: T::AccountId, class_id: <T as orml_nft::Trait>::ClassId, metadata: CID, quantity: u32) {
+		pub fn mint(origin, to: T::AccountId, class_id: ClassIdOf<T>, metadata: CID, quantity: u32) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
@@ -234,21 +239,9 @@ decl_module! {
 		///		- worst case: 99.99 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::transfer()]
-		pub fn transfer(origin, to: T::AccountId, token: (<T as orml_nft::Trait>::ClassId, <T as orml_nft::Trait>::TokenId)) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-				let data = class_info.data;
-				ensure!(data.properties.0.contains(ClassProperty::Transferable), Error::<T>::NonTransferable);
-
-				let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
-				ensure!(who == token_info.owner, Error::<T>::NoPermission);
-
-				orml_nft::Module::<T>::transfer(&who, &to, token)?;
-
-				Self::deposit_event(RawEvent::TransferedToken(who, to, token.0, token.1));
-				Ok(())
-			})?;
+		pub fn transfer(origin, to: T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) {
+			let who = ensure_signed(origin)?;
+			Self::do_transfer(&who, &to, token)?;
 		}
 
 		/// Burn NFT token
@@ -267,7 +260,7 @@ decl_module! {
 		///		- worst case: 261.4 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::burn()]
-		pub fn burn(origin, token: (<T as orml_nft::Trait>::ClassId, <T as orml_nft::Trait>::TokenId)) {
+		pub fn burn(origin, token: (ClassIdOf<T>, TokenIdOf<T>)) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
@@ -307,7 +300,7 @@ decl_module! {
 		///		- worst case: 224.7 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::destroy_class()]
-		pub fn destroy_class(origin, class_id: <T as orml_nft::Trait>::ClassId, dest: T::AccountId) {
+		pub fn destroy_class(origin, class_id: ClassIdOf<T>, dest: T::AccountId) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
@@ -330,5 +323,45 @@ decl_module! {
 				Ok(())
 			})?;
 		}
+	}
+}
+
+impl<T: Trait> Module<T> {
+	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
+		with_transaction_result(|| {
+			let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+			let data = class_info.data;
+			ensure!(
+				data.properties.0.contains(ClassProperty::Transferable),
+				Error::<T>::NonTransferable
+			);
+
+			let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+			ensure!(*from == token_info.owner, Error::<T>::NoPermission);
+
+			orml_nft::Module::<T>::transfer(from, to, token)?;
+
+			Self::deposit_event(RawEvent::TransferedToken(from.clone(), to.clone(), token.0, token.1));
+
+			Ok(())
+		})
+	}
+}
+
+impl<T: Trait> NFT<T::AccountId> for Module<T> {
+	type ClassId = ClassIdOf<T>;
+	type TokenId = TokenIdOf<T>;
+	type Balance = NFTBalance;
+
+	fn balance(who: &T::AccountId) -> Self::Balance {
+		orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u128
+	}
+
+	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
+		orml_nft::Module::<T>::tokens(token.0, token.1).map(|t| t.owner)
+	}
+
+	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
+		Self::do_transfer(from, to, token)
 	}
 }

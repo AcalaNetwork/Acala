@@ -16,6 +16,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use module_evm::AddressMapping;
+use module_support::AccountMapping;
 use orml_utilities::with_transaction_result;
 use primitives::evm::EnsureAddressOrigin;
 use sp_core::{crypto::AccountId32, H160};
@@ -268,6 +269,16 @@ where
 			Ok(acc) if acc == Self::into_account_id(*address) => Ok(acc),
 			_ => Err(origin),
 		}
+	}
+}
+
+pub struct EvmAccountMapping<T>(sp_std::marker::PhantomData<T>);
+impl<T: Trait> AccountMapping<AccountId32> for EvmAccountMapping<T>
+where
+	T::AccountId: From<AccountId32>,
+{
+	fn into_h160(account_id: AccountId32) -> H160 {
+		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id))
 	}
 }
 
