@@ -134,6 +134,7 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EVM {
+		AccountNonces get(fn account_nonces): map hasher(blake2_128_concat) H160 => T::Index;
 		AccountCodes get(fn account_codes): map hasher(blake2_128_concat) H160 => Vec<u8>;
 		AccountStorages get(fn account_storages):
 			double_map hasher(blake2_128_concat) H160, hasher(blake2_128_concat) H256 => H256;
@@ -145,9 +146,7 @@ decl_storage! {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::into_account_id(*address);
 
-				for _ in 0..account.nonce.unique_saturated_into() {
-					frame_system::Module::<T>::inc_account_nonce(&account_id);
-				}
+				AccountNonces::<T>::insert(&address, account.nonce);
 
 				T::Currency::deposit_creating(
 					&account_id,
@@ -345,7 +344,7 @@ impl<T: Trait> Module<T> {
 	pub fn account_basic(address: &H160) -> Account {
 		let account_id = T::AddressMapping::into_account_id(*address);
 
-		let nonce = frame_system::Module::<T>::account_nonce(&account_id);
+		let nonce = Self::account_nonces(&address);
 		let balance = T::Currency::free_balance(&account_id);
 
 		Account {

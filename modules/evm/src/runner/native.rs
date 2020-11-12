@@ -2,8 +2,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	precompiles::Precompiles, AccountCodes, AccountStorages, AddressMapping, CallInfo, CreateInfo, Error, Event, Log,
-	Module, Runner as RunnerT, Trait, Vicinity,
+	precompiles::Precompiles, AccountCodes, AccountNonces, AccountStorages, AddressMapping, CallInfo, CreateInfo,
+	Error, Event, Log, Module, Runner as RunnerT, Trait, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -18,7 +18,10 @@ use frame_support::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::{traits::UniqueSaturatedInto, SaturatedConversion, TransactionOutcome};
+use sp_runtime::{
+	traits::{One, UniqueSaturatedInto},
+	SaturatedConversion, TransactionOutcome,
+};
 use sp_std::{
 	cmp::min, collections::btree_set::BTreeSet, convert::Infallible, marker::PhantomData, mem, rc::Rc, vec::Vec,
 };
@@ -309,8 +312,7 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 	}
 
 	pub fn inc_nonce(&self, address: H160) {
-		let account_id = T::AddressMapping::into_account_id(address);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		AccountNonces::<T>::mutate(&address, |nonce| *nonce = *nonce + One::one());
 	}
 
 	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
