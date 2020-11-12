@@ -4044,6 +4044,7 @@ dependencies = [
  "frame-system",
  "libsecp256k1",
  "module-support",
+ "orml-traits",
  "orml-utilities",
  "pallet-balances",
  "pallet-evm",
