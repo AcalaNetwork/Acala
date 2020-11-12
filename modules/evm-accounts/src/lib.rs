@@ -278,7 +278,7 @@ where
 	T::AccountId: From<AccountId32>,
 {
 	fn into_h160(account_id: AccountId32) -> H160 {
-		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id))
+		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id)).unwrap_or_default()
 	}
 }
 
