@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod evm;
+
 use codec::{Decode, Encode};
 use sp_runtime::{
 	generic,
@@ -137,3 +139,5 @@ pub const PRECOMPILE_ADDRESS_START: u64 = 1024;
 
 /// The start address for pre-deployed smart contracts.
 pub const PREDEPLOY_ADDRESS_START: u64 = 2048;
+
+pub type NFTBalance = u128;

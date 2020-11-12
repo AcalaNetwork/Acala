@@ -8,6 +8,8 @@ use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, resu
 
 use orml_traits::MultiCurrency;
 
+use super::account_id_from_slice;
+
 /// The `MultiCurrency` impl precompile.
 ///
 ///
@@ -115,12 +117,6 @@ where
 			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
-}
-
-fn account_id_from_slice<AccountId, AccountIdConverter: AddressMapping<AccountId>>(src: &[u8]) -> AccountId {
-	let mut address = [0u8; 20];
-	address[..].copy_from_slice(src);
-	AccountIdConverter::into_account_id(address.into())
 }
 
 fn vec_u8_from_balance<Balance: TryInto<u128>>(b: Balance) -> result::Result<Vec<u8>, ExitError> {

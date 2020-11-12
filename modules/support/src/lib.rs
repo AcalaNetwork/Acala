@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
+use sp_core::H160;
 use sp_runtime::{DispatchError, DispatchResult, FixedU128};
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -242,4 +243,9 @@ impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balanc
 	fn do_withdraw_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
 		Ok(())
 	}
+}
+
+/// Mapping from `AccountId` into `H160`.
+pub trait AccountMapping<AccountId> {
+	fn into_h160(account_id: AccountId) -> H160;
 }

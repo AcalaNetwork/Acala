@@ -1,6 +1,3 @@
-//! EVM execution module for Substrate
-
-// Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::too_many_arguments)]
 
@@ -11,40 +8,24 @@ mod tests;
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use sp_evm::{Account, CallInfo, CreateInfo, ExecutionInfo, Log, Vicinity};
+pub use primitives::evm::{Account, CallInfo, CreateInfo, EnsureAddressOrigin, ExecutionInfo, Log, Vicinity};
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::traits::{Currency, ExistenceRequirement, Get};
+use frame_support::traits::{Currency, Get};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{Hasher, H160, H256, U256};
-use sp_runtime::{
-	traits::{BadOrigin, UniqueSaturatedInto},
-	AccountId32,
-};
+use sp_runtime::{traits::UniqueSaturatedInto, AccountId32};
 use sp_std::vec::Vec;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
-
-pub trait EnsureAddressOrigin<OuterOrigin> {
-	/// Success return type.
-	type Success;
-
-	/// Perform the origin check.
-	fn ensure_address_origin(address: &H160, origin: OuterOrigin) -> Result<Self::Success, BadOrigin> {
-		Self::try_address_origin(address, origin).map_err(|_| BadOrigin)
-	}
-
-	/// Try with origin.
-	fn try_address_origin(address: &H160, origin: OuterOrigin) -> Result<Self::Success, OuterOrigin>;
-}
 
 /// Ensure that the origin is root.
 pub struct EnsureAddressRoot<AccountId>(sp_std::marker::PhantomData<AccountId>);
@@ -71,24 +52,6 @@ impl<OuterOrigin, AccountId> EnsureAddressOrigin<OuterOrigin> for EnsureAddressN
 
 	fn try_address_origin(_address: &H160, origin: OuterOrigin) -> Result<AccountId, OuterOrigin> {
 		Err(origin)
-	}
-}
-
-/// Ensure that the address is truncated hash of the origin. Only works if the
-/// account id is `AccountId32`.
-pub struct EnsureAddressTruncated;
-
-impl<OuterOrigin> EnsureAddressOrigin<OuterOrigin> for EnsureAddressTruncated
-where
-	OuterOrigin: Into<Result<RawOrigin<AccountId32>, OuterOrigin>> + From<RawOrigin<AccountId32>>,
-{
-	type Success = AccountId32;
-
-	fn try_address_origin(address: &H160, origin: OuterOrigin) -> Result<AccountId32, OuterOrigin> {
-		origin.into().and_then(|o| match o {
-			RawOrigin::Signed(who) if AsRef::<[u8; 32]>::as_ref(&who)[0..20] == address[0..20] => Ok(who),
-			r => Err(OuterOrigin::from(r)),
-		})
 	}
 }
 
@@ -134,8 +97,6 @@ static ISTANBUL_CONFIG: Config = Config::istanbul();
 pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	/// Allow the origin to call on behalf of given address.
 	type CallOrigin: EnsureAddressOrigin<Self::Origin>;
-	/// Allow the origin to withdraw on behalf of given address.
-	type WithdrawOrigin: EnsureAddressOrigin<Self::Origin, Success = Self::AccountId>;
 
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
@@ -173,6 +134,7 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EVM {
+		AccountNonces get(fn account_nonces): map hasher(blake2_128_concat) H160 => T::Index;
 		AccountCodes get(fn account_codes): map hasher(blake2_128_concat) H160 => Vec<u8>;
 		AccountStorages get(fn account_storages):
 			double_map hasher(blake2_128_concat) H160, hasher(blake2_128_concat) H256 => H256;
@@ -184,9 +146,7 @@ decl_storage! {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::into_account_id(*address);
 
-				for _ in 0..account.nonce.unique_saturated_into() {
-					frame_system::Module::<T>::inc_account_nonce(&account_id);
-				}
+				AccountNonces::<T>::insert(&address, account.nonce);
 
 				T::Currency::deposit_creating(
 					&account_id,
@@ -247,20 +207,6 @@ decl_module! {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
-
-		/// Withdraw balance from EVM into currency/balances module.
-		#[weight = 0]
-		fn withdraw(origin, address: H160, value: BalanceOf<T>) {
-			let destination = T::WithdrawOrigin::ensure_address_origin(&address, origin)?;
-			let address_account_id = T::AddressMapping::into_account_id(address);
-
-			T::Currency::transfer(
-				&address_account_id,
-				&destination,
-				value,
-				ExistenceRequirement::AllowDeath
-			)?;
-		}
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
 		#[weight = *gas_limit as Weight]
@@ -398,7 +344,7 @@ impl<T: Trait> Module<T> {
 	pub fn account_basic(address: &H160) -> Account {
 		let account_id = T::AddressMapping::into_account_id(*address);
 
-		let nonce = frame_system::Module::<T>::account_nonce(&account_id);
+		let nonce = Self::account_nonces(&address);
 		let balance = T::Currency::free_balance(&account_id);
 
 		Account {
