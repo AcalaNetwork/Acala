@@ -90,7 +90,7 @@ impl Trait for Test {
 	type Event = Event<Test>;
 	type Precompiles = ();
 	type ChainId = SystemChainId;
-	type Runner = crate::runner::native::Runner<Self>;
+	type Runner = crate::runner::stack::Runner<Self>;
 }
 
 type System = frame_system::Module<Test>;
@@ -281,8 +281,7 @@ fn should_revert() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let new_balance = INITIAL_BALANCE - result.used_gas.as_u64();
-		assert_eq!(balance(alice()), new_balance);
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
 		let contract_address = H160::from(result.value);
 
@@ -296,7 +295,7 @@ fn should_revert() {
 			1000000
 		).unwrap();
 
-		assert_eq!(balance(alice()), new_balance - result.used_gas.as_u64());
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
 		assert_eq!(
 			to_hex(&result.value, true),
@@ -323,40 +322,10 @@ fn should_deploy_payable_contract() {
 	let contract = from_hex("0x60806040526040516087380380608783398181016040526020811015602357600080fd5b81019080805190602001909291905050508060008190555050603e8060496000396000f3fe6080604052600080fdfea265627a7a72315820ca74d7bda13b4991ba0b903e13a6d07d5ace341dcea7cfcfc0ba5baad347687764736f6c6343000511003200000000000000000000000000000000000000000000000000000000000003e8").unwrap();
 	let transfer_amount = 1000;
 	new_test_ext().execute_with(|| {
-		let result = <Test as Trait>::Runner::create(alice(), contract, U256::from(transfer_amount), 100000).unwrap();
-
-		let new_balance = INITIAL_BALANCE - result.used_gas.as_u64() - transfer_amount;
-		assert_eq!(balance(alice()), new_balance);
-		assert_eq!(balance(result.value), transfer_amount);
-	});
-}
-
-#[test]
-fn should_work_with_factory() {
-	// 	pragma solidity ^0.5.0;
-	//
-	// 	contract Factory {
-	// 		Contract[] newContracts;
-	//
-	// 		function createContract () public {
-	//	 		Contract newContract = new Contract();
-	// 			newContracts.push(newContract);
-	// 		}
-	// 	}
-	//
-	// 	contract Contract { }
-	let contract = from_hex("0x608060405234801561001057600080fd5b5061016c806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063412a5a6d14610030575b600080fd5b61003861003a565b005b6000604051610048906100d0565b604051809103906000f080158015610064573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b605b806100dd8339019056fe6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a723158207237f48b79cb8bd7892b1affe7326666b6104cf050c92e1aea23b4bdcfbc928764736f6c63430005110032a265627a7a72315820ff3b7b0c5ca8cba09847804f4a67b249035d38282c40eeb087d58a9ac661529764736f6c63430005110032").unwrap();
-	new_test_ext().execute_with(|| {
-		// deploy contract
-		let result = <Test as Trait>::Runner::create(alice(), contract, U256::default(), 1000000).unwrap();
-		println!("{:?}", result);
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-
-		// Factory.createContract(name)
-		let create_contract = from_hex("0x412a5a6d").unwrap();
 		let result =
-			<Test as Trait>::Runner::call(alice(), result.value, create_contract, U256::default(), 10000000).unwrap();
-		println!("{:?}", result);
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
+			<Test as Trait>::Runner::create(alice(), contract.clone(), U256::from(transfer_amount), 100000).unwrap();
+
+		assert_eq!(balance(alice()), INITIAL_BALANCE - transfer_amount);
+		assert_eq!(balance(result.value), transfer_amount);
 	});
 }

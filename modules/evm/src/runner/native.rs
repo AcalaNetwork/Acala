@@ -14,7 +14,7 @@ use evm_runtime::{Config, Handler as HandlerT};
 use frame_support::{
 	debug,
 	storage::{StorageDoubleMap, StorageMap},
-	traits::{Currency, ExistenceRequirement, Get, WithdrawReasons},
+	traits::{Currency, ExistenceRequirement, Get},
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
@@ -53,34 +53,17 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		let mut substate =
 			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
 
-		if !value.is_zero() {
-			substate
-				.transfer(Transfer { source, target, value })
-				.map_err(|_| Error::BalanceLow)?;
-		}
-
-		substate
-			.withdraw(source, U256::from(gas_limit))
-			.map_err(|_| Error::BalanceLow)?;
-
-		let mut refund = U256::zero();
-
 		substate.inc_nonce(source);
 
-		let result = frame_support::storage::with_transaction(|| {
+		frame_support::storage::with_transaction(|| {
 			let code = substate.code(target);
 			let (reason, out) = substate.execute(source, target, value, code, input);
 
-			let used_gas = U256::from(substate.used_gas());
-			refund = U256::from(gas_limit).saturating_sub(used_gas);
-
-			let logs = substate.logs.clone();
-
-			let call_info = CallInfo {
+			let mut call_info = CallInfo {
 				exit_reason: reason.clone(),
 				value: out,
-				used_gas,
-				logs,
+				used_gas: U256::from(substate.used_gas()),
+				logs: substate.logs.clone(),
 			};
 
 			debug::debug!(
@@ -89,19 +72,17 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				call_info
 			);
 
-			match reason {
-				ExitReason::Succeed(_) => TransactionOutcome::Commit(Ok(call_info)),
-				ExitReason::Revert(_) => TransactionOutcome::Rollback(Ok(call_info)),
-				ExitReason::Error(_) => TransactionOutcome::Rollback(Ok(call_info)),
-				ExitReason::Fatal(_) => TransactionOutcome::Rollback(Ok(call_info)),
+			if !reason.is_succeed() {
+				return TransactionOutcome::Rollback(Ok(call_info));
 			}
-		});
 
-		if !refund.is_zero() {
-			substate.deposit(source, refund);
-		}
+			if let Err(e) = substate.transfer(Transfer { source, target, value }) {
+				call_info.exit_reason = e.into();
+				return TransactionOutcome::Rollback(Ok(call_info));
+			}
 
-		result
+			TransactionOutcome::Commit(Ok(call_info))
+		})
 	}
 
 	fn create(source: H160, init: Vec<u8>, value: U256, gas_limit: u32) -> Result<CreateInfo, Self::Error> {
@@ -124,37 +105,16 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 
 		let address = substate.create_address(CreateScheme::Legacy { caller: source });
 
-		if !value.is_zero() {
-			substate
-				.transfer(Transfer {
-					source,
-					target: address,
-					value,
-				})
-				.map_err(|_| Error::BalanceLow)?;
-		}
-
-		substate
-			.withdraw(source, U256::from(gas_limit))
-			.map_err(|_| Error::BalanceLow)?;
-
-		let mut refund = U256::zero();
-
 		substate.inc_nonce(source);
 
-		let result = frame_support::storage::with_transaction(|| {
+		frame_support::storage::with_transaction(|| {
 			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
-
-			let used_gas = U256::from(substate.used_gas());
-			refund = U256::from(gas_limit).saturating_sub(used_gas);
-
-			let logs = substate.logs.clone();
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
 				value: address,
-				used_gas,
-				logs,
+				used_gas: U256::from(substate.used_gas()),
+				logs: substate.logs.clone(),
 			};
 
 			debug::debug!(
@@ -163,29 +123,31 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				create_info
 			);
 
-			match reason {
-				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
-					Ok(()) => {
-						substate.inc_nonce(address);
-						AccountCodes::insert(address, out);
-						TransactionOutcome::Commit(Ok(create_info))
-					}
-					Err(e) => {
-						create_info.exit_reason = e.into();
-						TransactionOutcome::Rollback(Ok(create_info))
-					}
-				},
-				ExitReason::Revert(_) => TransactionOutcome::Rollback(Ok(create_info)),
-				ExitReason::Error(_) => TransactionOutcome::Rollback(Ok(create_info)),
-				ExitReason::Fatal(_) => TransactionOutcome::Rollback(Ok(create_info)),
+			if !reason.is_succeed() {
+				return TransactionOutcome::Rollback(Ok(create_info));
 			}
-		});
 
-		if !refund.is_zero() {
-			substate.deposit(source, refund);
-		}
+			if let Err(e) = substate.gasometer.record_deposit(out.len()) {
+				create_info.exit_reason = e.into();
+				return TransactionOutcome::Rollback(Ok(create_info));
+			}
 
-		result
+			create_info.used_gas = U256::from(substate.used_gas());
+
+			if let Err(e) = substate.transfer(Transfer {
+				source,
+				target: address,
+				value,
+			}) {
+				create_info.exit_reason = e.into();
+				return TransactionOutcome::Rollback(Ok(create_info));
+			}
+
+			substate.inc_nonce(address);
+
+			AccountCodes::insert(address, out);
+			TransactionOutcome::Commit(Ok(create_info))
+		})
 	}
 
 	fn create2(
@@ -219,37 +181,16 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			salt,
 		});
 
-		if !value.is_zero() {
-			substate
-				.transfer(Transfer {
-					source,
-					target: address,
-					value,
-				})
-				.map_err(|_| Error::BalanceLow)?;
-		}
-
-		substate
-			.withdraw(source, U256::from(gas_limit))
-			.map_err(|_| Error::BalanceLow)?;
-
-		let mut refund = U256::zero();
-
 		substate.inc_nonce(source);
 
-		let result = frame_support::storage::with_transaction(|| {
+		frame_support::storage::with_transaction(|| {
 			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
-
-			let used_gas = U256::from(substate.used_gas());
-			refund = U256::from(gas_limit).saturating_sub(used_gas);
-
-			let logs = substate.logs.clone();
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
 				value: address,
-				used_gas,
-				logs,
+				used_gas: U256::from(substate.used_gas()),
+				logs: substate.logs.clone(),
 			};
 
 			debug::debug!(
@@ -258,29 +199,31 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				create_info
 			);
 
-			match reason {
-				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
-					Ok(()) => {
-						substate.inc_nonce(address);
-						AccountCodes::insert(address, out);
-						TransactionOutcome::Commit(Ok(create_info))
-					}
-					Err(e) => {
-						create_info.exit_reason = e.into();
-						TransactionOutcome::Rollback(Ok(create_info))
-					}
-				},
-				ExitReason::Revert(_) => TransactionOutcome::Rollback(Ok(create_info)),
-				ExitReason::Error(_) => TransactionOutcome::Rollback(Ok(create_info)),
-				ExitReason::Fatal(_) => TransactionOutcome::Rollback(Ok(create_info)),
+			if !reason.is_succeed() {
+				return TransactionOutcome::Rollback(Ok(create_info));
 			}
-		});
 
-		if !refund.is_zero() {
-			substate.deposit(source, refund);
-		}
+			if let Err(e) = substate.gasometer.record_deposit(out.len()) {
+				create_info.exit_reason = e.into();
+				return TransactionOutcome::Rollback(Ok(create_info));
+			}
 
-		result
+			create_info.used_gas = U256::from(substate.used_gas());
+
+			if let Err(e) = substate.transfer(Transfer {
+				source,
+				target: address,
+				value,
+			}) {
+				create_info.exit_reason = e.into();
+				return TransactionOutcome::Rollback(Ok(create_info));
+			}
+
+			substate.inc_nonce(address);
+
+			AccountCodes::insert(address, out);
+			TransactionOutcome::Commit(Ok(create_info))
+		})
 	}
 }
 
@@ -372,23 +315,6 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 			ExistenceRequirement::AllowDeath,
 		)
 		.map_err(|_| ExitError::OutOfGas)
-	}
-
-	fn withdraw(&self, source: H160, amount: U256) -> Result<(), ExitError> {
-		let account_id = T::AddressMapping::into_account_id(source);
-		T::Currency::withdraw(
-			&account_id,
-			amount.saturated_into::<u128>().unique_saturated_into(),
-			WithdrawReasons::FEE,
-			ExistenceRequirement::AllowDeath,
-		)
-		.map(|_| ())
-		.map_err(|_| ExitError::OutOfFund)
-	}
-
-	fn deposit(&self, address: H160, amount: U256) {
-		let account_id = T::AddressMapping::into_account_id(address);
-		T::Currency::deposit_creating(&account_id, amount.saturated_into::<u128>().unique_saturated_into());
 	}
 
 	pub fn nonce(&self, address: H160) -> U256 {
