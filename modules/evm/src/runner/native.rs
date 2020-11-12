@@ -40,25 +40,19 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			gas_limit,
 		);
 
-		let account_id = T::AddressMapping::into_account_id(source);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: source,
+		};
+
+		let config = T::config();
+
+		let mut substate =
+			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let vicinity = Vicinity {
-				gas_price: U256::one(),
-				origin: source,
-			};
-
-			let config = T::config();
-
-			let mut substate = Handler::<T>::new_with_precompile(
-				&vicinity,
-				gas_limit as usize,
-				false,
-				config,
-				T::Precompiles::execute,
-			);
-
 			let code = substate.code(target);
 
 			let (reason, out) = substate.execute(source, target, value, code, input);
@@ -96,27 +90,20 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			gas_limit,
 		);
 
-		let account_id = T::AddressMapping::into_account_id(source);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: source,
+		};
+
+		let config = T::config();
+
+		let mut substate =
+			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		let address = substate.create_address(CreateScheme::Legacy { caller: source });
+		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let vicinity = Vicinity {
-				gas_price: U256::one(),
-				origin: source,
-			};
-
-			let config = T::config();
-
-			let mut substate = Handler::<T>::new_with_precompile(
-				&vicinity,
-				gas_limit as usize,
-				false,
-				config,
-				T::Precompiles::execute,
-			);
-
-			let address = substate.create_address(CreateScheme::Legacy { caller: source });
-
 			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
 
 			let used_gas = U256::from(substate.used_gas());
@@ -138,6 +125,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			match reason {
 				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
 					Ok(()) => {
+						substate.inc_nonce(address);
 						AccountCodes::insert(address, out);
 						TransactionOutcome::Commit(Ok(create_info))
 					}
@@ -167,32 +155,26 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			gas_limit,
 		);
 
-		let account_id = T::AddressMapping::into_account_id(source);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: source,
+		};
+
+		let config = T::config();
+
+		let mut substate =
+			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
+		let address = substate.create_address(CreateScheme::Create2 {
+			caller: source,
+			code_hash,
+			salt,
+		});
+
+		substate.inc_nonce(address);
 
 		frame_support::storage::with_transaction(|| {
-			let vicinity = Vicinity {
-				gas_price: U256::one(),
-				origin: source,
-			};
-
-			let config = T::config();
-
-			let mut substate = Handler::<T>::new_with_precompile(
-				&vicinity,
-				gas_limit as usize,
-				false,
-				config,
-				T::Precompiles::execute,
-			);
-
-			let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-			let address = substate.create_address(CreateScheme::Create2 {
-				caller: source,
-				code_hash,
-				salt,
-			});
-
 			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
 
 			let used_gas = U256::from(substate.used_gas());
@@ -214,6 +196,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			match reason {
 				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
 					Ok(()) => {
+						substate.inc_nonce(address);
 						AccountCodes::insert(address, out);
 						TransactionOutcome::Commit(Ok(create_info))
 					}
@@ -320,17 +303,17 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 		.map_err(|_| ExitError::OutOfGas)
 	}
 
-	fn nonce(&self, address: H160) -> U256 {
+	pub fn nonce(&self, address: H160) -> U256 {
 		let account = Module::<T>::account_basic(&address);
 		account.nonce
 	}
 
-	fn inc_nonce(&self, address: H160) {
+	pub fn inc_nonce(&self, address: H160) {
 		let account_id = T::AddressMapping::into_account_id(address);
 		frame_system::Module::<T>::inc_account_nonce(&account_id);
 	}
 
-	fn create_address(&self, scheme: CreateScheme) -> H160 {
+	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
 		match scheme {
 			CreateScheme::Create2 {
 				caller,
