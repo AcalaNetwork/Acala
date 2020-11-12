@@ -16,6 +16,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use module_evm::AddressMapping;
+use module_support::AccountMapping;
 use orml_utilities::with_transaction_result;
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
@@ -250,6 +251,16 @@ impl<T: Trait> AddressMapping<AccountId32> for EvmAddressMapping<T> {
 			data[4..24].copy_from_slice(&address[..]);
 			AccountId32::from(Into::<[u8; 32]>::into(data))
 		}
+	}
+}
+
+pub struct EvmAccountMapping<T>(sp_std::marker::PhantomData<T>);
+impl<T: Trait> AccountMapping<AccountId32> for EvmAccountMapping<T>
+where
+	T::AccountId: From<AccountId32>,
+{
+	fn into_h160(account_id: AccountId32) -> H160 {
+		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id))
 	}
 }
 
