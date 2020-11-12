@@ -92,6 +92,7 @@ impl Trait for Runtime {
 	type Currency = Balances;
 	type NewAccountDeposit = NewAccountDeposit;
 	type AddressMapping = EvmAddressMapping<Runtime>;
+	type MergeAccount = ();
 	type KillAccount = ();
 	type WeightInfo = ();
 }

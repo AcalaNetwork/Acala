@@ -258,7 +258,7 @@ fn acala_genesis(
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		}),
-		pallet_evm: Some(Default::default()),
+		module_evm: Some(Default::default()),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),

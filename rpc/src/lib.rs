@@ -7,17 +7,18 @@ use sc_client_api::light::{Fetcher, RemoteBlockchain};
 use sc_consensus_babe::{Config, Epoch};
 use sc_consensus_epochs::SharedEpochChanges;
 use sc_finality_grandpa::{FinalityProofProvider, GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState};
-use sc_keystore::KeyStorePtr;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
+use sp_keystore::SyncCryptoStorePtr;
 use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
 pub use sc_rpc::SubscriptionTaskExecutor;
 
+pub use evm_rpc::{EVMApi, EVMApiServer, EVMRuntimeRPCApi};
 pub use sc_rpc::DenyUnsafe;
 
 /// A type representing all RPC extensions.
@@ -42,7 +43,7 @@ pub struct BabeDeps {
 	/// BABE pending epoch changes.
 	pub shared_epoch_changes: SharedEpochChanges<Block, Epoch>,
 	/// The keystore that manages the keys of the node.
-	pub keystore: KeyStorePtr,
+	pub keystore: SyncCryptoStorePtr,
 }
 
 /// Extra dependencies for GRANDPA
@@ -86,6 +87,7 @@ where
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
+	C::Api: EVMRuntimeRPCApi<Block>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
@@ -151,7 +153,8 @@ where
 		finality_provider,
 	)));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
-	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client)));
+	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client.clone())));
+	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client)));
 
 	io
 }
