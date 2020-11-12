@@ -312,7 +312,7 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 	}
 
 	pub fn inc_nonce(&self, address: H160) {
-		AccountNonces::<T>::mutate(&address, |nonce| *nonce = *nonce + One::one());
+		AccountNonces::<T>::mutate(&address, |nonce| *nonce += One::one());
 	}
 
 	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
