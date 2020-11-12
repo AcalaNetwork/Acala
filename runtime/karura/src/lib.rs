@@ -26,9 +26,9 @@ use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
-	traits::{AccountIdConversion, CheckedAdd, CheckedMul, CheckedSub},
+	traits::AccountIdConversion,
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -38,8 +38,8 @@ use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
-use module_evm::{CallInfo, CreateInfo, EnsureAddressTruncated, Runner};
-use module_evm_accounts::EvmAddressMapping;
+use module_evm::{CallInfo, CreateInfo, Runner};
+use module_evm_accounts::{EvmAccountMapping, EvmAddressMapping};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
@@ -75,7 +75,7 @@ pub use primitives::{
 	AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
 	EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
-pub use runtime_common::{ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
+pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
 
 mod authority;
 mod constants;
@@ -1100,28 +1100,6 @@ impl module_polkadot_bridge::Trait for Runtime {
 	type PolkadotAccountId = AccountId;
 }
 
-pub struct FeeModel;
-impl<Balance: FixedPointOperand> module_staking_pool::FeeModel<Balance> for FeeModel {
-	/// Linear model:
-	/// fee_rate = base_rate + (100% - base_rate) * (1 -
-	/// remain_available_percent) * demand_in_available_percent
-	fn get_fee(
-		remain_available_percent: Ratio,
-		available_amount: Balance,
-		request_amount: Balance,
-		base_rate: Rate,
-	) -> Option<Balance> {
-		let demand_in_available_percent = Ratio::checked_from_rational(request_amount, available_amount)?;
-		let fee_rate = Rate::one()
-			.checked_sub(&base_rate)
-			.and_then(|n| n.checked_mul(&Rate::one().saturating_sub(remain_available_percent)))
-			.and_then(|n| n.checked_mul(&demand_in_available_percent))
-			.and_then(|n| n.checked_add(&base_rate))?;
-
-		fee_rate.checked_mul_int(request_amount)
-	}
-}
-
 parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -1137,7 +1115,7 @@ impl module_staking_pool::Trait for Runtime {
 	type ModuleId = StakingPoolModuleId;
 	type PoolAccountIndexes = PoolAccountIndexes;
 	type UpdateOrigin = EnsureRootOrHalfHomaCouncil;
-	type FeeModel = FeeModel;
+	type FeeModel = CurveFeeModel;
 	type Nominees = NomineesElection;
 	type Bridge = PolkadotBridge;
 	type Currency = Currencies;
@@ -1256,13 +1234,26 @@ parameter_types! {
 	pub const ChainId: u64 = 42;
 }
 
+pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::MultiCurrencyPrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	CurrencyId,
+	Currencies,
+>;
+
+pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	EvmAccountMapping<Runtime>,
+	NFT,
+>;
+
 impl module_evm::Trait for Runtime {
-	type CallOrigin = EnsureAddressTruncated;
-	type WithdrawOrigin = EnsureAddressTruncated;
+	type CallOrigin = EvmAddressMapping<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type Event = Event;
-	type Precompiles = ();
+	type Precompiles = runtime_common::precompile::AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
 }
