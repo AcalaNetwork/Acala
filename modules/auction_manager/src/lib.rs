@@ -14,11 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{
-	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::Get,
-	weights::{DispatchClass, Weight},
-};
+use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
 use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
@@ -328,7 +324,7 @@ decl_module! {
 		///		- collateral auction worst case: 197.5 µs
 		/// # </weight>
 		/// Use the collateral auction worst case as default weight.
-		#[weight = (T::WeightInfo::cancel_collateral_auction(), DispatchClass::Operational)]
+		#[weight = T::WeightInfo::cancel_collateral_auction()]
 		pub fn cancel(origin, id: AuctionId) {
 			with_transaction_result(|| {
 				ensure_none(origin)?;

@@ -27,7 +27,7 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::AccountIdConversion,
-	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
+	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
@@ -600,7 +600,6 @@ parameter_types! {
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 	pub const MaxNominatorRewardedPerValidator: u32 = 64;
 	pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
-	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
 	pub const MaxIterations: u32 = 5;
 	// 0.05%. The higher the value, the more strict solution acceptance becomes.
 	pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
@@ -630,7 +629,7 @@ impl pallet_staking::Trait for Runtime {
 	type MaxIterations = MaxIterations;
 	type MinSolutionScoreBump = MinSolutionScoreBump;
 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-	type UnsignedPriority = StakingUnsignedPriority;
+	type UnsignedPriority = runtime_common::StakingUnsignedPriority;
 	type WeightInfo = ();
 	type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
 }
@@ -854,7 +853,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_auction_manager::Trait for Runtime {
@@ -869,7 +867,7 @@ impl module_auction_manager::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type DEX = Dex;
 	type PriceSource = Prices;
-	type UnsignedPriority = AuctionManagerUnsignedPriority;
+	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::auction_manager::WeightInfo<Runtime>;
 }
@@ -949,7 +947,6 @@ parameter_types! {
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = DOLLARS;
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
-	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_cdp_engine::Trait for Runtime {
@@ -965,7 +962,7 @@ impl module_cdp_engine::Trait for Runtime {
 	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = Dex;
-	type UnsignedPriority = CdpEngineUnsignedPriority;
+	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::cdp_engine::WeightInfo<Runtime>;
 }
@@ -1192,7 +1189,6 @@ parameter_types! {
 	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
-	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 3;
 }
 
 impl ecosystem_renvm_bridge::Trait for Runtime {
@@ -1200,7 +1196,7 @@ impl ecosystem_renvm_bridge::Trait for Runtime {
 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
 	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = RenvmBridgeUnsignedPriority;
+	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
 }
 
 parameter_types! {
