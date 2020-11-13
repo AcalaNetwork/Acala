@@ -15,10 +15,11 @@ use frame_support::{
 	StorageMap,
 };
 use frame_system::ensure_signed;
-use orml_traits::account::MergeAccount;
-use module_support::AccountMapping;
 use module_evm::AddressMapping;
+use module_support::AccountMapping;
+use orml_traits::account::MergeAccount;
 use orml_utilities::with_transaction_result;
+use primitives::evm::EnsureAddressOrigin;
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_std::marker::PhantomData;
@@ -104,8 +105,8 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EvmAccounts {
-		pub Accounts get(fn accounts): map hasher(twox_64_concat) EvmAddress => T::AccountId;
-		pub EvmAddresses get(fn evm_addresses): map hasher(twox_64_concat) T::AccountId => EvmAddress;
+		pub Accounts get(fn accounts): map hasher(twox_64_concat) EvmAddress => Option<T::AccountId>;
+		pub EvmAddresses get(fn evm_addresses): map hasher(twox_64_concat) T::AccountId => Option<EvmAddress>;
 	}
 }
 
@@ -151,8 +152,8 @@ decl_module! {
 				}
 
 				// update accounts
-				if EvmAddresses::<T>::contains_key(&who) {
-					Accounts::<T>::remove(Self::evm_addresses(&who));
+				if let Some(evm_addr) = EvmAddresses::<T>::get(&who) {
+					Accounts::<T>::remove(&evm_addr);
 				}
 				Accounts::<T>::insert(eth_address, &who);
 				EvmAddresses::<T>::insert(&who, eth_address);
@@ -207,21 +208,44 @@ impl<T: Trait> Module<T> {
 		r[64] = recovery_id.serialize();
 		EcdsaSignature(r)
 	}
+
+	fn on_killed_account(who: &T::AccountId) {
+		// Here should be no balance, if there is, it will be burned
+		if let Some(evm_addr) = Self::evm_addresses(who) {
+			Accounts::<T>::remove(evm_addr);
+			EvmAddresses::<T>::remove(who);
+		}
+	}
 }
 
 pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> AddressMapping<AccountId32> for EvmAddressMapping<T> {
-	fn into_account_id(address: H160) -> AccountId32 {
-		if Accounts::<T>::contains_key(address) {
-			let acc = Accounts::<T>::get(address);
-			let mut data = [0u8; 32];
-			data.copy_from_slice(&acc.encode());
-			AccountId32::from(Into::<[u8; 32]>::into(data))
+impl<T: Trait> AddressMapping<T::AccountId> for EvmAddressMapping<T>
+where
+	T::AccountId: From<AccountId32>,
+{
+	fn into_account_id(address: H160) -> T::AccountId {
+		if let Some(acc) = Accounts::<T>::get(address) {
+			acc
 		} else {
-			let mut data = [0u8; 32];
+			let mut data: [u8; 32] = [0u8; 32];
 			data[0..4].copy_from_slice(b"evm:");
 			data[4..24].copy_from_slice(&address[..]);
-			AccountId32::from(Into::<[u8; 32]>::into(data))
+			AccountId32::from(data).into()
+		}
+	}
+}
+
+impl<T: Trait> EnsureAddressOrigin<T::Origin> for EvmAddressMapping<T>
+where
+	T::AccountId: From<AccountId32>,
+{
+	type Success = T::AccountId;
+
+	fn try_address_origin(address: &H160, origin: T::Origin) -> Result<Self::Success, T::Origin> {
+		let acc = ensure_signed(origin.clone());
+		match acc {
+			Ok(acc) if acc == Self::into_account_id(*address) => Ok(acc),
+			_ => Err(origin),
 		}
 	}
 }
@@ -232,16 +256,14 @@ where
 	T::AccountId: From<AccountId32>,
 {
 	fn into_h160(account_id: AccountId32) -> H160 {
-		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id))
+		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id)).unwrap_or_default()
 	}
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
 	fn happened(who: &T::AccountId) {
-		// Here should be no balance, if there is, it will be burned
-		Accounts::<T>::remove(Module::<T>::evm_addresses(who));
-		EvmAddresses::<T>::remove(who);
+		Module::<T>::on_killed_account(&who);
 	}
 }
 

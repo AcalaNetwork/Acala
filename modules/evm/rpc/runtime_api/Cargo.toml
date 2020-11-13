@@ -10,7 +10,7 @@ sp-api = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
 ethereum-types = { version = "0.9", default-features = false }
-sp-evm = { path = "../../../../primitives/evm", default-features = false }
+primitives = { package = "acala-primitives", path = "../../../../primitives", default-features = false }
 
 [features]
 default = ["std"]
@@ -20,5 +20,5 @@ std = [
 	"sp-std/std",
 	"sp-core/std",
 	"ethereum-types/std",
-	"sp-evm/std",
+	"primitives/std",
 ]

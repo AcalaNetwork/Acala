@@ -224,7 +224,7 @@ fn close_account_failed_when_still_has_active_reserved() {
 		assert_eq!(System::allow_death(&CAROL), true);
 		assert_noop!(
 			Accounts::close_account(Origin::signed(CAROL), None),
-			Error::<Runtime>::StillHasActiveReserved,
+			orml_tokens::Error::<Runtime>::StillHasActiveReserved,
 		);
 	});
 }

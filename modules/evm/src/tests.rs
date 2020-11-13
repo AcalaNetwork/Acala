@@ -83,7 +83,6 @@ impl pallet_timestamp::Trait for Test {
 
 impl Trait for Test {
 	type CallOrigin = EnsureAddressRoot<Self::AccountId>;
-	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
 
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
 	type Currency = Balances;
@@ -166,6 +165,45 @@ fn fail_call_return_ok() {
 }
 
 #[test]
+fn should_calculate_contract_address() {
+	new_test_ext().execute_with(|| {
+		let addr = H160::from_str("bec02ff0cbf20042a37d964c33e89f1a2be7f068").unwrap();
+
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: addr,
+		};
+
+		let config = <Test as Trait>::config();
+
+		let handler = crate::runner::native::Handler::<Test>::new_with_precompile(
+			&vicinity,
+			10000usize,
+			false,
+			config,
+			<Test as Trait>::Precompiles::execute,
+		);
+
+		assert_eq!(
+			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
+			H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap()
+		);
+
+		handler.inc_nonce(addr);
+		assert_eq!(
+			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
+			H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap()
+		);
+
+		handler.inc_nonce(addr);
+		assert_eq!(
+			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
+			H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap()
+		);
+	});
+}
+
+#[test]
 fn should_create_and_call_contract() {
 	// pragma solidity ^0.5.0;
 	//
@@ -178,15 +216,20 @@ fn should_create_and_call_contract() {
 
 	new_test_ext().execute_with(|| {
 		// deploy contract
+		let caller = alice();
 		let result = <Test as Trait>::Runner::create(
-			alice(),
+			caller.clone(),
 			contract,
 			U256::default(),
 			1000000,
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let contract_address = H160::from(result.value);
+		let contract_address = result.value;
+
+		assert_eq!(contract_address, H160::from_str("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
+
+		assert_eq!(Module::<Test>::account_basic(&caller).nonce, U256::from_str("02").unwrap());
 
 		// multiply(2, 3)
 		let multiply = from_hex("0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
@@ -203,6 +246,10 @@ fn should_create_and_call_contract() {
 			U256::from(from_hex("0x06").unwrap().as_slice()),
 			U256::from(result.value.as_slice())
 		);
+
+		assert_eq!(Module::<Test>::account_basic(&caller).nonce, U256::from_str("03").unwrap());
+
+		assert_eq!(Module::<Test>::account_basic(&contract_address).nonce, U256::from_str("01").unwrap());
 	});
 }
 
@@ -217,12 +264,12 @@ fn should_revert() {
 	// }
 	let contract = from_hex("0x608060405234801561001057600080fd5b5060df8061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336035565b005b600060a8576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252600d8152602001807f6572726f72206d6573736167650000000000000000000000000000000000000081525060200191505060405180910390fd5b56fea265627a7a7231582066b3ee33bedba8a318d0d66610145030fdc0f982b11f5160d366e15e4d8ba2ef64736f6c63430005110032").unwrap();
 
-	let alice = H160::from_str("1000000000000000000000000000000000000001").unwrap();
+	let caller = alice();
 
 	new_test_ext().execute_with(|| {
 		// deploy contract
 		let result = <Test as Trait>::Runner::create(
-			alice,
+			caller,
 			contract,
 			U256::default(),
 			1000000,
@@ -235,7 +282,7 @@ fn should_revert() {
 		// call method `foo`
 		let foo = from_hex("0xc2985578").unwrap();
 		let result = <Test as Trait>::Runner::call(
-			alice,
+			caller,
 			contract_address,
 			foo,
 			U256::default(),
@@ -250,5 +297,7 @@ fn should_revert() {
 
 		let message  = String::from_utf8_lossy(&result.value);
 		assert!(message.contains("error message"));
+
+		assert_eq!(Module::<Test>::account_basic(&caller).nonce, U256::from_str("03").unwrap());
 	});
 }

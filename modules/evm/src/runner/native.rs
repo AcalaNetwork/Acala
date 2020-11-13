@@ -2,8 +2,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	precompiles::Precompiles, AccountCodes, AccountStorages, AddressMapping, CallInfo, CreateInfo, Error, Event, Log,
-	Module, Runner as RunnerT, Trait, Vicinity,
+	precompiles::Precompiles, AccountCodes, AccountNonces, AccountStorages, AddressMapping, CallInfo, CreateInfo,
+	Error, Event, Log, Module, Runner as RunnerT, Trait, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -12,12 +12,16 @@ use evm::{
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config, Handler as HandlerT};
 use frame_support::{
+	debug,
 	storage::{StorageDoubleMap, StorageMap},
 	traits::{Currency, ExistenceRequirement, Get},
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::{traits::UniqueSaturatedInto, SaturatedConversion, TransactionOutcome};
+use sp_runtime::{
+	traits::{One, UniqueSaturatedInto},
+	SaturatedConversion, TransactionOutcome,
+};
 use sp_std::{
 	cmp::min, collections::btree_set::BTreeSet, convert::Infallible, marker::PhantomData, mem, rc::Rc, vec::Vec,
 };
@@ -31,25 +35,27 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 	type Error = Error<T>;
 
 	fn call(source: H160, target: H160, input: Vec<u8>, value: U256, gas_limit: u32) -> Result<CallInfo, Self::Error> {
-		let account_id = T::AddressMapping::into_account_id(source);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		debug::debug!(
+			target: "evm",
+			"call: source {:?}, target: {:?}, gas_limit: {:?}",
+			source,
+			target,
+			gas_limit,
+		);
+
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: source,
+		};
+
+		let config = T::config();
+
+		let mut substate =
+			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let vicinity = Vicinity {
-				gas_price: U256::one(),
-				origin: source,
-			};
-
-			let config = T::config();
-
-			let mut substate = Handler::<T>::new_with_precompile(
-				&vicinity,
-				gas_limit as usize,
-				false,
-				config,
-				T::Precompiles::execute,
-			);
-
 			let code = substate.code(target);
 
 			let (reason, out) = substate.execute(source, target, value, code, input);
@@ -64,6 +70,12 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				logs,
 			};
 
+			debug::debug!(
+				target: "evm",
+				"call-result: call_info {:?}",
+				call_info
+			);
+
 			match reason {
 				ExitReason::Succeed(_) => TransactionOutcome::Commit(Ok(call_info)),
 				ExitReason::Revert(_) => TransactionOutcome::Rollback(Ok(call_info)),
@@ -74,27 +86,27 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 	}
 
 	fn create(source: H160, init: Vec<u8>, value: U256, gas_limit: u32) -> Result<CreateInfo, Self::Error> {
-		let account_id = T::AddressMapping::into_account_id(source);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		debug::debug!(
+			target: "evm",
+			"create: source {:?}, gas_limit: {:?}",
+			source,
+			gas_limit,
+		);
+
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: source,
+		};
+
+		let config = T::config();
+
+		let mut substate =
+			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		let address = substate.create_address(CreateScheme::Legacy { caller: source });
+		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let vicinity = Vicinity {
-				gas_price: U256::one(),
-				origin: source,
-			};
-
-			let config = T::config();
-
-			let mut substate = Handler::<T>::new_with_precompile(
-				&vicinity,
-				gas_limit as usize,
-				false,
-				config,
-				T::Precompiles::execute,
-			);
-
-			let address = substate.create_address(CreateScheme::Legacy { caller: source });
-
 			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
 
 			let used_gas = U256::from(substate.used_gas());
@@ -107,9 +119,16 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				logs,
 			};
 
+			debug::debug!(
+				target: "evm",
+				"create-result: create_info {:?}",
+				create_info
+			);
+
 			match reason {
 				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
 					Ok(()) => {
+						substate.inc_nonce(address);
 						AccountCodes::insert(address, out);
 						TransactionOutcome::Commit(Ok(create_info))
 					}
@@ -132,32 +151,33 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		value: U256,
 		gas_limit: u32,
 	) -> Result<CreateInfo, Self::Error> {
-		let account_id = T::AddressMapping::into_account_id(source);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		debug::debug!(
+			target: "evm",
+			"create2: source {:?}, gas_limit: {:?}",
+			source,
+			gas_limit,
+		);
+
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: source,
+		};
+
+		let config = T::config();
+
+		let mut substate =
+			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
+		let address = substate.create_address(CreateScheme::Create2 {
+			caller: source,
+			code_hash,
+			salt,
+		});
+
+		substate.inc_nonce(address);
 
 		frame_support::storage::with_transaction(|| {
-			let vicinity = Vicinity {
-				gas_price: U256::one(),
-				origin: source,
-			};
-
-			let config = T::config();
-
-			let mut substate = Handler::<T>::new_with_precompile(
-				&vicinity,
-				gas_limit as usize,
-				false,
-				config,
-				T::Precompiles::execute,
-			);
-
-			let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-			let address = substate.create_address(CreateScheme::Create2 {
-				caller: source,
-				code_hash,
-				salt,
-			});
-
 			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
 
 			let used_gas = U256::from(substate.used_gas());
@@ -170,9 +190,16 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				logs,
 			};
 
+			debug::debug!(
+				target: "evm",
+				"create2-result: create_info {:?}",
+				create_info
+			);
+
 			match reason {
 				ExitReason::Succeed(_) => match substate.gasometer.record_deposit(out.len()) {
 					Ok(()) => {
+						substate.inc_nonce(address);
 						AccountCodes::insert(address, out);
 						TransactionOutcome::Commit(Ok(create_info))
 					}
@@ -279,17 +306,16 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 		.map_err(|_| ExitError::OutOfGas)
 	}
 
-	fn nonce(&self, address: H160) -> U256 {
+	pub fn nonce(&self, address: H160) -> U256 {
 		let account = Module::<T>::account_basic(&address);
 		account.nonce
 	}
 
-	fn inc_nonce(&self, address: H160) {
-		let account_id = T::AddressMapping::into_account_id(address);
-		frame_system::Module::<T>::inc_account_nonce(&account_id);
+	pub fn inc_nonce(&self, address: H160) {
+		AccountNonces::<T>::mutate(&address, |nonce| *nonce += One::one());
 	}
 
-	fn create_address(&self, scheme: CreateScheme) -> H160 {
+	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
 		match scheme {
 			CreateScheme::Create2 {
 				caller,
@@ -456,6 +482,12 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		init_code: Vec<u8>,
 		target_gas: Option<usize>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
+		debug::debug!(
+			target: "evm",
+			"handler: create: caller {:?}",
+			caller,
+		);
+
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {
@@ -537,6 +569,12 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		is_static: bool,
 		context: Context,
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
+		debug::debug!(
+			target: "evm",
+			"handler: call: code_address {:?}",
+			code_address,
+		);
+
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {

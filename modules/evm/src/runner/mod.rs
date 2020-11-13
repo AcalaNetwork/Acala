@@ -2,8 +2,8 @@ pub mod native;
 pub mod stack;
 
 use crate::Trait;
+use primitives::evm::{CallInfo, CreateInfo};
 use sp_core::{H160, H256, U256};
-use sp_evm::{CallInfo, CreateInfo};
 use sp_std::vec::Vec;
 
 pub trait Runner<T: Trait> {
