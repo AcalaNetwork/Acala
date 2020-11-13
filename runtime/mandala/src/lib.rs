@@ -140,6 +140,14 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 	]
 }
 
+// Priority of unsigned transactions
+parameter_types! {
+	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
+	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
+	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
+}
+
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
 	/// We allow for 2 seconds of compute with a 4 second average block time.
@@ -601,7 +609,6 @@ parameter_types! {
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 	pub const MaxNominatorRewardedPerValidator: u32 = 64;
 	pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
-	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
 	pub const MaxIterations: u32 = 5;
 	// 0.05%. The higher the value, the more strict solution acceptance becomes.
 	pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
@@ -855,7 +862,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_auction_manager::Trait for Runtime {
@@ -950,7 +956,6 @@ parameter_types! {
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
 	pub const MinimumDebitValue: Balance = DOLLARS;
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
-	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl module_cdp_engine::Trait for Runtime {
@@ -1197,7 +1202,6 @@ parameter_types! {
 	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
-	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 3;
 }
 
 impl ecosystem_renvm_bridge::Trait for Runtime {

@@ -277,7 +277,7 @@ decl_module! {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[weight = (T::WeightInfo::liquidate_by_dex(), DispatchClass::Operational)]
+		#[weight = T::WeightInfo::liquidate_by_dex()]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
@@ -307,7 +307,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 161.5 µs
 		/// # </weight>
-		#[weight = (T::WeightInfo::settle(), DispatchClass::Operational)]
+		#[weight = T::WeightInfo::settle()]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
