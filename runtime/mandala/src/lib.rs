@@ -27,7 +27,7 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::AccountIdConversion,
-	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
+	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
@@ -138,14 +138,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		DSWFModuleId::get().into_account(),
 		ZeroAccountId::get(),
 	]
-}
-
-// Priority of unsigned transactions
-parameter_types! {
-	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
 }
 
 parameter_types! {
@@ -638,7 +630,7 @@ impl pallet_staking::Trait for Runtime {
 	type MaxIterations = MaxIterations;
 	type MinSolutionScoreBump = MinSolutionScoreBump;
 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-	type UnsignedPriority = StakingUnsignedPriority;
+	type UnsignedPriority = runtime_common::StakingUnsignedPriority;
 	type WeightInfo = ();
 	type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
 }
@@ -876,7 +868,7 @@ impl module_auction_manager::Trait for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type DEX = Dex;
 	type PriceSource = Prices;
-	type UnsignedPriority = AuctionManagerUnsignedPriority;
+	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::auction_manager::WeightInfo<Runtime>;
 }
@@ -971,7 +963,7 @@ impl module_cdp_engine::Trait for Runtime {
 	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type DEX = Dex;
-	type UnsignedPriority = CdpEngineUnsignedPriority;
+	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::cdp_engine::WeightInfo<Runtime>;
 }
@@ -1209,7 +1201,7 @@ impl ecosystem_renvm_bridge::Trait for Runtime {
 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
 	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = RenvmBridgeUnsignedPriority;
+	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
 }
 
 parameter_types! {

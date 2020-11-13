@@ -1,14 +1,22 @@
-//! Common runtime code for Acala and Karura.
+//! Common runtime code for Acala, Karura and Mandala.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::parameter_types;
 pub use module_support::{ExchangeRate, Price, Rate, Ratio};
-use sp_runtime::{traits::Saturating, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{traits::Saturating, transaction_validity::TransactionPriority, FixedPointNumber, FixedPointOperand};
 
 pub mod precompile;
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
+
+// Priority of unsigned transactions
+parameter_types! {
+	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
+	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
+	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
+}
 
 parameter_types! {
 	pub FeeRateMatrix: [[Rate; 11]; 11] = [
