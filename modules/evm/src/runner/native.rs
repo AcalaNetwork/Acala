@@ -516,7 +516,11 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		let target_gas = target_gas.unwrap_or(after_gas);
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
+		let mut substate =
+			Self::new_with_precompile(self.vicinity, target_gas, self.is_static, self.config, self.precompile);
+
 		let address = self.create_address(scheme);
+		substate.inc_nonce(caller);
 
 		frame_support::storage::with_transaction(|| {
 			macro_rules! try_or_fail {
@@ -528,16 +532,11 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				};
 			}
 
-			let mut substate =
-				Self::new_with_precompile(self.vicinity, target_gas, self.is_static, self.config, self.precompile);
-
 			let transfer = Some(Transfer {
 				source: caller,
 				target: address,
 				value,
 			});
-
-			substate.inc_nonce(caller);
 
 			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new(), transfer);
 
@@ -546,6 +545,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 					Ok(()) => {
 						try_or_fail!(self.gasometer.record_stipend(substate.gasometer.gas()));
 						try_or_fail!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
+						substate.inc_nonce(address);
 						AccountCodes::insert(address, out);
 
 						self.deleted.append(&mut substate.deleted);
