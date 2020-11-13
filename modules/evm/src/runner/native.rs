@@ -56,10 +56,11 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
+			let transfer = Some(Transfer { source, target, value });
 			let code = substate.code(target);
-			let (reason, out) = substate.execute(source, target, value, code, input);
+			let (reason, out) = substate.execute(source, target, value, code, input, transfer);
 
-			let mut call_info = CallInfo {
+			let call_info = CallInfo {
 				exit_reason: reason.clone(),
 				value: out,
 				used_gas: U256::from(substate.used_gas()),
@@ -73,11 +74,6 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			);
 
 			if !reason.is_succeed() {
-				return TransactionOutcome::Rollback(Ok(call_info));
-			}
-
-			if let Err(e) = substate.transfer(Transfer { source, target, value }) {
-				call_info.exit_reason = e.into();
 				return TransactionOutcome::Rollback(Ok(call_info));
 			}
 
@@ -108,7 +104,13 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
+			let transfer = Some(Transfer {
+				source,
+				target: address,
+				value,
+			});
+
+			let (reason, out) = substate.execute(source, address, value, init, Vec::new(), transfer);
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
@@ -133,15 +135,6 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			}
 
 			create_info.used_gas = U256::from(substate.used_gas());
-
-			if let Err(e) = substate.transfer(Transfer {
-				source,
-				target: address,
-				value,
-			}) {
-				create_info.exit_reason = e.into();
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
 
 			substate.inc_nonce(address);
 
@@ -184,7 +177,13 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
+			let transfer = Some(Transfer {
+				source,
+				target: address,
+				value,
+			});
+
+			let (reason, out) = substate.execute(source, address, value, init, Vec::new(), transfer);
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
@@ -209,15 +208,6 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			}
 
 			create_info.used_gas = U256::from(substate.used_gas());
-
-			if let Err(e) = substate.transfer(Transfer {
-				source,
-				target: address,
-				value,
-			}) {
-				create_info.exit_reason = e.into();
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
 
 			substate.inc_nonce(address);
 
@@ -279,7 +269,14 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 		value: U256,
 		code: Vec<u8>,
 		input: Vec<u8>,
+		transfer: Option<Transfer>,
 	) -> (ExitReason, Vec<u8>) {
+		if let Some(transfer) = transfer {
+			if let Err(e) = self.transfer(transfer) {
+				return (e.into(), Vec::new());
+			}
+		}
+
 		let context = Context {
 			caller,
 			address,
@@ -534,18 +531,15 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			let mut substate =
 				Self::new_with_precompile(self.vicinity, target_gas, self.is_static, self.config, self.precompile);
 
-			match substate.transfer(Transfer {
+			let transfer = Some(Transfer {
 				source: caller,
 				target: address,
 				value,
-			}) {
-				Ok(()) => (),
-				Err(e) => return TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
-			}
+			});
 
 			substate.inc_nonce(caller);
 
-			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
+			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new(), transfer);
 
 			match reason {
 				ExitReason::Succeed(s) => match self.gasometer.record_deposit(out.len()) {
@@ -626,14 +620,14 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				self.precompile,
 			);
 
-			if let Some(transfer) = transfer {
-				match substate.transfer(transfer) {
-					Ok(()) => (),
-					Err(e) => return TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
-				}
-			}
-
-			let (reason, out) = substate.execute(context.caller, context.address, context.apparent_value, code, input);
+			let (reason, out) = substate.execute(
+				context.caller,
+				context.address,
+				context.apparent_value,
+				code,
+				input,
+				transfer,
+			);
 
 			match reason {
 				ExitReason::Succeed(s) => {
