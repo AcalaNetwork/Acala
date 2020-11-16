@@ -1044,6 +1044,7 @@ impl module_accounts::Trait for Runtime {
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
 	type KillAccount = (
 		module_accounts::CallKillAccount<Runtime>,
+		module_evm::CallKillAccount<Runtime>,
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
 	type NewAccountDeposit = NewAccountDeposit;
@@ -1057,6 +1058,7 @@ impl module_evm_accounts::Trait for Runtime {
 	type Currency = Balances;
 	type KillAccount = (
 		module_accounts::CallKillAccount<Runtime>,
+		module_evm::CallKillAccount<Runtime>,
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
 	type NewAccountDeposit = NewAccountDeposit;
@@ -1261,7 +1263,9 @@ pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<
 impl module_evm::Trait for Runtime {
 	type CallOrigin = EvmAddressMapping<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
+	type AccountMapping = EvmAccountMapping<Runtime>;
 	type Currency = Balances;
+	type MergeAccount = (Accounts, Currencies);
 	type Event = Event;
 	type Precompiles = runtime_common::precompile::AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
