@@ -318,7 +318,7 @@ decl_module! {
 		pub fn close_account(origin, recipient: Option<T::AccountId>) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
-				let recipient = recipient.unwrap_or_else(|| Self::treasury_account_id());
+				let recipient = recipient.unwrap_or_else(Self::treasury_account_id);
 
 				Self::do_merge_account_check(&who)?;
 				<T as Trait>::MultiCurrency::merge_account(&who, &recipient)?;
