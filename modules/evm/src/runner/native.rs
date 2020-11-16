@@ -513,7 +513,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		if self.config.call_l64_after_gas {
 			after_gas = l64(after_gas);
 		}
-		let target_gas = target_gas.unwrap_or(after_gas);
+		let mut target_gas = target_gas.unwrap_or(after_gas);
+		target_gas = min(target_gas, after_gas);
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
 		let mut substate =
@@ -597,7 +598,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		if self.config.call_l64_after_gas {
 			after_gas = l64(after_gas);
 		}
-		let target_gas = target_gas.unwrap_or(after_gas);
+		let mut target_gas = target_gas.unwrap_or(after_gas);
+		target_gas = min(target_gas, after_gas);
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
 		let code = self.code(code_address);
