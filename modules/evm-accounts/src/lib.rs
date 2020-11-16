@@ -7,7 +7,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::Encode;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{Currency, Get, ReservableCurrency, StoredMap},
@@ -20,7 +20,7 @@ use module_support::AccountMapping;
 use orml_traits::{account::MergeAccount, Happened};
 use orml_utilities::with_transaction_result;
 use primitives::evm::EnsureAddressOrigin;
-use sp_core::{crypto::AccountId32, H160};
+use sp_core::{crypto::AccountId32, ecdsa, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -35,22 +35,6 @@ pub trait WeightInfo {
 
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
-
-// FIXME: substrate new version for https://github.com/paritytech/substrate/pull/7216
-#[derive(Encode, Decode, Clone)]
-pub struct EcdsaSignature(pub [u8; 65]);
-
-impl PartialEq for EcdsaSignature {
-	fn eq(&self, other: &Self) -> bool {
-		self.0[..] == other.0[..]
-	}
-}
-
-impl sp_std::fmt::Debug for EcdsaSignature {
-	fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
-		write!(f, "EcdsaSignature({:?})", &self.0[..])
-	}
-}
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
@@ -121,7 +105,7 @@ decl_module! {
 		/// Claim account mapping between Substrate accounts and EVM accounts.
 		/// Ensure eth_address has not been mapped.
 		#[weight = T::WeightInfo::claim_account()]
-		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
+		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: ecdsa::Signature) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
@@ -186,7 +170,7 @@ impl<T: Trait> Module<T> {
 
 	// Attempts to recover the Ethereum address from a message signature signed by
 	// using the Ethereum RPC's `personal_sign` and `eth_sign`.
-	pub fn eth_recover(s: &EcdsaSignature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
+	pub fn eth_recover(s: &ecdsa::Signature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
 		let msg = keccak_256(&Self::ethereum_signable_message(what, extra));
 		let mut res = EvmAddress::default();
 		res.0
@@ -200,13 +184,13 @@ impl<T: Trait> Module<T> {
 	pub fn eth_address(secret: &secp256k1::SecretKey) -> EvmAddress {
 		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
 	}
-	pub fn eth_sign(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
+	pub fn eth_sign(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> ecdsa::Signature {
 		let msg = keccak_256(&Self::ethereum_signable_message(&to_ascii_hex(what)[..], extra));
 		let (sig, recovery_id) = secp256k1::sign(&secp256k1::Message::parse(&msg), secret);
 		let mut r = [0u8; 65];
 		r[0..64].copy_from_slice(&sig.serialize()[..]);
 		r[64] = recovery_id.serialize();
-		EcdsaSignature(r)
+		ecdsa::Signature(r)
 	}
 
 	fn on_killed_account(who: &T::AccountId) {
