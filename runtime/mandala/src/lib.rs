@@ -1028,6 +1028,8 @@ impl module_cdp_treasury::Trait for Runtime {
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
+	// This cannot be changed without migration code to adjust reserved balances or
+	// update module_accounts::Module::do_merge_account_check
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 

@@ -9,7 +9,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	debug, decl_error, decl_module, decl_storage,
+	decl_error, decl_module, decl_storage,
 	dispatch::{DispatchResult, Dispatchable},
 	ensure,
 	traits::{
@@ -900,15 +900,6 @@ impl<T: Trait> MergeAccount<T::AccountId> for Module<T> {
 pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Trait> OrmlHappened<T::AccountId> for CallKillAccount<T> {
 	fn happened(who: &T::AccountId) {
-		if system::Account::<T>::contains_key(who) {
-			let account = system::Account::<T>::take(who);
-			if account.refcount > 0 {
-				debug::debug!(
-					target: "system",
-					"WARNING: Referenced account deleted. This is probably a bug."
-				);
-			}
-		}
-		Module::<T>::on_killed_account(who);
+		frame_system::CallKillAccount::<T>::happened(who)
 	}
 }
