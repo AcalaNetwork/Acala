@@ -31,6 +31,10 @@ module-support = { path = "../support", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
+[dev-dependencies]
+orml-currencies = { path = "../../orml/currencies", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
+
 [features]
 default = ["std"]
 std = [

@@ -4272,6 +4272,8 @@ dependencies = [
  "frame-system",
  "impl-trait-for-tuples",
  "module-support",
+ "orml-currencies",
+ "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
