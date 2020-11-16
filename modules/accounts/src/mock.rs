@@ -172,7 +172,7 @@ impl Trait for Runtime {
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
-	type KillAccount = frame_system::CallKillAccount<Runtime>;
+	type KillAccount = CallKillAccount<Runtime>;
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = TreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
