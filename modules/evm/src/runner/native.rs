@@ -622,6 +622,16 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				}
 			}
 
+			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas)) {
+				return match ret {
+					Ok((s, out, cost)) => {
+						try_or_fail!(self.gasometer.record_cost(cost));
+						TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
+					}
+					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
+				};
+			}
+
 			let (reason, out) = substate.execute(context.caller, context.address, context.apparent_value, code, input);
 
 			match reason {
