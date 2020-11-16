@@ -1,5 +1,4 @@
 pub mod native;
-pub mod stack;
 
 use crate::Trait;
 use primitives::evm::{CallInfo, CreateInfo};
