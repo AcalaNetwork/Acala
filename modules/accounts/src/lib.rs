@@ -16,6 +16,7 @@ use frame_support::{
 		Currency, ExistenceRequirement, Get, Happened, Imbalance, IsSubType, OnKilledAccount, OnUnbalanced, StoredMap,
 		WithdrawReasons,
 	},
+	transactional,
 	weights::{
 		DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, Weight, WeightToFeeCoefficient, WeightToFeePolynomial,
 	},
@@ -26,7 +27,6 @@ use orml_traits::{
 	account::MergeAccount, Happened as OrmlHappened, MultiCurrency, MultiLockableCurrency, MultiReservableCurrency,
 	OnReceived,
 };
-use orml_utilities::with_transaction_result;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -315,8 +315,8 @@ decl_module! {
 		/// - `recipient`: the account as recipient to receive remaining currencies of the account will be killed,
 		///					None means no recipient is specified.
 		#[weight = <T as Trait>::WeightInfo::close_account(T::AllNonNativeCurrencyIds::get().len() as u32)]
+		#[transactional]
 		pub fn close_account(origin, recipient: Option<T::AccountId>) {
-			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 				let recipient = recipient.unwrap_or_else(Self::treasury_account_id);
 
@@ -325,9 +325,6 @@ decl_module! {
 
 				// finally kill the account
 				T::KillAccount::happened(&who);
-
-				Ok(())
-			})?;
 		}
 
 		/// `on_initialize` to return the weight used in `on_finalize`.

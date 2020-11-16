@@ -12,6 +12,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	debug, decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
+	transactional,
 	weights::{DispatchClass, Weight},
 };
 use frame_system::{
@@ -20,7 +21,7 @@ use frame_system::{
 };
 use loans::Position;
 use orml_traits::Change;
-use orml_utilities::{with_transaction_result, IterableStorageDoubleMapExtended, OffchainErr};
+use orml_utilities::{IterableStorageDoubleMapExtended, OffchainErr};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
@@ -278,17 +279,15 @@ decl_module! {
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
 		#[weight = T::WeightInfo::liquidate_by_dex()]
+		#[transactional]
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
 			who: T::AccountId,
 		) {
-			with_transaction_result(|| {
-				ensure_none(origin)?;
-				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-				Self::liquidate_unsafe_cdp(who, currency_id)?;
-				Ok(())
-			})?;
+			ensure_none(origin)?;
+			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+			Self::liquidate_unsafe_cdp(who, currency_id)?;
 		}
 
 		/// Settle CDP has debit after system shutdown
@@ -308,17 +307,15 @@ decl_module! {
 		/// Base Weight: 161.5 µs
 		/// # </weight>
 		#[weight = T::WeightInfo::settle()]
+		#[transactional]
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
 			who: T::AccountId,
 		) {
-			with_transaction_result(|| {
-				ensure_none(origin)?;
-				ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
-				Self::settle_cdp_has_debit(who, currency_id)?;
-				Ok(())
-			})?;
+			ensure_none(origin)?;
+			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
+			Self::settle_cdp_has_debit(who, currency_id)?;
 		}
 
 		/// Update global parameters related to risk management of CDP
@@ -335,16 +332,14 @@ decl_module! {
 		/// Base Weight: 24.16 µs
 		/// # </weight>
 		#[weight = (T::WeightInfo::set_global_params(), DispatchClass::Operational)]
+		#[transactional]
 		pub fn set_global_params(
 			origin,
 			global_stability_fee: Rate,
 		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				GlobalStabilityFee::put(global_stability_fee);
-				Self::deposit_event(RawEvent::GlobalStabilityFeeUpdated(global_stability_fee));
-				Ok(())
-			})?;
+			T::UpdateOrigin::ensure_origin(origin)?;
+			GlobalStabilityFee::put(global_stability_fee);
+			Self::deposit_event(RawEvent::GlobalStabilityFeeUpdated(global_stability_fee));
 		}
 
 		/// Update parameters related to risk management of CDP under specific collateral type
@@ -366,6 +361,7 @@ decl_module! {
 		/// Base Weight: 76.08 µs
 		/// # </weight>
 		#[weight = (T::WeightInfo::set_collateral_params(), DispatchClass::Operational)]
+		#[transactional]
 		pub fn set_collateral_params(
 			origin,
 			currency_id: CurrencyId,
@@ -375,37 +371,34 @@ decl_module! {
 			required_collateral_ratio: ChangeOptionRatio,
 			maximum_total_debit_value: ChangeBalance,
 		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				ensure!(
-					T::CollateralCurrencyIds::get().contains(&currency_id),
-					Error::<T>::InvalidCollateralType,
-				);
+			T::UpdateOrigin::ensure_origin(origin)?;
+			ensure!(
+				T::CollateralCurrencyIds::get().contains(&currency_id),
+				Error::<T>::InvalidCollateralType,
+			);
 
-				let mut collateral_params = Self::collateral_params(currency_id);
-				if let Change::NewValue(update) = stability_fee {
-					collateral_params.stability_fee = update;
-					Self::deposit_event(RawEvent::StabilityFeeUpdated(currency_id, update));
-				}
-				if let Change::NewValue(update) = liquidation_ratio {
-					collateral_params.liquidation_ratio = update;
-					Self::deposit_event(RawEvent::LiquidationRatioUpdated(currency_id, update));
-				}
-				if let Change::NewValue(update) = liquidation_penalty {
-					collateral_params.liquidation_penalty = update;
-					Self::deposit_event(RawEvent::LiquidationPenaltyUpdated(currency_id, update));
-				}
-				if let Change::NewValue(update) = required_collateral_ratio {
-					collateral_params.required_collateral_ratio = update;
-					Self::deposit_event(RawEvent::RequiredCollateralRatioUpdated(currency_id, update));
-				}
-				if let Change::NewValue(val) = maximum_total_debit_value {
-					collateral_params.maximum_total_debit_value = val;
-					Self::deposit_event(RawEvent::MaximumTotalDebitValueUpdated(currency_id, val));
-				}
-				CollateralParams::insert(currency_id, collateral_params);
-				Ok(())
-			})?;
+			let mut collateral_params = Self::collateral_params(currency_id);
+			if let Change::NewValue(update) = stability_fee {
+				collateral_params.stability_fee = update;
+				Self::deposit_event(RawEvent::StabilityFeeUpdated(currency_id, update));
+			}
+			if let Change::NewValue(update) = liquidation_ratio {
+				collateral_params.liquidation_ratio = update;
+				Self::deposit_event(RawEvent::LiquidationRatioUpdated(currency_id, update));
+			}
+			if let Change::NewValue(update) = liquidation_penalty {
+				collateral_params.liquidation_penalty = update;
+				Self::deposit_event(RawEvent::LiquidationPenaltyUpdated(currency_id, update));
+			}
+			if let Change::NewValue(update) = required_collateral_ratio {
+				collateral_params.required_collateral_ratio = update;
+				Self::deposit_event(RawEvent::RequiredCollateralRatioUpdated(currency_id, update));
+			}
+			if let Change::NewValue(val) = maximum_total_debit_value {
+				collateral_params.maximum_total_debit_value = val;
+				Self::deposit_event(RawEvent::MaximumTotalDebitValueUpdated(currency_id, val));
+			}
+			CollateralParams::insert(currency_id, collateral_params);
 		}
 
 		/// Issue interest in stable currency for all types of collateral has debit when block end,

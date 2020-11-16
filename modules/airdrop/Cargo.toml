@@ -11,7 +11,6 @@ sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-orml-utilities = { path = "../../orml/utilities", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
@@ -26,5 +25,4 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"primitives/std",
-	"orml-utilities/std",
 ]

@@ -15,7 +15,6 @@ sp-io = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-orml-utilities = { path = "../../orml/utilities", default-features = false }
 module-support = { path = "../support", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 
@@ -38,6 +37,5 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"module-evm/std",
-	"orml-utilities/std",
 	"module-support/std",
 ]

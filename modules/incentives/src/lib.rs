@@ -4,12 +4,12 @@ use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get, Happened},
+	transactional,
 	weights::Weight,
 	IterableStorageMap,
 };
 use frame_system::ensure_signed;
 use orml_traits::{MultiCurrency, RewardHandler};
-use orml_utilities::with_transaction_result;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
@@ -156,92 +156,80 @@ decl_module! {
 		const SavingCurrencyId: CurrencyId = T::SavingCurrencyId::get();
 
 		#[weight = <T as Trait>::WeightInfo::deposit_dex_share()]
+		#[transactional]
 		pub fn deposit_dex_share(origin, lp_currency_id: CurrencyId, amount: Balance) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				Self::do_deposit_dex_share(&who, lp_currency_id, amount)
-			})?;
+			let who = ensure_signed(origin)?;
+			Self::do_deposit_dex_share(&who, lp_currency_id, amount)?;
 		}
 
 		#[weight = <T as Trait>::WeightInfo::withdraw_dex_share()]
+		#[transactional]
 		pub fn withdraw_dex_share(origin, lp_currency_id: CurrencyId, amount: Balance) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				Self::do_withdraw_dex_share(&who, lp_currency_id, amount)
-			})?;
+			let who = ensure_signed(origin)?;
+			Self::do_withdraw_dex_share(&who, lp_currency_id, amount)?;
 		}
 
 		#[weight = <T as Trait>::WeightInfo::claim_rewards()]
+		#[transactional]
 		pub fn claim_rewards(origin, pool_id: T::PoolId) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				<orml_rewards::Module<T>>::claim_rewards(&who, pool_id);
-				Ok(())
-			})?;
+			let who = ensure_signed(origin)?;
+			<orml_rewards::Module<T>>::claim_rewards(&who, pool_id);
 		}
 
 		#[weight = <T as Trait>::WeightInfo::update_loans_incentive_rewards(updates.len() as u32)]
+		#[transactional]
 		pub fn update_loans_incentive_rewards(
 			origin,
 			updates: Vec<(CurrencyId, Balance)>,
 		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				for (currency_id, amount) in updates {
-					LoansIncentiveRewards::insert(currency_id, amount);
-				}
-				Ok(())
-			})?;
+			T::UpdateOrigin::ensure_origin(origin)?;
+			for (currency_id, amount) in updates {
+				LoansIncentiveRewards::insert(currency_id, amount);
+			}
 		}
 
 		#[weight = <T as Trait>::WeightInfo::update_dex_incentive_rewards(updates.len() as u32)]
+		#[transactional]
 		pub fn update_dex_incentive_rewards(
 			origin,
 			updates: Vec<(CurrencyId, Balance)>,
 		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				for (currency_id, amount) in updates {
-					match currency_id {
-						CurrencyId::DEXShare(_, _) => {},
-						_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-					}
-
-					DEXIncentiveRewards::insert(currency_id, amount);
+			T::UpdateOrigin::ensure_origin(origin)?;
+			for (currency_id, amount) in updates {
+				match currency_id {
+					CurrencyId::DEXShare(_, _) => {},
+					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
 				}
-				Ok(())
-			})?;
+
+				DEXIncentiveRewards::insert(currency_id, amount);
+			}
 		}
 
 		#[weight = <T as Trait>::WeightInfo::update_homa_incentive_reward()]
+		#[transactional]
 		pub fn update_homa_incentive_reward(
 			origin,
 			update: Balance,
 		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				HomaIncentiveReward::put(update);
-				Ok(())
-			})?;
+			T::UpdateOrigin::ensure_origin(origin)?;
+			HomaIncentiveReward::put(update);
 		}
 
 		#[weight = <T as Trait>::WeightInfo::update_dex_saving_rates(updates.len() as u32)]
+		#[transactional]
 		pub fn update_dex_saving_rates(
 			origin,
 			updates: Vec<(CurrencyId, Rate)>,
 		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				for (currency_id, rate) in updates {
-					match currency_id {
-						CurrencyId::DEXShare(_, _) => {},
-						_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-					}
-
-					DEXSavingRates::insert(currency_id, rate);
+			T::UpdateOrigin::ensure_origin(origin)?;
+			for (currency_id, rate) in updates {
+				match currency_id {
+					CurrencyId::DEXShare(_, _) => {},
+					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
 				}
-				Ok(())
-			})?;
+
+				DEXSavingRates::insert(currency_id, rate);
+			}
 		}
 	}
 }

@@ -13,7 +13,6 @@ frame-system = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
-orml-utilities = { path = "../../orml/utilities", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
@@ -35,6 +34,5 @@ std = [
 	"support/std",
 	"orml-traits/std",
 	"orml-tokens/std",
-	"orml-utilities/std",
 	"primitives/std",
 ]

@@ -10,9 +10,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, transactional, weights::Weight,
+};
 use frame_system::{self as system, ensure_signed};
-use orml_utilities::with_transaction_result;
 use primitives::{Amount, CurrencyId};
 use sp_runtime::{traits::Zero, DispatchResult};
 use support::EmergencyShutdown;
@@ -89,22 +90,20 @@ decl_module! {
 		/// Base Weight: 246.2 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::adjust_loan()]
+		#[transactional]
 		pub fn adjust_loan(
 			origin,
 			currency_id: CurrencyId,
 			collateral_adjustment: Amount,
 			debit_adjustment: Amount,
 		) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
 
-				// not allowed to adjust the debit after system shutdown
-				if !debit_adjustment.is_zero() {
-					ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-				}
-				<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
-				Ok(())
-			})?;
+			// not allowed to adjust the debit after system shutdown
+			if !debit_adjustment.is_zero() {
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+			}
+			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
 		}
 
 		/// Transfer the whole CDP of `from` under `currency_id` to caller's CDP under the same `currency_id`,
@@ -121,18 +120,16 @@ decl_module! {
 		/// Base Weight: 178.2 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::transfer_loan_from()]
+		#[transactional]
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyId,
 			from: T::AccountId,
 		) {
-			with_transaction_result(|| {
-				let to = ensure_signed(origin)?;
-				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-				Self::check_authorization(&from, &to, currency_id)?;
-				<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
-				Ok(())
-			})?;
+			let to = ensure_signed(origin)?;
+			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+			Self::check_authorization(&from, &to, currency_id)?;
+			<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
 		}
 
 		/// Authorize `to` to manipulate the loan under `currency_id`
@@ -148,17 +145,15 @@ decl_module! {
 		/// Base Weight: 27.82 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::authorize()]
+		#[transactional]
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyId,
 			to: T::AccountId,
 		) {
-			with_transaction_result(|| {
-				let from = ensure_signed(origin)?;
-				<Authorization<T>>::insert(&from, (currency_id, &to), true);
-				Self::deposit_event(RawEvent::Authorization(from, to, currency_id));
-				Ok(())
-			})?;
+			let from = ensure_signed(origin)?;
+			<Authorization<T>>::insert(&from, (currency_id, &to), true);
+			Self::deposit_event(RawEvent::Authorization(from, to, currency_id));
 		}
 
 		/// Cancel the authorization for `to` under `currency_id`
@@ -174,17 +169,15 @@ decl_module! {
 		/// Base Weight: 28.14 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::unauthorize()]
+		#[transactional]
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyId,
 			to: T::AccountId,
 		) {
-			with_transaction_result(|| {
-				let from = ensure_signed(origin)?;
-				<Authorization<T>>::remove(&from, (currency_id, &to));
-				Self::deposit_event(RawEvent::UnAuthorization(from, to, currency_id));
-				Ok(())
-			})?;
+			let from = ensure_signed(origin)?;
+			<Authorization<T>>::remove(&from, (currency_id, &to));
+			Self::deposit_event(RawEvent::UnAuthorization(from, to, currency_id));
 		}
 
 		/// Cancel all authorization of caller
@@ -197,13 +190,11 @@ decl_module! {
 		/// Base Weight: 0 + 3.8 * M + 128.4 * C µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::unauthorize_all(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32)]
+		#[transactional]
 		pub fn unauthorize_all(origin) {
-			with_transaction_result(|| {
-				let from = ensure_signed(origin)?;
-				<Authorization<T>>::remove_prefix(&from);
-				Self::deposit_event(RawEvent::UnAuthorizationAll(from));
-				Ok(())
-			})?;
+			let from = ensure_signed(origin)?;
+			<Authorization<T>>::remove_prefix(&from);
+			Self::deposit_event(RawEvent::UnAuthorizationAll(from));
 		}
 	}
 }

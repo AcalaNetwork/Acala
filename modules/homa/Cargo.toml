@@ -13,7 +13,6 @@ frame-system = { version = "2.0.0", default-features = false }
 staking-pool = { package = "module-staking-pool", path = "../staking_pool", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-orml-utilities = { path = "../../orml/utilities", default-features = false }
 
 [features]
 default = ["std"]
@@ -26,5 +25,4 @@ std = [
 	"staking-pool/std",
 	"support/std",
 	"primitives/std",
-	"orml-utilities/std",
 ]
