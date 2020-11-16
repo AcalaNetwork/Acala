@@ -10,18 +10,19 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{Currency, ExistenceRequirement, Get, Happened, ReservableCurrency, StoredMap},
+	traits::{Currency, Get, ReservableCurrency, StoredMap},
 	weights::Weight,
 	StorageMap,
 };
 use frame_system::ensure_signed;
 use module_evm::AddressMapping;
 use module_support::AccountMapping;
+use orml_traits::{account::MergeAccount, Happened};
 use orml_utilities::with_transaction_result;
 use primitives::evm::EnsureAddressOrigin;
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
-use sp_runtime::traits::Zero;
+use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
 mod default_weight;
@@ -64,6 +65,9 @@ pub trait Trait: frame_system::Trait {
 
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
+
+	/// Merge free balance from source to dest.
+	type MergeAccount: MergeAccount<Self::AccountId>;
 
 	/// Handler to kill account in system.
 	type KillAccount: Happened<Self::AccountId>;
@@ -132,34 +136,8 @@ decl_module! {
 				let account_id = T::AddressMapping::into_account_id(eth_address);
 				let mut nonce = <T as frame_system::Trait>::Index::default();
 				if frame_system::Module::<T>::is_explicit(&account_id) {
-					// move all fund to origin
-					// check must allow death,
-					// if currencies has locks, means ref_count shouldn't be zero, can not close the account.
-					ensure!(
-						<frame_system::Module<T>>::allow_death(&account_id),
-						Error::<T>::NonZeroRefCount,
-					);
-
-					let new_account_deposit = T::NewAccountDeposit::get();
-					let total_reserved = T::Currency::reserved_balance(&account_id);
-
-					// ensure total reserved is lte new account deposit,
-					// otherwise think the account still has active reserved kept by some bussiness.
-					ensure!(
-						new_account_deposit >= total_reserved,
-						Error::<T>::StillHasActiveReserved,
-					);
-
-					// unreserve all reserved currency
-					if total_reserved > Zero::zero() {
-						T::Currency::unreserve(&account_id, total_reserved);
-					}
-
-					// transfer all free to origin
-					let free_balance = T::Currency::free_balance(&account_id);
-					if free_balance > Zero::zero() {
-						T::Currency::transfer(&account_id, &who, free_balance, ExistenceRequirement::AllowDeath)?;
-					}
+					// merge balance from `evm padded address` to `origin`
+					T::MergeAccount::merge_account(&account_id, &who)?;
 
 					nonce = frame_system::Module::<T>::account_nonce(&account_id);
 					// finally kill the account
@@ -282,8 +260,8 @@ where
 	}
 }
 
-pub struct OnKillAccount<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> Happened<T::AccountId> for OnKillAccount<T> {
+pub struct CallKillAccount<T>(PhantomData<T>);
+impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
 	fn happened(who: &T::AccountId) {
 		Module::<T>::on_killed_account(&who);
 	}

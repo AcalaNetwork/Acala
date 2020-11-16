@@ -4,6 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
+	weights::DispatchClass,
 	IterableStorageDoubleMap,
 };
 use frame_system::{self as system};
@@ -154,7 +155,7 @@ decl_module! {
 		/// The sub account indexs of parachain to vault assets of Homa protocol in Polkadot.
 		const PoolAccountIndexes: Vec<u32> = T::PoolAccountIndexes::get();
 
-		#[weight = 10000]
+		#[weight = (10_000, DispatchClass::Operational)]
 		pub fn set_staking_pool_params(
 			origin,
 			target_max_free_unbonded_ratio: ChangeRatio,
