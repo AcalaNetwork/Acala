@@ -38,7 +38,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		let id = if id == "" {
+		let id = if id.is_empty() {
 			let n = get_exec_name().unwrap_or_default();
 			["acala", "karura", "mandala"]
 				.iter()

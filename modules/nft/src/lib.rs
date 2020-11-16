@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unnecessary_cast)]
 
 use codec::{Decode, Encode};
 use enumflags2::BitFlags;
