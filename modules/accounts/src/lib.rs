@@ -9,7 +9,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	decl_error, decl_module, decl_storage,
+	debug, decl_error, decl_module, decl_storage,
 	dispatch::{DispatchResult, Dispatchable},
 	ensure,
 	traits::{
@@ -22,7 +22,10 @@ use frame_support::{
 	StorageMap,
 };
 use frame_system::{self as system, ensure_signed, AccountInfo};
-use orml_traits::{account::MergeAccount, MultiCurrency, MultiLockableCurrency, MultiReservableCurrency, OnReceived};
+use orml_traits::{
+	account::MergeAccount, Happened as OrmlHappened, MultiCurrency, MultiLockableCurrency, MultiReservableCurrency,
+	OnReceived,
+};
 use orml_utilities::with_transaction_result;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use primitives::{Balance, CurrencyId};
@@ -36,8 +39,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, FixedU128, ModuleId, Perquintill,
 };
-use sp_std::convert::Infallible;
-use sp_std::{prelude::*, vec};
+use sp_std::{convert::Infallible, marker::PhantomData, prelude::*, vec};
 use support::{DEXManager, Ratio};
 
 mod default_weight;
@@ -244,7 +246,7 @@ pub trait Trait: system::Trait + orml_currencies::Trait {
 	type OnCreatedAccount: Happened<Self::AccountId>;
 
 	/// Handler to kill account in system.
-	type KillAccount: Happened<Self::AccountId>;
+	type KillAccount: OrmlHappened<Self::AccountId>;
 
 	/// Deposit for opening account, would be reserved until account closed.
 	type NewAccountDeposit: Get<Balance>;
@@ -892,5 +894,21 @@ where
 impl<T: Trait> MergeAccount<T::AccountId> for Module<T> {
 	fn merge_account(source: &T::AccountId, _dest: &T::AccountId) -> DispatchResult {
 		Self::do_merge_account_check(source)
+	}
+}
+
+pub struct CallKillAccount<T>(PhantomData<T>);
+impl<T: Trait> OrmlHappened<T::AccountId> for CallKillAccount<T> {
+	fn happened(who: &T::AccountId) {
+		if system::Account::<T>::contains_key(who) {
+			let account = system::Account::<T>::take(who);
+			if account.refcount > 0 {
+				debug::debug!(
+					target: "system",
+					"WARNING: Referenced account deleted. This is probably a bug."
+				);
+			}
+		}
+		Module::<T>::on_killed_account(who);
 	}
 }

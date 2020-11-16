@@ -10,14 +10,14 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{Currency, Get, Happened, ReservableCurrency, StoredMap},
+	traits::{Currency, Get, ReservableCurrency, StoredMap},
 	weights::Weight,
 	StorageMap,
 };
 use frame_system::ensure_signed;
 use module_evm::AddressMapping;
 use module_support::AccountMapping;
-use orml_traits::account::MergeAccount;
+use orml_traits::{account::MergeAccount, Happened};
 use orml_utilities::with_transaction_result;
 use primitives::evm::EnsureAddressOrigin;
 use sp_core::{crypto::AccountId32, H160};

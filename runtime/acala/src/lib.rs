@@ -1042,12 +1042,10 @@ impl module_accounts::Trait for Runtime {
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
-	// FIXME: pr
-	//type KillAccount = (
-	//	frame_system::CallKillAccount<Runtime>,
-	//	module_evm_accounts::CallKillAccount<Runtime>,
-	//);
-	type KillAccount = frame_system::CallKillAccount<Runtime>;
+	type KillAccount = (
+		module_accounts::CallKillAccount<Runtime>,
+		module_evm_accounts::CallKillAccount<Runtime>,
+	);
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
@@ -1057,12 +1055,10 @@ impl module_accounts::Trait for Runtime {
 impl module_evm_accounts::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	// FIXME: pr
-	//type KillAccount = (
-	//	frame_system::CallKillAccount<Runtime>,
-	//	module_evm_accounts::CallKillAccount<Runtime>,
-	//);
-	type KillAccount = module_evm_accounts::CallKillAccount<Runtime>;
+	type KillAccount = (
+		module_accounts::CallKillAccount<Runtime>,
+		module_evm_accounts::CallKillAccount<Runtime>,
+	);
 	type NewAccountDeposit = NewAccountDeposit;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = (Accounts, Currencies);
