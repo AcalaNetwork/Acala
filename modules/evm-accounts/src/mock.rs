@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
-use primitives::Balance;
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
@@ -33,6 +33,8 @@ impl_outer_event! {
 		frame_system<T>,
 		pallet_balances<T>,
 		evm_accounts<T>,
+		orml_tokens<T>,
+		orml_currencies<T>,
 	}
 }
 
@@ -87,11 +89,36 @@ impl pallet_balances::Trait for Runtime {
 }
 pub type Balances = pallet_balances::Module<Runtime>;
 
+impl orml_tokens::Trait for Runtime {
+	type Event = TestEvent;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type OnReceived = ();
+	type WeightInfo = ();
+}
+pub type Tokens = orml_tokens::Module<Runtime>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+}
+
+impl orml_currencies::Trait for Runtime {
+	type Event = TestEvent;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+pub type Currencies = orml_currencies::Module<Runtime>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Balances;
 	type NewAccountDeposit = NewAccountDeposit;
 	type AddressMapping = EvmAddressMapping<Runtime>;
+	type MergeAccount = Currencies;
 	type KillAccount = ();
 	type WeightInfo = ();
 }

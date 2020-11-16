@@ -1024,6 +1024,8 @@ impl module_cdp_treasury::Trait for Runtime {
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
+	// This cannot be changed without migration code to adjust reserved balances or
+	// update module_accounts::Module::do_merge_account_check
 	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
@@ -1039,7 +1041,10 @@ impl module_accounts::Trait for Runtime {
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
-	type KillAccount = frame_system::CallKillAccount<Runtime>;
+	type KillAccount = (
+		module_accounts::CallKillAccount<Runtime>,
+		module_evm_accounts::CallKillAccount<Runtime>,
+	);
 	type NewAccountDeposit = NewAccountDeposit;
 	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
@@ -1049,9 +1054,13 @@ impl module_accounts::Trait for Runtime {
 impl module_evm_accounts::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type KillAccount = <Runtime as module_accounts::Trait>::KillAccount;
+	type KillAccount = (
+		module_accounts::CallKillAccount<Runtime>,
+		module_evm_accounts::CallKillAccount<Runtime>,
+	);
 	type NewAccountDeposit = NewAccountDeposit;
 	type AddressMapping = EvmAddressMapping<Runtime>;
+	type MergeAccount = (Accounts, Currencies);
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
 }
 

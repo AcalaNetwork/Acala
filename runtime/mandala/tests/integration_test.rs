@@ -7,9 +7,9 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
-	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
-	CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId, NewAccountDeposit, Origin, OriginCaller,
-	Perbill, Runtime, SevenDays, TokenSymbol, NFT,
+	get_all_module_accounts, AccountId, Accounts, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
+	CreateClassDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId, NewAccountDeposit, Origin,
+	OriginCaller, Perbill, Runtime, SevenDays, TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -1144,6 +1144,45 @@ fn test_nft_module() {
 			);
 			// CreateClassDeposit::get() + NewAccountDeposit::get() = 6000000000000000
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 999994000000000000000);
+		});
+}
+
+#[test]
+fn test_accounts_module() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				CurrencyId::Token(TokenSymbol::ACA),
+				amount(1000),
+			),
+			(
+				AccountId::from(ALICE),
+				CurrencyId::Token(TokenSymbol::AUSD),
+				amount(1000),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 999999000000000000000);
+			assert_eq!(
+				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
+				amount(1000)
+			);
+			assert_ok!(Accounts::close_account(
+				origin_of(AccountId::from(ALICE)),
+				Some(AccountId::from(BOB))
+			));
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
+			assert_eq!(
+				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
+				0
+			);
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 999999000000000000000);
+			assert_eq!(
+				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(BOB)),
+				amount(1000)
+			);
 		});
 }
 

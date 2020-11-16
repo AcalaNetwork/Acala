@@ -22,7 +22,10 @@ use frame_support::{
 	StorageMap,
 };
 use frame_system::{self as system, ensure_signed, AccountInfo};
-use orml_traits::{MultiCurrency, MultiLockableCurrency, MultiReservableCurrency, OnReceived};
+use orml_traits::{
+	account::MergeAccount, Happened as OrmlHappened, MultiCurrency, MultiLockableCurrency, MultiReservableCurrency,
+	OnReceived,
+};
 use orml_utilities::with_transaction_result;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use primitives::{Balance, CurrencyId};
@@ -36,8 +39,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, FixedU128, ModuleId, Perquintill,
 };
-use sp_std::convert::Infallible;
-use sp_std::{prelude::*, vec};
+use sp_std::{convert::Infallible, marker::PhantomData, prelude::*, vec};
 use support::{DEXManager, Ratio};
 
 mod default_weight;
@@ -212,7 +214,8 @@ pub trait Trait: system::Trait + orml_currencies::Trait {
 	type Currency: Currency<Self::AccountId> + Send + Sync;
 
 	/// Currency to transfer, reserve/unreserve, lock/unlock assets
-	type MultiCurrency: MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
+	type MultiCurrency: MergeAccount<Self::AccountId>
+		+ MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
 		+ MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 	/// Handler for the unbalanced reduction when taking transaction fees. This
@@ -243,7 +246,7 @@ pub trait Trait: system::Trait + orml_currencies::Trait {
 	type OnCreatedAccount: Happened<Self::AccountId>;
 
 	/// Handler to kill account in system.
-	type KillAccount: Happened<Self::AccountId>;
+	type KillAccount: OrmlHappened<Self::AccountId>;
 
 	/// Deposit for opening account, would be reserved until account closed.
 	type NewAccountDeposit: Get<Balance>;
@@ -315,44 +318,10 @@ decl_module! {
 		pub fn close_account(origin, recipient: Option<T::AccountId>) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
+				let recipient = recipient.unwrap_or_else(Self::treasury_account_id);
 
-				// check must allow death,
-				// if native/non-native currencies has locks, means ref_count shouldn't be zero, can not close the account.
-				ensure!(
-					<system::Module<T>>::allow_death(&who),
-					Error::<T>::NonZeroRefCount,
-				);
-
-				let native_currency_id = T::NativeCurrencyId::get();
-				let new_account_deposit = T::NewAccountDeposit::get();
-				let total_reserved_native = <T as Trait>::MultiCurrency::reserved_balance(native_currency_id, &who);
-
-				// ensure total reserved native is lte new account deposit,
-				// otherwise think the account still has active reserved kept by some bussiness.
-				ensure!(
-					new_account_deposit >= total_reserved_native,
-					Error::<T>::StillHasActiveReserved,
-				);
-				let treasury_account = Self::treasury_account_id();
-				let recipient = recipient.unwrap_or_else(|| treasury_account.clone());
-
-				// unreserve all reserved native currency
-				<T as Trait>::MultiCurrency::unreserve(native_currency_id, &who, total_reserved_native);
-
-				// transfer all free to recipient
-				<T as Trait>::MultiCurrency::transfer(native_currency_id, &who, &recipient, <T as Trait>::MultiCurrency::free_balance(native_currency_id, &who))?;
-
-				// handle other non-native currencies
-				for currency_id in T::AllNonNativeCurrencyIds::get() {
-					// ensure the account has no active reserved of non-native token
-					ensure!(
-						<T as Trait>::MultiCurrency::reserved_balance(currency_id, &who).is_zero(),
-						Error::<T>::StillHasActiveReserved,
-					);
-
-					// transfer all free to recipient
-					<T as Trait>::MultiCurrency::transfer(currency_id, &who, &recipient, <T as Trait>::MultiCurrency::free_balance(currency_id, &who))?;
-				}
+				Self::do_merge_account_check(&who)?;
+				<T as Trait>::MultiCurrency::merge_account(&who, &recipient)?;
 
 				// finally kill the account
 				T::KillAccount::happened(&who);
@@ -451,6 +420,26 @@ impl<T: Trait> Module<T> {
 				}
 			}
 		}
+	}
+
+	fn do_merge_account_check(source: &T::AccountId) -> DispatchResult {
+		// check must allow death,
+		// if native/non-native currencies has locks, means ref_count shouldn't be zero,
+		// can not close the account.
+		ensure!(<system::Module<T>>::allow_death(source), Error::<T>::NonZeroRefCount);
+
+		let native_currency_id = T::NativeCurrencyId::get();
+		let new_account_deposit = T::NewAccountDeposit::get();
+		let total_reserved_native = <T as Trait>::MultiCurrency::reserved_balance(native_currency_id, source);
+
+		// ensure total reserved native is lte new account deposit,
+		// otherwise think the account still has active reserved kept by some bussiness.
+		ensure!(
+			new_account_deposit >= total_reserved_native,
+			Error::<T>::StillHasActiveReserved,
+		);
+
+		Ok(())
 	}
 }
 
@@ -899,5 +888,18 @@ where
 			);
 		}
 		Ok(())
+	}
+}
+
+impl<T: Trait> MergeAccount<T::AccountId> for Module<T> {
+	fn merge_account(source: &T::AccountId, _dest: &T::AccountId) -> DispatchResult {
+		Self::do_merge_account_check(source)
+	}
+}
+
+pub struct CallKillAccount<T>(PhantomData<T>);
+impl<T: Trait> OrmlHappened<T::AccountId> for CallKillAccount<T> {
+	fn happened(who: &T::AccountId) {
+		frame_system::CallKillAccount::<T>::happened(who)
 	}
 }
