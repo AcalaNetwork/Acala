@@ -319,21 +319,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	/// Check whether an account is empty.
-	pub fn is_account_empty(address: &H160) -> bool {
-		let account = Self::account_basic(address);
-		let code_len = AccountCodes::decode_len(address).unwrap_or(0);
-
-		account.nonce == U256::zero() && account.balance == U256::zero() && code_len == 0
-	}
-
-	/// Remove an account if its empty.
-	pub fn remove_account_if_empty(address: &H160) {
-		if Self::is_account_empty(address) {
-			Self::remove_account(address);
-		}
-	}
-
 	/// Remove an account.
 	pub fn remove_account(address: &H160) {
 		AccountCodes::remove(address);
