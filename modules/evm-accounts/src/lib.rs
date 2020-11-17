@@ -33,7 +33,7 @@ pub trait WeightInfo {
 	fn claim_account() -> Weight;
 }
 
-type EcdsaSignature = ecdsa::Signature;
+pub type EcdsaSignature = ecdsa::Signature;
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
@@ -191,7 +191,7 @@ impl<T: Trait> Module<T> {
 		let mut r = [0u8; 65];
 		r[0..64].copy_from_slice(&sig.serialize()[..]);
 		r[64] = recovery_id.serialize();
-		ecdsa::Signature(r)
+		EcdsaSignature::from_slice(&r)
 	}
 
 	fn on_killed_account(who: &T::AccountId) {
