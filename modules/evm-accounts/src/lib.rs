@@ -33,6 +33,7 @@ pub trait WeightInfo {
 	fn claim_account() -> Weight;
 }
 
+type EcdsaSignature = ecdsa::Signature;
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
@@ -105,7 +106,7 @@ decl_module! {
 		/// Claim account mapping between Substrate accounts and EVM accounts.
 		/// Ensure eth_address has not been mapped.
 		#[weight = T::WeightInfo::claim_account()]
-		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: ecdsa::Signature) {
+		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
 			with_transaction_result(|| {
 				let who = ensure_signed(origin)?;
 
@@ -170,7 +171,7 @@ impl<T: Trait> Module<T> {
 
 	// Attempts to recover the Ethereum address from a message signature signed by
 	// using the Ethereum RPC's `personal_sign` and `eth_sign`.
-	pub fn eth_recover(s: &ecdsa::Signature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
+	pub fn eth_recover(s: &EcdsaSignature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
 		let msg = keccak_256(&Self::ethereum_signable_message(what, extra));
 		let mut res = EvmAddress::default();
 		res.0
@@ -184,7 +185,7 @@ impl<T: Trait> Module<T> {
 	pub fn eth_address(secret: &secp256k1::SecretKey) -> EvmAddress {
 		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
 	}
-	pub fn eth_sign(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> ecdsa::Signature {
+	pub fn eth_sign(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
 		let msg = keccak_256(&Self::ethereum_signable_message(&to_ascii_hex(what)[..], extra));
 		let (sig, recovery_id) = secp256k1::sign(&secp256k1::Message::parse(&msg), secret);
 		let mut r = [0u8; 65];
