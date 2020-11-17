@@ -376,7 +376,7 @@ where
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool.clone(),
-				prometheus_registry.clone().as_ref(),
+				prometheus_registry.as_ref(),
 			);
 
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
