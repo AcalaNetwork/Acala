@@ -62,4 +62,8 @@ pub struct Cli {
 	#[allow(missing_docs)]
 	#[structopt(flatten)]
 	pub run: RunCmd,
+
+	#[allow(missing_docs)]
+	#[structopt(long = "instant-sealing")]
+	pub instant_sealing: bool,
 }
