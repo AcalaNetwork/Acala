@@ -511,14 +511,14 @@ impl<T: Trait> Module<T> {
 
 		let currency_id = collateral_currency_ids[(collateral_position as usize)];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
-
-		debug::debug!(target: "cdp-engine offchain worker", "max iterations is {:?}", max_iterations);
-
 		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
 			currency_id,
 			max_iterations,
-			start_key,
+			start_key.clone(),
 		);
+
+		let mut iteration_count = 0;
+		let iteration_start_time = sp_io::offchain::timestamp();
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
 				// liquidate unsafe CDPs before emergency shutdown occurs
@@ -528,9 +528,23 @@ impl<T: Trait> Module<T> {
 				Self::submit_unsigned_settlement_tx(currency_id, who);
 			}
 
+			iteration_count += 1;
+
 			// extend offchain worker lock
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
+		let iteration_end_time = sp_io::offchain::timestamp();
+		debug::debug!(
+			target: "cdp-engine offchain worker",
+			"iteration info:\n max iterations is {:?}\n currency id: {:?}, start key: {:?}, iterate count: {:?}\n iteration start at: {:?}, end at: {:?}, execution time: {:?}\n",
+			max_iterations,
+			currency_id,
+			start_key,
+			iteration_count,
+			iteration_start_time,
+			iteration_end_time,
+			iteration_end_time.diff(&iteration_start_time)
+		);
 
 		// if iteration for map storage finished, clear to be continue record
 		// otherwise, update to be continue record
