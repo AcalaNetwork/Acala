@@ -350,8 +350,6 @@ pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
 	fn happened(who: &T::AccountId) {
 		let address = T::AccountMapping::into_h160(who.clone());
-		if <AccountNonces<T>>::contains_key(&address) {
-			Module::<T>::remove_account(&address)
-		}
+		Module::<T>::remove_account(&address)
 	}
 }

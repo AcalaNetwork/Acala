@@ -464,7 +464,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		let source = T::AddressMapping::into_account_id(address);
 		let dest = T::AddressMapping::into_account_id(target);
 
-		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::OutOfGas)?;
+		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
 		self.deleted.insert(address);
 
 		Ok(())
