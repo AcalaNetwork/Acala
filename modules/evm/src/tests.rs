@@ -3,6 +3,7 @@
 use super::*;
 
 use frame_support::{assert_ok, impl_outer_dispatch, impl_outer_origin, parameter_types};
+use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::bytes::{from_hex, to_hex};
 use sp_core::{Blake2Hasher, H256};
 use sp_runtime::{
@@ -81,11 +82,47 @@ impl pallet_timestamp::Trait for Test {
 	type WeightInfo = ();
 }
 
+impl orml_tokens::Trait for Test {
+	type Event = ();
+	type Balance = u64;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type OnReceived = ();
+	type WeightInfo = ();
+}
+pub type Tokens = orml_tokens::Module<Test>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+}
+
+impl orml_currencies::Trait for Test {
+	type Event = ();
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+pub type Currencies = orml_currencies::Module<Test>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
+
+pub struct MockAccountMapping<T>(sp_std::marker::PhantomData<T>);
+impl<T: Trait> AccountMapping<AccountId32> for MockAccountMapping<T>
+where
+	T::AccountId: From<AccountId32>,
+{
+	fn into_h160(_account_id: AccountId32) -> H160 {
+		H160::default()
+	}
+}
+
 impl Trait for Test {
 	type CallOrigin = EnsureAddressRoot<Self::AccountId>;
 
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
+	type AccountMapping = MockAccountMapping<Test>;
 	type Currency = Balances;
+	type MergeAccount = Currencies;
 
 	type Event = Event<Test>;
 	type Precompiles = ();

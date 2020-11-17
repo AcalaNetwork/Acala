@@ -11,9 +11,6 @@ sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
-
-module-evm = { path = "../../modules/evm", default-features = false }
-
 orml-traits = { path = "../../orml/traits", default-features = false }
 
 [features]
@@ -24,6 +21,5 @@ std = [
 	"sp-core/std",
 	"frame-support/std",
 	"sp-std/std",
-	"module-evm/std",
 	"orml-traits/std",
 ]

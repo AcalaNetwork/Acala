@@ -3,7 +3,7 @@
 
 use crate::{
 	precompiles::Precompiles, AccountCodes, AccountNonces, AccountStorages, AddressMapping, CallInfo, CreateInfo,
-	Error, Event, Log, Module, Runner as RunnerT, Trait, Vicinity,
+	Error, Event, Log, MergeAccount, Module, Runner as RunnerT, Trait, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -469,14 +469,10 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			return Err(ExitError::OutOfGas);
 		}
 
-		let balance = self.balance(address);
+		let source = T::AddressMapping::into_account_id(address);
+		let dest = T::AddressMapping::into_account_id(target);
 
-		self.transfer(Transfer {
-			source: address,
-			target,
-			value: balance,
-		})?;
-
+		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
 		self.deleted.insert(address);
 
 		Ok(())

@@ -26,8 +26,14 @@ evm-gasometer = { version = "0.18", default-features = false }
 sha3 = { version = "0.8", default-features = false }
 impl-trait-for-tuples = "0.1"
 ripemd160 = { version = "0.9", default-features = false }
+orml-traits = { path = "../../orml/traits", default-features = false }
+module-support = { path = "../support", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+
+[dev-dependencies]
+orml-currencies = { path = "../../orml/currencies", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
 
 [features]
 default = ["std"]
@@ -51,4 +57,6 @@ std = [
 	"pallet-timestamp/std",
 	"ripemd160/std",
 	"primitives/std",
+	"orml-traits/std",
+	"module-support/std",
 ]

@@ -18,11 +18,13 @@ use frame_support::traits::{Currency, Get};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::RawOrigin;
+use module_support::AccountMapping;
+use orml_traits::{account::MergeAccount, Happened};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{Hasher, H160, H256, U256};
 use sp_runtime::{traits::UniqueSaturatedInto, AccountId32};
-use sp_std::vec::Vec;
+use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
@@ -100,8 +102,12 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
+	/// Mapping from account id to address.
+	type AccountMapping: AccountMapping<Self::AccountId>;
 	/// Currency type for withdraw and balance storage.
 	type Currency: Currency<Self::AccountId>;
+	/// Merge free balance from source to dest.
+	type MergeAccount: MergeAccount<Self::AccountId>;
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -321,6 +327,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	/// Remove an account.
 	pub fn remove_account(address: &H160) {
+		<AccountNonces<T>>::remove(address);
 		AccountCodes::remove(address);
 		AccountStorages::remove_prefix(address);
 	}
@@ -336,5 +343,13 @@ impl<T: Trait> Module<T> {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
 			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
 		}
+	}
+}
+
+pub struct CallKillAccount<T>(PhantomData<T>);
+impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
+	fn happened(who: &T::AccountId) {
+		let address = T::AccountMapping::into_h160(who.clone());
+		Module::<T>::remove_account(&address)
 	}
 }

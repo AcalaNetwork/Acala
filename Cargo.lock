@@ -4271,6 +4271,10 @@ dependencies = [
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -4590,7 +4594,6 @@ version = "0.6.3"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
- "module-evm",
  "orml-traits",
  "parity-scale-codec",
  "sp-core",
