@@ -11,6 +11,7 @@ frame-system = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
+sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
 orml-tokens = { path = "../../../orml/tokens", default-features = false }
@@ -21,7 +22,6 @@ primitives = { package = "acala-primitives", path = "../../../primitives", defau
 hex-literal = { version = "0.3.1" }
 orml-currencies = { path = "../../../orml/currencies", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
-sp-core = { version = "2.0.0", default-features = false }
 
 [features]
 default = ["std"]
@@ -29,6 +29,7 @@ std = [
 	"frame-system/std",
 	"frame-support/std",
 	"sp-std/std",
+	"sp-core/std",
 	"sp-io/std",
 	"sp-runtime/std",
 	"orml-traits/std",

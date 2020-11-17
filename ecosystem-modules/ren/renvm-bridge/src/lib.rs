@@ -1,10 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::Encode;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use frame_system::{self as system, ensure_none, ensure_signed};
 use orml_traits::BasicCurrency;
 use primitives::Balance;
+use sp_core::ecdsa;
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
 	transaction_validity::{
@@ -17,21 +18,7 @@ use sp_std::vec::Vec;
 mod mock;
 mod tests;
 
-#[derive(Encode, Decode, Clone)]
-pub struct EcdsaSignature(pub [u8; 65]);
-
-impl PartialEq for EcdsaSignature {
-	fn eq(&self, other: &Self) -> bool {
-		self.0[..] == other.0[..]
-	}
-}
-
-impl sp_std::fmt::Debug for EcdsaSignature {
-	fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
-		write!(f, "EcdsaSignature({:?})", &self.0[..])
-	}
-}
-
+type EcdsaSignature = ecdsa::Signature;
 type DestAddress = Vec<u8>;
 
 pub trait Trait: system::Trait {
