@@ -14,7 +14,6 @@ frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
 pallet-proxy = { version = "2.0.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-orml-utilities = { path = "../../orml/utilities", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-nft = { path = "../../orml/nft", default-features = false }
 
@@ -37,7 +36,6 @@ std = [
 	"frame-system/std",
 	"pallet-proxy/std",
 	"primitives/std",
-	"orml-utilities/std",
 	"orml-traits/std",
 	"orml-nft/std",
 ]

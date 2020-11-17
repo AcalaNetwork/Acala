@@ -63,7 +63,7 @@ benchmarks! {
 		let auction_id: AuctionId = Default::default();
 
 		// bid surplus auction
-		let _ = AuctionManager::<T>::surplus_auction_bid_handler(1.into(), auction_id, (bidder, dollar(1)), None);
+		let _ = AuctionManager::<T>::surplus_auction_bid_handler(1u32.into(), auction_id, (bidder, dollar(1)), None);
 
 		// shutdown
 		emergency_shutdown::<T>()?;
@@ -85,7 +85,7 @@ benchmarks! {
 		let auction_id: AuctionId = Default::default();
 
 		// bid debit auction
-		let _ = AuctionManager::<T>::debit_auction_bid_handler(1.into(), auction_id, (bidder, dollar(20)), None);
+		let _ = AuctionManager::<T>::debit_auction_bid_handler(1u32.into(), auction_id, (bidder, dollar(20)), None);
 
 		// shutdown
 		emergency_shutdown::<T>()?;
@@ -113,7 +113,7 @@ benchmarks! {
 		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction
-		let _ = AuctionManager::<T>::collateral_auction_bid_handler(1.into(), auction_id, (bidder, dollar(80)), None);
+		let _ = AuctionManager::<T>::collateral_auction_bid_handler(1u32.into(), auction_id, (bidder, dollar(80)), None);
 
 		// shutdown
 		emergency_shutdown::<T>()?;

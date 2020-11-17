@@ -1,10 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{debug, decl_error, decl_module, decl_storage, ensure, traits::Get, Parameter};
+use frame_support::{debug, decl_error, decl_module, decl_storage, ensure, traits::Get, transactional, Parameter};
 use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::BasicCurrency;
-use orml_utilities::with_transaction_result;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
@@ -62,100 +61,80 @@ decl_module! {
 		const EraLength: T::BlockNumber = T::EraLength::get();
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn set_mock_reward_rate(origin, account_index: u32, reward_rate: Rate) {
-			with_transaction_result(|| {
-				ensure_root(origin)?;
-				SubAccounts::mutate(account_index, |status| {
-					status.mock_reward_rate = reward_rate;
-				});
-				Ok(())
-			})?;
+			ensure_root(origin)?;
+			SubAccounts::mutate(account_index, |status| {
+				status.mock_reward_rate = reward_rate;
+			});
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn simulate_bond_extra(origin, account_index: u32, amount: Balance) {
-			with_transaction_result(|| {
-				ensure_root(origin)?;
-				Self::sub_account_bond_extra(account_index, amount)?;
-				Ok(())
-			})?;
+			ensure_root(origin)?;
+			Self::sub_account_bond_extra(account_index, amount)?;
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn simulate_unbond(origin, account_index: u32, amount: Balance) {
-			with_transaction_result(|| {
-				ensure_root(origin)?;
-				Self::sub_account_unbond(account_index, amount)?;
-				Ok(())
-			})?;
+			ensure_root(origin)?;
+			Self::sub_account_unbond(account_index, amount)?;
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn simulate_rebond(origin, account_index: u32, amount: Balance) {
-			with_transaction_result(|| {
-				ensure_signed(origin)?;
-				Self::sub_account_rebond(account_index, amount)?;
-				Ok(())
-			})?;
+			ensure_signed(origin)?;
+			Self::sub_account_rebond(account_index, amount)?;
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn simulate_withdraw_unbonded(origin, account_index: u32) {
-			with_transaction_result(|| {
-				// ignore because we don't care who send the message
-				let _ = ensure_signed(origin)?;
-				Self::sub_account_withdraw_unbonded(account_index);
-				Ok(())
-			})?;
+			// ignore because we don't care who send the message
+			let _ = ensure_signed(origin)?;
+			Self::sub_account_withdraw_unbonded(account_index);
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn simulate_payout_nominator(origin, account_index: u32) {
-			with_transaction_result(|| {
-				ensure_signed(origin)?;
-				Self::payout_nominator(account_index);
-				Ok(())
-			})?;
+			ensure_signed(origin)?;
+			Self::payout_nominator(account_index);
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		fn simulate_transfer_to_sub_account(origin, account_index: u32, amount: Balance) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				Self::transfer_to_sub_account(account_index, &who, amount)?;
-				Ok(())
-			})?;
+			let who = ensure_signed(origin)?;
+			Self::transfer_to_sub_account(account_index, &who, amount)?;
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn simualte_receive_from_sub_account(origin, account_index: u32, to: T::AccountId, amount: Balance) {
-			with_transaction_result(|| {
-				ensure_root(origin)?;
-				Self::receive_from_sub_account(account_index, &to, amount)?;
-				Ok(())
-			})?;
+			ensure_root(origin)?;
+			Self::receive_from_sub_account(account_index, &to, amount)?;
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn simulate_slash_sub_account(origin, account_index: u32, amount: Balance) {
-			with_transaction_result(|| {
-				ensure_root(origin)?;
-				SubAccounts::mutate(account_index, |status| {
-					status.bonded = status.bonded.saturating_sub(amount);
-				});
-				Ok(())
-			})?;
+			ensure_root(origin)?;
+			SubAccounts::mutate(account_index, |status| {
+				status.bonded = status.bonded.saturating_sub(amount);
+			});
 		}
 
 		#[weight = 10_000]
+		#[transactional]
 		pub fn force_era(origin, at: T::BlockNumber) {
-			with_transaction_result(|| {
-				ensure_root(origin)?;
-				if at > <system::Module<T>>::block_number() {
-					<ForcedEra<T>>::put(at);
-				}
-				Ok(())
-			})?;
+			ensure_root(origin)?;
+			if at > <system::Module<T>>::block_number() {
+				<ForcedEra<T>>::put(at);
+			}
 		}
 
 		fn on_finalize(now: T::BlockNumber) {

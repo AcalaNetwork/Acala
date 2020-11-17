@@ -294,7 +294,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let _ = orml_oracle::GenesisConfig::<Runtime> {
 		members: vec![1, 2, 3].into(),
-		session_keys: vec![(1, 10.into()), (2, 20.into()), (3, 30.into())],
+		session_keys: vec![(1, 10u32.into()), (2, 20u32.into()), (3, 30u32.into())],
 	}
 	.assimilate_storage(&mut storage);
 

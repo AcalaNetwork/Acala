@@ -12,11 +12,11 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
+	transactional,
 	weights::{DispatchClass, Weight},
 };
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
@@ -128,41 +128,38 @@ decl_module! {
 		const ModuleId: ModuleId = T::ModuleId::get();
 
 		#[weight = T::WeightInfo::auction_surplus()]
+		#[transactional]
 		pub fn auction_surplus(origin, amount: Balance) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				ensure!(
-					Self::surplus_pool().saturating_sub(T::AuctionManagerHandler::get_total_surplus_in_auction()) >= amount,
-					Error::<T>::SurplusPoolNotEnough,
-				);
-				T::AuctionManagerHandler::new_surplus_auction(amount)
-			})?;
+			T::UpdateOrigin::ensure_origin(origin)?;
+			ensure!(
+				Self::surplus_pool().saturating_sub(T::AuctionManagerHandler::get_total_surplus_in_auction()) >= amount,
+				Error::<T>::SurplusPoolNotEnough,
+			);
+			T::AuctionManagerHandler::new_surplus_auction(amount)?;
 		}
 
 		#[weight = T::WeightInfo::auction_debit()]
+		#[transactional]
 		pub fn auction_debit(origin, amount: Balance, initial_price: Balance) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				ensure!(
-					Self::debit_pool().saturating_sub(T::AuctionManagerHandler::get_total_debit_in_auction()) >= amount,
-					Error::<T>::DebitPoolNotEnough,
-				);
-				T::AuctionManagerHandler::new_debit_auction(amount, initial_price)
-			})?;
+			T::UpdateOrigin::ensure_origin(origin)?;
+			ensure!(
+				Self::debit_pool().saturating_sub(T::AuctionManagerHandler::get_total_debit_in_auction()) >= amount,
+				Error::<T>::DebitPoolNotEnough,
+			);
+			T::AuctionManagerHandler::new_debit_auction(amount, initial_price)?;
 		}
 
 		#[weight = T::WeightInfo::auction_collateral()]
+		#[transactional]
 		pub fn auction_collateral(origin, currency_id: CurrencyId, amount: Balance, target: Balance, splited: bool) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				<Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
-					currency_id,
-					amount,
-					target,
-					Self::account_id(),
-					splited,
-				)
-			})?;
+			T::UpdateOrigin::ensure_origin(origin)?;
+			<Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
+				currency_id,
+				amount,
+				target,
+				Self::account_id(),
+				splited,
+			)?;
 		}
 
 		/// Update parameters related to collateral auction under specific collateral type
@@ -180,13 +177,11 @@ decl_module! {
 		/// Base Weight: 24.64 µs
 		/// # </weight>
 		#[weight = (T::WeightInfo::set_collateral_auction_maximum_size(), DispatchClass::Operational)]
+		#[transactional]
 		pub fn set_collateral_auction_maximum_size(origin, currency_id: CurrencyId, size: Balance) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				CollateralAuctionMaximumSize::insert(currency_id, size);
-				Self::deposit_event(Event::CollateralAuctionMaximumSizeUpdated(currency_id, size));
-				Ok(())
-			})?;
+			T::UpdateOrigin::ensure_origin(origin)?;
+			CollateralAuctionMaximumSize::insert(currency_id, size);
+			Self::deposit_event(Event::CollateralAuctionMaximumSizeUpdated(currency_id, size));
 		}
 
 		/// Handle excessive surplus or debits of system when block end

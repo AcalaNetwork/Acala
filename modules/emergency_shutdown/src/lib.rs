@@ -16,10 +16,10 @@
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
+	transactional,
 	weights::{DispatchClass, Weight},
 };
 use frame_system::{self as system, ensure_signed};
-use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
@@ -124,23 +124,21 @@ decl_module! {
 		/// Base Weight: 148.3 µs
 		/// # </weight>
 		#[weight = (T::WeightInfo::emergency_shutdown(T::CollateralCurrencyIds::get().len() as u32), DispatchClass::Operational)]
+		#[transactional]
 		pub fn emergency_shutdown(origin) {
-			with_transaction_result(|| {
-				T::ShutdownOrigin::ensure_origin(origin)?;
-				ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
+			T::ShutdownOrigin::ensure_origin(origin)?;
+			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
-				// get all collateral types
-				let collateral_currency_ids = T::CollateralCurrencyIds::get();
+			// get all collateral types
+			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-				// lock price for every collateral
-				for currency_id in collateral_currency_ids {
-					<T as Trait>::PriceSource::lock_price(currency_id);
-				}
+			// lock price for every collateral
+			for currency_id in collateral_currency_ids {
+				<T as Trait>::PriceSource::lock_price(currency_id);
+			}
 
-				<IsShutdown>::put(true);
-				Self::deposit_event(RawEvent::Shutdown(<system::Module<T>>::block_number()));
-				Ok(())
-			})?;
+			<IsShutdown>::put(true);
+			Self::deposit_event(RawEvent::Shutdown(<system::Module<T>>::block_number()));
 		}
 
 		/// Open final redemption if settlement is completed.
@@ -159,41 +157,39 @@ decl_module! {
 		/// Base Weight: 71.8 µs
 		/// # </weight>
 		#[weight = (T::WeightInfo::open_collateral_refund(), DispatchClass::Operational)]
+		#[transactional]
 		pub fn open_collateral_refund(origin) {
-			with_transaction_result(|| {
-				T::ShutdownOrigin::ensure_origin(origin)?;
-				ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
+			T::ShutdownOrigin::ensure_origin(origin)?;
+			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown);	// must after shutdown
 
-				// Ensure there's no debit and surplus auction now, they may bring uncertain surplus to system.
-				// Cancel all surplus auctions and debit auctions to pass the check!
+			// Ensure there's no debit and surplus auction now, they may bring uncertain surplus to system.
+			// Cancel all surplus auctions and debit auctions to pass the check!
+			ensure!(
+				<T as Trait>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
+				&& <T as Trait>::AuctionManagerHandler::get_total_surplus_in_auction().is_zero(),
+				Error::<T>::ExistPotentialSurplus,
+			);
+
+			// Ensure all debits of CDPs have been settled, and all collateral auction has been done or canceled.
+			// Settle all collaterals type CDPs which have debit, cancel all collateral auctions in forward stage and
+			// wait for all collateral auctions in reverse stage to be ended.
+			let collateral_currency_ids = T::CollateralCurrencyIds::get();
+			for currency_id in collateral_currency_ids {
+				// there's no collateral auction
 				ensure!(
-					<T as Trait>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
-					&& <T as Trait>::AuctionManagerHandler::get_total_surplus_in_auction().is_zero(),
+					<T as Trait>::AuctionManagerHandler::get_total_collateral_in_auction(currency_id).is_zero(),
 					Error::<T>::ExistPotentialSurplus,
 				);
+				// there's on debit in CDP
+				ensure!(
+					<loans::Module<T>>::total_positions(currency_id).debit.is_zero(),
+					Error::<T>::ExistUnhandledDebit,
+				);
+			}
 
-				// Ensure all debits of CDPs have been settled, and all collateral auction has been done or canceled.
-				// Settle all collaterals type CDPs which have debit, cancel all collateral auctions in forward stage and
-				// wait for all collateral auctions in reverse stage to be ended.
-				let collateral_currency_ids = T::CollateralCurrencyIds::get();
-				for currency_id in collateral_currency_ids {
-					// there's no collateral auction
-					ensure!(
-						<T as Trait>::AuctionManagerHandler::get_total_collateral_in_auction(currency_id).is_zero(),
-						Error::<T>::ExistPotentialSurplus,
-					);
-					// there's on debit in CDP
-					ensure!(
-						<loans::Module<T>>::total_positions(currency_id).debit.is_zero(),
-						Error::<T>::ExistUnhandledDebit,
-					);
-				}
-
-				// Open refund stage
-				<CanRefund>::put(true);
-				Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
-				Ok(())
-			})?;
+			// Open refund stage
+			<CanRefund>::put(true);
+			Self::deposit_event(RawEvent::OpenRefund(<system::Module<T>>::block_number()));
 		}
 
 		/// Refund a basket of remaining collateral assets to caller
@@ -212,32 +208,30 @@ decl_module! {
 		/// Base Weight: 455.1 µs
 		/// # </weight>
 		#[weight = T::WeightInfo::refund_collaterals(T::CollateralCurrencyIds::get().len() as u32)]
+		#[transactional]
 		pub fn refund_collaterals(origin, #[compact] amount: Balance) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
+			let who = ensure_signed(origin)?;
+			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
-				let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_debit_proportion(amount);
-				let collateral_currency_ids = T::CollateralCurrencyIds::get();
+			let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_debit_proportion(amount);
+			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
-				// burn caller's stable currency by CDP treasury
-				<T as Trait>::CDPTreasury::burn_debit(&who, amount)?;
+			// burn caller's stable currency by CDP treasury
+			<T as Trait>::CDPTreasury::burn_debit(&who, amount)?;
 
-				let mut refund_assets: Vec<(CurrencyId, Balance)> = vec![];
-				// refund collaterals to caller by CDP treasury
-				for currency_id in collateral_currency_ids {
-					let refund_amount = refund_ratio
-						.saturating_mul_int(<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
+			let mut refund_assets: Vec<(CurrencyId, Balance)> = vec![];
+			// refund collaterals to caller by CDP treasury
+			for currency_id in collateral_currency_ids {
+				let refund_amount = refund_ratio
+					.saturating_mul_int(<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
 
-					if !refund_amount.is_zero() {
-						<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount)?;
-						refund_assets.push((currency_id, refund_amount));
-					}
+				if !refund_amount.is_zero() {
+					<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount)?;
+					refund_assets.push((currency_id, refund_amount));
 				}
+			}
 
-				Self::deposit_event(RawEvent::Refund(who, amount, refund_assets));
-				Ok(())
-			})?;
+			Self::deposit_event(RawEvent::Refund(who, amount, refund_assets));
 		}
 	}
 }

@@ -4,12 +4,12 @@ use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{EnsureOrigin, Get},
+	transactional,
 	weights::DispatchClass,
 	IterableStorageDoubleMap,
 };
 use frame_system::{self as system};
 use orml_traits::{Change, MultiCurrency};
-use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId, EraIndex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -156,6 +156,7 @@ decl_module! {
 		const PoolAccountIndexes: Vec<u32> = T::PoolAccountIndexes::get();
 
 		#[weight = (10_000, DispatchClass::Operational)]
+		#[transactional]
 		pub fn set_staking_pool_params(
 			origin,
 			target_max_free_unbonded_ratio: ChangeRatio,
@@ -164,28 +165,26 @@ decl_module! {
 			unbonding_to_free_adjustment: ChangeRate,
 			base_fee_rate: ChangeRate,
 		) {
-			with_transaction_result(|| {
-				T::UpdateOrigin::ensure_origin(origin)?;
-				StakingPoolParams::try_mutate(|params| -> DispatchResult {
-					if let Change::NewValue(update) = target_max_free_unbonded_ratio {
-						params.target_max_free_unbonded_ratio = update;
-					}
-					if let Change::NewValue(update) = target_min_free_unbonded_ratio {
-						params.target_min_free_unbonded_ratio = update;
-					}
-					if let Change::NewValue(update) = target_unbonding_to_free_ratio {
-						params.target_unbonding_to_free_ratio = update;
-					}
-					if let Change::NewValue(update) = unbonding_to_free_adjustment {
-						params.unbonding_to_free_adjustment = update;
-					}
-					if let Change::NewValue(update) = base_fee_rate {
-						params.base_fee_rate = update;
-					}
+			T::UpdateOrigin::ensure_origin(origin)?;
+			StakingPoolParams::try_mutate(|params| -> DispatchResult {
+				if let Change::NewValue(update) = target_max_free_unbonded_ratio {
+					params.target_max_free_unbonded_ratio = update;
+				}
+				if let Change::NewValue(update) = target_min_free_unbonded_ratio {
+					params.target_min_free_unbonded_ratio = update;
+				}
+				if let Change::NewValue(update) = target_unbonding_to_free_ratio {
+					params.target_unbonding_to_free_ratio = update;
+				}
+				if let Change::NewValue(update) = unbonding_to_free_adjustment {
+					params.unbonding_to_free_adjustment = update;
+				}
+				if let Change::NewValue(update) = base_fee_rate {
+					params.base_fee_rate = update;
+				}
 
-					ensure!(params.target_min_free_unbonded_ratio < params.target_max_free_unbonded_ratio, Error::<T>::InvalidConfig);
-					Ok(())
-				})
+				ensure!(params.target_min_free_unbonded_ratio < params.target_max_free_unbonded_ratio, Error::<T>::InvalidConfig);
+				Ok(())
 			})?;
 		}
 	}
@@ -542,8 +541,8 @@ impl<T: Trait> OnNewEra<EraIndex> for Module<T> {
 impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 	type Balance = Balance;
 
-	/// This function must to be called in `with_transaction_result` scope to
-	/// ensure atomic
+	/// Ensure atomic.
+	#[transactional]
 	fn mint(who: &T::AccountId, amount: Self::Balance) -> sp_std::result::Result<Self::Balance, DispatchError> {
 		if amount.is_zero() {
 			return Ok(Zero::zero());
@@ -567,8 +566,8 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 		Ok(liquid_amount_to_issue)
 	}
 
-	/// This function must to be called in `with_transaction_result` scope to
-	/// ensure atomic
+	/// Ensure atomic.
+	#[transactional]
 	fn redeem_by_unbond(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		let mut liquid_amount_to_redeem = amount;
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
@@ -616,8 +615,8 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 		Ok(())
 	}
 
-	/// This function must to be called in `with_transaction_result` scope to
-	/// ensure atomic
+	/// Ensure atomic.
+	#[transactional]
 	fn redeem_by_free_unbonded(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		let mut redeem_liquid_amount = amount;
 		let liquid_exchange_rate = Self::liquid_exchange_rate();
@@ -686,8 +685,8 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 		Ok(())
 	}
 
-	/// This function must to be called in `with_transaction_result` scope to
-	/// ensure atomic
+	/// Ensure atomic.
+	#[transactional]
 	fn redeem_by_claim_unbonding(who: &T::AccountId, amount: Self::Balance, target_era: EraIndex) -> DispatchResult {
 		let current_era = Self::current_era();
 		let bonding_duration = <<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();
@@ -771,8 +770,8 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 		Ok(())
 	}
 
-	/// This function must to be called in `with_transaction_result` scope to
-	/// ensure atomic
+	/// Ensure atomic.
+	#[transactional]
 	fn withdraw_redemption(who: &T::AccountId) -> sp_std::result::Result<Self::Balance, DispatchError> {
 		let current_era = Self::current_era();
 		let staking_currency_id = T::StakingCurrencyId::get();

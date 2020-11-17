@@ -1,13 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unnecessary_cast)]
 
 use codec::{Decode, Encode};
 use enumflags2::BitFlags;
 use frame_support::{
-	decl_error, decl_event, decl_module, ensure, traits::Get, weights::Weight, IterableStorageDoubleMap,
+	decl_error, decl_event, decl_module, ensure, traits::Get, transactional, weights::Weight, IterableStorageDoubleMap,
 };
 use frame_system::ensure_signed;
 use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
-use orml_utilities::with_transaction_result;
 use primitives::{Balance, NFTBalance};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -160,25 +160,23 @@ decl_module! {
 		///		- worst case: 233.7 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::create_class()]
+		#[transactional]
 		pub fn create_class(origin, metadata: CID, properties: Properties) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				let next_id = orml_nft::Module::<T>::next_class_id();
-				let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
-				let deposit = T::CreateClassDeposit::get();
-				<T as Trait>::Currency::transfer(&who, &owner, deposit)?;
-				// `owner` must be a new account, so the free balance will reserve `NewAccountDeposit`.
-				// use `free_balance(owner)` instead of `deposit`
-				<T as Trait>::Currency::reserve(&owner, <T as Trait>::Currency::free_balance(&owner))?;
-				//	Depends on https://github.com/paritytech/substrate/issues/7139
-				//	For now, use origin as owner and skip the proxy part
-				//	pallet_proxy::Module<T>::add_proxy(owner, origin, Default::default(), 0)
-				let data = ClassData { deposit, properties };
-				orml_nft::Module::<T>::create_class(&who, metadata, data)?;
+			let who = ensure_signed(origin)?;
+			let next_id = orml_nft::Module::<T>::next_class_id();
+			let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
+			let deposit = T::CreateClassDeposit::get();
+			<T as Trait>::Currency::transfer(&who, &owner, deposit)?;
+			// `owner` must be a new account, so the free balance will reserve `NewAccountDeposit`.
+			// use `free_balance(owner)` instead of `deposit`
+			<T as Trait>::Currency::reserve(&owner, <T as Trait>::Currency::free_balance(&owner))?;
+			//	Depends on https://github.com/paritytech/substrate/issues/7139
+			//	For now, use origin as owner and skip the proxy part
+			//	pallet_proxy::Module<T>::add_proxy(owner, origin, Default::default(), 0)
+			let data = ClassData { deposit, properties };
+			orml_nft::Module::<T>::create_class(&who, metadata, data)?;
 
-				Self::deposit_event(RawEvent::CreatedClass(who, next_id));
-				Ok(())
-			})?;
+			Self::deposit_event(RawEvent::CreatedClass(who, next_id));
 		}
 
 		/// Mint NFT token
@@ -200,26 +198,24 @@ decl_module! {
 		///		- worst case: 208 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::mint(*quantity)]
+		#[transactional]
 		pub fn mint(origin, to: T::AccountId, class_id: ClassIdOf<T>, metadata: CID, quantity: u32) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
-				let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
-				ensure!(who == class_info.owner, Error::<T>::NoPermission);
-				let deposit = T::CreateTokenDeposit::get();
-				let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
-				let total_deposit = deposit * (quantity as u128);
-				<T as Trait>::Currency::transfer(&who, &owner, total_deposit)?;
-				<T as Trait>::Currency::reserve(&owner, total_deposit)?;
+			let who = ensure_signed(origin)?;
+			ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
+			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
+			ensure!(who == class_info.owner, Error::<T>::NoPermission);
+			let deposit = T::CreateTokenDeposit::get();
+			let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
+			let total_deposit = deposit * (quantity as u128);
+			<T as Trait>::Currency::transfer(&who, &owner, total_deposit)?;
+			<T as Trait>::Currency::reserve(&owner, total_deposit)?;
 
-				let data = TokenData { deposit };
-				for _ in 0..quantity {
-					orml_nft::Module::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
-				}
+			let data = TokenData { deposit };
+			for _ in 0..quantity {
+				orml_nft::Module::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
+			}
 
-				Self::deposit_event(RawEvent::MintedToken(who, to, class_id, quantity));
-				Ok(())
-			})?;
+			Self::deposit_event(RawEvent::MintedToken(who, to, class_id, quantity));
 		}
 
 		/// Transfer NFT token to another account
@@ -260,27 +256,25 @@ decl_module! {
 		///		- worst case: 261.4 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::burn()]
+		#[transactional]
 		pub fn burn(origin, token: (ClassIdOf<T>, TokenIdOf<T>)) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-				let data = class_info.data;
-				ensure!(data.properties.0.contains(ClassProperty::Burnable), Error::<T>::NonBurnable);
+			let who = ensure_signed(origin)?;
+			let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+			let data = class_info.data;
+			ensure!(data.properties.0.contains(ClassProperty::Burnable), Error::<T>::NonBurnable);
 
-				let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
-				ensure!(who == token_info.owner, Error::<T>::NoPermission);
+			let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+			ensure!(who == token_info.owner, Error::<T>::NoPermission);
 
-				orml_nft::Module::<T>::burn(&who, token)?;
-				let owner: T::AccountId = T::ModuleId::get().into_sub_account(token.0);
-				let data = token_info.data;
-				// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
-				// `transfer` not do this check.
-				<T as Trait>::Currency::unreserve(&owner, data.deposit);
-				<T as Trait>::Currency::transfer(&owner, &who, data.deposit)?;
+			orml_nft::Module::<T>::burn(&who, token)?;
+			let owner: T::AccountId = T::ModuleId::get().into_sub_account(token.0);
+			let data = token_info.data;
+			// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
+			// `transfer` not do this check.
+			<T as Trait>::Currency::unreserve(&owner, data.deposit);
+			<T as Trait>::Currency::transfer(&owner, &who, data.deposit)?;
 
-				Self::deposit_event(RawEvent::BurnedToken(who, token.0, token.1));
-				Ok(())
-			})?;
+			Self::deposit_event(RawEvent::BurnedToken(who, token.0, token.1));
 		}
 
 		/// Destroy NFT class
@@ -300,51 +294,49 @@ decl_module! {
 		///		- worst case: 224.7 µs
 		/// # </weight>
 		#[weight = <T as Trait>::WeightInfo::destroy_class()]
+		#[transactional]
 		pub fn destroy_class(origin, class_id: ClassIdOf<T>, dest: T::AccountId) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
-				ensure!(who == class_info.owner, Error::<T>::NoPermission);
-				ensure!(class_info.total_issuance == Zero::zero(), Error::<T>::CannotDestroyClass);
+			let who = ensure_signed(origin)?;
+			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
+			ensure!(who == class_info.owner, Error::<T>::NoPermission);
+			ensure!(class_info.total_issuance == Zero::zero(), Error::<T>::CannotDestroyClass);
 
-				let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
-				let data = class_info.data;
-				// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
-				// `transfer` not do this check.
-				<T as Trait>::Currency::unreserve(&owner, data.deposit);
-				<T as Trait>::Currency::transfer(&owner, &dest, data.deposit)?;
+			let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
+			let data = class_info.data;
+			// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
+			// `transfer` not do this check.
+			<T as Trait>::Currency::unreserve(&owner, data.deposit);
+			<T as Trait>::Currency::transfer(&owner, &dest, data.deposit)?;
 
-				// Skip two steps until pallet_proxy is accessable
-				// pallet_proxy::Module<T>::remove_proxies(owner)
-				// transfer all free from origin to dest
-				orml_nft::Module::<T>::destroy_class(&who, class_id)?;
+			// Skip two steps until pallet_proxy is accessable
+			// pallet_proxy::Module<T>::remove_proxies(owner)
+			// transfer all free from origin to dest
+			orml_nft::Module::<T>::destroy_class(&who, class_id)?;
 
-				Self::deposit_event(RawEvent::DestroyedClass(who, class_id, dest));
-				Ok(())
-			})?;
+			Self::deposit_event(RawEvent::DestroyedClass(who, class_id, dest));
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {
+	/// Ensured atomic.
+	#[transactional]
 	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
-		with_transaction_result(|| {
-			let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-			let data = class_info.data;
-			ensure!(
-				data.properties.0.contains(ClassProperty::Transferable),
-				Error::<T>::NonTransferable
-			);
+		let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+		let data = class_info.data;
+		ensure!(
+			data.properties.0.contains(ClassProperty::Transferable),
+			Error::<T>::NonTransferable
+		);
 
-			let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
-			ensure!(*from == token_info.owner, Error::<T>::NoPermission);
+		let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+		ensure!(*from == token_info.owner, Error::<T>::NoPermission);
 
-			orml_nft::Module::<T>::transfer(from, to, token)?;
+		orml_nft::Module::<T>::transfer(from, to, token)?;
 
-			Self::deposit_event(RawEvent::TransferedToken(from.clone(), to.clone(), token.0, token.1));
+		Self::deposit_event(RawEvent::TransferedToken(from.clone(), to.clone(), token.0, token.1));
 
-			Ok(())
-		})
+		Ok(())
 	}
 }
 

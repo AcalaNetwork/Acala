@@ -11,10 +11,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, transactional, weights::Weight,
+};
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use orml_utilities::with_transaction_result;
 use primitives::{Balance, CurrencyId, TradingPair};
 use sp_core::U256;
 use sp_runtime::{
@@ -136,17 +137,15 @@ decl_module! {
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
 		#[weight = <T as Trait>::WeightInfo::swap_with_exact_supply()]
+		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin,
 			path: Vec<CurrencyId>,
 			#[compact] supply_amount: Balance,
 			#[compact] min_target_amount: Balance,
 		) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				let _ = Self::do_swap_with_exact_supply(&who, &path, supply_amount, min_target_amount, None)?;
-				Ok(())
-			})?;
+			let who = ensure_signed(origin)?;
+			let _ = Self::do_swap_with_exact_supply(&who, &path, supply_amount, min_target_amount, None)?;
 		}
 
 		/// Trading with DEX, swap with exact target amount
@@ -155,16 +154,15 @@ decl_module! {
 		/// - `target_amount`: exact target amount.
 		/// - `max_supply_amount`: acceptable maxmum supply amount.
 		#[weight = <T as Trait>::WeightInfo::swap_with_exact_target()]
+		#[transactional]
 		pub fn swap_with_exact_target(
 			origin,
 			path: Vec<CurrencyId>,
 			#[compact] target_amount: Balance,
 			#[compact] max_supply_amount: Balance,
 		) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)
-			})?;
+			let who = ensure_signed(origin)?;
+			Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)?;
 		}
 
 		/// Injecting liquidity to specific liquidity pool in the form of depositing currencies in trading pairs
@@ -177,6 +175,7 @@ decl_module! {
 		/// - `max_amount_b`: maximum currency A amount allowed to inject to liquidity pool.
 		/// - `deposit_increment_share`: this flag indicates whether to deposit added lp shares to obtain incentives
 		#[weight = T::WeightInfo::add_liquidity(*deposit_increment_share)]
+		#[transactional]
 		pub fn add_liquidity(
 			origin,
 			currency_id_a: CurrencyId,
@@ -185,10 +184,8 @@ decl_module! {
 			#[compact] max_amount_b: Balance,
 			deposit_increment_share: bool,
 		) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				Self::do_add_liquidity(&who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, deposit_increment_share)
-			})?;
+			let who = ensure_signed(origin)?;
+			Self::do_add_liquidity(&who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, deposit_increment_share)?;
 		}
 
 		/// Remove liquidity from specific liquidity pool in the form of burning shares, and withdrawing currencies in trading pairs
@@ -199,6 +196,7 @@ decl_module! {
 		/// - `remove_share`: liquidity amount to remove.
 		/// - `by_withdraw`: this flag indicates whether to withdraw share which is on incentives.
 		#[weight = T::WeightInfo::remove_liquidity(*by_withdraw)]
+		#[transactional]
 		pub fn remove_liquidity(
 			origin,
 			currency_id_a: CurrencyId,
@@ -206,10 +204,8 @@ decl_module! {
 			#[compact] remove_share: Balance,
 			by_withdraw: bool,
 		) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
-				Self::do_remove_liquidity(&who, currency_id_a, currency_id_b, remove_share, by_withdraw)
-			})?;
+			let who = ensure_signed(origin)?;
+			Self::do_remove_liquidity(&who, currency_id_a, currency_id_b, remove_share, by_withdraw)?;
 		}
 	}
 }
@@ -510,6 +506,8 @@ impl<T: Trait> Module<T> {
 		}
 	}
 
+	/// Ensured atomic.
+	#[transactional]
 	fn do_swap_with_exact_supply(
 		who: &T::AccountId,
 		path: &[CurrencyId],
@@ -517,29 +515,29 @@ impl<T: Trait> Module<T> {
 		min_target_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		with_transaction_result(|| {
-			let amounts = Self::get_target_amounts(&path, supply_amount, price_impact_limit)?;
-			ensure!(
-				amounts[amounts.len() - 1] >= min_target_amount,
-				Error::<T>::InsufficientTargetAmount
-			);
-			let module_account_id = Self::account_id();
-			let actual_target_amount = amounts[amounts.len() - 1];
+		let amounts = Self::get_target_amounts(&path, supply_amount, price_impact_limit)?;
+		ensure!(
+			amounts[amounts.len() - 1] >= min_target_amount,
+			Error::<T>::InsufficientTargetAmount
+		);
+		let module_account_id = Self::account_id();
+		let actual_target_amount = amounts[amounts.len() - 1];
 
-			T::Currency::transfer(path[0], who, &module_account_id, supply_amount)?;
-			Self::_swap_by_path(&path, &amounts);
-			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
+		T::Currency::transfer(path[0], who, &module_account_id, supply_amount)?;
+		Self::_swap_by_path(&path, &amounts);
+		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
-			Self::deposit_event(RawEvent::Swap(
-				who.clone(),
-				path.to_vec(),
-				supply_amount,
-				actual_target_amount,
-			));
-			Ok(actual_target_amount)
-		})
+		Self::deposit_event(RawEvent::Swap(
+			who.clone(),
+			path.to_vec(),
+			supply_amount,
+			actual_target_amount,
+		));
+		Ok(actual_target_amount)
 	}
 
+	/// Ensured atomic.
+	#[transactional]
 	fn do_swap_with_exact_target(
 		who: &T::AccountId,
 		path: &[CurrencyId],
@@ -547,24 +545,22 @@ impl<T: Trait> Module<T> {
 		max_supply_amount: Balance,
 		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		with_transaction_result(|| {
-			let amounts = Self::get_supply_amounts(&path, target_amount, price_impact_limit)?;
-			ensure!(amounts[0] <= max_supply_amount, Error::<T>::ExcessiveSupplyAmount);
-			let module_account_id = Self::account_id();
-			let actual_supply_amount = amounts[0];
+		let amounts = Self::get_supply_amounts(&path, target_amount, price_impact_limit)?;
+		ensure!(amounts[0] <= max_supply_amount, Error::<T>::ExcessiveSupplyAmount);
+		let module_account_id = Self::account_id();
+		let actual_supply_amount = amounts[0];
 
-			T::Currency::transfer(path[0], who, &module_account_id, actual_supply_amount)?;
-			Self::_swap_by_path(&path, &amounts);
-			T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
+		T::Currency::transfer(path[0], who, &module_account_id, actual_supply_amount)?;
+		Self::_swap_by_path(&path, &amounts);
+		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
-			Self::deposit_event(RawEvent::Swap(
-				who.clone(),
-				path.to_vec(),
-				actual_supply_amount,
-				target_amount,
-			));
-			Ok(actual_supply_amount)
-		})
+		Self::deposit_event(RawEvent::Swap(
+			who.clone(),
+			path.to_vec(),
+			actual_supply_amount,
+			target_amount,
+		));
+		Ok(actual_supply_amount)
 	}
 }
 

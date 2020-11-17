@@ -11,10 +11,10 @@ use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	traits::{Get, Happened},
+	transactional,
 };
 use frame_system::{self as system};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-use orml_utilities::with_transaction_result;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
@@ -114,90 +114,90 @@ impl<T: Trait> Module<T> {
 		T::ModuleId::get().into_account()
 	}
 
-	/// confiscate collateral and debit to cdp treasury
+	/// confiscate collateral and debit to cdp treasury.
+	///
+	/// Ensured atomic.
+	#[transactional]
 	pub fn confiscate_collateral_and_debit(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_confiscate: Balance,
 		debit_decrease: Balance,
 	) -> DispatchResult {
-		with_transaction_result(|| -> DispatchResult {
-			// use `with_transaction_result` to ensure operation is atomic
-			// convert balance type to amount type
-			let collateral_adjustment = Self::amount_try_from_balance(collateral_confiscate)?;
-			let debit_adjustment = Self::amount_try_from_balance(debit_decrease)?;
+		// convert balance type to amount type
+		let collateral_adjustment = Self::amount_try_from_balance(collateral_confiscate)?;
+		let debit_adjustment = Self::amount_try_from_balance(debit_decrease)?;
 
-			// transfer collateral to cdp treasury
-			T::CDPTreasury::deposit_collateral(&Self::account_id(), currency_id, collateral_confiscate)?;
+		// transfer collateral to cdp treasury
+		T::CDPTreasury::deposit_collateral(&Self::account_id(), currency_id, collateral_confiscate)?;
 
-			// deposit debit to cdp treasury
-			let bad_debt_value = T::RiskManager::get_bad_debt_value(currency_id, debit_decrease);
-			T::CDPTreasury::on_system_debit(bad_debt_value)?;
+		// deposit debit to cdp treasury
+		let bad_debt_value = T::RiskManager::get_bad_debt_value(currency_id, debit_decrease);
+		T::CDPTreasury::on_system_debit(bad_debt_value)?;
 
-			// update loan
-			Self::update_loan(
-				&who,
-				currency_id,
-				collateral_adjustment.saturating_neg(),
-				debit_adjustment.saturating_neg(),
-			)?;
+		// update loan
+		Self::update_loan(
+			&who,
+			currency_id,
+			collateral_adjustment.saturating_neg(),
+			debit_adjustment.saturating_neg(),
+		)?;
 
-			Self::deposit_event(RawEvent::ConfiscateCollateralAndDebit(
-				who.clone(),
-				currency_id,
-				collateral_confiscate,
-				debit_decrease,
-			));
-			Ok(())
-		})
+		Self::deposit_event(RawEvent::ConfiscateCollateralAndDebit(
+			who.clone(),
+			currency_id,
+			collateral_confiscate,
+			debit_decrease,
+		));
+		Ok(())
 	}
 
-	/// adjust the position
+	/// adjust the position.
+	///
+	/// Ensured atomic.
+	#[transactional]
 	pub fn adjust_position(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_adjustment: Amount,
 		debit_adjustment: Amount,
 	) -> DispatchResult {
-		with_transaction_result(|| -> DispatchResult {
-			// use `with_transaction_result` to ensure operation is atomic
-			// mutate collateral and debit
-			Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
+		// mutate collateral and debit
+		Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-			let collateral_balance_adjustment = Self::balance_try_from_amount_abs(collateral_adjustment)?;
-			let debit_balance_adjustment = Self::balance_try_from_amount_abs(debit_adjustment)?;
-			let module_account = Self::account_id();
+		let collateral_balance_adjustment = Self::balance_try_from_amount_abs(collateral_adjustment)?;
+		let debit_balance_adjustment = Self::balance_try_from_amount_abs(debit_adjustment)?;
+		let module_account = Self::account_id();
 
-			if collateral_adjustment.is_positive() {
-				T::Currency::transfer(currency_id, who, &module_account, collateral_balance_adjustment)?;
-			} else if collateral_adjustment.is_negative() {
-				T::Currency::transfer(currency_id, &module_account, who, collateral_balance_adjustment)?;
-			}
+		if collateral_adjustment.is_positive() {
+			T::Currency::transfer(currency_id, who, &module_account, collateral_balance_adjustment)?;
+		} else if collateral_adjustment.is_negative() {
+			T::Currency::transfer(currency_id, &module_account, who, collateral_balance_adjustment)?;
+		}
 
-			if debit_adjustment.is_positive() {
-				// check debit cap when increase debit
-				T::RiskManager::check_debit_cap(currency_id, Self::total_positions(currency_id).debit)?;
+		if debit_adjustment.is_positive() {
+			// check debit cap when increase debit
+			T::RiskManager::check_debit_cap(currency_id, Self::total_positions(currency_id).debit)?;
 
-				// issue debit with collateral backed by cdp treasury
-				T::CDPTreasury::issue_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)), true)?;
-			} else if debit_adjustment.is_negative() {
-				// repay debit
-				// burn debit by cdp treasury
-				T::CDPTreasury::burn_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
-			}
+			// issue debit with collateral backed by cdp treasury
+			T::CDPTreasury::issue_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)), true)?;
+		} else if debit_adjustment.is_negative() {
+			// repay debit
+			// burn debit by cdp treasury
+			T::CDPTreasury::burn_debit(who, T::Convert::convert((currency_id, debit_balance_adjustment)))?;
+		}
 
-			// ensure pass risk check
-			let Position { collateral, debit } = Self::positions(currency_id, who);
-			T::RiskManager::check_position_valid(currency_id, collateral, debit)?;
+		// ensure pass risk check
+		let Position { collateral, debit } = Self::positions(currency_id, who);
+		T::RiskManager::check_position_valid(currency_id, collateral, debit)?;
 
-			Self::deposit_event(RawEvent::PositionUpdated(
-				who.clone(),
-				currency_id,
-				collateral_adjustment,
-				debit_adjustment,
-			));
-			Ok(())
-		})
+		Self::deposit_event(RawEvent::PositionUpdated(
+			who.clone(),
+			currency_id,
+			collateral_adjustment,
+			debit_adjustment,
+		));
+		Ok(())
 	}
 
 	/// transfer whole loan of `from` to `to`

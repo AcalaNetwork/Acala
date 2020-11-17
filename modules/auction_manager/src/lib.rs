@@ -14,13 +14,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight};
+use frame_support::{
+	debug, decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, transactional, weights::Weight,
+};
 use frame_system::{
 	self as system, ensure_none,
 	offchain::{SendTransactionTypes, SubmitTransaction},
 };
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
-use orml_utilities::{with_transaction_result, IterableStorageMapExtended, OffchainErr};
+use orml_utilities::{IterableStorageMapExtended, OffchainErr};
 use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
@@ -325,14 +327,12 @@ decl_module! {
 		/// # </weight>
 		/// Use the collateral auction worst case as default weight.
 		#[weight = T::WeightInfo::cancel_collateral_auction()]
+		#[transactional]
 		pub fn cancel(origin, id: AuctionId) {
-			with_transaction_result(|| {
-				ensure_none(origin)?;
-				ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
-				<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
-				<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
-				Ok(())
-			})?;
+			ensure_none(origin)?;
+			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
+			<Module<T> as AuctionManager<T::AccountId>>::cancel_auction(id)?;
+			<Module<T>>::deposit_event(RawEvent::CancelAuction(id));
 		}
 
 		/// Start offchain worker in order to submit unsigned tx to cancel active auction after system shutdown.
@@ -599,6 +599,7 @@ impl<T: Trait> Module<T> {
 	/// if bid accepted.
 	///
 	/// Ensured atomic.
+	#[transactional]
 	pub fn collateral_auction_bid_handler(
 		now: T::BlockNumber,
 		id: AuctionId,
@@ -608,131 +609,127 @@ impl<T: Trait> Module<T> {
 		let (new_bidder, new_bid_price) = new_bid;
 		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
 
-		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-			// use `with_transaction_result` to ensure operation is atomic
-			<CollateralAuctions<T>>::try_mutate_exists(
-				id,
-				|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-					let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
-					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
+		<CollateralAuctions<T>>::try_mutate_exists(
+			id,
+			|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+				let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
+				let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 
-					// ensure new bid price is valid
-					ensure!(
-						Self::check_minimum_increment(
-							new_bid_price,
-							last_bid_price,
-							collateral_auction.target,
-							Self::get_minimum_increment_size(now, collateral_auction.start_time),
-						),
-						Error::<T>::InvalidBidPrice
-					);
+				// ensure new bid price is valid
+				ensure!(
+					Self::check_minimum_increment(
+						new_bid_price,
+						last_bid_price,
+						collateral_auction.target,
+						Self::get_minimum_increment_size(now, collateral_auction.start_time),
+					),
+					Error::<T>::InvalidBidPrice
+				);
 
-					let last_bidder = last_bid.as_ref().map(|(who, _)| who);
+				let last_bidder = last_bid.as_ref().map(|(who, _)| who);
 
-					let mut payment = collateral_auction.payment_amount(new_bid_price);
+				let mut payment = collateral_auction.payment_amount(new_bid_price);
 
-					// if there's bid before, return stablecoin from new bidder to last bidder
-					if let Some(last_bidder) = last_bidder {
-						let refund = collateral_auction.payment_amount(last_bid_price);
-						T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, last_bidder, refund)?;
+				// if there's bid before, return stablecoin from new bidder to last bidder
+				if let Some(last_bidder) = last_bidder {
+					let refund = collateral_auction.payment_amount(last_bid_price);
+					T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, last_bidder, refund)?;
 
-						payment = payment
-							.checked_sub(refund)
-							// This should never fail because new bid payment are always greater or equal to last bid
-							// payment.
-							.ok_or(Error::<T>::InvalidBidPrice)?;
+					payment = payment
+						.checked_sub(refund)
+						// This should never fail because new bid payment are always greater or equal to last bid
+						// payment.
+						.ok_or(Error::<T>::InvalidBidPrice)?;
+				}
+
+				// transfer remain payment from new bidder to CDP treasury
+				T::CDPTreasury::deposit_surplus(&new_bidder, payment)?;
+
+				// if collateral auction will be in reverse stage, refund collateral to it's
+				// origin from auction CDP treasury
+				if collateral_auction.in_reverse_stage(new_bid_price) {
+					let new_collateral_amount = collateral_auction.collateral_amount(last_bid_price, new_bid_price);
+					let refund_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
+
+					if !refund_collateral_amount.is_zero() {
+						T::CDPTreasury::withdraw_collateral(
+							&(collateral_auction.refund_recipient),
+							collateral_auction.currency_id,
+							refund_collateral_amount,
+						)?;
+
+						// update total collateral in auction after refund
+						TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
+							*balance = balance.saturating_sub(refund_collateral_amount)
+						});
+						collateral_auction.amount = new_collateral_amount;
 					}
+				}
 
-					// transfer remain payment from new bidder to CDP treasury
-					T::CDPTreasury::deposit_surplus(&new_bidder, payment)?;
+				Self::swap_bidders(&new_bidder, last_bidder);
 
-					// if collateral auction will be in reverse stage, refund collateral to it's
-					// origin from auction CDP treasury
-					if collateral_auction.in_reverse_stage(new_bid_price) {
-						let new_collateral_amount = collateral_auction.collateral_amount(last_bid_price, new_bid_price);
-						let refund_collateral_amount = collateral_auction.amount.saturating_sub(new_collateral_amount);
-
-						if !refund_collateral_amount.is_zero() {
-							T::CDPTreasury::withdraw_collateral(
-								&(collateral_auction.refund_recipient),
-								collateral_auction.currency_id,
-								refund_collateral_amount,
-							)?;
-
-							// update total collateral in auction after refund
-							TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
-								*balance = balance.saturating_sub(refund_collateral_amount)
-							});
-							collateral_auction.amount = new_collateral_amount;
-						}
-					}
-
-					Self::swap_bidders(&new_bidder, last_bidder);
-
-					Ok(now + Self::get_auction_time_to_close(now, collateral_auction.start_time))
-				},
-			)
-		})
+				Ok(now + Self::get_auction_time_to_close(now, collateral_auction.start_time))
+			},
+		)
 	}
 
 	/// Handles debit auction new bid. Returns `Ok(new_auction_end_time)` if bid
 	/// accepted.
 	///
 	/// Ensured atomic.
+	#[transactional]
 	pub fn debit_auction_bid_handler(
 		now: T::BlockNumber,
 		id: AuctionId,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
 	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-			// use `with_transaction_result` to ensure operation is atomic
-			<DebitAuctions<T>>::try_mutate_exists(
-				id,
-				|debit_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-					let mut debit_auction = debit_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
-					let (new_bidder, new_bid_price) = new_bid;
-					let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
+		<DebitAuctions<T>>::try_mutate_exists(
+			id,
+			|debit_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+				let mut debit_auction = debit_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
+				let (new_bidder, new_bid_price) = new_bid;
+				let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 
-					ensure!(
-						Self::check_minimum_increment(
-							new_bid_price,
-							last_bid_price,
-							debit_auction.fix,
-							Self::get_minimum_increment_size(now, debit_auction.start_time),
-						) && new_bid_price >= debit_auction.fix,
-						Error::<T>::InvalidBidPrice,
-					);
+				ensure!(
+					Self::check_minimum_increment(
+						new_bid_price,
+						last_bid_price,
+						debit_auction.fix,
+						Self::get_minimum_increment_size(now, debit_auction.start_time),
+					) && new_bid_price >= debit_auction.fix,
+					Error::<T>::InvalidBidPrice,
+				);
 
-					let last_bidder = last_bid.as_ref().map(|(who, _)| who);
+				let last_bidder = last_bid.as_ref().map(|(who, _)| who);
 
-					if let Some(last_bidder) = last_bidder {
-						// there's bid before, transfer the stablecoin from new bidder to last bidder
-						T::Currency::transfer(
-							T::GetStableCurrencyId::get(),
-							&new_bidder,
-							last_bidder,
-							debit_auction.fix,
-						)?;
-					} else {
-						// there's no bid before, transfer stablecoin to CDP treasury
-						T::CDPTreasury::deposit_surplus(&new_bidder, debit_auction.fix)?;
-					}
+				if let Some(last_bidder) = last_bidder {
+					// there's bid before, transfer the stablecoin from new bidder to last bidder
+					T::Currency::transfer(
+						T::GetStableCurrencyId::get(),
+						&new_bidder,
+						last_bidder,
+						debit_auction.fix,
+					)?;
+				} else {
+					// there's no bid before, transfer stablecoin to CDP treasury
+					T::CDPTreasury::deposit_surplus(&new_bidder, debit_auction.fix)?;
+				}
 
-					Self::swap_bidders(&new_bidder, last_bidder);
+				Self::swap_bidders(&new_bidder, last_bidder);
 
-					debit_auction.amount = debit_auction.amount_for_sale(last_bid_price, new_bid_price);
+				debit_auction.amount = debit_auction.amount_for_sale(last_bid_price, new_bid_price);
 
-					Ok(now + Self::get_auction_time_to_close(now, debit_auction.start_time))
-				},
-			)
-		})
+				Ok(now + Self::get_auction_time_to_close(now, debit_auction.start_time))
+			},
+		)
 	}
 
 	/// Handles surplus auction new bid. Returns `Ok(new_auction_end_time)` if
 	/// bid accepted.
 	///
 	/// Ensured atomic.
+	#[transactional]
 	pub fn surplus_auction_bid_handler(
 		now: T::BlockNumber,
 		id: AuctionId,
@@ -742,39 +739,36 @@ impl<T: Trait> Module<T> {
 		let (new_bidder, new_bid_price) = new_bid;
 		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
 
-		with_transaction_result(|| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-			// use `with_transaction_result` to ensure operation is atomic
-			let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExists)?;
-			let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
-			let native_currency_id = T::GetNativeCurrencyId::get();
+		let surplus_auction = Self::surplus_auctions(id).ok_or(Error::<T>::AuctionNotExists)?;
+		let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
+		let native_currency_id = T::GetNativeCurrencyId::get();
 
-			ensure!(
-				Self::check_minimum_increment(
-					new_bid_price,
-					last_bid_price,
-					Zero::zero(),
-					Self::get_minimum_increment_size(now, surplus_auction.start_time),
-				),
-				Error::<T>::InvalidBidPrice,
-			);
+		ensure!(
+			Self::check_minimum_increment(
+				new_bid_price,
+				last_bid_price,
+				Zero::zero(),
+				Self::get_minimum_increment_size(now, surplus_auction.start_time),
+			),
+			Error::<T>::InvalidBidPrice,
+		);
 
-			let last_bidder = last_bid.as_ref().map(|(who, _)| who);
+		let last_bidder = last_bid.as_ref().map(|(who, _)| who);
 
-			let burn_amount = if let Some(last_bidder) = last_bidder {
-				// refund last bidder
-				T::Currency::transfer(native_currency_id, &new_bidder, last_bidder, last_bid_price)?;
-				new_bid_price.saturating_sub(last_bid_price)
-			} else {
-				new_bid_price
-			};
+		let burn_amount = if let Some(last_bidder) = last_bidder {
+			// refund last bidder
+			T::Currency::transfer(native_currency_id, &new_bidder, last_bidder, last_bid_price)?;
+			new_bid_price.saturating_sub(last_bid_price)
+		} else {
+			new_bid_price
+		};
 
-			// burn remain native token from new bidder
-			T::Currency::withdraw(native_currency_id, &new_bidder, burn_amount)?;
+		// burn remain native token from new bidder
+		T::Currency::withdraw(native_currency_id, &new_bidder, burn_amount)?;
 
-			Self::swap_bidders(&new_bidder, last_bidder);
+		Self::swap_bidders(&new_bidder, last_bidder);
 
-			Ok(now + Self::get_auction_time_to_close(now, surplus_auction.start_time))
-		})
+		Ok(now + Self::get_auction_time_to_close(now, surplus_auction.start_time))
 	}
 
 	fn collateral_auction_end_handler(

@@ -11,6 +11,7 @@ use codec::Encode;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
 	traits::{Currency, Get, ReservableCurrency, StoredMap},
+	transactional,
 	weights::Weight,
 	StorageMap,
 };
@@ -18,7 +19,6 @@ use frame_system::ensure_signed;
 use module_evm::AddressMapping;
 use module_support::AccountMapping;
 use orml_traits::{account::MergeAccount, Happened};
-use orml_utilities::with_transaction_result;
 use primitives::evm::EnsureAddressOrigin;
 use sp_core::{crypto::AccountId32, ecdsa, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
@@ -106,46 +106,44 @@ decl_module! {
 		/// Claim account mapping between Substrate accounts and EVM accounts.
 		/// Ensure eth_address has not been mapped.
 		#[weight = T::WeightInfo::claim_account()]
+		#[transactional]
 		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
-			with_transaction_result(|| {
-				let who = ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
 
-				// ensure eth_address has not been mapped
-				ensure!(!Accounts::<T>::contains_key(eth_address), Error::<T>::EthAddressHasMapped);
+			// ensure eth_address has not been mapped
+			ensure!(!Accounts::<T>::contains_key(eth_address), Error::<T>::EthAddressHasMapped);
 
-				// recover evm address from signature
-				let address = Self::eth_recover(&eth_signature, &who.using_encoded(to_ascii_hex), &[][..]).ok_or(Error::<T>::BadSignature)?;
-				ensure!(eth_address == address, Error::<T>::InvalidSignature);
+			// recover evm address from signature
+			let address = Self::eth_recover(&eth_signature, &who.using_encoded(to_ascii_hex), &[][..]).ok_or(Error::<T>::BadSignature)?;
+			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
-				// check if the evm padded address already exists
-				let account_id = T::AddressMapping::into_account_id(eth_address);
-				let mut nonce = <T as frame_system::Trait>::Index::default();
-				if frame_system::Module::<T>::is_explicit(&account_id) {
-					// merge balance from `evm padded address` to `origin`
-					T::MergeAccount::merge_account(&account_id, &who)?;
+			// check if the evm padded address already exists
+			let account_id = T::AddressMapping::into_account_id(eth_address);
+			let mut nonce = <T as frame_system::Trait>::Index::default();
+			if frame_system::Module::<T>::is_explicit(&account_id) {
+				// merge balance from `evm padded address` to `origin`
+				T::MergeAccount::merge_account(&account_id, &who)?;
 
-					nonce = frame_system::Module::<T>::account_nonce(&account_id);
-					// finally kill the account
-					T::KillAccount::happened(&account_id);
-				}
-				//	make the origin nonce the max between origin amd evm padded address
-				let origin_nonce = frame_system::Module::<T>::account_nonce(&who);
-				if origin_nonce < nonce {
-					frame_system::Account::<T>::mutate(&who, |v| {
-						v.nonce = nonce;
-					});
-				}
+				nonce = frame_system::Module::<T>::account_nonce(&account_id);
+				// finally kill the account
+				T::KillAccount::happened(&account_id);
+			}
+			//	make the origin nonce the max between origin amd evm padded address
+			let origin_nonce = frame_system::Module::<T>::account_nonce(&who);
+			if origin_nonce < nonce {
+				frame_system::Account::<T>::mutate(&who, |v| {
+					v.nonce = nonce;
+				});
+			}
 
-				// update accounts
-				if let Some(evm_addr) = EvmAddresses::<T>::get(&who) {
-					Accounts::<T>::remove(&evm_addr);
-				}
-				Accounts::<T>::insert(eth_address, &who);
-				EvmAddresses::<T>::insert(&who, eth_address);
+			// update accounts
+			if let Some(evm_addr) = EvmAddresses::<T>::get(&who) {
+				Accounts::<T>::remove(&evm_addr);
+			}
+			Accounts::<T>::insert(eth_address, &who);
+			EvmAddresses::<T>::insert(&who, eth_address);
 
-				Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
-				Ok(())
-			})?;
+			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
 		}
 	}
 }

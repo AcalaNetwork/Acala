@@ -48,7 +48,7 @@ benchmarks! {
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
 
 		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-	}: _(RawOrigin::Signed(caller), to, 0.into(), vec![1], i)
+	}: _(RawOrigin::Signed(caller), to, 0u32.into(), vec![1], i)
 
 	// transfer NFT token to another account
 	transfer {
@@ -59,8 +59,8 @@ benchmarks! {
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
 
 		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		module_nft::Module::<T>::mint(RawOrigin::Signed(caller.clone()).into(), to.clone(), 0.into(), vec![1], 1)?;
-	}: _(RawOrigin::Signed(to), caller, (0.into(), 0.into()))
+		module_nft::Module::<T>::mint(RawOrigin::Signed(caller.clone()).into(), to.clone(), 0u32.into(), vec![1], 1)?;
+	}: _(RawOrigin::Signed(to), caller, (0u32.into(), 0u32.into()))
 
 	// burn NFT token
 	burn {
@@ -71,8 +71,8 @@ benchmarks! {
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
 
 		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		module_nft::Module::<T>::mint(RawOrigin::Signed(caller).into(), to.clone(), 0.into(), vec![1], 1)?;
-	}: _(RawOrigin::Signed(to), (0.into(), 0.into()))
+		module_nft::Module::<T>::mint(RawOrigin::Signed(caller).into(), to.clone(), 0u32.into(), vec![1], 1)?;
+	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()))
 
 	// destroy NFT class
 	destroy_class {
@@ -83,7 +83,7 @@ benchmarks! {
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
 
 		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-	}: _(RawOrigin::Signed(caller), 0.into(), to)
+	}: _(RawOrigin::Signed(caller), 0u32.into(), to)
 }
 
 #[cfg(test)]
