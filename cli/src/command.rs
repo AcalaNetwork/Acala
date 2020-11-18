@@ -151,7 +151,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 			let instant_sealing = if cli.instant_sealing {
 				if chain_spec.chain_type() != ChainType::Development {
-					return Err("Instant sealing can be turned on only in development mode".into());
+					return Err("Instant sealing can be turned on only in `--dev` mode".into());
 				}
 				true
 			} else {
