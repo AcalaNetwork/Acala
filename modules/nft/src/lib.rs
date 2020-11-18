@@ -4,7 +4,11 @@
 use codec::{Decode, Encode};
 use enumflags2::BitFlags;
 use frame_support::{
-	decl_error, decl_event, decl_module, ensure, traits::Get, transactional, weights::Weight, IterableStorageDoubleMap,
+	decl_error, decl_event, decl_module, ensure,
+	traits::{Currency, ExistenceRequirement::KeepAlive, Get, ReservableCurrency},
+	transactional,
+	weights::Weight,
+	IterableStorageDoubleMap, StorageMap,
 };
 use frame_system::ensure_signed;
 use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
@@ -170,13 +174,16 @@ decl_module! {
 			// `owner` must be a new account, so the free balance will reserve `NewAccountDeposit`.
 			// use `free_balance(owner)` instead of `deposit`
 			<T as Trait>::Currency::reserve(&owner, <T as Trait>::Currency::free_balance(&owner))?;
-			//	Depends on https://github.com/paritytech/substrate/issues/7139
-			//	For now, use origin as owner and skip the proxy part
-			//	pallet_proxy::Module<T>::add_proxy(owner, origin, Default::default(), 0)
-			let data = ClassData { deposit, properties };
-			orml_nft::Module::<T>::create_class(&who, metadata, data)?;
 
-			Self::deposit_event(RawEvent::CreatedClass(who, next_id));
+			// owner add proxy delegate to origin
+			let proxy_deposit = <pallet_proxy::Module<T>>::deposit(1u32);
+			<T as pallet_proxy::Trait>::Currency::transfer(&who, &owner, proxy_deposit, KeepAlive)?;
+			<pallet_proxy::Module<T>>::add_proxy_delegate(&owner, who, Default::default(), 0u32.into())?;
+
+			let data = ClassData { deposit, properties };
+			orml_nft::Module::<T>::create_class(&owner, metadata, data)?;
+
+			Self::deposit_event(RawEvent::CreatedClass(owner, next_id));
 		}
 
 		/// Mint NFT token
@@ -205,10 +212,8 @@ decl_module! {
 			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
 			let deposit = T::CreateTokenDeposit::get();
-			let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
 			let total_deposit = deposit * (quantity as u128);
-			<T as Trait>::Currency::transfer(&who, &owner, total_deposit)?;
-			<T as Trait>::Currency::reserve(&owner, total_deposit)?;
+			<T as Trait>::Currency::reserve(&class_info.owner, total_deposit)?;
 
 			let data = TokenData { deposit };
 			for _ in 0..quantity {
@@ -308,8 +313,11 @@ decl_module! {
 			<T as Trait>::Currency::unreserve(&owner, data.deposit);
 			<T as Trait>::Currency::transfer(&owner, &dest, data.deposit)?;
 
-			// Skip two steps until pallet_proxy is accessable
-			// pallet_proxy::Module<T>::remove_proxies(owner)
+			// remove all proxies of class owner
+			// `remove_proxies` of pallet_proxy is still private
+			let (_, proxy_deposit) = pallet_proxy::Proxies::<T>::take(&class_info.owner);
+			<T as pallet_proxy::Trait>::Currency::unreserve(&class_info.owner, proxy_deposit);
+
 			// transfer all free from origin to dest
 			orml_nft::Module::<T>::destroy_class(&who, class_id)?;
 

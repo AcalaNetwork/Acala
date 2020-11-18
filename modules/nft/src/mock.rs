@@ -155,9 +155,9 @@ impl pallet_proxy::Trait for Runtime {
 }
 
 type System = frame_system::Module<Runtime>;
-type Balances = pallet_balances::Module<Runtime>;
+pub type Balances = pallet_balances::Module<Runtime>;
 type Utility = pallet_utility::Module<Runtime>;
-type Proxy = pallet_proxy::Module<Runtime>;
+pub type Proxy = pallet_proxy::Module<Runtime>;
 
 pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
