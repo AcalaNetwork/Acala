@@ -257,11 +257,15 @@ parameter_types! {
 	};
 }
 
-/// Allowed if caller address start with 96 zero bits.
-pub struct MultiCurrencyPrecompileCallerFilter;
-impl PrecompileCallerFilter for MultiCurrencyPrecompileCallerFilter {
+parameter_types! {
+	pub const ZeroBytesLength: usize = 12;
+}
+
+/// Contract will be treated as system caller if starts with 12 zero bytes.
+pub struct SystemContractsFilter;
+impl PrecompileCallerFilter for SystemContractsFilter {
 	fn is_allowed(caller: H160) -> bool {
-		&caller[..12] == [0u8; 12]
+		&caller[..ZeroBytesLength::get()] == [0u8; ZeroBytesLength::get()]
 	}
 }
 
@@ -270,19 +274,15 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn multicurrency_precompile_caller_filter_works() {
-		assert!(MultiCurrencyPrecompileCallerFilter::is_allowed(H160::from_low_u64_be(
-			1
-		)));
+	fn system_contracts_filter_works() {
+		assert!(SystemContractsFilter::is_allowed(H160::from_low_u64_be(1)));
 
 		let mut max_allowed_addr = [0u8; 20];
-		max_allowed_addr[12] = 127u8;
-		assert!(MultiCurrencyPrecompileCallerFilter::is_allowed(max_allowed_addr.into()));
+		max_allowed_addr[ZeroBytesLength::get()] = 127u8;
+		assert!(SystemContractsFilter::is_allowed(max_allowed_addr.into()));
 
 		let mut min_blocked_addr = [0u8; 20];
-		min_blocked_addr[11] = 1u8;
-		assert!(!MultiCurrencyPrecompileCallerFilter::is_allowed(
-			min_blocked_addr.into()
-		));
+		min_blocked_addr[ZeroBytesLength::get() - 1] = 1u8;
+		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
 	}
 }
