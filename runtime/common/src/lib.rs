@@ -257,15 +257,13 @@ parameter_types! {
 	};
 }
 
-parameter_types! {
-	pub const ZeroBytesLength: usize = 12;
-}
+pub const ZERO_BYTES_LEN: usize = 12;
 
 /// Contract will be treated as system caller if starts with 12 zero bytes.
 pub struct SystemContractsFilter;
 impl PrecompileCallerFilter for SystemContractsFilter {
 	fn is_allowed(caller: H160) -> bool {
-		&caller[..ZeroBytesLength::get()] == [0u8; ZeroBytesLength::get()]
+		caller[..ZERO_BYTES_LEN] == [0u8; ZERO_BYTES_LEN]
 	}
 }
 
@@ -278,11 +276,11 @@ mod tests {
 		assert!(SystemContractsFilter::is_allowed(H160::from_low_u64_be(1)));
 
 		let mut max_allowed_addr = [0u8; 20];
-		max_allowed_addr[ZeroBytesLength::get()] = 127u8;
+		max_allowed_addr[ZERO_BYTES_LEN] = 127u8;
 		assert!(SystemContractsFilter::is_allowed(max_allowed_addr.into()));
 
 		let mut min_blocked_addr = [0u8; 20];
-		min_blocked_addr[ZeroBytesLength::get() - 1] = 1u8;
+		min_blocked_addr[ZERO_BYTES_LEN - 1] = 1u8;
 		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
 	}
 }
