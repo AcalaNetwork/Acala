@@ -1,6 +1,7 @@
 //! The precompiles for EVM, includes standard Ethereum precompiles, and more:
 //! - MultiCurrency at address `H160::from_low_u64_be(1024)`.
 
+use crate::is_system_contract;
 use module_evm::{
 	precompiles::{Precompile, Precompiles},
 	AddressMapping, Context, ExitError, ExitSucceed,
@@ -39,7 +40,7 @@ where
 		context: &Context,
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
 		EthereumPrecompiles::execute(address, input, target_gas, context).or_else(|| {
-			if !PrecompileCallerFilter::is_allowed(context.caller) {
+			if is_system_contract(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
 				return Some(Err(ExitError::Other("no permission".into())));
 			}
 

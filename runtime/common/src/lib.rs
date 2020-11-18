@@ -247,11 +247,18 @@ impl<Balance: FixedPointOperand> module_staking_pool::FeeModel<Balance> for Curv
 
 pub const ZERO_BYTES_LEN: usize = 12;
 
-/// Contract will be treated as system caller if starts with 12 zero bytes.
+/// Check if the given `address` is a system contract.
+///
+/// It's system contract if the address starts with 12 zero bytes.
+pub fn is_system_contract(address: H160) -> bool {
+	address[..ZERO_BYTES_LEN] == [0u8; ZERO_BYTES_LEN]
+}
+
+/// The call is allowed only if caller is a system contract.
 pub struct SystemContractsFilter;
 impl PrecompileCallerFilter for SystemContractsFilter {
 	fn is_allowed(caller: H160) -> bool {
-		caller[..ZERO_BYTES_LEN] == [0u8; ZERO_BYTES_LEN]
+		is_system_contract(caller)
 	}
 }
 
