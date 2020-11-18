@@ -1,5 +1,5 @@
 run: githooks
-	SKIP_WASM_BUILD= cargo run -- --dev -lruntime=debug
+	SKIP_WASM_BUILD= cargo run -- --dev -lruntime=debug --instant-sealing
 
 toolchain:
 	./scripts/init.sh
