@@ -3,8 +3,9 @@
 
 use module_evm::{
 	precompiles::{Precompile, Precompiles},
-	AddressMapping, ExitError, ExitSucceed,
+	AddressMapping, Context, ExitError, ExitSucceed,
 };
+use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
 use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
 use sp_std::{marker::PhantomData, prelude::*};
@@ -19,26 +20,33 @@ pub type EthereumPrecompiles = (
 	module_evm::precompiles::Identity,
 );
 
-pub struct AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>(
-	PhantomData<(MultiCurrencyPrecompile, NFTPrecompile)>,
+pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile>(
+	PhantomData<(PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile)>,
 );
 
-impl<MultiCurrencyPrecompile, NFTPrecompile> Precompiles for AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>
+impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile> Precompiles
+	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile>
 where
 	MultiCurrencyPrecompile: Precompile,
 	NFTPrecompile: Precompile,
+	PrecompileCallerFilter: PrecompileCallerFilterT,
 {
 	#[allow(clippy::type_complexity)]
 	fn execute(
 		address: H160,
 		input: &[u8],
 		target_gas: Option<usize>,
+		context: &Context,
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
-		EthereumPrecompiles::execute(address, input, target_gas).or_else(|| {
+		EthereumPrecompiles::execute(address, input, target_gas, context).or_else(|| {
+			if !PrecompileCallerFilter::is_allowed(context.caller) {
+				return Some(Err(ExitError::Other("no permission".into())));
+			}
+
 			if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {
-				Some(MultiCurrencyPrecompile::execute(input, target_gas))
+				Some(MultiCurrencyPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
-				Some(NFTPrecompile::execute(input, target_gas))
+				Some(NFTPrecompile::execute(input, target_gas, context))
 			} else {
 				None
 			}
