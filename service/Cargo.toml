@@ -24,6 +24,7 @@ sc-service = { version = "0.8.0" }
 sc-executor = { version = "0.8.0" }
 sc-consensus = { version = "0.8.0" }
 sc-consensus-babe = { version = "0.8.0" }
+sc-consensus-manual-seal = { version = "0.8.0" }
 sc-transaction-pool = { version = "2.0.0" }
 sc-basic-authorship = { version = "0.8.0" }
 sc-network = { version = "0.8.0" }

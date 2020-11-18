@@ -62,4 +62,10 @@ pub struct Cli {
 	#[allow(missing_docs)]
 	#[structopt(flatten)]
 	pub run: RunCmd,
+
+	/// Instant block sealing
+	///
+	/// Can only be used with `--dev`
+	#[structopt(long = "instant-sealing")]
+	pub instant_sealing: bool,
 }
