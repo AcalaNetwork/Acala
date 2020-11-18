@@ -62,7 +62,7 @@ runtime_benchmarks! {
 		};
 
 		let pallets_origin = schedule_origin.caller().clone();
-	}: fast_track_scheduled_dispatch(RawOrigin::Root, RawOrigin::Root.into(), 0, DispatchTime::At(4))
+	}: fast_track_scheduled_dispatch(RawOrigin::Root, pallets_origin, 0, DispatchTime::At(4))
 
 	// delay a scheduled dispatchable.
 	delay_scheduled_dispatch {
@@ -90,7 +90,7 @@ runtime_benchmarks! {
 		};
 
 		let pallets_origin = schedule_origin.caller().clone();
-	}: _(RawOrigin::Root, RawOrigin::Root.into(), 0, 5)
+	}: _(RawOrigin::Root, pallets_origin, 0, 5)
 
 	// cancel a scheduled dispatchable
 	cancel_scheduled_dispatch {
