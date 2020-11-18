@@ -149,19 +149,16 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			let instant_sealing = if cli.instant_sealing {
-				if chain_spec.chain_type() != ChainType::Development {
-					return Err("Instant sealing can be turned on only in `--dev` mode".into());
-				}
-				true
-			} else {
-				false
-			};
+			if cli.instant_sealing && chain_spec.chain_type() != ChainType::Development {
+				return Err("Instant sealing can be turned on only in `--dev` mode".into());
+			}
 
 			runner.run_node_until_exit(|config| async move {
 				match config.role {
 					Role::Light => service::build_light(config),
-					_ => service::build_full(config, instant_sealing, false).map(|(_, _, task_manager)| task_manager),
+					_ => {
+						service::build_full(config, cli.instant_sealing, false).map(|(_, _, task_manager)| task_manager)
+					}
 				}
 			})
 		}
