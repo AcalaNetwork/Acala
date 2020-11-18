@@ -75,7 +75,9 @@ pub use primitives::{
 	AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
 	EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
-pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
+pub use runtime_common::{
+	CurveFeeModel, ExchangeRate, MultiCurrencyPrecompileCallerFilter, Price, Rate, Ratio, TimeStampedPrice,
+};
 
 mod authority;
 mod constants;
@@ -1246,6 +1248,7 @@ pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::Mu
 	EvmAddressMapping<Runtime>,
 	CurrencyId,
 	Currencies,
+	MultiCurrencyPrecompileCallerFilter,
 >;
 
 pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<

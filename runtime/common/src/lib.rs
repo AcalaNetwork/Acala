@@ -3,8 +3,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::parameter_types;
-pub use module_support::{ExchangeRate, Price, Rate, Ratio};
+pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+use primitives::{TokenSymbol, PREDEPLOY_ADDRESS_START};
+use sp_core::H160;
 use sp_runtime::{traits::Saturating, transaction_validity::TransactionPriority, FixedPointNumber, FixedPointOperand};
+use sp_std::collections::btree_set::BTreeSet;
 
 pub mod precompile;
 
@@ -241,5 +244,22 @@ impl<Balance: FixedPointOperand> module_staking_pool::FeeModel<Balance> for Curv
 		};
 
 		multiplier.checked_mul_int(available_amount)
+	}
+}
+
+parameter_types! {
+	pub MultiCurrencyPrecompileAllowedCallers: BTreeSet<H160> = {
+		let mut s = BTreeSet::new();
+		for i in 0..=(TokenSymbol::RENBTC as u64) {
+			s.insert(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START + i));
+		}
+		s
+	};
+}
+
+pub struct MultiCurrencyPrecompileCallerFilter;
+impl PrecompileCallerFilter for MultiCurrencyPrecompileCallerFilter {
+	fn is_allowed(caller: H160) -> bool {
+		MultiCurrencyPrecompileAllowedCallers::get().contains(&caller)
 	}
 }

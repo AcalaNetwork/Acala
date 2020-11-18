@@ -30,7 +30,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
-use sp_std::{collections::btree_set::BTreeSet, prelude::*};
+use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -40,14 +40,12 @@ use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
 use module_evm::{CallInfo, CreateInfo, Runner};
 use module_evm_accounts::{EvmAccountMapping, EvmAddressMapping};
-use module_support::PrecompileCallerFilter;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
-use primitives::PREDEPLOY_ADDRESS_START;
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -77,7 +75,9 @@ pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
 	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
-pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
+pub use runtime_common::{
+	CurveFeeModel, ExchangeRate, MultiCurrencyPrecompileCallerFilter, Price, Rate, Ratio, TimeStampedPrice,
+};
 
 mod authority;
 mod benchmarking;
@@ -1246,20 +1246,6 @@ impl pallet_contracts::Trait for Runtime {
 
 parameter_types! {
 	pub const ChainId: u64 = 42;
-	pub MultiCurrencyPrecompileAllowedCallers: BTreeSet<H160> = {
-		let mut s = BTreeSet::new();
-		for i in 0..=(TokenSymbol::RENBTC as u64) {
-			s.insert(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START + i));
-		}
-		s
-	};
-}
-
-pub struct MultiCurrencyPrecompileCallerFilter;
-impl PrecompileCallerFilter for MultiCurrencyPrecompileCallerFilter {
-	fn is_allowed(caller: H160) -> bool {
-		MultiCurrencyPrecompileAllowedCallers::get().contains(&caller)
-	}
 }
 
 pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::MultiCurrencyPrecompile<
