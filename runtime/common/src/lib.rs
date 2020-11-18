@@ -3,7 +3,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::parameter_types;
-pub use module_support::{ExchangeRate, Price, Rate, Ratio};
+pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+use sp_core::H160;
 use sp_runtime::{traits::Saturating, transaction_validity::TransactionPriority, FixedPointNumber, FixedPointOperand};
 
 pub mod precompile;
@@ -241,5 +242,33 @@ impl<Balance: FixedPointOperand> module_staking_pool::FeeModel<Balance> for Curv
 		};
 
 		multiplier.checked_mul_int(available_amount)
+	}
+}
+
+pub const ZERO_BYTES_LEN: usize = 12;
+
+/// Contract will be treated as system caller if starts with 12 zero bytes.
+pub struct SystemContractsFilter;
+impl PrecompileCallerFilter for SystemContractsFilter {
+	fn is_allowed(caller: H160) -> bool {
+		caller[..ZERO_BYTES_LEN] == [0u8; ZERO_BYTES_LEN]
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn system_contracts_filter_works() {
+		assert!(SystemContractsFilter::is_allowed(H160::from_low_u64_be(1)));
+
+		let mut max_allowed_addr = [0u8; 20];
+		max_allowed_addr[ZERO_BYTES_LEN] = 127u8;
+		assert!(SystemContractsFilter::is_allowed(max_allowed_addr.into()));
+
+		let mut min_blocked_addr = [0u8; 20];
+		min_blocked_addr[ZERO_BYTES_LEN - 1] = 1u8;
+		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
 	}
 }

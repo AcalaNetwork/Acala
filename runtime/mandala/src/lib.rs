@@ -75,7 +75,7 @@ pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
 	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
-pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
+pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice};
 
 mod authority;
 mod benchmarking;
@@ -1267,7 +1267,8 @@ impl module_evm::Trait for Runtime {
 	type Currency = Balances;
 	type MergeAccount = (Accounts, Currencies);
 	type Event = Event;
-	type Precompiles = runtime_common::precompile::AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>;
+	type Precompiles =
+		runtime_common::precompile::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
 }

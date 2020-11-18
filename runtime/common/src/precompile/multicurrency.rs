@@ -1,7 +1,7 @@
 use codec::FullCodec;
 
 use frame_support::debug;
-use module_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
+use module_evm::{AddressMapping, Context, ExitError, ExitSucceed, Precompile};
 use sp_core::U256;
 use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -49,7 +49,11 @@ where
 	CurrencyId: FullCodec + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug,
 	MC: MultiCurrency<AccountId, CurrencyId = CurrencyId>,
 {
-	fn execute(input: &[u8], _target_gas: Option<usize>) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	fn execute(
+		input: &[u8],
+		_target_gas: Option<usize>,
+		_context: &Context,
+	) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		//TODO: evaluate cost
 
 		debug::info!("----------------------------------------------------------------");

@@ -227,7 +227,7 @@ pub struct Handler<'vicinity, 'config, T: Trait> {
 	gasometer: Gasometer<'config>,
 	deleted: BTreeSet<H160>,
 	logs: Vec<Log>,
-	precompile: fn(H160, &[u8], Option<usize>) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
+	precompile: fn(H160, &[u8], Option<usize>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
 	is_static: bool,
 	_marker: PhantomData<T>,
 }
@@ -239,7 +239,12 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 		gas_limit: usize,
 		is_static: bool,
 		config: &'config Config,
-		precompile: fn(H160, &[u8], Option<usize>) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
+		precompile: fn(
+			H160,
+			&[u8],
+			Option<usize>,
+			&Context,
+		) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
 	) -> Self {
 		Self {
 			vicinity,
@@ -618,7 +623,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				self.precompile,
 			);
 
-			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas)) {
+			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas), &context) {
 				return match ret {
 					Ok((s, out, cost)) => {
 						try_or_fail!(self.gasometer.record_cost(cost));

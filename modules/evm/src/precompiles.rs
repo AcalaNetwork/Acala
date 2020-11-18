@@ -1,6 +1,6 @@
 //! Builtin precompiles.
 
-use evm::{ExitError, ExitSucceed};
+use evm::{Context, ExitError, ExitSucceed};
 use impl_trait_for_tuples::impl_for_tuples;
 use ripemd160::Digest;
 use sp_core::H160;
@@ -18,6 +18,7 @@ pub trait Precompiles {
 		address: H160,
 		input: &[u8],
 		target_gas: Option<usize>,
+		context: &Context,
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>>;
 }
 
@@ -29,6 +30,7 @@ pub trait Precompile {
 	fn execute(
 		input: &[u8],
 		target_gas: Option<usize>,
+		context: &Context,
 	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>;
 }
 
@@ -41,13 +43,14 @@ impl Precompiles for Tuple {
 		address: H160,
 		input: &[u8],
 		target_gas: Option<usize>,
+		context: &Context,
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
 		let mut index = 0;
 
 		for_tuples!( #(
 			index += 1;
 			if address == H160::from_low_u64_be(index) {
-				return Some(Tuple::execute(input, target_gas))
+				return Some(Tuple::execute(input, target_gas, context))
 			}
 		)* );
 
@@ -80,6 +83,7 @@ impl Precompile for Identity {
 	fn execute(
 		input: &[u8],
 		target_gas: Option<usize>,
+		_context: &Context,
 	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		let cost = ensure_linear_cost(target_gas, input.len(), 15, 3)?;
 
@@ -91,7 +95,11 @@ impl Precompile for Identity {
 pub struct ECRecover;
 
 impl Precompile for ECRecover {
-	fn execute(i: &[u8], target_gas: Option<usize>) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	fn execute(
+		i: &[u8],
+		target_gas: Option<usize>,
+		_context: &Context,
+	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		let cost = ensure_linear_cost(target_gas, i.len(), 3000, 0)?;
 
 		let mut input = [0u8; 128];
@@ -121,6 +129,7 @@ impl Precompile for Ripemd160 {
 	fn execute(
 		input: &[u8],
 		target_gas: Option<usize>,
+		_context: &Context,
 	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		let cost = ensure_linear_cost(target_gas, input.len(), 600, 120)?;
 
@@ -137,6 +146,7 @@ impl Precompile for Sha256 {
 	fn execute(
 		input: &[u8],
 		target_gas: Option<usize>,
+		_context: &Context,
 	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		let cost = ensure_linear_cost(target_gas, input.len(), 60, 12)?;
 
