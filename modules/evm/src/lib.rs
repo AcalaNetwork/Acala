@@ -7,7 +7,7 @@ mod tests;
 
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
-pub use evm::{ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
+pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 pub use primitives::evm::{Account, CallInfo, CreateInfo, EnsureAddressOrigin, ExecutionInfo, Log, Vicinity};
 
 #[cfg(feature = "std")]

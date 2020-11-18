@@ -1,7 +1,8 @@
 use codec::FullCodec;
 
 use frame_support::debug;
-use module_evm::{AddressMapping, ExitError, ExitSucceed, Precompile};
+use module_evm::{AddressMapping, Context, ExitError, ExitSucceed, Precompile};
+use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
 use sp_core::U256;
 use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -19,8 +20,8 @@ use super::account_id_from_slice;
 /// - `0`: Query total issuance.
 /// - `1`: Query balance. Rest: `account_id`.
 /// - `2`: Transfer. Rest: `from ++ to ++ amount`.
-pub struct MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC>(
-	PhantomData<(AccountId, AccountIdConverter, CurrencyId, MC)>,
+pub struct MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC, PrecompileCallerFilter>(
+	PhantomData<(AccountId, AccountIdConverter, CurrencyId, MC, PrecompileCallerFilter)>,
 );
 
 enum Action {
@@ -41,16 +42,25 @@ impl From<u8> for Action {
 	}
 }
 
-impl<AccountId, AccountIdConverter, CurrencyId, MC> Precompile
-	for MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC>
+impl<AccountId, AccountIdConverter, CurrencyId, MC, PrecompileCallerFilter> Precompile
+	for MultiCurrencyPrecompile<AccountId, AccountIdConverter, CurrencyId, MC, PrecompileCallerFilter>
 where
 	AccountId: Debug + Clone,
 	AccountIdConverter: AddressMapping<AccountId>,
 	CurrencyId: FullCodec + Eq + PartialEq + Copy + MaybeSerializeDeserialize + Debug,
 	MC: MultiCurrency<AccountId, CurrencyId = CurrencyId>,
+	PrecompileCallerFilter: PrecompileCallerFilterT,
 {
-	fn execute(input: &[u8], _target_gas: Option<usize>) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	fn execute(
+		input: &[u8],
+		_target_gas: Option<usize>,
+		context: &Context,
+	) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		//TODO: evaluate cost
+
+		if !PrecompileCallerFilter::is_allowed(context.caller) {
+			return Err(ExitError::Other("no permission".into()));
+		}
 
 		debug::info!("----------------------------------------------------------------");
 		debug::info!(">>> input: {:?}", input);

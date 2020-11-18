@@ -3,7 +3,7 @@
 
 use module_evm::{
 	precompiles::{Precompile, Precompiles},
-	AddressMapping, ExitError, ExitSucceed,
+	AddressMapping, Context, ExitError, ExitSucceed,
 };
 use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
@@ -33,12 +33,13 @@ where
 		address: H160,
 		input: &[u8],
 		target_gas: Option<usize>,
+		context: &Context,
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
-		EthereumPrecompiles::execute(address, input, target_gas).or_else(|| {
+		EthereumPrecompiles::execute(address, input, target_gas, context).or_else(|| {
 			if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {
-				Some(MultiCurrencyPrecompile::execute(input, target_gas))
+				Some(MultiCurrencyPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
-				Some(NFTPrecompile::execute(input, target_gas))
+				Some(NFTPrecompile::execute(input, target_gas, context))
 			} else {
 				None
 			}
