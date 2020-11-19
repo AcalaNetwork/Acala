@@ -20,15 +20,22 @@ pub struct Vicinity {
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct ExecutionInfo<T> {
+pub struct CreateInfo {
 	pub exit_reason: ExitReason,
-	pub value: T,
+	pub address: H160,
+	pub value: Vec<u8>,
 	pub used_gas: U256,
 	pub logs: Vec<Log>,
 }
 
-pub type CallInfo = ExecutionInfo<Vec<u8>>;
-pub type CreateInfo = ExecutionInfo<H160>;
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct CallInfo {
+	pub exit_reason: ExitReason,
+	pub value: Vec<u8>,
+	pub used_gas: U256,
+	pub logs: Vec<Log>,
+}
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

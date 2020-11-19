@@ -271,7 +271,7 @@ fn should_create_and_call_contract() {
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let contract_address = result.value;
+		let contract_address = result.address;
 
 		assert_eq!(contract_address, H160::from_str("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
 
@@ -300,7 +300,24 @@ fn should_create_and_call_contract() {
 }
 
 #[test]
-fn should_revert() {
+fn create_reverts_with_message() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Foo {
+	//     constructor() public {
+	// 		require(false, "error message");
+	// 	}
+	// }
+	let contract = from_hex("0x6080604052348015600f57600080fd5b5060006083576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252600d8152602001807f6572726f72206d6573736167650000000000000000000000000000000000000081525060200191505060405180910390fd5b603e8060906000396000f3fe6080604052600080fdfea265627a7a723158204741083d83bf4e3ee8099dd0b3471c81061237c2e8eccfcb513dfa4c04634b5b64736f6c63430005110032").expect("invalid hex");
+	new_test_ext().execute_with(|| {
+		let result = <Test as Trait>::Runner::create(alice(), contract, U256::default(), 12_000_000).unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
+		assert!(String::from_utf8_lossy(&result.value).contains("error message"));
+	});
+}
+
+#[test]
+fn call_reverts_with_message() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -324,7 +341,7 @@ fn should_revert() {
 
 		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
-		let contract_address = H160::from(result.value);
+		let contract_address = result.address;
 
 		// call method `foo`
 		let foo = from_hex("0xc2985578").unwrap();
@@ -373,7 +390,7 @@ fn should_deploy_payable_contract() {
 		contract.append(&mut stored_value.clone());
 
 		let result = <Test as Trait>::Runner::create(alice(), contract, amount.into(), 100000).unwrap();
-		let contract_address = result.value;
+		let contract_address = result.address;
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(balance(alice()), INITIAL_BALANCE - amount);
@@ -427,7 +444,7 @@ fn should_transfer_from_contract() {
 		let result =
 			<Test as Trait>::Runner::create(alice(), contract, 0.into(), 10000000).expect("create shouldn't fail");
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		let contract_address = result.value;
+		let contract_address = result.address;
 
 		// send via transfer
 		let mut via_transfer = Vec::from(from_hex("0x636e082b000000000000000000000000").unwrap());
@@ -486,7 +503,8 @@ fn contract_should_deploy_contracts() {
 		// Factory.createContract
 		let create_contract = from_hex("0x412a5a6d").unwrap();
 		let result =
-			<Test as Trait>::Runner::call(alice(), result.value, create_contract, U256::default(), 1000000000).unwrap();
+			<Test as Trait>::Runner::call(alice(), result.address, create_contract, U256::default(), 1000000000)
+				.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 	});
 }
