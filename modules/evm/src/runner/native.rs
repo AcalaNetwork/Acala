@@ -56,7 +56,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			if let Err(_) = substate.transfer(Transfer { source, target, value }) {
+			if substate.transfer(Transfer { source, target, value }).is_err() {
 				return TransactionOutcome::Rollback(Err(Error::BalanceLow));
 			}
 
@@ -107,11 +107,14 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			if let Err(_) = substate.transfer(Transfer {
-				source,
-				target: address,
-				value,
-			}) {
+			if substate
+				.transfer(Transfer {
+					source,
+					target: address,
+					value,
+				})
+				.is_err()
+			{
 				return TransactionOutcome::Rollback(Err(Error::BalanceLow));
 			}
 
@@ -182,11 +185,14 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			if let Err(_) = substate.transfer(Transfer {
-				source,
-				target: address,
-				value,
-			}) {
+			if substate
+				.transfer(Transfer {
+					source,
+					target: address,
+					value,
+				})
+				.is_err()
+			{
 				return TransactionOutcome::Rollback(Err(Error::BalanceLow));
 			}
 
