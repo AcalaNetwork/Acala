@@ -31,6 +31,89 @@ pub struct Runner<T: Trait> {
 	_marker: PhantomData<T>,
 }
 
+impl<T: Trait> Runner<T> {
+	fn inner_create(
+		source: H160,
+		init: Vec<u8>,
+		value: U256,
+		gas_limit: u32,
+		salt: Option<H256>,
+		tag: &'static str,
+	) -> Result<CreateInfo, Error<T>> {
+		debug::debug!(
+			target: "evm",
+			"{:?}: source {:?}, gas_limit: {:?}",
+			tag,
+			source,
+			gas_limit,
+		);
+
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin: source,
+		};
+
+		let config = T::config();
+
+		let mut substate =
+			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		let scheme = if let Some(s) = salt {
+			let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
+			CreateScheme::Create2 {
+				caller: source,
+				code_hash,
+				salt: s,
+			}
+		} else {
+			CreateScheme::Legacy { caller: source }
+		};
+		let address = substate.create_address(scheme);
+
+		substate.inc_nonce(source);
+
+		frame_support::storage::with_transaction(|| {
+			let transfer = Some(Transfer {
+				source,
+				target: address,
+				value,
+			});
+
+			let (reason, out) = substate.execute(source, address, value, init, Vec::new(), transfer);
+
+			let mut create_info = CreateInfo {
+				exit_reason: reason.clone(),
+				value: address,
+				used_gas: U256::from(substate.used_gas()),
+				logs: substate.logs.clone(),
+			};
+
+			debug::debug!(
+				target: "evm",
+				"{:?}-result: create_info {:?}",
+				tag,
+				create_info
+			);
+
+			if !reason.is_succeed() {
+				return TransactionOutcome::Rollback(Ok(create_info));
+			}
+
+			if let Err(e) = substate.gasometer.record_deposit(out.len()) {
+				create_info.exit_reason = e.into();
+				return TransactionOutcome::Rollback(Ok(create_info));
+			}
+
+			create_info.used_gas = U256::from(substate.used_gas());
+
+			substate.inc_nonce(address);
+
+			AccountCodes::insert(address, out);
+			TransactionOutcome::Commit(Ok(create_info))
+		})
+	}
+}
+
 impl<T: Trait> RunnerT<T> for Runner<T> {
 	type Error = Error<T>;
 
@@ -82,65 +165,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 	}
 
 	fn create(source: H160, init: Vec<u8>, value: U256, gas_limit: u32) -> Result<CreateInfo, Self::Error> {
-		debug::debug!(
-			target: "evm",
-			"create: source {:?}, gas_limit: {:?}",
-			source,
-			gas_limit,
-		);
-
-		let vicinity = Vicinity {
-			gas_price: U256::one(),
-			origin: source,
-		};
-
-		let config = T::config();
-
-		let mut substate =
-			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
-
-		let address = substate.create_address(CreateScheme::Legacy { caller: source });
-
-		substate.inc_nonce(source);
-
-		frame_support::storage::with_transaction(|| {
-			let transfer = Some(Transfer {
-				source,
-				target: address,
-				value,
-			});
-
-			let (reason, out) = substate.execute(source, address, value, init, Vec::new(), transfer);
-
-			let mut create_info = CreateInfo {
-				exit_reason: reason.clone(),
-				value: address,
-				used_gas: U256::from(substate.used_gas()),
-				logs: substate.logs.clone(),
-			};
-
-			debug::debug!(
-				target: "evm",
-				"create-result: create_info {:?}",
-				create_info
-			);
-
-			if !reason.is_succeed() {
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
-
-			if let Err(e) = substate.gasometer.record_deposit(out.len()) {
-				create_info.exit_reason = e.into();
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
-
-			create_info.used_gas = U256::from(substate.used_gas());
-
-			substate.inc_nonce(address);
-
-			AccountCodes::insert(address, out);
-			TransactionOutcome::Commit(Ok(create_info))
-		})
+		Self::inner_create(source, init, value, gas_limit, None, "create")
 	}
 
 	fn create2(
@@ -150,70 +175,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		value: U256,
 		gas_limit: u32,
 	) -> Result<CreateInfo, Self::Error> {
-		debug::debug!(
-			target: "evm",
-			"create2: source {:?}, gas_limit: {:?}",
-			source,
-			gas_limit,
-		);
-
-		let vicinity = Vicinity {
-			gas_price: U256::one(),
-			origin: source,
-		};
-
-		let config = T::config();
-
-		let mut substate =
-			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
-
-		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-		let address = substate.create_address(CreateScheme::Create2 {
-			caller: source,
-			code_hash,
-			salt,
-		});
-
-		substate.inc_nonce(source);
-
-		frame_support::storage::with_transaction(|| {
-			let transfer = Some(Transfer {
-				source,
-				target: address,
-				value,
-			});
-
-			let (reason, out) = substate.execute(source, address, value, init, Vec::new(), transfer);
-
-			let mut create_info = CreateInfo {
-				exit_reason: reason.clone(),
-				value: address,
-				used_gas: U256::from(substate.used_gas()),
-				logs: substate.logs.clone(),
-			};
-
-			debug::debug!(
-				target: "evm",
-				"create2-result: create_info {:?}",
-				create_info
-			);
-
-			if !reason.is_succeed() {
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
-
-			if let Err(e) = substate.gasometer.record_deposit(out.len()) {
-				create_info.exit_reason = e.into();
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
-
-			create_info.used_gas = U256::from(substate.used_gas());
-
-			substate.inc_nonce(address);
-
-			AccountCodes::insert(address, out);
-			TransactionOutcome::Commit(Ok(create_info))
-		})
+		Self::inner_create(source, init, value, gas_limit, Some(salt), "create2")
 	}
 }
 
