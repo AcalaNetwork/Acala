@@ -239,7 +239,14 @@ where
 	T::AccountId: From<AccountId32>,
 {
 	fn into_h160(account_id: AccountId32) -> H160 {
-		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id)).unwrap_or_default()
+		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id.clone())).unwrap_or_else(|| {
+			let data: [u8; 32] = account_id.into();
+			if data.starts_with(b"evm:") {
+				H160::from_slice(&data[4..24])
+			} else {
+				H160::default()
+			}
+		})
 	}
 }
 
