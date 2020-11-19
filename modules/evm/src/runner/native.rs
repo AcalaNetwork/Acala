@@ -56,9 +56,12 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let transfer = Some(Transfer { source, target, value });
+			if substate.transfer(Transfer { source, target, value }).is_err() {
+				return TransactionOutcome::Rollback(Err(Error::BalanceLow));
+			}
+
 			let code = substate.code(target);
-			let (reason, out) = substate.execute(source, target, value, code, input, transfer);
+			let (reason, out) = substate.execute(source, target, value, code, input);
 
 			let call_info = CallInfo {
 				exit_reason: reason.clone(),
@@ -104,13 +107,18 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let transfer = Some(Transfer {
-				source,
-				target: address,
-				value,
-			});
+			if substate
+				.transfer(Transfer {
+					source,
+					target: address,
+					value,
+				})
+				.is_err()
+			{
+				return TransactionOutcome::Rollback(Err(Error::BalanceLow));
+			}
 
-			let (reason, out) = substate.execute(source, address, value, init, Vec::new(), transfer);
+			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
@@ -177,13 +185,18 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		substate.inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
-			let transfer = Some(Transfer {
-				source,
-				target: address,
-				value,
-			});
+			if substate
+				.transfer(Transfer {
+					source,
+					target: address,
+					value,
+				})
+				.is_err()
+			{
+				return TransactionOutcome::Rollback(Err(Error::BalanceLow));
+			}
 
-			let (reason, out) = substate.execute(source, address, value, init, Vec::new(), transfer);
+			let (reason, out) = substate.execute(source, address, value, init, Vec::new());
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
@@ -274,14 +287,7 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 		value: U256,
 		code: Vec<u8>,
 		input: Vec<u8>,
-		transfer: Option<Transfer>,
 	) -> (ExitReason, Vec<u8>) {
-		if let Some(transfer) = transfer {
-			if let Err(e) = self.transfer(transfer) {
-				return (e.into(), Vec::new());
-			}
-		}
-
 		let context = Context {
 			caller,
 			address,
@@ -534,13 +540,13 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				};
 			}
 
-			let transfer = Some(Transfer {
+			try_or_fail!(self.transfer(Transfer {
 				source: caller,
 				target: address,
 				value,
-			});
+			}));
 
-			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new(), transfer);
+			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
 
 			match reason {
 				ExitReason::Succeed(s) => match self.gasometer.record_deposit(out.len()) {
@@ -623,6 +629,10 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				self.precompile,
 			);
 
+			if let Some(transfer) = transfer {
+				try_or_fail!(self.transfer(transfer));
+			}
+
 			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas), &context) {
 				return match ret {
 					Ok((s, out, cost)) => {
@@ -633,14 +643,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				};
 			}
 
-			let (reason, out) = substate.execute(
-				context.caller,
-				context.address,
-				context.apparent_value,
-				code,
-				input,
-				transfer,
-			);
+			let (reason, out) = substate.execute(context.caller, context.address, context.apparent_value, code, input);
 
 			debug::debug!(
 				target: "evm",
