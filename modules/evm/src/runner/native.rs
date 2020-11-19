@@ -114,7 +114,8 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
-				value: address,
+				address,
+				value: Vec::default(),
 				used_gas: U256::from(substate.used_gas()),
 				logs: substate.logs.clone(),
 			};
@@ -126,6 +127,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			);
 
 			if !reason.is_succeed() {
+				create_info.value = out;
 				return TransactionOutcome::Rollback(Ok(create_info));
 			}
 
@@ -187,7 +189,8 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 
 			let mut create_info = CreateInfo {
 				exit_reason: reason.clone(),
-				value: address,
+				address,
+				value: Vec::default(),
 				used_gas: U256::from(substate.used_gas()),
 				logs: substate.logs.clone(),
 			};
@@ -199,6 +202,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			);
 
 			if !reason.is_succeed() {
+				create_info.value = out;
 				return TransactionOutcome::Rollback(Ok(create_info));
 			}
 

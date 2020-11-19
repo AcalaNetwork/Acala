@@ -116,7 +116,7 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
-				error_on_execution_failure(&info.exit_reason, &[])?;
+				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
 				Ok(Bytes(info.value[..].to_vec()))
 			}
@@ -169,7 +169,7 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
-				error_on_execution_failure(&info.exit_reason, &[])?;
+				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
 				info.used_gas
 			}

@@ -8,7 +8,7 @@ mod tests;
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use primitives::evm::{Account, CallInfo, CreateInfo, EnsureAddressOrigin, ExecutionInfo, Log, Vicinity};
+pub use primitives::evm::{Account, CallInfo, CreateInfo, EnsureAddressOrigin, Log, Vicinity};
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
@@ -267,14 +267,14 @@ decl_module! {
 			)? {
 				CreateInfo {
 					exit_reason: ExitReason::Succeed(_),
-					value: create_address,
+					address: create_address,
 					..
 				} => {
 					Module::<T>::deposit_event(Event::<T>::Created(create_address));
 				},
 				CreateInfo {
 					exit_reason: _,
-					value: create_address,
+					address: create_address,
 					..
 				} => {
 					Module::<T>::deposit_event(Event::<T>::CreatedFailed(create_address));
@@ -305,14 +305,14 @@ decl_module! {
 			)? {
 				CreateInfo {
 					exit_reason: ExitReason::Succeed(_),
-					value: create_address,
+					address: create_address,
 					..
 				} => {
 					Module::<T>::deposit_event(Event::<T>::Created(create_address));
 				},
 				CreateInfo {
 					exit_reason: _,
-					value: create_address,
+					address: create_address,
 					..
 				} => {
 					Module::<T>::deposit_event(Event::<T>::CreatedFailed(create_address));
