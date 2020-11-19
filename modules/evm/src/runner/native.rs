@@ -578,8 +578,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
 		debug::debug!(
 			target: "evm",
-			"handler: call: code_address {:?}",
-			code_address,
+			"handler: call: from: {:?} code_address {:?} input {:?}",
+			context.caller, code_address, input,
 		);
 
 		macro_rules! try_or_fail {
@@ -640,6 +640,12 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				code,
 				input,
 				transfer,
+			);
+
+			debug::debug!(
+				target: "evm",
+				"handler: call-result: from: {:?} code_address: {:?} reason: {:?} out: {:?}",
+				context.caller, code_address, reason, out
 			);
 
 			match reason {

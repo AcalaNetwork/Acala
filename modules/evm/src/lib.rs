@@ -182,8 +182,8 @@ decl_event! {
 		CreatedFailed(H160),
 		/// A \[contract\] has been executed successfully with states applied.
 		Executed(H160),
-		/// A \[contract\] has been executed with errors. States are reverted with only gas fees applied.
-		ExecutedFailed(H160),
+		/// A contract has been executed with errors. States are reverted with only gas fees applied. \[contract, exit_reason, output\]
+		ExecutedFailed(H160, ExitReason, Vec<u8>),
 		/// A deposit has been made at a given address. \[sender, address, value\]
 		BalanceDeposit(AccountId, H160, U256),
 		/// A withdrawal has been made from a given address. \[sender, address, value\]
@@ -239,8 +239,8 @@ decl_module! {
 				} => {
 					Module::<T>::deposit_event(Event::<T>::Executed(target));
 				},
-				_ => {
-					Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target));
+				info => {
+					Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.value));
 				},
 			}
 
