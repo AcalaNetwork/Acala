@@ -178,8 +178,8 @@ decl_event! {
 		Log(Log),
 		/// A contract has been created at given \[address\].
 		Created(H160),
-		/// A \[contract\] was attempted to be created, but the execution failed.
-		CreatedFailed(H160),
+		/// A contract was attempted to be created, but the execution failed. \[contract, exit_reason, output\]
+		CreatedFailed(H160, ExitReason, Vec<u8>),
 		/// A \[contract\] has been executed successfully with states applied.
 		Executed(H160),
 		/// A contract has been executed with errors. States are reverted with only gas fees applied. \[contract, exit_reason, output\]
@@ -272,12 +272,8 @@ decl_module! {
 				} => {
 					Module::<T>::deposit_event(Event::<T>::Created(create_address));
 				},
-				CreateInfo {
-					exit_reason: _,
-					address: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(create_address));
+				info => {
+					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.value));
 				},
 			}
 
@@ -310,12 +306,8 @@ decl_module! {
 				} => {
 					Module::<T>::deposit_event(Event::<T>::Created(create_address));
 				},
-				CreateInfo {
-					exit_reason: _,
-					address: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(create_address));
+				info => {
+					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.value));
 				},
 			}
 
