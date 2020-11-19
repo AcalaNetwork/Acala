@@ -245,13 +245,20 @@ impl<Balance: FixedPointOperand> module_staking_pool::FeeModel<Balance> for Curv
 	}
 }
 
-pub const ZERO_BYTES_LEN: usize = 12;
+pub const SYSTEM_CONTRACT_LEADING_ZERO_BYTES: usize = 12;
 
-/// Contract will be treated as system caller if starts with 12 zero bytes.
+/// Check if the given `address` is a system contract.
+///
+/// It's system contract if the address starts with 12 zero bytes.
+pub fn is_system_contract(address: H160) -> bool {
+	address[..SYSTEM_CONTRACT_LEADING_ZERO_BYTES] == [0u8; SYSTEM_CONTRACT_LEADING_ZERO_BYTES]
+}
+
+/// The call is allowed only if caller is a system contract.
 pub struct SystemContractsFilter;
 impl PrecompileCallerFilter for SystemContractsFilter {
 	fn is_allowed(caller: H160) -> bool {
-		caller[..ZERO_BYTES_LEN] == [0u8; ZERO_BYTES_LEN]
+		is_system_contract(caller)
 	}
 }
 
@@ -264,11 +271,11 @@ mod tests {
 		assert!(SystemContractsFilter::is_allowed(H160::from_low_u64_be(1)));
 
 		let mut max_allowed_addr = [0u8; 20];
-		max_allowed_addr[ZERO_BYTES_LEN] = 127u8;
+		max_allowed_addr[SYSTEM_CONTRACT_LEADING_ZERO_BYTES] = 127u8;
 		assert!(SystemContractsFilter::is_allowed(max_allowed_addr.into()));
 
 		let mut min_blocked_addr = [0u8; 20];
-		min_blocked_addr[ZERO_BYTES_LEN - 1] = 1u8;
+		min_blocked_addr[SYSTEM_CONTRACT_LEADING_ZERO_BYTES - 1] = 1u8;
 		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
 	}
 }
