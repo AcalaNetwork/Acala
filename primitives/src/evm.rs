@@ -56,3 +56,9 @@ pub trait EnsureAddressOrigin<OuterOrigin> {
 	/// Try with origin.
 	fn try_address_origin(address: &H160, origin: OuterOrigin) -> Result<Self::Success, OuterOrigin>;
 }
+
+/// A mapping between `AccountId` and `H160`.
+pub trait AddressMapping<AccountId> {
+	fn to_account(evm: &H160) -> AccountId;
+	fn to_evm_address(account: &AccountId) -> Option<H160>;
+}

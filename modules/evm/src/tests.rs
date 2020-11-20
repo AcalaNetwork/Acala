@@ -106,21 +106,10 @@ impl orml_currencies::Trait for Test {
 pub type Currencies = orml_currencies::Module<Test>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
-pub struct MockAccountMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> AccountMapping<AccountId32> for MockAccountMapping<T>
-where
-	T::AccountId: From<AccountId32>,
-{
-	fn into_h160(_account_id: AccountId32) -> H160 {
-		H160::default()
-	}
-}
-
 impl Trait for Test {
 	type CallOrigin = EnsureAddressRoot<Self::AccountId>;
 
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
-	type AccountMapping = MockAccountMapping<Test>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 
@@ -183,7 +172,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 fn balance(address: H160) -> u64 {
-	let account_id = <Test as Trait>::AddressMapping::into_account_id(address);
+	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
 	Balances::free_balance(account_id)
 }
 
