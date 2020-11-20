@@ -1,4 +1,4 @@
-use ethereum_types::{H160, U256};
+use ethereum_types::H160;
 use serde::Deserialize;
 use sp_core::Bytes;
 
@@ -6,7 +6,7 @@ use sp_core::Bytes;
 #[derive(Debug, Default, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
-pub struct CallRequest {
+pub struct CallRequest<Balance> {
 	/// From
 	pub from: Option<H160>,
 	/// To
@@ -14,7 +14,7 @@ pub struct CallRequest {
 	/// Gas Limit
 	pub gas_limit: Option<u32>,
 	/// Value
-	pub value: Option<U256>,
+	pub value: Option<Balance>,
 	/// Data
 	pub data: Option<Bytes>,
 }
