@@ -13,8 +13,8 @@ use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
 	ensure,
 	traits::{
-		Currency, ExistenceRequirement, Get, Happened, Imbalance, IsSubType, OnKilledAccount, OnUnbalanced, StoredMap,
-		WithdrawReasons,
+		Currency, ExistenceRequirement, Get, Happened, Imbalance, IsSubType, OnKilledAccount, OnUnbalanced,
+		ReservableCurrency, StoredMap, WithdrawReasons,
 	},
 	transactional,
 	weights::{
@@ -199,7 +199,7 @@ where
 	}
 }
 
-pub trait Trait: system::Trait + orml_currencies::Trait {
+pub trait Trait: system::Trait + orml_currencies::Trait + pallet_proxy::Trait {
 	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
@@ -319,6 +319,11 @@ decl_module! {
 		pub fn close_account(origin, recipient: Option<T::AccountId>) {
 				let who = ensure_signed(origin)?;
 				let recipient = recipient.unwrap_or_else(Self::treasury_account_id);
+
+				// remove proxy first
+				// use `remove_proxies` instead after https://github.com/paritytech/substrate/issues/7557 is available
+				let (_, proxy_deposit) = pallet_proxy::Proxies::<T>::take(&who);
+				<T as pallet_proxy::Trait>::Currency::unreserve(&who, proxy_deposit);
 
 				Self::do_merge_account_check(&who)?;
 				<T as Trait>::MultiCurrency::merge_account(&who, &recipient)?;
@@ -578,7 +583,7 @@ where
 	where
 		T: Send + Sync,
 		PalletBalanceOf<T>: Send + Sync,
-		T::Call: Dispatchable<Info = DispatchInfo>,
+		<T as frame_system::Trait>::Call: Dispatchable<Info = DispatchInfo>,
 	{
 		// NOTE: we can actually make it understand `ChargeTransactionPayment`, but
 		// would be some hassle for sure. We have to make it aware of the index of
@@ -622,9 +627,13 @@ where
 	/// inclusion_fee = base_fee + len_fee + [targeted_fee_adjustment * weight_fee];
 	/// final_fee = inclusion_fee + tip;
 	/// ```
-	pub fn compute_fee(len: u32, info: &DispatchInfoOf<T::Call>, tip: PalletBalanceOf<T>) -> PalletBalanceOf<T>
+	pub fn compute_fee(
+		len: u32,
+		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
+		tip: PalletBalanceOf<T>,
+	) -> PalletBalanceOf<T>
 	where
-		T::Call: Dispatchable<Info = DispatchInfo>,
+		<T as frame_system::Trait>::Call: Dispatchable<Info = DispatchInfo>,
 	{
 		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee)
 	}
@@ -635,12 +644,12 @@ where
 	/// dispatch corrected weight is used for the weight fee calculation.
 	pub fn compute_actual_fee(
 		len: u32,
-		info: &DispatchInfoOf<T::Call>,
-		post_info: &PostDispatchInfoOf<T::Call>,
+		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
+		post_info: &PostDispatchInfoOf<<T as frame_system::Trait>::Call>,
 		tip: PalletBalanceOf<T>,
 	) -> PalletBalanceOf<T>
 	where
-		T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+		<T as frame_system::Trait>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
 		Self::compute_fee_raw(len, post_info.calc_actual_weight(info), tip, post_info.pays_fee(info))
 	}
@@ -711,7 +720,8 @@ impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> 
 
 impl<T: Trait + Send + Sync> ChargeTransactionPayment<T>
 where
-	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
+	<T as frame_system::Trait>::Call:
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
 	/// utility constructor. Used only in client/factory code.
@@ -722,8 +732,8 @@ where
 	fn withdraw_fee(
 		&self,
 		who: &T::AccountId,
-		_call: &T::Call,
-		info: &DispatchInfoOf<T::Call>,
+		_call: &<T as frame_system::Trait>::Call,
+		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
 		len: usize,
 	) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
 		// pay any fees.
@@ -796,7 +806,11 @@ where
 	/// `(1/1)`, its priority is `fee * min(1, 4) = fee * 1`. This means
 	///  that the transaction which consumes more resources (either length or
 	/// weight) with the same `fee` ends up having lower priority.
-	fn get_priority(len: usize, info: &DispatchInfoOf<T::Call>, final_fee: PalletBalanceOf<T>) -> TransactionPriority {
+	fn get_priority(
+		len: usize,
+		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
+		final_fee: PalletBalanceOf<T>,
+	) -> TransactionPriority {
 		let weight_saturation = T::MaximumBlockWeight::get() / info.weight.max(1);
 		let len_saturation = T::MaximumBlockLength::get() as u64 / (len as u64).max(1);
 		let coefficient: PalletBalanceOf<T> = weight_saturation
@@ -811,11 +825,12 @@ where
 impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
-	T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
+	<T as frame_system::Trait>::Call:
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
-	type Call = T::Call;
+	type Call = <T as frame_system::Trait>::Call;
 	type AdditionalSigned = ();
 	type Pre = (
 		PalletBalanceOf<T>,

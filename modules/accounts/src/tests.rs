@@ -8,8 +8,8 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Accounts, Call, Currencies, DEXModule, ExtBuilder, MaximumBlockWeight, NewAccountDeposit, Origin, Runtime, System,
-	ACA, ALICE, AUSD, BOB, BTC, CAROL,
+	Accounts, Call, Currencies, DEXModule, ExtBuilder, MaximumBlockWeight, NewAccountDeposit, Origin, Proxy, Runtime,
+	System, ACA, ALICE, AUSD, BOB, BTC, CAROL,
 };
 use orml_traits::MultiCurrency;
 use sp_runtime::testing::TestXt;
@@ -225,6 +225,36 @@ fn close_account_failed_when_still_has_active_reserved() {
 		assert_noop!(
 			Accounts::close_account(Origin::signed(CAROL), None),
 			orml_tokens::Error::<Runtime>::StillHasActiveReserved,
+		);
+	});
+}
+
+#[test]
+fn close_account_will_remove_proxies() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(ACA, &ALICE, &BOB, 500));
+		assert_eq!(Accounts::is_explicit(&BOB), true);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 400);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			100
+		);
+
+		assert_ok!(Proxy::add_proxy_delegate(&BOB, ALICE, Default::default(), Zero::zero()));
+		assert_eq!(Proxy::proxies(BOB).1, 2);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 398);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			102
+		);
+
+		assert_ok!(Accounts::close_account(Origin::signed(BOB), None));
+		assert_eq!(Accounts::is_explicit(&BOB), false);
+		assert_eq!(Proxy::proxies(BOB).1, 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiReservableCurrency<_>>::reserved_balance(ACA, &BOB),
+			0
 		);
 	});
 }

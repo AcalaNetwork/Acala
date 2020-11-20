@@ -53,8 +53,6 @@ benchmarks! {
 		<T as orml_currencies::Trait>::NativeCurrency::update_balance(&module_account, base_currency_amount.unique_saturated_into())?;
 	}: _(RawOrigin::Signed(module_account), to, 0u32.into(), vec![1], i)
 
-	//orml_nft::Module::<T>::next_class_id()
-
 	// transfer NFT token to another account
 	transfer {
 		let caller: T::AccountId = account("caller", 0, SEED);

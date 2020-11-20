@@ -5,10 +5,10 @@ use codec::{Decode, Encode};
 use enumflags2::BitFlags;
 use frame_support::{
 	decl_error, decl_event, decl_module, ensure,
-	traits::{Currency, ExistenceRequirement::KeepAlive, Get, ReservableCurrency},
+	traits::{Currency, ExistenceRequirement::KeepAlive, Get},
 	transactional,
 	weights::Weight,
-	IterableStorageDoubleMap, StorageMap,
+	IterableStorageDoubleMap,
 };
 use frame_system::ensure_signed;
 use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
@@ -170,15 +170,17 @@ decl_module! {
 			let next_id = orml_nft::Module::<T>::next_class_id();
 			let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
 			let deposit = T::CreateClassDeposit::get();
+
+			// TODO: not sure whether to also transfer `NewAccountDeposit` for new account,
+			// it depends https://github.com/paritytech/substrate/issues/7563
 			<T as Trait>::Currency::transfer(&who, &owner, deposit)?;
-			// `owner` must be a new account, so the free balance will reserve `NewAccountDeposit`.
-			// use `free_balance(owner)` instead of `deposit`
+			// Currently, use `free_balance(owner)` instead of `deposit`.
 			<T as Trait>::Currency::reserve(&owner, <T as Trait>::Currency::free_balance(&owner))?;
 
 			// owner add proxy delegate to origin
 			let proxy_deposit = <pallet_proxy::Module<T>>::deposit(1u32);
 			<T as pallet_proxy::Trait>::Currency::transfer(&who, &owner, proxy_deposit, KeepAlive)?;
-			<pallet_proxy::Module<T>>::add_proxy_delegate(&owner, who, Default::default(), 0u32.into())?;
+			<pallet_proxy::Module<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
 
 			let data = ClassData { deposit, properties };
 			orml_nft::Module::<T>::create_class(&owner, metadata, data)?;
@@ -312,11 +314,6 @@ decl_module! {
 			// `transfer` not do this check.
 			<T as Trait>::Currency::unreserve(&owner, data.deposit);
 			<T as Trait>::Currency::transfer(&owner, &dest, data.deposit)?;
-
-			// remove all proxies of class owner
-			// `remove_proxies` of pallet_proxy is still private
-			let (_, proxy_deposit) = pallet_proxy::Proxies::<T>::take(&class_info.owner);
-			<T as pallet_proxy::Trait>::Currency::unreserve(&class_info.owner, proxy_deposit);
 
 			// transfer all free from origin to dest
 			orml_nft::Module::<T>::destroy_class(&who, class_id)?;

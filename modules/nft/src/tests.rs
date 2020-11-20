@@ -341,7 +341,7 @@ fn destroy_class_should_work() {
 		let event = TestEvent::nft(RawEvent::DestroyedClass(class_id_account(), CLASS_ID, BOB));
 		assert_eq!(last_event(), event);
 
-		assert_eq!(reserved_balance(&class_id_account()), 0);
+		assert_eq!(reserved_balance(&class_id_account()), 2);
 		assert_eq!(free_balance(&ALICE), 99700 + 100 - 2);
 		assert_eq!(free_balance(&BOB), 300);
 	});
