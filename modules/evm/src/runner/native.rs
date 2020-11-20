@@ -316,6 +316,28 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 	}
 }
 
+macro_rules! create_try {
+	( $map_err:expr ) => {
+		macro_rules! try_or_fail {
+			( $e:expr ) => {
+				match $e {
+					Ok(v) => v,
+					Err(e) => return Capture::Exit($map_err(e)),
+					}
+			};
+		}
+
+		macro_rules! try_or_rollback {
+			( $e:expr ) => {
+				match $e {
+					Ok(v) => v,
+					Err(e) => return TransactionOutcome::Rollback(Capture::Exit($map_err(e))),
+					}
+			};
+		}
+	};
+}
+
 impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 	type CreateInterrupt = Infallible;
 	type CreateFeedback = Infallible;
@@ -459,14 +481,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			caller,
 		);
 
-		macro_rules! try_or_fail {
-			( $e:expr ) => {
-				match $e {
-					Ok(v) => v,
-					Err(e) => return Capture::Exit((e.into(), None, Vec::new())),
-					}
-			};
-		}
+		create_try!(|e: ExitError| (e.into(), None, Vec::new()));
 
 		if self.is_static {
 			return Capture::Exit((ExitError::OutOfGas.into(), None, Vec::new()));
@@ -487,15 +502,6 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		substate.inc_nonce(caller);
 
 		frame_support::storage::with_transaction(|| {
-			macro_rules! try_or_fail {
-				( $e:expr ) => {
-					match $e {
-						Ok(v) => v,
-						Err(e) => return TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
-						}
-				};
-			}
-
 			let transfer = Some(Transfer {
 				source: caller,
 				target: address,
@@ -507,8 +513,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			match reason {
 				ExitReason::Succeed(s) => match self.gasometer.record_deposit(out.len()) {
 					Ok(()) => {
-						try_or_fail!(self.gasometer.record_stipend(substate.gasometer.gas()));
-						try_or_fail!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
+						try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
+						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
 						AccountCodes::insert(address, out);
 
@@ -544,14 +550,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			code_address,
 		);
 
-		macro_rules! try_or_fail {
-			( $e:expr ) => {
-				match $e {
-					Ok(v) => v,
-					Err(e) => return Capture::Exit((e.into(), Vec::new())),
-					}
-			};
-		}
+		create_try!(|e: ExitError| (e.into(), Vec::new()));
 
 		if self.is_static && transfer.is_some() {
 			return Capture::Exit((ExitError::OutOfGas.into(), Vec::new()));
@@ -568,15 +567,6 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		let code = self.code(code_address);
 
 		frame_support::storage::with_transaction(|| {
-			macro_rules! try_or_fail {
-				( $e:expr ) => {
-					match $e {
-						Ok(v) => v,
-						Err(e) => return TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
-						}
-				};
-			}
-
 			let mut substate = Self::new_with_precompile(
 				self.vicinity,
 				target_gas,
@@ -588,7 +578,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas), &context) {
 				return match ret {
 					Ok((s, out, cost)) => {
-						try_or_fail!(self.gasometer.record_cost(cost));
+						try_or_rollback!(self.gasometer.record_cost(cost));
 						TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 					}
 					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
@@ -606,8 +596,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 
 			match reason {
 				ExitReason::Succeed(s) => {
-					try_or_fail!(self.gasometer.record_stipend(substate.gasometer.gas()));
-					try_or_fail!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
+					try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
+					try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 
 					self.deleted.append(&mut substate.deleted);
 					self.logs.append(&mut substate.logs);
