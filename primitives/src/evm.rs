@@ -23,7 +23,7 @@ pub struct Vicinity {
 pub struct CreateInfo {
 	pub exit_reason: ExitReason,
 	pub address: H160,
-	pub value: Vec<u8>,
+	pub output: Vec<u8>,
 	pub used_gas: U256,
 	pub logs: Vec<Log>,
 }
@@ -32,16 +32,9 @@ pub struct CreateInfo {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CallInfo {
 	pub exit_reason: ExitReason,
-	pub value: Vec<u8>,
+	pub output: Vec<u8>,
 	pub used_gas: U256,
 	pub logs: Vec<Log>,
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum CallOrCreateInfo {
-	Call(CallInfo),
-	Create(CreateInfo),
 }
 
 pub trait EnsureAddressOrigin<OuterOrigin> {

@@ -193,18 +193,6 @@ decl_event! {
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
-		/// Not enough balance to perform action
-		BalanceLow,
-		/// Calculating total fee overflowed
-		FeeOverflow,
-		/// Calculating total payment overflowed
-		PaymentOverflow,
-		/// Withdraw fee failed
-		WithdrawFailed,
-		/// Gas price is too low.
-		GasPriceTooLow,
-		/// Nonce is invalid
-		InvalidNonce,
 	}
 }
 
@@ -221,7 +209,7 @@ decl_module! {
 			source: H160,
 			target: H160,
 			input: Vec<u8>,
-			value: U256,
+			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
@@ -240,7 +228,7 @@ decl_module! {
 					Module::<T>::deposit_event(Event::<T>::Executed(target));
 				},
 				info => {
-					Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.value));
+					Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 				},
 			}
 
@@ -254,7 +242,7 @@ decl_module! {
 			origin,
 			source: H160,
 			init: Vec<u8>,
-			value: U256,
+			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
@@ -273,7 +261,7 @@ decl_module! {
 					Module::<T>::deposit_event(Event::<T>::Created(create_address));
 				},
 				info => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.value));
+					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 				},
 			}
 
@@ -287,7 +275,7 @@ decl_module! {
 			source: H160,
 			init: Vec<u8>,
 			salt: H256,
-			value: U256,
+			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
@@ -307,7 +295,7 @@ decl_module! {
 					Module::<T>::deposit_event(Event::<T>::Created(create_address));
 				},
 				info => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.value));
+					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 				},
 			}
 

@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata, H160, U256,
+	OpaqueMetadata, H160,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
@@ -1633,12 +1633,12 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block> for Runtime {
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
 		fn call(
 			from: H160,
 			to: H160,
 			data: Vec<u8>,
-			value: U256,
+			value: Balance,
 			gas_limit: u32,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::call(
@@ -1648,13 +1648,12 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 			)
-			.map_err(|err| err.into())
 		}
 
 		fn create(
 			from: H160,
 			data: Vec<u8>,
-			value: U256,
+			value: Balance,
 			gas_limit: u32,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::create(
@@ -1663,7 +1662,6 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 			)
-			.map_err(|err| err.into())
 		}
 	}
 
