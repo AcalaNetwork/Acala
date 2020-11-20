@@ -503,8 +503,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
 		debug::debug!(
 			target: "evm",
-			"handler: create: caller {:?}",
-			caller,
+			"handler: create: caller {:?} gas {:?}",
+			caller, target_gas,
 		);
 
 		macro_rules! try_or_fail {
@@ -552,6 +552,12 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 
 			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
 
+			debug::debug!(
+				target: "evm",
+				"handler: create-result: from: {:?} address: {:?} reason: {:?} out: {:?} gas remaining: {:?}",
+				caller, address, reason, out, self.gasometer.gas(),
+			);
+
 			match reason {
 				ExitReason::Succeed(s) => match self.gasometer.record_deposit(out.len()) {
 					Ok(()) => {
@@ -588,8 +594,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
 		debug::debug!(
 			target: "evm",
-			"handler: call: from: {:?} code_address {:?} input {:?}",
-			context.caller, code_address, input,
+			"handler: call: from: {:?} code_address {:?} input {:?} value {:?} gas {:?}",
+			context.caller, code_address, input, transfer.as_ref().map(|x| x.value), target_gas
 		);
 
 		macro_rules! try_or_fail {
@@ -625,6 +631,12 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				};
 			}
 
+			if let Some(transfer) = transfer.as_ref() {
+				if transfer.value != U256::zero() {
+					target_gas = target_gas.saturating_add(self.config.call_stipend);
+				}
+			}
+
 			let mut substate = Self::new_with_precompile(
 				self.vicinity,
 				target_gas,
@@ -651,8 +663,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 
 			debug::debug!(
 				target: "evm",
-				"handler: call-result: from: {:?} code_address: {:?} reason: {:?} out: {:?}",
-				context.caller, code_address, reason, out
+				"handler: call-result: from: {:?} code_address {:?} reason {:?} out {:?} gas remaining: {:?}",
+				context.caller, code_address, reason, out, self.gasometer.gas(),
 			);
 
 			match reason {
