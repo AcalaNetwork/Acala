@@ -402,6 +402,13 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		}
 		let mut target_gas = target_gas.unwrap_or(after_gas);
 		target_gas = min(target_gas, after_gas);
+
+		if let Some(transfer) = transfer.as_ref() {
+			if !transfer.value.is_zero() {
+				target_gas = target_gas.saturating_add(self.config.call_stipend);
+			}
+		}
+
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
 		let code = self.code(code_address);
