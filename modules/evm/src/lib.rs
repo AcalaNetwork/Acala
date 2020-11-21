@@ -235,7 +235,7 @@ decl_module! {
 
 		/// Issue an EVM create operation. This is similar to a contract creation transaction in
 		/// Ethereum.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn create(
 			origin,
 			source: H160,
@@ -262,7 +262,7 @@ decl_module! {
 		}
 
 		/// Issue an EVM create2 operation.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn create2(
 			origin,
 			source: H160,

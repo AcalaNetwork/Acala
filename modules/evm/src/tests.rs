@@ -116,6 +116,14 @@ where
 	}
 }
 
+pub struct GasToWeight;
+
+impl Convert<u32, u64> for GasToWeight {
+	fn convert(a: u32) -> u64 {
+		a as u64
+	}
+}
+
 impl Trait for Test {
 	type CallOrigin = EnsureAddressRoot<Self::AccountId>;
 
@@ -128,6 +136,7 @@ impl Trait for Test {
 	type Precompiles = ();
 	type ChainId = SystemChainId;
 	type Runner = crate::runner::native::Runner<Self>;
+	type GasToWeight = GasToWeight;
 }
 
 type System = frame_system::Module<Test>;
