@@ -15,7 +15,7 @@ use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::traits::{Currency, Get};
-use frame_support::weights::{Pays, Weight};
+use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::RawOrigin;
 use module_support::AccountMapping;
@@ -23,6 +23,7 @@ use orml_traits::{account::MergeAccount, Happened};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{Hasher, H160, H256, U256};
+use sp_runtime::traits::Convert;
 use sp_runtime::{traits::UniqueSaturatedInto, AccountId32};
 use sp_std::{marker::PhantomData, vec::Vec};
 
@@ -117,6 +118,8 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	type ChainId: Get<u64>;
 	/// EVM execution runner.
 	type Runner: Runner<Self>;
+	/// Convert gas to weight.
+	type GasToWeight: Convert<u32, Weight>;
 
 	/// EVM config used in the module.
 	fn config() -> &'static Config {
@@ -203,7 +206,7 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn call(
 			origin,
 			source: H160,
@@ -214,25 +217,20 @@ decl_module! {
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
-			match T::Runner::call(
-				source,
-				target,
-				input,
-				value,
-				gas_limit,
-			)? {
-				CallInfo {
-					exit_reason: ExitReason::Succeed(_),
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Executed(target));
-				},
-				info => {
-					Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
-				},
+			let info = T::Runner::call(source, target, input, value, gas_limit)?;
+
+			if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Executed(target));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::No
+			})
 		}
 
 		/// Issue an EVM create operation. This is similar to a contract creation transaction in
@@ -247,25 +245,20 @@ decl_module! {
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
-			match T::Runner::create(
-				source,
-				init,
-				value,
-				gas_limit,
-			)? {
-				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
-					address: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Created(create_address));
-				},
-				info => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
-				},
+			let info = T::Runner::create(source, init, value, gas_limit)?;
+
+			 if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Created(info.address));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::No
+			})
 		}
 
 		/// Issue an EVM create2 operation.
@@ -280,26 +273,20 @@ decl_module! {
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
-			match T::Runner::create2(
-				source,
-				init,
-				salt,
-				value,
-				gas_limit,
-			)? {
-				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
-					address: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Created(create_address));
-				},
-				info => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
-				},
+			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
+
+			 if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Created(info.address));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::No
+			})
 		}
 	}
 }
