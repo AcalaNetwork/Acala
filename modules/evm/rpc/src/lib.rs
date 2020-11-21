@@ -39,11 +39,16 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			data: Some(Value::String("0x".to_string())),
 		}),
 		ExitReason::Revert(_) => {
-			let message = String::from_utf8_lossy(&data);
+			let msg_data: Vec<u8> = data[4..]
+				.to_vec()
+				.into_iter()
+				.filter(|x| !x.is_ascii_control())
+				.collect();
+			let message = String::from_utf8_lossy(&msg_data).trim().to_owned();
 			Err(Error {
 				code: ErrorCode::InternalError,
 				message: format!("execution revert: {}", message),
-				data: Some(Value::String(data.to_hex())),
+				data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
 			})
 		}
 		ExitReason::Fatal(e) => Err(Error {
