@@ -8,8 +8,8 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	get_all_module_accounts, AccountId, Accounts, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateClassDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId, NewAccountDeposit, Origin,
-	OriginCaller, Perbill, Runtime, SevenDays, TokenSymbol, NFT,
+	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId,
+	NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime, SevenDays, TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -1139,19 +1139,21 @@ fn test_nft_module() {
 				1
 			));
 			assert_ok!(NFT::burn(origin_of(AccountId::from(BOB)), (0, 0)));
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 0);
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
 			assert_ok!(NFT::destroy_class(
 				origin_of(AccountId::from(ALICE)),
 				0,
 				AccountId::from(BOB)
 			));
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateClassDeposit::get());
 			assert_eq!(
-				Balances::reserved_balance(AccountId::from(BOB)),
-				NewAccountDeposit::get()
+				Balances::free_balance(AccountId::from(BOB)),
+				CreateClassDeposit::get() + CreateTokenDeposit::get()
 			);
-			// CreateClassDeposit::get() + NewAccountDeposit::get() = 6000000000000000
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 999994000000000000000);
+			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
+			assert_eq!(
+				Balances::free_balance(AccountId::from(ALICE)),
+				amount(1000) - (CreateClassDeposit::get() + CreateTokenDeposit::get())
+			);
 		});
 }
 
@@ -1172,7 +1174,7 @@ fn test_accounts_module() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 999999000000000000000);
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1000000000000000000000);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
 				amount(1000)
@@ -1186,7 +1188,7 @@ fn test_accounts_module() {
 				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
 				0
 			);
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 999999000000000000000);
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 1000000000000000000000);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(BOB)),
 				amount(1000)
@@ -1205,7 +1207,7 @@ fn test_evm_accounts_module() {
 		.build()
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(bob_account_id()), 999999000000000000000);
+			assert_eq!(Balances::free_balance(bob_account_id()), 1000000000000000000000);
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice()),
@@ -1219,13 +1221,13 @@ fn test_evm_accounts_module() {
 
 			// claim another eth address
 			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(&bob_account_id()), 999999000000000000000);
+			assert_eq!(Balances::free_balance(&bob_account_id()), 1000000000000000000000);
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&bob()),
 				EvmAccounts::eth_sign(&bob(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 999999000000000000000);
+			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 1000000000000000000000);
 			assert_eq!(Balances::free_balance(bob_account_id()), 0);
 		});
 }
