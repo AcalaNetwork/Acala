@@ -23,8 +23,10 @@ use orml_traits::{account::MergeAccount, Happened};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{Hasher, H160, H256, U256};
-use sp_runtime::traits::Convert;
-use sp_runtime::{traits::UniqueSaturatedInto, AccountId32};
+use sp_runtime::{
+	traits::{Convert, UniqueSaturatedInto},
+	AccountId32,
+};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
