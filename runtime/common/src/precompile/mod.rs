@@ -4,10 +4,10 @@
 use crate::is_system_contract;
 use module_evm::{
 	precompiles::{Precompile, Precompiles},
-	AddressMapping, Context, ExitError, ExitSucceed,
+	Context, ExitError, ExitSucceed,
 };
 use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
-use primitives::PRECOMPILE_ADDRESS_START;
+use primitives::{evm::AddressMapping, PRECOMPILE_ADDRESS_START};
 use sp_core::H160;
 use sp_std::{marker::PhantomData, prelude::*};
 
@@ -58,7 +58,7 @@ where
 pub fn account_id_from_slice<AccountId, AccountIdConverter: AddressMapping<AccountId>>(src: &[u8]) -> AccountId {
 	let mut address = [0u8; 20];
 	address[..].copy_from_slice(src);
-	AccountIdConverter::into_account_id(address.into())
+	AccountIdConverter::to_account(&address.into())
 }
 
 #[cfg(test)]

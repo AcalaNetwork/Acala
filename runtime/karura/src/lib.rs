@@ -39,7 +39,7 @@ use static_assertions::const_assert;
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
 use module_evm::{CallInfo, CreateInfo, Runner};
-use module_evm_accounts::{EvmAccountMapping, EvmAddressMapping};
+use module_evm_accounts::EvmAddressMapping;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
@@ -1248,17 +1248,10 @@ pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::Mu
 	Currencies,
 >;
 
-pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmAccountMapping<Runtime>,
-	NFT,
->;
+pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 
 impl module_evm::Trait for Runtime {
-	type CallOrigin = EvmAddressMapping<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type AccountMapping = EvmAccountMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = (Accounts, Currencies);
 	type Event = Event;

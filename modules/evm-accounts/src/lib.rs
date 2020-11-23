@@ -16,10 +16,8 @@ use frame_support::{
 	StorageMap,
 };
 use frame_system::ensure_signed;
-use module_evm::AddressMapping;
-use module_support::AccountMapping;
 use orml_traits::{account::MergeAccount, Happened};
-use primitives::evm::EnsureAddressOrigin;
+use primitives::evm::AddressMapping;
 use sp_core::{crypto::AccountId32, ecdsa, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_std::marker::PhantomData;
@@ -118,7 +116,7 @@ decl_module! {
 			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
 			// check if the evm padded address already exists
-			let account_id = T::AddressMapping::into_account_id(eth_address);
+			let account_id = T::AddressMapping::to_account(&eth_address);
 			let mut nonce = <T as frame_system::Trait>::Index::default();
 			if frame_system::Module::<T>::is_explicit(&account_id) {
 				// merge balance from `evm padded address` to `origin`
@@ -204,9 +202,9 @@ impl<T: Trait> Module<T> {
 pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
 impl<T: Trait> AddressMapping<T::AccountId> for EvmAddressMapping<T>
 where
-	T::AccountId: From<AccountId32>,
+	T::AccountId: From<AccountId32> + Into<AccountId32>,
 {
-	fn into_account_id(address: H160) -> T::AccountId {
+	fn to_account(address: &H160) -> T::AccountId {
 		if let Some(acc) = Accounts::<T>::get(address) {
 			acc
 		} else {
@@ -216,35 +214,14 @@ where
 			AccountId32::from(data).into()
 		}
 	}
-}
 
-impl<T: Trait> EnsureAddressOrigin<T::Origin> for EvmAddressMapping<T>
-where
-	T::AccountId: From<AccountId32>,
-{
-	type Success = T::AccountId;
-
-	fn try_address_origin(address: &H160, origin: T::Origin) -> Result<Self::Success, T::Origin> {
-		let acc = ensure_signed(origin.clone());
-		match acc {
-			Ok(acc) if acc == Self::into_account_id(*address) => Ok(acc),
-			_ => Err(origin),
-		}
-	}
-}
-
-pub struct EvmAccountMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> AccountMapping<AccountId32> for EvmAccountMapping<T>
-where
-	T::AccountId: From<AccountId32>,
-{
-	fn into_h160(account_id: AccountId32) -> H160 {
-		EvmAddresses::<T>::get(&Into::<T::AccountId>::into(account_id.clone())).unwrap_or_else(|| {
-			let data: [u8; 32] = account_id.into();
+	fn to_evm_address(account_id: &T::AccountId) -> Option<H160> {
+		EvmAddresses::<T>::get(account_id).or_else(|| {
+			let data: [u8; 32] = account_id.clone().into().into();
 			if data.starts_with(b"evm:") {
-				H160::from_slice(&data[4..24])
+				Some(H160::from_slice(&data[4..24]))
 			} else {
-				H160::default()
+				None
 			}
 		})
 	}

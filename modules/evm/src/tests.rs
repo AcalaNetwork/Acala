@@ -4,14 +4,35 @@ use super::*;
 
 use frame_support::{assert_ok, impl_outer_dispatch, impl_outer_origin, parameter_types};
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::bytes::{from_hex, to_hex};
+use sp_core::{
+	bytes::{from_hex, to_hex},
+	Hasher,
+};
 use sp_core::{Blake2Hasher, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
+	AccountId32, Perbill,
 };
 use std::{collections::BTreeMap, str::FromStr};
+
+/// Hashed address mapping.
+pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
+
+impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping<H> {
+	fn to_account(address: &H160) -> AccountId32 {
+		let mut data = [0u8; 24];
+		data[0..4].copy_from_slice(b"evm:");
+		data[4..24].copy_from_slice(&address[..]);
+		let hash = H::hash(&data);
+
+		AccountId32::from(Into::<[u8; 32]>::into(hash))
+	}
+
+	fn to_evm_address(_account: &AccountId32) -> Option<H160> {
+		Some(H160::default())
+	}
+}
 
 impl_outer_origin! {
 	pub enum Origin for Test where system = frame_system {}
@@ -106,21 +127,8 @@ impl orml_currencies::Trait for Test {
 pub type Currencies = orml_currencies::Module<Test>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
-pub struct MockAccountMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> AccountMapping<AccountId32> for MockAccountMapping<T>
-where
-	T::AccountId: From<AccountId32>,
-{
-	fn into_h160(_account_id: AccountId32) -> H160 {
-		H160::default()
-	}
-}
-
 impl Trait for Test {
-	type CallOrigin = EnsureAddressRoot<Self::AccountId>;
-
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
-	type AccountMapping = MockAccountMapping<Test>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 
@@ -183,7 +191,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 fn balance(address: H160) -> u64 {
-	let account_id = <Test as Trait>::AddressMapping::into_account_id(address);
+	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
 	Balances::free_balance(account_id)
 }
 
@@ -191,8 +199,7 @@ fn balance(address: H160) -> u64 {
 fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(EVM::call(
-			Origin::root(),
-			H160::default(),
+			Origin::signed(AccountId32::default()),
 			alice(),
 			Vec::new(),
 			0,
@@ -200,8 +207,7 @@ fn fail_call_return_ok() {
 		));
 
 		assert_ok!(EVM::call(
-			Origin::root(),
-			H160::default(),
+			Origin::signed(AccountId32::default()),
 			bob(),
 			Vec::new(),
 			0,

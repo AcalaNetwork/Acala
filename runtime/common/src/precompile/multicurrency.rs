@@ -1,7 +1,8 @@
 use codec::FullCodec;
 
 use frame_support::debug;
-use module_evm::{AddressMapping, Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use primitives::evm::AddressMapping;
 use sp_core::U256;
 use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};

@@ -108,8 +108,8 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 	}
 
 	fn transfer(&self, transfer: Transfer) -> Result<(), ExitError> {
-		let source = T::AddressMapping::into_account_id(transfer.source);
-		let target = T::AddressMapping::into_account_id(transfer.target);
+		let source = T::AddressMapping::to_account(&transfer.source);
+		let target = T::AddressMapping::to_account(&transfer.target);
 
 		T::Currency::transfer(
 			&source,
@@ -298,8 +298,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			return Err(ExitError::OutOfGas);
 		}
 
-		let source = T::AddressMapping::into_account_id(address);
-		let dest = T::AddressMapping::into_account_id(target);
+		let source = T::AddressMapping::to_account(&address);
+		let dest = T::AddressMapping::to_account(&target);
 
 		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
 		self.deleted.insert(address);
