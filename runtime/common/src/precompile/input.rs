@@ -1,6 +1,5 @@
-use frame_support::{assert_err, assert_ok, ensure};
-use sp_core::{crypto::AccountId32, H160};
-use sp_std::{marker::PhantomData, result::Result};
+use frame_support::ensure;
+use sp_std::{marker::PhantomData, prelude::*, result::Result};
 
 use module_evm::{AddressMapping as AddressMappingT, ExitError};
 
@@ -72,6 +71,10 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	use frame_support::{assert_err, assert_ok};
+	use sp_core::{crypto::AccountId32, H160};
+
 	use primitives::AccountId;
 
 	#[derive(Debug, PartialEq, Eq)]
