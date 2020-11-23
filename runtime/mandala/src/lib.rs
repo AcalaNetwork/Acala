@@ -265,7 +265,7 @@ impl pallet_balances::Trait for Runtime {
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
-	type AccountStore = module_accounts::Module<Runtime>;
+	type AccountStore = System;
 	type MaxLocks = MaxLocks;
 	type WeightInfo = ();
 }
@@ -1027,7 +1027,8 @@ parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
 	// This cannot be changed without migration code to adjust reserved balances or
 	// update module_accounts::Module::do_merge_account_check
-	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
+	// pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
+	pub const NewAccountDeposit: Balance = 0;
 }
 
 impl module_accounts::Trait for Runtime {
