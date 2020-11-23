@@ -231,7 +231,7 @@ decl_module! {
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::No
+				pays_fee: Pays::Yes
 			})
 		}
 
@@ -259,7 +259,7 @@ decl_module! {
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::No
+				pays_fee: Pays::Yes
 			})
 		}
 
@@ -287,7 +287,7 @@ decl_module! {
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::No
+				pays_fee: Pays::Yes
 			})
 		}
 	}
