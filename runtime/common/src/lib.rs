@@ -2,10 +2,14 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::parameter_types;
+use frame_support::{parameter_types, weights::Weight};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
 use sp_core::H160;
-use sp_runtime::{traits::Saturating, transaction_validity::TransactionPriority, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{
+	traits::{Convert, Saturating},
+	transaction_validity::TransactionPriority,
+	FixedPointNumber, FixedPointOperand,
+};
 
 pub mod precompile;
 
@@ -259,6 +263,14 @@ pub struct SystemContractsFilter;
 impl PrecompileCallerFilter for SystemContractsFilter {
 	fn is_allowed(caller: H160) -> bool {
 		is_system_contract(caller)
+	}
+}
+
+/// Convert gas to weight
+pub struct GasToWeight;
+impl Convert<u32, Weight> for GasToWeight {
+	fn convert(a: u32) -> u64 {
+		a as Weight
 	}
 }
 

@@ -127,6 +127,14 @@ impl orml_currencies::Trait for Test {
 pub type Currencies = orml_currencies::Module<Test>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
+pub struct GasToWeight;
+
+impl Convert<u32, u64> for GasToWeight {
+	fn convert(a: u32) -> u64 {
+		a as u64
+	}
+}
+
 impl Trait for Test {
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
 	type Currency = Balances;
@@ -136,6 +144,7 @@ impl Trait for Test {
 	type Precompiles = ();
 	type ChainId = SystemChainId;
 	type Runner = crate::runner::native::Runner<Self>;
+	type GasToWeight = GasToWeight;
 }
 
 type System = frame_system::Module<Test>;

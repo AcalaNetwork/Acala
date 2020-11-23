@@ -75,7 +75,9 @@ pub use primitives::{
 	AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
 	EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
-pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice};
+pub use runtime_common::{
+	CurveFeeModel, ExchangeRate, GasToWeight, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice,
+};
 
 mod authority;
 mod constants;
@@ -1259,6 +1261,7 @@ impl module_evm::Trait for Runtime {
 		runtime_common::precompile::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
+	type GasToWeight = GasToWeight;
 }
 
 #[allow(clippy::large_enum_variant)]
