@@ -1220,14 +1220,21 @@ fn test_evm_accounts_module() {
 			assert_eq!(last_event(), event);
 
 			// claim another eth address
-			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(&bob_account_id()), 1000000000000000000000);
-			assert_ok!(EvmAccounts::claim_account(
-				Origin::signed(AccountId::from(ALICE)),
-				EvmAccounts::eth_address(&bob()),
-				EvmAccounts::eth_sign(&bob(), &AccountId::from(ALICE).encode(), &[][..])
-			));
-			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 1000000000000000000000);
-			assert_eq!(Balances::free_balance(bob_account_id()), 0);
+			assert_noop!(
+				EvmAccounts::claim_account(
+					Origin::signed(AccountId::from(ALICE)),
+					EvmAccounts::eth_address(&alice()),
+					EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+				),
+				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
+			);
+			assert_noop!(
+				EvmAccounts::claim_account(
+					Origin::signed(AccountId::from(BOB)),
+					EvmAccounts::eth_address(&alice()),
+					EvmAccounts::eth_sign(&alice(), &AccountId::from(BOB).encode(), &[][..])
+				),
+				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
+			);
 		});
 }

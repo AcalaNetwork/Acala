@@ -73,6 +73,8 @@ decl_event!(
 decl_error! {
 	/// Error for evm accounts module.
 	pub enum Error for Module<T: Trait> {
+		/// AccountId has mapped
+		AccountIdHasMapped,
 		/// Eth address has mapped
 		EthAddressHasMapped,
 		/// Bad signature
@@ -108,7 +110,8 @@ decl_module! {
 		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
 			let who = ensure_signed(origin)?;
 
-			// ensure eth_address has not been mapped
+			// ensure account_id and eth_address has not been mapped
+			ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
 			ensure!(!Accounts::<T>::contains_key(eth_address), Error::<T>::EthAddressHasMapped);
 
 			// recover evm address from signature
