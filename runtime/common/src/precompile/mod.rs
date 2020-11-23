@@ -11,6 +11,7 @@ use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
 use sp_std::{marker::PhantomData, prelude::*};
 
+pub mod input;
 pub mod multicurrency;
 pub mod nft;
 
