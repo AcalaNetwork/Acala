@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata, H160, U256,
+	OpaqueMetadata, H160,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
@@ -265,7 +265,7 @@ impl pallet_balances::Trait for Runtime {
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
-	type AccountStore = module_accounts::Module<Runtime>;
+	type AccountStore = System;
 	type MaxLocks = MaxLocks;
 	type WeightInfo = ();
 }
@@ -1027,7 +1027,8 @@ parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
 	// This cannot be changed without migration code to adjust reserved balances or
 	// update module_accounts::Module::do_merge_account_check
-	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
+	// pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
+	pub const NewAccountDeposit: Balance = 0;
 }
 
 impl module_accounts::Trait for Runtime {
@@ -1626,12 +1627,12 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block> for Runtime {
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
 		fn call(
 			from: H160,
 			to: H160,
 			data: Vec<u8>,
-			value: U256,
+			value: Balance,
 			gas_limit: u32,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::call(
@@ -1641,13 +1642,12 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 			)
-			.map_err(|err| err.into())
 		}
 
 		fn create(
 			from: H160,
 			data: Vec<u8>,
-			value: U256,
+			value: Balance,
 			gas_limit: u32,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::create(
@@ -1656,7 +1656,6 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 			)
-			.map_err(|err| err.into())
 		}
 	}
 
