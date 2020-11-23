@@ -1,10 +1,16 @@
+use codec::Decode;
+
 use frame_support::ensure;
 use sp_std::{marker::PhantomData, prelude::*, result::Result};
 
 use module_evm::{AddressMapping as AddressMappingT, ExitError};
+use primitives::CurrencyId;
 
 const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
+
+/// Based on `primitives::CurrencyId` impl.
+const CURRENCY_ID_BYTES: usize = 4;
 
 macro_rules! ensure_valid_input {
 	($e:expr) => {
@@ -20,6 +26,7 @@ pub trait InputT {
 	fn nth_param(&self, n: usize) -> Result<&[u8], Self::Error>;
 	fn action(&self) -> Result<Self::Action, Self::Error>;
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error>;
+	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
 }
 
 pub struct Input<Action, AccountId, AddressMapping> {
@@ -54,17 +61,29 @@ where
 	}
 
 	fn action(&self) -> Result<Self::Action, Self::Error> {
-		let action_bytes = self.nth_param(ACTION_INDEX)?;
-		let action_u8: &u8 = action_bytes.last().expect("Action bytes is 32 bytes");
+		let action_param = self.nth_param(ACTION_INDEX)?;
+		let action_u8: &u8 = action_param.last().expect("Action bytes is 32 bytes");
 
 		Ok((*action_u8).into())
 	}
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error> {
-		let address_bytes = self.nth_param(index)?;
+		let address_param = self.nth_param(index)?;
+
 		let mut address = [0u8; 20];
-		address.copy_from_slice(&address_bytes[12..]);
+		address.copy_from_slice(&address_param[12..]);
+
 		Ok(AddressMapping::into_account_id(address.into()))
+	}
+
+	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
+		let currency_id_param = self.nth_param(index)?;
+
+		let mut currency_id = [0u8; CURRENCY_ID_BYTES];
+		let start = PER_PARAM_BYTES - CURRENCY_ID_BYTES;
+		currency_id[..].copy_from_slice(&currency_id_param[start..]);
+
+		CurrencyId::decode(&mut &currency_id[..]).map_err(|_| ExitError::Other("invalid currency".into()))
 	}
 }
 
@@ -75,7 +94,7 @@ mod tests {
 	use frame_support::{assert_err, assert_ok};
 	use sp_core::{crypto::AccountId32, H160};
 
-	use primitives::AccountId;
+	use primitives::{AccountId, CurrencyId, TokenSymbol};
 
 	#[derive(Debug, PartialEq, Eq)]
 	pub enum Action {
@@ -137,6 +156,17 @@ mod tests {
 		let mut raw_input = [0u8; 32];
 		raw_input[31] = 1;
 		let input = TestInput::new(Box::new(raw_input));
-		assert_ok!(input.account_id_at(0), account_id)
+		assert_ok!(input.account_id_at(0), account_id);
+	}
+
+	#[test]
+	fn currency_id_works() {
+		let input = TestInput::new(Box::new([0u8; 32]));
+		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
+
+		let mut raw_input = [0u8; 32];
+		raw_input[29] = 1;
+		let input = TestInput::new(Box::new(raw_input));
+		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
 	}
 }
