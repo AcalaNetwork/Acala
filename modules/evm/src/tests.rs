@@ -4,14 +4,35 @@ use super::*;
 
 use frame_support::{assert_ok, impl_outer_dispatch, impl_outer_origin, parameter_types};
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::bytes::{from_hex, to_hex};
+use sp_core::{
+	bytes::{from_hex, to_hex},
+	Hasher,
+};
 use sp_core::{Blake2Hasher, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
+	AccountId32, Perbill,
 };
 use std::{collections::BTreeMap, str::FromStr};
+
+/// Hashed address mapping.
+pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
+
+impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping<H> {
+	fn to_account(address: &H160) -> AccountId32 {
+		let mut data = [0u8; 24];
+		data[0..4].copy_from_slice(b"evm:");
+		data[4..24].copy_from_slice(&address[..]);
+		let hash = H::hash(&data);
+
+		AccountId32::from(Into::<[u8; 32]>::into(hash))
+	}
+
+	fn to_evm_address(_account: &AccountId32) -> Option<H160> {
+		Some(H160::default())
+	}
+}
 
 impl_outer_origin! {
 	pub enum Origin for Test where system = frame_system {}

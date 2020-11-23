@@ -22,33 +22,12 @@ use orml_traits::{account::MergeAccount, Happened};
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{Hasher, H160, H256, U256};
-use sp_runtime::{traits::UniqueSaturatedInto, AccountId32};
+use sp_core::{H160, H256, U256};
+use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
-
-/// Hashed address mapping.
-pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
-
-impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping<H> {
-	fn to_account(address: &H160) -> AccountId32 {
-		let mut data = [0u8; 24];
-		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&address[..]);
-		let hash = H::hash(&data);
-
-		AccountId32::from(Into::<[u8; 32]>::into(hash))
-	}
-
-	fn to_evm_address(_account: &AccountId32) -> Option<H160> {
-		#[cfg(not(test))]
-		return None;
-		#[cfg(test)]
-		Some(H160::default())
-	}
-}
 
 /// Substrate system chain ID.
 pub struct SystemChainId;
