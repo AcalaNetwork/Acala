@@ -1,7 +1,7 @@
 use codec::Decode;
 
 use frame_support::ensure;
-use sp_std::{marker::PhantomData, prelude::*, result::Result};
+use sp_std::{marker::PhantomData, result::Result};
 
 use module_evm::{AddressMapping as AddressMappingT, ExitError};
 use primitives::{Amount, CurrencyId};
@@ -33,12 +33,12 @@ pub trait InputT {
 	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error>;
 }
 
-pub struct Input<Action, AccountId, AddressMapping> {
-	content: Box<[u8]>,
+pub struct Input<'a, Action, AccountId, AddressMapping> {
+	content: &'a [u8],
 	_marker: PhantomData<(Action, AccountId, AddressMapping)>,
 }
-impl<Action, AccountId, AddressMapping> Input<Action, AccountId, AddressMapping> {
-	fn new(content: Box<[u8]>) -> Self {
+impl<'a, Action, AccountId, AddressMapping> Input<'a, Action, AccountId, AddressMapping> {
+	fn new(content: &'a [u8]) -> Self {
 		Self {
 			content,
 			_marker: PhantomData,
@@ -46,7 +46,7 @@ impl<Action, AccountId, AddressMapping> Input<Action, AccountId, AddressMapping>
 	}
 }
 
-impl<Action, AccountId, AddressMapping> InputT for Input<Action, AccountId, AddressMapping>
+impl<Action, AccountId, AddressMapping> InputT for Input<'_, Action, AccountId, AddressMapping>
 where
 	Action: From<u8>,
 	AddressMapping: AddressMappingT<AccountId>,
@@ -136,28 +136,28 @@ mod tests {
 		}
 	}
 
-	pub type TestInput = Input<Action, AccountId, EvmAddressMapping>;
+	pub type TestInput<'a> = Input<'a, Action, AccountId, EvmAddressMapping>;
 
 	#[test]
 	fn nth_param_works() {
-		let input = TestInput::new(Box::new([1u8; 64]));
+		let input = TestInput::new(&[1u8; 64][..]);
 		assert_ok!(input.nth_param(1), &[1u8; 32][..]);
 		assert_err!(input.nth_param(2), ExitError::Other("invalid input".into()));
 	}
 
 	#[test]
 	fn action_works() {
-		let input = TestInput::new(Box::new([0u8; 32]));
+		let input = TestInput::new(&[0u8; 32][..]);
 		assert_ok!(input.action(), Action::QueryBalance);
 
 		let mut raw_input = [0u8; 32];
 		raw_input[31] = 1;
-		let input = TestInput::new(Box::new(raw_input));
+		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.action(), Action::Transfer);
 
 		let mut raw_input = [0u8; 32];
 		raw_input[31] = 2;
-		let input = TestInput::new(Box::new(raw_input));
+		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.action(), Action::Unknown);
 	}
 
@@ -169,18 +169,18 @@ mod tests {
 
 		let mut raw_input = [0u8; 32];
 		raw_input[31] = 1;
-		let input = TestInput::new(Box::new(raw_input));
+		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.account_id_at(0), account_id);
 	}
 
 	#[test]
 	fn currency_id_works() {
-		let input = TestInput::new(Box::new([0u8; 32]));
+		let input = TestInput::new(&[0u8; 32][..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
 
 		let mut raw_input = [0u8; 32];
 		raw_input[29] = 1;
-		let input = TestInput::new(Box::new(raw_input));
+		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
 	}
 
@@ -191,7 +191,7 @@ mod tests {
 
 		let mut raw_input = [0u8; 32];
 		raw_input[16..].copy_from_slice(&amount_bytes);
-		let input = TestInput::new(Box::new(raw_input));
+		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.amount_at(0), amount);
 	}
 }
