@@ -1249,7 +1249,6 @@ parameter_types! {
 pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::MultiCurrencyPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
-	CurrencyId,
 	Currencies,
 >;
 

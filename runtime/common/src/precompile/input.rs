@@ -4,13 +4,16 @@ use frame_support::ensure;
 use sp_std::{marker::PhantomData, result::Result};
 
 use module_evm::{AddressMapping as AddressMappingT, ExitError};
-use primitives::{Amount, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId};
 
 const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
 
 /// Based on `primitives::CurrencyId` impl.
 const CURRENCY_ID_BYTES: usize = 4;
+
+/// Based on `u128` as `primitives::Balance`.
+const BALANCE_BYTES: usize = 16;
 
 /// Based on `i128` as `primitives::Amount`.
 const AMOUNT_BYTES: usize = 16;
@@ -30,6 +33,7 @@ pub trait InputT {
 	fn action(&self) -> Result<Self::Action, Self::Error>;
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
+	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
 	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error>;
 }
 
@@ -38,7 +42,7 @@ pub struct Input<'a, Action, AccountId, AddressMapping> {
 	_marker: PhantomData<(Action, AccountId, AddressMapping)>,
 }
 impl<'a, Action, AccountId, AddressMapping> Input<'a, Action, AccountId, AddressMapping> {
-	fn new(content: &'a [u8]) -> Self {
+	pub fn new(content: &'a [u8]) -> Self {
 		Self {
 			content,
 			_marker: PhantomData,
@@ -88,6 +92,16 @@ where
 		currency_id[..].copy_from_slice(&currency_id_param[start..]);
 
 		CurrencyId::decode(&mut &currency_id[..]).map_err(|_| ExitError::Other("invalid currency".into()))
+	}
+
+	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
+		let balance_param = self.nth_param(index)?;
+
+		let mut balance = [0u8; BALANCE_BYTES];
+		let start = PER_PARAM_BYTES - BALANCE_BYTES;
+		balance[..].copy_from_slice(&balance_param[start..]);
+
+		Ok(Balance::from_be_bytes(balance))
 	}
 
 	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error> {
@@ -182,6 +196,17 @@ mod tests {
 		raw_input[29] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
+	}
+
+	#[test]
+	fn balance_works() {
+		let balance = 127u128;
+		let balance_bytes = balance.to_be_bytes();
+
+		let mut raw_input = [0u8; 32];
+		raw_input[16..].copy_from_slice(&balance_bytes);
+		let input = TestInput::new(&raw_input[..]);
+		assert_ok!(input.balance_at(0), balance);
 	}
 
 	#[test]

@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata, H160, U256,
+	OpaqueMetadata, H160,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
@@ -1244,7 +1244,6 @@ parameter_types! {
 pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::MultiCurrencyPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
-	CurrencyId,
 	Currencies,
 >;
 
