@@ -26,7 +26,7 @@ pub trait RuntimeApiCollection:
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 	+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
-	+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block>
+	+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
@@ -47,7 +47,7 @@ where
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 		+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
-		+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block>
+		+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_session::SessionKeys<Block>,

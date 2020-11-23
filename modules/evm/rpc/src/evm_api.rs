@@ -11,12 +11,12 @@ use crate::call_request::CallRequest;
 
 /// EVM rpc interface.
 #[rpc(server)]
-pub trait EVMApi<BlockHash> {
+pub trait EVMApi<BlockHash, Balance> {
 	/// Call contract, returning the output data.
 	#[rpc(name = "evm_call")]
-	fn call(&self, _: CallRequest, _: Option<BlockHash>) -> Result<Bytes>;
+	fn call(&self, _: CallRequest<Balance>, _: Option<BlockHash>) -> Result<Bytes>;
 
 	/// Estimate gas needed for execution of given contract.
 	#[rpc(name = "evm_estimateGas")]
-	fn estimate_gas(&self, _: CallRequest, _: Option<BlockHash>) -> Result<U256>;
+	fn estimate_gas(&self, _: CallRequest<Balance>, _: Option<BlockHash>) -> Result<U256>;
 }
