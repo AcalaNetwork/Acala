@@ -245,11 +245,6 @@ impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balanc
 	}
 }
 
-/// Mapping from `AccountId` into `H160`.
-pub trait AccountMapping<AccountId> {
-	fn into_h160(account_id: AccountId) -> H160;
-}
-
 /// Return true if the call of EVM precompile contract is allowed.
 pub trait PrecompileCallerFilter {
 	fn is_allowed(caller: H160) -> bool;
