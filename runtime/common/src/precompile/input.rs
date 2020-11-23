@@ -4,13 +4,16 @@ use frame_support::ensure;
 use sp_std::{marker::PhantomData, prelude::*, result::Result};
 
 use module_evm::{AddressMapping as AddressMappingT, ExitError};
-use primitives::CurrencyId;
+use primitives::{Amount, CurrencyId};
 
 const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
 
 /// Based on `primitives::CurrencyId` impl.
 const CURRENCY_ID_BYTES: usize = 4;
+
+/// Based on `i128` as `primitives::Amount`.
+const AMOUNT_BYTES: usize = 16;
 
 macro_rules! ensure_valid_input {
 	($e:expr) => {
@@ -27,6 +30,7 @@ pub trait InputT {
 	fn action(&self) -> Result<Self::Action, Self::Error>;
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
+	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error>;
 }
 
 pub struct Input<Action, AccountId, AddressMapping> {
@@ -84,6 +88,16 @@ where
 		currency_id[..].copy_from_slice(&currency_id_param[start..]);
 
 		CurrencyId::decode(&mut &currency_id[..]).map_err(|_| ExitError::Other("invalid currency".into()))
+	}
+
+	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error> {
+		let amount_param = self.nth_param(index)?;
+
+		let mut amount = [0u8; AMOUNT_BYTES];
+		let start = PER_PARAM_BYTES - AMOUNT_BYTES;
+		amount[..].copy_from_slice(&amount_param[start..]);
+
+		Ok(Amount::from_be_bytes(amount))
 	}
 }
 
@@ -168,5 +182,16 @@ mod tests {
 		raw_input[29] = 1;
 		let input = TestInput::new(Box::new(raw_input));
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
+	}
+
+	#[test]
+	fn amount_works() {
+		let amount = 127i128;
+		let amount_bytes = amount.to_be_bytes();
+
+		let mut raw_input = [0u8; 32];
+		raw_input[16..].copy_from_slice(&amount_bytes);
+		let input = TestInput::new(Box::new(raw_input));
+		assert_ok!(input.amount_at(0), amount);
 	}
 }
