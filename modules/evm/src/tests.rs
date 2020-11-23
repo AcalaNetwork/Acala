@@ -107,8 +107,6 @@ pub type Currencies = orml_currencies::Module<Test>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 impl Trait for Test {
-	type CallOrigin = EnsureAddressRoot<Self::AccountId>;
-
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
@@ -180,8 +178,7 @@ fn balance(address: H160) -> u64 {
 fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(EVM::call(
-			Origin::root(),
-			H160::default(),
+			Origin::signed(AccountId32::default()),
 			alice(),
 			Vec::new(),
 			U256::default(),
@@ -189,8 +186,7 @@ fn fail_call_return_ok() {
 		));
 
 		assert_ok!(EVM::call(
-			Origin::root(),
-			H160::default(),
+			Origin::signed(AccountId32::default()),
 			bob(),
 			Vec::new(),
 			U256::default(),

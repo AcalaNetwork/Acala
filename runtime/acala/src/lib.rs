@@ -1251,7 +1251,6 @@ pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::Mu
 pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 
 impl module_evm::Trait for Runtime {
-	type CallOrigin = EvmAddressMapping<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = (Accounts, Currencies);

@@ -8,7 +8,7 @@ mod tests;
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use primitives::evm::{Account, CallInfo, CreateInfo, EnsureAddressOrigin, Log, Vicinity};
+pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
@@ -17,7 +17,7 @@ use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::traits::{Currency, Get};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
-use frame_system::RawOrigin;
+use frame_system::ensure_signed;
 use orml_traits::{account::MergeAccount, Happened};
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
@@ -28,34 +28,6 @@ use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
-
-/// Ensure that the origin is root.
-pub struct EnsureAddressRoot<AccountId>(sp_std::marker::PhantomData<AccountId>);
-
-impl<OuterOrigin, AccountId> EnsureAddressOrigin<OuterOrigin> for EnsureAddressRoot<AccountId>
-where
-	OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>> + From<RawOrigin<AccountId>>,
-{
-	type Success = ();
-
-	fn try_address_origin(_address: &H160, origin: OuterOrigin) -> Result<(), OuterOrigin> {
-		origin.into().and_then(|o| match o {
-			RawOrigin::Root => Ok(()),
-			r => Err(OuterOrigin::from(r)),
-		})
-	}
-}
-
-/// Ensure that the origin never happens.
-pub struct EnsureAddressNever<AccountId>(sp_std::marker::PhantomData<AccountId>);
-
-impl<OuterOrigin, AccountId> EnsureAddressOrigin<OuterOrigin> for EnsureAddressNever<AccountId> {
-	type Success = AccountId;
-
-	fn try_address_origin(_address: &H160, origin: OuterOrigin) -> Result<AccountId, OuterOrigin> {
-		Err(origin)
-	}
-}
 
 /// Hashed address mapping.
 pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
@@ -71,7 +43,10 @@ impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping
 	}
 
 	fn to_evm_address(_account: &AccountId32) -> Option<H160> {
-		None
+		#[cfg(not(test))]
+		return None;
+		#[cfg(test)]
+		Some(H160::default())
 	}
 }
 
@@ -88,9 +63,6 @@ static ISTANBUL_CONFIG: Config = Config::istanbul();
 
 /// EVM module trait
 pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
-	/// Allow the origin to call on behalf of given address.
-	type CallOrigin: EnsureAddressOrigin<Self::Origin>;
-
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
 	/// Currency type for withdraw and balance storage.
@@ -182,6 +154,8 @@ decl_event! {
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
+		/// Address not mapped
+		AddressNotMapped,
 		/// Not enough balance to perform action
 		BalanceLow,
 		/// Calculating total fee overflowed
@@ -207,13 +181,13 @@ decl_module! {
 		#[weight = *gas_limit as Weight]
 		fn call(
 			origin,
-			source: H160,
 			target: H160,
 			input: Vec<u8>,
 			value: U256,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::CallOrigin::ensure_address_origin(&source, origin)?;
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			match T::Runner::call(
 				source,
@@ -241,12 +215,12 @@ decl_module! {
 		#[weight = *gas_limit as Weight]
 		fn create(
 			origin,
-			source: H160,
 			init: Vec<u8>,
 			value: U256,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::CallOrigin::ensure_address_origin(&source, origin)?;
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			match T::Runner::create(
 				source,
@@ -273,13 +247,13 @@ decl_module! {
 		#[weight = *gas_limit as Weight]
 		fn create2(
 			origin,
-			source: H160,
 			init: Vec<u8>,
 			salt: H256,
 			value: U256,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::CallOrigin::ensure_address_origin(&source, origin)?;
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			match T::Runner::create2(
 				source,

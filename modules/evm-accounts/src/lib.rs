@@ -18,7 +18,6 @@ use frame_support::{
 use frame_system::ensure_signed;
 use orml_traits::{account::MergeAccount, Happened};
 use primitives::evm::AddressMapping;
-use primitives::evm::EnsureAddressOrigin;
 use sp_core::{crypto::AccountId32, ecdsa, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_std::marker::PhantomData;
@@ -225,21 +224,6 @@ where
 				None
 			}
 		})
-	}
-}
-
-impl<T: Trait> EnsureAddressOrigin<T::Origin> for EvmAddressMapping<T>
-where
-	T::AccountId: From<AccountId32> + Into<AccountId32>,
-{
-	type Success = T::AccountId;
-
-	fn try_address_origin(address: &H160, origin: T::Origin) -> Result<Self::Success, T::Origin> {
-		let acc = ensure_signed(origin.clone());
-		match acc {
-			Ok(acc) if acc == Self::to_account(address) => Ok(acc),
-			_ => Err(origin),
-		}
 	}
 }
 
