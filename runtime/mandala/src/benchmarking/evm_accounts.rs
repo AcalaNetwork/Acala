@@ -40,8 +40,7 @@ runtime_benchmarks! {
 		let caller: AccountId = account("caller", 0, SEED);
 		let eth: AccountId = account("eth", 0, SEED);
 		set_aca_balance(&bob_account_id(), dollar(1000));
-		EvmAccounts::claim_account(RawOrigin::Signed(caller.clone()).into(), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))?;
-	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&bob()), EvmAccounts::eth_sign(&bob(), &caller.encode(), &[][..]))
+	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
 }
 
 #[cfg(test)]
