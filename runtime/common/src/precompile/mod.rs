@@ -15,6 +15,9 @@ pub mod input;
 pub mod multicurrency;
 pub mod nft;
 
+pub use multicurrency::MultiCurrencyPrecompile;
+pub use nft::NFTPrecompile;
+
 pub type EthereumPrecompiles = (
 	module_evm::precompiles::ECRecover,
 	module_evm::precompiles::Sha256,
