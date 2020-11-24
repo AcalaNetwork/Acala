@@ -1,10 +1,10 @@
 use codec::Decode;
 
 use frame_support::ensure;
-use sp_std::{marker::PhantomData, result::Result};
+use sp_std::{marker::PhantomData, mem, result::Result};
 
-use module_evm::{AddressMapping as AddressMappingT, ExitError};
-use primitives::{Amount, Balance, CurrencyId};
+use module_evm::ExitError;
+use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
 
 const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
@@ -12,17 +12,9 @@ const ACTION_INDEX: usize = 0;
 /// Based on `primitives::CurrencyId` impl.
 const CURRENCY_ID_BYTES: usize = 4;
 
-/// Based on `u128` as `primitives::Balance`.
-const BALANCE_BYTES: usize = 16;
-
-/// Based on `i128` as `primitives::Amount`.
-const AMOUNT_BYTES: usize = 16;
-
-macro_rules! ensure_valid_input {
-	($e:expr) => {
-		ensure!($e, ExitError::Other("invalid input".into()));
-	};
-}
+const BALANCE_BYTES: usize = mem::size_of::<Balance>();
+const AMOUNT_BYTES: usize = mem::size_of::<Amount>();
+const U64_BYTES: usize = mem::size_of::<u64>();
 
 pub trait InputT {
 	type Error;
@@ -31,10 +23,13 @@ pub trait InputT {
 
 	fn nth_param(&self, n: usize) -> Result<&[u8], Self::Error>;
 	fn action(&self) -> Result<Self::Action, Self::Error>;
+
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
+
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
 	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error>;
+	fn u64_at(&self, index: usize) -> Result<u64, Self::Error>;
 }
 
 pub struct Input<'a, Action, AccountId, AddressMapping> {
@@ -63,55 +58,65 @@ where
 		let start = PER_PARAM_BYTES * n;
 		let end = start + PER_PARAM_BYTES;
 
-		ensure_valid_input!(end <= self.content.len());
+		ensure!(end <= self.content.len(), ExitError::Other("invalid input".into()));
 
 		Ok(&self.content[start..end])
 	}
 
 	fn action(&self) -> Result<Self::Action, Self::Error> {
-		let action_param = self.nth_param(ACTION_INDEX)?;
-		let action_u8: &u8 = action_param.last().expect("Action bytes is 32 bytes");
+		let param = self.nth_param(ACTION_INDEX)?;
+		let action_u8: &u8 = param.last().expect("Action bytes is 32 bytes");
 
 		Ok((*action_u8).into())
 	}
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error> {
-		let address_param = self.nth_param(index)?;
+		let param = self.nth_param(index)?;
 
 		let mut address = [0u8; 20];
-		address.copy_from_slice(&address_param[12..]);
+		address.copy_from_slice(&param[12..]);
 
-		Ok(AddressMapping::into_account_id(address.into()))
+		Ok(AddressMapping::to_account(&address.into()))
 	}
 
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
-		let currency_id_param = self.nth_param(index)?;
+		let param = self.nth_param(index)?;
 
 		let mut currency_id = [0u8; CURRENCY_ID_BYTES];
 		let start = PER_PARAM_BYTES - CURRENCY_ID_BYTES;
-		currency_id[..].copy_from_slice(&currency_id_param[start..]);
+		currency_id[..].copy_from_slice(&param[start..]);
 
 		CurrencyId::decode(&mut &currency_id[..]).map_err(|_| ExitError::Other("invalid currency".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
-		let balance_param = self.nth_param(index)?;
+		let param = self.nth_param(index)?;
 
 		let mut balance = [0u8; BALANCE_BYTES];
 		let start = PER_PARAM_BYTES - BALANCE_BYTES;
-		balance[..].copy_from_slice(&balance_param[start..]);
+		balance[..].copy_from_slice(&param[start..]);
 
 		Ok(Balance::from_be_bytes(balance))
 	}
 
 	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error> {
-		let amount_param = self.nth_param(index)?;
+		let param = self.nth_param(index)?;
 
 		let mut amount = [0u8; AMOUNT_BYTES];
 		let start = PER_PARAM_BYTES - AMOUNT_BYTES;
-		amount[..].copy_from_slice(&amount_param[start..]);
+		amount[..].copy_from_slice(&param[start..]);
 
 		Ok(Amount::from_be_bytes(amount))
+	}
+
+	fn u64_at(&self, index: usize) -> Result<u64, Self::Error> {
+		let param = self.nth_param(index)?;
+
+		let mut num = [0u8; U64_BYTES];
+		let start = PER_PARAM_BYTES - U64_BYTES;
+		num[..].copy_from_slice(&param[start..]);
+
+		Ok(u64::from_be_bytes(num))
 	}
 }
 
@@ -142,11 +147,20 @@ mod tests {
 
 	pub struct EvmAddressMapping;
 	impl AddressMappingT<AccountId> for EvmAddressMapping {
-		fn into_account_id(address: H160) -> AccountId {
+		fn to_account(address: &H160) -> AccountId {
 			let mut data: [u8; 32] = [0u8; 32];
 			data[0..4].copy_from_slice(b"evm:");
 			data[4..24].copy_from_slice(&address[..]);
 			AccountId32::from(data).into()
+		}
+
+		fn to_evm_address(account_id: &AccountId) -> Option<H160> {
+			let data: [u8; 32] = account_id.clone().into();
+			if data.starts_with(b"evm:") {
+				Some(H160::from_slice(&data[4..24]))
+			} else {
+				None
+			}
 		}
 	}
 
@@ -179,7 +193,7 @@ mod tests {
 	fn account_id_works() {
 		let mut address = [0u8; 20];
 		address[19] = 1;
-		let account_id = EvmAddressMapping::into_account_id(address.into());
+		let account_id = EvmAddressMapping::to_account(&address.into());
 
 		let mut raw_input = [0u8; 32];
 		raw_input[31] = 1;
@@ -218,5 +232,16 @@ mod tests {
 		raw_input[16..].copy_from_slice(&amount_bytes);
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.amount_at(0), amount);
+	}
+
+	#[test]
+	fn u64_works() {
+		let u64_num = 127u64;
+		let u64_bytes = u64_num.to_be_bytes();
+
+		let mut raw_input = [0u8; 32];
+		raw_input[24..].copy_from_slice(&u64_bytes);
+		let input = TestInput::new(&raw_input[..]);
+		assert_ok!(input.u64_at(0), u64_num);
 	}
 }

@@ -67,6 +67,7 @@ where
 			Action::QueryTotalIssuance => {
 				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id))?;
 				debug::debug!("total issuance: {:?}", total_issuance);
+
 				Ok((ExitSucceed::Returned, total_issuance, 0))
 			}
 			Action::QueryBalance => {
