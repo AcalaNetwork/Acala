@@ -1,16 +1,11 @@
-use codec::Decode;
-
 use frame_support::ensure;
-use sp_std::{marker::PhantomData, mem, result::Result};
+use sp_std::{convert::TryInto, marker::PhantomData, mem, result::Result};
 
 use module_evm::ExitError;
 use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
 
 const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
-
-/// Based on `primitives::CurrencyId` impl.
-const CURRENCY_ID_BYTES: usize = 4;
 
 const BALANCE_BYTES: usize = mem::size_of::<Balance>();
 const AMOUNT_BYTES: usize = mem::size_of::<Amount>();
@@ -82,11 +77,19 @@ where
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
 		let param = self.nth_param(index)?;
 
-		let mut currency_id = [0u8; CURRENCY_ID_BYTES];
-		let start = PER_PARAM_BYTES - CURRENCY_ID_BYTES;
-		currency_id[..].copy_from_slice(&param[start..]);
+		let bytes: &[u8; 32] = param
+			.try_into()
+			.map_err(|_| ExitError::Other("currency id param bytes too short".into()))?;
 
-		CurrencyId::decode(&mut &currency_id[..]).map_err(|_| ExitError::Other("invalid currency".into()))
+		(*bytes)
+			.try_into()
+			.map_err(|_| ExitError::Other("invalid currency id".into()))
+		// let mut currency_id = [0u8; CURRENCY_ID_BYTES];
+		// let start = PER_PARAM_BYTES - CURRENCY_ID_BYTES;
+		// currency_id[..].copy_from_slice(&param[start..]);
+
+		// CurrencyId::decode(&mut &currency_id[..]).map_err(|_|
+		// ExitError::Other("invalid currency".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
@@ -207,7 +210,7 @@ mod tests {
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
 
 		let mut raw_input = [0u8; 32];
-		raw_input[29] = 1;
+		raw_input[30] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
 	}

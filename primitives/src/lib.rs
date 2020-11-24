@@ -107,6 +107,8 @@ pub enum CurrencyId {
 	DEXShare(TokenSymbol, TokenSymbol),
 }
 
+/// Note the pre-deployed ERC20 contracts depend on `CurrencyId` implementation,
+/// and need to be updated if any change.
 impl TryFrom<[u8; 32]> for CurrencyId {
 	type Error = ();
 
@@ -131,6 +133,8 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	}
 }
 
+/// Note the pre-deployed ERC20 contracts depend on `CurrencyId` implementation,
+/// and need to be updated if any change.
 impl Into<[u8; 32]> for CurrencyId {
 	fn into(self) -> [u8; 32] {
 		let mut bytes = [0u8; 32];
