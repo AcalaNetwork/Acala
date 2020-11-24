@@ -1,5 +1,6 @@
 use frame_support::debug;
-use module_evm::{AddressMapping as AddressMappingT, Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use primitives::evm::AddressMapping as AddressMappingT;
 use sp_core::U256;
 use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
 

@@ -1,12 +1,11 @@
-use module_evm::{AddressMapping, Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use sp_core::{H160, U256};
 use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT;
 
 use super::account_id_from_slice;
-use module_support::AccountMapping;
-use primitives::NFTBalance;
+use primitives::{evm::AddressMapping, NFTBalance};
 
 /// The `NFT` impl precompile.
 ///
@@ -16,9 +15,7 @@ use primitives::NFTBalance;
 /// -. `0`: Query balance. Rest: `account_id`.
 /// -. `1`: Query owner. Rest `class_id ++ token_id`.
 /// -. `2`: Transfer. Rest: `from ++ to ++ class_id ++ token_id`.
-pub struct NFTPrecompile<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl>(
-	PhantomData<(AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl)>,
-);
+pub struct NFTPrecompile<AccountId, AccountIdConverter, NFTImpl>(PhantomData<(AccountId, AccountIdConverter, NFTImpl)>);
 
 enum Action {
 	QueryBalance,
@@ -38,12 +35,10 @@ impl From<u8> for Action {
 	}
 }
 
-impl<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl> Precompile
-	for NFTPrecompile<AccountId, AccountIdConverter, AccountMappingImpl, NFTImpl>
+impl<AccountId, AccountIdConverter, NFTImpl> Precompile for NFTPrecompile<AccountId, AccountIdConverter, NFTImpl>
 where
 	AccountId: Clone,
 	AccountIdConverter: AddressMapping<AccountId>,
-	AccountMappingImpl: AccountMapping<AccountId>,
 	NFTImpl: NFT<AccountId, Balance = NFTBalance, ClassId = u64, TokenId = u64>,
 {
 	fn execute(
@@ -78,7 +73,7 @@ where
 				let token_id = u64_from_slice(&input[64..72]);
 
 				let owner: H160 = if let Some(o) = NFTImpl::owner((class_id, token_id)) {
-					AccountMappingImpl::into_h160(o)
+					AccountIdConverter::to_evm_address(&o).unwrap_or_default()
 				} else {
 					Default::default()
 				};

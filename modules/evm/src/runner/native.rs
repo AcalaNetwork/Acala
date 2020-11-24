@@ -112,8 +112,8 @@ impl<T: Trait> Runner<T> {
 	}
 
 	fn transfer(source: H160, target: H160, value: BalanceOf<T>) -> Result<(), DispatchError> {
-		let from = T::AddressMapping::into_account_id(source);
-		let to = T::AddressMapping::into_account_id(target);
+		let from = T::AddressMapping::to_account(&source);
+		let to = T::AddressMapping::to_account(&target);
 		T::Currency::transfer(&from, &to, value, ExistenceRequirement::AllowDeath)
 	}
 }
