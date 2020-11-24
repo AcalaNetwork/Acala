@@ -12,6 +12,7 @@ use sp_runtime::{
 };
 
 pub mod precompile;
+pub use precompile::{AllPrecompiles, MultiCurrencyPrecompile, NFTPrecompile};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 

@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata, H160, U256,
+	OpaqueMetadata, H160,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
@@ -1243,22 +1243,17 @@ parameter_types! {
 	pub const ChainId: u64 = 42;
 }
 
-pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::MultiCurrencyPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	CurrencyId,
-	Currencies,
->;
+pub type MultiCurrencyPrecompile =
+	runtime_common::MultiCurrencyPrecompile<AccountId, EvmAddressMapping<Runtime>, Currencies>;
 
-pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
+pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 
 impl module_evm::Trait for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = (Accounts, Currencies);
 	type Event = Event;
-	type Precompiles =
-		runtime_common::precompile::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
+	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;

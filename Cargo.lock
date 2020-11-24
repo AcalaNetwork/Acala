@@ -55,6 +55,7 @@ name = "acala-primitives"
 version = "0.6.3"
 dependencies = [
  "evm",
+ "frame-support",
  "parity-scale-codec",
  "serde",
  "sp-core",

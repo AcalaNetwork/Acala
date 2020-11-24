@@ -2,20 +2,20 @@ use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use sp_core::{H160, U256};
 use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
-use orml_traits::NFT;
+use orml_traits::NFT as NFTT;
 
-use super::account_id_from_slice;
-use primitives::{evm::AddressMapping, NFTBalance};
+use super::input::{Input, InputT};
+use primitives::{evm::AddressMapping as AddressMappingT, NFTBalance};
 
 /// The `NFT` impl precompile.
 ///
-/// All `input` data start with `action_byte`;
+/// `input` data starts with `action`.
 ///
-/// The first byte of `input` indicates action.
-/// -. `0`: Query balance. Rest: `account_id`.
-/// -. `1`: Query owner. Rest `class_id ++ token_id`.
-/// -. `2`: Transfer. Rest: `from ++ to ++ class_id ++ token_id`.
-pub struct NFTPrecompile<AccountId, AccountIdConverter, NFTImpl>(PhantomData<(AccountId, AccountIdConverter, NFTImpl)>);
+/// Actions:
+/// - Query balance. Rest `input` bytes: `account_id`.
+/// - Query owner. Rest `input` bytes: `class_id`, `token_id`.
+/// - Transfer. Rest `input`bytes: `from`, `to`, `class_id`, `token_id`.
+pub struct NFTPrecompile<AccountId, AddressMapping, NFT>(PhantomData<(AccountId, AddressMapping, NFT)>);
 
 enum Action {
 	QueryBalance,
@@ -35,45 +35,34 @@ impl From<u8> for Action {
 	}
 }
 
-impl<AccountId, AccountIdConverter, NFTImpl> Precompile for NFTPrecompile<AccountId, AccountIdConverter, NFTImpl>
+impl<AccountId, AddressMapping, NFT> Precompile for NFTPrecompile<AccountId, AddressMapping, NFT>
 where
 	AccountId: Clone,
-	AccountIdConverter: AddressMapping<AccountId>,
-	NFTImpl: NFT<AccountId, Balance = NFTBalance, ClassId = u64, TokenId = u64>,
+	AddressMapping: AddressMappingT<AccountId>,
+	NFT: NFTT<AccountId, Balance = NFTBalance, ClassId = u64, TokenId = u64>,
 {
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<usize>,
 		_context: &Context,
 	) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
-		if input.len() < 2 {
-			return Err(ExitError::Other("invalid input".into()));
-		}
-		let action: Action = input[0].into();
+		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+
+		let action = input.action()?;
 
 		match action {
 			Action::QueryBalance => {
-				// 32 * 2
-				if input.len() < 64 {
-					return Err(ExitError::Other("invalid input".into()));
-				}
-
-				let who = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
-				let balance = vec_u8_from_balance(NFTImpl::balance(&who));
+				let who = input.account_id_at(1)?;
+				let balance = vec_u8_from_balance(NFT::balance(&who));
 
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
 			Action::QueryOwner => {
-				// 32 * 3
-				if input.len() < 96 {
-					return Err(ExitError::Other("invalid input".into()));
-				}
+				let class_id = input.u64_at(1)?;
+				let token_id = input.u64_at(2)?;
 
-				let class_id = u64_from_slice(&input[32..40]);
-				let token_id = u64_from_slice(&input[64..72]);
-
-				let owner: H160 = if let Some(o) = NFTImpl::owner((class_id, token_id)) {
-					AccountIdConverter::to_evm_address(&o).unwrap_or_default()
+				let owner: H160 = if let Some(o) = NFT::owner((class_id, token_id)) {
+					AddressMapping::to_evm_address(&o).unwrap_or_default()
 				} else {
 					Default::default()
 				};
@@ -81,17 +70,13 @@ where
 				Ok((ExitSucceed::Returned, owner.as_bytes().to_vec(), 0))
 			}
 			Action::Transfer => {
-				// 32 * 5
-				if input.len() < 160 {
-					return Err(ExitError::Other("invalid input".into()));
-				}
+				let from = input.account_id_at(1)?;
+				let to = input.account_id_at(2)?;
 
-				let from = account_id_from_slice::<_, AccountIdConverter>(&input[32..52]);
-				let to = account_id_from_slice::<_, AccountIdConverter>(&input[64..84]);
-				let class_id = u64_from_slice(&input[96..104]);
-				let token_id = u64_from_slice(&input[128..136]);
+				let class_id = input.u64_at(3)?;
+				let token_id = input.u64_at(4)?;
 
-				NFTImpl::transfer(&from, &to, (class_id, token_id))
+				NFT::transfer(&from, &to, (class_id, token_id))
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok((ExitSucceed::Returned, vec![], 0))
@@ -105,11 +90,4 @@ fn vec_u8_from_balance(b: NFTBalance) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
-}
-
-/// Note that slice length for `u64` must not exceed 8.
-fn u64_from_slice(src: &[u8]) -> u64 {
-	let mut int = [0u8; 8];
-	int[..].copy_from_slice(src);
-	u64::from_be_bytes(int)
 }
