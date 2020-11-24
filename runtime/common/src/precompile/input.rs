@@ -84,12 +84,6 @@ where
 		(*bytes)
 			.try_into()
 			.map_err(|_| ExitError::Other("invalid currency id".into()))
-		// let mut currency_id = [0u8; CURRENCY_ID_BYTES];
-		// let start = PER_PARAM_BYTES - CURRENCY_ID_BYTES;
-		// currency_id[..].copy_from_slice(&param[start..]);
-
-		// CurrencyId::decode(&mut &currency_id[..]).map_err(|_|
-		// ExitError::Other("invalid currency".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
