@@ -2,7 +2,7 @@ use frame_support::debug;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use primitives::evm::AddressMapping as AddressMappingT;
 use sp_core::U256;
-use sp_std::{convert::TryInto, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
@@ -102,10 +102,7 @@ where
 	}
 }
 
-fn vec_u8_from_balance<Balance: TryInto<u128>>(b: Balance) -> result::Result<Vec<u8>, ExitError> {
-	let balance = b
-		.try_into()
-		.map_err(|_| ExitError::Other("balance to u128 failed".into()))?;
+fn vec_u8_from_balance(balance: Balance) -> result::Result<Vec<u8>, ExitError> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(balance).to_big_endian(&mut be_bytes[..]);
 	Ok(be_bytes.to_vec())
