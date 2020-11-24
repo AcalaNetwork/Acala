@@ -82,10 +82,10 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EVM {
-		AccountNonces get(fn account_nonces): map hasher(blake2_128_concat) H160 => T::Index;
-		AccountCodes get(fn account_codes): map hasher(blake2_128_concat) H160 => Vec<u8>;
+		AccountNonces get(fn account_nonces): map hasher(twox_64_concat) H160 => T::Index;
+		AccountCodes get(fn account_codes): map hasher(twox_64_concat) H160 => Vec<u8>;
 		AccountStorages get(fn account_storages):
-			double_map hasher(blake2_128_concat) H160, hasher(blake2_128_concat) H256 => H256;
+			double_map hasher(twox_64_concat) H160, hasher(blake2_128_concat) H256 => H256;
 	}
 
 	add_extra_genesis {
