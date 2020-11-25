@@ -369,7 +369,11 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			}));
 
 			let contract_existential_deposit = Transfer {
-				source: if self.vicinity.creating { self.vicinity.origin } else { caller },
+				source: if self.vicinity.creating {
+					self.vicinity.origin
+				} else {
+					caller
+				},
 				target: address,
 				value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>()),
 			};
