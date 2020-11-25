@@ -1247,6 +1247,7 @@ impl pallet_contracts::Trait for Runtime {
 
 parameter_types! {
 	pub const ChainId: u64 = 42;
+	pub const ContractExistentialDeposit: Balance = 0;
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1258,6 +1259,7 @@ impl module_evm::Trait for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = (Accounts, Currencies);
+	type ContractExistentialDeposit = ContractExistentialDeposit;
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;

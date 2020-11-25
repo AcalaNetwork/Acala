@@ -240,6 +240,7 @@ fn should_calculate_contract_address() {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: addr,
+			creating: false,
 		};
 
 		let config = <Test as Trait>::config();
@@ -524,6 +525,57 @@ fn contract_should_deploy_contracts() {
 	// contract Factory {
 	//     Contract[] newContracts;
 	//
+	//     function createContract () public payable {
+	//         Contract newContract = new Contract();
+	//         newContracts.push(newContract);
+	//     }
+	// }
+	//
+	// contract Contract {}
+	let contract = from_hex("0x608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a40029").unwrap();
+	new_test_ext().execute_with(|| {
+		let result = <Test as Trait>::Runner::create(alice(), contract.clone(), 0, 1000000000).unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get()
+		);
+		let factory_contract_address = result.address;
+		assert_eq!(balance(result.address), 0);
+		assert_eq!(
+			reserved_balance(result.address),
+			<Test as Trait>::ContractExistentialDeposit::get()
+		);
+
+		// Factory.createContract
+		let amount = 1000000000;
+		let create_contract = from_hex("0x412a5a6d").unwrap();
+		let result =
+			<Test as Trait>::Runner::call(alice(), result.address, create_contract, amount, 1000000000).unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE - amount - <Test as Trait>::ContractExistentialDeposit::get()
+		);
+		assert_eq!(
+			balance(factory_contract_address),
+			amount - <Test as Trait>::ContractExistentialDeposit::get()
+		);
+		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
+		assert_eq!(
+			reserved_balance(contract_address),
+			<Test as Trait>::ContractExistentialDeposit::get()
+		);
+	});
+}
+
+#[test]
+fn contract_deploy_contracts_failed() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Factory {
+	//     Contract[] newContracts;
+	//
 	//     function createContract () public {
 	//         Contract newContract = new Contract();
 	//         newContracts.push(newContract);
@@ -545,18 +597,11 @@ fn contract_should_deploy_contracts() {
 		);
 
 		// Factory.createContract
+		// need factory contract pay for the ContractExistentialDeposit. But factory not
+		// payable.
 		let create_contract = from_hex("0x412a5a6d").unwrap();
 		let result = <Test as Trait>::Runner::call(alice(), result.address, create_contract, 0, 1000000000).unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get() * 2
-		);
-		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
-		assert_eq!(
-			reserved_balance(contract_address),
-			<Test as Trait>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
 	});
 }
 
@@ -582,5 +627,9 @@ fn deploy_factory() {
 		let result = <Test as Trait>::Runner::create(alice(), contract, 0, 12_000_000).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_gas.as_u64(), 95_203u64);
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get() * 2
+		);
 	});
 }

@@ -368,11 +368,21 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				value,
 			}));
 
-			try_or_rollback!(self.transfer(Transfer {
-				source: self.vicinity.origin,
-				target: address,
-				value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>())
-			}));
+			let contract_existential_deposit = if self.vicinity.creating {
+				Transfer {
+					source: self.vicinity.origin,
+					target: address,
+					value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>()),
+				}
+			} else {
+				Transfer {
+					source: caller,
+					target: address,
+					value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>()),
+				}
+			};
+
+			try_or_rollback!(self.transfer(contract_existential_deposit));
 			try_or_rollback!(self.reserve(address, T::ContractExistentialDeposit::get()));
 
 			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());

@@ -43,6 +43,7 @@ impl<T: Trait> Runner<T> {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: source,
+			creating: true,
 		};
 
 		let config = T::config();
@@ -153,6 +154,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: source,
+			creating: false,
 		};
 
 		let config = T::config();
