@@ -1240,7 +1240,7 @@ impl pallet_contracts::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ChainId: u64 = 42;
+	pub const ChainId: u64 = 787;
 }
 
 pub type MultiCurrencyPrecompile =
