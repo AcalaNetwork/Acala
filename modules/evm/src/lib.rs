@@ -188,7 +188,7 @@ decl_module! {
 
 			let info = T::Runner::create(source, init, value, gas_limit)?;
 
-			 if info.exit_reason.is_succeed() {
+			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
 			} else {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
