@@ -15,7 +15,7 @@ use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::traits::{Currency, Get, ReservableCurrency};
-use frame_support::weights::{Pays, Weight};
+use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::ensure_signed;
 use orml_traits::{account::MergeAccount, Happened};
@@ -23,7 +23,7 @@ use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{Convert, UniqueSaturatedInto};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
@@ -59,6 +59,8 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	type ChainId: Get<u64>;
 	/// EVM execution runner.
 	type Runner: Runner<Self>;
+	/// Convert gas to weight.
+	type GasToWeight: Convert<u32, Weight>;
 
 	/// EVM config used in the module.
 	fn config() -> &'static Config {
@@ -82,10 +84,10 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EVM {
-		AccountNonces get(fn account_nonces): map hasher(blake2_128_concat) H160 => T::Index;
-		AccountCodes get(fn account_codes): map hasher(blake2_128_concat) H160 => Vec<u8>;
+		AccountNonces get(fn account_nonces): map hasher(twox_64_concat) H160 => T::Index;
+		AccountCodes get(fn account_codes): map hasher(twox_64_concat) H160 => Vec<u8>;
 		AccountStorages get(fn account_storages):
-			double_map hasher(blake2_128_concat) H160, hasher(blake2_128_concat) H256 => H256;
+			double_map hasher(twox_64_concat) H160, hasher(blake2_128_concat) H256 => H256;
 	}
 
 	add_extra_genesis {
@@ -147,7 +149,7 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn call(
 			origin,
 			target: H160,
@@ -158,30 +160,25 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			match T::Runner::call(
-				source,
-				target,
-				input,
-				value,
-				gas_limit,
-			)? {
-				CallInfo {
-					exit_reason: ExitReason::Succeed(_),
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Executed(target));
-				},
-				info => {
-					Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
-				},
+			let info = T::Runner::call(source, target, input, value, gas_limit)?;
+
+			if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Executed(target));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
 		}
 
 		/// Issue an EVM create operation. This is similar to a contract creation transaction in
 		/// Ethereum.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn create(
 			origin,
 			init: Vec<u8>,
@@ -191,29 +188,24 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			match T::Runner::create(
-				source,
-				init,
-				value,
-				gas_limit,
-			)? {
-				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
-					address: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Created(create_address));
-				},
-				info => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
-				},
+			let info = T::Runner::create(source, init, value, gas_limit)?;
+
+			 if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Created(info.address));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
 		}
 
 		/// Issue an EVM create2 operation.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn create2(
 			origin,
 			init: Vec<u8>,
@@ -224,26 +216,20 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			match T::Runner::create2(
-				source,
-				init,
-				salt,
-				value,
-				gas_limit,
-			)? {
-				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
-					address: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Created(create_address));
-				},
-				info => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
-				},
+			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
+
+			 if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Created(info.address));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
 		}
 	}
 }

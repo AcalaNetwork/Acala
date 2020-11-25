@@ -9,9 +9,13 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	MultiSignature, RuntimeDebug,
 };
+use sp_std::convert::{Into, TryFrom, TryInto};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+
+#[cfg(test)]
+mod tests;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -80,11 +84,72 @@ pub enum TokenSymbol {
 	RENBTC = 5,
 }
 
+impl TryFrom<u8> for TokenSymbol {
+	type Error = ();
+
+	fn try_from(v: u8) -> Result<Self, Self::Error> {
+		match v {
+			0 => Ok(TokenSymbol::ACA),
+			1 => Ok(TokenSymbol::AUSD),
+			2 => Ok(TokenSymbol::DOT),
+			3 => Ok(TokenSymbol::XBTC),
+			4 => Ok(TokenSymbol::LDOT),
+			5 => Ok(TokenSymbol::RENBTC),
+			_ => Err(()),
+		}
+	}
+}
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	Token(TokenSymbol),
 	DEXShare(TokenSymbol, TokenSymbol),
+}
+
+/// Note the pre-deployed ERC20 contracts depend on `CurrencyId` implementation,
+/// and need to be updated if any change.
+impl TryFrom<[u8; 32]> for CurrencyId {
+	type Error = ();
+
+	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
+		if !v.starts_with(&[0u8; 29][..]) {
+			return Err(());
+		}
+
+		// token
+		if v[29] == 0 && v[31] == 0 {
+			return v[30].try_into().map(CurrencyId::Token);
+		}
+
+		// DEX share
+		if v[29] == 1 {
+			let left = v[30].try_into()?;
+			let right = v[31].try_into()?;
+			return Ok(CurrencyId::DEXShare(left, right));
+		}
+
+		Err(())
+	}
+}
+
+/// Note the pre-deployed ERC20 contracts depend on `CurrencyId` implementation,
+/// and need to be updated if any change.
+impl Into<[u8; 32]> for CurrencyId {
+	fn into(self) -> [u8; 32] {
+		let mut bytes = [0u8; 32];
+		match self {
+			CurrencyId::Token(token) => {
+				bytes[30] = token as u8;
+			}
+			CurrencyId::DEXShare(left, right) => {
+				bytes[29] = 1;
+				bytes[30] = left as u8;
+				bytes[31] = right as u8;
+			}
+		}
+		bytes
+	}
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
