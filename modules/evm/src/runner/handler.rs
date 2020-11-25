@@ -20,16 +20,12 @@ use sp_runtime::{
 	traits::{One, UniqueSaturatedInto},
 	SaturatedConversion, TransactionOutcome,
 };
-use sp_std::{
-	cmp::min, collections::btree_set::BTreeSet, convert::Infallible, marker::PhantomData, mem, rc::Rc, vec::Vec,
-};
+use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, rc::Rc, vec::Vec};
 
 pub struct Handler<'vicinity, 'config, T: Trait> {
 	pub vicinity: &'vicinity Vicinity,
 	pub config: &'config Config,
 	pub gasometer: Gasometer<'config>,
-	pub deleted: BTreeSet<H160>,
-	pub logs: Vec<Log>,
 	pub precompile:
 		fn(H160, &[u8], Option<usize>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
 	pub is_static: bool,
@@ -60,8 +56,6 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 			is_static,
 			gasometer: Gasometer::new(gas_limit, config),
 			precompile,
-			logs: Vec::new(),
-			deleted: BTreeSet::default(),
 			_marker: PhantomData,
 		}
 	}
@@ -263,8 +257,9 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		true
 	}
 
-	fn deleted(&self, address: H160) -> bool {
-		self.deleted.contains(&address)
+	fn deleted(&self, _address: H160) -> bool {
+		// This only affects gas calculation in the current EVM specification.
+		false
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) -> Result<(), ExitError> {
@@ -288,8 +283,6 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			data: data.clone(),
 		}));
 
-		self.logs.push(Log { address, topics, data });
-
 		Ok(())
 	}
 
@@ -302,7 +295,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		let dest = T::AddressMapping::to_account(&target);
 
 		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
-		self.deleted.insert(address);
+		Module::<T>::remove_account(&address);
 
 		Ok(())
 	}
@@ -357,9 +350,6 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
 						AccountCodes::insert(address, out);
-
-						self.deleted.append(&mut substate.deleted);
-						self.logs.append(&mut substate.logs);
 
 						TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
 					}
@@ -443,9 +433,6 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 					try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 					try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 
-					self.deleted.append(&mut substate.deleted);
-					self.logs.append(&mut substate.logs);
-
 					TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 				}
 				ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), out))),
@@ -470,16 +457,5 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		self.gasometer.record_opcode(gas_cost, memory_cost)?;
 
 		Ok(())
-	}
-}
-
-impl<'vicinity, 'config, T: Trait> Drop for Handler<'vicinity, 'config, T> {
-	fn drop(&mut self) {
-		let mut deleted = BTreeSet::new();
-		mem::swap(&mut deleted, &mut self.deleted);
-
-		for address in deleted {
-			Module::<T>::remove_account(&address);
-		}
 	}
 }
