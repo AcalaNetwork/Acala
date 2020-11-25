@@ -11,7 +11,7 @@ use evm_runtime::Handler as HandlerT;
 use frame_support::{
 	debug,
 	storage::StorageMap,
-	traits::{Currency, ExistenceRequirement},
+	traits::{Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
@@ -43,6 +43,7 @@ impl<T: Trait> Runner<T> {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: source,
+			creating: true,
 		};
 
 		let config = T::config();
@@ -66,6 +67,10 @@ impl<T: Trait> Runner<T> {
 
 		frame_support::storage::with_transaction(|| {
 			if let Err(e) = Self::transfer(source, address, value) {
+				return TransactionOutcome::Rollback(Err(e));
+			}
+
+			if let Err(e) = Self::transfer_and_reserve_deposit(source, address) {
 				return TransactionOutcome::Rollback(Err(e));
 			}
 
@@ -116,6 +121,18 @@ impl<T: Trait> Runner<T> {
 		let to = T::AddressMapping::to_account(&target);
 		T::Currency::transfer(&from, &to, value, ExistenceRequirement::AllowDeath)
 	}
+
+	fn transfer_and_reserve_deposit(source: H160, target: H160) -> Result<(), DispatchError> {
+		let from = T::AddressMapping::to_account(&source);
+		let to = T::AddressMapping::to_account(&target);
+		T::Currency::transfer(
+			&from,
+			&to,
+			T::ContractExistentialDeposit::get(),
+			ExistenceRequirement::AllowDeath,
+		)?;
+		T::Currency::reserve(&to, T::ContractExistentialDeposit::get())
+	}
 }
 
 impl<T: Trait> RunnerT<T> for Runner<T> {
@@ -137,6 +154,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: source,
+			creating: false,
 		};
 
 		let config = T::config();

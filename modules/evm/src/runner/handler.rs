@@ -1,7 +1,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	AccountCodes, AccountNonces, AccountStorages, AddressMapping, Event, Log, MergeAccount, Module, Trait, Vicinity,
+	AccountCodes, AccountNonces, AccountStorages, AddressMapping, BalanceOf, Event, Log, MergeAccount, Module, Trait,
+	Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -12,12 +13,12 @@ use evm_runtime::{Config, Handler as HandlerT};
 use frame_support::{
 	debug,
 	storage::{StorageDoubleMap, StorageMap},
-	traits::{Currency, ExistenceRequirement, Get},
+	traits::{Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
-	traits::{One, UniqueSaturatedInto},
+	traits::{One, UniqueSaturatedInto, Zero},
 	SaturatedConversion, TransactionOutcome,
 };
 use sp_std::{
@@ -118,6 +119,22 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 			ExistenceRequirement::AllowDeath,
 		)
 		.map_err(|_| ExitError::OutOfGas)
+	}
+
+	fn reserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
+		let account_id = T::AddressMapping::to_account(&address);
+
+		T::Currency::reserve(&account_id, value).map_err(|_| ExitError::Other("Reserve failed".into()))
+	}
+
+	fn unreserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
+		let account_id = T::AddressMapping::to_account(&address);
+
+		if T::Currency::unreserve(&account_id, value).is_zero() {
+			Ok(())
+		} else {
+			Err(ExitError::Other("Unreserve failed".into()))
+		}
 	}
 
 	pub fn nonce(&self, address: H160) -> U256 {
@@ -301,6 +318,9 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		let source = T::AddressMapping::to_account(&address);
 		let dest = T::AddressMapping::to_account(&target);
 
+		// unreserve ContractExistentialDeposit
+		self.unreserve(address, T::ContractExistentialDeposit::get())?;
+
 		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
 		self.deleted.insert(address);
 
@@ -347,6 +367,19 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				target: address,
 				value,
 			}));
+
+			let contract_existential_deposit = Transfer {
+				source: if self.vicinity.creating {
+					self.vicinity.origin
+				} else {
+					caller
+				},
+				target: address,
+				value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>()),
+			};
+
+			try_or_rollback!(self.transfer(contract_existential_deposit));
+			try_or_rollback!(self.reserve(address, T::ContractExistentialDeposit::get()));
 
 			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
 

@@ -14,7 +14,7 @@ pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::traits::{Currency, Get};
+use frame_support::traits::{Currency, Get, ReservableCurrency};
 use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::ensure_signed;
@@ -45,9 +45,11 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
 	/// Currency type for withdraw and balance storage.
-	type Currency: Currency<Self::AccountId>;
+	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	/// Merge free balance from source to dest.
 	type MergeAccount: MergeAccount<Self::AccountId>;
+	/// Deposit for creating contract, would be reserved until contract deleted.
+	type ContractExistentialDeposit: Get<BalanceOf<Self>>;
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
