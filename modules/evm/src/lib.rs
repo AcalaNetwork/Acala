@@ -15,6 +15,7 @@ use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::traits::{Currency, Get, ReservableCurrency};
 use frame_support::weights::{Pays, PostDispatchInfo, Weight};
+use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::ensure_signed;
 use orml_traits::{account::MergeAccount, Happened};
@@ -71,7 +72,7 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 /// Storage key size and storage value size.
 pub const STORAGE_SIZE: u32 = 64;
 
-#[derive(Clone, Eq, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 pub struct ContractInfo {
 	pub storage_count: u32,
 	pub code_hash: H256,
@@ -79,11 +80,11 @@ pub struct ContractInfo {
 
 impl ContractInfo {
 	pub fn total_storage_size(&self) -> u32 {
-		self.storage_count * STORAGE_SIZE
+		self.storage_count.saturating_mul(STORAGE_SIZE)
 	}
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 pub struct AccountInfo<Index> {
 	pub nonce: Index,
 	pub contract_info: Option<ContractInfo>,
@@ -95,14 +96,14 @@ impl<Index> AccountInfo<Index> {
 	}
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 pub struct CodeInfo {
 	pub code_size: u32,
 	pub ref_count: u32,
 }
 
 #[cfg(feature = "std")]
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, Serialize, Deserialize)]
 /// Account definition used for genesis block construction.
 pub struct GenesisAccount<Balance, Index> {
 	/// Account nonce.
@@ -121,8 +122,8 @@ decl_storage! {
 		AccountStorages get(fn account_storages):
 			double_map hasher(twox_64_concat) H160, hasher(blake2_128_concat) H256 => H256;
 
-		Codes get(fn codes): map hasher(blake2_128_concat) H256 => Vec<u8>;
-		CodeInfos get(fn code_infos): map hasher(blake2_128_concat) H256 => Option<CodeInfo>;
+		Codes get(fn codes): map hasher(identity) H256 => Vec<u8>;
+		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
 	}
 
 	add_extra_genesis {
@@ -364,11 +365,22 @@ impl<T: Trait> Module<T> {
 
 	/// Set account storage.
 	pub fn set_storage(address: H160, index: H256, value: H256) {
-		let mut is_remove = true;
-		if value == H256::default() {
+		let mut storage_change = StorageChange::None;
+
+		let default_value = H256::default();
+		let is_prev_value_default = Self::account_storages(address, index) == default_value;
+
+		if value == default_value {
+			if !is_prev_value_default {
+				storage_change = StorageChange::Removed;
+			}
+
 			AccountStorages::remove(address, index);
 		} else {
-			is_remove = false;
+			if is_prev_value_default {
+				storage_change = StorageChange::Added;
+			}
+
 			AccountStorages::insert(address, index, value);
 		}
 
@@ -378,14 +390,22 @@ impl<T: Trait> Module<T> {
 				..
 			}) = maybe_account_info.as_mut()
 			{
-				if is_remove {
-					contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
-				} else {
-					contract_info.storage_count = contract_info.storage_count.saturating_add(1);
+				match storage_change {
+					StorageChange::Added => contract_info.storage_count = contract_info.storage_count.saturating_add(1),
+					StorageChange::Removed => {
+						contract_info.storage_count = contract_info.storage_count.saturating_sub(1)
+					}
+					_ => (),
 				}
 			}
 		});
 	}
+}
+
+enum StorageChange {
+	None,
+	Added,
+	Removed,
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
