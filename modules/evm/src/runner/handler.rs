@@ -277,11 +277,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) -> Result<(), ExitError> {
-		Module::<T>::deposit_event(Event::<T>::Log(Log {
-			address,
-			topics: topics.clone(),
-			data: data.clone(),
-		}));
+		Module::<T>::deposit_event(Event::<T>::Log(Log { address, topics, data }));
 
 		Ok(())
 	}
