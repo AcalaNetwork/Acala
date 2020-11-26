@@ -1247,8 +1247,20 @@ impl pallet_contracts::Trait for Runtime {
 
 parameter_types! {
 	pub const ChainId: u64 = 595;
-	// TODO: update
+}
+
+#[cfg(feature = "with-ethereum-compatibility")]
+parameter_types! {
+	// TODO: state rent
+	// TODO: deployment fee
 	pub const ContractExistentialDeposit: Balance = 0;
+}
+
+#[cfg(not(feature = "with-ethereum-compatibility"))]
+parameter_types! {
+	// TODO: state rent
+	// TODO: deployment fee
+	pub const ContractExistentialDeposit: Balance = DOLLARS;
 }
 
 pub type MultiCurrencyPrecompile =

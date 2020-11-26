@@ -1,6 +1,9 @@
 run: githooks
 	SKIP_WASM_BUILD= cargo run -- --dev -lruntime=debug --instant-sealing
 
+run-eth: githooks
+	SKIP_WASM_BUILD= cargo run --features with-ethereum-compatibility -- --dev -lruntime=debug --instant-sealing
+
 toolchain:
 	./scripts/init.sh
 

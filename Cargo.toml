@@ -13,6 +13,7 @@ futures = "0.3.4"
 parity-util-mem = { version = "0.7.0", default-features = false, features = ["jemalloc-global"] }
 acala-cli = { path = "cli" }
 acala-service = { path = "service" }
+mandala-runtime = { path = "runtime/mandala", optional = true }
 
 [features]
 default = [ "with-mandala-runtime" ]
@@ -34,6 +35,9 @@ with-acala-runtime = [
 with-all-runtime = [
 	"acala-service/with-all-runtime",
 	"acala-cli/with-all-runtime",
+]
+with-ethereum-compatibility = [
+  "mandala-runtime/with-ethereum-compatibility"
 ]
 
 [profile.release]

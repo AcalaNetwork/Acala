@@ -221,3 +221,4 @@ runtime-benchmarks = [
 # runtime without clashing with the runtime api exported functions
 # in WASM.
 disable-runtime-api = []
+with-ethereum-compatibility = []
