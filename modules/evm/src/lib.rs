@@ -365,6 +365,12 @@ impl<T: Trait> Module<T> {
 
 	/// Set account storage.
 	pub fn set_storage(address: H160, index: H256, value: H256) {
+		enum StorageChange {
+			None,
+			Added,
+			Removed,
+		}
+
 		let mut storage_change = StorageChange::None;
 
 		let default_value = H256::default();
@@ -400,12 +406,6 @@ impl<T: Trait> Module<T> {
 			}
 		});
 	}
-}
-
-enum StorageChange {
-	None,
-	Added,
-	Removed,
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
