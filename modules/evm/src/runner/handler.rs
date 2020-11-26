@@ -298,11 +298,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			return Err(ExitError::OutOfGas);
 		}
 
-		if value == H256::default() {
-			AccountStorages::remove(address, index);
-		} else {
-			AccountStorages::insert(address, index, value);
-		}
+		<Module<T>>::set_storage(address, index, value);
 
 		Ok(())
 	}

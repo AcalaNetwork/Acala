@@ -10,7 +10,6 @@ pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 
-#[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
@@ -280,7 +279,7 @@ impl<T: Trait> Module<T> {
 		{
 			CodeInfos::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
-					code_info.ref_count -= 1;
+					code_info.ref_count = code_info.ref_count.saturating_sub(1);
 					if code_info.ref_count == 0 {
 						Codes::remove(&contract_info.code_hash);
 						*maybe_code_info = None;
@@ -324,7 +323,7 @@ impl<T: Trait> Module<T> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
-	/// Handle new contract initialization.
+	/// Handler on new contract initialization.
 	///
 	/// - Create new account for the contract.
 	///   - For contracts initialized in genesis block, `storage_count` param
@@ -350,7 +349,7 @@ impl<T: Trait> Module<T> {
 
 		CodeInfos::mutate_exists(&code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
-				code_info.ref_count += 1;
+				code_info.ref_count = code_info.ref_count.saturating_add(1);
 			} else {
 				let new = CodeInfo {
 					code_size: code.len() as u32,
@@ -359,6 +358,31 @@ impl<T: Trait> Module<T> {
 				*maybe_code_info = Some(new);
 
 				Codes::insert(&code_hash, code);
+			}
+		});
+	}
+
+	/// Set account storage.
+	pub fn set_storage(address: H160, index: H256, value: H256) {
+		let mut is_remove = true;
+		if value == H256::default() {
+			AccountStorages::remove(address, index);
+		} else {
+			is_remove = false;
+			AccountStorages::insert(address, index, value);
+		}
+
+		<Accounts<T>>::mutate(&address, |maybe_account_info| {
+			if let Some(AccountInfo {
+				contract_info: Some(contract_info),
+				..
+			}) = maybe_account_info.as_mut()
+			{
+				if is_remove {
+					contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
+				} else {
+					contract_info.storage_count = contract_info.storage_count.saturating_add(1);
+				}
 			}
 		});
 	}
