@@ -10,7 +10,11 @@ use frame_support::{
 use primitives::{Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup},
+	FixedPointNumber, Perbill,
+};
 use sp_std::cell::RefCell;
 use support::Ratio;
 
@@ -36,6 +40,7 @@ impl_outer_dispatch! {
 		orml_currencies::Currencies,
 		pallet_balances::PalletBalances,
 		frame_system::System,
+		pallet_proxy::Proxy,
 	}
 }
 
@@ -44,6 +49,7 @@ impl_outer_event! {
 		frame_system<T>,
 		orml_tokens<T>,
 		pallet_balances<T>,
+		pallet_proxy<T>,
 		orml_currencies<T>,
 		dex<T>,
 	}
@@ -151,6 +157,31 @@ impl dex::Trait for Runtime {
 	type WeightInfo = ();
 }
 pub type DEXModule = dex::Module<Runtime>;
+
+parameter_types! {
+	pub const ProxyDepositBase: u64 = 1;
+	pub const ProxyDepositFactor: u64 = 1;
+	pub const MaxProxies: u16 = 4;
+	pub const MaxPending: u32 = 2;
+	pub const AnnouncementDepositBase: u64 = 1;
+	pub const AnnouncementDepositFactor: u64 = 1;
+}
+
+impl pallet_proxy::Trait for Runtime {
+	type Event = TestEvent;
+	type Call = Call;
+	type Currency = PalletBalances;
+	type ProxyType = ();
+	type ProxyDepositBase = ProxyDepositBase;
+	type ProxyDepositFactor = ProxyDepositFactor;
+	type MaxProxies = MaxProxies;
+	type WeightInfo = ();
+	type CallHasher = BlakeTwo256;
+	type MaxPending = MaxPending;
+	type AnnouncementDepositBase = AnnouncementDepositBase;
+	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+}
+pub type Proxy = pallet_proxy::Module<Runtime>;
 
 parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, BTC];

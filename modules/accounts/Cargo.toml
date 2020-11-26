@@ -13,6 +13,7 @@ frame-system = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-io= { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
+pallet-proxy = { version = "2.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
@@ -39,6 +40,7 @@ std = [
 	"orml-tokens/std",
 	"orml-currencies/std",
 	"pallet-balances/std",
+	"pallet-proxy/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"primitives/std",
 	"support/std",

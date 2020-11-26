@@ -4061,6 +4061,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-proxy",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "serde",

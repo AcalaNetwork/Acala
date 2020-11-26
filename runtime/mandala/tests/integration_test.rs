@@ -3,13 +3,13 @@
 use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{schedule::DispatchTime, OnFinalize, OnInitialize, OriginTrait},
+	traits::{schedule::DispatchTime, Currency, OnFinalize, OnInitialize, OriginTrait},
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	get_all_module_accounts, AccountId, Accounts, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
 	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId,
-	NewAccountDeposit, Origin, OriginCaller, Perbill, Runtime, SevenDays, TokenSymbol, NFT,
+	NewAccountDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -1131,8 +1131,13 @@ fn test_nft_module() {
 				vec![1],
 				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable)
 			));
+			assert_eq!(
+				Balances::deposit_into_existing(&NftModuleId::get().into_sub_account(0), 1 * CreateTokenDeposit::get())
+					.is_ok(),
+				true
+			);
 			assert_ok!(NFT::mint(
-				origin_of(AccountId::from(ALICE)),
+				origin_of(NftModuleId::get().into_sub_account(0)),
 				AccountId::from(BOB),
 				0,
 				vec![1],
@@ -1141,7 +1146,7 @@ fn test_nft_module() {
 			assert_ok!(NFT::burn(origin_of(AccountId::from(BOB)), (0, 0)));
 			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
 			assert_ok!(NFT::destroy_class(
-				origin_of(AccountId::from(ALICE)),
+				origin_of(NftModuleId::get().into_sub_account(0)),
 				0,
 				AccountId::from(BOB)
 			));
@@ -1152,7 +1157,7 @@ fn test_nft_module() {
 			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
 			assert_eq!(
 				Balances::free_balance(AccountId::from(ALICE)),
-				amount(1000) - (CreateClassDeposit::get() + CreateTokenDeposit::get())
+				amount(1000) - (CreateClassDeposit::get() + Proxy::deposit(1u32))
 			);
 		});
 }
