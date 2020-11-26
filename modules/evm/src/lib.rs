@@ -10,18 +10,19 @@ pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 
-#[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::traits::{Currency, Get, ReservableCurrency};
 use frame_support::weights::{Pays, PostDispatchInfo, Weight};
+use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::ensure_signed;
 use orml_traits::{account::MergeAccount, Happened};
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{Convert, UniqueSaturatedInto};
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -68,8 +69,41 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	}
 }
 
+/// Storage key size and storage value size.
+pub const STORAGE_SIZE: u32 = 64;
+
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
+pub struct ContractInfo {
+	pub storage_count: u32,
+	pub code_hash: H256,
+}
+
+impl ContractInfo {
+	pub fn total_storage_size(&self) -> u32 {
+		self.storage_count.saturating_mul(STORAGE_SIZE)
+	}
+}
+
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
+pub struct AccountInfo<Index> {
+	pub nonce: Index,
+	pub contract_info: Option<ContractInfo>,
+}
+
+impl<Index> AccountInfo<Index> {
+	pub fn new(nonce: Index, contract_info: Option<ContractInfo>) -> Self {
+		Self { nonce, contract_info }
+	}
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
+pub struct CodeInfo {
+	pub code_size: u32,
+	pub ref_count: u32,
+}
+
 #[cfg(feature = "std")]
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, Serialize, Deserialize)]
 /// Account definition used for genesis block construction.
 pub struct GenesisAccount<Balance, Index> {
 	/// Account nonce.
@@ -84,10 +118,12 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EVM {
-		AccountNonces get(fn account_nonces): map hasher(twox_64_concat) H160 => T::Index;
-		AccountCodes get(fn account_codes): map hasher(twox_64_concat) H160 => Vec<u8>;
+		Accounts get(fn accounts): map hasher(twox_64_concat) H160 => Option<AccountInfo<T::Index>>;
 		AccountStorages get(fn account_storages):
 			double_map hasher(twox_64_concat) H160, hasher(blake2_128_concat) H256 => H256;
+
+		Codes get(fn codes): map hasher(identity) H256 => Vec<u8>;
+		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
 	}
 
 	add_extra_genesis {
@@ -96,14 +132,13 @@ decl_storage! {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::to_account(address);
 
-				AccountNonces::<T>::insert(&address, account.nonce);
+				<Accounts<T>>::insert(address, <AccountInfo<T::Index>>::new(account.nonce, None));
+				<Module<T>>::on_contract_initialization(address, account.code.clone(), Some(account.storage.len() as u32));
 
 				T::Currency::deposit_creating(
 					&account_id,
 					account.balance,
 				);
-
-				AccountCodes::insert(address, &account.code);
 
 				for (index, value) in &account.storage {
 					AccountStorages::insert(address, index, value);
@@ -237,8 +272,24 @@ decl_module! {
 impl<T: Trait> Module<T> {
 	/// Remove an account.
 	pub fn remove_account(address: &H160) {
-		<AccountNonces<T>>::remove(address);
-		AccountCodes::remove(address);
+		// Deref code, and remove it if ref count is zero.
+		if let Some(AccountInfo {
+			contract_info: Some(contract_info),
+			..
+		}) = Self::accounts(address)
+		{
+			CodeInfos::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_sub(1);
+					if code_info.ref_count == 0 {
+						Codes::remove(&contract_info.code_hash);
+						*maybe_code_info = None;
+					}
+				}
+			});
+		}
+
+		<Accounts<T>>::remove(address);
 		AccountStorages::remove_prefix(address);
 	}
 
@@ -246,13 +297,114 @@ impl<T: Trait> Module<T> {
 	pub fn account_basic(address: &H160) -> Account {
 		let account_id = T::AddressMapping::to_account(address);
 
-		let nonce = Self::account_nonces(address);
+		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
 		let balance = T::Currency::free_balance(&account_id);
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
 			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
 		}
+	}
+
+	/// Get code hash at given address.
+	pub fn code_hash_at_address(address: &H160) -> H256 {
+		if let Some(AccountInfo {
+			contract_info: Some(contract_info),
+			..
+		}) = Self::accounts(address)
+		{
+			contract_info.code_hash
+		} else {
+			code_hash(&[])
+		}
+	}
+
+	/// Get code at given address.
+	pub fn code_at_address(address: &H160) -> Vec<u8> {
+		Self::codes(&Self::code_hash_at_address(address))
+	}
+
+	/// Handler on new contract initialization.
+	///
+	/// - Create new account for the contract.
+	///   - For contracts initialized in genesis block, `storage_count` param
+	///     needed to be provided.
+	///   - For contracts initialized via dispatch calls, storage count would be
+	///     read from initialized account storages.
+	/// - Update codes info.
+	/// - Save `code` if not saved yet.
+	pub fn on_contract_initialization(address: &H160, code: Vec<u8>, storage_count: Option<u32>) {
+		let code_hash = code_hash(&code.as_slice());
+		let storage_count = storage_count.unwrap_or_else(|| AccountStorages::iter_prefix(address).count() as u32);
+		let contract_info = ContractInfo {
+			storage_count,
+			code_hash,
+		};
+		Accounts::<T>::mutate(address, |maybe_account_info| {
+			if let Some(account_info) = maybe_account_info.as_mut() {
+				account_info.contract_info = Some(contract_info);
+			} else {
+				*maybe_account_info = Some(AccountInfo::<T::Index>::new(Default::default(), Some(contract_info)));
+			}
+		});
+
+		CodeInfos::mutate_exists(&code_hash, |maybe_code_info| {
+			if let Some(code_info) = maybe_code_info.as_mut() {
+				code_info.ref_count = code_info.ref_count.saturating_add(1);
+			} else {
+				let new = CodeInfo {
+					code_size: code.len() as u32,
+					ref_count: 1,
+				};
+				*maybe_code_info = Some(new);
+
+				Codes::insert(&code_hash, code);
+			}
+		});
+	}
+
+	/// Set account storage.
+	pub fn set_storage(address: H160, index: H256, value: H256) {
+		enum StorageChange {
+			None,
+			Added,
+			Removed,
+		}
+
+		let mut storage_change = StorageChange::None;
+
+		let default_value = H256::default();
+		let is_prev_value_default = Self::account_storages(address, index) == default_value;
+
+		if value == default_value {
+			if !is_prev_value_default {
+				storage_change = StorageChange::Removed;
+			}
+
+			AccountStorages::remove(address, index);
+		} else {
+			if is_prev_value_default {
+				storage_change = StorageChange::Added;
+			}
+
+			AccountStorages::insert(address, index, value);
+		}
+
+		<Accounts<T>>::mutate(&address, |maybe_account_info| {
+			if let Some(AccountInfo {
+				contract_info: Some(contract_info),
+				..
+			}) = maybe_account_info.as_mut()
+			{
+				match storage_change {
+					StorageChange::Added => contract_info.storage_count = contract_info.storage_count.saturating_add(1),
+					StorageChange::Removed => {
+						contract_info.storage_count = contract_info.storage_count.saturating_sub(1)
+					}
+					_ => (),
+				}
+			}
+		});
 	}
 }
 
@@ -263,4 +415,8 @@ impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
 			Module::<T>::remove_account(&address)
 		}
 	}
+}
+
+pub fn code_hash(code: &[u8]) -> H256 {
+	H256::from_slice(Keccak256::digest(code).as_slice())
 }

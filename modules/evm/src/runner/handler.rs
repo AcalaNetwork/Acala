@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	AccountCodes, AccountNonces, AccountStorages, AddressMapping, BalanceOf, Event, Log, MergeAccount, Module, Trait,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Event, Log, MergeAccount, Module, Trait,
 	Vicinity,
 };
 use evm::{
@@ -137,7 +137,15 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 	}
 
 	pub fn inc_nonce(&self, address: H160) {
-		AccountNonces::<T>::mutate(&address, |nonce| *nonce += One::one());
+		Accounts::<T>::mutate(&address, |maybe_account| {
+			if let Some(account) = maybe_account.as_mut() {
+				account.nonce += One::one()
+			} else {
+				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
+				account_info.nonce += One::one();
+				*maybe_account = Some(account_info);
+			}
+		});
 	}
 
 	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
@@ -201,15 +209,16 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		U256::from(AccountCodes::decode_len(&address).unwrap_or(0))
+		let code_hash = self.code_hash(address);
+		U256::from(Codes::decode_len(&code_hash).unwrap_or(0))
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
-		H256::from_slice(Keccak256::digest(&AccountCodes::get(&address)).as_slice())
+		Module::<T>::code_hash_at_address(&address)
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		AccountCodes::get(&address)
+		Module::<T>::code_at_address(&address)
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
@@ -284,11 +293,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			return Err(ExitError::OutOfGas);
 		}
 
-		if value == H256::default() {
-			AccountStorages::remove(address, index);
-		} else {
-			AccountStorages::insert(address, index, value);
-		}
+		<Module<T>>::set_storage(address, index, value);
 
 		Ok(())
 	}
@@ -378,7 +383,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 						try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
-						AccountCodes::insert(address, out);
+						<Module<T>>::on_contract_initialization(&address, out, None);
 
 						TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
 					}

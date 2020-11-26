@@ -3,14 +3,13 @@
 
 use crate::runner::handler::Handler;
 use crate::{
-	precompiles::Precompiles, AccountCodes, AddressMapping, BalanceOf, CallInfo, CreateInfo, Runner as RunnerT, Trait,
+	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, CreateInfo, Module, Runner as RunnerT, Trait,
 	Vicinity,
 };
 use evm::CreateScheme;
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
 	debug,
-	storage::StorageMap,
 	traits::{Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use sha3::{Digest, Keccak256};
@@ -110,7 +109,7 @@ impl<T: Trait> Runner<T> {
 
 			substate.inc_nonce(address);
 
-			AccountCodes::insert(address, out);
+			<Module<T>>::on_contract_initialization(&address, out, None);
 			TransactionOutcome::Commit(Ok(create_info))
 		})
 	}
