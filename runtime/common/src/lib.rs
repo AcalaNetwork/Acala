@@ -2,11 +2,17 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::parameter_types;
-pub use module_support::{ExchangeRate, Price, Rate, Ratio};
-use sp_runtime::{traits::Saturating, transaction_validity::TransactionPriority, FixedPointNumber, FixedPointOperand};
+use frame_support::{parameter_types, weights::Weight};
+pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+use sp_core::H160;
+use sp_runtime::{
+	traits::{Convert, Saturating},
+	transaction_validity::TransactionPriority,
+	FixedPointNumber, FixedPointOperand,
+};
 
 pub mod precompile;
+pub use precompile::{AllPrecompiles, MultiCurrencyPrecompile, NFTPrecompile};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
@@ -241,5 +247,48 @@ impl<Balance: FixedPointOperand> module_staking_pool::FeeModel<Balance> for Curv
 		};
 
 		multiplier.checked_mul_int(available_amount)
+	}
+}
+
+pub const SYSTEM_CONTRACT_LEADING_ZERO_BYTES: usize = 12;
+
+/// Check if the given `address` is a system contract.
+///
+/// It's system contract if the address starts with 12 zero bytes.
+pub fn is_system_contract(address: H160) -> bool {
+	address[..SYSTEM_CONTRACT_LEADING_ZERO_BYTES] == [0u8; SYSTEM_CONTRACT_LEADING_ZERO_BYTES]
+}
+
+/// The call is allowed only if caller is a system contract.
+pub struct SystemContractsFilter;
+impl PrecompileCallerFilter for SystemContractsFilter {
+	fn is_allowed(caller: H160) -> bool {
+		is_system_contract(caller)
+	}
+}
+
+/// Convert gas to weight
+pub struct GasToWeight;
+impl Convert<u32, Weight> for GasToWeight {
+	fn convert(a: u32) -> u64 {
+		a as Weight
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn system_contracts_filter_works() {
+		assert!(SystemContractsFilter::is_allowed(H160::from_low_u64_be(1)));
+
+		let mut max_allowed_addr = [0u8; 20];
+		max_allowed_addr[SYSTEM_CONTRACT_LEADING_ZERO_BYTES] = 127u8;
+		assert!(SystemContractsFilter::is_allowed(max_allowed_addr.into()));
+
+		let mut min_blocked_addr = [0u8; 20];
+		min_blocked_addr[SYSTEM_CONTRACT_LEADING_ZERO_BYTES - 1] = 1u8;
+		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
 	}
 }

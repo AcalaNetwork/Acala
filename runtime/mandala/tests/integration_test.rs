@@ -9,7 +9,7 @@ use frame_system::RawOrigin;
 use mandala_runtime::{
 	get_all_module_accounts, AccountId, Accounts, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
 	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId,
-	NewAccountDeposit, NftModuleId, Origin, OriginCaller, Perbill, Runtime, SevenDays, TokenSymbol, NFT,
+	NewAccountDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -1014,20 +1014,28 @@ fn test_authority_module() {
 			));
 			assert_eq!(last_event(), event);
 
+			assert_ok!(AuthorityModule::schedule_dispatch(
+				Origin::root(),
+				DispatchTime::At(SevenDays::get() + 4),
+				0,
+				false,
+				Box::new(call.clone())
+			));
+
 			// fast_track_scheduled_dispatch
 			assert_ok!(AuthorityModule::fast_track_scheduled_dispatch(
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
-				0,
-				DispatchTime::At(SevenDays::get() + 4),
+				4,
+				DispatchTime::At(SevenDays::get() + 5),
 			));
 
 			// delay_scheduled_dispatch
 			assert_ok!(AuthorityModule::delay_scheduled_dispatch(
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
-				0,
-				5,
+				4,
+				4,
 			));
 
 			// cancel_scheduled_dispatch
@@ -1043,7 +1051,7 @@ fn test_authority_module() {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				4,
+				5,
 			));
 			assert_eq!(last_event(), event);
 
@@ -1063,14 +1071,14 @@ fn test_authority_module() {
 			assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
 				Origin::root(),
 				pallets_origin,
-				4
+				5
 			));
 			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				4,
+				5,
 			));
 			assert_eq!(last_event(), event);
 
@@ -1083,18 +1091,18 @@ fn test_authority_module() {
 			));
 			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
-				5,
+				6,
 			));
 			assert_eq!(last_event(), event);
 
 			assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
-				5
+				6
 			));
 			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
 				OriginCaller::system(RawOrigin::Root),
-				5,
+				6,
 			));
 			assert_eq!(last_event(), event);
 		});
@@ -1136,16 +1144,20 @@ fn test_nft_module() {
 				1
 			));
 			assert_ok!(NFT::burn(origin_of(AccountId::from(BOB)), (0, 0)));
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 0);
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
 			assert_ok!(NFT::destroy_class(
 				origin_of(NftModuleId::get().into_sub_account(0)),
 				0,
 				AccountId::from(BOB)
 			));
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateClassDeposit::get());
 			assert_eq!(
-				Balances::reserved_balance(AccountId::from(BOB)),
-				NewAccountDeposit::get()
+				Balances::free_balance(AccountId::from(BOB)),
+				CreateClassDeposit::get() + CreateTokenDeposit::get()
+			);
+			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
+			assert_eq!(
+				Balances::free_balance(AccountId::from(ALICE)),
+				amount(1000) - (CreateClassDeposit::get() + Proxy::deposit(1u32))
 			);
 		});
 }
@@ -1167,7 +1179,7 @@ fn test_accounts_module() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 999999000000000000000);
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1000000000000000000000);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
 				amount(1000)
@@ -1181,7 +1193,7 @@ fn test_accounts_module() {
 				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
 				0
 			);
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 999999000000000000000);
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 1000000000000000000000);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(BOB)),
 				amount(1000)
@@ -1200,7 +1212,7 @@ fn test_evm_accounts_module() {
 		.build()
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(bob_account_id()), 999999000000000000000);
+			assert_eq!(Balances::free_balance(bob_account_id()), 1000000000000000000000);
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice()),
@@ -1213,14 +1225,21 @@ fn test_evm_accounts_module() {
 			assert_eq!(last_event(), event);
 
 			// claim another eth address
-			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(&bob_account_id()), 999999000000000000000);
-			assert_ok!(EvmAccounts::claim_account(
-				Origin::signed(AccountId::from(ALICE)),
-				EvmAccounts::eth_address(&bob()),
-				EvmAccounts::eth_sign(&bob(), &AccountId::from(ALICE).encode(), &[][..])
-			));
-			assert_eq!(Balances::free_balance(&AccountId::from(ALICE)), 999999000000000000000);
-			assert_eq!(Balances::free_balance(bob_account_id()), 0);
+			assert_noop!(
+				EvmAccounts::claim_account(
+					Origin::signed(AccountId::from(ALICE)),
+					EvmAccounts::eth_address(&alice()),
+					EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+				),
+				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
+			);
+			assert_noop!(
+				EvmAccounts::claim_account(
+					Origin::signed(AccountId::from(BOB)),
+					EvmAccounts::eth_address(&alice()),
+					EvmAccounts::eth_sign(&alice(), &AccountId::from(BOB).encode(), &[][..])
+				),
+				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
+			);
 		});
 }

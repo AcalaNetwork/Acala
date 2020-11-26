@@ -6,7 +6,11 @@ use rustc_hex::ToHex;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_core::Bytes;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::{
+	codec::Codec,
+	generic::BlockId,
+	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+};
 
 use call_request::CallRequest;
 pub use module_evm::ExitReason;
@@ -35,11 +39,16 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			data: Some(Value::String("0x".to_string())),
 		}),
 		ExitReason::Revert(_) => {
-			let message = String::from_utf8_lossy(&data);
+			let msg_data: Vec<u8> = data[4..]
+				.to_vec()
+				.into_iter()
+				.filter(|x| !x.is_ascii_control())
+				.collect();
+			let message = String::from_utf8_lossy(&msg_data).trim().to_owned();
 			Err(Error {
 				code: ErrorCode::InternalError,
 				message: format!("execution revert: {}", message),
-				data: Some(Value::String(data.to_hex())),
+				data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
 			})
 		}
 		ExitReason::Fatal(e) => Err(Error {
@@ -50,12 +59,12 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	}
 }
 
-pub struct EVMApi<B, C> {
+pub struct EVMApi<B, C, Balance> {
 	client: Arc<C>,
-	_marker: PhantomData<B>,
+	_marker: PhantomData<(B, Balance)>,
 }
 
-impl<B, C> EVMApi<B, C> {
+impl<B, C, Balance> EVMApi<B, C, Balance> {
 	pub fn new(client: Arc<C>) -> Self {
 		Self {
 			client,
@@ -64,13 +73,14 @@ impl<B, C> EVMApi<B, C> {
 	}
 }
 
-impl<B, C> EVMApiT<B> for EVMApi<B, C>
+impl<B, C, Balance> EVMApiT<B, Balance> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
-	C::Api: EVMRuntimeRPCApi<B>,
+	C::Api: EVMRuntimeRPCApi<B, Balance>,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static,
 {
-	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
+	fn call(&self, request: CallRequest<Balance>, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -100,9 +110,9 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
-				error_on_execution_failure(&info.exit_reason, &info.value)?;
+				error_on_execution_failure(&info.exit_reason, &info.output)?;
 
-				Ok(Bytes(info.value))
+				Ok(Bytes(info.output))
 			}
 			None => {
 				let info = api
@@ -116,14 +126,14 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
-				error_on_execution_failure(&info.exit_reason, &[])?;
+				error_on_execution_failure(&info.exit_reason, &info.output)?;
 
-				Ok(Bytes(info.value[..].to_vec()))
+				Ok(Bytes(info.output[..].to_vec()))
 			}
 		}
 	}
 
-	fn estimate_gas(&self, request: CallRequest, _: Option<B>) -> Result<U256> {
+	fn estimate_gas(&self, request: CallRequest<Balance>, _: Option<B>) -> Result<U256> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -153,7 +163,7 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
-				error_on_execution_failure(&info.exit_reason, &info.value)?;
+				error_on_execution_failure(&info.exit_reason, &info.output)?;
 
 				info.used_gas
 			}
@@ -169,7 +179,7 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
 
-				error_on_execution_failure(&info.exit_reason, &[])?;
+				error_on_execution_failure(&info.exit_reason, &info.output)?;
 
 				info.used_gas
 			}

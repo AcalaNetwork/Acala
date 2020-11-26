@@ -7,82 +7,27 @@ mod tests;
 
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
-pub use evm::{ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use primitives::evm::{Account, CallInfo, CreateInfo, EnsureAddressOrigin, ExecutionInfo, Log, Vicinity};
+pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
+pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::traits::{Currency, Get};
-use frame_support::weights::{Pays, Weight};
+use frame_support::traits::{Currency, Get, ReservableCurrency};
+use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
-use frame_system::RawOrigin;
-use module_support::AccountMapping;
+use frame_system::ensure_signed;
 use orml_traits::{account::MergeAccount, Happened};
+use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{Hasher, H160, H256, U256};
-use sp_runtime::{traits::UniqueSaturatedInto, AccountId32};
+use sp_core::{H160, H256, U256};
+use sp_runtime::traits::{Convert, UniqueSaturatedInto};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
-
-/// Ensure that the origin is root.
-pub struct EnsureAddressRoot<AccountId>(sp_std::marker::PhantomData<AccountId>);
-
-impl<OuterOrigin, AccountId> EnsureAddressOrigin<OuterOrigin> for EnsureAddressRoot<AccountId>
-where
-	OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>> + From<RawOrigin<AccountId>>,
-{
-	type Success = ();
-
-	fn try_address_origin(_address: &H160, origin: OuterOrigin) -> Result<(), OuterOrigin> {
-		origin.into().and_then(|o| match o {
-			RawOrigin::Root => Ok(()),
-			r => Err(OuterOrigin::from(r)),
-		})
-	}
-}
-
-/// Ensure that the origin never happens.
-pub struct EnsureAddressNever<AccountId>(sp_std::marker::PhantomData<AccountId>);
-
-impl<OuterOrigin, AccountId> EnsureAddressOrigin<OuterOrigin> for EnsureAddressNever<AccountId> {
-	type Success = AccountId;
-
-	fn try_address_origin(_address: &H160, origin: OuterOrigin) -> Result<AccountId, OuterOrigin> {
-		Err(origin)
-	}
-}
-
-pub trait AddressMapping<A> {
-	fn into_account_id(address: H160) -> A;
-}
-
-/// Identity address mapping.
-pub struct IdentityAddressMapping;
-
-impl AddressMapping<H160> for IdentityAddressMapping {
-	fn into_account_id(address: H160) -> H160 {
-		address
-	}
-}
-
-/// Hashed address mapping.
-pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
-
-impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping<H> {
-	fn into_account_id(address: H160) -> AccountId32 {
-		let mut data = [0u8; 24];
-		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&address[..]);
-		let hash = H::hash(&data);
-
-		AccountId32::from(Into::<[u8; 32]>::into(hash))
-	}
-}
 
 /// Substrate system chain ID.
 pub struct SystemChainId;
@@ -97,17 +42,14 @@ static ISTANBUL_CONFIG: Config = Config::istanbul();
 
 /// EVM module trait
 pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
-	/// Allow the origin to call on behalf of given address.
-	type CallOrigin: EnsureAddressOrigin<Self::Origin>;
-
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
-	/// Mapping from account id to address.
-	type AccountMapping: AccountMapping<Self::AccountId>;
 	/// Currency type for withdraw and balance storage.
-	type Currency: Currency<Self::AccountId>;
+	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	/// Merge free balance from source to dest.
 	type MergeAccount: MergeAccount<Self::AccountId>;
+	/// Deposit for creating contract, would be reserved until contract deleted.
+	type ContractExistentialDeposit: Get<BalanceOf<Self>>;
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -117,6 +59,8 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	type ChainId: Get<u64>;
 	/// EVM execution runner.
 	type Runner: Runner<Self>;
+	/// Convert gas to weight.
+	type GasToWeight: Convert<u32, Weight>;
 
 	/// EVM config used in the module.
 	fn config() -> &'static Config {
@@ -140,17 +84,17 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EVM {
-		AccountNonces get(fn account_nonces): map hasher(blake2_128_concat) H160 => T::Index;
-		AccountCodes get(fn account_codes): map hasher(blake2_128_concat) H160 => Vec<u8>;
+		AccountNonces get(fn account_nonces): map hasher(twox_64_concat) H160 => T::Index;
+		AccountCodes get(fn account_codes): map hasher(twox_64_concat) H160 => Vec<u8>;
 		AccountStorages get(fn account_storages):
-			double_map hasher(blake2_128_concat) H160, hasher(blake2_128_concat) H256 => H256;
+			double_map hasher(twox_64_concat) H160, hasher(blake2_128_concat) H256 => H256;
 	}
 
 	add_extra_genesis {
 		config(accounts): std::collections::BTreeMap<H160, GenesisAccount<BalanceOf<T>, T::Index>>;
 		build(|config: &GenesisConfig<T>| {
 			for (address, account) in &config.accounts {
-				let account_id = T::AddressMapping::into_account_id(*address);
+				let account_id = T::AddressMapping::to_account(address);
 
 				AccountNonces::<T>::insert(&address, account.nonce);
 
@@ -178,12 +122,12 @@ decl_event! {
 		Log(Log),
 		/// A contract has been created at given \[address\].
 		Created(H160),
-		/// A \[contract\] was attempted to be created, but the execution failed.
-		CreatedFailed(H160),
+		/// A contract was attempted to be created, but the execution failed. \[contract, exit_reason, output\]
+		CreatedFailed(H160, ExitReason, Vec<u8>),
 		/// A \[contract\] has been executed successfully with states applied.
 		Executed(H160),
-		/// A \[contract\] has been executed with errors. States are reverted with only gas fees applied.
-		ExecutedFailed(H160),
+		/// A contract has been executed with errors. States are reverted with only gas fees applied. \[contract, exit_reason, output\]
+		ExecutedFailed(H160, ExitReason, Vec<u8>),
 		/// A deposit has been made at a given address. \[sender, address, value\]
 		BalanceDeposit(AccountId, H160, U256),
 		/// A withdrawal has been made from a given address. \[sender, address, value\]
@@ -193,18 +137,8 @@ decl_event! {
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
-		/// Not enough balance to perform action
-		BalanceLow,
-		/// Calculating total fee overflowed
-		FeeOverflow,
-		/// Calculating total payment overflowed
-		PaymentOverflow,
-		/// Withdraw fee failed
-		WithdrawFailed,
-		/// Gas price is too low.
-		GasPriceTooLow,
-		/// Nonce is invalid
-		InvalidNonce,
+		/// Address not mapped
+		AddressNotMapped,
 	}
 }
 
@@ -215,111 +149,87 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn call(
 			origin,
-			source: H160,
 			target: H160,
 			input: Vec<u8>,
-			value: U256,
+			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::CallOrigin::ensure_address_origin(&source, origin)?;
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			match T::Runner::call(
-				source,
-				target,
-				input,
-				value,
-				gas_limit,
-			)? {
-				CallInfo {
-					exit_reason: ExitReason::Succeed(_),
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Executed(target));
-				},
-				_ => {
-					Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target));
-				},
+			let info = T::Runner::call(source, target, input, value, gas_limit)?;
+
+			if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Executed(target));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
 		}
 
 		/// Issue an EVM create operation. This is similar to a contract creation transaction in
 		/// Ethereum.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn create(
 			origin,
-			source: H160,
 			init: Vec<u8>,
-			value: U256,
+			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::CallOrigin::ensure_address_origin(&source, origin)?;
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			match T::Runner::create(
-				source,
-				init,
-				value,
-				gas_limit,
-			)? {
-				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
-					value: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Created(create_address));
-				},
-				CreateInfo {
-					exit_reason: _,
-					value: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(create_address));
-				},
+			let info = T::Runner::create(source, init, value, gas_limit)?;
+
+			if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Created(info.address));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
 		}
 
 		/// Issue an EVM create2 operation.
-		#[weight = *gas_limit as Weight]
+		#[weight = T::GasToWeight::convert(*gas_limit)]
 		fn create2(
 			origin,
-			source: H160,
 			init: Vec<u8>,
 			salt: H256,
-			value: U256,
+			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::CallOrigin::ensure_address_origin(&source, origin)?;
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			match T::Runner::create2(
-				source,
-				init,
-				salt,
-				value,
-				gas_limit,
-			)? {
-				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
-					value: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::Created(create_address));
-				},
-				CreateInfo {
-					exit_reason: _,
-					value: create_address,
-					..
-				} => {
-					Module::<T>::deposit_event(Event::<T>::CreatedFailed(create_address));
-				},
+			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
+
+			 if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Created(info.address));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			Ok(Pays::No.into())
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
 		}
 	}
 }
@@ -334,9 +244,9 @@ impl<T: Trait> Module<T> {
 
 	/// Get the account basic in EVM format.
 	pub fn account_basic(address: &H160) -> Account {
-		let account_id = T::AddressMapping::into_account_id(*address);
+		let account_id = T::AddressMapping::to_account(address);
 
-		let nonce = Self::account_nonces(&address);
+		let nonce = Self::account_nonces(address);
 		let balance = T::Currency::free_balance(&account_id);
 
 		Account {
@@ -349,7 +259,8 @@ impl<T: Trait> Module<T> {
 pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
 	fn happened(who: &T::AccountId) {
-		let address = T::AccountMapping::into_h160(who.clone());
-		Module::<T>::remove_account(&address)
+		if let Some(address) = T::AddressMapping::to_evm_address(who) {
+			Module::<T>::remove_account(&address)
+		}
 	}
 }

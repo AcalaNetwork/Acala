@@ -177,6 +177,7 @@ sc-client-db = { git = "https://github.com/paritytech/substrate.git", rev = "b77
 sc-consensus = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sc-consensus-babe = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sc-consensus-babe-rpc = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
+sc-consensus-manual-seal = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sc-consensus-epochs = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sc-executor = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }
 sc-finality-grandpa = { git = "https://github.com/paritytech/substrate.git", rev = "b7712fed2c58a898f7706e16861d7109c8f585a5" }

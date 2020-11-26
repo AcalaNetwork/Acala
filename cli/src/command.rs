@@ -3,6 +3,7 @@
 
 use crate::cli::{Cli, Subcommand};
 use sc_cli::{Role, RuntimeVersion, SubstrateCli};
+use sc_service::ChainType;
 use service::{chain_spec, IdentifyVariant};
 
 fn get_exec_name() -> Option<String> {
@@ -148,10 +149,16 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
+			if cli.instant_sealing && chain_spec.chain_type() != ChainType::Development {
+				return Err("Instant sealing can be turned on only in `--dev` mode".into());
+			}
+
 			runner.run_node_until_exit(|config| async move {
 				match config.role {
 					Role::Light => service::build_light(config),
-					_ => service::build_full(config, false).map(|full| full.2),
+					_ => {
+						service::build_full(config, cli.instant_sealing, false).map(|(_, _, task_manager)| task_manager)
+					}
 				}
 			})
 		}
@@ -163,7 +170,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.sync_run(|config| {
-				let (client, _, _) = service::build_full(config, false)?;
+				let (client, _, _) = service::build_full(config, false, false)?;
 				cmd.run(client)
 			})
 		}

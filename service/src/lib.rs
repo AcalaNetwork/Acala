@@ -32,6 +32,7 @@ pub use sp_api::ConstructRuntimeApi;
 
 pub mod chain_spec;
 mod client;
+mod mock_timestamp_data_provider;
 
 #[cfg(feature = "with-mandala-runtime")]
 native_executor_instance!(
@@ -105,6 +106,7 @@ type LightClient<RuntimeApi, Executor> = sc_service::TLightClientWithBackend<Blo
 
 pub fn new_partial<RuntimeApi, Executor>(
 	config: &mut Configuration,
+	instant_sealing: bool,
 	test: bool,
 ) -> Result<
 	PartialComponents<
@@ -169,18 +171,31 @@ where
 
 	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
-	let import_queue = sc_consensus_babe::import_queue(
-		babe_link.clone(),
-		block_import.clone(),
-		Some(Box::new(justification_import)),
-		None,
-		client.clone(),
-		select_chain.clone(),
-		inherent_data_providers.clone(),
-		&task_manager.spawn_handle(),
-		config.prometheus_registry(),
-		sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
-	)?;
+	let import_queue = if instant_sealing {
+		inherent_data_providers
+			.register_provider(mock_timestamp_data_provider::MockTimestampInherentDataProvider)
+			.map_err(Into::into)
+			.map_err(sp_consensus::error::Error::InherentData)?;
+
+		sc_consensus_manual_seal::import_queue(
+			Box::new(client.clone()),
+			&task_manager.spawn_handle(),
+			config.prometheus_registry(),
+		)
+	} else {
+		sc_consensus_babe::import_queue(
+			babe_link.clone(),
+			block_import.clone(),
+			Some(Box::new(justification_import)),
+			None,
+			client.clone(),
+			select_chain.clone(),
+			inherent_data_providers.clone(),
+			&task_manager.spawn_handle(),
+			config.prometheus_registry(),
+			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+		)?
+	};
 
 	let justification_stream = grandpa_link.justification_stream();
 	let shared_authority_set = grandpa_link.shared_authority_set().clone();
@@ -239,6 +254,7 @@ where
 /// Creates a full service from the configuration.
 pub fn new_full<RuntimeApi, Executor>(
 	mut config: Configuration,
+	instant_sealing: bool,
 	test: bool,
 ) -> Result<
 	(
@@ -266,11 +282,23 @@ where
 		transaction_pool,
 		inherent_data_providers,
 		other: (rpc_extensions_builder, import_setup, rpc_setup),
-	} = new_partial::<RuntimeApi, Executor>(&mut config, test)?;
+	} = new_partial::<RuntimeApi, Executor>(&mut config, instant_sealing, test)?;
 
 	let (shared_voter_state, finality_proof_provider) = rpc_setup;
 
-	let (network, network_status_sinks, system_rpc_tx, network_starter) =
+	let (network, network_status_sinks, system_rpc_tx, network_starter) = if instant_sealing {
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			on_demand: None,
+			block_announce_validator_builder: None,
+			finality_proof_request_builder: Some(Box::new(sc_network::config::DummyFinalityProofRequestBuilder)),
+			finality_proof_provider: None,
+		})?
+	} else {
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -281,7 +309,8 @@ where
 			block_announce_validator_builder: None,
 			finality_proof_request_builder: None,
 			finality_proof_provider: Some(finality_proof_provider),
-		})?;
+		})?
+	};
 
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
@@ -318,77 +347,102 @@ where
 
 	let (block_import, grandpa_link, babe_link) = import_setup;
 
-	if let sc_service::config::Role::Authority { .. } = &role {
-		let proposer = sc_basic_authorship::ProposerFactory::new(
-			task_manager.spawn_handle(),
-			client.clone(),
-			transaction_pool.clone(),
-			prometheus_registry.as_ref(),
-		);
+	if instant_sealing {
+		if role.is_authority() {
+			let env = sc_basic_authorship::ProposerFactory::new(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool.clone(),
+				prometheus_registry.as_ref(),
+			);
+			let authorship_future =
+				sc_consensus_manual_seal::run_instant_seal(sc_consensus_manual_seal::InstantSealParams {
+					block_import: client.clone(),
+					env,
+					client: client.clone(),
+					pool: transaction_pool.pool().clone(),
+					select_chain,
+					consensus_data_provider: None,
+					inherent_data_providers: inherent_data_providers.clone(),
+				});
+			// we spawn the future on a background thread managed by service.
+			task_manager
+				.spawn_essential_handle()
+				.spawn_blocking("instant-seal", authorship_future);
+		}
+	} else {
+		if let sc_service::config::Role::Authority { .. } = &role {
+			let proposer = sc_basic_authorship::ProposerFactory::new(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool.clone(),
+				prometheus_registry.as_ref(),
+			);
 
-		let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
+			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 
-		let babe_config = sc_consensus_babe::BabeParams {
-			keystore: keystore_container.sync_keystore(),
-			client: client.clone(),
-			select_chain,
-			env: proposer,
-			block_import,
-			sync_oracle: network.clone(),
-			inherent_data_providers: inherent_data_providers.clone(),
-			force_authoring,
-			babe_link,
-			can_author_with,
+			let babe_config = sc_consensus_babe::BabeParams {
+				keystore: keystore_container.sync_keystore(),
+				client: client.clone(),
+				select_chain,
+				env: proposer,
+				block_import,
+				sync_oracle: network.clone(),
+				inherent_data_providers: inherent_data_providers.clone(),
+				force_authoring,
+				babe_link,
+				can_author_with,
+			};
+
+			let babe = sc_consensus_babe::start_babe(babe_config)?;
+			task_manager
+				.spawn_essential_handle()
+				.spawn_blocking("babe-proposer", babe);
+		}
+
+		// if the node isn't actively participating in consensus then it doesn't
+		// need a keystore, regardless of which protocol we use below.
+		let keystore = if role.is_authority() {
+			Some(keystore_container.sync_keystore())
+		} else {
+			None
 		};
 
-		let babe = sc_consensus_babe::start_babe(babe_config)?;
-		task_manager
-			.spawn_essential_handle()
-			.spawn_blocking("babe-proposer", babe);
-	}
-
-	// if the node isn't actively participating in consensus then it doesn't
-	// need a keystore, regardless of which protocol we use below.
-	let keystore = if role.is_authority() {
-		Some(keystore_container.sync_keystore())
-	} else {
-		None
-	};
-
-	let config = sc_finality_grandpa::Config {
-		// FIXME #1578 make this available through chainspec
-		gossip_duration: std::time::Duration::from_millis(333),
-		justification_period: 512,
-		name: Some(name),
-		observer_enabled: false,
-		keystore,
-		is_authority: role.is_network_authority(),
-	};
-
-	if enable_grandpa {
-		// start the full GRANDPA voter
-		// NOTE: non-authorities could run the GRANDPA observer protocol, but at
-		// this point the full voter should provide better guarantees of block
-		// and vote data availability than the observer. The observer has not
-		// been tested extensively yet and having most nodes in a network run it
-		// could lead to finality stalls.
-		let grandpa_config = sc_finality_grandpa::GrandpaParams {
-			config,
-			link: grandpa_link,
-			network: network.clone(),
-			telemetry_on_connect: Some(telemetry_connection_sinks.on_connect_stream()),
-			voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
-			prometheus_registry,
-			shared_voter_state,
+		let config = sc_finality_grandpa::Config {
+			// FIXME #1578 make this available through chainspec
+			gossip_duration: std::time::Duration::from_millis(333),
+			justification_period: 512,
+			name: Some(name),
+			observer_enabled: false,
+			keystore,
+			is_authority: role.is_network_authority(),
 		};
 
-		// the GRANDPA voter task is considered infallible, i.e.
-		// if it fails we take down the service with it.
-		task_manager
-			.spawn_essential_handle()
-			.spawn_blocking("grandpa-voter", sc_finality_grandpa::run_grandpa_voter(grandpa_config)?);
-	} else {
-		sc_finality_grandpa::setup_disabled_grandpa(network.clone())?;
+		if enable_grandpa {
+			// start the full GRANDPA voter
+			// NOTE: non-authorities could run the GRANDPA observer protocol, but at
+			// this point the full voter should provide better guarantees of block
+			// and vote data availability than the observer. The observer has not
+			// been tested extensively yet and having most nodes in a network run it
+			// could lead to finality stalls.
+			let grandpa_config = sc_finality_grandpa::GrandpaParams {
+				config,
+				link: grandpa_link,
+				network: network.clone(),
+				telemetry_on_connect: Some(telemetry_connection_sinks.on_connect_stream()),
+				voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
+				prometheus_registry,
+				shared_voter_state,
+			};
+
+			// the GRANDPA voter task is considered infallible, i.e.
+			// if it fails we take down the service with it.
+			task_manager
+				.spawn_essential_handle()
+				.spawn_blocking("grandpa-voter", sc_finality_grandpa::run_grandpa_voter(grandpa_config)?);
+		} else {
+			sc_finality_grandpa::setup_disabled_grandpa(network.clone())?;
+		}
 	}
 
 	network_starter.start_network();
@@ -547,7 +601,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false)?;
+			} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false, false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -561,7 +615,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false)?;
+			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-kaura-runtime"))]
@@ -575,7 +629,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false)?;
+			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false, false)?;
 			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
@@ -605,13 +659,14 @@ pub fn build_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 
 pub fn build_full(
 	config: Configuration,
+	instant_sealing: bool,
 	test: bool,
 ) -> Result<(Arc<Client>, sc_service::NetworkStatusSinks<Block>, TaskManager), ServiceError> {
 	if config.chain_spec.is_acala() {
 		#[cfg(feature = "with-acala-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, test)?;
+				new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Acala(client)), network_status_sinks, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
@@ -620,7 +675,7 @@ pub fn build_full(
 		#[cfg(feature = "with-kaura-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, test)?;
+				new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
 		}
 		#[cfg(not(feature = "with-kaura-runtime"))]
@@ -629,7 +684,7 @@ pub fn build_full(
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, test)?;
+				new_full::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Mandala(client)), network_status_sinks, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]

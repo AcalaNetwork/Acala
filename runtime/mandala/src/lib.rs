@@ -17,7 +17,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	OpaqueMetadata, H160, U256,
+	OpaqueMetadata, H160,
 };
 use sp_runtime::traits::{
 	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
@@ -39,7 +39,7 @@ use static_assertions::const_assert;
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
 use module_evm::{CallInfo, CreateInfo, Runner};
-use module_evm_accounts::{EvmAccountMapping, EvmAddressMapping};
+use module_evm_accounts::EvmAddressMapping;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
@@ -75,7 +75,9 @@ pub use primitives::{
 	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
 	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
-pub use runtime_common::{CurveFeeModel, ExchangeRate, Price, Rate, Ratio, TimeStampedPrice};
+pub use runtime_common::{
+	CurveFeeModel, ExchangeRate, GasToWeight, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice,
+};
 
 mod authority;
 mod benchmarking;
@@ -265,7 +267,7 @@ impl pallet_balances::Trait for Runtime {
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
-	type AccountStore = module_accounts::Module<Runtime>;
+	type AccountStore = System;
 	type MaxLocks = MaxLocks;
 	type WeightInfo = ();
 }
@@ -1027,7 +1029,8 @@ parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
 	// This cannot be changed without migration code to adjust reserved balances or
 	// update module_accounts::Module::do_merge_account_check
-	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
+	// pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
+	pub const NewAccountDeposit: Balance = 0;
 }
 
 impl module_accounts::Trait for Runtime {
@@ -1243,33 +1246,26 @@ impl pallet_contracts::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ChainId: u64 = 42;
+	pub const ChainId: u64 = 595;
+	// TODO: update
+	pub const ContractExistentialDeposit: Balance = 0;
 }
 
-pub type MultiCurrencyPrecompile = runtime_common::precompile::multicurrency::MultiCurrencyPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	CurrencyId,
-	Currencies,
->;
+pub type MultiCurrencyPrecompile =
+	runtime_common::MultiCurrencyPrecompile<AccountId, EvmAddressMapping<Runtime>, Currencies>;
 
-pub type NFTPrecompile = runtime_common::precompile::nft::NFTPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmAccountMapping<Runtime>,
-	NFT,
->;
+pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 
 impl module_evm::Trait for Runtime {
-	type CallOrigin = EvmAddressMapping<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type AccountMapping = EvmAccountMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = (Accounts, Currencies);
+	type ContractExistentialDeposit = ContractExistentialDeposit;
 	type Event = Event;
-	type Precompiles = runtime_common::precompile::AllPrecompiles<MultiCurrencyPrecompile, NFTPrecompile>;
+	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
+	type GasToWeight = GasToWeight;
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -1632,12 +1628,12 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block> for Runtime {
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
 		fn call(
 			from: H160,
 			to: H160,
 			data: Vec<u8>,
-			value: U256,
+			value: Balance,
 			gas_limit: u32,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::call(
@@ -1647,13 +1643,12 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 			)
-			.map_err(|err| err.into())
 		}
 
 		fn create(
 			from: H160,
 			data: Vec<u8>,
-			value: U256,
+			value: Balance,
 			gas_limit: u32,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			<Runtime as module_evm::Trait>::Runner::create(
@@ -1662,7 +1657,6 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 			)
-			.map_err(|err| err.into())
 		}
 	}
 
