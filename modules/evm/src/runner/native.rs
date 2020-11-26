@@ -87,7 +87,6 @@ impl<T: Trait> Runner<T> {
 				address,
 				output: Vec::default(),
 				used_gas: U256::from(substate.used_gas()),
-				logs: substate.logs.clone(),
 			};
 
 			debug::debug!(
@@ -177,7 +176,6 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 				exit_reason: reason.clone(),
 				output: out,
 				used_gas: U256::from(substate.used_gas()),
-				logs: substate.logs.clone(),
 			};
 
 			debug::debug!(

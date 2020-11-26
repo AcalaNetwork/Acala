@@ -27,7 +27,6 @@ pub struct CreateInfo {
 	pub address: H160,
 	pub output: Vec<u8>,
 	pub used_gas: U256,
-	pub logs: Vec<Log>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
@@ -36,7 +35,6 @@ pub struct CallInfo {
 	pub exit_reason: ExitReason,
 	pub output: Vec<u8>,
 	pub used_gas: U256,
-	pub logs: Vec<Log>,
 }
 
 /// A mapping between `AccountId` and `H160`.
