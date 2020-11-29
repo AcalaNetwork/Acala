@@ -7,9 +7,10 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
-	AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit, CreateTokenDeposit,
-	CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId, NftModuleId, Origin, OriginCaller, Perbill,
-	Proxy, Runtime, SevenDays, TokenSymbol, NFT,
+	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
+	CreateTokenDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId,
+	NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, TokenSymbol,
+	NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -76,6 +77,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		let native_currency_id = GetNativeCurrencyId::get();
+		let existential_deposit = NativeTokenExistentialDeposit::get();
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
@@ -84,6 +86,11 @@ impl ExtBuilder {
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id == native_currency_id)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
+				.chain(
+					get_all_module_accounts()
+						.iter()
+						.map(|x| (x.clone(), existential_deposit)),
+				)
 				.collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)

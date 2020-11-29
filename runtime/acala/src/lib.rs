@@ -252,7 +252,7 @@ impl pallet_authorship::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const AcaExistentialDeposit: Balance = 0;
+	pub const NativeTokenExistentialDeposit: Balance = 0;
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
@@ -262,7 +262,7 @@ impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type DustRemoval = AcalaTreasury;
 	type Event = Event;
-	type ExistentialDeposit = AcaExistentialDeposit;
+	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = module_accounts::Module<Runtime>;
 	type MaxLocks = MaxLocks;
 	type WeightInfo = ();

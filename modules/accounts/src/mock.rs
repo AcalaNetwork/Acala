@@ -108,14 +108,14 @@ impl orml_tokens::Trait for Runtime {
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 parameter_types! {
-	pub const AcaExistentialDeposit: Balance = 0;
+	pub const NativeTokenExistentialDeposit: Balance = 0;
 }
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
-	type ExistentialDeposit = AcaExistentialDeposit;
+	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = Accounts;
 	type MaxLocks = ();
 	type WeightInfo = ();
