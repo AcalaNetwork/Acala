@@ -184,15 +184,12 @@ fn testnet_genesis(
 	enable_println: bool,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig, GeneralCouncilMembershipConfig,
-		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig,
-		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
-		VestingConfig, DOLLARS,
+		AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig, CdpEngineConfig,
+		CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig, GeneralCouncilMembershipConfig, GrandpaConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, OperatorMembershipAcalaConfig,
+		OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
 	};
-
-	let new_account_deposit = NewAccountDeposit::get();
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
@@ -209,11 +206,6 @@ fn testnet_genesis(
 				.iter()
 				.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), new_account_deposit)),
-				)
 				.collect(),
 		}),
 		pallet_session: Some(SessionConfig {
@@ -361,15 +353,13 @@ fn mandala_genesis(
 	enable_println: bool,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
-		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig,
-		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
-		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig,
-		StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance, BalancesConfig, BandOracleConfig,
+		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig, GeneralCouncilMembershipConfig,
+		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, CENTS, DOLLARS,
 	};
-
-	let new_account_deposit = NewAccountDeposit::get();
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
@@ -386,11 +376,6 @@ fn mandala_genesis(
 				.iter()
 				.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
 				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), new_account_deposit)),
-				)
 				.collect(),
 		}),
 		pallet_session: Some(SessionConfig {

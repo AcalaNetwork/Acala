@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
+use orml_traits::parameter_type_with_key;
 use primitives::Amount;
 use primitives::TokenSymbol;
 use sp_core::H256;
@@ -84,13 +85,19 @@ impl frame_system::Trait for Runtime {
 }
 pub type System = frame_system::Module<Runtime>;
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type TokensModule = orml_tokens::Module<Runtime>;
 

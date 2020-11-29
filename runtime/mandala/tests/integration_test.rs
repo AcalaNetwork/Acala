@@ -7,9 +7,9 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
-	get_all_module_accounts, AccountId, Accounts, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId,
-	NewAccountDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, TokenSymbol, NFT,
+	AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit, CreateTokenDeposit,
+	CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId, NftModuleId, Origin, OriginCaller, Perbill,
+	Proxy, Runtime, SevenDays, TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -76,7 +76,6 @@ impl ExtBuilder {
 			.unwrap();
 
 		let native_currency_id = GetNativeCurrencyId::get();
-		let new_account_deposit = NewAccountDeposit::get();
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
@@ -85,11 +84,6 @@ impl ExtBuilder {
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id == native_currency_id)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), new_account_deposit)),
-				)
 				.collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)
@@ -166,18 +160,8 @@ fn emergency_shutdown_and_cdp_treasury() {
 		.balances(vec![
 			(
 				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
-			(
-				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				2_000_000u128,
-			),
-			(
-				AccountId::from(BOB),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
 			),
 			(
 				AccountId::from(BOB),
@@ -280,17 +264,7 @@ fn emergency_shutdown_and_cdp_treasury() {
 fn liquidate_cdp() {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
 			(AccountId::from(ALICE), CurrencyId::Token(TokenSymbol::XBTC), amount(10)),
-			(
-				AccountId::from(BOB),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
 			(
 				AccountId::from(BOB),
 				CurrencyId::Token(TokenSymbol::AUSD),
@@ -618,18 +592,11 @@ fn test_dex_module() {
 #[test]
 fn test_honzon_module() {
 	ExtBuilder::default()
-		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(1_000),
-			),
-		])
+		.balances(vec![(
+			AccountId::from(ALICE),
+			CurrencyId::Token(TokenSymbol::XBTC),
+			amount(1_000),
+		)])
 		.build()
 		.execute_with(|| {
 			assert_ok!(set_oracle_price(vec![(
@@ -715,11 +682,6 @@ fn test_honzon_module() {
 fn test_cdp_engine_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
 			(
 				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
@@ -863,11 +825,6 @@ fn test_authority_module() {
 
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
 			(
 				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
@@ -1111,18 +1068,11 @@ fn test_authority_module() {
 #[test]
 fn test_nft_module() {
 	ExtBuilder::default()
-		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::ACA),
-				amount(1000),
-			),
-		])
+		.balances(vec![(
+			AccountId::from(ALICE),
+			CurrencyId::Token(TokenSymbol::ACA),
+			amount(1000),
+		)])
 		.build()
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), amount(1000));
@@ -1158,45 +1108,6 @@ fn test_nft_module() {
 			assert_eq!(
 				Balances::free_balance(AccountId::from(ALICE)),
 				amount(1000) - (CreateClassDeposit::get() + Proxy::deposit(1u32))
-			);
-		});
-}
-
-#[test]
-fn test_accounts_module() {
-	ExtBuilder::default()
-		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::ACA),
-				amount(1000),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(1000),
-			),
-		])
-		.build()
-		.execute_with(|| {
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1000000000000000000000);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
-				amount(1000)
-			);
-			assert_ok!(Accounts::close_account(
-				origin_of(AccountId::from(ALICE)),
-				Some(AccountId::from(BOB))
-			));
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
-				0
-			);
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 1000000000000000000000);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(BOB)),
-				amount(1000)
 			);
 		});
 }

@@ -488,6 +488,7 @@ impl<T: Trait> Module<T> {
 		if let Some((bidder, _)) = Self::get_last_bid(id) {
 			// refund stable token to the bidder
 			T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
+
 			// decrease account ref of bidder
 			system::Module::<T>::dec_ref(&bidder);
 		}
@@ -946,17 +947,17 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> 
 	}
 
 	fn on_auction_ended(id: AuctionId, winner: Option<(T::AccountId, Balance)>) {
+		if let Some(collateral_auction) = <CollateralAuctions<T>>::take(id) {
+			Self::collateral_auction_end_handler(id, collateral_auction, winner.clone());
+		} else if let Some(debit_auction) = <DebitAuctions<T>>::take(id) {
+			Self::debit_auction_end_handler(id, debit_auction, winner.clone());
+		} else if let Some(surplus_auction) = <SurplusAuctions<T>>::take(id) {
+			Self::surplus_auction_end_handler(id, surplus_auction, winner.clone());
+		}
+
 		if let Some((bidder, _)) = &winner {
 			// decrease account ref of winner
 			system::Module::<T>::dec_ref(bidder);
-		}
-
-		if let Some(collateral_auction) = <CollateralAuctions<T>>::take(id) {
-			Self::collateral_auction_end_handler(id, collateral_auction, winner);
-		} else if let Some(debit_auction) = <DebitAuctions<T>>::take(id) {
-			Self::debit_auction_end_handler(id, debit_auction, winner);
-		} else if let Some(surplus_auction) = <SurplusAuctions<T>>::take(id) {
-			Self::surplus_auction_end_handler(id, surplus_auction, winner);
 		}
 	}
 }

@@ -189,7 +189,6 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
- "static_assertions",
  "substrate-wasm-builder",
 ]
 
@@ -3089,7 +3088,6 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
- "static_assertions",
  "substrate-wasm-builder",
 ]
 
@@ -3849,7 +3847,6 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
- "static_assertions",
  "substrate-wasm-builder",
 ]
 
@@ -4249,6 +4246,7 @@ dependencies = [
  "module-support",
  "orml-currencies",
  "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "serde",

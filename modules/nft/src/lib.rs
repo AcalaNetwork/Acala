@@ -171,7 +171,6 @@ decl_module! {
 			let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
 			let deposit = T::CreateClassDeposit::get();
 
-			// TODO: not sure whether to also transfer `NewAccountDeposit` for new account,
 			// it depends https://github.com/paritytech/substrate/issues/7563
 			<T as Trait>::Currency::transfer(&who, &owner, deposit)?;
 			// Currently, use `free_balance(owner)` instead of `deposit`.

@@ -7,13 +7,14 @@ use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 	weights::WeightToFeeCoefficients,
 };
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	FixedPointNumber, Perbill,
+	FixedPointNumber, ModuleId, Perbill,
 };
 use sp_std::cell::RefCell;
 use support::Ratio;
@@ -23,10 +24,8 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CAROL: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -91,25 +90,32 @@ impl frame_system::Trait for Runtime {
 }
 pub type System = frame_system::Module<Runtime>;
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = Accounts;
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 0;
+	pub const AcaExistentialDeposit: Balance = 0;
 }
 
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = AcaExistentialDeposit;
 	type AccountStore = Accounts;
 	type MaxLocks = ();
 	type WeightInfo = ();
@@ -143,7 +149,7 @@ parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: usize = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, ACA), TradingPair::new(AUSD, BTC)];
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, ACA)];
 }
 
 impl dex::Trait for Runtime {
@@ -184,9 +190,7 @@ impl pallet_proxy::Trait for Runtime {
 pub type Proxy = pallet_proxy::Module<Runtime>;
 
 parameter_types! {
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, BTC];
-	pub const NewAccountDeposit: Balance = 100;
-	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD];
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
 	pub const StableCurrencyId: CurrencyId = AUSD;
 }
@@ -204,8 +208,6 @@ impl Trait for Runtime {
 	type DEX = DEXModule;
 	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
 	type KillAccount = CallKillAccount<Runtime>;
-	type NewAccountDeposit = NewAccountDeposit;
-	type TreasuryModuleId = TreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type WeightInfo = ();
 }
@@ -255,7 +257,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, AUSD, 10000), (ALICE, BTC, 1000)],
+			endowed_accounts: vec![(ALICE, AUSD, 10000)],
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,
@@ -288,7 +290,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, 100000 + NewAccountDeposit::get())],
+			balances: vec![(ALICE, 100000)],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

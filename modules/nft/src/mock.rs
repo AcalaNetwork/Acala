@@ -10,6 +10,7 @@ use frame_support::{
 	weights::Weight,
 	RuntimeDebug,
 };
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
@@ -161,13 +162,20 @@ pub type Proxy = pallet_proxy::Module<Runtime>;
 
 pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 

@@ -10,7 +10,7 @@
 use codec::Encode;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{Currency, Get, ReservableCurrency, StoredMap},
+	traits::{Currency, ReservableCurrency, StoredMap},
 	transactional,
 	weights::Weight,
 	StorageMap,
@@ -35,16 +35,11 @@ pub type EcdsaSignature = ecdsa::Signature;
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
-type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
-
 pub trait Trait: frame_system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
 	/// The Currency for managing Evm account assets.
 	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
-
-	/// Deposit for opening account, would be reserved until account closed.
-	type NewAccountDeposit: Get<BalanceOf<Self>>;
 
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
@@ -99,9 +94,6 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
-
-		/// Deposit for opening account, would be reserved until account closed.
-		const NewAccountDeposit: BalanceOf<T> = T::NewAccountDeposit::get();
 
 		/// Claim account mapping between Substrate accounts and EVM accounts.
 		/// Ensure eth_address has not been mapped.

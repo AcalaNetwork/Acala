@@ -26,7 +26,7 @@ use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
-	traits::AccountIdConversion,
+	traits::{AccountIdConversion, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
@@ -34,7 +34,6 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_accounts::{Multiplier, TargetedFeeAdjustment};
@@ -42,7 +41,9 @@ use module_evm::{CallInfo, CreateInfo, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
+use orml_traits::{
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency, OnDust,
+};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -257,13 +258,9 @@ parameter_types! {
 	pub const MaxLocks: u32 = 50;
 }
 
-// `module_accounts` handles account opening/reaping, `ExistentialDeposit` in
-// `pallet_balances` must be 0
-const_assert!(AcaExistentialDeposit::get() == 0);
-
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
-	type DustRemoval = ();
+	type DustRemoval = AcalaTreasury;
 	type Event = Event;
 	type ExistentialDeposit = AcaExistentialDeposit;
 	type AccountStore = module_accounts::Module<Runtime>;
@@ -742,13 +739,34 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	}
 }
 
+pub struct NonNativeTokenOnDust;
+impl OnDust<AccountId, CurrencyId, Balance> for NonNativeTokenOnDust {
+	fn on_dust(who: &AccountId, currency_id: CurrencyId, amount: Balance) {
+		// transfer the dust to treasury module account, ignore the result,
+		// if failed will leave some dust which still could be recycled.
+		let _ = <Tokens as MultiCurrency<_>>::transfer(
+			currency_id,
+			who,
+			&AcalaTreasuryModuleId::get().into_account(),
+			amount,
+		);
+	}
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Zero::zero()
+	};
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = module_accounts::Module<Runtime>;
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = NonNativeTokenOnDust;
 }
 
 parameter_types! {
@@ -1026,9 +1044,6 @@ impl module_cdp_treasury::Trait for Runtime {
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
-	// This cannot be changed without migration code to adjust reserved balances or
-	// update module_accounts::Module::do_merge_account_check
-	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
 impl module_accounts::Trait for Runtime {
@@ -1048,8 +1063,6 @@ impl module_accounts::Trait for Runtime {
 		module_evm::CallKillAccount<Runtime>,
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
-	type NewAccountDeposit = NewAccountDeposit;
-	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type WeightInfo = weights::accounts::WeightInfo<Runtime>;
 }
@@ -1062,9 +1075,8 @@ impl module_evm_accounts::Trait for Runtime {
 		module_evm::CallKillAccount<Runtime>,
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
-	type NewAccountDeposit = NewAccountDeposit;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type MergeAccount = (Accounts, Currencies);
+	type MergeAccount = Currencies;
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1253,7 +1265,7 @@ pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapp
 impl module_evm::Trait for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
-	type MergeAccount = (Accounts, Currencies);
+	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
