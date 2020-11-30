@@ -10,6 +10,7 @@ use sp_runtime::{
 	codec::Codec,
 	generic::BlockId,
 	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+	SaturatedConversion,
 };
 
 use call_request::CallRequest;
@@ -39,15 +40,19 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			data: Some(Value::String("0x".to_string())),
 		}),
 		ExitReason::Revert(_) => {
-			let msg_data: Vec<u8> = data[4..]
-				.to_vec()
-				.into_iter()
-				.filter(|x| !x.is_ascii_control())
-				.collect();
-			let message = String::from_utf8_lossy(&msg_data).trim().to_owned();
+			let mut message = "VM Exception while processing transaction: revert".to_string();
+			// A minimum size of error function selector (4) + offset (32) + string length
+			// (32) should contain a utf-8 encoded revert reason.
+			if data.len() > 68 {
+				let message_len = U256::from(&data[36..68]).saturated_into::<usize>();
+				let body: &[u8] = &data[68..68 + message_len];
+				if let Ok(reason) = std::str::from_utf8(body) {
+					message = format!("{} {}", message, reason.to_string());
+				}
+			}
 			Err(Error {
 				code: ErrorCode::InternalError,
-				message: format!("execution revert: {}", message),
+				message,
 				data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
 			})
 		}
