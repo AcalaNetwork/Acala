@@ -1,8 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
+use primitives::evm::CallInfo;
 use sp_core::H160;
-use sp_runtime::{DispatchError, DispatchResult, FixedU128};
+use sp_runtime::{
+	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
+	DispatchError, DispatchResult, FixedU128,
+};
 use sp_std::{
 	cmp::{Eq, PartialEq},
 	fmt::Debug,
@@ -248,4 +252,16 @@ impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balanc
 /// Return true if the call of EVM precompile contract is allowed.
 pub trait PrecompileCallerFilter {
 	fn is_allowed(caller: H160) -> bool;
+}
+
+/// An abstraction of EVM for EVMBridge
+pub trait EVM {
+	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
+	fn execute(
+		source: H160,
+		target: H160,
+		input: Vec<u8>,
+		value: Self::Balance,
+		gas_limit: u32,
+	) -> Result<CallInfo, sp_runtime::DispatchError>;
 }
