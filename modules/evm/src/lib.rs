@@ -131,7 +131,7 @@ decl_storage! {
 		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
 
 		/// Next available system contract address.
-		SystemContractIndex get(fn system_contract_address) config(): u64;
+		SystemContractIndex get(fn system_contract_index) config(): u64;
 	}
 
 	add_extra_genesis {
@@ -286,7 +286,7 @@ decl_module! {
 			T::SystemContractOrigin::ensure_origin(origin)?;
 
 			let source = T::SystemContractSource::get();
-			let address = H160::from_low_u64_be(Self::system_contract_address());
+			let address = H160::from_low_u64_be(Self::system_contract_index());
 			let info = T::Runner::create_at_address(source, init, value, address, gas_limit)?;
 
 			SystemContractIndex::mutate(|v| *v = v.saturating_add(One::one()));

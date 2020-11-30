@@ -63,7 +63,7 @@ pub fn evm_genesis() -> (BTreeMap<H160, GenesisAccount<Balance, Nonce>>, u64) {
 	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
-	let mut system_contract_address = PREDEPLOY_ADDRESS_START;
+	let mut system_contract_index = PREDEPLOY_ADDRESS_START;
 	for (_, code_string) in contracts {
 		let account = GenesisAccount {
 			nonce: 0u32,
@@ -71,9 +71,9 @@ pub fn evm_genesis() -> (BTreeMap<H160, GenesisAccount<Balance, Nonce>>, u64) {
 			storage: BTreeMap::new(),
 			code: Bytes::from_str(&code_string).unwrap().0,
 		};
-		let addr = H160::from_low_u64_be(system_contract_address);
+		let addr = H160::from_low_u64_be(system_contract_index);
 		accounts.insert(addr, account);
-		system_contract_address += 1;
+		system_contract_index += 1;
 	}
-	(accounts, system_contract_address)
+	(accounts, system_contract_index)
 }
