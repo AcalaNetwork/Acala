@@ -10,13 +10,13 @@
 use codec::Encode;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{Currency, ReservableCurrency, StoredMap},
+	traits::{Currency, Happened, OnKilledAccount, ReservableCurrency, StoredMap},
 	transactional,
 	weights::Weight,
 	StorageMap,
 };
 use frame_system::ensure_signed;
-use orml_traits::{account::MergeAccount, Happened};
+use orml_traits::account::MergeAccount;
 use primitives::evm::AddressMapping;
 use sp_core::{crypto::AccountId32, ecdsa, H160};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
@@ -223,8 +223,8 @@ where
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
-impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
-	fn happened(who: &T::AccountId) {
+impl<T: Trait> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
+	fn on_killed_account(who: &T::AccountId) {
 		Module::<T>::on_killed_account(&who);
 	}
 }

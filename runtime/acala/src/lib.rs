@@ -36,14 +36,12 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
-use module_accounts::{Multiplier, TargetedFeeAdjustment};
 use module_evm::{CallInfo, CreateInfo, Runner};
 use module_evm_accounts::EvmAddressMapping;
+use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency, OnDust,
-};
+use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -173,7 +171,10 @@ impl frame_system::Trait for Runtime {
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
-	type OnKilledAccount = module_accounts::Module<Runtime>;
+	type OnKilledAccount = (
+		module_evm::CallKillAccount<Runtime>,
+		module_evm_accounts::CallKillAccount<Runtime>,
+	);
 	type DbWeight = RocksDbWeight;
 	type BlockExecutionWeight = BlockExecutionWeight;
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
@@ -263,7 +264,7 @@ impl pallet_balances::Trait for Runtime {
 	type DustRemoval = AcalaTreasury;
 	type Event = Event;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
-	type AccountStore = module_accounts::Module<Runtime>;
+	type AccountStore = frame_system::Module<Runtime>;
 	type MaxLocks = MaxLocks;
 	type WeightInfo = ();
 }
@@ -739,24 +740,14 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	}
 }
 
-pub struct NonNativeTokenOnDust;
-impl OnDust<AccountId, CurrencyId, Balance> for NonNativeTokenOnDust {
-	fn on_dust(who: &AccountId, currency_id: CurrencyId, amount: Balance) {
-		// transfer the dust to treasury module account, ignore the result,
-		// if failed will leave some dust which still could be recycled.
-		let _ = <Tokens as MultiCurrency<_>>::transfer(
-			currency_id,
-			who,
-			&AcalaTreasuryModuleId::get().into_account(),
-			amount,
-		);
-	}
-}
-
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		Zero::zero()
 	};
+}
+
+parameter_types! {
+	pub TreasuryModuleAccount: AccountId = AcalaTreasuryModuleId::get().into_account();
 }
 
 impl orml_tokens::Trait for Runtime {
@@ -766,7 +757,7 @@ impl orml_tokens::Trait for Runtime {
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = NonNativeTokenOnDust;
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryModuleAccount>;
 }
 
 parameter_types! {
@@ -933,7 +924,7 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1046,7 +1037,7 @@ parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
 }
 
-impl module_accounts::Trait for Runtime {
+impl module_transaction_payment::Trait for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
@@ -1057,24 +1048,14 @@ impl module_accounts::Trait for Runtime {
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
-	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
-	type KillAccount = (
-		module_accounts::CallKillAccount<Runtime>,
-		module_evm::CallKillAccount<Runtime>,
-		module_evm_accounts::CallKillAccount<Runtime>,
-	);
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type WeightInfo = weights::accounts::WeightInfo<Runtime>;
+	type WeightInfo = weights::transaction_payment::WeightInfo<Runtime>;
 }
 
 impl module_evm_accounts::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type KillAccount = (
-		module_accounts::CallKillAccount<Runtime>,
-		module_evm::CallKillAccount<Runtime>,
-		module_evm_accounts::CallKillAccount<Runtime>,
-	);
+	type KillAccount = frame_system::CallKillAccount<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
@@ -1247,7 +1228,7 @@ impl pallet_contracts::Trait for Runtime {
 	type SurchargeReward = SurchargeReward;
 	type MaxDepth = pallet_contracts::DefaultMaxDepth;
 	type MaxValueSize = pallet_contracts::DefaultMaxValueSize;
-	type WeightPrice = module_accounts::Module<Self>;
+	type WeightPrice = module_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 }
 
@@ -1289,7 +1270,7 @@ construct_runtime!(
 		// Tokens & Related
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 
-		Accounts: module_accounts::{Module, Call, Storage},
+		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
 		EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
@@ -1394,7 +1375,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	module_accounts::ChargeTransactionPayment<Runtime>,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
@@ -1563,7 +1544,7 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-			Accounts::query_info(uxt, len)
+			TransactionPayment::query_info(uxt, len)
 		}
 	}
 
@@ -1706,7 +1687,7 @@ impl_runtime_apis! {
 			// orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
 			// orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
 			// orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
-			// orml_add_benchmark!(params, batches, accounts, benchmarking::accounts);
+			// orml_add_benchmark!(params, batches, transaction_payment, benchmarking::transaction_payment);
 			// orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
 			// orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 

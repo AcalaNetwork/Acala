@@ -1,17 +1,17 @@
-use crate::{Accounts, Runtime, System};
+use crate::{Runtime, System, TransactionPayment};
 
 use frame_support::traits::OnFinalize;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
 runtime_benchmarks! {
-	{ Runtime, module_accounts }
+	{ Runtime, module_transaction_payment }
 
 	_ {}
 
 	on_finalize {
 	}: {
-		Accounts::on_finalize(System::block_number());
+		TransactionPayment::on_finalize(System::block_number());
 	}
 }
 

@@ -1,27 +1,23 @@
-//! # Accounts Module
+//! # Transaction Payment Module
 //!
 //! ## Overview
 //!
-//! Accounts module is responsible for opening and closing accounts in Acala,
-//! and charge fee and tip in different currencies
+//! Transaction payment module is responsible for charge fee and tip in
+//! different currencies
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
 use frame_support::{
-	decl_error, decl_module, decl_storage,
+	decl_module, decl_storage,
 	dispatch::{DispatchResult, Dispatchable},
-	traits::{
-		Currency, ExistenceRequirement, Get, Happened, Imbalance, IsSubType, OnKilledAccount, OnUnbalanced, StoredMap,
-		WithdrawReasons,
-	},
+	traits::{Currency, ExistenceRequirement, Get, Imbalance, IsSubType, OnUnbalanced, WithdrawReasons},
 	weights::{
 		DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, Weight, WeightToFeeCoefficient, WeightToFeePolynomial,
 	},
-	StorageMap,
 };
-use frame_system::{self as system, AccountInfo};
-use orml_traits::{Happened as OrmlHappened, MultiCurrency};
+use frame_system::{self as system};
+use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -34,7 +30,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
-use sp_std::{convert::Infallible, marker::PhantomData, prelude::*, vec};
+use sp_std::{prelude::*, vec};
 use support::{DEXManager, Ratio};
 
 mod default_weight;
@@ -228,43 +224,21 @@ pub trait Trait: system::Trait + orml_currencies::Trait {
 	/// DEX to exchange currencies.
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-	/// Handler to trigger events when opening accounts
-
-	/// Handler for the unbalanced reduction when taking transaction fees. This
-	/// is either one or two separate imbalances, the first is the transaction
-	/// fee paid, the second is the tip paid, if any.
-
-	/// Event handler which calls when open account in system.
-	type OnCreatedAccount: Happened<Self::AccountId>;
-
-	/// Handler to kill account in system.
-	type KillAccount: OrmlHappened<Self::AccountId>;
-
-	/// The max slippage allowed when swap open account deposit or fee with DEX
+	/// The max slippage allowed when swap fee with DEX
 	type MaxSlippageSwapWithDEX: Get<Ratio>;
 
 	/// Weight information for the extrinsics in this module.
 	type WeightInfo: WeightInfo;
 }
 
-decl_error! {
-	/// Error for accounts manager module.
-	pub enum Error for Module<T: Trait> {
-		/// Account ref count is not zero
-		NonZeroRefCount,
-	}
-}
-
 decl_storage! {
-	trait Store for Module<T: Trait> as Accounts {
+	trait Store for Module<T: Trait> as TransactionPayment {
 		pub NextFeeMultiplier get(fn next_fee_multiplier): Multiplier = Multiplier::saturating_from_integer(1);
 	}
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
-
 		/// All non-native currency ids in Acala.
 		const AllNonNativeCurrencyIds: Vec<CurrencyId> = T::AllNonNativeCurrencyIds::get();
 
@@ -274,7 +248,7 @@ decl_module! {
 		/// Stable currency id.
 		const StableCurrencyId: CurrencyId = T::StableCurrencyId::get();
 
-		/// The max slippage allowed when swap open account deposit or fee with DEX
+		/// The max slippage allowed when swap fee with DEX
 		const MaxSlippageSwapWithDEX: Ratio = T::MaxSlippageSwapWithDEX::get();
 
 		/// The fee to be paid for making a transaction; the per-byte portion.
@@ -334,96 +308,6 @@ decl_module! {
 			})
 		}
 	}
-}
-
-/// Fork StoredMap in frame_system,  still use `Account` storage of
-/// frame_system.
-impl<T: Trait> StoredMap<T::AccountId, T::AccountData> for Module<T> {
-	fn get(k: &T::AccountId) -> T::AccountData {
-		system::Account::<T>::get(k).data
-	}
-
-	fn is_explicit(k: &T::AccountId) -> bool {
-		system::Account::<T>::contains_key(k)
-	}
-
-	fn insert(k: &T::AccountId, data: T::AccountData) {
-		let existed = system::Account::<T>::contains_key(k);
-		system::Account::<T>::mutate(k, |a| a.data = data);
-		if !existed {
-			T::OnCreatedAccount::happened(&k);
-		}
-	}
-
-	fn remove(k: &T::AccountId) {
-		T::KillAccount::happened(k);
-	}
-
-	fn mutate<R>(k: &T::AccountId, f: impl FnOnce(&mut T::AccountData) -> R) -> R {
-		let existed = system::Account::<T>::contains_key(k);
-		let r = system::Account::<T>::mutate(k, |a| f(&mut a.data));
-		if !existed {
-			T::OnCreatedAccount::happened(&k);
-		}
-		r
-	}
-
-	fn mutate_exists<R>(k: &T::AccountId, f: impl FnOnce(&mut Option<T::AccountData>) -> R) -> R {
-		Self::try_mutate_exists(k, |x| -> Result<R, Infallible> { Ok(f(x)) }).expect("Infallible; qed")
-	}
-
-	fn try_mutate_exists<R, E>(
-		k: &T::AccountId,
-		f: impl FnOnce(&mut Option<T::AccountData>) -> Result<R, E>,
-	) -> Result<R, E> {
-		system::Account::<T>::try_mutate_exists(k, |maybe_value| {
-			let existed = maybe_value.is_some();
-			let (maybe_prefix, mut maybe_data) = split_inner(maybe_value.take(), |account| {
-				((account.nonce, account.refcount), account.data)
-			});
-			f(&mut maybe_data).map(|result| {
-				let (nonce, refcount) = maybe_prefix.unwrap_or_default();
-
-				// Note: do not remove the AccountData storage here even if the maybe_data is
-				// None
-				let (data, should_exist) = if let Some(data) = maybe_data {
-					(data, true)
-				} else {
-					(Default::default(), false)
-				};
-				*maybe_value = Some(AccountInfo { nonce, refcount, data });
-
-				(existed, should_exist, result)
-			})
-		})
-		.map(|(existed, should_exist, v)| {
-			if !existed && should_exist {
-				// trigger event handler when an account is being created.
-				T::OnCreatedAccount::happened(&k);
-			} else if existed && !should_exist && system::Module::<T>::allow_death(&k) {
-				// kill the account
-				T::KillAccount::happened(&k);
-			}
-
-			v
-		})
-	}
-}
-
-/// Split an `option` into two constituent options, as defined by a `splitter`
-/// function.
-pub fn split_inner<T, R, S>(option: Option<T>, splitter: impl FnOnce(T) -> (R, S)) -> (Option<R>, Option<S>) {
-	match option {
-		Some(inner) => {
-			let (r, s) = splitter(inner);
-			(Some(r), Some(s))
-		}
-		None => (None, None),
-	}
-}
-
-impl<T: Trait> OnKilledAccount<T::AccountId> for Module<T> {
-	fn on_killed_account(_who: &T::AccountId) {}
 }
 
 impl<T: Trait> Module<T>
@@ -763,12 +647,5 @@ where
 			);
 		}
 		Ok(())
-	}
-}
-
-pub struct CallKillAccount<T>(PhantomData<T>);
-impl<T: Trait> OrmlHappened<T::AccountId> for CallKillAccount<T> {
-	fn happened(who: &T::AccountId) {
-		frame_system::CallKillAccount::<T>::happened(who)
 	}
 }

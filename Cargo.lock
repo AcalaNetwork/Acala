@@ -108,7 +108,6 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
- "module-accounts",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -134,6 +133,7 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-payment",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -3007,7 +3007,6 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
- "module-accounts",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -3033,6 +3032,7 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-payment",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -3766,7 +3766,6 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "libsecp256k1",
- "module-accounts",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -3792,6 +3791,7 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-payment",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -4044,30 +4044,6 @@ checksum = "07b88fb9795d4d36d62a012dfbf49a8f5cf12751f36d31a9dbe66d528e58979e"
 dependencies = [
  "socket2",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "module-accounts"
-version = "0.6.3"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-dex",
- "module-support",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-proxy",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "smallvec 1.4.2",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -4623,6 +4599,30 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-transaction-payment"
+version = "0.6.3"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-dex",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-proxy",
+ "pallet-transaction-payment-rpc-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "smallvec 1.4.2",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",

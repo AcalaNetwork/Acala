@@ -69,7 +69,7 @@ orml-vesting = { path = "../../orml/vesting", default-features = false }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
 orml-nft= { path = "../../orml/nft", default-features = false }
 
-module-accounts = { path = "../../modules/accounts", default-features = false }
+module-transaction-payment = { path = "../../modules/transaction_payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
 module-auction-manager = { path = "../../modules/auction_manager", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp_engine", default-features = false }
@@ -167,7 +167,7 @@ std = [
 	"orml-rewards/std",
 	"orml-nft/std",
 
-	"module-accounts/std",
+	"module-transaction-payment/std",
 	"module-airdrop/std",
 	"module-auction-manager/std",
 	"module-cdp-engine/std",

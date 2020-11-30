@@ -1,4 +1,4 @@
-//! Mocks for the cdp treasury module.
+//! Mocks for the transaction payment module.
 
 #![cfg(test)]
 
@@ -11,11 +11,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	FixedPointNumber, ModuleId, Perbill,
-};
+use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, ModuleId, Perbill};
 use sp_std::cell::RefCell;
 use support::Ratio;
 
@@ -39,7 +35,6 @@ impl_outer_dispatch! {
 		orml_currencies::Currencies,
 		pallet_balances::PalletBalances,
 		frame_system::System,
-		pallet_proxy::Proxy,
 	}
 }
 
@@ -48,7 +43,6 @@ impl_outer_event! {
 		frame_system<T>,
 		orml_tokens<T>,
 		pallet_balances<T>,
-		pallet_proxy<T>,
 		orml_currencies<T>,
 		dex<T>,
 	}
@@ -116,7 +110,7 @@ impl pallet_balances::Trait for Runtime {
 	type DustRemoval = ();
 	type Event = TestEvent;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
-	type AccountStore = Accounts;
+	type AccountStore = System;
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
@@ -165,31 +159,6 @@ impl dex::Trait for Runtime {
 pub type DEXModule = dex::Module<Runtime>;
 
 parameter_types! {
-	pub const ProxyDepositBase: u64 = 1;
-	pub const ProxyDepositFactor: u64 = 1;
-	pub const MaxProxies: u16 = 4;
-	pub const MaxPending: u32 = 2;
-	pub const AnnouncementDepositBase: u64 = 1;
-	pub const AnnouncementDepositFactor: u64 = 1;
-}
-
-impl pallet_proxy::Trait for Runtime {
-	type Event = TestEvent;
-	type Call = Call;
-	type Currency = PalletBalances;
-	type ProxyType = ();
-	type ProxyDepositBase = ProxyDepositBase;
-	type ProxyDepositFactor = ProxyDepositFactor;
-	type MaxProxies = MaxProxies;
-	type WeightInfo = ();
-	type CallHasher = BlakeTwo256;
-	type MaxPending = MaxPending;
-	type AnnouncementDepositBase = AnnouncementDepositBase;
-	type AnnouncementDepositFactor = AnnouncementDepositFactor;
-}
-pub type Proxy = pallet_proxy::Module<Runtime>;
-
-parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD];
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
 	pub const StableCurrencyId: CurrencyId = AUSD;
@@ -206,12 +175,10 @@ impl Trait for Runtime {
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
-	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
-	type KillAccount = CallKillAccount<Runtime>;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type WeightInfo = ();
 }
-pub type Accounts = Module<Runtime>;
+pub type TransactionPayment = Module<Runtime>;
 
 thread_local! {
 	static EXTRINSIC_BASE_WEIGHT: RefCell<u64> = RefCell::new(0);

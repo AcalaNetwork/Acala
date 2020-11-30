@@ -1,4 +1,4 @@
-//! Unit tests for the accounts module.
+//! Unit tests for the transaction payment module.
 
 #![cfg(test)]
 
@@ -8,7 +8,8 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Accounts, Call, Currencies, DEXModule, ExtBuilder, MaximumBlockWeight, Origin, Runtime, ACA, ALICE, AUSD, BOB,
+	Call, Currencies, DEXModule, ExtBuilder, MaximumBlockWeight, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD,
+	BOB,
 };
 use orml_traits::MultiCurrency;
 use sp_runtime::testing::TestXt;
@@ -136,7 +137,7 @@ fn query_info_works() {
 			NextFeeMultiplier::put(Multiplier::saturating_from_rational(3, 2));
 
 			assert_eq!(
-				Accounts::query_info(xt, len),
+				TransactionPayment::query_info(xt, len),
 				RuntimeDispatchInfo {
 					weight: info.weight,
 					class: info.class,
