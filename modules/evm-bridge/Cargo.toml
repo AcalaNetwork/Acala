@@ -23,6 +23,7 @@ ethereum-types = { version = "0.9", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 module-evm = { path = "../evm", default-features = false }
+hex-literal = { version = "0.3.1" }
 
 [dev-dependencies]
 pallet-balances = { version = "2.0.0", default-features = false }
@@ -37,7 +38,6 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
-	"pallet-balances/std",
 	"sp-io/std",
 	"sp-std/std",
 	"sha3/std",

@@ -4347,6 +4347,7 @@ dependencies = [
  "ethereum-types",
  "frame-support",
  "frame-system",
+ "hex-literal 0.3.1",
  "impl-trait-for-tuples",
  "module-evm",
  "module-support",

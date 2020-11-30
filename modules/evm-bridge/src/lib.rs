@@ -6,12 +6,13 @@ use frame_support::{
 	decl_error, decl_module,
 	dispatch::{DispatchError, DispatchResult},
 };
+use hex_literal::hex;
 use module_evm::ExitReason;
 use primitive_types::H256;
 use sp_core::{H160, U256};
 use sp_runtime::{RuntimeDebug, SaturatedConversion};
-use sp_std::fmt::Debug;
-use support::EVM;
+use sp_std::vec::Vec;
+use support::{EVMBridge as EVMBridgeTrait, EVM};
 
 mod mock;
 mod tests;
@@ -43,10 +44,10 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Trait> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
-		let input = vec![0x18, 0x16, 0x0d, 0xdd];
+		let input = hex!("18160ddd").to_vec();
 
 		let info = T::EVM::execute(H160::default(), context.contract, input, Default::default(), 2_100_000)?;
 
@@ -56,9 +57,9 @@ impl<T: Trait> Module<T> {
 		Ok(value.saturated_into::<BalanceOf<T>>())
 	}
 
-	pub fn balance_of(context: InvokeContext, address: H160) -> Result<BalanceOf<T>, DispatchError> {
+	fn balance_of(context: InvokeContext, address: H160) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.balanceOf method hash
-		let mut input = vec![0x70, 0xa0, 0x82, 0x31];
+		let mut input = hex!("70a08231").to_vec();
 		// append address
 		input.append(&mut Vec::from(H256::from(address).as_bytes()));
 
@@ -71,9 +72,9 @@ impl<T: Trait> Module<T> {
 			.saturated_into::<BalanceOf<T>>())
 	}
 
-	pub fn transfer(context: InvokeContext, to: H160, value: BalanceOf<T>) -> DispatchResult {
+	fn transfer(context: InvokeContext, to: H160, value: BalanceOf<T>) -> DispatchResult {
 		// ERC20.transfer method hash
-		let mut input = vec![0xa9, 0x05, 0x9c, 0xbb];
+		let mut input = hex!("a9059cbb").to_vec();
 		// append receiver address
 		input.append(&mut Vec::from(H256::from(to).as_bytes()));
 		// append amount to be transferred
@@ -85,7 +86,9 @@ impl<T: Trait> Module<T> {
 
 		Self::handle_exit_reason(info.exit_reason)
 	}
+}
 
+impl<T: Trait> Module<T> {
 	fn handle_exit_reason(exit_reason: ExitReason) -> Result<(), DispatchError> {
 		match exit_reason {
 			ExitReason::Succeed(_) => Ok(()),

@@ -265,3 +265,14 @@ pub trait EVM {
 		gas_limit: u32,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
 }
+
+/// An abstraction of EVMBridge
+pub trait EVMBridge<InvokeContext, Balance> {
+	/// Execute ERC20.totalSupply() to read total supply from ERC20 contract
+	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
+	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20
+	/// contract
+	fn balance_of(context: InvokeContext, address: H160) -> Result<Balance, DispatchError>;
+	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
+	fn transfer(context: InvokeContext, to: H160, value: Balance) -> DispatchResult;
+}
