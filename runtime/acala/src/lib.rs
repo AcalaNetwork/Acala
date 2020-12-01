@@ -1243,6 +1243,8 @@ parameter_types! {
 	pub const ChainId: u64 = 787;
 	// TODO: update
 	pub const ContractExistentialDeposit: Balance = 0;
+	// TODO: update
+	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1260,6 +1262,8 @@ impl module_evm::Trait for Runtime {
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
+	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	type NetworkContractSource = NetworkContractSource;
 }
 
 #[allow(clippy::large_enum_variant)]

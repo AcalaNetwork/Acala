@@ -2,7 +2,11 @@
 
 use super::*;
 
-use frame_support::{assert_ok, impl_outer_dispatch, impl_outer_origin, parameter_types};
+use frame_support::{
+	assert_noop, assert_ok, impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types,
+	parameter_types,
+};
+use frame_system::EnsureSignedBy;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::{
 	bytes::{from_hex, to_hex},
@@ -11,7 +15,7 @@ use sp_core::{
 use sp_core::{Blake2Hasher, H256};
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BadOrigin, BlakeTwo256, IdentityLookup},
 	AccountId32, Perbill,
 };
 use std::{collections::BTreeMap, str::FromStr};
@@ -44,6 +48,19 @@ impl_outer_dispatch! {
 	}
 }
 
+mod evm_mod {
+	pub use crate::Event;
+}
+impl_outer_event! {
+	pub enum TestEvent for Test {
+		frame_system<T>,
+		pallet_balances<T>,
+		orml_tokens<T>,
+		orml_currencies<T>,
+		evm_mod<T>,
+	}
+}
+
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
 parameter_types! {
@@ -63,7 +80,7 @@ impl frame_system::Trait for Test {
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
 	type DbWeight = ();
@@ -87,7 +104,7 @@ parameter_types! {
 impl pallet_balances::Trait for Test {
 	type Balance = u64;
 	type DustRemoval = ();
-	type Event = ();
+	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
@@ -105,7 +122,7 @@ impl pallet_timestamp::Trait for Test {
 }
 
 impl orml_tokens::Trait for Test {
-	type Event = ();
+	type Event = TestEvent;
 	type Balance = u64;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -119,7 +136,7 @@ parameter_types! {
 }
 
 impl orml_currencies::Trait for Test {
-	type Event = ();
+	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -136,6 +153,14 @@ impl Convert<u32, u64> for GasToWeight {
 	}
 }
 
+parameter_types! {
+	pub NetworkContractSource: H160 = alice();
+}
+
+ord_parameter_types! {
+	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+}
+
 impl Trait for Test {
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
 	type Currency = Balances;
@@ -147,6 +172,9 @@ impl Trait for Test {
 	type ChainId = SystemChainId;
 	type Runner = crate::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
+
+	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
+	type NetworkContractSource = NetworkContractSource;
 }
 
 type System = frame_system::Module<Test>;
@@ -166,6 +194,8 @@ fn bob() -> H160 {
 fn charlie() -> H160 {
 	H160::from_str("1000000000000000000000000000000000000003").unwrap()
 }
+
+const network_contract_index: u64 = 2048;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
@@ -197,7 +227,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut t)
 		.unwrap();
-	GenesisConfig::<Test> { accounts }.assimilate_storage(&mut t).unwrap();
+	GenesisConfig::<Test> {
+		accounts,
+		network_contract_index: network_contract_index,
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
 	t.into()
 }
 
@@ -630,6 +665,59 @@ fn deploy_factory() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get() * 2
+		);
+	});
+}
+
+#[test]
+fn create_network_contract_works() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//	 function multiply(uint a, uint b) public pure returns(uint) {
+	// 	 	return a * b;
+	// 	 }
+	// }
+	let contract = from_hex("0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032").unwrap();
+
+	new_test_ext().execute_with(|| {
+		System::set_block_number(1);
+
+		// deploy contract
+		assert_ok!(EVM::create_network_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			contract,
+			0,
+			1000000,
+		));
+
+		assert_eq!(
+			Module::<Test>::account_basic(&NetworkContractSource::get()).nonce,
+			U256::from_str("02").unwrap()
+		);
+
+		let created_event = TestEvent::evm_mod(RawEvent::Created(H160::from_low_u64_be(network_contract_index)));
+		assert!(System::events().iter().any(|record| record.event == created_event));
+
+		assert_eq!(EVM::network_contract_index(), network_contract_index + 1);
+	});
+}
+
+#[test]
+fn create_network_contract_fails_if_non_network_contract_origin() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//	 function multiply(uint a, uint b) public pure returns(uint) {
+	// 	 	return a * b;
+	// 	 }
+	// }
+	let contract = from_hex("0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032").unwrap();
+
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			EVM::create_network_contract(Origin::signed(AccountId32::from([1u8; 32])), contract, 0, 1000000,),
+			BadOrigin
 		);
 	});
 }

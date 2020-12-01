@@ -13,7 +13,7 @@ pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::traits::{Currency, Get, ReservableCurrency};
+use frame_support::traits::{Currency, EnsureOrigin, Get, ReservableCurrency};
 use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
@@ -24,7 +24,7 @@ use primitives::evm::AddressMapping;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::{Convert, UniqueSaturatedInto};
+use sp_runtime::traits::{Convert, One, UniqueSaturatedInto};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
@@ -67,6 +67,11 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	fn config() -> &'static Config {
 		&ISTANBUL_CONFIG
 	}
+
+	/// Required origin for creating system contract.
+	type NetworkContractOrigin: EnsureOrigin<Self::Origin>;
+	/// The EVM address for creating system contract.
+	type NetworkContractSource: Get<H160>;
 }
 
 /// Storage key size and storage value size.
@@ -124,6 +129,9 @@ decl_storage! {
 
 		Codes get(fn codes): map hasher(identity) H256 => Vec<u8>;
 		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
+
+		/// Next available system contract address.
+		NetworkContractIndex get(fn network_contract_index) config(): u64;
 	}
 
 	add_extra_genesis {
@@ -254,6 +262,36 @@ decl_module! {
 			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
 
 			 if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Created(info.address));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
+			}
+
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
+		}
+
+		/// Issue an EVM create operation. The next available system contract address will be used as created contract address.
+		#[weight = T::GasToWeight::convert(*gas_limit)]
+		fn create_network_contract(
+			origin,
+			init: Vec<u8>,
+			value: BalanceOf<T>,
+			gas_limit: u32,
+		) -> DispatchResultWithPostInfo {
+			T::NetworkContractOrigin::ensure_origin(origin)?;
+
+			let source = T::NetworkContractSource::get();
+			let address = H160::from_low_u64_be(Self::network_contract_index());
+			let info = T::Runner::create_at_address(source, init, value, address, gas_limit)?;
+
+			NetworkContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
+
+			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
 			} else {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
