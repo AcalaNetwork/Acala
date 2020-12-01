@@ -39,7 +39,7 @@ impl<AccountId, AddressMapping, NFT> Precompile for NFTPrecompile<AccountId, Add
 where
 	AccountId: Clone,
 	AddressMapping: AddressMappingT<AccountId>,
-	NFT: NFTT<AccountId, Balance = NFTBalance, ClassId = u64, TokenId = u64>,
+	NFT: NFTT<AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
 {
 	fn execute(
 		input: &[u8],
@@ -58,7 +58,7 @@ where
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
 			Action::QueryOwner => {
-				let class_id = input.u64_at(1)?;
+				let class_id = input.u32_at(1)?;
 				let token_id = input.u64_at(2)?;
 
 				let owner: H160 = if let Some(o) = NFT::owner((class_id, token_id)) {
@@ -73,7 +73,7 @@ where
 				let from = input.account_id_at(1)?;
 				let to = input.account_id_at(2)?;
 
-				let class_id = input.u64_at(3)?;
+				let class_id = input.u32_at(3)?;
 				let token_id = input.u64_at(4)?;
 
 				NFT::transfer(&from, &to, (class_id, token_id))

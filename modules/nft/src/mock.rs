@@ -199,7 +199,7 @@ impl Trait for Runtime {
 pub type NFTModule = Module<Runtime>;
 
 impl orml_nft::Trait for Runtime {
-	type ClassId = u64;
+	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = ClassData;
 	type TokenData = TokenData;
