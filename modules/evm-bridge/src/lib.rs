@@ -60,7 +60,7 @@ impl<T: Trait> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
 		// ERC20.balanceOf method hash
 		let mut input = hex!("70a08231").to_vec();
 		// append address
-		input.append(&mut H256::from(address).as_bytes().to_vec());
+		input.extend_from_slice(H256::from(address).as_bytes());
 
 		let info = T::EVM::execute(H160::default(), context.contract, input, Default::default(), 2_100_000)?;
 
@@ -75,13 +75,9 @@ impl<T: Trait> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
 		// ERC20.transfer method hash
 		let mut input = hex!("a9059cbb").to_vec();
 		// append receiver address
-		input.append(&mut H256::from(to).as_bytes().to_vec());
+		input.extend_from_slice(H256::from(to).as_bytes());
 		// append amount to be transferred
-		input.append(
-			&mut H256::from_uint(&U256::from(value.saturated_into::<u128>()))
-				.as_bytes()
-				.to_vec(),
-		);
+		input.extend_from_slice(H256::from_uint(&U256::from(value.saturated_into::<u128>())).as_bytes());
 
 		let info = T::EVM::execute(context.source, context.contract, input, Default::default(), 2_100_000)?;
 

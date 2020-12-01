@@ -1362,7 +1362,7 @@ construct_runtime!(
 		// Smart contracts
 		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
-		EVMBridge: module_evm_bridge::{Module, Call},
+		EVMBridge: module_evm_bridge::{Module},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
