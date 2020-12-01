@@ -28,6 +28,7 @@ use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{Convert, One, UniqueSaturatedInto};
 use sp_std::{marker::PhantomData, vec::Vec};
+use support::EVM as EVMTrait;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
@@ -263,7 +264,7 @@ decl_module! {
 
 			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
 
-			 if info.exit_reason.is_succeed() {
+			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
 			} else {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
@@ -445,6 +446,32 @@ impl<T: Trait> Module<T> {
 				}
 			}
 		});
+	}
+}
+
+impl<T: Trait> EVMTrait for Module<T> {
+	type Balance = BalanceOf<T>;
+
+	fn execute(
+		source: H160,
+		target: H160,
+		input: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u32,
+	) -> Result<CallInfo, sp_runtime::DispatchError> {
+		let info = T::Runner::call(source, target, input, value, gas_limit)?;
+
+		if info.exit_reason.is_succeed() {
+			Module::<T>::deposit_event(Event::<T>::Executed(target));
+		} else {
+			Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
+				target,
+				info.exit_reason.clone(),
+				info.output.clone(),
+			));
+		}
+
+		Ok(info)
 	}
 }
 

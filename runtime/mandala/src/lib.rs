@@ -1284,6 +1284,10 @@ impl module_evm::Trait for Runtime {
 	type NetworkContractSource = NetworkContractSource;
 }
 
+impl module_evm_bridge::Trait for Runtime {
+	type EVM = EVM;
+}
+
 #[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
@@ -1381,6 +1385,7 @@ construct_runtime!(
 		// Smart contracts
 		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Module},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
