@@ -10,6 +10,7 @@ use sp_runtime::{
 	codec::Codec,
 	generic::BlockId,
 	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+	SaturatedConversion,
 };
 
 use call_request::CallRequest;
@@ -38,25 +39,34 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			message: format!("execution error: {:?}", e),
 			data: Some(Value::String("0x".to_string())),
 		}),
-		ExitReason::Revert(_) => {
-			let msg_data: Vec<u8> = data[4..]
-				.to_vec()
-				.into_iter()
-				.filter(|x| !x.is_ascii_control())
-				.collect();
-			let message = String::from_utf8_lossy(&msg_data).trim().to_owned();
-			Err(Error {
-				code: ErrorCode::InternalError,
-				message: format!("execution revert: {}", message),
-				data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
-			})
-		}
+		ExitReason::Revert(_) => Err(Error {
+			code: ErrorCode::InternalError,
+			message: format!("execution revert: {}", decode_revert_message(data)),
+			data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
+		}),
 		ExitReason::Fatal(e) => Err(Error {
 			code: ErrorCode::InternalError,
 			message: format!("execution fatal: {:?}", e),
 			data: Some(Value::String("0x".to_string())),
 		}),
 	}
+}
+
+fn decode_revert_message(data: &[u8]) -> String {
+	let invalid: String = "invalid revert message".into();
+	// A minimum size of error function selector (4) + offset (32) + string length
+	// (32) should contain a utf-8 encoded revert reason.
+	if data.len() > 68 {
+		let message_len = U256::from(&data[36..68]).saturated_into::<usize>();
+		if data.len() < message_len {
+			return invalid;
+		}
+		let body: &[u8] = &data[68..68 + message_len];
+		if let Ok(reason) = std::str::from_utf8(body) {
+			reason.to_string();
+		}
+	}
+	invalid
 }
 
 pub struct EVMApi<B, C, Balance> {
