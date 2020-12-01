@@ -69,9 +69,9 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	}
 
 	/// Required origin for creating system contract.
-	type SystemContractOrigin: EnsureOrigin<Self::Origin>;
+	type NetworkContractOrigin: EnsureOrigin<Self::Origin>;
 	/// The EVM address for creating system contract.
-	type SystemContractSource: Get<H160>;
+	type NetworkContractSource: Get<H160>;
 }
 
 /// Storage key size and storage value size.
@@ -131,7 +131,7 @@ decl_storage! {
 		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
 
 		/// Next available system contract address.
-		SystemContractIndex get(fn system_contract_index) config(): u64;
+		NetworkContractIndex get(fn network_contract_index) config(): u64;
 	}
 
 	add_extra_genesis {
@@ -277,19 +277,19 @@ decl_module! {
 
 		/// Issue an EVM create operation. The next available system contract address will be used as created contract address.
 		#[weight = T::GasToWeight::convert(*gas_limit)]
-		fn create_system_contract(
+		fn create_network_contract(
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::SystemContractOrigin::ensure_origin(origin)?;
+			T::NetworkContractOrigin::ensure_origin(origin)?;
 
-			let source = T::SystemContractSource::get();
-			let address = H160::from_low_u64_be(Self::system_contract_index());
+			let source = T::NetworkContractSource::get();
+			let address = H160::from_low_u64_be(Self::network_contract_index());
 			let info = T::Runner::create_at_address(source, init, value, address, gas_limit)?;
 
-			SystemContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
+			NetworkContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));

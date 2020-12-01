@@ -1244,7 +1244,7 @@ parameter_types! {
 	// TODO: update
 	pub const ContractExistentialDeposit: Balance = 0;
 	// TODO: update
-	pub SystemContractSource: H160 = H160::from_low_u64_be(0);
+	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1262,8 +1262,8 @@ impl module_evm::Trait for Runtime {
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
-	type SystemContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
-	type SystemContractSource = SystemContractSource;
+	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	type NetworkContractSource = NetworkContractSource;
 }
 
 #[allow(clippy::large_enum_variant)]

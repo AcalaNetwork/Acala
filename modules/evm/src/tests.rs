@@ -154,11 +154,11 @@ impl Convert<u32, u64> for GasToWeight {
 }
 
 parameter_types! {
-	pub SystemContractSource: H160 = alice();
+	pub NetworkContractSource: H160 = alice();
 }
 
 ord_parameter_types! {
-	pub const SystemContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 }
 
 impl Trait for Test {
@@ -173,8 +173,8 @@ impl Trait for Test {
 	type Runner = crate::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
 
-	type SystemContractOrigin = EnsureSignedBy<SystemContractAccount, AccountId32>;
-	type SystemContractSource = SystemContractSource;
+	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
+	type NetworkContractSource = NetworkContractSource;
 }
 
 type System = frame_system::Module<Test>;
@@ -195,7 +195,7 @@ fn charlie() -> H160 {
 	H160::from_str("1000000000000000000000000000000000000003").unwrap()
 }
 
-const SYSTEM_CONTRACT_INDEX: u64 = 2048;
+const network_contract_index: u64 = 2048;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
@@ -229,7 +229,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 	GenesisConfig::<Test> {
 		accounts,
-		system_contract_index: SYSTEM_CONTRACT_INDEX,
+		network_contract_index: network_contract_index,
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
@@ -670,7 +670,7 @@ fn deploy_factory() {
 }
 
 #[test]
-fn create_system_contract_works() {
+fn create_network_contract_works() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -684,27 +684,27 @@ fn create_system_contract_works() {
 		System::set_block_number(1);
 
 		// deploy contract
-		assert_ok!(EVM::create_system_contract(
-			Origin::signed(SystemContractAccount::get()),
+		assert_ok!(EVM::create_network_contract(
+			Origin::signed(NetworkContractAccount::get()),
 			contract,
 			0,
 			1000000,
 		));
 
 		assert_eq!(
-			Module::<Test>::account_basic(&SystemContractSource::get()).nonce,
+			Module::<Test>::account_basic(&NetworkContractSource::get()).nonce,
 			U256::from_str("02").unwrap()
 		);
 
-		let created_event = TestEvent::evm_mod(RawEvent::Created(H160::from_low_u64_be(SYSTEM_CONTRACT_INDEX)));
+		let created_event = TestEvent::evm_mod(RawEvent::Created(H160::from_low_u64_be(network_contract_index)));
 		assert!(System::events().iter().any(|record| record.event == created_event));
 
-		assert_eq!(EVM::system_contract_index(), SYSTEM_CONTRACT_INDEX + 1);
+		assert_eq!(EVM::network_contract_index(), network_contract_index + 1);
 	});
 }
 
 #[test]
-fn create_system_contract_fails_if_non_system_contract_origin() {
+fn create_network_contract_fails_if_non_network_contract_origin() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -716,7 +716,7 @@ fn create_system_contract_fails_if_non_system_contract_origin() {
 
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			EVM::create_system_contract(Origin::signed(AccountId32::from([1u8; 32])), contract, 0, 1000000,),
+			EVM::create_network_contract(Origin::signed(AccountId32::from([1u8; 32])), contract, 0, 1000000,),
 			BadOrigin
 		);
 	});

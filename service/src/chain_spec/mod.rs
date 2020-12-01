@@ -58,12 +58,12 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 	)
 }
 
-/// Returns `(evm_genesis_accounts, system_contract_index)`
+/// Returns `(evm_genesis_accounts, network_contract_index)`
 pub fn evm_genesis() -> (BTreeMap<H160, GenesisAccount<Balance, Nonce>>, u64) {
 	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
-	let mut system_contract_index = PREDEPLOY_ADDRESS_START;
+	let mut network_contract_index = PREDEPLOY_ADDRESS_START;
 	for (_, code_string) in contracts {
 		let account = GenesisAccount {
 			nonce: 0u32,
@@ -71,9 +71,9 @@ pub fn evm_genesis() -> (BTreeMap<H160, GenesisAccount<Balance, Nonce>>, u64) {
 			storage: BTreeMap::new(),
 			code: Bytes::from_str(&code_string).unwrap().0,
 		};
-		let addr = H160::from_low_u64_be(system_contract_index);
+		let addr = H160::from_low_u64_be(network_contract_index);
 		accounts.insert(addr, account);
-		system_contract_index += 1;
+		network_contract_index += 1;
 	}
-	(accounts, system_contract_index)
+	(accounts, network_contract_index)
 }
