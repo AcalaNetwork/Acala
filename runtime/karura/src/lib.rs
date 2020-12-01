@@ -1166,7 +1166,7 @@ impl module_nft::Trait for Runtime {
 }
 
 impl orml_nft::Trait for Runtime {
-	type ClassId = u64;
+	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData;
 	type TokenData = module_nft::TokenData;
@@ -1243,6 +1243,8 @@ parameter_types! {
 	pub const ChainId: u64 = 686;
 	// TODO: update
 	pub const ContractExistentialDeposit: Balance = 0;
+	// TODO: update
+	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1260,6 +1262,8 @@ impl module_evm::Trait for Runtime {
 	type ChainId = ChainId;
 	type Runner = module_evm::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
+	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	type NetworkContractSource = NetworkContractSource;
 }
 
 impl module_evm_bridge::Trait for Runtime {

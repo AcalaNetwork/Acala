@@ -3,14 +3,13 @@
 
 use crate::runner::handler::Handler;
 use crate::{
-	precompiles::Precompiles, AccountCodes, AddressMapping, BalanceOf, CallInfo, CreateInfo, Runner as RunnerT, Trait,
+	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, CreateInfo, Module, Runner as RunnerT, Trait,
 	Vicinity,
 };
 use evm::CreateScheme;
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
 	debug,
-	storage::StorageMap,
 	traits::{Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use sha3::{Digest, Keccak256};
@@ -29,6 +28,7 @@ impl<T: Trait> Runner<T> {
 		init: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		assigned_address: Option<H160>,
 		salt: Option<H256>,
 		tag: &'static str,
 	) -> Result<CreateInfo, DispatchError> {
@@ -51,17 +51,21 @@ impl<T: Trait> Runner<T> {
 		let mut substate =
 			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
 
-		let scheme = if let Some(s) = salt {
-			let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-			CreateScheme::Create2 {
-				caller: source,
-				code_hash,
-				salt: s,
-			}
+		let address = if let Some(addr) = assigned_address {
+			addr
 		} else {
-			CreateScheme::Legacy { caller: source }
+			let scheme = if let Some(s) = salt {
+				let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
+				CreateScheme::Create2 {
+					caller: source,
+					code_hash,
+					salt: s,
+				}
+			} else {
+				CreateScheme::Legacy { caller: source }
+			};
+			substate.create_address(scheme)
 		};
-		let address = substate.create_address(scheme);
 
 		substate.inc_nonce(source);
 
@@ -110,7 +114,7 @@ impl<T: Trait> Runner<T> {
 
 			substate.inc_nonce(address);
 
-			AccountCodes::insert(address, out);
+			<Module<T>>::on_contract_initialization(&address, out, None);
 			TransactionOutcome::Commit(Ok(create_info))
 		})
 	}
@@ -193,7 +197,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 	}
 
 	fn create(source: H160, init: Vec<u8>, value: BalanceOf<T>, gas_limit: u32) -> Result<CreateInfo, DispatchError> {
-		Self::inner_create(source, init, value, gas_limit, None, "create")
+		Self::inner_create(source, init, value, gas_limit, None, None, "create")
 	}
 
 	fn create2(
@@ -203,6 +207,24 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u32,
 	) -> Result<CreateInfo, DispatchError> {
-		Self::inner_create(source, init, value, gas_limit, Some(salt), "create2")
+		Self::inner_create(source, init, value, gas_limit, None, Some(salt), "create2")
+	}
+
+	fn create_at_address(
+		source: H160,
+		init: Vec<u8>,
+		value: BalanceOf<T>,
+		assigned_address: H160,
+		gas_limit: u32,
+	) -> Result<CreateInfo, DispatchError> {
+		Self::inner_create(
+			source,
+			init,
+			value,
+			gas_limit,
+			Some(assigned_address),
+			None,
+			"create-system-contract",
+		)
 	}
 }

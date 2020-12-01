@@ -10,6 +10,7 @@ const ACTION_INDEX: usize = 0;
 const BALANCE_BYTES: usize = mem::size_of::<Balance>();
 const AMOUNT_BYTES: usize = mem::size_of::<Amount>();
 const U64_BYTES: usize = mem::size_of::<u64>();
+const U32_BYTES: usize = mem::size_of::<u32>();
 
 pub trait InputT {
 	type Error;
@@ -24,7 +25,9 @@ pub trait InputT {
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
 	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error>;
+
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error>;
+	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
 }
 
 pub struct Input<'a, Action, AccountId, AddressMapping> {
@@ -114,6 +117,16 @@ where
 		num[..].copy_from_slice(&param[start..]);
 
 		Ok(u64::from_be_bytes(num))
+	}
+
+	fn u32_at(&self, index: usize) -> Result<u32, Self::Error> {
+		let param = self.nth_param(index)?;
+
+		let mut num = [0u8; U32_BYTES];
+		let start = PER_PARAM_BYTES - U32_BYTES;
+		num[..].copy_from_slice(&param[start..]);
+
+		Ok(u32::from_be_bytes(num))
 	}
 }
 

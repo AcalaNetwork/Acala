@@ -25,4 +25,12 @@ pub trait Runner<T: Trait> {
 		value: BalanceOf<T>,
 		gas_limit: u32,
 	) -> Result<CreateInfo, DispatchError>;
+
+	fn create_at_address(
+		source: H160,
+		init: Vec<u8>,
+		value: BalanceOf<T>,
+		assigned_address: H160,
+		gas_limit: u32,
+	) -> Result<CreateInfo, DispatchError>;
 }

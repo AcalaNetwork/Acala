@@ -9,7 +9,7 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{FixedPointNumber, FixedU128, Perbill};
 
 use crate::chain_spec::{
-	evm_genesis_accounts, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
+	evm_genesis, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
 };
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
@@ -197,6 +197,8 @@ fn testnet_genesis(
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
+	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
+
 	mandala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
@@ -339,7 +341,8 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		module_evm: Some(EVMConfig {
-			accounts: evm_genesis_accounts(),
+			accounts: evm_genesis_accounts,
+			network_contract_index,
 		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -373,6 +376,8 @@ fn mandala_genesis(
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+
+	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
 
 	mandala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
@@ -516,7 +521,8 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		module_evm: Some(EVMConfig {
-			accounts: evm_genesis_accounts(),
+			accounts: evm_genesis_accounts,
+			network_contract_index,
 		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
