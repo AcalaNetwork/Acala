@@ -3,6 +3,8 @@
 
 pub mod precompiles;
 pub mod runner;
+
+mod mock;
 mod tests;
 
 pub use crate::precompiles::{Precompile, Precompiles};
