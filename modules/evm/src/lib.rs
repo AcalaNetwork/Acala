@@ -1,9 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::too_many_arguments)]
 
-mod mock;
 pub mod precompiles;
 pub mod runner;
+
+mod mock;
 mod tests;
 
 pub use crate::precompiles::{Precompile, Precompiles};
