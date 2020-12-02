@@ -1,45 +1,36 @@
-//! # Accounts Module
+//! # Transaction Payment Module
 //!
 //! ## Overview
 //!
-//! Accounts module is responsible for opening and closing accounts in Acala,
-//! and charge fee and tip in different currencies
+//! Transaction payment module is responsible for charge fee and tip in
+//! different currencies
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
 use frame_support::{
-	decl_error, decl_module, decl_storage,
+	decl_module, decl_storage,
 	dispatch::{DispatchResult, Dispatchable},
-	ensure,
-	traits::{
-		Currency, ExistenceRequirement, Get, Happened, Imbalance, IsSubType, OnKilledAccount, OnUnbalanced,
-		ReservableCurrency, StoredMap, WithdrawReasons,
-	},
-	transactional,
+	traits::{Currency, ExistenceRequirement, Get, Imbalance, IsSubType, OnUnbalanced, WithdrawReasons},
 	weights::{
 		DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, Weight, WeightToFeeCoefficient, WeightToFeePolynomial,
 	},
-	StorageMap,
 };
-use frame_system::{self as system, ensure_signed, AccountInfo};
-use orml_traits::{
-	account::MergeAccount, Happened as OrmlHappened, MultiCurrency, MultiLockableCurrency, MultiReservableCurrency,
-	OnReceived,
-};
+use frame_system::{self as system};
+use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, CheckedSub, Convert, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating,
-		SignedExtension, UniqueSaturatedInto, Zero,
+		CheckedSub, Convert, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating, SignedExtension,
+		UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, FixedU128, ModuleId, Perquintill,
+	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
-use sp_std::{convert::Infallible, marker::PhantomData, prelude::*, vec};
+use sp_std::{prelude::*, vec};
 use support::{DEXManager, Ratio};
 
 mod default_weight;
@@ -47,7 +38,6 @@ mod mock;
 mod tests;
 
 pub trait WeightInfo {
-	fn close_account(c: u32) -> Weight;
 	fn on_finalize() -> Weight;
 }
 
@@ -199,7 +189,7 @@ where
 	}
 }
 
-pub trait Trait: system::Trait + orml_currencies::Trait + pallet_proxy::Trait {
+pub trait Trait: system::Trait + orml_currencies::Trait {
 	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
@@ -214,9 +204,7 @@ pub trait Trait: system::Trait + orml_currencies::Trait + pallet_proxy::Trait {
 	type Currency: Currency<Self::AccountId> + Send + Sync;
 
 	/// Currency to transfer, reserve/unreserve, lock/unlock assets
-	type MultiCurrency: MergeAccount<Self::AccountId>
-		+ MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, CurrencyId = CurrencyId, Balance = Balance>
-		+ MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+	type MultiCurrency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 	/// Handler for the unbalanced reduction when taking transaction fees. This
 	/// is either one or two separate imbalances, the first is the transaction
@@ -236,53 +224,21 @@ pub trait Trait: system::Trait + orml_currencies::Trait + pallet_proxy::Trait {
 	/// DEX to exchange currencies.
 	type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-	/// Handler to trigger events when opening accounts
-
-	/// Handler for the unbalanced reduction when taking transaction fees. This
-	/// is either one or two separate imbalances, the first is the transaction
-	/// fee paid, the second is the tip paid, if any.
-
-	/// Event handler which calls when open account in system.
-	type OnCreatedAccount: Happened<Self::AccountId>;
-
-	/// Handler to kill account in system.
-	type KillAccount: OrmlHappened<Self::AccountId>;
-
-	/// Deposit for opening account, would be reserved until account closed.
-	type NewAccountDeposit: Get<Balance>;
-
-	/// The treasury module account id to recycle assets.
-	type TreasuryModuleId: Get<ModuleId>;
-
-	/// The max slippage allowed when swap open account deposit or fee with DEX
+	/// The max slippage allowed when swap fee with DEX
 	type MaxSlippageSwapWithDEX: Get<Ratio>;
 
 	/// Weight information for the extrinsics in this module.
 	type WeightInfo: WeightInfo;
 }
 
-decl_error! {
-	/// Error for accounts manager module.
-	pub enum Error for Module<T: Trait> {
-		/// Balance is not sufficient
-		NotEnoughBalance,
-		/// Account ref count is not zero
-		NonZeroRefCount,
-		/// Account still has active reserved(include non-native token and native token beyond new account deposit)
-		StillHasActiveReserved,
-	}
-}
-
 decl_storage! {
-	trait Store for Module<T: Trait> as Accounts {
+	trait Store for Module<T: Trait> as TransactionPayment {
 		pub NextFeeMultiplier get(fn next_fee_multiplier): Multiplier = Multiplier::saturating_from_integer(1);
 	}
 }
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
-
 		/// All non-native currency ids in Acala.
 		const AllNonNativeCurrencyIds: Vec<CurrencyId> = T::AllNonNativeCurrencyIds::get();
 
@@ -292,13 +248,7 @@ decl_module! {
 		/// Stable currency id.
 		const StableCurrencyId: CurrencyId = T::StableCurrencyId::get();
 
-		/// Deposit for opening account, would be reserved until account closed.
-		const NewAccountDeposit: Balance = T::NewAccountDeposit::get();
-
-		/// The treasury module account id to recycle assets.
-		const TreasuryModuleId: ModuleId = T::TreasuryModuleId::get();
-
-		/// The max slippage allowed when swap open account deposit or fee with DEX
+		/// The max slippage allowed when swap fee with DEX
 		const MaxSlippageSwapWithDEX: Ratio = T::MaxSlippageSwapWithDEX::get();
 
 		/// The fee to be paid for making a transaction; the per-byte portion.
@@ -307,30 +257,6 @@ decl_module! {
 		/// The polynomial that is applied in order to derive fee from weight.
 		const WeightToFee: Vec<WeightToFeeCoefficient<PalletBalanceOf<T>>> =
 			T::WeightToFee::polynomial().to_vec();
-
-		/// Kill self account from system.
-		///
-		/// The dispatch origin of this call must be Signed.
-		///
-		/// - `recipient`: the account as recipient to receive remaining currencies of the account will be killed,
-		///					None means no recipient is specified.
-		#[weight = <T as Trait>::WeightInfo::close_account(T::AllNonNativeCurrencyIds::get().len() as u32)]
-		#[transactional]
-		pub fn close_account(origin, recipient: Option<T::AccountId>) {
-				let who = ensure_signed(origin)?;
-				let recipient = recipient.unwrap_or_else(Self::treasury_account_id);
-
-				// remove proxy first
-				// use `remove_proxies` instead after https://github.com/paritytech/substrate/issues/7557 is available
-				let (_, proxy_deposit) = pallet_proxy::Proxies::<T>::take(&who);
-				<T as pallet_proxy::Trait>::Currency::unreserve(&who, proxy_deposit);
-
-				Self::do_merge_account_check(&who)?;
-				<T as Trait>::MultiCurrency::merge_account(&who, &recipient)?;
-
-				// finally kill the account
-				T::KillAccount::happened(&who);
-		}
 
 		/// `on_initialize` to return the weight used in `on_finalize`.
 		fn on_initialize(now: T::BlockNumber) -> Weight {
@@ -382,185 +308,6 @@ decl_module! {
 			})
 		}
 	}
-}
-
-impl<T: Trait> Module<T> {
-	/// Get treasury account id.
-	pub fn treasury_account_id() -> T::AccountId {
-		T::TreasuryModuleId::get().into_account()
-	}
-
-	/// Open account by reserve native token.
-	///
-	/// If not enough free balance to reserve, all the balance would be
-	/// transferred to treasury instead.
-	fn open_account(k: &T::AccountId) {
-		let native_currency_id = T::NativeCurrencyId::get();
-		if <T as Trait>::MultiCurrency::reserve(native_currency_id, k, T::NewAccountDeposit::get()).is_ok() {
-			T::OnCreatedAccount::happened(&k);
-		} else {
-			let treasury_account = Self::treasury_account_id();
-
-			// Note: will not reap treasury account even though it cannot reserve open
-			// account deposit best practice is to ensure that the first transfer received
-			// by treasury account is sufficient to open an account.
-			if *k != treasury_account {
-				// send dust native currency to treasury account.
-				// transfer all free balances from a new account to treasury account, so it
-				// shouldn't fail. but even it failed, leave some dust storage is not a critical
-				// issue, just open account without reserve NewAccountDeposit.
-				if <T as Trait>::MultiCurrency::transfer(
-					native_currency_id,
-					k,
-					&treasury_account,
-					<T as Trait>::MultiCurrency::free_balance(native_currency_id, k),
-				)
-				.is_ok()
-				{
-					// remove the account info pretend that opening account has never happened
-					system::Account::<T>::remove(k);
-				}
-			}
-		}
-	}
-
-	fn do_merge_account_check(source: &T::AccountId) -> DispatchResult {
-		// check must allow death,
-		// if native/non-native currencies has locks, means ref_count shouldn't be zero,
-		// can not close the account.
-		ensure!(<system::Module<T>>::allow_death(source), Error::<T>::NonZeroRefCount);
-
-		let native_currency_id = T::NativeCurrencyId::get();
-		let new_account_deposit = T::NewAccountDeposit::get();
-		let total_reserved_native = <T as Trait>::MultiCurrency::reserved_balance(native_currency_id, source);
-
-		// ensure total reserved native is lte new account deposit,
-		// otherwise think the account still has active reserved kept by some bussiness.
-		ensure!(
-			new_account_deposit >= total_reserved_native,
-			Error::<T>::StillHasActiveReserved,
-		);
-
-		Ok(())
-	}
-}
-
-/// Note: Currently `pallet_balances` does not implement `OnReceived`,
-/// which means here only do the preparations for opening an account by
-/// non-native currency, actual process of opening account is handled by
-/// `StoredMap`.
-impl<T: Trait> OnReceived<T::AccountId, CurrencyId, Balance> for Module<T> {
-	fn on_received(who: &T::AccountId, currency_id: CurrencyId, _: Balance) {
-		let native_currency_id = T::NativeCurrencyId::get();
-
-		if !<Self as StoredMap<_, _>>::is_explicit(who) && currency_id != native_currency_id {
-			let stable_currency_id = T::StableCurrencyId::get();
-			let trading_path = if currency_id == stable_currency_id {
-				vec![stable_currency_id, native_currency_id]
-			} else {
-				vec![currency_id, stable_currency_id, native_currency_id]
-			};
-
-			// Successful swap will cause changes in native currency,
-			// which also means that it will open a new account
-			// exchange token to native currency and open account.
-			// If swap failed, will leave some dust storage is not a critical issue,
-			// just open account without reserve NewAccountDeposit.
-			// Don't recycle non-native to avoid unreasonable loss
-			// due to insufficient liquidity of DEX, can try to open this
-			// account again later. If want to recycle dust non-native,
-			// should handle by the currencies module.
-			let _ = T::DEX::swap_with_exact_target(
-				who,
-				&trading_path,
-				T::NewAccountDeposit::get(),
-				<T as Trait>::MultiCurrency::free_balance(currency_id, who),
-				Some(T::MaxSlippageSwapWithDEX::get()),
-			);
-		}
-	}
-}
-
-/// Fork StoredMap in frame_system,  still use `Account` storage of
-/// frame_system.
-impl<T: Trait> StoredMap<T::AccountId, T::AccountData> for Module<T> {
-	fn get(k: &T::AccountId) -> T::AccountData {
-		system::Account::<T>::get(k).data
-	}
-
-	fn is_explicit(k: &T::AccountId) -> bool {
-		system::Account::<T>::contains_key(k)
-	}
-
-	fn insert(k: &T::AccountId, data: T::AccountData) {
-		let existed = system::Account::<T>::contains_key(k);
-		system::Account::<T>::mutate(k, |a| a.data = data);
-		// if not existed before, create new account info
-		if !existed {
-			Self::open_account(k);
-		}
-	}
-
-	fn remove(k: &T::AccountId) {
-		T::KillAccount::happened(k);
-	}
-
-	fn mutate<R>(k: &T::AccountId, f: impl FnOnce(&mut T::AccountData) -> R) -> R {
-		let existed = system::Account::<T>::contains_key(k);
-		let r = system::Account::<T>::mutate(k, |a| f(&mut a.data));
-		if !existed {
-			T::OnCreatedAccount::happened(&k);
-		}
-		r
-	}
-
-	fn mutate_exists<R>(k: &T::AccountId, f: impl FnOnce(&mut Option<T::AccountData>) -> R) -> R {
-		Self::try_mutate_exists(k, |x| -> Result<R, Infallible> { Ok(f(x)) }).expect("Infallible; qed")
-	}
-
-	fn try_mutate_exists<R, E>(
-		k: &T::AccountId,
-		f: impl FnOnce(&mut Option<T::AccountData>) -> Result<R, E>,
-	) -> Result<R, E> {
-		system::Account::<T>::try_mutate_exists(k, |maybe_value| {
-			let existed = maybe_value.is_some();
-			let (maybe_prefix, mut maybe_data) = split_inner(maybe_value.take(), |account| {
-				((account.nonce, account.refcount), account.data)
-			});
-			f(&mut maybe_data).map(|result| {
-				// Note: do not remove the AccountData storage even if the maybe_data is None
-				let (nonce, refcount) = maybe_prefix.unwrap_or_default();
-				let data = maybe_data.unwrap_or_default();
-				*maybe_value = Some(AccountInfo { nonce, refcount, data });
-
-				(existed, maybe_value.is_some(), result)
-			})
-		})
-		.map(|(existed, exists, v)| {
-			if !existed && exists {
-				// need to open account
-				Self::open_account(k);
-			}
-
-			v
-		})
-	}
-}
-
-/// Split an `option` into two constituent options, as defined by a `splitter`
-/// function.
-pub fn split_inner<T, R, S>(option: Option<T>, splitter: impl FnOnce(T) -> (R, S)) -> (Option<R>, Option<S>) {
-	match option {
-		Some(inner) => {
-			let (r, s) = splitter(inner);
-			(Some(r), Some(s))
-		}
-		None => (None, None),
-	}
-}
-
-impl<T: Trait> OnKilledAccount<T::AccountId> for Module<T> {
-	fn on_killed_account(_who: &T::AccountId) {}
 }
 
 impl<T: Trait> Module<T>
@@ -900,18 +647,5 @@ where
 			);
 		}
 		Ok(())
-	}
-}
-
-impl<T: Trait> MergeAccount<T::AccountId> for Module<T> {
-	fn merge_account(source: &T::AccountId, _dest: &T::AccountId) -> DispatchResult {
-		Self::do_merge_account_check(source)
-	}
-}
-
-pub struct CallKillAccount<T>(PhantomData<T>);
-impl<T: Trait> OrmlHappened<T::AccountId> for CallKillAccount<T> {
-	fn happened(who: &T::AccountId) {
-		frame_system::CallKillAccount::<T>::happened(who)
 	}
 }

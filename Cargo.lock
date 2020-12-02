@@ -108,7 +108,6 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
- "module-accounts",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -135,6 +134,7 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-payment",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -190,7 +190,6 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
- "static_assertions",
  "substrate-wasm-builder",
 ]
 
@@ -3009,7 +3008,6 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
- "module-accounts",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -3036,6 +3034,7 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-payment",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -3091,7 +3090,6 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
- "static_assertions",
  "substrate-wasm-builder",
 ]
 
@@ -3770,7 +3768,6 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "libsecp256k1",
- "module-accounts",
  "module-airdrop",
  "module-auction-manager",
  "module-auction-manager-benchmarking",
@@ -3797,6 +3794,7 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-payment",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -3852,7 +3850,6 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
- "static_assertions",
  "substrate-wasm-builder",
 ]
 
@@ -4053,30 +4050,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-accounts"
-version = "0.6.3"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-dex",
- "module-support",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-proxy",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "smallvec 1.4.2",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "module-airdrop"
 version = "0.6.3"
 dependencies = [
@@ -4252,6 +4225,7 @@ dependencies = [
  "module-support",
  "orml-currencies",
  "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -4653,6 +4627,30 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-transaction-payment"
+version = "0.6.3"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-dex",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-proxy",
+ "pallet-transaction-payment-rpc-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "smallvec 1.4.2",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",

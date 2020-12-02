@@ -4,6 +4,7 @@ use super::*;
 
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::{Blake2Hasher, Hasher, H256};
 use sp_runtime::{
@@ -114,13 +115,20 @@ impl pallet_timestamp::Trait for Test {
 	type WeightInfo = ();
 }
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> u64 {
+		Default::default()
+	};
+}
+
 impl orml_tokens::Trait for Test {
 	type Event = TestEvent;
 	type Balance = u64;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type Tokens = orml_tokens::Module<Test>;
 
