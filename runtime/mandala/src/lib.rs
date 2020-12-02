@@ -1247,6 +1247,7 @@ impl pallet_contracts::Trait for Runtime {
 
 parameter_types! {
 	pub const ChainId: u64 = 595;
+	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1261,8 +1262,6 @@ parameter_types! {
 	// TODO: state rent
 	// TODO: deployment fee
 	pub const ContractExistentialDeposit: Balance = DOLLARS;
-	// TODO: update
-	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 pub type MultiCurrencyPrecompile =
