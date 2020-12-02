@@ -186,13 +186,13 @@ fn testnet_genesis(
 	use mandala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig, GeneralCouncilMembershipConfig,
-		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig,
-		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
-		VestingConfig, DOLLARS,
+		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
+		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig,
+		StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+		TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
 	};
 
-	let new_account_deposit = NewAccountDeposit::get();
+	let existential_deposit = NativeTokenExistentialDeposit::get();
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
@@ -214,7 +214,7 @@ fn testnet_genesis(
 				.chain(
 					get_all_module_accounts()
 						.iter()
-						.map(|x| (x.clone(), new_account_deposit)),
+						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.collect(),
 		}),
@@ -367,12 +367,12 @@ fn mandala_genesis(
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, EVMConfig,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
-		IndicesConfig, NewAccountDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig,
-		StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
+		SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
-	let new_account_deposit = NewAccountDeposit::get();
+	let existential_deposit = NativeTokenExistentialDeposit::get();
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
@@ -394,7 +394,7 @@ fn mandala_genesis(
 				.chain(
 					get_all_module_accounts()
 						.iter()
-						.map(|x| (x.clone(), new_account_deposit)),
+						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.collect(),
 		}),

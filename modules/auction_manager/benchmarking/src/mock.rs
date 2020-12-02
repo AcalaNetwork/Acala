@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_oracle::DefaultCombineData;
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{
 	testing::{Header, TestXt},
@@ -67,13 +68,20 @@ impl frame_system::Trait for Runtime {
 	type SystemWeightInfo = ();
 }
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 

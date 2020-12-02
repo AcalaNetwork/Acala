@@ -15,12 +15,12 @@ pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 use codec::{Decode, Encode};
 use evm::Config;
 use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::traits::{Currency, EnsureOrigin, Get, ReservableCurrency};
+use frame_support::traits::{Currency, EnsureOrigin, Get, OnKilledAccount, ReservableCurrency};
 use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage};
 use frame_system::ensure_signed;
-use orml_traits::{account::MergeAccount, Happened};
+use orml_traits::account::MergeAccount;
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -512,8 +512,8 @@ impl<T: Trait> EVMTrait for Module<T> {
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
-impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
-	fn happened(who: &T::AccountId) {
+impl<T: Trait> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
+	fn on_killed_account(who: &T::AccountId) {
 		if let Some(address) = T::AddressMapping::to_evm_address(who) {
 			Module::<T>::remove_account(&address)
 		}

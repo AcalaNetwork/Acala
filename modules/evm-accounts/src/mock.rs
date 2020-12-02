@@ -4,6 +4,7 @@
 
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
@@ -76,7 +77,6 @@ pub type System = frame_system::Module<Runtime>;
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
-	pub const NewAccountDeposit: Balance = 100;
 }
 impl pallet_balances::Trait for Runtime {
 	type Balance = Balance;
@@ -89,13 +89,20 @@ impl pallet_balances::Trait for Runtime {
 }
 pub type Balances = pallet_balances::Module<Runtime>;
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -116,7 +123,6 @@ pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, B
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Balances;
-	type NewAccountDeposit = NewAccountDeposit;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type KillAccount = ();

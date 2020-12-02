@@ -1,5 +1,7 @@
 use super::utils::{lookup_of_account, set_balance};
-use crate::{AcaExistentialDeposit, AccountId, Amount, Balance, Currencies, CurrencyId, Runtime, TokenSymbol, DOLLARS};
+use crate::{
+	AccountId, Amount, Balance, Currencies, CurrencyId, NativeTokenExistentialDeposit, Runtime, TokenSymbol, DOLLARS,
+};
 
 use sp_std::prelude::*;
 
@@ -34,8 +36,8 @@ runtime_benchmarks! {
 	// `transfer` native currency and in worst case
 	#[extra]
 	transfer_native_currency_worst_case {
-		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let amount: Balance = aca_existential_deposit.saturating_mul(1000);
+		let existential_deposit = NativeTokenExistentialDeposit::get();
+		let amount: Balance = existential_deposit.saturating_mul(1000);
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let from = account("from", 0, SEED);
 		set_balance(native_currency_id, &from, amount);
@@ -51,8 +53,8 @@ runtime_benchmarks! {
 	// * will create the `to` account.
 	// * will kill the `from` account.
 	transfer_native_currency {
-		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let amount: Balance = aca_existential_deposit.saturating_mul(1000);
+		let existential_deposit = NativeTokenExistentialDeposit::get();
+		let amount: Balance = existential_deposit.saturating_mul(1000);
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let from = account("from", 0, SEED);
 		set_balance(native_currency_id, &from, amount);
@@ -79,8 +81,8 @@ runtime_benchmarks! {
 	// `update_balance` for native currency
 	// * will create the `who` account.
 	update_balance_native_currency_creating {
-		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let balance: Balance = aca_existential_deposit.saturating_mul(1000);
+		let existential_deposit = NativeTokenExistentialDeposit::get();
+		let balance: Balance = existential_deposit.saturating_mul(1000);
 		let amount: Amount = balance.unique_saturated_into();
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let who: AccountId = account("who", 0, SEED);
@@ -93,8 +95,8 @@ runtime_benchmarks! {
 	// `update_balance` for native currency
 	// * will kill the `who` account.
 	update_balance_native_currency_killing {
-		let aca_existential_deposit = AcaExistentialDeposit::get();
-		let balance: Balance = aca_existential_deposit.saturating_mul(1000);
+		let existential_deposit = NativeTokenExistentialDeposit::get();
+		let balance: Balance = existential_deposit.saturating_mul(1000);
 		let amount: Amount = balance.unique_saturated_into();
 		let native_currency_id = CurrencyId::Token(TokenSymbol::ACA);
 		let who: AccountId = account("who", 0, SEED);
