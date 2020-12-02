@@ -141,7 +141,7 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
 			} else {
-				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
+				let mut account_info = <AccountInfo<T>>::new(Default::default(), None);
 				account_info.nonce += One::one();
 				*maybe_account = Some(account_info);
 			}
@@ -293,9 +293,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			return Err(ExitError::OutOfGas);
 		}
 
-		<Module<T>>::set_storage(address, index, value);
-
-		Ok(())
+		<Module<T>>::set_storage(address, index, value)
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) -> Result<(), ExitError> {
@@ -314,11 +312,16 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 
 		// unreserve ContractExistentialDeposit
 		self.unreserve(address, T::ContractExistentialDeposit::get())?;
+		// unreserve storage_rent_deposit
+		if let Some(account_info) = Accounts::<T>::get(address) {
+			if account_info.storage_usage > 0 {
+				return Err(ExitError::Other("Storage usage not zero".into()));
+			}
+			self.unreserve(address, account_info.storage_rent_deposit)?;
+		}
 
 		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
-		Module::<T>::remove_account(&address);
-
-		Ok(())
+		Module::<T>::remove_account(&address)
 	}
 
 	fn create(
@@ -362,12 +365,13 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				value,
 			}));
 
+			let maintainer = if self.vicinity.creating {
+				self.vicinity.origin
+			} else {
+				caller
+			};
 			let contract_existential_deposit = Transfer {
-				source: if self.vicinity.creating {
-					self.vicinity.origin
-				} else {
-					caller
-				},
+				source: maintainer,
 				target: address,
 				value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>()),
 			};
@@ -383,7 +387,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 						try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
-						<Module<T>>::on_contract_initialization(&address, out, None);
+						let maintainer = T::AddressMapping::to_account(&maintainer);
+						<Module<T>>::on_contract_initialization(&address, &maintainer, out, None);
 
 						TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
 					}

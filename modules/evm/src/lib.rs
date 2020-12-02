@@ -3,6 +3,7 @@
 
 pub mod precompiles;
 pub mod runner;
+
 mod tests;
 
 pub use crate::precompiles::{Precompile, Precompiles};
@@ -12,11 +13,14 @@ pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 
 use codec::{Decode, Encode};
 use evm::Config;
-use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::traits::{Currency, EnsureOrigin, Get, ReservableCurrency};
-use frame_support::weights::{Pays, PostDispatchInfo, Weight};
-use frame_support::RuntimeDebug;
-use frame_support::{decl_error, decl_event, decl_module, decl_storage};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage,
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	ensure,
+	traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, ReservableCurrency},
+	weights::{Pays, PostDispatchInfo, Weight},
+	RuntimeDebug,
+};
 use frame_system::ensure_signed;
 use orml_traits::{account::MergeAccount, Happened};
 use primitives::evm::AddressMapping;
@@ -24,7 +28,7 @@ use primitives::evm::AddressMapping;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::{Convert, One, UniqueSaturatedInto};
+use sp_runtime::traits::{Convert, One, Saturating, UniqueSaturatedInto, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Type alias for currency balance.
@@ -51,6 +55,8 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	type MergeAccount: MergeAccount<Self::AccountId>;
 	/// Deposit for creating contract, would be reserved until contract deleted.
 	type ContractExistentialDeposit: Get<BalanceOf<Self>>;
+	type StorageDepositPerByte: Get<BalanceOf<Self>>;
+	type StorageDefaultQuota: Get<u32>;
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -78,26 +84,37 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 pub const STORAGE_SIZE: u32 = 64;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-pub struct ContractInfo {
+pub struct ContractInfo<T: Trait> {
 	pub storage_count: u32,
 	pub code_hash: H256,
+	pub existential_deposit: BalanceOf<T>,
+	pub maintainer: T::AccountId,
 }
 
-impl ContractInfo {
+impl<T: Trait> ContractInfo<T> {
 	pub fn total_storage_size(&self) -> u32 {
 		self.storage_count.saturating_mul(STORAGE_SIZE)
 	}
 }
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-pub struct AccountInfo<Index> {
-	pub nonce: Index,
-	pub contract_info: Option<ContractInfo>,
+pub struct AccountInfo<T: Trait> {
+	pub nonce: T::Index,
+	pub contract_info: Option<ContractInfo<T>>,
+	pub storage_rent_deposit: BalanceOf<T>,
+	pub storage_quota: u32,
+	pub storage_usage: u32,
 }
 
-impl<Index> AccountInfo<Index> {
-	pub fn new(nonce: Index, contract_info: Option<ContractInfo>) -> Self {
-		Self { nonce, contract_info }
+impl<T: Trait> AccountInfo<T> {
+	pub fn new(nonce: T::Index, contract_info: Option<ContractInfo<T>>) -> Self {
+		Self {
+			nonce,
+			contract_info,
+			storage_rent_deposit: BalanceOf::<T>::default(),
+			storage_quota: T::StorageDefaultQuota::get(),
+			storage_usage: 0,
+		}
 	}
 }
 
@@ -123,7 +140,7 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as EVM {
-		Accounts get(fn accounts): map hasher(twox_64_concat) H160 => Option<AccountInfo<T::Index>>;
+		Accounts get(fn accounts): map hasher(twox_64_concat) H160 => Option<AccountInfo<T>>;
 		AccountStorages get(fn account_storages):
 			double_map hasher(twox_64_concat) H160, hasher(blake2_128_concat) H256 => H256;
 
@@ -140,8 +157,8 @@ decl_storage! {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::to_account(address);
 
-				<Accounts<T>>::insert(address, <AccountInfo<T::Index>>::new(account.nonce, None));
-				<Module<T>>::on_contract_initialization(address, account.code.clone(), Some(account.storage.len() as u32));
+				<Accounts<T>>::insert(address, <AccountInfo<T>>::new(account.nonce, None));
+				<Module<T>>::on_contract_initialization(address, &T::AccountId::default(), account.code.clone(), Some(account.storage.len() as u32));
 
 				T::Currency::deposit_creating(
 					&account_id,
@@ -175,6 +192,10 @@ decl_event! {
 		BalanceDeposit(AccountId, H160, U256),
 		/// A withdrawal has been made from a given address. \[sender, address, value\]
 		BalanceWithdraw(AccountId, H160, U256),
+		/// A quota has been added at a given address. \[address, bytes\]
+		AddStorageQuota(H160, u32),
+		/// A quota has been removed at a given address. \[address, bytes\]
+		RemoveStorageQuota(H160, u32),
 	}
 }
 
@@ -182,6 +203,16 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Address not mapped
 		AddressNotMapped,
+		/// Account is null
+		AccountIsNull,
+		/// Contract info is null
+		ContractInfoIsNull,
+		/// No permission
+		NoPermission,
+		/// Storage quota not enough
+		StorageQuotaNotEnough,
+		/// Unreserve failed
+		UnreserveFailed,
 	}
 }
 
@@ -190,6 +221,13 @@ decl_module! {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
+
+		/// Deploy a contract need the existential deposit.
+		const ContractExistentialDeposit: BalanceOf<T> = T::ContractExistentialDeposit::get();
+		/// Storage required for per byte.
+		const StorageDepositPerByte: BalanceOf<T> = T::StorageDepositPerByte::get();
+		/// Storage quota default value.
+		const StorageDefaultQuota: u32 = T::StorageDefaultQuota::get();
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
 		#[weight = T::GasToWeight::convert(*gas_limit)]
@@ -304,12 +342,67 @@ decl_module! {
 				pays_fee: Pays::Yes
 			})
 		}
+
+		#[weight = 0]
+		pub fn add_storage_quota(origin, contract: H160, bytes: u32) {
+			let who = ensure_signed(origin)?;
+
+			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
+
+				if bytes.is_zero() {
+					return Ok(());
+				}
+
+				let adjust_deposit = T::StorageDepositPerByte::get().saturating_mul(bytes.into());
+
+				if who != contract_info.maintainer {
+					T::Currency::transfer(&who, &contract_info.maintainer, adjust_deposit, ExistenceRequirement::AllowDeath)?;
+				}
+
+				T::Currency::reserve(&contract_info.maintainer, adjust_deposit)?;
+
+				account_info.storage_rent_deposit += adjust_deposit;
+				account_info.storage_quota += bytes;
+				Ok(())
+			})?;
+
+			Module::<T>::deposit_event(Event::<T>::AddStorageQuota(contract, bytes));
+		}
+
+		#[weight = 0]
+		pub fn remove_storage_quota(origin, contract: H160, bytes: u32) {
+			let who = ensure_signed(origin)?;
+
+			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
+
+				ensure!(who == contract_info.maintainer, Error::<T>::NoPermission);
+				ensure!(account_info.storage_usage <= account_info.storage_quota - bytes, Error::<T>::StorageQuotaNotEnough);
+
+				if bytes.is_zero() {
+					return Ok(());
+				}
+
+				let adjust_deposit = T::StorageDepositPerByte::get().saturating_mul(bytes.into());
+
+				ensure!(T::Currency::unreserve(&contract_info.maintainer, adjust_deposit).is_zero(), Error::<T>::UnreserveFailed);
+
+				account_info.storage_rent_deposit -= adjust_deposit;
+				account_info.storage_quota -= bytes;
+				Ok(())
+			})?;
+
+			Module::<T>::deposit_event(Event::<T>::RemoveStorageQuota(contract, bytes));
+		}
 	}
 }
 
 impl<T: Trait> Module<T> {
 	/// Remove an account.
-	pub fn remove_account(address: &H160) {
+	pub fn remove_account(address: &H160) -> Result<(), ExitError> {
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
@@ -329,6 +422,8 @@ impl<T: Trait> Module<T> {
 
 		<Accounts<T>>::remove(address);
 		AccountStorages::remove_prefix(address);
+
+		Ok(())
 	}
 
 	/// Get the account basic in EVM format.
@@ -371,18 +466,25 @@ impl<T: Trait> Module<T> {
 	///     read from initialized account storages.
 	/// - Update codes info.
 	/// - Save `code` if not saved yet.
-	pub fn on_contract_initialization(address: &H160, code: Vec<u8>, storage_count: Option<u32>) {
+	pub fn on_contract_initialization(
+		address: &H160,
+		maintainer: &T::AccountId,
+		code: Vec<u8>,
+		storage_count: Option<u32>,
+	) {
 		let code_hash = code_hash(&code.as_slice());
 		let storage_count = storage_count.unwrap_or_else(|| AccountStorages::iter_prefix(address).count() as u32);
 		let contract_info = ContractInfo {
 			storage_count,
 			code_hash,
+			existential_deposit: T::ContractExistentialDeposit::get(),
+			maintainer: maintainer.clone(),
 		};
 		Accounts::<T>::mutate(address, |maybe_account_info| {
 			if let Some(account_info) = maybe_account_info.as_mut() {
 				account_info.contract_info = Some(contract_info);
 			} else {
-				*maybe_account_info = Some(AccountInfo::<T::Index>::new(Default::default(), Some(contract_info)));
+				*maybe_account_info = Some(AccountInfo::<T>::new(Default::default(), Some(contract_info)));
 			}
 		});
 
@@ -402,7 +504,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Set account storage.
-	pub fn set_storage(address: H160, index: H256, value: H256) {
+	pub fn set_storage(address: H160, index: H256, value: H256) -> Result<(), ExitError> {
 		enum StorageChange {
 			None,
 			Added,
@@ -428,21 +530,42 @@ impl<T: Trait> Module<T> {
 			AccountStorages::insert(address, index, value);
 		}
 
-		<Accounts<T>>::mutate(&address, |maybe_account_info| {
+		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
+				storage_quota,
+				storage_usage,
 				..
 			}) = maybe_account_info.as_mut()
 			{
 				match storage_change {
-					StorageChange::Added => contract_info.storage_count = contract_info.storage_count.saturating_add(1),
+					StorageChange::Added => {
+						if storage_usage.saturating_add(STORAGE_SIZE) > *storage_quota {
+							return Err(ExitError::Other("storage quota not enough".into()));
+						}
+						contract_info.storage_count = contract_info.storage_count.saturating_add(1);
+						*storage_usage = storage_usage.saturating_add(STORAGE_SIZE);
+					}
 					StorageChange::Removed => {
-						contract_info.storage_count = contract_info.storage_count.saturating_sub(1)
+						contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
+						*storage_usage = storage_usage.saturating_sub(STORAGE_SIZE);
 					}
 					_ => (),
 				}
 			}
-		});
+			Ok(())
+		})
+	}
+
+	/// Get additional storage of the contract.
+	pub fn additional_storage(contract: H160) -> u32 {
+		Accounts::<T>::get(contract).map_or(0, |account_info| {
+			let (total_storage_size, code_size) = account_info.contract_info.map_or((0, 0), |contract_info| {
+				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
+				(contract_info.total_storage_size(), code_size)
+			});
+			account_info.storage_quota - total_storage_size - code_size
+		})
 	}
 }
 
@@ -450,7 +573,7 @@ pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
 	fn happened(who: &T::AccountId) {
 		if let Some(address) = T::AddressMapping::to_evm_address(who) {
-			Module::<T>::remove_account(&address)
+			let _ = Module::<T>::remove_account(&address);
 		}
 	}
 }

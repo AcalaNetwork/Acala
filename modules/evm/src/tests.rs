@@ -159,6 +159,8 @@ parameter_types! {
 
 ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const StorageDepositPerByte: u64 = 10;
+	pub const StorageDefaultQuota: u32 = 0x6000;
 }
 
 impl Trait for Test {
@@ -166,6 +168,8 @@ impl Trait for Test {
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
 
 	type Event = Event<Test>;
 	type Precompiles = ();
@@ -718,6 +722,69 @@ fn create_network_contract_fails_if_non_network_contract_origin() {
 		assert_noop!(
 			EVM::create_network_contract(Origin::signed(AccountId32::from([1u8; 32])), contract, 0, 1000000,),
 			BadOrigin
+		);
+	});
+}
+
+#[test]
+fn should_add_and_remove_storage_quota() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Factory {
+	//     Contract c;
+	//     constructor() public {
+	//         c = new Contract();
+	//         c.foo();
+	//     }
+	// }
+	//
+	// contract Contract {
+	//     function foo() public pure returns (uint) {
+	//         return 123;
+	//     }
+	// }
+	let contract = from_hex("0x608060405234801561001057600080fd5b5060405161001d90610121565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663c29855786040518163ffffffff1660e01b815260040160206040518083038186803b1580156100e057600080fd5b505afa1580156100f4573d6000803e3d6000fd5b505050506040513d602081101561010a57600080fd5b81019080805190602001909291905050505061012d565b60a58061017983390190565b603e8061013b6000396000f3fe6080604052600080fdfea265627a7a7231582064177030ee644a03aaf8d65027df9e0331c8bc4b161de25bfb8aa3142848e0f864736f6c634300051100326080604052348015600f57600080fd5b5060878061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336049565b6040518082815260200191505060405180910390f35b6000607b90509056fea265627a7a7231582031e5a4abae00962cfe9875df1b5b0d3ce6624e220cb8c714a948794fcddb6b4f64736f6c63430005110032").unwrap();
+	new_test_ext().execute_with(|| {
+		let result = <Test as Trait>::Runner::create(alice(), contract, 0, 12_000_000).unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
+
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get() * 2
+		);
+		let alice_account_id = <Test as Trait>::AddressMapping::to_account(&alice());
+		let bob_account_id = <Test as Trait>::AddressMapping::to_account(&bob());
+		let add_storage_quota: u32 = 10;
+		assert_ok!(EVM::add_storage_quota(
+			Origin::signed(alice_account_id.clone()),
+			result.address,
+			add_storage_quota
+		));
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE
+				- <Test as Trait>::ContractExistentialDeposit::get() * 2
+				- ((add_storage_quota as u64) * <Test as Trait>::StorageDepositPerByte::get())
+		);
+
+		// remove_storage_quota
+		assert_ok!(EVM::remove_storage_quota(
+			Origin::signed(alice_account_id.clone()),
+			result.address,
+			0
+		));
+		assert_noop!(
+			EVM::remove_storage_quota(Origin::signed(bob_account_id), result.address, add_storage_quota),
+			Error::<Test>::NoPermission
+		);
+		assert_ok!(EVM::remove_storage_quota(
+			Origin::signed(alice_account_id),
+			result.address,
+			add_storage_quota
+		));
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get() * 2
 		);
 	});
 }

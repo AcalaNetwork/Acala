@@ -114,7 +114,8 @@ impl<T: Trait> Runner<T> {
 
 			substate.inc_nonce(address);
 
-			<Module<T>>::on_contract_initialization(&address, out, None);
+			let maintainer = T::AddressMapping::to_account(&source);
+			<Module<T>>::on_contract_initialization(&address, &maintainer, out, None);
 			TransactionOutcome::Commit(Ok(create_info))
 		})
 	}
