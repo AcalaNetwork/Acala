@@ -1,223 +1,12 @@
 #![cfg(test)]
 
 use super::*;
+use mock::*;
 
-use frame_support::{assert_ok, impl_outer_dispatch, impl_outer_origin, parameter_types};
-use orml_traits::parameter_type_with_key;
-use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::{
-	bytes::{from_hex, to_hex},
-	Hasher,
-};
-use sp_core::{Blake2Hasher, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	AccountId32, Perbill,
-};
-use std::{collections::BTreeMap, str::FromStr};
-
-/// Hashed address mapping.
-pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
-
-impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping<H> {
-	fn to_account(address: &H160) -> AccountId32 {
-		let mut data = [0u8; 24];
-		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&address[..]);
-		let hash = H::hash(&data);
-
-		AccountId32::from(Into::<[u8; 32]>::into(hash))
-	}
-
-	fn to_evm_address(_account: &AccountId32) -> Option<H160> {
-		Some(H160::default())
-	}
-}
-
-impl_outer_origin! {
-	pub enum Origin for Test where system = frame_system {}
-}
-
-impl_outer_dispatch! {
-	pub enum OuterCall for Test where origin: Origin {
-		self::EVM,
-	}
-}
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
-}
-impl frame_system::Trait for Test {
-	type BaseCallFilter = ();
-	type Origin = Origin;
-	type Call = OuterCall;
-	type Index = u64;
-	type BlockNumber = u64;
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type AccountId = AccountId32;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = ();
-	type BlockHashCount = BlockHashCount;
-	type MaximumBlockWeight = MaximumBlockWeight;
-	type DbWeight = ();
-	type BlockExecutionWeight = ();
-	type ExtrinsicBaseWeight = ();
-	type MaximumExtrinsicWeight = MaximumBlockWeight;
-	type MaximumBlockLength = MaximumBlockLength;
-	type AvailableBlockRatio = AvailableBlockRatio;
-	type Version = ();
-	type PalletInfo = ();
-	type AccountData = pallet_balances::AccountData<u64>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-	pub const ContractExistentialDeposit: u64 = 1;
-}
-impl pallet_balances::Trait for Test {
-	type Balance = u64;
-	type DustRemoval = ();
-	type Event = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
-	type MaxLocks = ();
-}
-
-parameter_types! {
-	pub const MinimumPeriod: u64 = 1000;
-}
-impl pallet_timestamp::Trait for Test {
-	type Moment = u64;
-	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
-	type WeightInfo = ();
-}
-
-parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> u64 {
-		Default::default()
-	};
-}
-
-impl orml_tokens::Trait for Test {
-	type Event = ();
-	type Balance = u64;
-	type Amount = Amount;
-	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
-	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-}
-pub type Tokens = orml_tokens::Module<Test>;
-
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-}
-
-impl orml_currencies::Trait for Test {
-	type Event = ();
-	type MultiCurrency = Tokens;
-	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type WeightInfo = ();
-}
-pub type Currencies = orml_currencies::Module<Test>;
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
-
-pub struct GasToWeight;
-
-impl Convert<u32, u64> for GasToWeight {
-	fn convert(a: u32) -> u64 {
-		a as u64
-	}
-}
-
-impl Trait for Test {
-	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
-	type Currency = Balances;
-	type MergeAccount = Currencies;
-	type ContractExistentialDeposit = ContractExistentialDeposit;
-
-	type Event = Event<Test>;
-	type Precompiles = ();
-	type ChainId = SystemChainId;
-	type Runner = crate::runner::native::Runner<Self>;
-	type GasToWeight = GasToWeight;
-}
-
-type System = frame_system::Module<Test>;
-type Balances = pallet_balances::Module<Test>;
-type EVM = Module<Test>;
-
-const INITIAL_BALANCE: u64 = 1_000_000_000_000;
-
-fn alice() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000001").unwrap()
-}
-
-fn bob() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000002").unwrap()
-}
-
-fn charlie() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000003").unwrap()
-}
-
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-
-	let mut accounts = BTreeMap::new();
-	accounts.insert(
-		alice(),
-		GenesisAccount {
-			nonce: 1,
-			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: vec![
-				0x00, // STOP
-			],
-		},
-	);
-	accounts.insert(
-		bob(),
-		GenesisAccount {
-			nonce: 1,
-			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: vec![
-				0xff, // INVALID
-			],
-		},
-	);
-
-	pallet_balances::GenesisConfig::<Test>::default()
-		.assimilate_storage(&mut t)
-		.unwrap();
-	GenesisConfig::<Test> { accounts }.assimilate_storage(&mut t).unwrap();
-	t.into()
-}
-
-fn balance(address: H160) -> u64 {
-	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
-	Balances::free_balance(account_id)
-}
-
-fn reserved_balance(address: H160) -> u64 {
-	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
-	Balances::reserved_balance(account_id)
-}
+use frame_support::{assert_noop, assert_ok};
+use sp_core::bytes::{from_hex, to_hex};
+use sp_runtime::{traits::BadOrigin, AccountId32};
+use std::str::FromStr;
 
 #[test]
 fn fail_call_return_ok() {
@@ -638,6 +427,59 @@ fn deploy_factory() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get() * 2
+		);
+	});
+}
+
+#[test]
+fn create_network_contract_works() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//	 function multiply(uint a, uint b) public pure returns(uint) {
+	// 	 	return a * b;
+	// 	 }
+	// }
+	let contract = from_hex("0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032").unwrap();
+
+	new_test_ext().execute_with(|| {
+		System::set_block_number(1);
+
+		// deploy contract
+		assert_ok!(EVM::create_network_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			contract,
+			0,
+			1000000,
+		));
+
+		assert_eq!(
+			Module::<Test>::account_basic(&NetworkContractSource::get()).nonce,
+			U256::from_str("02").unwrap()
+		);
+
+		let created_event = TestEvent::evm_mod(RawEvent::Created(H160::from_low_u64_be(NETWORK_CONTRACT_INDEX)));
+		assert!(System::events().iter().any(|record| record.event == created_event));
+
+		assert_eq!(EVM::network_contract_index(), NETWORK_CONTRACT_INDEX + 1);
+	});
+}
+
+#[test]
+fn create_network_contract_fails_if_non_network_contract_origin() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//	 function multiply(uint a, uint b) public pure returns(uint) {
+	// 	 	return a * b;
+	// 	 }
+	// }
+	let contract = from_hex("0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032").unwrap();
+
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			EVM::create_network_contract(Origin::signed(AccountId32::from([1u8; 32])), contract, 0, 1000000,),
+			BadOrigin
 		);
 	});
 }

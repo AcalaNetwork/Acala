@@ -285,7 +285,8 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 
 	fn deleted(&self, _address: H160) -> bool {
 		// This only affects gas calculation in the current EVM specification.
-		false
+		// return true to disable suicide gas refund
+		true
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) -> Result<(), ExitError> {
