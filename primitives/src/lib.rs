@@ -107,6 +107,40 @@ pub enum CurrencyId {
 	DEXShare(TokenSymbol, TokenSymbol),
 }
 
+impl CurrencyId {
+	pub fn is_token_currency_id(&self) -> bool {
+		match self {
+			CurrencyId::Token(_) => true,
+			_ => false,
+		}
+	}
+
+	pub fn is_dex_share_currency_id(&self) -> bool {
+		match self {
+			CurrencyId::DEXShare(_, _) => true,
+			_ => false,
+		}
+	}
+
+	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
+		match self {
+			CurrencyId::DEXShare(token_symbol_0, token_symbol_1) => {
+				Some((CurrencyId::Token(*token_symbol_0), CurrencyId::Token(*token_symbol_1)))
+			}
+			_ => None,
+		}
+	}
+
+	pub fn join_dex_share_currency_id(currency_id_0: Self, currency_id_1: Self) -> Option<Self> {
+		match (currency_id_0, currency_id_1) {
+			(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => {
+				Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
+			}
+			_ => None,
+		}
+	}
+}
+
 /// Note the pre-deployed ERC20 contracts depend on `CurrencyId` implementation,
 /// and need to be updated if any change.
 impl TryFrom<[u8; 32]> for CurrencyId {
@@ -190,13 +224,20 @@ impl TradingPair {
 		}
 	}
 
-	pub fn get_dex_share_currency_id(&self) -> Option<CurrencyId> {
-		match (self.0, self.1) {
-			(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => {
-				Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
+	pub fn from_token_currency_ids(currency_id_0: CurrencyId, currency_id_1: CurrencyId) -> Option<Self> {
+		if currency_id_0.is_token_currency_id() && currency_id_1.is_token_currency_id() {
+			if currency_id_0 > currency_id_1 {
+				return Some(TradingPair(currency_id_1, currency_id_0));
+			} else if currency_id_0 < currency_id_1 {
+				return Some(TradingPair(currency_id_0, currency_id_1));
 			}
-			_ => None,
 		}
+
+		None
+	}
+
+	pub fn get_dex_share_currency_id(&self) -> Option<CurrencyId> {
+		CurrencyId::join_dex_share_currency_id(self.0, self.1)
 	}
 }
 

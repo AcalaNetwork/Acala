@@ -27,6 +27,8 @@ fn inject_liquidity(
 	set_balance(currency_id, &maker, max_other_currency_amount.unique_saturated_into());
 	set_balance(base_currency_id, &maker, max_amount.unique_saturated_into());
 
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, base_currency_id);
+
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
 		base_currency_id,

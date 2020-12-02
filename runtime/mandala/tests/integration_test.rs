@@ -8,8 +8,9 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	get_all_module_accounts, AccountId, Accounts, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId,
-	NewAccountDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, TokenSymbol, NFT,
+	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts,
+	GetNativeCurrencyId, NewAccountDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays,
+	TokenSymbol, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -77,6 +78,14 @@ impl ExtBuilder {
 
 		let native_currency_id = GetNativeCurrencyId::get();
 		let new_account_deposit = NewAccountDeposit::get();
+		let initial_enabled_trading_pairs = EnabledTradingPairs::get();
+
+		module_dex::GenesisConfig::<Runtime> {
+			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
+			initial_listing_trading_pairs: Default::default(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self

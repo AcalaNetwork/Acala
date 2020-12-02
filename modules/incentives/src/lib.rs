@@ -196,11 +196,7 @@ decl_module! {
 		) {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (currency_id, amount) in updates {
-				match currency_id {
-					CurrencyId::DEXShare(_, _) => {},
-					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-				}
-
+				ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 				DEXIncentiveRewards::insert(currency_id, amount);
 			}
 		}
@@ -223,11 +219,7 @@ decl_module! {
 		) {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (currency_id, rate) in updates {
-				match currency_id {
-					CurrencyId::DEXShare(_, _) => {},
-					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-				}
-
+				ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 				DEXSavingRates::insert(currency_id, rate);
 			}
 		}
@@ -236,10 +228,7 @@ decl_module! {
 
 impl<T: Trait> DEXIncentives<T::AccountId, CurrencyId, Balance> for Module<T> {
 	fn do_deposit_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
-		match lp_currency_id {
-			CurrencyId::DEXShare(_, _) => {}
-			_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-		}
+		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 
 		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
 		<orml_rewards::Module<T>>::add_share(
@@ -254,11 +243,7 @@ impl<T: Trait> DEXIncentives<T::AccountId, CurrencyId, Balance> for Module<T> {
 	}
 
 	fn do_withdraw_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
-		match lp_currency_id {
-			CurrencyId::DEXShare(_, _) => {}
-			_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-		}
-
+		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 		ensure!(
 			<orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexIncentive(lp_currency_id), &who).0
 				>= amount && <orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexSaving(lp_currency_id), &who)
@@ -359,10 +344,8 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 						PoolId::DexSaving(currency_id) => {
 							let dex_saving_rate = Self::dex_saving_rates(currency_id);
 							if !dex_saving_rate.is_zero() {
-								if let CurrencyId::DEXShare(token_symbol_a, token_symbol_b) = currency_id {
-									let (currency_id_a, currency_id_b) =
-										(CurrencyId::Token(token_symbol_a), CurrencyId::Token(token_symbol_b));
-
+								if let Some((currency_id_a, currency_id_b)) = currency_id.split_dex_share_currency_id()
+								{
 									// accumulate saving reward only for liquidity pool of saving currency id
 									let saving_currency_amount = if currency_id_a == saving_currency_id {
 										T::DEX::get_liquidity_pool(saving_currency_id, currency_id_b).0
