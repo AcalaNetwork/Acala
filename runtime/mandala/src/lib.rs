@@ -1247,6 +1247,7 @@ impl pallet_contracts::Trait for Runtime {
 
 parameter_types! {
 	pub const ChainId: u64 = 595;
+	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1261,8 +1262,6 @@ parameter_types! {
 	// TODO: state rent
 	// TODO: deployment fee
 	pub const ContractExistentialDeposit: Balance = DOLLARS;
-	// TODO: update
-	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1282,6 +1281,10 @@ impl module_evm::Trait for Runtime {
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
+}
+
+impl module_evm_bridge::Trait for Runtime {
+	type EVM = EVM;
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -1381,6 +1384,7 @@ construct_runtime!(
 		// Smart contracts
 		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Module},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},

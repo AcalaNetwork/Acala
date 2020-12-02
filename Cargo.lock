@@ -120,6 +120,7 @@ dependencies = [
  "module-emergency-shutdown-benchmarking",
  "module-evm",
  "module-evm-accounts",
+ "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
@@ -3020,6 +3021,7 @@ dependencies = [
  "module-emergency-shutdown-benchmarking",
  "module-evm",
  "module-evm-accounts",
+ "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
@@ -3780,6 +3782,7 @@ dependencies = [
  "module-emergency-shutdown-benchmarking",
  "module-evm",
  "module-evm-accounts",
+ "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
@@ -4337,6 +4340,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-evm-bridge"
+version = "2.0.0"
+dependencies = [
+ "acala-primitives",
+ "ethereum-types",
+ "frame-support",
+ "frame-system",
+ "hex-literal 0.3.1",
+ "impl-trait-for-tuples",
+ "module-evm",
+ "module-support",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "primitive-types",
+ "serde",
+ "sha3 0.8.2",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-evm-rpc-runtime-api"
 version = "0.1.0"
 dependencies = [
@@ -4608,6 +4635,7 @@ dependencies = [
 name = "module-support"
 version = "0.6.3"
 dependencies = [
+ "acala-primitives",
  "frame-support",
  "impl-trait-for-tuples",
  "orml-traits",
