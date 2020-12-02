@@ -42,7 +42,43 @@ impl Get<u64> for SystemChainId {
 	}
 }
 
-static ISTANBUL_CONFIG: Config = Config::istanbul();
+// Initially based on Istanbul hard fork configuration.
+static ACALA_CONFIG: Config = Config {
+	gas_ext_code: 700,
+	gas_ext_code_hash: 700,
+	gas_balance: 700,
+	gas_sload: 800,
+	gas_sstore_set: 20000,
+	gas_sstore_reset: 5000,
+	refund_sstore_clears: 0, // no gas refund
+	gas_suicide: 5000,
+	gas_suicide_new_account: 25000,
+	gas_call: 700,
+	gas_expbyte: 50,
+	gas_transaction_create: 53000,
+	gas_transaction_call: 21000,
+	gas_transaction_zero_data: 4,
+	gas_transaction_non_zero_data: 16,
+	sstore_gas_metering: false,         // no gas refund
+	sstore_revert_under_stipend: false, // ignored
+	err_on_call_with_more_gas: false,
+	empty_considered_exists: false,
+	create_increase_nonce: true,
+	call_l64_after_gas: true,
+	stack_limit: 1024,
+	memory_limit: usize::max_value(),
+	call_stack_limit: 1024,
+	create_contract_limit: None, // ignored
+	call_stipend: 2300,
+	has_delegate_call: true,
+	has_create2: true,
+	has_revert: true,
+	has_return_data: true,
+	has_bitwise_shifting: true,
+	has_chain_id: true,
+	has_self_balance: true,
+	has_ext_code_hash: true,
+};
 
 /// EVM module trait
 pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
@@ -68,7 +104,7 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 
 	/// EVM config used in the module.
 	fn config() -> &'static Config {
-		&ISTANBUL_CONFIG
+		&ACALA_CONFIG
 	}
 
 	/// Required origin for creating system contract.
