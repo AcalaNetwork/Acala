@@ -24,7 +24,7 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	properties.insert("tokenSymbol".into(), "ACA".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Mandala runtime wasm binary not available")?;
+	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 
 	Ok(ChainSpec::from_genesis(
 		"Development",
