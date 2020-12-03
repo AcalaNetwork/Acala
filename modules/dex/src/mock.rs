@@ -157,7 +157,7 @@ impl ExtBuilder {
 		self.initial_listing_trading_pairs = vec![
 			(
 				AUSD_DOT_PAIR,
-				(0, 0),
+				(5_000_000_000_000u128, 1_000_000_000_000u128),
 				(5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
 				10,
 			),

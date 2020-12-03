@@ -5,54 +5,458 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	DexModule, ExtBuilder, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR, AUSD_XBTC_PAIR,
-	BOB, DOT, XBTC,
+	DexModule, ExtBuilder, ListingOrigin, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR,
+	AUSD_XBTC_PAIR, BOB, DOT, XBTC,
 };
 use orml_traits::MultiReservableCurrency;
+use sp_runtime::traits::BadOrigin;
+
+#[test]
+fn enable_new_trading_pair_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_noop!(
+			DexModule::enable_trading_pair(Origin::signed(ALICE), AUSD, DOT),
+			BadOrigin
+		);
+
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::NotEnabled
+		);
+		assert_ok!(DexModule::enable_trading_pair(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT
+		));
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::Enabled
+		);
+
+		let enable_trading_pair_event = TestEvent::dex(RawEvent::EnableTradingPair(AUSD_DOT_PAIR));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == enable_trading_pair_event));
+
+		assert_noop!(
+			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), DOT, AUSD),
+			Error::<Runtime>::MustBeNotEnabled
+		);
+	});
+}
+
+#[test]
+fn list_new_trading_pair_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_noop!(
+			DexModule::list_trading_pair(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				1_000_000_000_000u128,
+				1_000_000_000_000u128,
+				5_000_000_000_000u128,
+				2_000_000_000_000u128,
+				10,
+			),
+			BadOrigin
+		);
+
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::NotEnabled
+		);
+		assert_ok!(DexModule::list_trading_pair(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT,
+			1_000_000_000_000u128,
+			1_000_000_000_000u128,
+			5_000_000_000_000u128,
+			2_000_000_000_000u128,
+			10,
+		));
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+				min_contribution: (1_000_000_000_000u128, 1_000_000_000_000u128),
+				target_provision: (5_000_000_000_000u128, 2_000_000_000_000u128),
+				accumulated_provision: (0, 0),
+				not_before: 10,
+			})
+		);
+
+		let list_trading_pair_event = TestEvent::dex(RawEvent::ListTradingPair(AUSD_DOT_PAIR));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == list_trading_pair_event));
+
+		assert_noop!(
+			DexModule::list_trading_pair(
+				Origin::signed(ListingOrigin::get()),
+				AUSD,
+				DOT,
+				1_000_000_000_000u128,
+				1_000_000_000_000u128,
+				5_000_000_000_000u128,
+				2_000_000_000_000u128,
+				10,
+			),
+			Error::<Runtime>::MustBeNotEnabled
+		);
+	});
+}
+
+#[test]
+fn disable_enabled_trading_pair_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(DexModule::enable_trading_pair(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT
+		));
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::Enabled
+		);
+
+		assert_noop!(
+			DexModule::disable_trading_pair(Origin::signed(ALICE), AUSD, DOT),
+			BadOrigin
+		);
+
+		assert_ok!(DexModule::disable_trading_pair(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT
+		));
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::NotEnabled
+		);
+
+		let disable_trading_pair_event = TestEvent::dex(RawEvent::DisableTradingPair(AUSD_DOT_PAIR));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == disable_trading_pair_event));
+
+		assert_noop!(
+			DexModule::disable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, DOT),
+			Error::<Runtime>::NotEnabledTradingPair
+		);
+	});
+}
+
+#[test]
+fn disable_provisioning_trading_pair_work() {
+	ExtBuilder::default()
+		.initialize_listing_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				5_000_000_000_000u128,
+				0,
+				false
+			));
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(BOB),
+				AUSD,
+				DOT,
+				5_000_000_000_000u128,
+				1_000_000_000_000u128,
+				false
+			));
+
+			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_995_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(AUSD, &BOB), 999_995_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &BOB), 999_999_000_000_000_000u128);
+			assert_eq!(
+				Tokens::free_balance(AUSD, &DexModule::account_id()),
+				10_000_000_000_000u128
+			);
+			assert_eq!(
+				Tokens::free_balance(DOT, &DexModule::account_id()),
+				1_000_000_000_000u128
+			);
+			assert_eq!(
+				DexModule::provisioning_pool(AUSD_DOT_PAIR, ALICE),
+				(5_000_000_000_000u128, 0)
+			);
+			assert_eq!(
+				DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB),
+				(5_000_000_000_000u128, 1_000_000_000_000u128)
+			);
+			assert_eq!(
+				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
+					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
+					accumulated_provision: (10_000_000_000_000u128, 1_000_000_000_000u128),
+					not_before: 10,
+				})
+			);
+			let alice_ref_count_0 = System::refs(&ALICE);
+			let bob_ref_count_0 = System::refs(&BOB);
+
+			assert_ok!(DexModule::disable_trading_pair(
+				Origin::signed(ListingOrigin::get()),
+				AUSD,
+				DOT
+			));
+			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 0);
+			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
+			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, ALICE), (0, 0));
+			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
+			assert_eq!(
+				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+				TradingPairStatus::<_, _>::NotEnabled
+			);
+			assert_eq!(System::refs(&ALICE), alice_ref_count_0 - 1);
+			assert_eq!(System::refs(&BOB), bob_ref_count_0 - 1);
+		});
+}
+
+#[test]
+fn add_provision_work() {
+	ExtBuilder::default()
+		.initialize_listing_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			assert_noop!(
+				DexModule::add_liquidity(
+					Origin::signed(ALICE),
+					AUSD,
+					DOT,
+					4_999_999_999_999u128,
+					999_999_999_999u128,
+					false
+				),
+				Error::<Runtime>::InvalidContributionIncrement
+			);
+
+			// alice add provision
+			assert_eq!(
+				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
+					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
+					accumulated_provision: (0, 0),
+					not_before: 10,
+				})
+			);
+			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, ALICE), (0, 0));
+			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 0);
+			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
+			let alice_ref_count_0 = System::refs(&ALICE);
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				5_000_000_000_000u128,
+				0,
+				false
+			));
+			assert_eq!(
+				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
+					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
+					accumulated_provision: (5_000_000_000_000u128, 0),
+					not_before: 10,
+				})
+			);
+			assert_eq!(
+				DexModule::provisioning_pool(AUSD_DOT_PAIR, ALICE),
+				(5_000_000_000_000u128, 0)
+			);
+			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_995_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000u128);
+			assert_eq!(
+				Tokens::free_balance(AUSD, &DexModule::account_id()),
+				5_000_000_000_000u128
+			);
+			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
+			let alice_ref_count_1 = System::refs(&ALICE);
+			assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
+
+			let add_provision_event_0 =
+				TestEvent::dex(RawEvent::AddProvision(ALICE, AUSD, 5_000_000_000_000u128, DOT, 0));
+			assert!(System::events()
+				.iter()
+				.any(|record| record.event == add_provision_event_0));
+
+			// bob add provision
+			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
+			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000u128);
+			let bob_ref_count_0 = System::refs(&BOB);
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(BOB),
+				DOT,
+				AUSD,
+				1_000_000_000_000_000u128,
+				0,
+				false
+			));
+			assert_eq!(
+				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
+					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
+					accumulated_provision: (5_000_000_000_000u128, 1_000_000_000_000_000u128),
+					not_before: 10,
+				})
+			);
+			assert_eq!(
+				DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB),
+				(0, 1_000_000_000_000_000u128)
+			);
+			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &BOB), 999_000_000_000_000_000u128);
+			assert_eq!(
+				Tokens::free_balance(AUSD, &DexModule::account_id()),
+				5_000_000_000_000u128
+			);
+			assert_eq!(
+				Tokens::free_balance(DOT, &DexModule::account_id()),
+				1_000_000_000_000_000u128
+			);
+			let bob_ref_count_1 = System::refs(&BOB);
+			assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
+
+			let add_provision_event_1 =
+				TestEvent::dex(RawEvent::AddProvision(BOB, AUSD, 0, DOT, 1_000_000_000_000_000u128));
+			assert!(System::events()
+				.iter()
+				.any(|record| record.event == add_provision_event_1));
+
+			// alice add provision again and trigger trading pair convert to Enabled from
+			// Provisioning
+			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_995_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000u128);
+			assert_eq!(
+				Tokens::total_issuance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap()),
+				0
+			);
+			assert_eq!(
+				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
+				0
+			);
+			assert_eq!(
+				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+				0
+			);
+
+			System::set_block_number(10);
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				995_000_000_000_000u128,
+				1_000_000_000_000_000u128,
+				false
+			));
+			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_000_000_000_000_000u128);
+			assert_eq!(Tokens::free_balance(DOT, &ALICE), 999_000_000_000_000_000u128);
+			assert_eq!(
+				Tokens::free_balance(AUSD, &DexModule::account_id()),
+				1_000_000_000_000_000u128
+			);
+			assert_eq!(
+				Tokens::free_balance(DOT, &DexModule::account_id()),
+				2_000_000_000_000_000u128
+			);
+			assert_eq!(
+				Tokens::total_issuance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap()),
+				4_000_000_000_000_000u128
+			);
+			assert_eq!(
+				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
+				3_000_000_000_000_000u128
+			);
+			assert_eq!(
+				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
+				1_000_000_000_000_000u128
+			);
+			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, ALICE), (0, 0));
+			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
+			assert_eq!(
+				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+				TradingPairStatus::<_, _>::Enabled
+			);
+			let alice_ref_count_2 = System::refs(&ALICE);
+			assert_eq!(alice_ref_count_2, alice_ref_count_1 - 1 + 1); // deposit dex share currency will add extra 1 ref count
+			let bob_ref_count_2 = System::refs(&BOB);
+			assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1 + 1); // deposit dex share currency will add extra 1 ref count
+
+			let provisioning_to_enabled_event = TestEvent::dex(RawEvent::ProvisioningToEnabled(
+				AUSD_DOT_PAIR,
+				1_000_000_000_000_000u128,
+				2_000_000_000_000_000u128,
+				4_000_000_000_000_000u128,
+			));
+			assert!(System::events()
+				.iter()
+				.any(|record| record.event == provisioning_to_enabled_event));
+		});
+}
 
 #[test]
 fn get_liquidity_work() {
-	ExtBuilder::default()
-		.initialize_enabled_trading_pairs()
-		.build()
-		.execute_with(|| {
-			LiquidityPool::insert(AUSD_DOT_PAIR, (1000, 20));
-			assert_eq!(DexModule::liquidity_pool(AUSD_DOT_PAIR), (1000, 20));
-			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (1000, 20));
-			assert_eq!(DexModule::get_liquidity(DOT, AUSD), (20, 1000));
-		});
+	ExtBuilder::default().build().execute_with(|| {
+		LiquidityPool::insert(AUSD_DOT_PAIR, (1000, 20));
+		assert_eq!(DexModule::liquidity_pool(AUSD_DOT_PAIR), (1000, 20));
+		assert_eq!(DexModule::get_liquidity(AUSD, DOT), (1000, 20));
+		assert_eq!(DexModule::get_liquidity(DOT, AUSD), (20, 1000));
+	});
 }
 
 #[test]
 fn get_target_amount_work() {
-	ExtBuilder::default()
-		.initialize_enabled_trading_pairs()
-		.build()
-		.execute_with(|| {
-			assert_eq!(DexModule::get_target_amount(10000, 0, 1000), 0);
-			assert_eq!(DexModule::get_target_amount(0, 20000, 1000), 0);
-			assert_eq!(DexModule::get_target_amount(10000, 20000, 0), 0);
-			assert_eq!(DexModule::get_target_amount(10000, 1, 1000000), 0);
-			assert_eq!(DexModule::get_target_amount(10000, 20000, 10000), 9949);
-			assert_eq!(DexModule::get_target_amount(10000, 20000, 1000), 1801);
-		});
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(DexModule::get_target_amount(10000, 0, 1000), 0);
+		assert_eq!(DexModule::get_target_amount(0, 20000, 1000), 0);
+		assert_eq!(DexModule::get_target_amount(10000, 20000, 0), 0);
+		assert_eq!(DexModule::get_target_amount(10000, 1, 1000000), 0);
+		assert_eq!(DexModule::get_target_amount(10000, 20000, 10000), 9949);
+		assert_eq!(DexModule::get_target_amount(10000, 20000, 1000), 1801);
+	});
 }
 
 #[test]
 fn get_supply_amount_work() {
-	ExtBuilder::default()
-		.initialize_enabled_trading_pairs()
-		.build()
-		.execute_with(|| {
-			assert_eq!(DexModule::get_supply_amount(10000, 0, 1000), 0);
-			assert_eq!(DexModule::get_supply_amount(0, 20000, 1000), 0);
-			assert_eq!(DexModule::get_supply_amount(10000, 20000, 0), 0);
-			assert_eq!(DexModule::get_supply_amount(10000, 1, 1), 0);
-			assert_eq!(DexModule::get_supply_amount(10000, 20000, 9949), 9999);
-			assert_eq!(DexModule::get_target_amount(10000, 20000, 9999), 9949);
-			assert_eq!(DexModule::get_supply_amount(10000, 20000, 1801), 1000);
-			assert_eq!(DexModule::get_target_amount(10000, 20000, 1000), 1801);
-		});
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(DexModule::get_supply_amount(10000, 0, 1000), 0);
+		assert_eq!(DexModule::get_supply_amount(0, 20000, 1000), 0);
+		assert_eq!(DexModule::get_supply_amount(10000, 20000, 0), 0);
+		assert_eq!(DexModule::get_supply_amount(10000, 1, 1), 0);
+		assert_eq!(DexModule::get_supply_amount(10000, 20000, 9949), 9999);
+		assert_eq!(DexModule::get_target_amount(10000, 20000, 9999), 9949);
+		assert_eq!(DexModule::get_supply_amount(10000, 20000, 1801), 1000);
+		assert_eq!(DexModule::get_target_amount(10000, 20000, 1000), 1801);
+	});
 }
 
 #[test]
@@ -73,7 +477,7 @@ fn get_target_amounts_work() {
 			);
 			assert_noop!(
 				DexModule::get_target_amounts(&vec![DOT, AUSD, ACA], 10000, None),
-				Error::<Runtime>::MustEnabledTradingPair,
+				Error::<Runtime>::MustBeEnabled,
 			);
 			assert_eq!(
 				DexModule::get_target_amounts(&vec![DOT, AUSD], 10000, None),
@@ -104,31 +508,28 @@ fn get_target_amounts_work() {
 
 #[test]
 fn calculate_amount_for_big_number_work() {
-	ExtBuilder::default()
-		.initialize_enabled_trading_pairs()
-		.build()
-		.execute_with(|| {
-			LiquidityPool::insert(
-				AUSD_DOT_PAIR,
-				(171_000_000_000_000_000_000_000, 56_000_000_000_000_000_000_000),
-			);
-			assert_eq!(
-				DexModule::get_supply_amount(
-					171_000_000_000_000_000_000_000,
-					56_000_000_000_000_000_000_000,
-					1_000_000_000_000_000_000_000
-				),
-				3_140_495_867_768_595_041_323
-			);
-			assert_eq!(
-				DexModule::get_target_amount(
-					171_000_000_000_000_000_000_000,
-					56_000_000_000_000_000_000_000,
-					3_140_495_867_768_595_041_323
-				),
+	ExtBuilder::default().build().execute_with(|| {
+		LiquidityPool::insert(
+			AUSD_DOT_PAIR,
+			(171_000_000_000_000_000_000_000, 56_000_000_000_000_000_000_000),
+		);
+		assert_eq!(
+			DexModule::get_supply_amount(
+				171_000_000_000_000_000_000_000,
+				56_000_000_000_000_000_000_000,
 				1_000_000_000_000_000_000_000
-			);
-		});
+			),
+			3_140_495_867_768_595_041_323
+		);
+		assert_eq!(
+			DexModule::get_target_amount(
+				171_000_000_000_000_000_000_000,
+				56_000_000_000_000_000_000_000,
+				3_140_495_867_768_595_041_323
+			),
+			1_000_000_000_000_000_000_000
+		);
+	});
 }
 
 #[test]
@@ -149,7 +550,7 @@ fn get_supply_amounts_work() {
 			);
 			assert_noop!(
 				DexModule::get_supply_amounts(&vec![DOT, AUSD, ACA], 10000, None),
-				Error::<Runtime>::MustEnabledTradingPair,
+				Error::<Runtime>::MustBeEnabled,
 			);
 			assert_eq!(
 				DexModule::get_supply_amounts(&vec![DOT, AUSD], 24874, None),
@@ -530,7 +931,7 @@ fn do_swap_with_exact_supply_work() {
 			);
 			assert_noop!(
 				DexModule::do_swap_with_exact_supply(&BOB, &[DOT, ACA], 100_000_000_000_000, 0, None),
-				Error::<Runtime>::MustEnabledTradingPair,
+				Error::<Runtime>::MustBeEnabled,
 			);
 
 			assert_ok!(DexModule::do_swap_with_exact_supply(
@@ -676,7 +1077,7 @@ fn do_swap_with_exact_target_work() {
 			);
 			assert_noop!(
 				DexModule::do_swap_with_exact_target(&BOB, &[DOT, ACA], 250_000_000_000_000, 200_000_000_000_000, None),
-				Error::<Runtime>::MustEnabledTradingPair,
+				Error::<Runtime>::MustBeEnabled,
 			);
 
 			assert_ok!(DexModule::do_swap_with_exact_target(

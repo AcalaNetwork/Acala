@@ -109,17 +109,11 @@ pub enum CurrencyId {
 
 impl CurrencyId {
 	pub fn is_token_currency_id(&self) -> bool {
-		match self {
-			CurrencyId::Token(_) => true,
-			_ => false,
-		}
+		matches!(self, CurrencyId::Token(_))
 	}
 
 	pub fn is_dex_share_currency_id(&self) -> bool {
-		match self {
-			CurrencyId::DEXShare(_, _) => true,
-			_ => false,
-		}
+		matches!(self, CurrencyId::DEXShare(_, _))
 	}
 
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
@@ -225,15 +219,11 @@ impl TradingPair {
 	}
 
 	pub fn from_token_currency_ids(currency_id_0: CurrencyId, currency_id_1: CurrencyId) -> Option<Self> {
-		if currency_id_0.is_token_currency_id() && currency_id_1.is_token_currency_id() {
-			if currency_id_0 > currency_id_1 {
-				return Some(TradingPair(currency_id_1, currency_id_0));
-			} else if currency_id_0 < currency_id_1 {
-				return Some(TradingPair(currency_id_0, currency_id_1));
-			}
+		match currency_id_0.is_token_currency_id() && currency_id_1.is_token_currency_id() {
+			true if currency_id_0 > currency_id_1 => Some(TradingPair(currency_id_1, currency_id_0)),
+			true if currency_id_0 < currency_id_1 => Some(TradingPair(currency_id_0, currency_id_1)),
+			_ => None,
 		}
-
-		None
 	}
 
 	pub fn get_dex_share_currency_id(&self) -> Option<CurrencyId> {
