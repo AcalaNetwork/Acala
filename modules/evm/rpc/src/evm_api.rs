@@ -11,7 +11,7 @@ use crate::call_request::CallRequest;
 
 /// EVM rpc interface.
 #[rpc(server)]
-pub trait EVMApi<BlockHash, Balance> {
+pub trait EVMApi<BlockHash, Balance: std::str::FromStr + Default> {
 	/// Call contract, returning the output data.
 	#[rpc(name = "evm_call")]
 	fn call(&self, _: CallRequest<Balance>, _: Option<BlockHash>) -> Result<Bytes>;
