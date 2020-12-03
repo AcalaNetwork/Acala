@@ -41,14 +41,19 @@ impl<T: frame_system::Trait> module_dex::WeightInfo for WeightInfo<T> {
 			.saturating_add(DbWeight::get().reads(9 as Weight))
 			.saturating_add(DbWeight::get().writes(6 as Weight))
 	}
-	// TODO: do benchmarking test for following calls
 	fn list_trading_pair() -> Weight {
-		10_000 as Weight
+		(22_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(2 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
 	}
 	fn enable_trading_pair() -> Weight {
-		10_000 as Weight
+		(17_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(1 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
 	}
 	fn disable_trading_pair() -> Weight {
-		10_000 as Weight
+		(18_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(1 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
 	}
 }
