@@ -624,7 +624,7 @@ impl<T: Trait> Module<T> {
 							Ok(())
 						} else {
 							// maintainer not found.
-							return Err(ExitError::Other("storage quota not enough".into()));
+							Err(ExitError::Other("storage quota not enough".into()))
 						}
 					})?;
 				}
