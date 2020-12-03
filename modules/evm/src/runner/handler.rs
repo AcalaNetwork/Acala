@@ -347,6 +347,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				}
 				self.unreserve(address, *storage_rent_deposit)?;
 			}
+
 			Ok(())
 		})?;
 

@@ -152,7 +152,7 @@ impl<T: Trait> AccountInfo<T> {
 		Self {
 			nonce,
 			contract_info,
-			storage_rent_deposit: Zero::zero(),
+			storage_rent_deposit: BalanceOf::<T>::default(),
 			storage_quota: T::StorageDefaultQuota::get(),
 			storage_usage: 0,
 		}
@@ -244,8 +244,10 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Address not mapped
 		AddressNotMapped,
-		/// Contract not found
-		ContractNotFound,
+		/// Account is null
+		AccountIsNull,
+		/// Contract info is null
+		ContractInfoIsNull,
 		/// No permission
 		NoPermission,
 		/// Storage quota not enough
@@ -387,8 +389,8 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 
 			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractNotFound)?;
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
 
 				if bytes.is_zero() {
 					return Ok(());
@@ -415,11 +417,11 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 
 			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractNotFound)?;
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
 
 				ensure!(who == contract_info.maintainer, Error::<T>::NoPermission);
-				ensure!(bytes <= account_info.storage_quota, Error::<T>::StorageQuotaNotEnough);
+				ensure!(account_info.storage_usage <= account_info.storage_quota - bytes, Error::<T>::StorageQuotaNotEnough);
 
 				if bytes.is_zero() {
 					return Ok(());
@@ -578,9 +580,11 @@ impl<T: Trait> Module<T> {
 			}) = maybe_account_info.as_mut()
 			{
 				match storage_change {
-					StorageChange::Added => contract_info.storage_count = contract_info.storage_count.saturating_add(1),
+					StorageChange::Added => {
+						contract_info.storage_count = contract_info.storage_count.saturating_add(1);
+					}
 					StorageChange::Removed => {
-						contract_info.storage_count = contract_info.storage_count.saturating_sub(1)
+						contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
 					}
 					_ => (),
 				}
