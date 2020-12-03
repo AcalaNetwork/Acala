@@ -10,6 +10,8 @@
 //! additional reward for its participation in the CDP liquidation.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 
 use codec::{Decode, Encode};
 use frame_support::{

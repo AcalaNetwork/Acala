@@ -1,3 +1,5 @@
+#![allow(clippy::unnecessary_wraps)]
+
 use frame_support::debug;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use primitives::evm::AddressMapping as AddressMappingT;
