@@ -316,18 +316,35 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		// unreserve storage_rent_deposit
 		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
 			if let Some(AccountInfo {
+				contract_info: Some(contract_info),
 				storage_rent_deposit,
-				storage_quota,
 				storage_usage,
 				..
 			}) = maybe_account_info.as_mut()
 			{
-				let pre_storage_usage =
-					(Module::<T>::additional_storage(address).abs() as u32).saturating_add(*storage_quota);
-				if *storage_usage > pre_storage_usage {
-					return Err(ExitError::Other("Storage usage not zero".into()));
+				if *storage_usage > Zero::zero() {
+					// need to find maintainer and update maintainer_storage_usage
+					let maintainer = T::AddressMapping::to_evm_address(&contract_info.maintainer).ok_or(
+						ExitError::Other("this contract is maintainer of some other contracts".into()),
+					)?;
+					<Accounts<T>>::mutate(&maintainer, |maybe_maintainer_account_info| -> Result<(), ExitError> {
+						if let Some(AccountInfo {
+							storage_usage: maintainer_storage_usage,
+							..
+						}) = maybe_maintainer_account_info.as_mut()
+						{
+							*maintainer_storage_usage = maintainer_storage_usage
+								.checked_sub(*storage_usage)
+								.ok_or(ExitError::Other("NumOutOfBound".into()))?;
+							Ok(())
+						} else {
+							// maintainer not found.
+							return Err(ExitError::Other(
+								"this contract is maintainer of some other contracts".into(),
+							));
+						}
+					})?;
 				}
-				*storage_usage -= pre_storage_usage;
 				self.unreserve(address, *storage_rent_deposit)?;
 			}
 			Ok(())

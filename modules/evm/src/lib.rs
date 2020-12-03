@@ -141,6 +141,9 @@ pub struct AccountInfo<T: Trait> {
 	pub contract_info: Option<ContractInfo<T>>,
 	pub storage_rent_deposit: BalanceOf<T>,
 	pub storage_quota: u32,
+	/// If is a contract, the storage_usage is additional storage from
+	/// maintainer. If is a maintainer, the storage_usage is the sum of
+	/// additional storage required by all contracts.
 	pub storage_usage: u32,
 }
 
@@ -566,15 +569,10 @@ impl<T: Trait> Module<T> {
 
 			AccountStorages::insert(address, index, value);
 		}
-		let additional_storage = Self::additional_storage(address);
-		if additional_storage.is_positive() {
-			return Err(ExitError::Other("storage quota not enough".into()));
-		}
 
 		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
-				storage_quota,
 				storage_usage,
 				..
 			}) = maybe_account_info.as_mut()
@@ -586,8 +584,47 @@ impl<T: Trait> Module<T> {
 					}
 					_ => (),
 				}
-				if pre_additional_storage != additional_storage {
-					*storage_usage = (additional_storage.abs() as u32).saturating_add(*storage_quota);
+
+				let additional_storage = Self::additional_storage(address);
+				*storage_usage = additional_storage;
+
+				if additional_storage != pre_additional_storage {
+					// get maintainer quota and pay for the additional_storage
+					let maintainer = T::AddressMapping::to_evm_address(&contract_info.maintainer)
+						.ok_or(ExitError::Other("storage quota not enough".into()))?;
+					<Accounts<T>>::mutate(&maintainer, |maybe_maintainer_account_info| -> Result<(), ExitError> {
+						if let Some(AccountInfo {
+							storage_quota: maintainer_storage_quota,
+							storage_usage: maintainer_storage_usage,
+							..
+						}) = maybe_maintainer_account_info.as_mut()
+						{
+							if additional_storage > pre_additional_storage {
+								let delta = additional_storage
+									.checked_sub(pre_additional_storage)
+									.expect("Non-negative integers sub can't overflow; qed");
+								*maintainer_storage_usage = maintainer_storage_usage
+									.checked_add(delta)
+									.ok_or(ExitError::Other("NumOutOfBound".into()))?;
+							} else {
+								let delta = pre_additional_storage
+									.checked_sub(additional_storage)
+									.expect("Non-negative integers sub can't overflow; qed");
+								*maintainer_storage_usage = maintainer_storage_usage
+									.checked_sub(delta)
+									.ok_or(ExitError::Other("NumOutOfBound".into()))?;
+							};
+
+							if *maintainer_storage_usage > *maintainer_storage_quota {
+								return Err(ExitError::Other("storage quota not enough".into()));
+							}
+
+							Ok(())
+						} else {
+							// maintainer not found.
+							return Err(ExitError::Other("storage quota not enough".into()));
+						}
+					})?;
 				}
 			}
 			Ok(())
@@ -595,13 +632,15 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Get additional storage of the contract.
-	pub fn additional_storage(contract: H160) -> i32 {
+	pub fn additional_storage(contract: H160) -> u32 {
 		Accounts::<T>::get(contract).map_or(0, |account_info| {
 			let (total_storage_size, code_size) = account_info.contract_info.map_or((0, 0), |contract_info| {
 				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
 				(contract_info.total_storage_size(), code_size)
 			});
-			(total_storage_size.saturating_add(code_size) as i32) - (account_info.storage_quota as i32)
+			total_storage_size
+				.saturating_add(code_size)
+				.saturating_sub(account_info.storage_quota)
 		})
 	}
 }
