@@ -105,6 +105,8 @@ parameter_types! {
 
 ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const StorageDepositPerByte: u64 = 10;
+	pub const StorageDefaultQuota: u32 = 0x6000;
 }
 
 impl module_evm::Trait for Runtime {
@@ -112,6 +114,8 @@ impl module_evm::Trait for Runtime {
 	type Currency = Balances;
 	type MergeAccount = ();
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
 
 	type Event = ();
 	type Precompiles = ();

@@ -152,7 +152,7 @@ impl<T: Trait> AccountInfo<T> {
 		Self {
 			nonce,
 			contract_info,
-			storage_rent_deposit: BalanceOf::<T>::default(),
+			storage_rent_deposit: Zero::zero(),
 			storage_quota: T::StorageDefaultQuota::get(),
 			storage_usage: 0,
 		}
@@ -244,10 +244,8 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Address not mapped
 		AddressNotMapped,
-		/// Account is null
-		AccountIsNull,
-		/// Contract info is null
-		ContractInfoIsNull,
+		/// Contract not found
+		ContractNotFound,
 		/// No permission
 		NoPermission,
 		/// Storage quota not enough
@@ -389,8 +387,8 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 
 			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
-				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractNotFound)?;
 
 				if bytes.is_zero() {
 					return Ok(());
@@ -417,11 +415,11 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 
 			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
-				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractNotFound)?;
 
 				ensure!(who == contract_info.maintainer, Error::<T>::NoPermission);
-				ensure!(account_info.storage_usage <= account_info.storage_quota - bytes, Error::<T>::StorageQuotaNotEnough);
+				ensure!(bytes <= account_info.storage_quota, Error::<T>::StorageQuotaNotEnough);
 
 				if bytes.is_zero() {
 					return Ok(());
@@ -595,7 +593,7 @@ impl<T: Trait> Module<T> {
 				if additional_storage != pre_additional_storage {
 					// get maintainer quota and pay for the additional_storage
 					let maintainer = T::AddressMapping::to_evm_address(&contract_info.maintainer)
-						.ok_or(ExitError::Other("storage quota not enough".into()))?;
+						.ok_or_else(|| ExitError::Other("storage quota not enough".into()))?;
 					<Accounts<T>>::mutate(&maintainer, |maybe_maintainer_account_info| -> Result<(), ExitError> {
 						if let Some(AccountInfo {
 							storage_quota: maintainer_storage_quota,
@@ -609,14 +607,14 @@ impl<T: Trait> Module<T> {
 									.expect("Non-negative integers sub can't overflow; qed");
 								*maintainer_storage_usage = maintainer_storage_usage
 									.checked_add(delta)
-									.ok_or(ExitError::Other("NumOutOfBound".into()))?;
+									.ok_or_else(|| ExitError::Other("NumOutOfBound".into()))?;
 							} else {
 								let delta = pre_additional_storage
 									.checked_sub(additional_storage)
 									.expect("Non-negative integers sub can't overflow; qed");
 								*maintainer_storage_usage = maintainer_storage_usage
 									.checked_sub(delta)
-									.ok_or(ExitError::Other("NumOutOfBound".into()))?;
+									.ok_or_else(|| ExitError::Other("NumOutOfBound".into()))?;
 							};
 
 							if *maintainer_storage_usage > *maintainer_storage_quota {

@@ -324,9 +324,9 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 			{
 				if *storage_usage > Zero::zero() {
 					// need to find maintainer and update maintainer_storage_usage
-					let maintainer = T::AddressMapping::to_evm_address(&contract_info.maintainer).ok_or(
-						ExitError::Other("this contract is maintainer of some other contracts".into()),
-					)?;
+					let maintainer = T::AddressMapping::to_evm_address(&contract_info.maintainer).ok_or_else(|| {
+						ExitError::Other("this contract is maintainer of some other contracts".into())
+					})?;
 					<Accounts<T>>::mutate(&maintainer, |maybe_maintainer_account_info| -> Result<(), ExitError> {
 						if let Some(AccountInfo {
 							storage_usage: maintainer_storage_usage,
@@ -335,13 +335,13 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 						{
 							*maintainer_storage_usage = maintainer_storage_usage
 								.checked_sub(*storage_usage)
-								.ok_or(ExitError::Other("NumOutOfBound".into()))?;
+								.ok_or_else(|| ExitError::Other("NumOutOfBound".into()))?;
 							Ok(())
 						} else {
 							// maintainer not found.
-							return Err(ExitError::Other(
+							Err(ExitError::Other(
 								"this contract is maintainer of some other contracts".into(),
-							));
+							))
 						}
 					})?;
 				}
