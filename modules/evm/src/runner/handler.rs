@@ -314,12 +314,24 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 		// unreserve ContractExistentialDeposit
 		self.unreserve(address, T::ContractExistentialDeposit::get())?;
 		// unreserve storage_rent_deposit
-		if let Some(account_info) = Accounts::<T>::get(address) {
-			if account_info.storage_usage > 0 {
-				return Err(ExitError::Other("Storage usage not zero".into()));
+		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
+			if let Some(AccountInfo {
+				storage_rent_deposit,
+				storage_quota,
+				storage_usage,
+				..
+			}) = maybe_account_info.as_mut()
+			{
+				let pre_storage_usage =
+					(Module::<T>::additional_storage(address).abs() as u32).saturating_add(*storage_quota);
+				if *storage_usage > pre_storage_usage {
+					return Err(ExitError::Other("Storage usage not zero".into()));
+				}
+				*storage_usage -= pre_storage_usage;
+				self.unreserve(address, *storage_rent_deposit)?;
 			}
-			self.unreserve(address, account_info.storage_rent_deposit)?;
-		}
+			Ok(())
+		})?;
 
 		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
 		Module::<T>::remove_account(&address)

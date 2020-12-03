@@ -149,7 +149,7 @@ impl<T: Trait> AccountInfo<T> {
 		Self {
 			nonce,
 			contract_info,
-			storage_rent_deposit: BalanceOf::<T>::default(),
+			storage_rent_deposit: Zero::zero(),
 			storage_quota: T::StorageDefaultQuota::get(),
 			storage_usage: 0,
 		}
@@ -241,10 +241,8 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// Address not mapped
 		AddressNotMapped,
-		/// Account is null
-		AccountIsNull,
-		/// Contract info is null
-		ContractInfoIsNull,
+		/// Contract not found
+		ContractNotFound,
 		/// No permission
 		NoPermission,
 		/// Storage quota not enough
@@ -386,8 +384,8 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 
 			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
-				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractNotFound)?;
 
 				if bytes.is_zero() {
 					return Ok(());
@@ -414,11 +412,11 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 
 			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::AccountIsNull)?;
-				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractInfoIsNull)?;
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+				let contract_info = account_info.contract_info.as_ref().ok_or(Error::<T>::ContractNotFound)?;
 
 				ensure!(who == contract_info.maintainer, Error::<T>::NoPermission);
-				ensure!(account_info.storage_usage <= account_info.storage_quota - bytes, Error::<T>::StorageQuotaNotEnough);
+				ensure!(bytes <= account_info.storage_quota, Error::<T>::StorageQuotaNotEnough);
 
 				if bytes.is_zero() {
 					return Ok(());
@@ -553,6 +551,7 @@ impl<T: Trait> Module<T> {
 
 		let default_value = H256::default();
 		let is_prev_value_default = Self::account_storages(address, index) == default_value;
+		let pre_additional_storage = Self::additional_storage(address);
 
 		if value == default_value {
 			if !is_prev_value_default {
@@ -567,6 +566,10 @@ impl<T: Trait> Module<T> {
 
 			AccountStorages::insert(address, index, value);
 		}
+		let additional_storage = Self::additional_storage(address);
+		if additional_storage.is_positive() {
+			return Err(ExitError::Other("storage quota not enough".into()));
+		}
 
 		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
 			if let Some(AccountInfo {
@@ -577,18 +580,14 @@ impl<T: Trait> Module<T> {
 			}) = maybe_account_info.as_mut()
 			{
 				match storage_change {
-					StorageChange::Added => {
-						if storage_usage.saturating_add(STORAGE_SIZE) > *storage_quota {
-							return Err(ExitError::Other("storage quota not enough".into()));
-						}
-						contract_info.storage_count = contract_info.storage_count.saturating_add(1);
-						*storage_usage = storage_usage.saturating_add(STORAGE_SIZE);
-					}
+					StorageChange::Added => contract_info.storage_count = contract_info.storage_count.saturating_add(1),
 					StorageChange::Removed => {
-						contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
-						*storage_usage = storage_usage.saturating_sub(STORAGE_SIZE);
+						contract_info.storage_count = contract_info.storage_count.saturating_sub(1)
 					}
 					_ => (),
+				}
+				if pre_additional_storage != additional_storage {
+					*storage_usage = (additional_storage.abs() as u32).saturating_add(*storage_quota);
 				}
 			}
 			Ok(())
@@ -596,13 +595,13 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Get additional storage of the contract.
-	pub fn additional_storage(contract: H160) -> u32 {
+	pub fn additional_storage(contract: H160) -> i32 {
 		Accounts::<T>::get(contract).map_or(0, |account_info| {
 			let (total_storage_size, code_size) = account_info.contract_info.map_or((0, 0), |contract_info| {
 				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
 				(contract_info.total_storage_size(), code_size)
 			});
-			account_info.storage_quota - total_storage_size - code_size
+			(total_storage_size.saturating_add(code_size) as i32) - (account_info.storage_quota as i32)
 		})
 	}
 }
