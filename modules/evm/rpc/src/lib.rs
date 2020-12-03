@@ -41,7 +41,8 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 		}),
 		ExitReason::Revert(_) => Err(Error {
 			code: ErrorCode::InternalError,
-			message: format!("execution revert: {}", decode_revert_message(data)),
+			message: decode_revert_message(data)
+				.map_or("execution revert".into(), |data| format!("execution revert: {}", data)),
 			data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
 		}),
 		ExitReason::Fatal(e) => Err(Error {
@@ -52,8 +53,7 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	}
 }
 
-fn decode_revert_message(data: &[u8]) -> String {
-	let invalid: String = "invalid revert message".into();
+fn decode_revert_message(data: &[u8]) -> Option<String> {
 	// A minimum size of error function selector (4) + offset (32) + string length
 	// (32) should contain a utf-8 encoded revert reason.
 	let msg_start: usize = 68;
@@ -61,14 +61,14 @@ fn decode_revert_message(data: &[u8]) -> String {
 		let message_len = U256::from(&data[36..msg_start]).saturated_into::<usize>();
 		let msg_end = msg_start + message_len;
 		if data.len() < msg_end {
-			return invalid;
+			return None;
 		}
 		let body: &[u8] = &data[msg_start..msg_end];
 		if let Ok(reason) = std::str::from_utf8(body) {
-			return reason.to_string();
+			return Some(reason.to_string());
 		}
 	}
-	invalid
+	None
 }
 
 pub struct EVMApi<B, C, Balance> {
@@ -204,14 +204,14 @@ where
 #[test]
 fn decode_revert_message_should_work() {
 	use sp_core::bytes::from_hex;
-	assert_eq!(decode_revert_message(&vec![]), "invalid revert message");
+	assert_eq!(decode_revert_message(&vec![]), None);
 
 	let data = from_hex("0x8c379a00000000000000000000000000000000000000000000000000000000000000020").unwrap();
-	assert_eq!(decode_revert_message(&data), "invalid revert message");
+	assert_eq!(decode_revert_message(&data), None);
 
 	let data = from_hex("0x8c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d6572726f72206d65737361676").unwrap();
-	assert_eq!(decode_revert_message(&data), "invalid revert message");
+	assert_eq!(decode_revert_message(&data), None);
 
 	let data = from_hex("0x8c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d6572726f72206d65737361676500000000000000000000000000000000000000").unwrap();
-	assert_eq!(decode_revert_message(&data), "error message");
+	assert_eq!(decode_revert_message(&data), Some("error message".into()));
 }
