@@ -103,13 +103,13 @@ fn acala_genesis(
 	use acala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance, BalancesConfig, BandOracleConfig,
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, GeneralCouncilMembershipConfig, GrandpaConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NewAccountDeposit,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig,
 		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
 		VestingConfig, CENTS, DOLLARS,
 	};
 
-	let new_account_deposit = NewAccountDeposit::get();
+	let existential_deposit = NativeTokenExistentialDeposit::get();
 	let airdrop_accounts = {
 		let airdrop_accounts_json = &include_bytes!("../../../resources/mandala-airdrop-accounts.json")[..];
 		let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
@@ -139,7 +139,7 @@ fn acala_genesis(
 				.chain(
 					get_all_module_accounts()
 						.iter()
-						.map(|x| (x.clone(), new_account_deposit)),
+						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.chain(airdrop_accounts)
 				.collect(),

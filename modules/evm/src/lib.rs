@@ -4,6 +4,7 @@
 pub mod precompiles;
 pub mod runner;
 
+mod mock;
 mod tests;
 
 pub use crate::precompiles::{Precompile, Precompiles};
@@ -17,12 +18,12 @@ use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
 	ensure,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, ReservableCurrency},
+	traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	weights::{Pays, PostDispatchInfo, Weight},
 	RuntimeDebug,
 };
 use frame_system::ensure_signed;
-use orml_traits::{account::MergeAccount, Happened};
+use orml_traits::account::MergeAccount;
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -30,6 +31,7 @@ use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{Convert, One, Saturating, UniqueSaturatedInto, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
+use support::EVM as EVMTrait;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
@@ -43,7 +45,43 @@ impl Get<u64> for SystemChainId {
 	}
 }
 
-static ISTANBUL_CONFIG: Config = Config::istanbul();
+// Initially based on Istanbul hard fork configuration.
+static ACALA_CONFIG: Config = Config {
+	gas_ext_code: 700,
+	gas_ext_code_hash: 700,
+	gas_balance: 700,
+	gas_sload: 800,
+	gas_sstore_set: 20000,
+	gas_sstore_reset: 5000,
+	refund_sstore_clears: 0, // no gas refund
+	gas_suicide: 5000,
+	gas_suicide_new_account: 25000,
+	gas_call: 700,
+	gas_expbyte: 50,
+	gas_transaction_create: 53000,
+	gas_transaction_call: 21000,
+	gas_transaction_zero_data: 4,
+	gas_transaction_non_zero_data: 16,
+	sstore_gas_metering: false,         // no gas refund
+	sstore_revert_under_stipend: false, // ignored
+	err_on_call_with_more_gas: false,
+	empty_considered_exists: false,
+	create_increase_nonce: true,
+	call_l64_after_gas: true,
+	stack_limit: 1024,
+	memory_limit: usize::max_value(),
+	call_stack_limit: 1024,
+	create_contract_limit: None, // ignored
+	call_stipend: 2300,
+	has_delegate_call: true,
+	has_create2: true,
+	has_revert: true,
+	has_return_data: true,
+	has_bitwise_shifting: true,
+	has_chain_id: true,
+	has_self_balance: true,
+	has_ext_code_hash: true,
+};
 
 /// EVM module trait
 pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
@@ -71,7 +109,7 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 
 	/// EVM config used in the module.
 	fn config() -> &'static Config {
-		&ISTANBUL_CONFIG
+		&ACALA_CONFIG
 	}
 
 	/// Required origin for creating system contract.
@@ -299,7 +337,7 @@ decl_module! {
 
 			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
 
-			 if info.exit_reason.is_succeed() {
+			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
 			} else {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
@@ -569,9 +607,35 @@ impl<T: Trait> Module<T> {
 	}
 }
 
+impl<T: Trait> EVMTrait for Module<T> {
+	type Balance = BalanceOf<T>;
+
+	fn execute(
+		source: H160,
+		target: H160,
+		input: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u32,
+	) -> Result<CallInfo, sp_runtime::DispatchError> {
+		let info = T::Runner::call(source, target, input, value, gas_limit)?;
+
+		if info.exit_reason.is_succeed() {
+			Module::<T>::deposit_event(Event::<T>::Executed(target));
+		} else {
+			Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
+				target,
+				info.exit_reason.clone(),
+				info.output.clone(),
+			));
+		}
+
+		Ok(info)
+	}
+}
+
 pub struct CallKillAccount<T>(PhantomData<T>);
-impl<T: Trait> Happened<T::AccountId> for CallKillAccount<T> {
-	fn happened(who: &T::AccountId) {
+impl<T: Trait> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
+	fn on_killed_account(who: &T::AccountId) {
 		if let Some(address) = T::AddressMapping::to_evm_address(who) {
 			let _ = Module::<T>::remove_account(&address);
 		}

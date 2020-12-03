@@ -1,7 +1,7 @@
 use super::utils::{dollars, lookup_of_account, set_aca_balance};
 use crate::{
-	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Currencies, CurrencyId, MinVestedTransfer,
-	NewAccountDeposit, Runtime, System, TokenSymbol, Vesting,
+	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Currencies, CurrencyId, MinVestedTransfer, Runtime, System,
+	TokenSymbol, Vesting,
 };
 
 use sp_std::prelude::*;
@@ -70,7 +70,7 @@ runtime_benchmarks! {
 	verify {
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
-			schedule.total_amount().unwrap() * i as u128 - NewAccountDeposit::get()
+			schedule.total_amount().unwrap() * i as u128,
 		);
 	}
 
