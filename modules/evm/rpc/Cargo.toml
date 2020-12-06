@@ -8,13 +8,14 @@ edition = "2018"
 jsonrpc-core = "15.0.0"
 jsonrpc-derive = "14.0.3"
 ethereum-types = "0.9.0"
-sp-io = { version = "2.0.0" }
-sp-core = { version = "2.0.0" }
-sp-runtime = { version = "2.0.0" }
 sp-api = { version = "2.0.0" }
-sp-transaction-pool = { version = "2.0.0" }
-sp-storage = { version = "2.0.0" }
 sp-blockchain = { version = "2.0.0" }
+sp-core = { version = "2.0.0" }
+sp-io = { version = "2.0.0" }
+sp-rpc = { version = "2.0.0" }
+sp-runtime = { version = "2.0.0" }
+sp-storage = { version = "2.0.0" }
+sp-transaction-pool = { version = "2.0.0" }
 sc-service = { version = "0.8.0" }
 sc-client-api = { version = "2.0.0" }
 sc-rpc = { version = "2.0.0" }

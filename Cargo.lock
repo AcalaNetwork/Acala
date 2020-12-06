@@ -1679,6 +1679,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core",
  "sp-io",
+ "sp-rpc",
  "sp-runtime",
  "sp-storage",
  "sp-transaction-pool",
