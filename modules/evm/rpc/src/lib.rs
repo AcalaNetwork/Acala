@@ -114,7 +114,7 @@ where
 
 		let api = self.client.runtime_api();
 
-		let balance_value = if let Some(value) = value.clone() {
+		let balance_value = if let Some(value) = value {
 			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
 		} else {
 			Ok(Default::default())
@@ -179,7 +179,7 @@ where
 
 		let api = self.client.runtime_api();
 
-		let balance_value = if let Some(value) = value.clone() {
+		let balance_value = if let Some(value) = value {
 			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
 		} else {
 			Ok(Default::default())
