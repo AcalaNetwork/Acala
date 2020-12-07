@@ -6,6 +6,7 @@
 // The `large_enum_variant` warning originates from `construct_runtime` macro.
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
+#![allow(clippy::or_fun_call)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -1647,13 +1648,23 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			let config = if estimate {
+				let mut config = <Runtime as module_evm::Trait>::config().clone();
+				config.estimate = true;
+				Some(config)
+			} else {
+				None
+			};
+
 			<Runtime as module_evm::Trait>::Runner::call(
 				from,
 				to,
 				data,
 				value,
 				gas_limit,
+				config.as_ref().unwrap_or(<Runtime as module_evm::Trait>::config()),
 			)
 		}
 
@@ -1662,12 +1673,22 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			let config = if estimate {
+				let mut config = <Runtime as module_evm::Trait>::config().clone();
+				config.estimate = true;
+				Some(config)
+			} else {
+				None
+			};
+
 			<Runtime as module_evm::Trait>::Runner::create(
 				from,
 				data,
 				value,
 				gas_limit,
+				config.as_ref().unwrap_or(<Runtime as module_evm::Trait>::config()),
 			)
 		}
 	}
