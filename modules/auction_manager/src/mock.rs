@@ -52,7 +52,7 @@ impl_outer_event! {
 		orml_tokens<T>,
 		orml_auction<T>,
 		cdp_treasury,
-		dex<T>,
+		module_dex<T>,
 	}
 }
 
@@ -172,17 +172,17 @@ parameter_types! {
 	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
 }
 
-impl dex::Trait for Runtime {
+impl module_dex::Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type DEXIncentives = ();
 	type WeightInfo = ();
+	type ListingOrigin = EnsureSignedBy<One, AccountId>;
 }
-pub type DEXModule = dex::Module<Runtime>;
+pub type DEXModule = module_dex::Module<Runtime>;
 
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
@@ -266,6 +266,13 @@ impl ExtBuilder {
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			endowed_accounts: self.endowed_accounts,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		module_dex::GenesisConfig::<Runtime> {
+			initial_listing_trading_pairs: vec![],
+			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

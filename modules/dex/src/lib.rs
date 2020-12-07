@@ -10,9 +10,15 @@
 //! additional reward for its participation in the CDP liquidation.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 
+use codec::{Decode, Encode};
 use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, transactional, weights::Weight,
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	traits::{EnsureOrigin, Get},
+	transactional,
+	weights::{DispatchClass, Weight},
 };
 use frame_system::{self as system, ensure_signed};
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -20,7 +26,7 @@ use primitives::{Balance, CurrencyId, TradingPair};
 use sp_core::U256;
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
+	DispatchError, DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
 use support::{DEXIncentives, DEXManager, Price, Ratio};
@@ -34,6 +40,42 @@ pub trait WeightInfo {
 	fn remove_liquidity(by_withdraw: bool) -> Weight;
 	fn swap_with_exact_supply() -> Weight;
 	fn swap_with_exact_target() -> Weight;
+	fn list_trading_pair() -> Weight;
+	fn enable_trading_pair() -> Weight;
+	fn disable_trading_pair() -> Weight;
+}
+
+/// Parameters of TradingPair in Provisioning status
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq)]
+pub struct TradingPairProvisionParameters<Balance, BlockNumber> {
+	/// limit contribution per time.
+	min_contribution: (Balance, Balance),
+	/// target provision that trading pair could to be Enabled.
+	target_provision: (Balance, Balance),
+	/// accumulated provision amount for this Provisioning trading pair.
+	accumulated_provision: (Balance, Balance),
+	/// The number of block that status can be converted to Enabled.
+	not_before: BlockNumber,
+}
+
+/// Status for TradingPair
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
+pub enum TradingPairStatus<Balance, BlockNumber> {
+	/// Default status,
+	/// can withdraw liquidity, re-enable and list this trading pair.
+	NotEnabled,
+	/// TradingPair is Provisioning,
+	/// can add provision and disable this trading pair.
+	Provisioning(TradingPairProvisionParameters<Balance, BlockNumber>),
+	/// TradingPair is Enabled,
+	/// can add/remove liquidity, trading and disable this trading pair.
+	Enabled,
+}
+
+impl<Balance, BlockNumber> Default for TradingPairStatus<Balance, BlockNumber> {
+	fn default() -> Self {
+		Self::NotEnabled
+	}
 }
 
 pub trait Trait: system::Trait {
@@ -41,9 +83,6 @@ pub trait Trait: system::Trait {
 
 	/// Currency for transfer currencies
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
-
-	/// Allowed trading pair list.
-	type EnabledTradingPairs: Get<Vec<TradingPair>>;
 
 	/// Trading fee rate
 	/// The first item of the tuple is the numerator of the fee rate, second
@@ -62,6 +101,9 @@ pub trait Trait: system::Trait {
 
 	/// DEX incentives
 	type DEXIncentives: DEXIncentives<Self::AccountId, CurrencyId, Balance>;
+
+	/// The origin which may list, enable or disable trading pairs.
+	type ListingOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event!(
@@ -69,21 +111,42 @@ decl_event!(
 		<T as frame_system::Trait>::AccountId,
 		Balance = Balance,
 		CurrencyId = CurrencyId,
+		TradingPair = TradingPair,
 	{
+		/// add provision success \[who, currency_id_0, contribution_0, currency_id_1, contribution_1\]
+		AddProvision(AccountId, CurrencyId, Balance, CurrencyId, Balance),
 		/// Add liquidity success. \[who, currency_id_0, pool_0_increment, currency_id_1, pool_1_increment, share_increment\]
 		AddLiquidity(AccountId, CurrencyId, Balance, CurrencyId, Balance, Balance),
 		/// Remove liquidity from the trading pool success. \[who, currency_id_0, pool_0_decrement, currency_id_1, pool_1_decrement, share_decrement\]
 		RemoveLiquidity(AccountId, CurrencyId, Balance, CurrencyId, Balance, Balance),
 		/// Use supply currency to swap target currency. \[trader, trading_path, supply_currency_amount, target_currency_amount\]
 		Swap(AccountId, Vec<CurrencyId>, Balance, Balance),
+		/// Enable trading pair. \[trading_pair\]
+		EnableTradingPair(TradingPair),
+		/// List trading pair. \[trading_pair\]
+		ListTradingPair(TradingPair),
+		/// Disable trading pair. \[trading_pair\]
+		DisableTradingPair(TradingPair),
+		/// Provisioning trading pair convert to Enabled. \[trading_pair, pool_0_amount, pool_1_amount, total_share_amount\]
+		ProvisioningToEnabled(TradingPair, Balance, Balance, Balance),
 	}
 );
 
 decl_error! {
 	/// Error for dex module.
 	pub enum Error for Module<T: Trait> {
-		/// Not the enable trading pair
-		TradingPairNotAllowed,
+		/// Trading pair is in NotEnabled status
+		NotEnabledTradingPair,
+		/// Trading pair must be in Enabled status
+		MustBeEnabled,
+		/// Trading pair must be in Provisioning status
+		MustBeProvisioning,
+		/// Trading pair must be in NotEnabled status
+		MustBeNotEnabled,
+		/// This trading pair is not allowed to be listed
+		NotAllowedList,
+		/// The increment of provision is invalid
+		InvalidContributionIncrement,
 		/// The increment of liquidity is invalid
 		InvalidLiquidityIncrement,
 		/// Invalid currency id
@@ -107,9 +170,44 @@ decl_error! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Dex {
-		/// Liquidity pool for specific pair(a tuple consisting of two sorted CurrencyIds).
-		/// (CurrencyId_0, CurrencyId_1) -> (Amount_0, Amount_1)
+		/// Liquidity pool for TradingPair.
 		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) TradingPair => (Balance, Balance);
+
+		/// Status for TradingPair.
+		TradingPairStatuses get(fn trading_pair_statuses): map hasher(twox_64_concat) TradingPair => TradingPairStatus<Balance, T::BlockNumber>;
+
+		/// Provision of TradingPair by AccountId.
+		ProvisioningPool get(fn provisioning_pool): double_map hasher(twox_64_concat) TradingPair, hasher(twox_64_concat) T::AccountId => (Balance, Balance);
+	}
+
+	add_extra_genesis {
+		config(initial_listing_trading_pairs): Vec<(TradingPair, (Balance, Balance), (Balance, Balance), T::BlockNumber)>;
+		config(initial_enabled_trading_pairs): Vec<TradingPair>;
+
+		build(|config: &GenesisConfig<T>| {
+			config.initial_listing_trading_pairs.iter().for_each(|(trading_pair, min_contribution, target_provision, not_before)| {
+				assert!(
+					trading_pair.get_dex_share_currency_id().is_some(),
+					"the trading pair is invalid!",
+				);
+				TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Provisioning(
+					TradingPairProvisionParameters {
+						min_contribution: *min_contribution,
+						target_provision: *target_provision,
+						accumulated_provision: Default::default(),
+						not_before: *not_before,
+					}
+				));
+			});
+
+			config.initial_enabled_trading_pairs.iter().for_each(|trading_pair| {
+				assert!(
+					trading_pair.get_dex_share_currency_id().is_some(),
+					"the trading pair is invalid!",
+				);
+				TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::<_, _>::Enabled);
+			});
+		})
 	}
 }
 
@@ -118,9 +216,6 @@ decl_module! {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
-
-		/// Allowed trading pair list
-		const EnabledTradingPairs: Vec<TradingPair> = T::EnabledTradingPairs::get();
 
 		/// Trading fee rate
 		const GetExchangeFee: (u32, u32) = T::GetExchangeFee::get();
@@ -165,9 +260,10 @@ decl_module! {
 			Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)?;
 		}
 
-		/// Injecting liquidity to specific liquidity pool in the form of depositing currencies in trading pairs
-		/// into liquidity pool, and issue shares in proportion to the caller. Shares are temporarily not
+		/// Add liquidity to Enabled trading pair, or add provision to Provisioning trading pair.
+		/// - Add liquidity success will issue shares in current price which decided by the liquidity scale. Shares are temporarily not
 		/// allowed to transfer and trade, it represents the proportion of assets in liquidity pool.
+		/// - Add provision success will record the provision, issue shares to caller in the initial price when trading pair convert to Enabled.
 		///
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
@@ -185,7 +281,13 @@ decl_module! {
 			deposit_increment_share: bool,
 		) {
 			let who = ensure_signed(origin)?;
-			Self::do_add_liquidity(&who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, deposit_increment_share)?;
+			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+
+			match Self::trading_pair_statuses(trading_pair) {
+				TradingPairStatus::<_, _>::Enabled => Self::do_add_liquidity(&who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, deposit_increment_share),
+				TradingPairStatus::<_, _>::Provisioning(_) => Self::do_add_provision(&who, currency_id_a, currency_id_b, max_amount_a, max_amount_b).map(|_| Self::convert_to_enabled_if_possible(trading_pair)),
+				TradingPairStatus::<_, _>::NotEnabled => Err(Error::<T>::NotEnabledTradingPair.into()),
+			}?;
 		}
 
 		/// Remove liquidity from specific liquidity pool in the form of burning shares, and withdrawing currencies in trading pairs
@@ -207,12 +309,235 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			Self::do_remove_liquidity(&who, currency_id_a, currency_id_b, remove_share, by_withdraw)?;
 		}
+
+		/// List a new trading pair, trading pair will become Enabled status after provision process.
+		#[weight = (T::WeightInfo::list_trading_pair(), DispatchClass::Operational)]
+		#[transactional]
+		pub fn list_trading_pair(
+			origin,
+			currency_id_a: CurrencyId,
+			currency_id_b: CurrencyId,
+			min_contribution_a: Balance,
+			min_contribution_b: Balance,
+			target_provision_a: Balance,
+			target_provision_b: Balance,
+			not_before: T::BlockNumber,
+		) {
+			T::ListingOrigin::ensure_origin(origin)?;
+
+			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+			let dex_share_currency_id = trading_pair.get_dex_share_currency_id().ok_or(Error::<T>::InvalidCurrencyId)?;
+			ensure!(
+				matches!(Self::trading_pair_statuses(trading_pair), TradingPairStatus::<_, _>::NotEnabled),
+				Error::<T>::MustBeNotEnabled
+			);
+			ensure!(
+				T::Currency::total_issuance(dex_share_currency_id).is_zero(),
+				Error::<T>::NotAllowedList
+			);
+
+			let (min_contribution, target_provision) = if currency_id_a == trading_pair.0 {
+				((min_contribution_a, min_contribution_b), (target_provision_a, target_provision_b))
+			} else {
+				((min_contribution_b, min_contribution_a), (target_provision_b, target_provision_a))
+			};
+
+			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Provisioning(
+				TradingPairProvisionParameters {
+					min_contribution,
+					target_provision,
+					accumulated_provision: Default::default(),
+					not_before
+				}
+			));
+			Self::deposit_event(RawEvent::ListTradingPair(trading_pair));
+		}
+
+		/// Enable a new trading pair(without the provision process),
+		/// or re-enable a disabled trading pair.
+		#[weight = (T::WeightInfo::enable_trading_pair(), DispatchClass::Operational)]
+		#[transactional]
+		pub fn enable_trading_pair(
+			origin,
+			currency_id_a: CurrencyId,
+			currency_id_b: CurrencyId,
+		) {
+			T::ListingOrigin::ensure_origin(origin)?;
+
+			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+			ensure!(
+				matches!(Self::trading_pair_statuses(trading_pair), TradingPairStatus::<_, _>::NotEnabled),
+				Error::<T>::MustBeNotEnabled
+			);
+
+			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Enabled);
+			Self::deposit_event(RawEvent::EnableTradingPair(trading_pair));
+		}
+
+		#[weight = (T::WeightInfo::disable_trading_pair(), DispatchClass::Operational)]
+		#[transactional]
+		pub fn disable_trading_pair(
+			origin,
+			currency_id_a: CurrencyId,
+			currency_id_b: CurrencyId,
+		) {
+			T::ListingOrigin::ensure_origin(origin)?;
+			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+
+			match Self::trading_pair_statuses(trading_pair) {
+				// will disable Enabled trading_pair
+				TradingPairStatus::<_, _>::Enabled => {
+					TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::NotEnabled);
+					Self::deposit_event(RawEvent::DisableTradingPair(trading_pair));
+				},
+				// will disable Provisioning trading_pair
+				TradingPairStatus::<_, _>::Provisioning(_) => {
+					let module_account_id = Self::account_id();
+
+					// refund provision
+					for (who, contribution) in ProvisioningPool::<T>::drain_prefix(trading_pair) {
+						T::Currency::transfer(trading_pair.0, &module_account_id, &who, contribution.0)?;
+						T::Currency::transfer(trading_pair.1, &module_account_id, &who, contribution.1)?;
+
+						// decrease ref count
+						frame_system::Module::<T>::dec_ref(&who);
+					}
+
+					TradingPairStatuses::<T>::remove(trading_pair);
+					Self::deposit_event(RawEvent::DisableTradingPair(trading_pair));
+				},
+				TradingPairStatus::<_, _>::NotEnabled => {
+					return Err(Error::<T>::NotEnabledTradingPair.into());
+				}
+			};
+		}
 	}
 }
 
 impl<T: Trait> Module<T> {
 	fn account_id() -> T::AccountId {
 		T::ModuleId::get().into_account()
+	}
+
+	/// Access status of specific trading_pair,
+	/// if status is Provisioning and able to be `Enabled`, update it and return
+	/// `Enabled`
+	fn convert_to_enabled_if_possible(trading_pair: TradingPair) {
+		if let TradingPairStatus::<_, _>::Provisioning(provision_parameters) = Self::trading_pair_statuses(trading_pair)
+		{
+			// check if able to be converted to Enable status
+			if frame_system::Module::<T>::block_number() >= provision_parameters.not_before
+				&& !provision_parameters.accumulated_provision.0.is_zero()
+				&& !provision_parameters.accumulated_provision.1.is_zero()
+				&& (provision_parameters.accumulated_provision.0 >= provision_parameters.target_provision.0
+					|| provision_parameters.accumulated_provision.1 >= provision_parameters.target_provision.1)
+			{
+				// calculate initial price
+				let initial_price_0_in_1: Price = Price::checked_from_rational(
+					provision_parameters.accumulated_provision.1,
+					provision_parameters.accumulated_provision.0,
+				)
+				.unwrap_or_default();
+
+				let lp_share_currency_id = trading_pair.get_dex_share_currency_id().expect("shouldn't be invalid!");
+				let mut total_shares_issued: Balance = Default::default();
+				for (who, contribution) in ProvisioningPool::<T>::drain_prefix(trading_pair) {
+					let share_amount = initial_price_0_in_1
+						.saturating_mul_int(contribution.0)
+						.saturating_add(contribution.1);
+
+					// issue shares to contributor
+					if T::Currency::deposit(lp_share_currency_id, &who, share_amount).is_ok() {
+						total_shares_issued = total_shares_issued.saturating_add(share_amount);
+					}
+
+					// decrease ref count
+					frame_system::Module::<T>::dec_ref(&who);
+				}
+
+				// inject provision to liquidity pool
+				LiquidityPool::mutate(trading_pair, |(pool_0, pool_1)| {
+					*pool_0 = pool_0.saturating_add(provision_parameters.accumulated_provision.0);
+					*pool_1 = pool_1.saturating_sub(provision_parameters.accumulated_provision.1);
+				});
+
+				// update trading_pair to Enabled status
+				TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::<_, _>::Enabled);
+
+				Self::deposit_event(RawEvent::ProvisioningToEnabled(
+					trading_pair,
+					provision_parameters.accumulated_provision.0,
+					provision_parameters.accumulated_provision.1,
+					total_shares_issued,
+				));
+			}
+		}
+	}
+
+	/// Add provision to Provisioning TradingPair
+	fn do_add_provision(
+		who: &T::AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+		contribution_a: Balance,
+		contribution_b: Balance,
+	) -> DispatchResult {
+		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+		let mut provision_parameters = match Self::trading_pair_statuses(trading_pair) {
+			TradingPairStatus::<_, _>::Provisioning(provision_parameters) => provision_parameters,
+			_ => return Err(Error::<T>::MustBeProvisioning.into()),
+		};
+		let (contribution_0, contribution_1) = if currency_id_a == trading_pair.0 {
+			(contribution_a, contribution_b)
+		} else {
+			(contribution_b, contribution_a)
+		};
+
+		ensure!(
+			contribution_0 >= provision_parameters.min_contribution.0
+				|| contribution_1 >= provision_parameters.min_contribution.1,
+			Error::<T>::InvalidContributionIncrement
+		);
+
+		ProvisioningPool::<T>::try_mutate_exists(trading_pair, &who, |maybe_pool| -> DispatchResult {
+			let existed = maybe_pool.is_some();
+			let mut pool = maybe_pool.unwrap_or_default();
+			pool.0 = pool.0.saturating_add(contribution_0);
+			pool.1 = pool.1.saturating_add(contribution_1);
+
+			let module_account_id = Self::account_id();
+			T::Currency::transfer(trading_pair.0, &who, &module_account_id, contribution_0)?;
+			T::Currency::transfer(trading_pair.1, &who, &module_account_id, contribution_1)?;
+
+			*maybe_pool = Some(pool);
+
+			if !existed && maybe_pool.is_some() {
+				frame_system::Module::<T>::inc_ref(&who);
+			}
+
+			provision_parameters.accumulated_provision.0 = provision_parameters
+				.accumulated_provision
+				.0
+				.saturating_add(contribution_0);
+			provision_parameters.accumulated_provision.1 = provision_parameters
+				.accumulated_provision
+				.1
+				.saturating_add(contribution_1);
+
+			TradingPairStatuses::<T>::insert(
+				trading_pair,
+				TradingPairStatus::<_, _>::Provisioning(provision_parameters),
+			);
+
+			Self::deposit_event(RawEvent::AddProvision(
+				who.clone(),
+				trading_pair.0,
+				contribution_0,
+				trading_pair.1,
+				contribution_1,
+			));
+			Ok(())
+		})
 	}
 
 	fn do_add_liquidity(
@@ -224,15 +549,18 @@ impl<T: Trait> Module<T> {
 		deposit_increment_share: bool,
 	) -> DispatchResult {
 		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+		let lp_share_currency_id = trading_pair
+			.get_dex_share_currency_id()
+			.ok_or(Error::<T>::InvalidCurrencyId)?;
 		ensure!(
-			T::EnabledTradingPairs::get().contains(&trading_pair),
-			Error::<T>::TradingPairNotAllowed
+			matches!(
+				Self::trading_pair_statuses(trading_pair),
+				TradingPairStatus::<_, _>::Enabled
+			),
+			Error::<T>::MustBeEnabled,
 		);
 
 		LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
-			let lp_share_currency_id = trading_pair
-				.get_dex_share_currency_id()
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
 			let total_shares = T::Currency::total_issuance(lp_share_currency_id);
 			let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.0 {
 				(max_amount_a, max_amount_b)
@@ -306,12 +634,13 @@ impl<T: Trait> Module<T> {
 		if remove_share.is_zero() {
 			return Ok(());
 		}
-		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+		let trading_pair =
+			TradingPair::from_token_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+		let lp_share_currency_id = trading_pair
+			.get_dex_share_currency_id()
+			.ok_or(Error::<T>::InvalidCurrencyId)?;
 
 		LiquidityPool::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
-			let lp_share_currency_id = trading_pair
-				.get_dex_share_currency_id()
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
 			let total_shares = T::Currency::total_issuance(lp_share_currency_id);
 			let proportion = Ratio::checked_from_rational(remove_share, total_shares).unwrap_or_default();
 			let pool_0_decrement = proportion.saturating_mul_int(*pool_0);
@@ -408,8 +737,11 @@ impl<T: Trait> Module<T> {
 		let mut i: usize = 0;
 		while i + 1 < path_length {
 			ensure!(
-				T::EnabledTradingPairs::get().contains(&TradingPair::new(path[i], path[i + 1])),
-				Error::<T>::TradingPairNotAllowed
+				matches!(
+					Self::trading_pair_statuses(TradingPair::new(path[i], path[i + 1])),
+					TradingPairStatus::<_, _>::Enabled
+				),
+				Error::<T>::MustBeEnabled
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i], path[i + 1]);
 			ensure!(
@@ -448,8 +780,11 @@ impl<T: Trait> Module<T> {
 		let mut i: usize = path_length - 1;
 		while i > 0 {
 			ensure!(
-				T::EnabledTradingPairs::get().contains(&TradingPair::new(path[i - 1], path[i])),
-				Error::<T>::TradingPairNotAllowed
+				matches!(
+					Self::trading_pair_statuses(TradingPair::new(path[i - 1], path[i])),
+					TradingPairStatus::<_, _>::Enabled
+				),
+				Error::<T>::MustBeEnabled
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i - 1], path[i]);
 			ensure!(
@@ -479,16 +814,17 @@ impl<T: Trait> Module<T> {
 		supply_increment: Balance,
 		target_decrement: Balance,
 	) {
-		let trading_pair = TradingPair::new(supply_currency_id, target_currency_id);
-		LiquidityPool::mutate(trading_pair, |(pool_0, pool_1)| {
-			if supply_currency_id == trading_pair.0 {
-				*pool_0 = pool_0.saturating_add(supply_increment);
-				*pool_1 = pool_1.saturating_sub(target_decrement);
-			} else {
-				*pool_0 = pool_0.saturating_sub(target_decrement);
-				*pool_1 = pool_1.saturating_add(supply_increment);
-			}
-		});
+		if let Some(trading_pair) = TradingPair::from_token_currency_ids(supply_currency_id, target_currency_id) {
+			LiquidityPool::mutate(trading_pair, |(pool_0, pool_1)| {
+				if supply_currency_id == trading_pair.0 {
+					*pool_0 = pool_0.saturating_add(supply_increment);
+					*pool_1 = pool_1.saturating_sub(target_decrement);
+				} else {
+					*pool_0 = pool_0.saturating_sub(target_decrement);
+					*pool_1 = pool_1.saturating_add(supply_increment);
+				}
+			});
+		}
 	}
 
 	fn _swap_by_path(path: &[CurrencyId], amounts: &[Balance]) {

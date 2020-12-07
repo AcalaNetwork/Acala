@@ -39,4 +39,22 @@ impl crate::WeightInfo for () {
 			.saturating_add(DbWeight::get().reads(12 as Weight))
 			.saturating_add(DbWeight::get().writes(9 as Weight))
 	}
+
+	fn list_trading_pair() -> Weight {
+		(22_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(2 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
+	}
+
+	fn enable_trading_pair() -> Weight {
+		(17_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(1 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
+	}
+
+	fn disable_trading_pair() -> Weight {
+		(18_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(1 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
+	}
 }

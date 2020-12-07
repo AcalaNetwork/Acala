@@ -3,7 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
@@ -106,27 +107,32 @@ impl DEXIncentives<AccountId, CurrencyId, Balance> for MockDEXIncentives {
 	}
 }
 
+ord_parameter_types! {
+	pub const ListingOrigin: AccountId = 3;
+}
+
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: usize = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![AUSD_DOT_PAIR, AUSD_XBTC_PAIR, DOT_XBTC_PAIR];
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
-	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
+	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
 pub type DexModule = Module<Runtime>;
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	initial_listing_trading_pairs: Vec<(TradingPair, (Balance, Balance), (Balance, Balance), BlockNumber)>,
+	initial_enabled_trading_pairs: Vec<TradingPair>,
 }
 
 impl Default for ExtBuilder {
@@ -140,11 +146,42 @@ impl Default for ExtBuilder {
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
+			initial_listing_trading_pairs: vec![],
+			initial_enabled_trading_pairs: vec![],
 		}
 	}
 }
 
 impl ExtBuilder {
+	pub fn initialize_listing_trading_pairs(mut self) -> Self {
+		self.initial_listing_trading_pairs = vec![
+			(
+				AUSD_DOT_PAIR,
+				(5_000_000_000_000u128, 1_000_000_000_000u128),
+				(5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
+				10,
+			),
+			(
+				AUSD_XBTC_PAIR,
+				(20_000_000_000_000u128, 1_000_000_000u128),
+				(20_000_000_000_000_000u128, 1_000_000_000_000u128),
+				10,
+			),
+			(
+				DOT_XBTC_PAIR,
+				(4_000_000_000_000u128, 1_000_000_000u128),
+				(4_000_000_000_000_000u128, 1_000_000_000_000u128),
+				20,
+			),
+		];
+		self
+	}
+
+	pub fn initialize_enabled_trading_pairs(mut self) -> Self {
+		self.initial_enabled_trading_pairs = vec![AUSD_DOT_PAIR, AUSD_XBTC_PAIR, DOT_XBTC_PAIR];
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
@@ -152,6 +189,13 @@ impl ExtBuilder {
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			endowed_accounts: self.endowed_accounts,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		GenesisConfig::<Runtime> {
+			initial_listing_trading_pairs: self.initial_listing_trading_pairs,
+			initial_enabled_trading_pairs: self.initial_enabled_trading_pairs,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

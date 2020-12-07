@@ -1009,12 +1009,12 @@ parameter_types! {
 impl module_dex::Trait for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::dex::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 parameter_types! {
@@ -1349,7 +1349,7 @@ construct_runtime!(
 		Prices: module_prices::{Module, Storage, Call, Event},
 
 		// DEX
-		Dex: module_dex::{Module, Storage, Call, Event<T>},
+		Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
 
 		// Honzon
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
