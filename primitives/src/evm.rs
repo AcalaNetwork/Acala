@@ -7,6 +7,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
 pub use evm::backend::{Basic as Account, Log};
+pub use evm::Config;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]

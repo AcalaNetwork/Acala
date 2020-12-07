@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::or_fun_call)]
 
 pub mod precompiles;
 pub mod runner;
@@ -78,6 +79,7 @@ static ACALA_CONFIG: Config = Config {
 	has_chain_id: true,
 	has_self_balance: true,
 	has_ext_code_hash: true,
+	estimate: false,
 };
 
 /// EVM module trait
@@ -242,7 +244,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::call(source, target, input, value, gas_limit)?;
+			let info = T::Runner::call(source, target, input, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Executed(target));
@@ -270,7 +272,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::create(source, init, value, gas_limit)?;
+			let info = T::Runner::create(source, init, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -298,7 +300,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
+			let info = T::Runner::create2(source, init, salt, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -326,7 +328,7 @@ decl_module! {
 
 			let source = T::NetworkContractSource::get();
 			let address = H160::from_low_u64_be(Self::network_contract_index());
-			let info = T::Runner::create_at_address(source, init, value, address, gas_limit)?;
+			let info = T::Runner::create_at_address(source, init, value, address, gas_limit, T::config())?;
 
 			NetworkContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
 
@@ -494,8 +496,16 @@ impl<T: Trait> EVMTrait for Module<T> {
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		config: Option<evm::Config>,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
-		let info = T::Runner::call(source, target, input, value, gas_limit)?;
+		let info = T::Runner::call(
+			source,
+			target,
+			input,
+			value,
+			gas_limit,
+			config.as_ref().unwrap_or(T::config()),
+		)?;
 
 		if info.exit_reason.is_succeed() {
 			Module::<T>::deposit_event(Event::<T>::Executed(target));
