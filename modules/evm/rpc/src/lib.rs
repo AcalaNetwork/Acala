@@ -6,12 +6,14 @@ use rustc_hex::ToHex;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_core::Bytes;
+use sp_rpc::number::NumberOrHex;
 use sp_runtime::{
 	codec::Codec,
 	generic::BlockId,
 	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
 	SaturatedConversion,
 };
+use std::convert::{TryFrom, TryInto};
 
 use call_request::CallRequest;
 pub use module_evm::ExitReason;
@@ -85,14 +87,18 @@ impl<B, C, Balance> EVMApi<B, C, Balance> {
 	}
 }
 
-impl<B, C, Balance> EVMApiT<B, Balance> for EVMApi<B, C, Balance>
+fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
+	val.into_u256().try_into().map_err(|_| ())
+}
+
+impl<B, C, Balance> EVMApiT<B> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
 	C::Api: EVMRuntimeRPCApi<B, Balance>,
-	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128>,
 {
-	fn call(&self, request: CallRequest<Balance>, _: Option<B>) -> Result<Bytes> {
+	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -108,6 +114,18 @@ where
 
 		let api = self.client.runtime_api();
 
+		let balance_value = if let Some(value) = value {
+			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
+		} else {
+			Ok(Default::default())
+		};
+
+		let balance_value = balance_value.map_err(|_| Error {
+			code: ErrorCode::InvalidParams,
+			message: format!("Invalid parameter value: {:?}", value),
+			data: None,
+		})?;
+
 		match to {
 			Some(to) => {
 				let info = api
@@ -116,7 +134,7 @@ where
 						from.unwrap_or_default(),
 						to,
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -132,7 +150,7 @@ where
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -145,7 +163,7 @@ where
 		}
 	}
 
-	fn estimate_gas(&self, request: CallRequest<Balance>, _: Option<B>) -> Result<U256> {
+	fn estimate_gas(&self, request: CallRequest, _: Option<B>) -> Result<U256> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -161,6 +179,18 @@ where
 
 		let api = self.client.runtime_api();
 
+		let balance_value = if let Some(value) = value {
+			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
+		} else {
+			Ok(Default::default())
+		};
+
+		let balance_value = balance_value.map_err(|_| Error {
+			code: ErrorCode::InvalidParams,
+			message: format!("Invalid parameter value: {:?}", value),
+			data: None,
+		})?;
+
 		let used_gas = match to {
 			Some(to) => {
 				let info = api
@@ -169,7 +199,7 @@ where
 						from.unwrap_or_default(),
 						to,
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -185,7 +215,7 @@ where
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
