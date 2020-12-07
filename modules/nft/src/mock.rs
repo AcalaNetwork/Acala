@@ -54,7 +54,7 @@ parameter_types! {
 
 pub type AccountId = u128;
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type BaseCallFilter = BaseFilter;
 	type Origin = Origin;
 	type Index = u64;
@@ -84,7 +84,7 @@ impl frame_system::Trait for Runtime {
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type Event = TestEvent;
 	type DustRemoval = ();
@@ -93,7 +93,7 @@ impl pallet_balances::Trait for Runtime {
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
-impl pallet_utility::Trait for Runtime {
+impl pallet_utility::Config for Runtime {
 	type Event = TestEvent;
 	type Call = Call;
 	type WeightInfo = ();
@@ -140,7 +140,7 @@ impl Filter<Call> for BaseFilter {
 		}
 	}
 }
-impl pallet_proxy::Trait for Runtime {
+impl pallet_proxy::Config for Runtime {
 	type Event = TestEvent;
 	type Call = Call;
 	type Currency = Balances;
@@ -168,7 +168,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -183,7 +183,7 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Trait for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
@@ -196,7 +196,7 @@ parameter_types! {
 	pub const CreateTokenDeposit: Balance = 100;
 	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
 }
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
@@ -206,7 +206,7 @@ impl Trait for Runtime {
 }
 pub type NFTModule = Module<Runtime>;
 
-impl orml_nft::Trait for Runtime {
+impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = ClassData;
@@ -217,10 +217,10 @@ use frame_system::Call as SystemCall;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CLASS_ID: <Runtime as orml_nft::Trait>::ClassId = 0;
-pub const CLASS_ID_NOT_EXIST: <Runtime as orml_nft::Trait>::ClassId = 1;
-pub const TOKEN_ID: <Runtime as orml_nft::Trait>::TokenId = 0;
-pub const TOKEN_ID_NOT_EXIST: <Runtime as orml_nft::Trait>::TokenId = 1;
+pub const CLASS_ID: <Runtime as orml_nft::Config>::ClassId = 0;
+pub const CLASS_ID_NOT_EXIST: <Runtime as orml_nft::Config>::ClassId = 1;
+pub const TOKEN_ID: <Runtime as orml_nft::Config>::TokenId = 0;
+pub const TOKEN_ID_NOT_EXIST: <Runtime as orml_nft::Config>::TokenId = 1;
 
 pub struct ExtBuilder;
 impl Default for ExtBuilder {

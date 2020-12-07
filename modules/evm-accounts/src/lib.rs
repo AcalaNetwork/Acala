@@ -35,8 +35,8 @@ pub type EcdsaSignature = ecdsa::Signature;
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
-pub trait Trait: frame_system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub trait Config: frame_system::Config {
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
 	/// The Currency for managing Evm account assets.
 	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
@@ -56,7 +56,7 @@ pub trait Trait: frame_system::Trait {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as frame_system::Trait>::AccountId,
+		<T as frame_system::Config>::AccountId,
 		EvmAddress = EvmAddress,
 	{
 		/// Mapping between Substrate accounts and EVM accounts
@@ -67,7 +67,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for evm accounts module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// AccountId has mapped
 		AccountIdHasMapped,
 		/// Eth address has mapped
@@ -84,14 +84,14 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as EvmAccounts {
+	trait Store for Module<T: Config> as EvmAccounts {
 		pub Accounts get(fn accounts): map hasher(twox_64_concat) EvmAddress => Option<T::AccountId>;
 		pub EvmAddresses get(fn evm_addresses): map hasher(twox_64_concat) T::AccountId => Option<EvmAddress>;
 	}
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -112,7 +112,7 @@ decl_module! {
 
 			// check if the evm padded address already exists
 			let account_id = T::AddressMapping::to_account(&eth_address);
-			let mut nonce = <T as frame_system::Trait>::Index::default();
+			let mut nonce = <T as frame_system::Config>::Index::default();
 			if frame_system::Module::<T>::is_explicit(&account_id) {
 				// merge balance from `evm padded address` to `origin`
 				T::MergeAccount::merge_account(&account_id, &who)?;
@@ -141,7 +141,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	// Constructs the message that Ethereum RPC's `personal_sign` and `eth_sign`
 	// would sign.
 	pub fn ethereum_signable_message(what: &[u8], extra: &[u8]) -> Vec<u8> {
@@ -195,7 +195,7 @@ impl<T: Trait> Module<T> {
 }
 
 pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> AddressMapping<T::AccountId> for EvmAddressMapping<T>
+impl<T: Config> AddressMapping<T::AccountId> for EvmAddressMapping<T>
 where
 	T::AccountId: From<AccountId32> + Into<AccountId32>,
 {
@@ -223,7 +223,7 @@ where
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
-impl<T: Trait> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
+impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
 		Module::<T>::on_killed_account(&who);
 	}

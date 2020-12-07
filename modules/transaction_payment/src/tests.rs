@@ -14,9 +14,9 @@ use mock::{
 use orml_traits::MultiCurrency;
 use sp_runtime::testing::TestXt;
 
-const CALL: &<Runtime as system::Trait>::Call = &Call::Currencies(orml_currencies::Call::transfer(BOB, AUSD, 12));
+const CALL: &<Runtime as system::Config>::Call = &Call::Currencies(orml_currencies::Call::transfer(BOB, AUSD, 12));
 
-const CALL2: &<Runtime as system::Trait>::Call =
+const CALL2: &<Runtime as system::Config>::Call =
 	&Call::Currencies(orml_currencies::Call::transfer_native_currency(BOB, 12));
 
 const INFO: DispatchInfo = DispatchInfo {

@@ -48,7 +48,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -83,7 +83,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -113,7 +113,7 @@ parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
 	type EnabledTradingPairs = EnabledTradingPairs;

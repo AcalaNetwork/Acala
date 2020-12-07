@@ -36,8 +36,8 @@ pub trait WeightInfo {
 	fn swap_with_exact_target() -> Weight;
 }
 
-pub trait Trait: system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub trait Config: system::Config {
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
 	/// Currency for transfer currencies
 	type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -66,7 +66,7 @@ pub trait Trait: system::Trait {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as frame_system::Trait>::AccountId,
+		<T as frame_system::Config>::AccountId,
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
@@ -81,7 +81,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for dex module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// Not the enable trading pair
 		TradingPairNotAllowed,
 		/// The increment of liquidity is invalid
@@ -106,7 +106,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Dex {
+	trait Store for Module<T: Config> as Dex {
 		/// Liquidity pool for specific pair(a tuple consisting of two sorted CurrencyIds).
 		/// (CurrencyId_0, CurrencyId_1) -> (Amount_0, Amount_1)
 		LiquidityPool get(fn liquidity_pool): map hasher(twox_64_concat) TradingPair => (Balance, Balance);
@@ -114,7 +114,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
@@ -136,7 +136,7 @@ decl_module! {
 		/// - `path`: trading path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
-		#[weight = <T as Trait>::WeightInfo::swap_with_exact_supply()]
+		#[weight = <T as Config>::WeightInfo::swap_with_exact_supply()]
 		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin,
@@ -153,7 +153,7 @@ decl_module! {
 		/// - `path`: trading path.
 		/// - `target_amount`: exact target amount.
 		/// - `max_supply_amount`: acceptable maxmum supply amount.
-		#[weight = <T as Trait>::WeightInfo::swap_with_exact_target()]
+		#[weight = <T as Config>::WeightInfo::swap_with_exact_target()]
 		#[transactional]
 		pub fn swap_with_exact_target(
 			origin,
@@ -210,7 +210,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn account_id() -> T::AccountId {
 		T::ModuleId::get().into_account()
 	}
@@ -564,7 +564,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
+impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
 		Self::get_liquidity(currency_id_a, currency_id_b)
 	}

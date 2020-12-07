@@ -126,10 +126,7 @@ pub fn new_partial<RuntimeApi, Executor>(
 				sc_finality_grandpa::LinkHalf<Block, FullClient<RuntimeApi, Executor>, FullSelectChain>,
 				sc_consensus_babe::BabeLink<Block>,
 			),
-			(
-				sc_finality_grandpa::SharedVoterState,
-				Arc<GrandpaFinalityProofProvider<FullBackend, Block>>,
-			),
+			sc_finality_grandpa::SharedVoterState,
 		),
 	>,
 	sc_service::Error,
@@ -187,7 +184,6 @@ where
 			babe_link.clone(),
 			block_import.clone(),
 			Some(Box::new(justification_import)),
-			None,
 			client.clone(),
 			select_chain.clone(),
 			inherent_data_providers.clone(),
@@ -200,10 +196,11 @@ where
 	let justification_stream = grandpa_link.justification_stream();
 	let shared_authority_set = grandpa_link.shared_authority_set().clone();
 	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
-	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
 
 	let import_setup = (block_import, grandpa_link, babe_link.clone());
-	let rpc_setup = (shared_voter_state.clone(), finality_proof_provider.clone());
+	let rpc_setup = shared_voter_state.clone();
+
+	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
 
 	let babe_config = babe_link.config().clone();
 	let shared_epoch_changes = babe_link.epoch_changes().clone();
@@ -284,9 +281,9 @@ where
 		other: (rpc_extensions_builder, import_setup, rpc_setup),
 	} = new_partial::<RuntimeApi, Executor>(&mut config, instant_sealing, test)?;
 
-	let (shared_voter_state, finality_proof_provider) = rpc_setup;
+	let shared_voter_state = rpc_setup;
 
-	let (network, network_status_sinks, system_rpc_tx, network_starter) = if instant_sealing {
+	let (network, network_status_sinks, system_rpc_tx, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -295,22 +292,7 @@ where
 			import_queue,
 			on_demand: None,
 			block_announce_validator_builder: None,
-			finality_proof_request_builder: Some(Box::new(sc_network::config::DummyFinalityProofRequestBuilder)),
-			finality_proof_provider: None,
-		})?
-	} else {
-		sc_service::build_network(sc_service::BuildNetworkParams {
-			config: &config,
-			client: client.clone(),
-			transaction_pool: transaction_pool.clone(),
-			spawn_handle: task_manager.spawn_handle(),
-			import_queue,
-			on_demand: None,
-			block_announce_validator_builder: None,
-			finality_proof_request_builder: None,
-			finality_proof_provider: Some(finality_proof_provider),
-		})?
-	};
+		})?;
 
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
@@ -324,6 +306,7 @@ where
 
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;
+	let backoff_authoring_blocks = Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
@@ -390,6 +373,7 @@ where
 				sync_oracle: network.clone(),
 				inherent_data_providers: inherent_data_providers.clone(),
 				force_authoring,
+				backoff_authoring_blocks,
 				babe_link,
 				can_author_with,
 			};
@@ -494,15 +478,9 @@ where
 		on_demand.clone(),
 	));
 
-	let grandpa_block_import = sc_finality_grandpa::light_block_import(
-		client.clone(),
-		backend.clone(),
-		&(client.clone() as Arc<_>),
-		Arc::new(on_demand.checker().clone()),
-	)?;
-
-	let finality_proof_import = grandpa_block_import.clone();
-	let finality_proof_request_builder = finality_proof_import.create_finality_proof_request_builder();
+	let (grandpa_block_import, _) =
+		sc_finality_grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain.clone())?;
+	let justification_import = grandpa_block_import.clone();
 
 	let (babe_block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,
@@ -515,8 +493,7 @@ where
 	let import_queue = sc_consensus_babe::import_queue(
 		babe_link,
 		babe_block_import,
-		None,
-		Some(Box::new(finality_proof_import)),
+		Some(Box::new(justification_import)),
 		client.clone(),
 		select_chain,
 		inherent_data_providers,
@@ -524,8 +501,6 @@ where
 		config.prometheus_registry(),
 		sp_consensus::NeverCanAuthor,
 	)?;
-
-	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
 
 	let (network, network_status_sinks, system_rpc_tx, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
@@ -536,8 +511,6 @@ where
 			import_queue,
 			on_demand: Some(on_demand.clone()),
 			block_announce_validator_builder: None,
-			finality_proof_request_builder: Some(finality_proof_request_builder),
-			finality_proof_provider: Some(finality_proof_provider),
 		})?;
 	network_starter.start_network();
 

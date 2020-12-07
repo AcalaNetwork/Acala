@@ -14,12 +14,12 @@ pub enum RedeemStrategy {
 	WaitForUnbonding,
 }
 
-pub trait Trait: system::Trait {
+pub trait Config: system::Config {
 	type Homa: HomaProtocol<Self::AccountId, Balance, EraIndex>;
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		#[weight = 10_000]
 		#[transactional]
 		pub fn mint(origin, #[compact] amount: Balance) {
@@ -53,4 +53,4 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {}
+impl<T: Config> Module<T> {}

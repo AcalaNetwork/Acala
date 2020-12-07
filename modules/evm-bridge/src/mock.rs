@@ -29,7 +29,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type Origin = Origin;
 	type Call = ();
@@ -62,7 +62,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
@@ -91,7 +91,7 @@ impl AddressMapping<AccountId> for EvmAddressMapping {
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
-impl pallet_timestamp::Trait for Runtime {
+impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
@@ -107,7 +107,7 @@ ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 }
 
-impl module_evm::Trait for Runtime {
+impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping;
 	type Currency = Balances;
 	type MergeAccount = ();
@@ -124,7 +124,7 @@ impl module_evm::Trait for Runtime {
 
 pub type EVM = module_evm::Module<Runtime>;
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type EVM = EVM;
 }
 pub type EvmBridgeModule = Module<Runtime>;

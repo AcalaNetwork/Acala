@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Event, Log, MergeAccount, Module, Trait,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, Event, Log, MergeAccount, Module,
 	Vicinity,
 };
 use evm::{
@@ -9,7 +9,7 @@ use evm::{
 	Transfer,
 };
 use evm_gasometer::{self as gasometer, Gasometer};
-use evm_runtime::{Config, Handler as HandlerT};
+use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
 	debug,
 	storage::{StorageDoubleMap, StorageMap},
@@ -23,9 +23,9 @@ use sp_runtime::{
 };
 use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, rc::Rc, vec::Vec};
 
-pub struct Handler<'vicinity, 'config, T: Trait> {
+pub struct Handler<'vicinity, 'config, T: Config> {
 	pub vicinity: &'vicinity Vicinity,
-	pub config: &'config Config,
+	pub config: &'config EvmRuntimeConfig,
 	pub gasometer: Gasometer<'config>,
 	pub precompile:
 		fn(H160, &[u8], Option<usize>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
@@ -37,13 +37,13 @@ fn l64(gas: usize) -> usize {
 	gas - gas / 64
 }
 
-impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
+impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	/// Create a new handler with given vicinity.
 	pub fn new_with_precompile(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: usize,
 		is_static: bool,
-		config: &'config Config,
+		config: &'config EvmRuntimeConfig,
 		precompile: fn(
 			H160,
 			&[u8],
@@ -197,7 +197,7 @@ macro_rules! create_try {
 	};
 }
 
-impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
+impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> {
 	type CreateInterrupt = Infallible;
 	type CreateFeedback = Infallible;
 	type CallInterrupt = Infallible;

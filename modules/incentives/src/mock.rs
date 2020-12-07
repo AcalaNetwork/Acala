@@ -53,7 +53,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -88,7 +88,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -205,7 +205,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 	}
 }
 
-impl orml_rewards::Trait for Runtime {
+impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
@@ -228,7 +228,7 @@ ord_parameter_types! {
 	pub const Four: AccountId = 4;
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type LoansIncentivePool = LoansIncentivePool;
 	type DexIncentivePool = DexIncentivePool;
