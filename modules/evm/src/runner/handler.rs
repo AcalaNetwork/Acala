@@ -141,7 +141,8 @@ impl<'vicinity, 'config, T: Trait> Handler<'vicinity, 'config, T> {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
 			} else {
-				let mut account_info = <AccountInfo<T>>::new(Default::default(), None);
+				let mut account_info =
+					<AccountInfo<T>>::new(Default::default(), None).expect("Contract is null, it can't fail; qed");
 				account_info.nonce += One::one();
 				*maybe_account = Some(account_info);
 			}
@@ -322,7 +323,7 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 				..
 			}) = maybe_account_info.as_mut()
 			{
-				if *storage_usage > Zero::zero() {
+				if !storage_usage.is_zero() {
 					// need to find maintainer and update maintainer_storage_usage
 					let additional_storage = Module::<T>::additional_storage(address);
 					if *storage_usage != additional_storage {
@@ -423,9 +424,11 @@ impl<'vicinity, 'config, T: Trait> HandlerT for Handler<'vicinity, 'config, T> {
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
 						let maintainer = T::AddressMapping::to_account(&maintainer);
-						<Module<T>>::on_contract_initialization(&address, &maintainer, out, None);
-
-						TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
+						if <Module<T>>::on_contract_initialization(&address, &maintainer, out, None).is_ok() {
+							TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
+						} else {
+							TransactionOutcome::Rollback(Capture::Exit((s.into(), None, Vec::new())))
+						}
 					}
 					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
 				},

@@ -168,7 +168,7 @@ ord_parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
 	pub const TransferMaintainerDeposit: u64 = 1;
 	pub const StorageDepositPerByte: u64 = 10;
-	pub const StorageDefaultQuota: u32 = 100;
+	pub const StorageDefaultQuota: u32 = 400;
 }
 
 impl Trait for Test {

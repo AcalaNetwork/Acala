@@ -1236,6 +1236,7 @@ parameter_types! {
 	// TODO: update
 	pub const ChainId: u64 = 787;
 	pub const ContractExistentialDeposit: Balance = DOLLARS;
+	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	// https://eips.ethereum.org/EIPS/eip-170
 	pub const StorageDefaultQuota: u32 = 0x6000;
@@ -1252,6 +1253,7 @@ impl module_evm::Trait for Runtime {
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type StorageDefaultQuota = StorageDefaultQuota;
 	type Event = Event;
