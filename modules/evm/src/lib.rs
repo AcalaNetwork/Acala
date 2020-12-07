@@ -220,7 +220,7 @@ decl_storage! {
 
 				let account_info = <AccountInfo<T>>::new(account.nonce, None).expect("Contract is null, it can't fail; qed");
 				<Accounts<T>>::insert(address, account_info);
-				<Module<T>>::on_contract_initialization(address, &T::AccountId::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouln't fail");
+				<Module<T>>::on_contract_initialization(address, &T::AccountId::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
 
 				T::Currency::deposit_creating(
 					&account_id,
