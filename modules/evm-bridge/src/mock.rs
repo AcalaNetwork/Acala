@@ -100,6 +100,7 @@ impl pallet_timestamp::Trait for Runtime {
 
 parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
+	pub const TransferMaintainerDeposit: u64 = 1;
 	pub NetworkContractSource: H160 = alice();
 }
 
@@ -114,6 +115,7 @@ impl module_evm::Trait for Runtime {
 	type Currency = Balances;
 	type MergeAccount = ();
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type StorageDefaultQuota = StorageDefaultQuota;
 
