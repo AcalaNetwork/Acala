@@ -64,8 +64,8 @@ const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 pub type LoansOf<T> = loans::Module<T>;
 
-pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait + loans::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Config: SendTransactionTypes<Call<Self>> + system::Config + loans::Config {
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
 	/// The origin which may update risk management parameters. Root can always
 	/// do this.
@@ -158,7 +158,7 @@ type ChangeBalance = Change<Balance>;
 decl_event!(
 	pub enum Event<T>
 	where
-		<T as system::Trait>::AccountId,
+		<T as system::Config>::AccountId,
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 	{
@@ -183,7 +183,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for cdp engine module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// The total debit value of specific collateral type already exceed the hard cap
 		ExceedDebitValueHardCap,
 		/// The collateral ratio below the required collateral ratio
@@ -208,7 +208,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as CDPEngine {
+	trait Store for Module<T: Config> as CDPEngine {
 		/// Mapping from collateral type to its exchange rate of debit units and debit value
 		pub DebitExchangeRate get(fn debit_exchange_rate): map hasher(twox_64_concat) CurrencyId => Option<ExchangeRate>;
 
@@ -244,7 +244,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -416,7 +416,7 @@ decl_module! {
 						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
 
 						// issue stablecoin to surplus pool
-						if <T as Trait>::CDPTreasury::on_system_surplus(issued_stable_coin_balance).is_ok() {
+						if <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance).is_ok() {
 							// update exchange rate when issue success
 							let new_debit_exchange_rate = debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
 							DebitExchangeRate::insert(currency_id, new_debit_exchange_rate);
@@ -447,7 +447,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) {
 		let call = Call::<T>::liquidate(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
@@ -679,7 +679,7 @@ impl<T: Trait> Module<T> {
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
 			// swap exact stable with DEX in limit of price impact
 			if let Ok(actual_supply_collateral) =
-				<T as Trait>::CDPTreasury::swap_collateral_not_in_auction_with_exact_stable(
+				<T as Config>::CDPTreasury::swap_collateral_not_in_auction_with_exact_stable(
 					currency_id,
 					target_stable_amount,
 					collateral,
@@ -690,13 +690,13 @@ impl<T: Trait> Module<T> {
 					.checked_sub(actual_supply_collateral)
 					.expect("swap succecced means collateral >= actual_supply_collateral; qed");
 
-				<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
+				<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 
 				return Ok(LiquidationStrategy::Exchange);
 			}
 
 			// create collateral auctions by cdp treasury
-			<T as Trait>::CDPTreasury::create_collateral_auctions(
+			<T as Config>::CDPTreasury::create_collateral_auctions(
 				currency_id,
 				collateral,
 				target_stable_amount,
@@ -718,7 +718,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Module<T> {
+impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Module<T> {
 	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
 		Self::get_debit_value(currency_id, debit_balance)
 	}
@@ -730,7 +730,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Modul
 	) -> DispatchResult {
 		if !debit_balance.is_zero() {
 			let debit_value = Self::get_debit_value(currency_id, debit_balance);
-			let feed_price = <T as Trait>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
+			let feed_price = <T as Config>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
 				.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
@@ -770,7 +770,7 @@ impl<T: Trait> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Modul
 }
 
 #[allow(deprecated)]
-impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {

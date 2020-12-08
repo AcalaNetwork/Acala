@@ -45,7 +45,7 @@ parameter_types! {
 
 pub type AccountId = u128;
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type BaseCallFilter = BaseFilter;
 	type Origin = Origin;
 	type Index = u64;
@@ -75,7 +75,7 @@ impl frame_system::Trait for Runtime {
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type Event = ();
 	type DustRemoval = ();
@@ -84,7 +84,7 @@ impl pallet_balances::Trait for Runtime {
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
-impl pallet_utility::Trait for Runtime {
+impl pallet_utility::Config for Runtime {
 	type Event = ();
 	type Call = Call;
 	type WeightInfo = ();
@@ -131,7 +131,7 @@ impl Filter<Call> for BaseFilter {
 		}
 	}
 }
-impl pallet_proxy::Trait for Runtime {
+impl pallet_proxy::Config for Runtime {
 	type Event = ();
 	type Call = Call;
 	type Currency = Balances;
@@ -159,7 +159,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = ();
 	type Balance = Balance;
 	type Amount = Amount;
@@ -174,7 +174,7 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Trait for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
@@ -187,7 +187,7 @@ parameter_types! {
 	pub const CreateTokenDeposit: Balance = 100;
 	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
 }
-impl module_nft::Trait for Runtime {
+impl module_nft::Config for Runtime {
 	type Event = ();
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
@@ -196,7 +196,7 @@ impl module_nft::Trait for Runtime {
 	type WeightInfo = ();
 }
 
-impl orml_nft::Trait for Runtime {
+impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = ClassData;
@@ -205,7 +205,7 @@ impl orml_nft::Trait for Runtime {
 
 use frame_system::Call as SystemCall;
 
-impl crate::Trait for Runtime {}
+impl crate::Config for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let t = frame_system::GenesisConfig::default()

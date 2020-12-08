@@ -48,7 +48,7 @@ pub enum PoolId {
 
 decl_error! {
 	/// Error for incentives module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// Share amount is not enough
 		NotEnough,
 		/// Invalid currency id
@@ -58,7 +58,7 @@ decl_error! {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as frame_system::Trait>::AccountId,
+		<T as frame_system::Config>::AccountId,
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
@@ -69,10 +69,10 @@ decl_event!(
 	}
 );
 
-pub trait Trait:
-	frame_system::Trait + orml_rewards::Trait<Share = Balance, Balance = Balance, PoolId = PoolId>
+pub trait Config:
+	frame_system::Config + orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId>
 {
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
 	/// The vault account to keep rewards for type LoansIncentive PoolId
 	type LoansIncentivePool: Get<Self::AccountId>;
@@ -116,7 +116,7 @@ pub trait Trait:
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Incentives {
+	trait Store for Module<T: Config> as Incentives {
 		/// Mapping from collateral currency type to its loans incentive reward amount per period
 		pub LoansIncentiveRewards get(fn loans_incentive_rewards): map hasher(twox_64_concat) CurrencyId => Balance;
 
@@ -132,7 +132,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
@@ -155,28 +155,28 @@ decl_module! {
 		/// The saving reward type (should be AUSD)
 		const SavingCurrencyId: CurrencyId = T::SavingCurrencyId::get();
 
-		#[weight = <T as Trait>::WeightInfo::deposit_dex_share()]
+		#[weight = <T as Config>::WeightInfo::deposit_dex_share()]
 		#[transactional]
 		pub fn deposit_dex_share(origin, lp_currency_id: CurrencyId, amount: Balance) {
 			let who = ensure_signed(origin)?;
 			Self::do_deposit_dex_share(&who, lp_currency_id, amount)?;
 		}
 
-		#[weight = <T as Trait>::WeightInfo::withdraw_dex_share()]
+		#[weight = <T as Config>::WeightInfo::withdraw_dex_share()]
 		#[transactional]
 		pub fn withdraw_dex_share(origin, lp_currency_id: CurrencyId, amount: Balance) {
 			let who = ensure_signed(origin)?;
 			Self::do_withdraw_dex_share(&who, lp_currency_id, amount)?;
 		}
 
-		#[weight = <T as Trait>::WeightInfo::claim_rewards()]
+		#[weight = <T as Config>::WeightInfo::claim_rewards()]
 		#[transactional]
 		pub fn claim_rewards(origin, pool_id: T::PoolId) {
 			let who = ensure_signed(origin)?;
 			<orml_rewards::Module<T>>::claim_rewards(&who, pool_id);
 		}
 
-		#[weight = <T as Trait>::WeightInfo::update_loans_incentive_rewards(updates.len() as u32)]
+		#[weight = <T as Config>::WeightInfo::update_loans_incentive_rewards(updates.len() as u32)]
 		#[transactional]
 		pub fn update_loans_incentive_rewards(
 			origin,
@@ -188,7 +188,7 @@ decl_module! {
 			}
 		}
 
-		#[weight = <T as Trait>::WeightInfo::update_dex_incentive_rewards(updates.len() as u32)]
+		#[weight = <T as Config>::WeightInfo::update_dex_incentive_rewards(updates.len() as u32)]
 		#[transactional]
 		pub fn update_dex_incentive_rewards(
 			origin,
@@ -196,16 +196,12 @@ decl_module! {
 		) {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (currency_id, amount) in updates {
-				match currency_id {
-					CurrencyId::DEXShare(_, _) => {},
-					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-				}
-
+				ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 				DEXIncentiveRewards::insert(currency_id, amount);
 			}
 		}
 
-		#[weight = <T as Trait>::WeightInfo::update_homa_incentive_reward()]
+		#[weight = <T as Config>::WeightInfo::update_homa_incentive_reward()]
 		#[transactional]
 		pub fn update_homa_incentive_reward(
 			origin,
@@ -215,7 +211,7 @@ decl_module! {
 			HomaIncentiveReward::put(update);
 		}
 
-		#[weight = <T as Trait>::WeightInfo::update_dex_saving_rates(updates.len() as u32)]
+		#[weight = <T as Config>::WeightInfo::update_dex_saving_rates(updates.len() as u32)]
 		#[transactional]
 		pub fn update_dex_saving_rates(
 			origin,
@@ -223,23 +219,16 @@ decl_module! {
 		) {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (currency_id, rate) in updates {
-				match currency_id {
-					CurrencyId::DEXShare(_, _) => {},
-					_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-				}
-
+				ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 				DEXSavingRates::insert(currency_id, rate);
 			}
 		}
 	}
 }
 
-impl<T: Trait> DEXIncentives<T::AccountId, CurrencyId, Balance> for Module<T> {
+impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Module<T> {
 	fn do_deposit_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
-		match lp_currency_id {
-			CurrencyId::DEXShare(_, _) => {}
-			_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-		}
+		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 
 		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
 		<orml_rewards::Module<T>>::add_share(
@@ -254,11 +243,7 @@ impl<T: Trait> DEXIncentives<T::AccountId, CurrencyId, Balance> for Module<T> {
 	}
 
 	fn do_withdraw_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
-		match lp_currency_id {
-			CurrencyId::DEXShare(_, _) => {}
-			_ => return Err(Error::<T>::InvalidCurrencyId.into()),
-		}
-
+		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 		ensure!(
 			<orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexIncentive(lp_currency_id), &who).0
 				>= amount && <orml_rewards::Module<T>>::share_and_withdrawn_reward(PoolId::DexSaving(lp_currency_id), &who)
@@ -279,14 +264,14 @@ impl<T: Trait> DEXIncentives<T::AccountId, CurrencyId, Balance> for Module<T> {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	pub fn account_id() -> T::AccountId {
 		T::ModuleId::get().into_account()
 	}
 }
 
 pub struct OnUpdateLoan<T>(sp_std::marker::PhantomData<T>);
-impl<T: Trait> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
+impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
 	fn happened(info: &(T::AccountId, CurrencyId, Amount, Balance)) {
 		let (who, currency_id, adjustment, previous_amount) = info;
 		let adjustment_abs =
@@ -304,7 +289,7 @@ impl<T: Trait> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdat
 	}
 }
 
-impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
+impl<T: Config> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
@@ -359,10 +344,8 @@ impl<T: Trait> RewardHandler<T::AccountId, T::BlockNumber> for Module<T> {
 						PoolId::DexSaving(currency_id) => {
 							let dex_saving_rate = Self::dex_saving_rates(currency_id);
 							if !dex_saving_rate.is_zero() {
-								if let CurrencyId::DEXShare(token_symbol_a, token_symbol_b) = currency_id {
-									let (currency_id_a, currency_id_b) =
-										(CurrencyId::Token(token_symbol_a), CurrencyId::Token(token_symbol_b));
-
+								if let Some((currency_id_a, currency_id_b)) = currency_id.split_dex_share_currency_id()
+								{
 									// accumulate saving reward only for liquidity pool of saving currency id
 									let saving_currency_amount = if currency_id_a == saving_currency_id {
 										T::DEX::get_liquidity_pool(saving_currency_id, currency_id_b).0

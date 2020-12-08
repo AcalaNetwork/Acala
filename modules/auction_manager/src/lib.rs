@@ -157,8 +157,8 @@ pub struct SurplusAuctionItem<BlockNumber> {
 	start_time: BlockNumber,
 }
 
-pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Config: SendTransactionTypes<Call<Self>> + system::Config {
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
 	/// The minimum increment size of each bid compared to the previous one
 	type MinimumIncrementSize: Get<Rate>;
@@ -207,7 +207,7 @@ pub trait Trait: SendTransactionTypes<Call<Self>> + system::Trait {
 decl_event!(
 	pub enum Event<T>
 	where
-		<T as system::Trait>::AccountId,
+		<T as system::Config>::AccountId,
 		AuctionId = AuctionId,
 		CurrencyId = CurrencyId,
 		Balance = Balance,
@@ -233,7 +233,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for auction manager module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// The auction dose not exist
 		AuctionNotExists,
 		/// The collateral auction is in reverse stage now
@@ -250,7 +250,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as AuctionManager {
+	trait Store for Module<T: Config> as AuctionManager {
 		/// Mapping from auction id to collateral auction info
 		pub CollateralAuctions get(fn collateral_auctions): map hasher(twox_64_concat) AuctionId =>
 			Option<CollateralAuctionItem<T::AccountId, T::BlockNumber>>;
@@ -279,7 +279,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -357,7 +357,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn get_last_bid(auction_id: AuctionId) -> Option<(T::AccountId, Balance)> {
 		T::Auction::auction_info(auction_id).and_then(|auction_info| auction_info.bid)
 	}
@@ -917,7 +917,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> for Module<T> {
+impl<T: Config> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> for Module<T> {
 	fn on_new_bid(
 		now: T::BlockNumber,
 		id: AuctionId,
@@ -962,7 +962,7 @@ impl<T: Trait> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> 
 	}
 }
 
-impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
+impl<T: Config> AuctionManager<T::AccountId> for Module<T> {
 	type CurrencyId = CurrencyId;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
@@ -1090,7 +1090,7 @@ impl<T: Trait> AuctionManager<T::AccountId> for Module<T> {
 	}
 }
 
-impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {

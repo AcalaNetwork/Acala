@@ -20,10 +20,10 @@ use orml_traits::{DataFeeder, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use support::{CDPTreasury, Price};
 
-pub struct Module<T: Trait>(emergency_shutdown::Module<T>);
+pub struct Module<T: Config>(emergency_shutdown::Module<T>);
 
-pub trait Trait:
-	emergency_shutdown::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait + loans::Trait
+pub trait Config:
+	emergency_shutdown::Config + orml_oracle::Config<orml_oracle::Instance1> + prices::Config + loans::Config
 {
 }
 
@@ -34,10 +34,10 @@ fn dollar(d: u32) -> Balance {
 	d.saturating_mul(1_000_000_000_000_000_000)
 }
 
-fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
+fn feed_price<T: Config>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
 	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
-		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
+		<T as prices::Config>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}
 	Ok(())
 }
@@ -48,7 +48,7 @@ benchmarks! {
 	call_emergency_shutdown {
 		let u in 0 .. 1000;
 
-		let currency_id = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get()[0];
+		let currency_id = <T as emergency_shutdown::Config>::CollateralCurrencyIds::get()[0];
 		feed_price::<T>(currency_id, Price::one())?;
 	}: emergency_shutdown(RawOrigin::Root)
 
@@ -63,13 +63,13 @@ benchmarks! {
 
 		let funder: T::AccountId = account("funder", u, SEED);
 		let caller: T::AccountId = account("caller", u, SEED);
-		let currency_ids = <T as emergency_shutdown::Trait>::CollateralCurrencyIds::get();
+		let currency_ids = <T as emergency_shutdown::Config>::CollateralCurrencyIds::get();
 		for currency_id in currency_ids {
-			<T as loans::Trait>::Currency::update_balance(currency_id, &funder, dollar(100).unique_saturated_into())?;
-			<T as emergency_shutdown::Trait>::CDPTreasury::deposit_collateral(&funder, currency_id, dollar(100))?;
+			<T as loans::Config>::Currency::update_balance(currency_id, &funder, dollar(100).unique_saturated_into())?;
+			<T as emergency_shutdown::Config>::CDPTreasury::deposit_collateral(&funder, currency_id, dollar(100))?;
 		}
-		<T as emergency_shutdown::Trait>::CDPTreasury::issue_debit(&caller, dollar(1000), true)?;
-		<T as emergency_shutdown::Trait>::CDPTreasury::issue_debit(&funder, dollar(9000), true)?;
+		<T as emergency_shutdown::Config>::CDPTreasury::issue_debit(&caller, dollar(1000), true)?;
+		<T as emergency_shutdown::Config>::CDPTreasury::issue_debit(&funder, dollar(9000), true)?;
 
 		EmergencyShutdown::<T>::emergency_shutdown(RawOrigin::Root.into())?;
 		EmergencyShutdown::<T>::open_collateral_refund(RawOrigin::Root.into())?;

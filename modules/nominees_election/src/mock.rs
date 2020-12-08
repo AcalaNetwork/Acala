@@ -31,7 +31,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -66,7 +66,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = ();
 	type Balance = Balance;
 	type Amount = Amount;
@@ -81,7 +81,7 @@ parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
@@ -100,7 +100,7 @@ parameter_types! {
 pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLDOTCurrencyId>;
 
-impl orml_currencies::Trait for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
@@ -115,7 +115,7 @@ parameter_types! {
 	pub const MaxUnlockingChunks: usize = 3;
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Currency = LDOTCurrency;
 	type PolkadotAccountId = AccountId;
 	type MinBondThreshold = MinBondThreshold;

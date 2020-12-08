@@ -73,12 +73,12 @@ pub struct TokenData {
 	pub deposit: Balance,
 }
 
-pub type TokenIdOf<T> = <T as orml_nft::Trait>::TokenId;
-pub type ClassIdOf<T> = <T as orml_nft::Trait>::ClassId;
+pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
+pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
 
 decl_event!(
 	 pub enum Event<T> where
-		<T as frame_system::Trait>::AccountId,
+		<T as frame_system::Config>::AccountId,
 		ClassId = ClassIdOf<T>,
 		TokenId = TokenIdOf<T>,
 	{
@@ -97,7 +97,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for module-nft module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// ClassId not found
 		ClassIdNotFound,
 		/// TokenId not found
@@ -116,10 +116,10 @@ decl_error! {
 	}
 }
 
-pub trait Trait:
-	frame_system::Trait + orml_nft::Trait<ClassData = ClassData, TokenData = TokenData> + pallet_proxy::Trait
+pub trait Config:
+	frame_system::Config + orml_nft::Config<ClassData = ClassData, TokenData = TokenData> + pallet_proxy::Config
 {
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 	/// The minimum balance to create class
 	type CreateClassDeposit: Get<Balance>;
 	/// The minimum balance to create token
@@ -134,7 +134,7 @@ pub trait Trait:
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -163,7 +163,7 @@ decl_module! {
 		///		- best case: 231.1 µs
 		///		- worst case: 233.7 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::create_class()]
+		#[weight = <T as Config>::WeightInfo::create_class()]
 		#[transactional]
 		pub fn create_class(origin, metadata: CID, properties: Properties) {
 			let who = ensure_signed(origin)?;
@@ -172,13 +172,13 @@ decl_module! {
 			let deposit = T::CreateClassDeposit::get();
 
 			// it depends https://github.com/paritytech/substrate/issues/7563
-			<T as Trait>::Currency::transfer(&who, &owner, deposit)?;
+			<T as Config>::Currency::transfer(&who, &owner, deposit)?;
 			// Currently, use `free_balance(owner)` instead of `deposit`.
-			<T as Trait>::Currency::reserve(&owner, <T as Trait>::Currency::free_balance(&owner))?;
+			<T as Config>::Currency::reserve(&owner, <T as Config>::Currency::free_balance(&owner))?;
 
 			// owner add proxy delegate to origin
 			let proxy_deposit = <pallet_proxy::Module<T>>::deposit(1u32);
-			<T as pallet_proxy::Trait>::Currency::transfer(&who, &owner, proxy_deposit, KeepAlive)?;
+			<T as pallet_proxy::Config>::Currency::transfer(&who, &owner, proxy_deposit, KeepAlive)?;
 			<pallet_proxy::Module<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
 
 			let data = ClassData { deposit, properties };
@@ -205,7 +205,7 @@ decl_module! {
 		///		- best case: 202 µs
 		///		- worst case: 208 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::mint(*quantity)]
+		#[weight = <T as Config>::WeightInfo::mint(*quantity)]
 		#[transactional]
 		pub fn mint(origin, to: T::AccountId, class_id: ClassIdOf<T>, metadata: CID, quantity: u32) {
 			let who = ensure_signed(origin)?;
@@ -214,7 +214,7 @@ decl_module! {
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
 			let deposit = T::CreateTokenDeposit::get();
 			let total_deposit = deposit * (quantity as u128);
-			<T as Trait>::Currency::reserve(&class_info.owner, total_deposit)?;
+			<T as Config>::Currency::reserve(&class_info.owner, total_deposit)?;
 
 			let data = TokenData { deposit };
 			for _ in 0..quantity {
@@ -240,7 +240,7 @@ decl_module! {
 		///		- best case: 97.81 µs
 		///		- worst case: 99.99 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::transfer()]
+		#[weight = <T as Config>::WeightInfo::transfer()]
 		pub fn transfer(origin, to: T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) {
 			let who = ensure_signed(origin)?;
 			Self::do_transfer(&who, &to, token)?;
@@ -261,7 +261,7 @@ decl_module! {
 		///		- best case: 261.2 µs
 		///		- worst case: 261.4 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::burn()]
+		#[weight = <T as Config>::WeightInfo::burn()]
 		#[transactional]
 		pub fn burn(origin, token: (ClassIdOf<T>, TokenIdOf<T>)) {
 			let who = ensure_signed(origin)?;
@@ -277,8 +277,8 @@ decl_module! {
 			let data = token_info.data;
 			// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
 			// `transfer` not do this check.
-			<T as Trait>::Currency::unreserve(&owner, data.deposit);
-			<T as Trait>::Currency::transfer(&owner, &who, data.deposit)?;
+			<T as Config>::Currency::unreserve(&owner, data.deposit);
+			<T as Config>::Currency::transfer(&owner, &who, data.deposit)?;
 
 			Self::deposit_event(RawEvent::BurnedToken(who, token.0, token.1));
 		}
@@ -299,7 +299,7 @@ decl_module! {
 		///		- best case: 224.3 µs
 		///		- worst case: 224.7 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::destroy_class()]
+		#[weight = <T as Config>::WeightInfo::destroy_class()]
 		#[transactional]
 		pub fn destroy_class(origin, class_id: ClassIdOf<T>, dest: T::AccountId) {
 			let who = ensure_signed(origin)?;
@@ -311,8 +311,8 @@ decl_module! {
 			let data = class_info.data;
 			// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
 			// `transfer` not do this check.
-			<T as Trait>::Currency::unreserve(&owner, data.deposit);
-			<T as Trait>::Currency::transfer(&owner, &dest, data.deposit)?;
+			<T as Config>::Currency::unreserve(&owner, data.deposit);
+			<T as Config>::Currency::transfer(&owner, &dest, data.deposit)?;
 
 			// transfer all free from origin to dest
 			orml_nft::Module::<T>::destroy_class(&who, class_id)?;
@@ -322,7 +322,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	/// Ensured atomic.
 	#[transactional]
 	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
@@ -344,7 +344,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> NFT<T::AccountId> for Module<T> {
+impl<T: Config> NFT<T::AccountId> for Module<T> {
 	type ClassId = ClassIdOf<T>;
 	type TokenId = TokenIdOf<T>;
 	type Balance = NFTBalance;

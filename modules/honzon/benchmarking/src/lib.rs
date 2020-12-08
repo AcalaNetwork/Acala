@@ -24,16 +24,16 @@ use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use support::{ExchangeRate, Price, Rate, Ratio};
 
-pub struct Module<T: Trait>(honzon::Module<T>);
+pub struct Module<T: Config>(honzon::Module<T>);
 
-pub trait Trait: honzon::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait {}
+pub trait Config: honzon::Config + orml_oracle::Config<orml_oracle::Instance1> + prices::Config {}
 
 const SEED: u32 = 0;
 
-fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
+fn feed_price<T: Config>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
 	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
-		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
+		<T as prices::Config>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}
 	Ok(())
 }
@@ -63,10 +63,10 @@ benchmarks! {
 	unauthorize_all {
 		let u in 0 .. 1000;
 		let v in 0 .. 100;
-		let c in 0 .. <T as cdp_engine::Trait>::CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. <T as cdp_engine::Config>::CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 
 		let caller: T::AccountId = account("caller", u, SEED);
-		let currency_ids = <T as cdp_engine::Trait>::CollateralCurrencyIds::get();
+		let currency_ids = <T as cdp_engine::Config>::CollateralCurrencyIds::get();
 
 		for i in 0 .. v {
 			let to: T::AccountId = account("to", i, SEED);
@@ -87,8 +87,8 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let caller: T::AccountId = account("caller", u, SEED);
-		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
-		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
+		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
+		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
@@ -97,7 +97,7 @@ benchmarks! {
 		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
 
 		// set balance
-		<T as loans::Trait>::Currency::update_balance(currency_id, &caller, collateral_amount)?;
+		<T as loans::Config>::Currency::update_balance(currency_id, &caller, collateral_amount)?;
 
 		// feed price
 		feed_price::<T>(currency_id, collateral_price)?;
@@ -117,10 +117,10 @@ benchmarks! {
 	transfer_loan_from {
 		let u in 0 .. 1000;
 
-		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
 		let sender: T::AccountId = account("sender", u, SEED);
 		let receiver: T::AccountId = account("receiver", u, SEED);
-		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
+		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
 		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
@@ -128,7 +128,7 @@ benchmarks! {
 		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
 
 		// set balance
-		<T as loans::Trait>::Currency::update_balance(currency_id, &sender, collateral_amount)?;
+		<T as loans::Config>::Currency::update_balance(currency_id, &sender, collateral_amount)?;
 
 		// feed price
 		feed_price::<T>(currency_id, Price::one())?;

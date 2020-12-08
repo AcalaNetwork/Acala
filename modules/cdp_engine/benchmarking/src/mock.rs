@@ -41,7 +41,7 @@ pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = AccountIndex;
 	type BlockNumber = BlockNumber;
@@ -74,7 +74,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = ();
 	type Balance = Balance;
 	type Amount = Amount;
@@ -89,7 +89,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
@@ -106,7 +106,7 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl orml_currencies::Trait for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -118,7 +118,7 @@ parameter_types! {
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
 }
 
-impl loans::Trait for Runtime {
+impl loans::Config for Runtime {
 	type Event = ();
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
@@ -182,7 +182,7 @@ parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
-impl cdp_treasury::Trait for Runtime {
+impl cdp_treasury::Config for Runtime {
 	type Event = ();
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -200,7 +200,7 @@ parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
-impl dex::Trait for Runtime {
+impl dex::Config for Runtime {
 	type Event = ();
 	type Currency = Currencies;
 	type EnabledCurrencyIds = CollateralCurrencyIds;
@@ -222,7 +222,7 @@ parameter_types! {
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
-impl cdp_engine::Trait for Runtime {
+impl cdp_engine::Config for Runtime {
 	type Event = ();
 	type PriceSource = prices::Module<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
@@ -254,7 +254,7 @@ parameter_types! {
 	pub const MinimumPeriod: u64 = 5;
 }
 
-impl pallet_timestamp::Trait for Runtime {
+impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
@@ -265,7 +265,7 @@ parameter_types! {
 	pub const ExpiresIn: u32 = 1000 * 60 * 30; // 30 mins
 }
 
-impl orml_oracle::Trait for Runtime {
+impl orml_oracle::Config for Runtime {
 	type Event = ();
 	type OnNewData = ();
 	type CombineData = DefaultCombineData<Self, MinimumCount, ExpiresIn>;
@@ -290,7 +290,7 @@ parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::one();
 }
 
-impl prices::Trait for Runtime {
+impl prices::Config for Runtime {
 	type Event = ();
 	type Source = orml_oracle::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -312,7 +312,7 @@ parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::DOT)];
 }
 
-impl emergency_shutdown::Trait for Runtime {
+impl emergency_shutdown::Config for Runtime {
 	type Event = ();
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type PriceSource = prices::Module<Runtime>;
@@ -322,7 +322,7 @@ impl emergency_shutdown::Trait for Runtime {
 }
 pub type EmergencyShutdownModule = emergency_shutdown::Module<Runtime>;
 
-impl crate::Trait for Runtime {}
+impl crate::Config for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

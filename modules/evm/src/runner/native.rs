@@ -3,7 +3,7 @@
 
 use crate::runner::handler::Handler;
 use crate::{
-	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, CreateInfo, Module, Runner as RunnerT, Trait,
+	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Module, Runner as RunnerT,
 	Vicinity,
 };
 use evm::CreateScheme;
@@ -18,11 +18,11 @@ use sp_runtime::{DispatchError, SaturatedConversion, TransactionOutcome};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 #[derive(Default)]
-pub struct Runner<T: Trait> {
+pub struct Runner<T: Config> {
 	_marker: PhantomData<T>,
 }
 
-impl<T: Trait> Runner<T> {
+impl<T: Config> Runner<T> {
 	fn inner_create(
 		source: H160,
 		init: Vec<u8>,
@@ -31,6 +31,7 @@ impl<T: Trait> Runner<T> {
 		assigned_address: Option<H160>,
 		salt: Option<H256>,
 		tag: &'static str,
+		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		debug::debug!(
 			target: "evm",
@@ -45,8 +46,6 @@ impl<T: Trait> Runner<T> {
 			origin: source,
 			creating: true,
 		};
-
-		let config = T::config();
 
 		let mut substate =
 			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
@@ -142,13 +141,14 @@ impl<T: Trait> Runner<T> {
 	}
 }
 
-impl<T: Trait> RunnerT<T> for Runner<T> {
+impl<T: Config> RunnerT<T> for Runner<T> {
 	fn call(
 		source: H160,
 		target: H160,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		debug::debug!(
 			target: "evm",
@@ -163,8 +163,6 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			origin: source,
 			creating: false,
 		};
-
-		let config = T::config();
 
 		let mut substate =
 			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
@@ -200,8 +198,14 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		})
 	}
 
-	fn create(source: H160, init: Vec<u8>, value: BalanceOf<T>, gas_limit: u32) -> Result<CreateInfo, DispatchError> {
-		Self::inner_create(source, init, value, gas_limit, None, None, "create")
+	fn create(
+		source: H160,
+		init: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u32,
+		config: &evm::Config,
+	) -> Result<CreateInfo, DispatchError> {
+		Self::inner_create(source, init, value, gas_limit, None, None, "create", config)
 	}
 
 	fn create2(
@@ -210,8 +214,9 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		salt: H256,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
-		Self::inner_create(source, init, value, gas_limit, None, Some(salt), "create2")
+		Self::inner_create(source, init, value, gas_limit, None, Some(salt), "create2", config)
 	}
 
 	fn create_at_address(
@@ -220,6 +225,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		assigned_address: H160,
 		gas_limit: u32,
+		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		Self::inner_create(
 			source,
@@ -229,6 +235,7 @@ impl<T: Trait> RunnerT<T> for Runner<T> {
 			Some(assigned_address),
 			None,
 			"create-system-contract",
+			config,
 		)
 	}
 }

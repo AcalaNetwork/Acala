@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::or_fun_call)]
 
 pub mod precompiles;
 pub mod runner;
@@ -13,7 +14,7 @@ pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed
 pub use primitives::evm::{Account, CallInfo, CreateInfo, Log, Vicinity};
 
 use codec::{Decode, Encode};
-use evm::Config;
+use evm::Config as EvmConfig;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
@@ -35,7 +36,7 @@ use sp_std::{marker::PhantomData, vec::Vec};
 use support::EVM as EVMTrait;
 
 /// Type alias for currency balance.
-pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// Substrate system chain ID.
 pub struct SystemChainId;
@@ -47,7 +48,7 @@ impl Get<u64> for SystemChainId {
 }
 
 // Initially based on Istanbul hard fork configuration.
-static ACALA_CONFIG: Config = Config {
+static ACALA_CONFIG: EvmConfig = EvmConfig {
 	gas_ext_code: 700,
 	gas_ext_code_hash: 700,
 	gas_balance: 700,
@@ -82,10 +83,11 @@ static ACALA_CONFIG: Config = Config {
 	has_chain_id: true,
 	has_self_balance: true,
 	has_ext_code_hash: true,
+	estimate: false,
 };
 
 /// EVM module trait
-pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
+pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	/// Mapping from address to account id.
 	type AddressMapping: AddressMapping<Self::AccountId>;
 	/// Currency type for withdraw and balance storage.
@@ -102,7 +104,7 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	type StorageDefaultQuota: Get<u32>;
 
 	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 	/// Precompiles associated with this EVM engine.
 	type Precompiles: Precompiles;
 	/// Chain ID of EVM.
@@ -113,7 +115,7 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 	type GasToWeight: Convert<u32, Weight>;
 
 	/// EVM config used in the module.
-	fn config() -> &'static Config {
+	fn config() -> &'static EvmConfig {
 		&ACALA_CONFIG
 	}
 
@@ -127,21 +129,21 @@ pub trait Trait: frame_system::Trait + pallet_timestamp::Trait {
 pub const STORAGE_SIZE: u32 = 64;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-pub struct ContractInfo<T: Trait> {
+pub struct ContractInfo<T: Config> {
 	pub storage_count: u32,
 	pub code_hash: H256,
 	pub existential_deposit: BalanceOf<T>,
 	pub maintainer: H160,
 }
 
-impl<T: Trait> ContractInfo<T> {
+impl<T: Config> ContractInfo<T> {
 	pub fn total_storage_size(&self) -> u32 {
 		self.storage_count.saturating_mul(STORAGE_SIZE)
 	}
 }
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-pub struct AccountInfo<T: Trait> {
+pub struct AccountInfo<T: Config> {
 	pub nonce: T::Index,
 	pub contract_info: Option<ContractInfo<T>>,
 	pub storage_rent_deposit: BalanceOf<T>,
@@ -151,7 +153,7 @@ pub struct AccountInfo<T: Trait> {
 	pub storage_usage: u32,
 }
 
-impl<T: Trait> AccountInfo<T> {
+impl<T: Config> AccountInfo<T> {
 	pub fn new(nonce: T::Index) -> Self {
 		Self {
 			nonce,
@@ -207,7 +209,7 @@ pub struct GenesisAccount<Balance, Index> {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as EVM {
+	trait Store for Module<T: Config> as EVM {
 		Accounts get(fn accounts): map hasher(twox_64_concat) H160 => Option<AccountInfo<T>>;
 		AccountStorages get(fn account_storages):
 			double_map hasher(twox_64_concat) H160, hasher(blake2_128_concat) H256 => H256;
@@ -247,7 +249,7 @@ decl_storage! {
 decl_event! {
 	/// EVM events
 	pub enum Event<T> where
-		<T as frame_system::Trait>::AccountId,
+		<T as frame_system::Config>::AccountId,
 	{
 		/// Ethereum events from contracts.
 		Log(Log),
@@ -279,7 +281,7 @@ decl_event! {
 }
 
 decl_error! {
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// Address not mapped
 		AddressNotMapped,
 		/// Contract not found
@@ -300,7 +302,7 @@ decl_error! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
@@ -326,7 +328,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::call(source, target, input, value, gas_limit)?;
+			let info = T::Runner::call(source, target, input, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Executed(target));
@@ -354,7 +356,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::create(source, init, value, gas_limit)?;
+			let info = T::Runner::create(source, init, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -382,7 +384,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::create2(source, init, salt, value, gas_limit)?;
+			let info = T::Runner::create2(source, init, salt, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -410,7 +412,7 @@ decl_module! {
 
 			let source = T::NetworkContractSource::get();
 			let address = H160::from_low_u64_be(Self::network_contract_index());
-			let info = T::Runner::create_at_address(source, init, value, address, gas_limit)?;
+			let info = T::Runner::create_at_address(source, init, value, address, gas_limit, T::config())?;
 
 			NetworkContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
 
@@ -488,7 +490,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	/// Remove an account.
 	pub fn remove_account(address: &H160) -> Result<(), ExitError> {
 		// Deref code, and remove it if ref count is zero.
@@ -942,7 +944,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> EVMTrait for Module<T> {
+impl<T: Config> EVMTrait for Module<T> {
 	type Balance = BalanceOf<T>;
 
 	fn execute(
@@ -951,8 +953,16 @@ impl<T: Trait> EVMTrait for Module<T> {
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		config: Option<evm::Config>,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
-		let info = T::Runner::call(source, target, input, value, gas_limit)?;
+		let info = T::Runner::call(
+			source,
+			target,
+			input,
+			value,
+			gas_limit,
+			config.as_ref().unwrap_or(T::config()),
+		)?;
 
 		if info.exit_reason.is_succeed() {
 			Module::<T>::deposit_event(Event::<T>::Executed(target));
@@ -969,7 +979,7 @@ impl<T: Trait> EVMTrait for Module<T> {
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
-impl<T: Trait> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
+impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
 		if let Some(address) = T::AddressMapping::to_evm_address(who) {
 			let _ = Module::<T>::remove_account(&address);

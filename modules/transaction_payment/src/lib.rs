@@ -44,8 +44,9 @@ pub trait WeightInfo {
 /// Fee multiplier.
 pub type Multiplier = FixedU128;
 
-type PalletBalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
-type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::NegativeImbalance;
+type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
+type NegativeImbalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::NegativeImbalance;
 
 /// A struct to update the weight multiplier per block. It implements
 /// `Convert<Multiplier, Multiplier>`, meaning that it can convert the previous
@@ -121,7 +122,7 @@ impl MultiplierUpdate for () {
 
 impl<T, S, V, M> MultiplierUpdate for TargetedFeeAdjustment<T, S, V, M>
 where
-	T: frame_system::Trait,
+	T: frame_system::Config,
 	S: Get<Perquintill>,
 	V: Get<Multiplier>,
 	M: Get<Multiplier>,
@@ -139,7 +140,7 @@ where
 
 impl<T, S, V, M> Convert<Multiplier, Multiplier> for TargetedFeeAdjustment<T, S, V, M>
 where
-	T: frame_system::Trait,
+	T: frame_system::Config,
 	S: Get<Perquintill>,
 	V: Get<Multiplier>,
 	M: Get<Multiplier>,
@@ -152,8 +153,8 @@ where
 		let previous = previous.max(min_multiplier);
 
 		// the computed ratio is only among the normal class.
-		let normal_max_weight = <T as frame_system::Trait>::AvailableBlockRatio::get()
-			* <T as frame_system::Trait>::MaximumBlockWeight::get();
+		let normal_max_weight = <T as frame_system::Config>::AvailableBlockRatio::get()
+			* <T as frame_system::Config>::MaximumBlockWeight::get();
 		let normal_block_weight = <frame_system::Module<T>>::block_weight()
 			.get(frame_support::weights::DispatchClass::Normal)
 			.min(normal_max_weight);
@@ -189,7 +190,7 @@ where
 	}
 }
 
-pub trait Trait: system::Trait + orml_currencies::Trait {
+pub trait Config: system::Config + orml_currencies::Config {
 	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
@@ -232,13 +233,13 @@ pub trait Trait: system::Trait + orml_currencies::Trait {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as TransactionPayment {
+	trait Store for Module<T: Config> as TransactionPayment {
 		pub NextFeeMultiplier get(fn next_fee_multiplier): Multiplier = Multiplier::saturating_from_integer(1);
 	}
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		/// All non-native currency ids in Acala.
 		const AllNonNativeCurrencyIds: Vec<CurrencyId> = T::AllNonNativeCurrencyIds::get();
 
@@ -260,7 +261,7 @@ decl_module! {
 
 		/// `on_initialize` to return the weight used in `on_finalize`.
 		fn on_initialize(now: T::BlockNumber) -> Weight {
-			<T as Trait>::WeightInfo::on_finalize()
+			<T as Config>::WeightInfo::on_finalize()
 		}
 
 		fn on_finalize() {
@@ -277,7 +278,7 @@ decl_module! {
 			assert!(
 				<Multiplier as sp_runtime::traits::Bounded>::max_value() >=
 				Multiplier::checked_from_integer(
-					<T as frame_system::Trait>::MaximumBlockWeight::get().try_into().unwrap()
+					<T as frame_system::Config>::MaximumBlockWeight::get().try_into().unwrap()
 				).unwrap(),
 			);
 
@@ -310,7 +311,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T>
+impl<T: Config> Module<T>
 where
 	PalletBalanceOf<T>: FixedPointOperand,
 {
@@ -330,7 +331,7 @@ where
 	where
 		T: Send + Sync,
 		PalletBalanceOf<T>: Send + Sync,
-		<T as frame_system::Trait>::Call: Dispatchable<Info = DispatchInfo>,
+		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
 	{
 		// NOTE: we can actually make it understand `ChargeTransactionPayment`, but
 		// would be some hassle for sure. We have to make it aware of the index of
@@ -376,11 +377,11 @@ where
 	/// ```
 	pub fn compute_fee(
 		len: u32,
-		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
+		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
 		tip: PalletBalanceOf<T>,
 	) -> PalletBalanceOf<T>
 	where
-		<T as frame_system::Trait>::Call: Dispatchable<Info = DispatchInfo>,
+		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
 	{
 		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee)
 	}
@@ -391,12 +392,12 @@ where
 	/// dispatch corrected weight is used for the weight fee calculation.
 	pub fn compute_actual_fee(
 		len: u32,
-		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
-		post_info: &PostDispatchInfoOf<<T as frame_system::Trait>::Call>,
+		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
+		post_info: &PostDispatchInfoOf<<T as frame_system::Config>::Call>,
 		tip: PalletBalanceOf<T>,
 	) -> PalletBalanceOf<T>
 	where
-		<T as frame_system::Trait>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
 		Self::compute_fee_raw(len, post_info.calc_actual_weight(info), tip, post_info.pays_fee(info))
 	}
@@ -428,14 +429,14 @@ where
 	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
 		// cap the weight to the maximum defined in runtime, otherwise it will be the
 		// `Bounded` maximum of its data type, which is not desired.
-		let capped_weight = weight.min(<T as frame_system::Trait>::MaximumBlockWeight::get());
+		let capped_weight = weight.min(<T as frame_system::Config>::MaximumBlockWeight::get());
 		T::WeightToFee::calc(&capped_weight)
 	}
 }
 
 impl<T> Convert<Weight, PalletBalanceOf<T>> for Module<T>
 where
-	T: Trait,
+	T: Config,
 	PalletBalanceOf<T>: FixedPointOperand,
 {
 	/// Compute the fee for the specified weight.
@@ -452,9 +453,9 @@ where
 /// Require the transactor pay for themselves and maybe include a tip to gain
 /// additional priority in the queue.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
-pub struct ChargeTransactionPayment<T: Trait + Send + Sync>(#[codec(compact)] PalletBalanceOf<T>);
+pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] PalletBalanceOf<T>);
 
-impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
+impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 	#[cfg(feature = "std")]
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		write!(f, "ChargeTransactionPayment<{:?}>", self.0)
@@ -465,9 +466,9 @@ impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> 
 	}
 }
 
-impl<T: Trait + Send + Sync> ChargeTransactionPayment<T>
+impl<T: Config + Send + Sync> ChargeTransactionPayment<T>
 where
-	<T as frame_system::Trait>::Call:
+	<T as frame_system::Config>::Call:
 		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
@@ -479,8 +480,8 @@ where
 	fn withdraw_fee(
 		&self,
 		who: &T::AccountId,
-		_call: &<T as frame_system::Trait>::Call,
-		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
+		_call: &<T as frame_system::Config>::Call,
+		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
 		len: usize,
 	) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
 		// pay any fees.
@@ -494,10 +495,10 @@ where
 		};
 
 		// check native balance if is enough
-		let native_is_enough = <T as Trait>::Currency::free_balance(who)
+		let native_is_enough = <T as Config>::Currency::free_balance(who)
 			.checked_sub(&fee)
 			.map_or(false, |new_free_balance| {
-				<T as Trait>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
+				<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
 			});
 
 		// try to use non-native currency to swap native currency by exchange with DEX
@@ -523,7 +524,7 @@ where
 					who,
 					&trading_path,
 					balance_fee,
-					<T as Trait>::MultiCurrency::free_balance(currency_id, who),
+					<T as Config>::MultiCurrency::free_balance(currency_id, who),
 					price_impact_limit,
 				)
 				.is_ok()
@@ -535,7 +536,7 @@ where
 		}
 
 		// withdraw native currency as fee
-		match <T as Trait>::Currency::withdraw(who, fee, reason, ExistenceRequirement::KeepAlive) {
+		match <T as Config>::Currency::withdraw(who, fee, reason, ExistenceRequirement::KeepAlive) {
 			Ok(imbalance) => Ok((fee, Some(imbalance))),
 			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
@@ -555,7 +556,7 @@ where
 	/// weight) with the same `fee` ends up having lower priority.
 	fn get_priority(
 		len: usize,
-		info: &DispatchInfoOf<<T as frame_system::Trait>::Call>,
+		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
 		final_fee: PalletBalanceOf<T>,
 	) -> TransactionPriority {
 		let weight_saturation = T::MaximumBlockWeight::get() / info.weight.max(1);
@@ -569,15 +570,15 @@ where
 	}
 }
 
-impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
+impl<T: Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
-	<T as frame_system::Trait>::Call:
+	<T as frame_system::Config>::Call:
 		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
-	type Call = <T as frame_system::Trait>::Call;
+	type Call = <T as frame_system::Config>::Call;
 	type AdditionalSigned = ();
 	type Pre = (
 		PalletBalanceOf<T>,
@@ -626,7 +627,7 @@ where
 		if let Some(payed) = imbalance {
 			let actual_fee = Module::<T>::compute_actual_fee(len as u32, info, post_info, tip);
 			let refund = fee.saturating_sub(actual_fee);
-			let actual_payment = match <T as Trait>::Currency::deposit_into_existing(&who, refund) {
+			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {
 					// The refund cannot be larger than the up front payed max weight.
 					// `PostDispatchInfo::calc_unspent` guards against such a case.
@@ -642,7 +643,7 @@ where
 			let imbalances = actual_payment.split(tip);
 
 			// distribute fee
-			<T as Trait>::OnTransactionPayment::on_unbalanceds(
+			<T as Config>::OnTransactionPayment::on_unbalanceds(
 				Some(imbalances.0).into_iter().chain(Some(imbalances.1)),
 			);
 		}

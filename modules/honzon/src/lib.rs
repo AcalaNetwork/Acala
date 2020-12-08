@@ -30,15 +30,15 @@ pub trait WeightInfo {
 	fn transfer_loan_from() -> Weight;
 }
 
-pub trait Trait: system::Trait + cdp_engine::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Config: system::Config + cdp_engine::Config {
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
 	/// Weight information for the extrinsics in this module.
 	type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Honzon {
+	trait Store for Module<T: Config> as Honzon {
 		/// The authorization relationship map from
 		/// Authorizer -> (CollateralType, Authorizee) -> Authorized
 		pub Authorization get(fn authorization): double_map hasher(twox_64_concat) T::AccountId, hasher(blake2_128_concat) (CurrencyId, T::AccountId) => bool;
@@ -47,7 +47,7 @@ decl_storage! {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as system::Trait>::AccountId,
+		<T as system::Config>::AccountId,
 		CurrencyId = CurrencyId,
 	{
 		/// Authorize someone to operate the loan of specific collateral. \[authorizer, authorizee, collateral_type\]
@@ -61,7 +61,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for the honzon module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		// No authorization
 		NoAuthorization,
 		// The system has been shutdown
@@ -70,7 +70,7 @@ decl_error! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -89,7 +89,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 246.2 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::adjust_loan()]
+		#[weight = <T as Config>::WeightInfo::adjust_loan()]
 		#[transactional]
 		pub fn adjust_loan(
 			origin,
@@ -119,7 +119,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 178.2 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::transfer_loan_from()]
+		#[weight = <T as Config>::WeightInfo::transfer_loan_from()]
 		#[transactional]
 		pub fn transfer_loan_from(
 			origin,
@@ -144,7 +144,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 27.82 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::authorize()]
+		#[weight = <T as Config>::WeightInfo::authorize()]
 		#[transactional]
 		pub fn authorize(
 			origin,
@@ -168,7 +168,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 28.14 µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::unauthorize()]
+		#[weight = <T as Config>::WeightInfo::unauthorize()]
 		#[transactional]
 		pub fn unauthorize(
 			origin,
@@ -189,7 +189,7 @@ decl_module! {
 		/// -------------------
 		/// Base Weight: 0 + 3.8 * M + 128.4 * C µs
 		/// # </weight>
-		#[weight = <T as Trait>::WeightInfo::unauthorize_all(<T as cdp_engine::Trait>::CollateralCurrencyIds::get().len() as u32)]
+		#[weight = <T as Config>::WeightInfo::unauthorize_all(<T as cdp_engine::Config>::CollateralCurrencyIds::get().len() as u32)]
 		#[transactional]
 		pub fn unauthorize_all(origin) {
 			let from = ensure_signed(origin)?;
@@ -199,7 +199,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	/// Check if `from` has the authorization of `to` under `currency_id`
 	fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		ensure!(

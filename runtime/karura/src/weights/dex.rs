@@ -8,7 +8,7 @@ use frame_support::weights::{constants::RocksDbWeight as DbWeight, Weight};
 use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Trait> module_dex::WeightInfo for WeightInfo<T> {
+impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	fn add_liquidity(deposit: bool) -> Weight {
 		if deposit {
 			(127_000_000 as Weight)
@@ -40,5 +40,20 @@ impl<T: frame_system::Trait> module_dex::WeightInfo for WeightInfo<T> {
 		(82_000_000 as Weight)
 			.saturating_add(DbWeight::get().reads(12 as Weight))
 			.saturating_add(DbWeight::get().writes(9 as Weight))
+	}
+	fn list_trading_pair() -> Weight {
+		(22_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(2 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
+	}
+	fn enable_trading_pair() -> Weight {
+		(17_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(1 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
+	}
+	fn disable_trading_pair() -> Weight {
+		(18_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(1 as Weight))
+			.saturating_add(DbWeight::get().writes(1 as Weight))
 	}
 }

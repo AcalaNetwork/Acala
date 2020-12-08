@@ -5,7 +5,7 @@ pub struct DebitExchangeRateConvertor<T>(marker::PhantomData<T>);
 
 impl<T> Convert<(CurrencyId, Balance), Balance> for DebitExchangeRateConvertor<T>
 where
-	T: Trait,
+	T: Config,
 {
 	fn convert((currency_id, balance): (CurrencyId, Balance)) -> Balance {
 		<Module<T>>::get_debit_exchange_rate(currency_id).saturating_mul_int(balance)

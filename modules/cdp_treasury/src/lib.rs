@@ -36,8 +36,8 @@ pub trait WeightInfo {
 	fn set_collateral_auction_maximum_size() -> Weight;
 }
 
-pub trait Trait: system::Trait {
-	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
+pub trait Config: system::Config {
+	type Event: From<Event> + Into<<Self as system::Config>::Event>;
 
 	/// The origin which may update parameters and handle
 	/// surplus/debit/collateral. Root can always do this.
@@ -80,7 +80,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for cdp treasury module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// The collateral amount of CDP treasury is not enough
 		CollateralNotEnough,
 		/// The surplus pool of CDP treasury is not enough
@@ -93,7 +93,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as CDPTreasury {
+	trait Store for Module<T: Config> as CDPTreasury {
 		/// The maximum amount of collateral amount for sale per collateral auction
 		pub CollateralAuctionMaximumSize get(fn collateral_auction_maximum_size): map hasher(twox_64_concat) CurrencyId => Balance;
 
@@ -114,7 +114,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -192,7 +192,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	/// Get account of cdp treasury module.
 	pub fn account_id() -> T::AccountId {
 		T::ModuleId::get().into_account()
@@ -230,7 +230,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
+impl<T: Config> CDPTreasury<T::AccountId> for Module<T> {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 
@@ -289,7 +289,7 @@ impl<T: Trait> CDPTreasury<T::AccountId> for Module<T> {
 	}
 }
 
-impl<T: Trait> CDPTreasuryExtended<T::AccountId> for Module<T> {
+impl<T: Config> CDPTreasuryExtended<T::AccountId> for Module<T> {
 	/// Swap exact amount of collateral in auction to stable,
 	/// return actual target stable amount
 	fn swap_exact_collateral_in_auction_to_stable(

@@ -17,7 +17,7 @@ use std::{collections::BTreeMap, str::FromStr};
 /// Mock address mapping.
 pub struct MockAddressMapping<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Trait> AddressMapping<AccountId32> for MockAddressMapping<T>
+impl<T: Config> AddressMapping<AccountId32> for MockAddressMapping<T>
 where
 	T::AccountId: From<AccountId32> + Into<AccountId32>,
 {
@@ -69,7 +69,7 @@ parameter_types! {
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
-impl frame_system::Trait for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = ();
 	type Origin = Origin;
 	type Call = OuterCall;
@@ -100,7 +100,7 @@ impl frame_system::Trait for Test {
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
-impl pallet_balances::Trait for Test {
+impl pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
 	type Event = TestEvent;
@@ -113,7 +113,7 @@ impl pallet_balances::Trait for Test {
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
-impl pallet_timestamp::Trait for Test {
+impl pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
@@ -126,7 +126,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Test {
+impl orml_tokens::Config for Test {
 	type Event = TestEvent;
 	type Balance = u64;
 	type Amount = Amount;
@@ -141,7 +141,7 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Trait for Test {
+impl orml_currencies::Config for Test {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -171,7 +171,7 @@ ord_parameter_types! {
 	pub const StorageDefaultQuota: u32 = 400;
 }
 
-impl Trait for Test {
+impl Config for Test {
 	type AddressMapping = MockAddressMapping<Test>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
@@ -253,11 +253,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn balance(address: H160) -> u64 {
-	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::to_account(&address);
 	Balances::free_balance(account_id)
 }
 
 pub fn reserved_balance(address: H160) -> u64 {
-	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::to_account(&address);
 	Balances::reserved_balance(account_id)
 }

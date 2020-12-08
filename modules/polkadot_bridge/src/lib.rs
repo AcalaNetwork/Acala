@@ -27,7 +27,7 @@ pub struct SubAccountStatus {
 	pub mock_reward_rate: Rate,
 }
 
-pub trait Trait: system::Trait {
+pub trait Config: system::Config {
 	type DOTCurrency: BasicCurrency<Self::AccountId, Balance = Balance>;
 	type OnNewEra: OnNewEra<EraIndex>;
 	type BondingDuration: Get<EraIndex>;
@@ -37,14 +37,14 @@ pub trait Trait: system::Trait {
 
 decl_error! {
 	/// Error for polkadot bridge module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		NotEnough,
 		Overflow,
 	}
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as PolkadotBridge {
+	trait Store for Module<T: Config> as PolkadotBridge {
 		pub CurrentEra get(fn current_era): EraIndex;
 		pub EraStartBlockNumber get(fn era_start_block_number): T::BlockNumber;
 		pub ForcedEra get(fn forced_era): Option<T::BlockNumber>;
@@ -54,7 +54,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
 		const BondingDuration: EraIndex = T::BondingDuration::get();
@@ -155,7 +155,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn new_era(now: T::BlockNumber) {
 		let new_era = CurrentEra::mutate(|era| {
 			*era += 1;
@@ -298,13 +298,13 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> PolkadotBridgeType<T::BlockNumber, EraIndex> for Module<T> {
+impl<T: Config> PolkadotBridgeType<T::BlockNumber, EraIndex> for Module<T> {
 	type BondingDuration = T::BondingDuration;
 	type EraLength = T::EraLength;
 	type PolkadotAccountId = T::PolkadotAccountId;
 }
 
-impl<T: Trait> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraIndex> for Module<T> {
+impl<T: Config> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraIndex> for Module<T> {
 	fn bond_extra(account_index: u32, amount: Balance) -> DispatchResult {
 		Self::sub_account_bond_extra(account_index, amount)
 	}
@@ -338,7 +338,7 @@ impl<T: Trait> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraInde
 	}
 }
 
-impl<T: Trait> PolkadotBridgeState<Balance, EraIndex> for Module<T> {
+impl<T: Config> PolkadotBridgeState<Balance, EraIndex> for Module<T> {
 	fn staking_ledger(account_index: u32) -> PolkadotStakingLedger<Balance, EraIndex> {
 		let status = Self::sub_accounts(account_index);
 		let active = status.bonded;
@@ -379,4 +379,4 @@ impl<T: Trait> PolkadotBridgeState<Balance, EraIndex> for Module<T> {
 	}
 }
 
-impl<T: Trait> PolkadotBridge<T::AccountId, T::BlockNumber, Balance, EraIndex> for Module<T> {}
+impl<T: Config> PolkadotBridge<T::AccountId, T::BlockNumber, Balance, EraIndex> for Module<T> {}

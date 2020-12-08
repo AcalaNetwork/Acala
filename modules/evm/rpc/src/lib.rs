@@ -6,12 +6,14 @@ use rustc_hex::ToHex;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_core::Bytes;
+use sp_rpc::number::NumberOrHex;
 use sp_runtime::{
 	codec::Codec,
 	generic::BlockId,
 	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
 	SaturatedConversion,
 };
+use std::convert::{TryFrom, TryInto};
 
 use call_request::CallRequest;
 pub use module_evm::ExitReason;
@@ -41,7 +43,8 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 		}),
 		ExitReason::Revert(_) => Err(Error {
 			code: ErrorCode::InternalError,
-			message: format!("execution revert: {}", decode_revert_message(data)),
+			message: decode_revert_message(data)
+				.map_or("execution revert".into(), |data| format!("execution revert: {}", data)),
 			data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
 		}),
 		ExitReason::Fatal(e) => Err(Error {
@@ -52,8 +55,7 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	}
 }
 
-fn decode_revert_message(data: &[u8]) -> String {
-	let invalid: String = "invalid revert message".into();
+fn decode_revert_message(data: &[u8]) -> Option<String> {
 	// A minimum size of error function selector (4) + offset (32) + string length
 	// (32) should contain a utf-8 encoded revert reason.
 	let msg_start: usize = 68;
@@ -61,14 +63,14 @@ fn decode_revert_message(data: &[u8]) -> String {
 		let message_len = U256::from(&data[36..msg_start]).saturated_into::<usize>();
 		let msg_end = msg_start + message_len;
 		if data.len() < msg_end {
-			return invalid;
+			return None;
 		}
 		let body: &[u8] = &data[msg_start..msg_end];
 		if let Ok(reason) = std::str::from_utf8(body) {
-			return reason.to_string();
+			return Some(reason.to_string());
 		}
 	}
-	invalid
+	None
 }
 
 pub struct EVMApi<B, C, Balance> {
@@ -85,14 +87,18 @@ impl<B, C, Balance> EVMApi<B, C, Balance> {
 	}
 }
 
-impl<B, C, Balance> EVMApiT<B, Balance> for EVMApi<B, C, Balance>
+fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
+	val.into_u256().try_into().map_err(|_| ())
+}
+
+impl<B, C, Balance> EVMApiT<B> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
 	C::Api: EVMRuntimeRPCApi<B, Balance>,
-	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128>,
 {
-	fn call(&self, request: CallRequest<Balance>, _: Option<B>) -> Result<Bytes> {
+	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -108,6 +114,18 @@ where
 
 		let api = self.client.runtime_api();
 
+		let balance_value = if let Some(value) = value {
+			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
+		} else {
+			Ok(Default::default())
+		};
+
+		let balance_value = balance_value.map_err(|_| Error {
+			code: ErrorCode::InvalidParams,
+			message: format!("Invalid parameter value: {:?}", value),
+			data: None,
+		})?;
+
 		match to {
 			Some(to) => {
 				let info = api
@@ -116,8 +134,9 @@ where
 						from.unwrap_or_default(),
 						to,
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
+						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
@@ -132,8 +151,9 @@ where
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
+						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
@@ -145,7 +165,7 @@ where
 		}
 	}
 
-	fn estimate_gas(&self, request: CallRequest<Balance>, _: Option<B>) -> Result<U256> {
+	fn estimate_gas(&self, request: CallRequest, _: Option<B>) -> Result<U256> {
 		let hash = self.client.info().best_hash;
 
 		let CallRequest {
@@ -161,6 +181,18 @@ where
 
 		let api = self.client.runtime_api();
 
+		let balance_value = if let Some(value) = value {
+			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
+		} else {
+			Ok(Default::default())
+		};
+
+		let balance_value = balance_value.map_err(|_| Error {
+			code: ErrorCode::InvalidParams,
+			message: format!("Invalid parameter value: {:?}", value),
+			data: None,
+		})?;
+
 		let used_gas = match to {
 			Some(to) => {
 				let info = api
@@ -169,8 +201,9 @@ where
 						from.unwrap_or_default(),
 						to,
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
@@ -185,8 +218,9 @@ where
 						&BlockId::Hash(hash),
 						from.unwrap_or_default(),
 						data,
-						value.unwrap_or_default(),
+						balance_value,
 						gas_limit,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
@@ -204,14 +238,14 @@ where
 #[test]
 fn decode_revert_message_should_work() {
 	use sp_core::bytes::from_hex;
-	assert_eq!(decode_revert_message(&vec![]), "invalid revert message");
+	assert_eq!(decode_revert_message(&vec![]), None);
 
 	let data = from_hex("0x8c379a00000000000000000000000000000000000000000000000000000000000000020").unwrap();
-	assert_eq!(decode_revert_message(&data), "invalid revert message");
+	assert_eq!(decode_revert_message(&data), None);
 
 	let data = from_hex("0x8c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d6572726f72206d65737361676").unwrap();
-	assert_eq!(decode_revert_message(&data), "invalid revert message");
+	assert_eq!(decode_revert_message(&data), None);
 
 	let data = from_hex("0x8c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d6572726f72206d65737361676500000000000000000000000000000000000000").unwrap();
-	assert_eq!(decode_revert_message(&data), "error message");
+	assert_eq!(decode_revert_message(&data), Some("error message".into()));
 }
