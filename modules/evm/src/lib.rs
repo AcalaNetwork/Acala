@@ -565,7 +565,7 @@ impl<T: Trait> Module<T> {
 			storage_count,
 			code_hash,
 			existential_deposit: T::ContractExistentialDeposit::get(),
-			maintainer: maintainer.clone(),
+			maintainer: *maintainer,
 		};
 
 		let code_size = code.len() as u32;
