@@ -214,6 +214,7 @@ decl_storage! {
 
 		Codes get(fn codes): map hasher(identity) H256 => Vec<u8>;
 		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
+		/// Pending transfer maintainers: double_map (contract, new_maintainer) => TransferMaintainerDeposit
 		PendingTransferMaintainers get(fn pending_transfer_maintainers): double_map hasher(twox_64_concat) H160, hasher(twox_64_concat) H160 => Option<BalanceOf<T>>;
 
 		/// Next available system contract address.
@@ -460,11 +461,11 @@ decl_module! {
 		#[transactional]
 		pub fn cancel_transfer_maintainer(origin, contract: H160) {
 			let who = ensure_signed(origin)?;
-			let invalid_maintainer = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let requester = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			Self::do_cancel_transfer_maintainer(who, contract, invalid_maintainer)?;
+			Self::do_cancel_transfer_maintainer(who, contract, requester)?;
 
-			Module::<T>::deposit_event(Event::<T>::CanceledTransferMaintainer(contract, invalid_maintainer));
+			Module::<T>::deposit_event(Event::<T>::CanceledTransferMaintainer(contract, requester));
 		}
 
 		#[weight = 0]
@@ -825,18 +826,16 @@ impl<T: Trait> Module<T> {
 		Ok(())
 	}
 
-	fn do_cancel_transfer_maintainer(who: T::AccountId, contract: H160, invalid_maintainer: H160) -> DispatchResult {
+	fn do_cancel_transfer_maintainer(who: T::AccountId, contract: H160, requester: H160) -> DispatchResult {
 		PendingTransferMaintainers::<T>::mutate_exists(
 			contract,
-			invalid_maintainer,
+			requester,
 			|maybe_transfer_maintainer_deposit| -> DispatchResult {
 				let transfer_maintainer_deposit = maybe_transfer_maintainer_deposit
-					.as_mut()
+					.take()
 					.ok_or(Error::<T>::PendingTransferMaintainersNotExists)?;
 
-				T::Currency::unreserve(&who, *transfer_maintainer_deposit);
-
-				*maybe_transfer_maintainer_deposit = None;
+				T::Currency::unreserve(&who, transfer_maintainer_deposit);
 				Ok(())
 			},
 		)
@@ -848,7 +847,7 @@ impl<T: Trait> Module<T> {
 			new_maintainer,
 			|maybe_transfer_maintainer_deposit| -> DispatchResult {
 				let transfer_maintainer_deposit = maybe_transfer_maintainer_deposit
-					.as_mut()
+					.take()
 					.ok_or(Error::<T>::PendingTransferMaintainersNotExists)?;
 
 				Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
@@ -862,13 +861,12 @@ impl<T: Trait> Module<T> {
 					ensure!(who == maintainer_account, Error::<T>::NoPermission);
 
 					let new_maintainer_account = T::AddressMapping::to_account(&new_maintainer);
-					T::Currency::unreserve(&new_maintainer_account, *transfer_maintainer_deposit);
+					T::Currency::unreserve(&new_maintainer_account, transfer_maintainer_deposit);
 
 					contract_info.maintainer = new_maintainer;
 					Ok(())
 				})?;
 
-				*maybe_transfer_maintainer_deposit = None;
 				Ok(())
 			},
 		)
@@ -880,7 +878,7 @@ impl<T: Trait> Module<T> {
 			invalid_maintainer,
 			|maybe_transfer_maintainer_deposit| -> DispatchResult {
 				let transfer_maintainer_deposit = maybe_transfer_maintainer_deposit
-					.as_mut()
+					.take()
 					.ok_or(Error::<T>::PendingTransferMaintainersNotExists)?;
 
 				Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
@@ -898,9 +896,8 @@ impl<T: Trait> Module<T> {
 
 				// repatriate_reserved the reserve from requester to contract maintainer
 				let from = T::AddressMapping::to_account(&invalid_maintainer);
-				T::Currency::repatriate_reserved(&from, &who, *transfer_maintainer_deposit, BalanceStatus::Free)?;
+				T::Currency::repatriate_reserved(&from, &who, transfer_maintainer_deposit, BalanceStatus::Free)?;
 
-				*maybe_transfer_maintainer_deposit = None;
 				Ok(())
 			},
 		)
