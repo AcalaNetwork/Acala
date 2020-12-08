@@ -53,6 +53,7 @@ parameter_types! {
 	pub const MaximumBlockWeight: u32 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
+	pub static ExtrinsicBaseWeight: u64 = 0;
 }
 
 impl frame_system::Config for Runtime {
@@ -162,6 +163,7 @@ parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD];
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
 	pub const StableCurrencyId: CurrencyId = AUSD;
+	pub static TransactionByteFee: u128 = 1;
 }
 
 impl Config for Runtime {
@@ -181,23 +183,7 @@ impl Config for Runtime {
 pub type TransactionPayment = Module<Runtime>;
 
 thread_local! {
-	static EXTRINSIC_BASE_WEIGHT: RefCell<u64> = RefCell::new(0);
-	static TRANSACTION_BYTE_FEE: RefCell<u128> = RefCell::new(1);
 	static WEIGHT_TO_FEE: RefCell<u128> = RefCell::new(1);
-}
-
-pub struct ExtrinsicBaseWeight;
-impl Get<u64> for ExtrinsicBaseWeight {
-	fn get() -> u64 {
-		EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow())
-	}
-}
-
-pub struct TransactionByteFee;
-impl Get<u128> for TransactionByteFee {
-	fn get() -> u128 {
-		TRANSACTION_BYTE_FEE.with(|v| *v.borrow())
-	}
 }
 
 pub struct WeightToFee;
