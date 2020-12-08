@@ -21,10 +21,14 @@ use orml_traits::{Change, DataFeeder, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use support::{DEXManager, Price, Rate, Ratio};
 
-pub struct Module<T: Trait>(cdp_engine::Module<T>);
+pub struct Module<T: Config>(cdp_engine::Module<T>);
 
-pub trait Trait:
-	cdp_engine::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait + dex::Trait + emergency_shutdown::Trait
+pub trait Config:
+	cdp_engine::Config
+	+ orml_oracle::Config<orml_oracle::Instance1>
+	+ prices::Config
+	+ dex::Config
+	+ emergency_shutdown::Config
 {
 }
 
@@ -35,25 +39,25 @@ fn dollar(d: u32) -> Balance {
 	d.saturating_mul(1_000_000_000_000_000_000)
 }
 
-fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
+fn feed_price<T: Config>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
 	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
-		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
+		<T as prices::Config>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}
 	Ok(())
 }
 
-fn inject_liquidity<T: Trait>(
+fn inject_liquidity<T: Config>(
 	maker: T::AccountId,
 	currency_id: CurrencyId,
 	max_amount: Balance,
 	max_other_currency_amount: Balance,
 ) -> Result<(), &'static str> {
-	let base_currency_id = <T as cdp_engine::Trait>::GetStableCurrencyId::get();
+	let base_currency_id = <T as cdp_engine::Config>::GetStableCurrencyId::get();
 
 	// set balance
-	<T as dex::Trait>::Currency::update_balance(currency_id, &maker, max_amount.unique_saturated_into())?;
-	<T as dex::Trait>::Currency::update_balance(
+	<T as dex::Config>::Currency::update_balance(currency_id, &maker, max_amount.unique_saturated_into())?;
+	<T as dex::Config>::Currency::update_balance(
 		base_currency_id,
 		&maker,
 		max_other_currency_amount.unique_saturated_into(),
@@ -71,7 +75,7 @@ fn inject_liquidity<T: Trait>(
 	Ok(())
 }
 
-fn emergency_shutdown<T: Trait>() -> Result<(), DispatchError> {
+fn emergency_shutdown<T: Config>() -> Result<(), DispatchError> {
 	emergency_shutdown::Module::<T>::emergency_shutdown(RawOrigin::Root.into())
 }
 
@@ -99,8 +103,8 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let owner: T::AccountId = account("owner", u, SEED);
-		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
-		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
+		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
+		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
@@ -108,7 +112,7 @@ benchmarks! {
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		// set balance
-		<T as loans::Trait>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
+		<T as loans::Config>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
 
 		// feed price
 		feed_price::<T>(currency_id, collateral_price)?;
@@ -145,23 +149,23 @@ benchmarks! {
 
 		let owner: T::AccountId = account("owner", u, SEED);
 		let funder: T::AccountId = account("funder", u, SEED);
-		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
-		let base_currency_id: CurrencyId = <T as cdp_engine::Trait>::GetStableCurrencyId::get();
-		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
+		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
+		let base_currency_id: CurrencyId = <T as cdp_engine::Config>::GetStableCurrencyId::get();
+		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
 		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
-		let max_slippage_swap_with_dex = <T as cdp_engine::Trait>::MaxSlippageSwapWithDEX::get();
+		let max_slippage_swap_with_dex = <T as cdp_engine::Config>::MaxSlippageSwapWithDEX::get();
 		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(min_debit_value * 10);
 		let base_amount_in_dex = collateral_amount_in_dex * 2;
 
 		inject_liquidity::<T>(funder.clone(), currency_id, base_amount_in_dex, collateral_amount_in_dex)?;
 
 		// set balance
-		<T as loans::Trait>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
+		<T as loans::Config>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
 
 		// feed price
 		feed_price::<T>(currency_id, collateral_price)?;
@@ -201,8 +205,8 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let owner: T::AccountId = account("owner", u, SEED);
-		let currency_id: CurrencyId = <T as cdp_engine::Trait>::CollateralCurrencyIds::get()[0];
-		let min_debit_value = <T as cdp_engine::Trait>::MinimumDebitValue::get();
+		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
+		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
@@ -210,7 +214,7 @@ benchmarks! {
 		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
 
 		// set balance
-		<T as loans::Trait>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
+		<T as loans::Config>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
 
 		// feed price
 		feed_price::<T>(currency_id, collateral_price)?;

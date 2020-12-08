@@ -22,15 +22,15 @@ pub struct InvokeContext {
 	pub source: H160,
 }
 
-pub type BalanceOf<T> = <<T as Trait>::EVM as EVM>::Balance;
+pub type BalanceOf<T> = <<T as Config>::EVM as EVM>::Balance;
 
 /// EvmBridge module trait
-pub trait Trait: frame_system::Trait {
+pub trait Config: frame_system::Config {
 	type EVM: EVM;
 }
 
 decl_error! {
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		Revert,
 		Fatal,
 		Error
@@ -38,12 +38,12 @@ decl_error! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 	}
 }
 
-impl<T: Trait> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
+impl<T: Config> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
@@ -106,7 +106,7 @@ impl<T: Trait> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn handle_exit_reason(exit_reason: ExitReason) -> Result<(), DispatchError> {
 		match exit_reason {
 			ExitReason::Succeed(_) => Ok(()),

@@ -35,8 +35,8 @@ pub trait WeightInfo {
 	fn refund_collaterals(c: u32) -> Weight;
 }
 
-pub trait Trait: system::Trait + loans::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Config: system::Config + loans::Config {
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
 	/// The list of valid collateral currency types
 	type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
@@ -61,8 +61,8 @@ pub trait Trait: system::Trait + loans::Trait {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as system::Trait>::AccountId,
-		<T as system::Trait>::BlockNumber,
+		<T as system::Config>::AccountId,
+		<T as system::Config>::BlockNumber,
 		Balance = Balance,
 		CurrencyId = CurrencyId,
 	{
@@ -77,7 +77,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for emergency shutdown module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// System has already been shutdown
 		AlreadyShutdown,
 		/// Must after system shutdown
@@ -92,7 +92,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as EmergencyShutdown {
+	trait Store for Module<T: Config> as EmergencyShutdown {
 		/// Emergency shutdown flag
 		pub IsShutdown get(fn is_shutdown): bool;
 		/// Open final redemption flag
@@ -101,7 +101,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -134,7 +134,7 @@ decl_module! {
 
 			// lock price for every collateral
 			for currency_id in collateral_currency_ids {
-				<T as Trait>::PriceSource::lock_price(currency_id);
+				<T as Config>::PriceSource::lock_price(currency_id);
 			}
 
 			<IsShutdown>::put(true);
@@ -165,8 +165,8 @@ decl_module! {
 			// Ensure there's no debit and surplus auction now, they may bring uncertain surplus to system.
 			// Cancel all surplus auctions and debit auctions to pass the check!
 			ensure!(
-				<T as Trait>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
-				&& <T as Trait>::AuctionManagerHandler::get_total_surplus_in_auction().is_zero(),
+				<T as Config>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
+				&& <T as Config>::AuctionManagerHandler::get_total_surplus_in_auction().is_zero(),
 				Error::<T>::ExistPotentialSurplus,
 			);
 
@@ -177,7 +177,7 @@ decl_module! {
 			for currency_id in collateral_currency_ids {
 				// there's no collateral auction
 				ensure!(
-					<T as Trait>::AuctionManagerHandler::get_total_collateral_in_auction(currency_id).is_zero(),
+					<T as Config>::AuctionManagerHandler::get_total_collateral_in_auction(currency_id).is_zero(),
 					Error::<T>::ExistPotentialSurplus,
 				);
 				// there's on debit in CDP
@@ -213,20 +213,20 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
-			let refund_ratio: Ratio = <T as Trait>::CDPTreasury::get_debit_proportion(amount);
+			let refund_ratio: Ratio = <T as Config>::CDPTreasury::get_debit_proportion(amount);
 			let collateral_currency_ids = T::CollateralCurrencyIds::get();
 
 			// burn caller's stable currency by CDP treasury
-			<T as Trait>::CDPTreasury::burn_debit(&who, amount)?;
+			<T as Config>::CDPTreasury::burn_debit(&who, amount)?;
 
 			let mut refund_assets: Vec<(CurrencyId, Balance)> = vec![];
 			// refund collaterals to caller by CDP treasury
 			for currency_id in collateral_currency_ids {
 				let refund_amount = refund_ratio
-					.saturating_mul_int(<T as Trait>::CDPTreasury::get_total_collaterals(currency_id));
+					.saturating_mul_int(<T as Config>::CDPTreasury::get_total_collaterals(currency_id));
 
 				if !refund_amount.is_zero() {
-					<T as Trait>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount)?;
+					<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount)?;
 					refund_assets.push((currency_id, refund_amount));
 				}
 			}
@@ -236,7 +236,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> EmergencyShutdown for Module<T> {
+impl<T: Config> EmergencyShutdown for Module<T> {
 	fn is_shutdown() -> bool {
 		Self::is_shutdown()
 	}

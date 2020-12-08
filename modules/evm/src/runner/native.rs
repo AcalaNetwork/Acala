@@ -3,7 +3,7 @@
 
 use crate::runner::handler::Handler;
 use crate::{
-	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, CreateInfo, Module, Runner as RunnerT, Trait,
+	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Module, Runner as RunnerT,
 	Vicinity,
 };
 use evm::CreateScheme;
@@ -18,11 +18,11 @@ use sp_runtime::{DispatchError, SaturatedConversion, TransactionOutcome};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 #[derive(Default)]
-pub struct Runner<T: Trait> {
+pub struct Runner<T: Config> {
 	_marker: PhantomData<T>,
 }
 
-impl<T: Trait> Runner<T> {
+impl<T: Config> Runner<T> {
 	fn inner_create(
 		source: H160,
 		init: Vec<u8>,
@@ -137,7 +137,7 @@ impl<T: Trait> Runner<T> {
 	}
 }
 
-impl<T: Trait> RunnerT<T> for Runner<T> {
+impl<T: Config> RunnerT<T> for Runner<T> {
 	fn call(
 		source: H160,
 		target: H160,

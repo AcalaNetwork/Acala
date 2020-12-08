@@ -51,7 +51,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -86,7 +86,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -101,7 +101,7 @@ parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
@@ -117,7 +117,7 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl orml_currencies::Trait for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -134,7 +134,7 @@ parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 }
 
-impl module_dex::Trait for Runtime {
+impl module_dex::Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
@@ -214,7 +214,7 @@ thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;

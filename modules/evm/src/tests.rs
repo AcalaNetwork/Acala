@@ -40,14 +40,14 @@ fn should_calculate_contract_address() {
 			creating: false,
 		};
 
-		let config = <Test as Trait>::config();
+		let config = <Test as Config>::config();
 
 		let handler = crate::runner::handler::Handler::<Test>::new_with_precompile(
 			&vicinity,
 			10000usize,
 			false,
 			config,
-			<Test as Trait>::Precompiles::execute,
+			<Test as Config>::Precompiles::execute,
 		);
 
 		assert_eq!(
@@ -83,12 +83,12 @@ fn should_create_and_call_contract() {
 	new_test_ext().execute_with(|| {
 		// deploy contract
 		let caller = alice();
-		let result = <Test as Trait>::Runner::create(
+		let result = <Test as Config>::Runner::create(
 			caller.clone(),
 			contract,
 			0,
 			1000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
@@ -102,13 +102,13 @@ fn should_create_and_call_contract() {
 		let multiply = from_hex("0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
 
 		// call method `multiply`
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			alice(),
 			contract_address,
 			multiply,
 			0,
 			1000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		).unwrap();
 		assert_eq!(
 			U256::from(from_hex("0x06").unwrap().as_slice()),
@@ -133,7 +133,7 @@ fn create_reverts_with_message() {
 	let contract = from_hex("0x6080604052348015600f57600080fd5b5060006083576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252600d8152602001807f6572726f72206d6573736167650000000000000000000000000000000000000081525060200191505060405180910390fd5b603e8060906000396000f3fe6080604052600080fdfea265627a7a723158204741083d83bf4e3ee8099dd0b3471c81061237c2e8eccfcb513dfa4c04634b5b64736f6c63430005110032").expect("invalid hex");
 	new_test_ext().execute_with(|| {
 		let result =
-			<Test as Trait>::Runner::create(alice(), contract, 0, 12_000_000, <Test as Trait>::config()).unwrap();
+			<Test as Config>::Runner::create(alice(), contract, 0, 12_000_000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
 		assert!(String::from_utf8_lossy(&result.output).contains("error message"));
 	});
@@ -153,32 +153,32 @@ fn call_reverts_with_message() {
 
 	new_test_ext().execute_with(|| {
 		// deploy contract
-		let result = <Test as Trait>::Runner::create(
+		let result = <Test as Config>::Runner::create(
 			caller,
 			contract,
 			0,
 			1000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		).unwrap();
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get());
 
 		let contract_address = result.address;
 
 		// call method `foo`
 		let foo = from_hex("0xc2985578").unwrap();
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			caller,
 			contract_address,
 			foo,
 			0,
 			1000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		).unwrap();
 
-		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get());
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
 		assert_eq!(
 			to_hex(&result.output, true),
@@ -215,24 +215,24 @@ fn should_deploy_payable_contract() {
 		contract.append(&mut stored_value.clone());
 
 		let result =
-			<Test as Trait>::Runner::create(alice(), contract, amount, 100000, <Test as Trait>::config()).unwrap();
+			<Test as Config>::Runner::create(alice(), contract, amount, 100000, <Test as Config>::config()).unwrap();
 		let contract_address = result.address;
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - amount - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - amount - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(contract_address), amount);
 
 		// call getValue()
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			alice(),
 			contract_address,
 			from_hex("0x20965255").unwrap(),
 			amount,
 			100000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		)
 		.unwrap();
 
@@ -240,7 +240,7 @@ fn should_deploy_payable_contract() {
 		assert_eq!(result.output, stored_value);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - 2 * amount - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - 2 * amount - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(contract_address), 2 * amount);
 	});
@@ -274,7 +274,7 @@ fn should_transfer_from_contract() {
 	new_test_ext().execute_with(|| {
 		let amount = 1000u64;
 
-		let result = <Test as Trait>::Runner::create(alice(), contract, 0, 10000000, <Test as Trait>::config())
+		let result = <Test as Config>::Runner::create(alice(), contract, 0, 10000000, <Test as Config>::config())
 			.expect("create shouldn't fail");
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		let contract_address = result.address;
@@ -283,20 +283,20 @@ fn should_transfer_from_contract() {
 		let mut via_transfer = Vec::from(from_hex("0x636e082b").unwrap());
 		via_transfer.append(&mut Vec::from(H256::from(charlie()).as_bytes()));
 
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			alice(),
 			contract_address,
 			via_transfer,
 			amount,
 			1000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		)
 		.expect("call shouldn't fail");
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - 1 * amount - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - 1 * amount - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(charlie()), 1 * amount);
 
@@ -304,13 +304,13 @@ fn should_transfer_from_contract() {
 		let mut via_send = from_hex("0x74be4806").unwrap();
 		via_send.append(&mut Vec::from(H256::from(charlie()).as_bytes()));
 
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			alice(),
 			contract_address,
 			via_send,
 			amount,
 			1000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		)
 		.expect("call shouldn't fail");
 
@@ -318,20 +318,20 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(charlie()), 2 * amount);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - 2 * amount - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - 2 * amount - <Test as Config>::ContractExistentialDeposit::get()
 		);
 
 		// send via call
 		let mut via_call = from_hex("0x830c29ae").unwrap();
 		via_call.append(&mut Vec::from(H256::from(charlie()).as_bytes()));
 
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			alice(),
 			contract_address,
 			via_call,
 			amount,
 			1000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		)
 		.expect("call shouldn't fail");
 
@@ -339,7 +339,7 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(charlie()), 3 * amount);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - 3 * amount - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - 3 * amount - <Test as Config>::ContractExistentialDeposit::get()
 		);
 	})
 }
@@ -361,45 +361,45 @@ fn contract_should_deploy_contracts() {
 	let contract = from_hex("0x608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a40029").unwrap();
 	new_test_ext().execute_with(|| {
 		let result =
-			<Test as Trait>::Runner::create(alice(), contract.clone(), 0, 1000000000, <Test as Trait>::config())
+			<Test as Config>::Runner::create(alice(), contract.clone(), 0, 1000000000, <Test as Config>::config())
 				.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		let factory_contract_address = result.address;
 		assert_eq!(balance(result.address), 0);
 		assert_eq!(
 			reserved_balance(result.address),
-			<Test as Trait>::ContractExistentialDeposit::get()
+			<Test as Config>::ContractExistentialDeposit::get()
 		);
 
 		// Factory.createContract
 		let amount = 1000000000;
 		let create_contract = from_hex("0x412a5a6d").unwrap();
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			alice(),
 			result.address,
 			create_contract,
 			amount,
 			1000000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - amount - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - amount - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(
 			balance(factory_contract_address),
-			amount - <Test as Trait>::ContractExistentialDeposit::get()
+			amount - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
 		assert_eq!(
 			reserved_balance(contract_address),
-			<Test as Trait>::ContractExistentialDeposit::get()
+			<Test as Config>::ContractExistentialDeposit::get()
 		);
 	});
 }
@@ -421,29 +421,29 @@ fn contract_deploy_contracts_failed() {
 	let contract = from_hex("0x608060405234801561001057600080fd5b5061016c806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063412a5a6d14610030575b600080fd5b61003861003a565b005b6000604051610048906100d0565b604051809103906000f080158015610064573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b605b806100dd8339019056fe6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a7231582094976cee5af14bf59c4bae67c79c12eb15de19bc18ad6038f3ee0898273c9c0564736f6c63430005110032a265627a7a72315820e19ae28dbf01eae11c526295a1ac533ea341c74d5724efe43171f6010fc98b3964736f6c63430005110032").unwrap();
 	new_test_ext().execute_with(|| {
 		let result =
-			<Test as Trait>::Runner::create(alice(), contract.clone(), 0, 1000000000, <Test as Trait>::config())
+			<Test as Config>::Runner::create(alice(), contract.clone(), 0, 1000000000, <Test as Config>::config())
 				.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(
 			reserved_balance(result.address),
-			<Test as Trait>::ContractExistentialDeposit::get()
+			<Test as Config>::ContractExistentialDeposit::get()
 		);
 
 		// Factory.createContract
 		// need factory contract pay for the ContractExistentialDeposit. But factory not
 		// payable.
 		let create_contract = from_hex("0x412a5a6d").unwrap();
-		let result = <Test as Trait>::Runner::call(
+		let result = <Test as Config>::Runner::call(
 			alice(),
 			result.address,
 			create_contract,
 			0,
 			1000000000,
-			<Test as Trait>::config(),
+			<Test as Config>::config(),
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
@@ -470,12 +470,12 @@ fn deploy_factory() {
 	let contract = from_hex("0x608060405234801561001057600080fd5b5060405161001d90610121565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663c29855786040518163ffffffff1660e01b815260040160206040518083038186803b1580156100e057600080fd5b505afa1580156100f4573d6000803e3d6000fd5b505050506040513d602081101561010a57600080fd5b81019080805190602001909291905050505061012d565b60a58061017983390190565b603e8061013b6000396000f3fe6080604052600080fdfea265627a7a7231582064177030ee644a03aaf8d65027df9e0331c8bc4b161de25bfb8aa3142848e0f864736f6c634300051100326080604052348015600f57600080fd5b5060878061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336049565b6040518082815260200191505060405180910390f35b6000607b90509056fea265627a7a7231582031e5a4abae00962cfe9875df1b5b0d3ce6624e220cb8c714a948794fcddb6b4f64736f6c63430005110032").unwrap();
 	new_test_ext().execute_with(|| {
 		let result =
-			<Test as Trait>::Runner::create(alice(), contract, 0, 12_000_000, <Test as Trait>::config()).unwrap();
+			<Test as Config>::Runner::create(alice(), contract, 0, 12_000_000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_gas.as_u64(), 95_203u64);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - <Test as Trait>::ContractExistentialDeposit::get() * 2
+			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 	});
 }

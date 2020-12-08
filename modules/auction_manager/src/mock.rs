@@ -63,7 +63,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -98,7 +98,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -109,7 +109,7 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-impl orml_auction::Trait for Runtime {
+impl orml_auction::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
@@ -128,7 +128,7 @@ parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
-impl cdp_treasury::Trait for Runtime {
+impl cdp_treasury::Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -172,7 +172,7 @@ parameter_types! {
 	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
 }
 
-impl module_dex::Trait for Runtime {
+impl module_dex::Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
@@ -207,7 +207,7 @@ parameter_types! {
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Tokens;
 	type Auction = AuctionModule;

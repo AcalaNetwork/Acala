@@ -56,7 +56,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -91,7 +91,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Trait for Runtime {
+impl orml_tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -106,7 +106,7 @@ parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
@@ -122,7 +122,7 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl orml_currencies::Trait for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -143,7 +143,7 @@ parameter_types! {
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
 }
 
-impl loans::Trait for Runtime {
+impl loans::Config for Runtime {
 	type Event = TestEvent;
 	type Convert = MockConvert;
 	type Currency = Tokens;
@@ -222,7 +222,7 @@ parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
-impl cdp_treasury::Trait for Runtime {
+impl cdp_treasury::Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -239,7 +239,7 @@ ord_parameter_types! {
 	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type PriceSource = MockPriceSource;

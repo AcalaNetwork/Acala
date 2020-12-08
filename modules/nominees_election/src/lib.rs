@@ -96,7 +96,7 @@ impl BondingLedger {
 	}
 }
 
-pub trait Trait: system::Trait {
+pub trait Config: system::Config {
 	type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
 	type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 	type MinBondThreshold: Get<Balance>;
@@ -107,7 +107,7 @@ pub trait Trait: system::Trait {
 
 decl_error! {
 	/// Error for nominees election module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		BelowMinBondThreshold,
 		InvalidTargetsLength,
 		TooManyChunks,
@@ -117,7 +117,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as NomineesElection {
+	trait Store for Module<T: Config> as NomineesElection {
 		pub Nominations get(fn nominations): map hasher(twox_64_concat) T::AccountId => Vec<T::PolkadotAccountId>;
 		pub Ledger get(fn ledger): map hasher(twox_64_concat) T::AccountId => BondingLedger;
 		pub Votes get(fn votes): map hasher(twox_64_concat) T::PolkadotAccountId => Balance;
@@ -127,7 +127,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
 		const MinBondThreshold: Balance = T::MinBondThreshold::get();
@@ -258,7 +258,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
 		T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
 		<Ledger<T>>::insert(who, ledger);
@@ -304,14 +304,14 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> NomineesProvider<T::PolkadotAccountId> for Module<T> {
+impl<T: Config> NomineesProvider<T::PolkadotAccountId> for Module<T> {
 	fn nominees() -> Vec<T::PolkadotAccountId> {
 		Self::rebalance();
 		<Nominees<T>>::get()
 	}
 }
 
-impl<T: Trait> OnNewEra<EraIndex> for Module<T> {
+impl<T: Config> OnNewEra<EraIndex> for Module<T> {
 	fn on_new_era(era: EraIndex) {
 		CurrentEra::put(era);
 		Self::rebalance();

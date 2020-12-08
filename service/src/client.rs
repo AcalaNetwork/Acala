@@ -55,7 +55,7 @@ where
 {
 }
 
-/// Trait that abstracts over all available client implementations.
+/// Config that abstracts over all available client implementations.
 ///
 /// For a concrete type there exists [`Client`].
 pub trait AbstractClient<Block, Backend>:

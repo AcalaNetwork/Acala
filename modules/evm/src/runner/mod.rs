@@ -1,13 +1,13 @@
 pub mod handler;
 pub mod native;
 
-use crate::{BalanceOf, Trait};
+use crate::{BalanceOf, Config};
 use primitives::evm::{CallInfo, CreateInfo};
 use sp_core::{H160, H256};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
-pub trait Runner<T: Trait> {
+pub trait Runner<T: Config> {
 	fn call(
 		source: H160,
 		target: H160,

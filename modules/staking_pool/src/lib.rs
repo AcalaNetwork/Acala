@@ -50,10 +50,10 @@ type ChangeRate = Change<Rate>;
 type ChangeRatio = Change<Ratio>;
 
 type PolkadotAccountIdOf<T> =
-	<<T as Trait>::Bridge as PolkadotBridgeType<<T as system::Trait>::BlockNumber, EraIndex>>::PolkadotAccountId;
+	<<T as Config>::Bridge as PolkadotBridgeType<<T as system::Config>::BlockNumber, EraIndex>>::PolkadotAccountId;
 
-pub trait Trait: system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Config: system::Config {
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
 	/// The staking currency id(should be DOT in acala)
 	type StakingCurrencyId: Get<CurrencyId>;
@@ -92,7 +92,7 @@ pub trait Trait: system::Trait {
 decl_event!(
 	pub enum Event<T>
 	where
-		<T as system::Trait>::AccountId,
+		<T as system::Config>::AccountId,
 		Balance = Balance,
 	{
 		/// \[who, bond_staking, issued_liquid\]
@@ -108,7 +108,7 @@ decl_event!(
 
 decl_error! {
 	/// Error for staking pool module.
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		LiquidCurrencyNotEnough,
 		InvalidEra,
 		Overflow,
@@ -118,7 +118,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as StakingPool {
+	trait Store for Module<T: Config> as StakingPool {
 		pub CurrentEra get(fn current_era): EraIndex;
 
 		pub NextEraUnbond get(fn next_era_unbond): (Balance, Balance);
@@ -136,7 +136,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
@@ -191,7 +191,7 @@ decl_module! {
 }
 
 /// Impl helper for managing assets distributed on multiple sub accounts.
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	/// Pass the sorted list, pick the first item
 	pub fn distribute_increment(amount_list: Vec<(u32, Balance)>, increment: Balance) -> Vec<(u32, Balance)> {
 		if amount_list.len().is_zero() {
@@ -370,7 +370,7 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	/// Module account id
 	pub fn account_id() -> T::AccountId {
 		T::ModuleId::get().into_account()
@@ -450,7 +450,7 @@ impl<T: Trait> Module<T> {
 
 	pub fn unbond_from_bridge(era: EraIndex) {
 		let (total_to_unbond, claimed_to_unbond) = Self::next_era_unbond();
-		let bonding_duration = <<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();
+		let bonding_duration = <<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();
 		let unbonded_era_index = era.saturating_add(bonding_duration);
 
 		if !total_to_unbond.is_zero() && Self::unbond(total_to_unbond).is_ok() {
@@ -531,14 +531,14 @@ impl<T: Trait> Module<T> {
 	}
 }
 
-impl<T: Trait> OnNewEra<EraIndex> for Module<T> {
+impl<T: Config> OnNewEra<EraIndex> for Module<T> {
 	fn on_new_era(new_era: EraIndex) {
 		CurrentEra::put(new_era);
 		Self::rebalance(new_era);
 	}
 }
 
-impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
+impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 	type Balance = Balance;
 
 	/// Ensure atomic.
@@ -594,7 +594,9 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 			// duration
 			let unbonded_era_index = Self::current_era()
 				.checked_add(EraIndex::one())
-				.and_then(|n| n.checked_add(<<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get()))
+				.and_then(|n| {
+					n.checked_add(<<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get())
+				})
 				.ok_or(Error::<T>::Overflow)?;
 
 			NextEraUnbond::mutate(|(unbond, claimed)| {
@@ -689,7 +691,7 @@ impl<T: Trait> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 	#[transactional]
 	fn redeem_by_claim_unbonding(who: &T::AccountId, amount: Self::Balance, target_era: EraIndex) -> DispatchResult {
 		let current_era = Self::current_era();
-		let bonding_duration = <<T as Trait>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();
+		let bonding_duration = <<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();
 		ensure!(
 			target_era > current_era && target_era <= current_era + bonding_duration,
 			Error::<T>::InvalidEra,

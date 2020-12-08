@@ -131,8 +131,8 @@ impl ExtBuilder {
 	}
 }
 
-pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Trait>::Origin {
-	<Runtime as frame_system::Trait>::Origin::signed(account_id)
+pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Config>::Origin {
+	<Runtime as frame_system::Config>::Origin::signed(account_id)
 }
 
 fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
@@ -234,10 +234,10 @@ fn emergency_shutdown_and_cdp_treasury() {
 				module_emergency_shutdown::Error::<Runtime>::CanNotRefund,
 			);
 			assert_ok!(EmergencyShutdownModule::emergency_shutdown(
-				<Runtime as frame_system::Trait>::Origin::root()
+				<Runtime as frame_system::Config>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::open_collateral_refund(
-				<Runtime as frame_system::Trait>::Origin::root()
+				<Runtime as frame_system::Config>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::refund_collaterals(
 				origin_of(AccountId::from(ALICE)),
@@ -304,7 +304,7 @@ fn liquidate_cdp() {
 			));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NewValue(Some(Rate::zero())),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
@@ -347,7 +347,7 @@ fn liquidate_cdp() {
 			assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
@@ -620,7 +620,7 @@ fn test_honzon_module() {
 			)]));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -652,7 +652,7 @@ fn test_honzon_module() {
 			);
 			assert_eq!(
 				CdpEngineModule::liquidate(
-					<Runtime as frame_system::Trait>::Origin::none(),
+					<Runtime as frame_system::Config>::Origin::none(),
 					CurrencyId::Token(TokenSymbol::XBTC),
 					AccountId::from(ALICE)
 				)
@@ -660,7 +660,7 @@ fn test_honzon_module() {
 				false
 			);
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
@@ -669,7 +669,7 @@ fn test_honzon_module() {
 				Change::NoChange,
 			));
 			assert_ok!(CdpEngineModule::liquidate(
-				<Runtime as frame_system::Trait>::Origin::none(),
+				<Runtime as frame_system::Config>::Origin::none(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				AccountId::from(ALICE)
 			));
@@ -711,7 +711,7 @@ fn test_cdp_engine_module() {
 		.build()
 		.execute_with(|| {
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -1028,10 +1028,10 @@ fn test_authority_module() {
 			assert_eq!(last_event(), event);
 
 			let schedule_origin = {
-				let origin: <Runtime as orml_authority::Trait>::Origin = From::from(Origin::root());
-				let origin: <Runtime as orml_authority::Trait>::Origin = From::from(DelayedOrigin::<
+				let origin: <Runtime as orml_authority::Config>::Origin = From::from(Origin::root());
+				let origin: <Runtime as orml_authority::Config>::Origin = From::from(DelayedOrigin::<
 					BlockNumber,
-					<Runtime as orml_authority::Trait>::PalletsOrigin,
+					<Runtime as orml_authority::Config>::PalletsOrigin,
 				> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
