@@ -114,8 +114,7 @@ impl<T: Trait> Runner<T> {
 
 			substate.inc_nonce(address);
 
-			let maintainer = T::AddressMapping::to_account(&source);
-			if let Err(e) = <Module<T>>::on_contract_initialization(&address, &maintainer, out, None) {
+			if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out, None) {
 				create_info.exit_reason = e.into();
 				TransactionOutcome::Rollback(Ok(create_info))
 			} else {
