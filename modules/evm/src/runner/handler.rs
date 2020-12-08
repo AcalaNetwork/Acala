@@ -141,7 +141,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
 			} else {
-				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
+				let mut account_info = <AccountInfo<T>>::new(Default::default());
 				account_info.nonce += One::one();
 				*maybe_account = Some(account_info);
 			}
@@ -294,9 +294,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			return Err(ExitError::OutOfGas);
 		}
 
-		<Module<T>>::set_storage(address, index, value);
-
-		Ok(())
+		<Module<T>>::set_storage(address, index, value)
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) -> Result<(), ExitError> {
@@ -315,11 +313,50 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 
 		// unreserve ContractExistentialDeposit
 		self.unreserve(address, T::ContractExistentialDeposit::get())?;
+		// unreserve storage_rent_deposit
+		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
+			if let Some(AccountInfo {
+				contract_info: Some(contract_info),
+				storage_rent_deposit,
+				storage_usage,
+				..
+			}) = maybe_account_info.as_mut()
+			{
+				if !storage_usage.is_zero() {
+					// need to find maintainer and update maintainer_storage_usage
+					let additional_storage = Module::<T>::additional_storage(address);
+					if *storage_usage != additional_storage {
+						return Err(ExitError::Other(
+							"this contract is maintainer of some other contracts".into(),
+						));
+					}
+
+					<Accounts<T>>::mutate(
+						&contract_info.maintainer,
+						|maybe_maintainer_account_info| -> Result<(), ExitError> {
+							if let Some(AccountInfo {
+								storage_usage: maintainer_storage_usage,
+								..
+							}) = maybe_maintainer_account_info.as_mut()
+							{
+								*maintainer_storage_usage = maintainer_storage_usage
+									.checked_sub(*storage_usage)
+									.ok_or_else(|| ExitError::Other("NumOutOfBound".into()))?;
+								Ok(())
+							} else {
+								Err(ExitError::Other("maintainer not found".into()))
+							}
+						},
+					)?;
+				}
+				self.unreserve(address, *storage_rent_deposit)?;
+			}
+
+			Ok(())
+		})?;
 
 		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
-		Module::<T>::remove_account(&address);
-
-		Ok(())
+		Module::<T>::remove_account(&address)
 	}
 
 	fn create(
@@ -363,12 +400,13 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 				value,
 			}));
 
+			let maintainer = if self.vicinity.creating {
+				self.vicinity.origin
+			} else {
+				caller
+			};
 			let contract_existential_deposit = Transfer {
-				source: if self.vicinity.creating {
-					self.vicinity.origin
-				} else {
-					caller
-				},
+				source: maintainer,
 				target: address,
 				value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>()),
 			};
@@ -384,9 +422,11 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 						try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
-						<Module<T>>::on_contract_initialization(&address, out, None);
-
-						TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
+						if <Module<T>>::on_contract_initialization(&address, &maintainer, out, None).is_ok() {
+							TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
+						} else {
+							TransactionOutcome::Rollback(Capture::Exit((s.into(), None, Vec::new())))
+						}
 					}
 					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
 				},

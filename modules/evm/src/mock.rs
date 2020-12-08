@@ -6,7 +6,7 @@ use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, or
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::{Blake2Hasher, Hasher, H256};
+use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -14,21 +14,27 @@ use sp_runtime::{
 };
 use std::{collections::BTreeMap, str::FromStr};
 
-/// Hashed address mapping.
-pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
+/// Mock address mapping.
+pub struct MockAddressMapping<T>(sp_std::marker::PhantomData<T>);
 
-impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping<H> {
+impl<T: Config> AddressMapping<AccountId32> for MockAddressMapping<T>
+where
+	T::AccountId: From<AccountId32> + Into<AccountId32>,
+{
 	fn to_account(address: &H160) -> AccountId32 {
-		let mut data = [0u8; 24];
+		let mut data = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
 		data[4..24].copy_from_slice(&address[..]);
-		let hash = H::hash(&data);
-
-		AccountId32::from(Into::<[u8; 32]>::into(hash))
+		AccountId32::from(data).into()
 	}
 
-	fn to_evm_address(_account: &AccountId32) -> Option<H160> {
-		Some(H160::default())
+	fn to_evm_address(account_id: &AccountId32) -> Option<H160> {
+		let data: [u8; 32] = account_id.clone().into();
+		if data.starts_with(b"evm:") {
+			Some(H160::from_slice(&data[4..24]))
+		} else {
+			None
+		}
 	}
 }
 
@@ -93,7 +99,6 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
-	pub const ContractExistentialDeposit: u64 = 1;
 }
 impl pallet_balances::Config for Test {
 	type Balance = u64;
@@ -160,13 +165,20 @@ parameter_types! {
 
 ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const ContractExistentialDeposit: u64 = 1;
+	pub const TransferMaintainerDeposit: u64 = 1;
+	pub const StorageDepositPerByte: u64 = 10;
+	pub const StorageDefaultQuota: u32 = 400;
 }
 
 impl Config for Test {
-	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
+	type AddressMapping = MockAddressMapping<Test>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
 
 	type Event = Event<Test>;
 	type Precompiles = ();
@@ -234,7 +246,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
-	t.into()
+
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }
 
 pub fn balance(address: H160) -> u64 {

@@ -1242,21 +1242,23 @@ impl pallet_contracts::Config for Runtime {
 
 parameter_types! {
 	pub const ChainId: u64 = 595;
+	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
 parameter_types! {
-	// TODO: state rent
-	// TODO: deployment fee
 	pub const ContractExistentialDeposit: Balance = 0;
+	pub const StorageDepositPerByte: Balance = 0;
+	pub const StorageDefaultQuota: u32 = 0;
 }
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
-	// TODO: state rent
-	// TODO: deployment fee
 	pub const ContractExistentialDeposit: Balance = DOLLARS;
+	pub const StorageDepositPerByte: Balance = MICROCENTS;
+	// https://eips.ethereum.org/EIPS/eip-170
+	pub const StorageDefaultQuota: u32 = 0x6000;
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1269,6 +1271,10 @@ impl module_evm::Config for Runtime {
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
+
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;

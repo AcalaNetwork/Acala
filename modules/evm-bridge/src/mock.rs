@@ -100,11 +100,14 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
+	pub const TransferMaintainerDeposit: u64 = 1;
 	pub NetworkContractSource: H160 = alice();
 }
 
 ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const StorageDepositPerByte: u64 = 10;
+	pub const StorageDefaultQuota: u32 = 0x6000;
 }
 
 impl module_evm::Config for Runtime {
@@ -112,6 +115,9 @@ impl module_evm::Config for Runtime {
 	type Currency = Balances;
 	type MergeAccount = ();
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
 
 	type Event = ();
 	type Precompiles = ();

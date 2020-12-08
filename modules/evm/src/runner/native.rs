@@ -113,8 +113,12 @@ impl<T: Config> Runner<T> {
 
 			substate.inc_nonce(address);
 
-			<Module<T>>::on_contract_initialization(&address, out, None);
-			TransactionOutcome::Commit(Ok(create_info))
+			if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out, None) {
+				create_info.exit_reason = e.into();
+				TransactionOutcome::Rollback(Ok(create_info))
+			} else {
+				TransactionOutcome::Commit(Ok(create_info))
+			}
 		})
 	}
 
