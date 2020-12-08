@@ -326,7 +326,7 @@ type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
 >;
 
 parameter_types! {
-	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
+	pub const GeneralCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const GeneralCouncilMaxProposals: u32 = 100;
 	pub const GeneralCouncilMaxMembers: u32 = 100;
 }
@@ -356,7 +356,7 @@ impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const HonzonCouncilMotionDuration: BlockNumber = 0;
+	pub const HonzonCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const HonzonCouncilMaxProposals: u32 = 100;
 	pub const HonzonCouncilMaxMembers: u32 = 100;
 }
@@ -386,7 +386,7 @@ impl pallet_membership::Config<HonzonCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const HomaCouncilMotionDuration: BlockNumber = 0;
+	pub const HomaCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const HomaCouncilMaxProposals: u32 = 100;
 	pub const HomaCouncilMaxMembers: u32 = 100;
 }
@@ -416,7 +416,7 @@ impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const TechnicalCommitteeMotionDuration: BlockNumber = 0;
+	pub const TechnicalCommitteeMotionDuration: BlockNumber = 7 * DAYS;
 	pub const TechnicalCommitteeMaxProposals: u32 = 100;
 	pub const TechnicalCouncilMaxMembers: u32 = 100;
 }
