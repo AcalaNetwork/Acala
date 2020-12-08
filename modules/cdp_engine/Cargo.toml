@@ -24,7 +24,7 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 sp-core = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
-dex = { package = "module-dex", path = "../dex", default-features = false }
+module-dex = { path = "../dex", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury", default-features = false }
 
 [features]

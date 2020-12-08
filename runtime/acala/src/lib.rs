@@ -6,6 +6,7 @@
 // The `large_enum_variant` warning originates from `construct_runtime` macro.
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
+#![allow(clippy::or_fun_call)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -1008,12 +1009,12 @@ parameter_types! {
 impl module_dex::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::dex::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 parameter_types! {
@@ -1335,7 +1336,7 @@ construct_runtime!(
 		Prices: module_prices::{Module, Storage, Call, Event},
 
 		// DEX
-		Dex: module_dex::{Module, Storage, Call, Event<T>},
+		Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
 
 		// Honzon
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
@@ -1632,13 +1633,23 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			let config = if estimate {
+				let mut config = <Runtime as module_evm::Config>::config().clone();
+				config.estimate = true;
+				Some(config)
+			} else {
+				None
+			};
+
 			<Runtime as module_evm::Config>::Runner::call(
 				from,
 				to,
 				data,
 				value,
 				gas_limit,
+				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
 
@@ -1647,12 +1658,22 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			let config = if estimate {
+				let mut config = <Runtime as module_evm::Config>::config().clone();
+				config.estimate = true;
+				Some(config)
+			} else {
+				None
+			};
+
 			<Runtime as module_evm::Config>::Runner::create(
 				from,
 				data,
 				value,
 				gas_limit,
+				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
 

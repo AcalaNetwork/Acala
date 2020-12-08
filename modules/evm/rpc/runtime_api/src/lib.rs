@@ -19,6 +19,7 @@ sp_api::decl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError>;
 
 		fn create(
@@ -26,6 +27,7 @@ sp_api::decl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 	}
 }
