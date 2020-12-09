@@ -1250,7 +1250,7 @@ parameter_types! {
 parameter_types! {
 	pub const ContractExistentialDeposit: Balance = 0;
 	pub const StorageDepositPerByte: Balance = 0;
-	pub const StorageDefaultQuota: u32 = 0;
+	pub const StorageDefaultQuota: u32 = u32::MAX;
 }
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
