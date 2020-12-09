@@ -5,6 +5,7 @@
 pub mod precompiles;
 pub mod runner;
 
+mod default_weight;
 mod mock;
 mod tests;
 
@@ -45,6 +46,15 @@ impl Get<u64> for SystemChainId {
 	fn get() -> u64 {
 		sp_io::misc::chain_id()
 	}
+}
+
+pub trait WeightInfo {
+	fn add_storage_quota() -> Weight;
+	fn remove_storage_quota() -> Weight;
+	fn request_transfer_maintainer() -> Weight;
+	fn cancel_transfer_maintainer() -> Weight;
+	fn confirm_transfer_maintainer() -> Weight;
+	fn reject_transfer_maintainer() -> Weight;
 }
 
 // Initially based on Istanbul hard fork configuration.
@@ -123,6 +133,8 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type NetworkContractOrigin: EnsureOrigin<Self::Origin>;
 	/// The EVM address for creating system contract.
 	type NetworkContractSource: Get<H160>;
+	/// Weight information for the extrinsics in this module.
+	type WeightInfo: WeightInfo;
 }
 
 /// Storage key size and storage value size.
@@ -318,7 +330,7 @@ decl_module! {
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
 		#[weight = T::GasToWeight::convert(*gas_limit)]
-		fn call(
+		pub fn call(
 			origin,
 			target: H160,
 			input: Vec<u8>,
@@ -347,7 +359,7 @@ decl_module! {
 		/// Issue an EVM create operation. This is similar to a contract creation transaction in
 		/// Ethereum.
 		#[weight = T::GasToWeight::convert(*gas_limit)]
-		fn create(
+		pub fn create(
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
@@ -374,7 +386,7 @@ decl_module! {
 
 		/// Issue an EVM create2 operation.
 		#[weight = T::GasToWeight::convert(*gas_limit)]
-		fn create2(
+		pub fn create2(
 			origin,
 			init: Vec<u8>,
 			salt: H256,
@@ -402,7 +414,7 @@ decl_module! {
 
 		/// Issue an EVM create operation. The next available system contract address will be used as created contract address.
 		#[weight = T::GasToWeight::convert(*gas_limit)]
-		fn create_network_contract(
+		pub fn create_network_contract(
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
@@ -430,7 +442,7 @@ decl_module! {
 			})
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::add_storage_quota()]
 		#[transactional]
 		pub fn add_storage_quota(origin, contract: H160, bytes: u32) {
 			let who = ensure_signed(origin)?;
@@ -439,7 +451,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::AddStorageQuota(contract, bytes));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::remove_storage_quota()]
 		#[transactional]
 		pub fn remove_storage_quota(origin, contract: H160, bytes: u32) {
 			let who = ensure_signed(origin)?;
@@ -448,7 +460,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::RemoveStorageQuota(contract, bytes));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::request_transfer_maintainer()]
 		#[transactional]
 		pub fn request_transfer_maintainer(origin, contract: H160) {
 			let who = ensure_signed(origin)?;
@@ -459,7 +471,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::RequestedTransferMaintainer(contract, new_maintainer));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::cancel_transfer_maintainer()]
 		#[transactional]
 		pub fn cancel_transfer_maintainer(origin, contract: H160) {
 			let who = ensure_signed(origin)?;
@@ -470,7 +482,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::CanceledTransferMaintainer(contract, requester));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::confirm_transfer_maintainer()]
 		#[transactional]
 		pub fn confirm_transfer_maintainer(origin, contract: H160, new_maintainer: H160) {
 			let who = ensure_signed(origin)?;
@@ -479,7 +491,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::ConfirmedTransferMaintainer(contract, new_maintainer));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::reject_transfer_maintainer()]
 		#[transactional]
 		pub fn reject_transfer_maintainer(origin, contract: H160, invalid_maintainer: H160) {
 			let who = ensure_signed(origin)?;
