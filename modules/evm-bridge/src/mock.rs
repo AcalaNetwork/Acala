@@ -126,6 +126,7 @@ impl module_evm::Config for Runtime {
 	type GasToWeight = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
+	type WeightInfo = ();
 }
 
 pub type EVM = module_evm::Module<Runtime>;
