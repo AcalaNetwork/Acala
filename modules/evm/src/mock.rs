@@ -188,6 +188,7 @@ impl Config for Test {
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
+	type WeightInfo = ();
 }
 
 pub type System = frame_system::Module<Test>;

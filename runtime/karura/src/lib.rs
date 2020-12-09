@@ -1266,6 +1266,7 @@ impl module_evm::Config for Runtime {
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
+	type WeightInfo = weights::evm::WeightInfo<Runtime>;
 }
 
 impl module_evm_bridge::Config for Runtime {

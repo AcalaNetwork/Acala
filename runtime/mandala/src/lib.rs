@@ -1282,6 +1282,7 @@ impl module_evm::Config for Runtime {
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
+	type WeightInfo = weights::evm::WeightInfo<Runtime>;
 }
 
 impl module_evm_bridge::Config for Runtime {
@@ -1738,6 +1739,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
+			orml_add_benchmark!(params, batches, evm, benchmarking::evm);
 			orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
 			orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
 			orml_add_benchmark!(params, batches, transaction_payment, benchmarking::transaction_payment);
