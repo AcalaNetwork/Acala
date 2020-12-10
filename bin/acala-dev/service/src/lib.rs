@@ -16,10 +16,6 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
 pub use client::*;
 
-#[cfg(feature = "with-acala-runtime")]
-pub use acala_runtime;
-#[cfg(feature = "with-karurua-runtime")]
-pub use karura_runtime;
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;
 

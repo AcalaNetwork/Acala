@@ -10,10 +10,6 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::IdentifyAccount;
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
-#[cfg(feature = "with-acala-runtime")]
-pub mod acala;
-#[cfg(feature = "with-karura-runtime")]
-pub mod karura;
 #[cfg(feature = "with-mandala-runtime")]
 pub mod mandala;
 
