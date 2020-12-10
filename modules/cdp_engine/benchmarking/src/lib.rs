@@ -64,7 +64,7 @@ fn inject_liquidity<T: Config>(
 	)?;
 
 	Dex::<T>::add_liquidity(
-		RawOrigin::Signed(maker.clone()).into(),
+		RawOrigin::Signed(maker).into(),
 		base_currency_id,
 		currency_id,
 		max_amount,
@@ -162,7 +162,7 @@ benchmarks! {
 		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(min_debit_value * 10);
 		let base_amount_in_dex = collateral_amount_in_dex * 2;
 
-		inject_liquidity::<T>(funder.clone(), currency_id, base_amount_in_dex, collateral_amount_in_dex)?;
+		inject_liquidity::<T>(funder, currency_id, base_amount_in_dex, collateral_amount_in_dex)?;
 
 		// set balance
 		<T as loans::Config>::Currency::update_balance(currency_id, &owner, collateral_amount)?;
