@@ -13,21 +13,8 @@ futures = "0.3.4"
 parity-util-mem = { version = "0.7.0", default-features = false, features = ["jemalloc-global"] }
 acala-dev-cli = { path = "cli" }
 acala-dev-service = { path = "service" }
-mandala-runtime = { path = "../../runtime/mandala", optional = true }
 
 [features]
-default = [ "with-mandala-runtime" ]
 runtime-benchmarks = [
 	"acala-dev-cli/runtime-benchmarks",
-]
-with-mandala-runtime = [
-	"acala-dev-service/with-mandala-runtime",
-	"acala-dev-cli/with-mandala-runtime",
-]
-with-all-runtime = [
-	"acala-dev-service/with-all-runtime",
-	"acala-dev-cli/with-all-runtime",
-]
-with-ethereum-compatibility = [
-  "mandala-runtime/with-ethereum-compatibility"
 ]
