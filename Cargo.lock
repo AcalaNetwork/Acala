@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "acala-dev"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-dev-cli",
  "acala-dev-service",
