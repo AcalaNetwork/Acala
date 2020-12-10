@@ -11,10 +11,12 @@ use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
 use sp_std::{marker::PhantomData, prelude::*};
 
+pub mod evm;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
 
+pub use evm::EVMPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 
@@ -25,15 +27,21 @@ pub type EthereumPrecompiles = (
 	module_evm::precompiles::Identity,
 );
 
-pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile>(
-	PhantomData<(PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile)>,
+pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, EVMPrecompile>(
+	PhantomData<(
+		PrecompileCallerFilter,
+		MultiCurrencyPrecompile,
+		NFTPrecompile,
+		EVMPrecompile,
+	)>,
 );
 
-impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile> Precompiles
-	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile>
+impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, EVMPrecompile> Precompiles
+	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, EVMPrecompile>
 where
 	MultiCurrencyPrecompile: Precompile,
 	NFTPrecompile: Precompile,
+	EVMPrecompile: Precompile,
 	PrecompileCallerFilter: PrecompileCallerFilterT,
 {
 	#[allow(clippy::type_complexity)]
@@ -52,6 +60,8 @@ where
 				Some(MultiCurrencyPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
 				Some(NFTPrecompile::execute(input, target_gas, context))
+			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 2) {
+				Some(EVMPrecompile::execute(input, target_gas, context))
 			} else {
 				None
 			}
@@ -74,7 +84,8 @@ mod tests {
 		}
 	}
 
-	pub type WithSystemContractFilter = AllPrecompiles<crate::SystemContractsFilter, DummyPrecompile, DummyPrecompile>;
+	pub type WithSystemContractFilter =
+		AllPrecompiles<crate::SystemContractsFilter, DummyPrecompile, DummyPrecompile, DummyPrecompile>;
 
 	#[test]
 	fn precompile_filter_works_on_system_contracts() {

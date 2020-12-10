@@ -277,3 +277,29 @@ pub trait EVMBridge<InvokeContext, Balance> {
 	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
 	fn transfer(context: InvokeContext, to: H160, value: Balance) -> DispatchResult;
 }
+
+/// An abstraction of EVMStateRentTrait
+pub trait EVMStateRentTrait<AccountId, Balance> {
+	/// Query the constants `ContractExistentialDeposit` value from evm module.
+	fn query_contract_existential_deposit() -> Balance;
+	/// Query the constants `TransferMaintainerDeposit` value from evm module.
+	fn query_transfer_maintainer_deposit() -> Balance;
+	/// Query the constants `StorageDepositPerByte` value from evm module.
+	fn query_qtorage_deposit_per_byte() -> Balance;
+	/// Query the constants `StorageDefaultQuota` value from evm module.
+	fn query_storage_default_quota() -> u32;
+	/// Query the maintainer address from the ERC20 contract.
+	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
+	/// Add the quota at the given contract address.
+	fn add_storage_quota(from: AccountId, contract: H160, bytes: u32) -> DispatchResult;
+	/// Remove the quota at the given contract address.
+	fn remove_storage_quota(from: AccountId, contract: H160, bytes: u32) -> DispatchResult;
+	/// Request to transfer the maintainer of the contract address.
+	fn request_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
+	/// Cancel to transfer the maintainer of the contract address.
+	fn cancel_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
+	/// Confirm to transfer the maintainer of the contract address.
+	fn confirm_transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
+	/// Reject to transfer the maintainer of the contract address.
+	fn reject_transfer_maintainer(from: AccountId, contract: H160, invalid_maintainer: H160) -> DispatchResult;
+}
