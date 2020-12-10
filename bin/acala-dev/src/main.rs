@@ -1,4 +1,4 @@
-//! Acala Dev CLI library.
+//! Acala dev CLI library.
 //!
 //! This package has two Cargo features:
 //!
@@ -15,8 +15,6 @@
 
 // #![warn(missing_docs)]
 
-// fn main() -> acala_dev_cli::Result<()> {
-// 	acala_dev_cli::run()
-// }
-
-fn main() {}
+fn main() -> acala_dev_cli::Result<()> {
+	acala_dev_cli::run()
+}

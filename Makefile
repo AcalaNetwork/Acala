@@ -1,8 +1,8 @@
 run: githooks
-	SKIP_WASM_BUILD= cargo run -- --dev -lruntime=debug --instant-sealing
+	SKIP_WASM_BUILD= cargo run --manifest-path bin/acala-dev/Cargo.toml -- --dev -lruntime=debug --instant-sealing
 
 run-eth: githooks
-	cargo run --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
+	cargo run --manifest-path bin/acala-dev/Cargo.toml --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
 
 toolchain:
 	./scripts/init.sh
@@ -16,8 +16,13 @@ check: githooks
 check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
+check-runtime: check-dev-runtime check-all-runtime
+
+check-dev-runtime:
+	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala-dev/Cargo.toml --tests --all --features with-all-runtime
+
 check-all-runtime:
-	SKIP_WASM_BUILD= cargo check --tests --all --features with-all-runtime
+	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala/Cargo.toml --tests --all --features with-all-runtime
 
 check-debug:
 	RUSTFLAGS="-Z macro-backtrace" SKIP_WASM_BUILD= cargo +nightly check
@@ -25,18 +30,23 @@ check-debug:
 test: githooks
 	SKIP_WASM_BUILD= cargo test --all
 
+test-runtime: test-dev-runtime test-all-runtime
+
+test-dev-runtime:
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all --features with-all-runtime
+
 test-all-runtime:
-	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all --features with-all-runtime
 
 build: githooks
 	SKIP_WASM_BUILD= cargo build
 
-purge: target/debug/acala
-	target/debug/acala purge-chain --dev -y
+purge: target/debug/acala-dev
+	target/debug/acala-dev purge-chain --dev -y
 
 restart: purge run
 
-target/debug/acala: build
+target/debug/acala-dev: build
 
 GITHOOKS_SRC = $(wildcard githooks/*)
 GITHOOKS_DEST = $(patsubst githooks/%, .git/hooks/%, $(GITHOOKS_SRC))
