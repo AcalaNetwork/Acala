@@ -10,18 +10,26 @@ toolchain:
 build-full: githooks
 	cargo build
 
+build-all: build-dev build-acala
+
+build-dev:
+	cargo build --manifest-path bin/acala-dev/Cargo.toml --locked
+
+build-acala:
+	cargo build --manifest-path bin/acala/Cargo.toml --locked --features with-all-runtime
+
 check: githooks
 	SKIP_WASM_BUILD= cargo check
 
 check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
-check-runtime: check-dev-runtime check-all-runtime
+check-all: check-dev check-acala
 
-check-dev-runtime:
-	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala-dev/Cargo.toml --tests --all --features with-all-runtime
+check-dev:
+	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala-dev/Cargo.toml --tests --all
 
-check-all-runtime:
+check-acala:
 	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala/Cargo.toml --tests --all --features with-all-runtime
 
 check-debug:
@@ -30,12 +38,12 @@ check-debug:
 test: githooks
 	SKIP_WASM_BUILD= cargo test --all
 
-test-runtime: test-dev-runtime test-all-runtime
+test-all: test-dev test-acala
 
-test-dev-runtime:
-	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all --features with-all-runtime
+test-dev:
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all
 
-test-all-runtime:
+test-acala:
 	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all --features with-all-runtime
 
 build: githooks

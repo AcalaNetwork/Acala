@@ -111,7 +111,7 @@ fn karura_genesis(
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 	let airdrop_accounts = {
-		let airdrop_accounts_json = &include_bytes!("../../../resources/mandala-airdrop-accounts.json")[..];
+		let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-accounts.json")[..];
 		let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
 			serde_json::from_slice(airdrop_accounts_json).unwrap();
 		airdrop_accounts
