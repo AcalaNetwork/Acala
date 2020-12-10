@@ -36,6 +36,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "acala-dev"
+version = "0.1.0"
+
+[[package]]
 name = "acala-inspect"
 version = "0.6.3"
 dependencies = [
