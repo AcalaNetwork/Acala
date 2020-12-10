@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-inspect",
  "acala-service",
@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "derive_more",
  "log",
@@ -53,7 +53,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "evm",
  "frame-support",
@@ -66,7 +66,7 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "evm-rpc",
@@ -98,7 +98,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
@@ -195,7 +195,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -1360,7 +1360,7 @@ checksum = "d55796afa1b20c2945ca8eabfc421839f2b766619209f1ede813cf2484f31804"
 
 [[package]]
 name = "ecosystem-renvm-bridge"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2882,7 +2882,7 @@ dependencies = [
 
 [[package]]
 name = "karura-runtime"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
@@ -3621,7 +3621,7 @@ dependencies = [
 
 [[package]]
 name = "mandala-runtime"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
@@ -3924,7 +3924,7 @@ dependencies = [
 
 [[package]]
 name = "module-airdrop"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3938,7 +3938,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3961,7 +3961,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager-benchmarking"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -3990,7 +3990,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4015,7 +4015,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine-benchmarking"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4044,7 +4044,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4067,7 +4067,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4088,7 +4088,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4110,7 +4110,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown-benchmarking"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4167,7 +4167,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-accounts"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4224,7 +4224,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4238,7 +4238,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4261,7 +4261,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon-benchmarking"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4289,7 +4289,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4309,7 +4309,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4353,7 +4353,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft-benchmarking"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4378,7 +4378,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4398,7 +4398,7 @@ dependencies = [
 
 [[package]]
 name = "module-polkadot-bridge"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4415,7 +4415,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4432,7 +4432,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4452,7 +4452,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4468,7 +4468,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc-runtime-api"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "module-support",
  "parity-scale-codec",
@@ -4480,7 +4480,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4494,7 +4494,7 @@ dependencies = [
 
 [[package]]
 name = "module-template"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4507,7 +4507,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-payment"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6387,7 +6387,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
