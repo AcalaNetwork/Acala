@@ -4,6 +4,7 @@
 
 use frame_support::{parameter_types, weights::Weight};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+use primitives::{PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{Convert, Saturating},
@@ -259,6 +260,11 @@ pub fn is_system_contract(address: H160) -> bool {
 	address[..SYSTEM_CONTRACT_LEADING_ZERO_BYTES] == [0u8; SYSTEM_CONTRACT_LEADING_ZERO_BYTES]
 }
 
+pub fn is_acala_precompile(address: H160) -> bool {
+	address >= H160::from_low_u64_be(PRECOMPILE_ADDRESS_START)
+		&& address < H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)
+}
+
 /// The call is allowed only if caller is a system contract.
 pub struct SystemContractsFilter;
 impl PrecompileCallerFilter for SystemContractsFilter {
@@ -290,5 +296,33 @@ mod tests {
 		let mut min_blocked_addr = [0u8; 20];
 		min_blocked_addr[SYSTEM_CONTRACT_LEADING_ZERO_BYTES - 1] = 1u8;
 		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
+	}
+
+	#[test]
+	fn is_system_contract_works() {
+		assert!(is_system_contract(H160::from_low_u64_be(0)));
+		assert!(is_system_contract(H160::from_low_u64_be(u64::max_value())));
+
+		let mut bytes = [0u8; 20];
+		bytes[SYSTEM_CONTRACT_LEADING_ZERO_BYTES - 1] = 1u8;
+
+		assert!(!is_system_contract(bytes.into()));
+
+		bytes = [0u8; 20];
+		bytes[0] = 1u8;
+
+		assert!(!is_system_contract(bytes.into()));
+	}
+
+	#[test]
+	fn is_acala_precompile_works() {
+		assert!(!is_acala_precompile(H160::from_low_u64_be(0)));
+		assert!(!is_acala_precompile(H160::from_low_u64_be(
+			PRECOMPILE_ADDRESS_START - 1
+		)));
+		assert!(is_acala_precompile(H160::from_low_u64_be(PRECOMPILE_ADDRESS_START)));
+		assert!(is_acala_precompile(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START - 1)));
+		assert!(!is_acala_precompile(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)));
+		assert!(!is_acala_precompile([1u8; 20].into()));
 	}
 }
