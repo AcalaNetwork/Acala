@@ -11,14 +11,14 @@ use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
 use sp_std::{marker::PhantomData, prelude::*};
 
-pub mod evm;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
+pub mod state_rent;
 
-pub use evm::EVMPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
+pub use state_rent::StateRentPrecompile;
 
 pub type EthereumPrecompiles = (
 	module_evm::precompiles::ECRecover,
@@ -27,21 +27,21 @@ pub type EthereumPrecompiles = (
 	module_evm::precompiles::Identity,
 );
 
-pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, EVMPrecompile>(
+pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile>(
 	PhantomData<(
 		PrecompileCallerFilter,
 		MultiCurrencyPrecompile,
 		NFTPrecompile,
-		EVMPrecompile,
+		StateRentPrecompile,
 	)>,
 );
 
-impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, EVMPrecompile> Precompiles
-	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, EVMPrecompile>
+impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile> Precompiles
+	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile>
 where
 	MultiCurrencyPrecompile: Precompile,
 	NFTPrecompile: Precompile,
-	EVMPrecompile: Precompile,
+	StateRentPrecompile: Precompile,
 	PrecompileCallerFilter: PrecompileCallerFilterT,
 {
 	#[allow(clippy::type_complexity)]
@@ -61,7 +61,7 @@ where
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
 				Some(NFTPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 2) {
-				Some(EVMPrecompile::execute(input, target_gas, context))
+				Some(StateRentPrecompile::execute(input, target_gas, context))
 			} else {
 				None
 			}

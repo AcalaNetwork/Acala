@@ -17,15 +17,15 @@ use primitives::{evm::AddressMapping as AddressMappingT, Balance};
 /// - QueryStorageDepositPerByte.
 /// - QueryStorageDefaultQuota.
 /// - QueryMaintainer.
-/// - AddStorageQuota. Rest `input`bytes: `from`, `contract`, `bytes`.
-/// - RemoveStorageQuota. Rest `input`bytes: `from`, `contract`, `bytes`.
-/// - RequestTransferMaintainer. Rest `input`bytes: `from`, `contract`.
-/// - CancelTransferMaintainer. Rest `input`bytes: `from`, `contract`.
-/// - ConfirmTransferMaintainer. Rest `input`bytes: `from`, `contract`,
+/// - AddStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
+/// - RemoveStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
+/// - RequestTransferMaintainer. Rest `input` bytes: `from`, `contract`.
+/// - CancelTransferMaintainer. Rest `input` bytes: `from`, `contract`.
+/// - ConfirmTransferMaintainer. Rest `input` bytes: `from`, `contract`,
 ///   `new_maintainer`.
-/// - RejectTransferMaintainer. Rest `input`bytes: `from`, `contract`,
+/// - RejectTransferMaintainer. Rest `input` bytes: `from`, `contract`,
 ///   `invalid_maintainer`.
-pub struct EVMPrecompile<AccountId, AddressMapping, EVM>(PhantomData<(AccountId, AddressMapping, EVM)>);
+pub struct StateRentPrecompile<AccountId, AddressMapping, EVM>(PhantomData<(AccountId, AddressMapping, EVM)>);
 
 enum Action {
 	QueryContractExistentialDeposit,
@@ -61,7 +61,7 @@ impl From<u8> for Action {
 	}
 }
 
-impl<AccountId, AddressMapping, EVM> Precompile for EVMPrecompile<AccountId, AddressMapping, EVM>
+impl<AccountId, AddressMapping, EVM> Precompile for StateRentPrecompile<AccountId, AddressMapping, EVM>
 where
 	AccountId: Clone,
 	AddressMapping: AddressMappingT<AccountId>,
@@ -96,9 +96,10 @@ where
 			Action::QueryMaintainer => {
 				let contract = input.evm_address_at(1)?;
 
-				EVM::query_maintainer(contract).map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				let maintainer =
+					EVM::query_maintainer(contract).map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok((ExitSucceed::Returned, maintainer.as_bytes().to_vec(), 0))
 			}
 			Action::AddStorageQuota => {
 				let from = input.account_id_at(1)?;
