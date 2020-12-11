@@ -54,28 +54,28 @@ where
 	) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
 		//TODO: evaluate cost
 
-		debug::debug!("input: {:?}", input);
+		debug::debug!(target: "evm", "input: {:?}", input);
 
 		let input = Input::<Action, AccountId, AddressMapping>::new(input);
 
 		let action = input.action()?;
 		let currency_id = input.currency_id_at(1)?;
 
-		debug::debug!("currency id: {:?}", currency_id);
+		debug::debug!(target: "evm", "currency id: {:?}", currency_id);
 
 		match action {
 			Action::QueryTotalIssuance => {
 				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id))?;
-				debug::debug!("total issuance: {:?}", total_issuance);
+				debug::debug!(target: "evm", "total issuance: {:?}", total_issuance);
 
 				Ok((ExitSucceed::Returned, total_issuance, 0))
 			}
 			Action::QueryBalance => {
 				let who = input.account_id_at(2)?;
-				debug::debug!("who: {:?}", who);
+				debug::debug!(target: "evm", "who: {:?}", who);
 
 				let balance = vec_u8_from_balance(MultiCurrency::total_balance(currency_id, &who))?;
-				debug::debug!("balance: {:?}", balance);
+				debug::debug!(target: "evm", "balance: {:?}", balance);
 
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
@@ -84,16 +84,16 @@ where
 				let to = input.account_id_at(3)?;
 				let amount = input.balance_at(4)?;
 
-				debug::debug!("from: {:?}", from);
-				debug::debug!("to: {:?}", to);
-				debug::debug!("amount: {:?}", amount);
+				debug::debug!(target: "evm", "from: {:?}", from);
+				debug::debug!(target: "evm", "to: {:?}", to);
+				debug::debug!(target: "evm", "amount: {:?}", amount);
 
 				MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
 					let err_msg: &str = e.into();
 					ExitError::Other(err_msg.into())
 				})?;
 
-				debug::debug!("transfer success!");
+				debug::debug!(target: "evm", "transfer success!");
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}

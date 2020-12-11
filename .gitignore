@@ -7,3 +7,5 @@
 
 .idea
 *.wasm
+
+.vscode/launch.json
