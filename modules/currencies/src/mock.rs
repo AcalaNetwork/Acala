@@ -3,10 +3,15 @@
 #![cfg(test)]
 
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use orml_traits::parameter_type_with_key;
 use pallet_balances;
 use primitives::TokenSymbol;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{AccountIdConversion, IdentityLookup},
+	AccountId32, ModuleId, Perbill,
+};
 
 use tokens;
 
@@ -46,7 +51,7 @@ parameter_types! {
 }
 
 pub type AccountId = AccountId32;
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Call = ();
 	type Index = u64;
@@ -77,12 +82,23 @@ pub type System = frame_system::Module<Runtime>;
 
 type Balance = u128;
 
-impl tokens::Trait for Runtime {
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+parameter_types! {
+	pub DustAccount: AccountId = ModuleId(*b"orml/dst").into_account();
+}
+
+impl tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 }
 pub type Tokens = tokens::Module<Runtime>;
@@ -98,7 +114,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
@@ -113,7 +129,7 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
-impl pallet_timestamp::Trait for Runtime {
+impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
@@ -122,18 +138,24 @@ impl pallet_timestamp::Trait for Runtime {
 
 parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
+	pub const TransferMaintainerDeposit: u64 = 1;
 	pub NetworkContractSource: H160 = H160::default();
 }
 
 ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const StorageDepositPerByte: u128 = 10;
+	pub const StorageDefaultQuota: u32 = 0x6000;
 }
 
-impl module_evm::Trait for Runtime {
-	type AddressMapping = ();
+impl module_evm::Config for Runtime {
+	type AddressMapping = EvmAddressMapping;
 	type Currency = PalletBalances;
 	type MergeAccount = ();
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
 
 	type Event = TestEvent;
 	type Precompiles = ();
@@ -142,11 +164,12 @@ impl module_evm::Trait for Runtime {
 	type GasToWeight = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
+	type WeightInfo = ();
 }
 
 pub type EVM = module_evm::Module<Runtime>;
 
-impl module_evm_bridge::Trait for Runtime {
+impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
@@ -167,7 +190,7 @@ impl AddressMapping<AccountId32> for EvmAddressMapping {
 	}
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -185,11 +208,15 @@ pub fn erc20_address() -> H160 {
 }
 
 pub fn alice() -> AccountId {
-	<Runtime as Trait>::AddressMapping::to_account(&H160::from_str("1000000000000000000000000000000000000001").unwrap())
+	<Runtime as Config>::AddressMapping::to_account(
+		&H160::from_str("1000000000000000000000000000000000000001").unwrap(),
+	)
 }
 
 pub fn bob() -> AccountId {
-	<Runtime as Trait>::AddressMapping::to_account(&H160::from_str("1000000000000000000000000000000000000002").unwrap())
+	<Runtime as Config>::AddressMapping::to_account(
+		&H160::from_str("1000000000000000000000000000000000000002").unwrap(),
+	)
 }
 
 parameter_types! {

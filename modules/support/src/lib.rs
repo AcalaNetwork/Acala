@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use primitives::evm::CallInfo;
+use primitives::evm::{CallInfo, Config};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -263,6 +263,7 @@ pub trait EVM {
 		input: Vec<u8>,
 		value: Self::Balance,
 		gas_limit: u32,
+		config: Option<Config>,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
 }
 

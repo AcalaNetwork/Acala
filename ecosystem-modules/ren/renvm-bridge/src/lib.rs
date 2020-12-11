@@ -21,8 +21,8 @@ mod tests;
 type EcdsaSignature = ecdsa::Signature;
 type DestAddress = Vec<u8>;
 
-pub trait Trait: system::Trait {
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Config: system::Config {
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 	type Currency: BasicCurrency<Self::AccountId, Balance = Balance>;
 	/// The RenVM split public key
 	type PublicKey: Get<[u8; 20]>;
@@ -36,7 +36,7 @@ pub trait Trait: system::Trait {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Template {
+	trait Store for Module<T: Config> as Template {
 		/// Signature blacklist. This is required to prevent double claim.
 		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
 
@@ -49,7 +49,7 @@ decl_storage! {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as system::Trait>::AccountId,
+		<T as system::Config>::AccountId,
 	{
 		/// Asset minted. \[owner, amount\]
 		Minted(AccountId, Balance),
@@ -59,7 +59,7 @@ decl_event!(
 );
 
 decl_error! {
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// The mint signature is invalid.
 		InvalidMintSignature,
 		/// The mint signature has already been used.
@@ -70,7 +70,7 @@ decl_error! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
@@ -116,7 +116,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn do_mint(sender: T::AccountId, amount: Balance, sig: EcdsaSignature) -> DispatchResult {
 		T::Currency::deposit(&sender, amount)?;
 		Signatures::insert(&sig, ());
@@ -161,7 +161,7 @@ impl<T: Trait> Module<T> {
 }
 
 #[allow(deprecated)]
-impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
+impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {

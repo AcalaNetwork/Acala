@@ -1,0 +1,20 @@
+[package]
+name = "acala-dev"
+version = "0.7.0"
+authors = ["Acala Developers"]
+edition = "2018"
+
+[[bin]]
+name = "acala-dev"
+path = "src/main.rs"
+
+[dependencies]
+futures = "0.3.4"
+parity-util-mem = { version = "0.7.0", default-features = false, features = ["jemalloc-global"] }
+acala-dev-cli = { path = "cli" }
+acala-dev-service = { path = "service" }
+
+[features]
+runtime-benchmarks = [
+	"acala-dev-cli/runtime-benchmarks",
+]

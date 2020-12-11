@@ -529,7 +529,7 @@ fn on_emergency_shutdown_work() {
 			Some(ExchangeRate::saturating_from_rational(101, 100))
 		);
 		mock_shutdown();
-		assert_eq!(<Runtime as Trait>::EmergencyShutdown::is_shutdown(), true);
+		assert_eq!(<Runtime as Config>::EmergencyShutdown::is_shutdown(), true);
 		CDPEngineModule::on_finalize(2);
 		assert_eq!(
 			CDPEngineModule::debit_exchange_rate(BTC),

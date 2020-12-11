@@ -18,10 +18,10 @@ use primitives::{AuctionId, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{DispatchError, FixedPointNumber};
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, Price};
 
-pub struct Module<T: Trait>(auction_manager::Module<T>);
+pub struct Module<T: Config>(auction_manager::Module<T>);
 
-pub trait Trait:
-	auction_manager::Trait + orml_oracle::Trait<orml_oracle::Instance1> + prices::Trait + emergency_shutdown::Trait
+pub trait Config:
+	auction_manager::Config + orml_oracle::Config<orml_oracle::Instance1> + prices::Config + emergency_shutdown::Config
 {
 }
 
@@ -32,15 +32,15 @@ fn dollar(d: u32) -> Balance {
 	d.saturating_mul(1_000_000_000_000_000_000)
 }
 
-fn feed_price<T: Trait>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
+fn feed_price<T: Config>(currency_id: CurrencyId, price: Price) -> Result<(), &'static str> {
 	let oracle_operators = orml_oracle::Module::<T, orml_oracle::Instance1>::members().0;
 	for operator in oracle_operators {
-		<T as prices::Trait>::Source::feed_value(operator.clone(), currency_id, price)?;
+		<T as prices::Config>::Source::feed_value(operator.clone(), currency_id, price)?;
 	}
 	Ok(())
 }
 
-fn emergency_shutdown<T: Trait>() -> Result<(), DispatchError> {
+fn emergency_shutdown<T: Config>() -> Result<(), DispatchError> {
 	emergency_shutdown::Module::<T>::emergency_shutdown(RawOrigin::Root.into())
 }
 
@@ -53,10 +53,10 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let bidder: T::AccountId = account("bidder", u, SEED);
-		let native_currency_id = <T as auction_manager::Trait>::GetNativeCurrencyId::get();
+		let native_currency_id = <T as auction_manager::Config>::GetNativeCurrencyId::get();
 
 		// set balance
-		<T as auction_manager::Trait>::Currency::deposit(native_currency_id, &bidder, dollar(10))?;
+		<T as auction_manager::Config>::Currency::deposit(native_currency_id, &bidder, dollar(10))?;
 
 		// create surplus auction
 		AuctionManager::<T>::new_surplus_auction(dollar(1))?;
@@ -75,10 +75,10 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let bidder: T::AccountId = account("bidder", u, SEED);
-		let stable_currency_id = <T as auction_manager::Trait>::GetStableCurrencyId::get();
+		let stable_currency_id = <T as auction_manager::Config>::GetStableCurrencyId::get();
 
 		// set balance
-		<T as auction_manager::Trait>::Currency::deposit(stable_currency_id, &bidder, dollar(20))?;
+		<T as auction_manager::Config>::Currency::deposit(stable_currency_id, &bidder, dollar(20))?;
 
 		// create debit auction
 		AuctionManager::<T>::new_debit_auction(dollar(1), dollar(10))?;
@@ -98,12 +98,12 @@ benchmarks! {
 
 		let bidder: T::AccountId = account("bidder", u, SEED);
 		let funder: T::AccountId = account("funder", u, SEED);
-		let stable_currency_id = <T as auction_manager::Trait>::GetStableCurrencyId::get();
+		let stable_currency_id = <T as auction_manager::Config>::GetStableCurrencyId::get();
 
 		// set balance
-		<T as auction_manager::Trait>::Currency::deposit(stable_currency_id, &bidder, dollar(80))?;
-		<T as auction_manager::Trait>::Currency::deposit(CurrencyId::Token(TokenSymbol::DOT), &funder, dollar(1))?;
-		<T as auction_manager::Trait>::CDPTreasury::deposit_collateral(&funder, CurrencyId::Token(TokenSymbol::DOT), dollar(1))?;
+		<T as auction_manager::Config>::Currency::deposit(stable_currency_id, &bidder, dollar(80))?;
+		<T as auction_manager::Config>::Currency::deposit(CurrencyId::Token(TokenSymbol::DOT), &funder, dollar(1))?;
+		<T as auction_manager::Config>::CDPTreasury::deposit_collateral(&funder, CurrencyId::Token(TokenSymbol::DOT), dollar(1))?;
 
 		// feed price
 		feed_price::<T>(CurrencyId::Token(TokenSymbol::DOT), Price::saturating_from_integer(120))?;

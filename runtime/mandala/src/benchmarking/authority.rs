@@ -52,9 +52,9 @@ runtime_benchmarks! {
 			Box::new(call.clone())
 		)?;
 		let schedule_origin = {
-			let origin: <Runtime as frame_system::Trait>::Origin = From::from(Origin::root());
-			let origin: <Runtime as frame_system::Trait>::Origin =
-				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Trait>::PalletsOrigin> {
+			let origin: <Runtime as frame_system::Config>::Origin = From::from(Origin::root());
+			let origin: <Runtime as frame_system::Config>::Origin =
+				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
 				});
@@ -80,9 +80,9 @@ runtime_benchmarks! {
 			Box::new(call.clone())
 		)?;
 		let schedule_origin = {
-			let origin: <Runtime as frame_system::Trait>::Origin = From::from(Origin::root());
-			let origin: <Runtime as frame_system::Trait>::Origin =
-				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Trait>::PalletsOrigin> {
+			let origin: <Runtime as frame_system::Config>::Origin = From::from(Origin::root());
+			let origin: <Runtime as frame_system::Config>::Origin =
+				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
 				});
@@ -108,9 +108,9 @@ runtime_benchmarks! {
 			Box::new(call.clone())
 		)?;
 		let schedule_origin = {
-			let origin: <Runtime as frame_system::Trait>::Origin = From::from(Origin::root());
-			let origin: <Runtime as frame_system::Trait>::Origin =
-				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Trait>::PalletsOrigin> {
+			let origin: <Runtime as frame_system::Config>::Origin = From::from(Origin::root());
+			let origin: <Runtime as frame_system::Config>::Origin =
+				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
 				});

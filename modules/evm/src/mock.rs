@@ -4,8 +4,9 @@ use super::*;
 
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::{Blake2Hasher, Hasher, H256};
+use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -13,21 +14,27 @@ use sp_runtime::{
 };
 use std::{collections::BTreeMap, str::FromStr};
 
-/// Hashed address mapping.
-pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
+/// Mock address mapping.
+pub struct MockAddressMapping<T>(sp_std::marker::PhantomData<T>);
 
-impl<H: Hasher<Out = H256>> AddressMapping<AccountId32> for HashedAddressMapping<H> {
+impl<T: Config> AddressMapping<AccountId32> for MockAddressMapping<T>
+where
+	T::AccountId: From<AccountId32> + Into<AccountId32>,
+{
 	fn to_account(address: &H160) -> AccountId32 {
-		let mut data = [0u8; 24];
+		let mut data = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
 		data[4..24].copy_from_slice(&address[..]);
-		let hash = H::hash(&data);
-
-		AccountId32::from(Into::<[u8; 32]>::into(hash))
+		AccountId32::from(data).into()
 	}
 
-	fn to_evm_address(_account: &AccountId32) -> Option<H160> {
-		Some(H160::default())
+	fn to_evm_address(account_id: &AccountId32) -> Option<H160> {
+		let data: [u8; 32] = account_id.clone().into();
+		if data.starts_with(b"evm:") {
+			Some(H160::from_slice(&data[4..24]))
+		} else {
+			None
+		}
 	}
 }
 
@@ -64,7 +71,7 @@ parameter_types! {
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
-impl frame_system::Trait for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = ();
 	type Origin = Origin;
 	type Call = OuterCall;
@@ -94,9 +101,8 @@ impl frame_system::Trait for Test {
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
-	pub const ContractExistentialDeposit: Balance = 1;
 }
-impl pallet_balances::Trait for Test {
+impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
@@ -109,20 +115,27 @@ impl pallet_balances::Trait for Test {
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
-impl pallet_timestamp::Trait for Test {
+impl pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
 	type WeightInfo = ();
 }
 
-impl orml_tokens::Trait for Test {
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> u128 {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Test {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type Tokens = orml_tokens::Module<Test>;
 
@@ -130,13 +143,13 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl module_currencies::Trait for Test {
+impl module_currencies::Config for Test {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
+	type AddressMapping = ();
 	type EVMBridge = ();
 }
 pub type Currencies = module_currencies::Module<Test>;
@@ -156,13 +169,20 @@ parameter_types! {
 
 ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const ContractExistentialDeposit: u128 = 1;
+	pub const TransferMaintainerDeposit: u128 = 1;
+	pub const StorageDepositPerByte: u128 = 10;
+	pub const StorageDefaultQuota: u32 = 400;
 }
 
-impl Trait for Test {
-	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
+impl Config for Test {
+	type AddressMapping = MockAddressMapping<Test>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
 
 	type Event = Event<Test>;
 	type Precompiles = ();
@@ -172,6 +192,7 @@ impl Trait for Test {
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
+	type WeightInfo = ();
 }
 
 pub type System = frame_system::Module<Test>;
@@ -230,15 +251,18 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
-	t.into()
+
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }
 
 pub fn balance(address: H160) -> Balance {
-	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::to_account(&address);
 	Balances::free_balance(account_id)
 }
 
 pub fn reserved_balance(address: H160) -> Balance {
-	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::to_account(&address);
 	Balances::reserved_balance(account_id)
 }

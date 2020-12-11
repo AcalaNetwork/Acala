@@ -1,4 +1,6 @@
-use crate::{AccountId, Balance, Currencies, CurrencyId, Dex, EnabledTradingPairs, Runtime, TradingPathLimit};
+use crate::{
+	AccountId, Balance, BlockNumber, Currencies, CurrencyId, Dex, EnabledTradingPairs, Runtime, TradingPathLimit,
+};
 
 use super::utils::dollars;
 use frame_benchmarking::account;
@@ -30,6 +32,8 @@ fn inject_liquidity(
 		max_amount_b.unique_saturated_into(),
 	)?;
 
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
 		currency_id_a,
@@ -46,6 +50,40 @@ runtime_benchmarks! {
 	{ Runtime, module_dex }
 
 	_ {}
+
+	// enable a new trading pair
+	enable_trading_pair {
+		let trading_pair = EnabledTradingPairs::get()[0];
+		let currency_id_a = trading_pair.0;
+		let currency_id_b = trading_pair.1;
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+	}: _(RawOrigin::Root, currency_id_a, currency_id_b)
+
+	// disable a Enabled trading pair
+	disable_trading_pair {
+		let trading_pair = EnabledTradingPairs::get()[0];
+		let currency_id_a = trading_pair.0;
+		let currency_id_b = trading_pair.1;
+		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+	}: _(RawOrigin::Root, currency_id_a, currency_id_b)
+
+	// list a Enabled trading pair
+	list_trading_pair {
+		let trading_pair = EnabledTradingPairs::get()[0];
+		let currency_id_a = trading_pair.0;
+		let currency_id_b = trading_pair.1;
+		let min_contribution_a = dollars(1u32);
+		let min_contribution_b = dollars(1u32);
+		let target_provision_a = dollars(200u32);
+		let target_provision_b = dollars(1000u32);
+		let not_before: BlockNumber = Default::default();
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+	}: _(RawOrigin::Root, currency_id_a, currency_id_b, min_contribution_a, min_contribution_b, target_provision_a, target_provision_b, not_before)
+
+	// TODO:
+	// add tests for following situation:
+	// 1. disable a provisioning trading pair
+	// 2. add provision
 
 	// add liquidity but don't staking lp
 	add_liquidity {
@@ -195,6 +233,27 @@ mod tests {
 	fn test_swap_with_exact_target() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_swap_with_exact_target());
+		});
+	}
+
+	#[test]
+	fn list_trading_pair() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_list_trading_pair());
+		});
+	}
+
+	#[test]
+	fn enable_trading_pair() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_enable_trading_pair());
+		});
+	}
+
+	#[test]
+	fn disable_trading_pair() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_disable_trading_pair());
 		});
 	}
 }

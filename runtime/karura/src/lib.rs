@@ -6,6 +6,7 @@
 // The `large_enum_variant` warning originates from `construct_runtime` macro.
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
+#![allow(clippy::or_fun_call)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -26,7 +27,7 @@ use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
-	traits::AccountIdConversion,
+	traits::{AccountIdConversion, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
@@ -34,15 +35,14 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use static_assertions::const_assert;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
-use module_accounts::{Multiplier, TargetedFeeAdjustment};
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, Runner};
 use module_evm_accounts::EvmAddressMapping;
+use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{create_median_value_data_provider, DataFeeder, DataProviderExtended};
+use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -153,7 +153,7 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
 	type Lookup = Indices;
@@ -172,7 +172,10 @@ impl frame_system::Trait for Runtime {
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
-	type OnKilledAccount = module_accounts::Module<Runtime>;
+	type OnKilledAccount = (
+		module_evm::CallKillAccount<Runtime>,
+		module_evm_accounts::CallKillAccount<Runtime>,
+	);
 	type DbWeight = RocksDbWeight;
 	type BlockExecutionWeight = BlockExecutionWeight;
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
@@ -186,7 +189,7 @@ parameter_types! {
 	pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
 }
 
-impl pallet_babe::Trait for Runtime {
+impl pallet_babe::Config for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
 	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
@@ -199,7 +202,7 @@ impl pallet_babe::Trait for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_grandpa::Trait for Runtime {
+impl pallet_grandpa::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 
@@ -219,7 +222,7 @@ parameter_types! {
 	pub const IndexDeposit: Balance = DOLLARS;
 }
 
-impl pallet_indices::Trait for Runtime {
+impl pallet_indices::Config for Runtime {
 	type AccountIndex = AccountIndex;
 	type Event = Event;
 	type Currency = Balances;
@@ -231,7 +234,7 @@ parameter_types! {
 	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
 }
 
-impl pallet_timestamp::Trait for Runtime {
+impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = Babe;
@@ -243,7 +246,7 @@ parameter_types! {
 	pub const UncleGenerations: BlockNumber = 5;
 }
 
-impl pallet_authorship::Trait for Runtime {
+impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
@@ -251,22 +254,18 @@ impl pallet_authorship::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const AcaExistentialDeposit: Balance = 0;
+	pub const NativeTokenExistentialDeposit: Balance = 0;
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
 }
 
-// `module_accounts` handles account opening/reaping, `ExistentialDeposit` in
-// `pallet_balances` must be 0
-const_assert!(AcaExistentialDeposit::get() == 0);
-
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
-	type DustRemoval = ();
+	type DustRemoval = AcalaTreasury;
 	type Event = Event;
-	type ExistentialDeposit = AcaExistentialDeposit;
-	type AccountStore = module_accounts::Module<Runtime>;
+	type ExistentialDeposit = NativeTokenExistentialDeposit;
+	type AccountStore = frame_system::Module<Runtime>;
 	type MaxLocks = MaxLocks;
 	type WeightInfo = ();
 }
@@ -278,7 +277,7 @@ parameter_types! {
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
 }
 
-impl pallet_sudo::Trait for Runtime {
+impl pallet_sudo::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 }
@@ -326,13 +325,13 @@ type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
 >;
 
 parameter_types! {
-	pub const GeneralCouncilMotionDuration: BlockNumber = 0;
+	pub const GeneralCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const GeneralCouncilMaxProposals: u32 = 100;
 	pub const GeneralCouncilMaxMembers: u32 = 100;
 }
 
 type GeneralCouncilInstance = pallet_collective::Instance1;
-impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
+impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
@@ -344,7 +343,7 @@ impl pallet_collective::Trait<GeneralCouncilInstance> for Runtime {
 }
 
 type GeneralCouncilMembershipInstance = pallet_membership::Instance1;
-impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
+impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
@@ -356,13 +355,13 @@ impl pallet_membership::Trait<GeneralCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const HonzonCouncilMotionDuration: BlockNumber = 0;
+	pub const HonzonCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const HonzonCouncilMaxProposals: u32 = 100;
 	pub const HonzonCouncilMaxMembers: u32 = 100;
 }
 
 type HonzonCouncilInstance = pallet_collective::Instance2;
-impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
+impl pallet_collective::Config<HonzonCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
@@ -374,7 +373,7 @@ impl pallet_collective::Trait<HonzonCouncilInstance> for Runtime {
 }
 
 type HonzonCouncilMembershipInstance = pallet_membership::Instance2;
-impl pallet_membership::Trait<HonzonCouncilMembershipInstance> for Runtime {
+impl pallet_membership::Config<HonzonCouncilMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -386,13 +385,13 @@ impl pallet_membership::Trait<HonzonCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const HomaCouncilMotionDuration: BlockNumber = 0;
+	pub const HomaCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const HomaCouncilMaxProposals: u32 = 100;
 	pub const HomaCouncilMaxMembers: u32 = 100;
 }
 
 type HomaCouncilInstance = pallet_collective::Instance3;
-impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
+impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
@@ -404,7 +403,7 @@ impl pallet_collective::Trait<HomaCouncilInstance> for Runtime {
 }
 
 type HomaCouncilMembershipInstance = pallet_membership::Instance3;
-impl pallet_membership::Trait<HomaCouncilMembershipInstance> for Runtime {
+impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -416,13 +415,13 @@ impl pallet_membership::Trait<HomaCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const TechnicalCommitteeMotionDuration: BlockNumber = 0;
+	pub const TechnicalCommitteeMotionDuration: BlockNumber = 7 * DAYS;
 	pub const TechnicalCommitteeMaxProposals: u32 = 100;
 	pub const TechnicalCouncilMaxMembers: u32 = 100;
 }
 
 type TechnicalCommitteeInstance = pallet_collective::Instance4;
-impl pallet_collective::Trait<TechnicalCommitteeInstance> for Runtime {
+impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
@@ -434,7 +433,7 @@ impl pallet_collective::Trait<TechnicalCommitteeInstance> for Runtime {
 }
 
 type TechnicalCommitteeMembershipInstance = pallet_membership::Instance4;
-impl pallet_membership::Trait<TechnicalCommitteeMembershipInstance> for Runtime {
+impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -446,7 +445,7 @@ impl pallet_membership::Trait<TechnicalCommitteeMembershipInstance> for Runtime 
 }
 
 type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
-impl pallet_membership::Trait<OperatorMembershipInstanceAcala> for Runtime {
+impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -458,7 +457,7 @@ impl pallet_membership::Trait<OperatorMembershipInstanceAcala> for Runtime {
 }
 
 type OperatorMembershipInstanceBand = pallet_membership::Instance6;
-impl pallet_membership::Trait<OperatorMembershipInstanceBand> for Runtime {
+impl pallet_membership::Config<OperatorMembershipInstanceBand> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -469,7 +468,7 @@ impl pallet_membership::Trait<OperatorMembershipInstanceBand> for Runtime {
 	type MembershipChanged = BandOracle;
 }
 
-impl pallet_utility::Trait for Runtime {
+impl pallet_utility::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type WeightInfo = ();
@@ -481,7 +480,7 @@ parameter_types! {
 	pub const MaxSignatories: u16 = 100;
 }
 
-impl pallet_multisig::Trait for Runtime {
+impl pallet_multisig::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
@@ -536,7 +535,7 @@ parameter_types! {
 	pub const MaximumReasonLength: u32 = 16384;
 }
 
-impl pallet_treasury::Trait for Runtime {
+impl pallet_treasury::Config for Runtime {
 	type ModuleId = AcalaTreasuryModuleId;
 	type Currency = Balances;
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -566,9 +565,9 @@ parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
 }
 
-impl pallet_session::Trait for Runtime {
+impl pallet_session::Config for Runtime {
 	type Event = Event;
-	type ValidatorId = <Self as frame_system::Trait>::AccountId;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
@@ -579,7 +578,7 @@ impl pallet_session::Trait for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_session::historical::Trait for Runtime {
+impl pallet_session::historical::Config for Runtime {
 	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
 	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
 }
@@ -610,7 +609,7 @@ parameter_types! {
 		.saturating_sub(ExtrinsicBaseWeight::get());
 }
 
-impl pallet_staking::Trait for Runtime {
+impl pallet_staking::Config for Runtime {
 	type Currency = Balances;
 	type UnixTime = Timestamp;
 	type CurrencyToVote = U128CurrencyToVote;
@@ -643,7 +642,7 @@ parameter_types! {
 	pub const RecoveryDeposit: Balance = 10 * CENTS;
 }
 
-impl pallet_recovery::Trait for Runtime {
+impl pallet_recovery::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
@@ -653,7 +652,7 @@ impl pallet_recovery::Trait for Runtime {
 	type RecoveryDeposit = RecoveryDeposit;
 }
 
-impl orml_auction::Trait for Runtime {
+impl orml_auction::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
@@ -661,7 +660,7 @@ impl orml_auction::Trait for Runtime {
 	type WeightInfo = ();
 }
 
-impl orml_authority::Trait for Runtime {
+impl orml_authority::Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
 	type PalletsOrigin = OriginCaller;
@@ -680,7 +679,7 @@ parameter_types! {
 	pub const DesiredRunnersUp: u32 = 7;
 }
 
-impl pallet_elections_phragmen::Trait for Runtime {
+impl pallet_elections_phragmen::Config for Runtime {
 	type ModuleId = ElectionsPhragmenModuleId;
 	type Event = Event;
 	type Currency = CurrencyAdapter<Runtime, GetLDOTCurrencyId>;
@@ -705,7 +704,7 @@ parameter_types! {
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
-impl orml_oracle::Trait<AcalaDataProvider> for Runtime {
+impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Event = Event;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, AcalaDataProvider>;
@@ -717,7 +716,7 @@ impl orml_oracle::Trait<AcalaDataProvider> for Runtime {
 }
 
 type BandDataProvider = orml_oracle::Instance2;
-impl orml_oracle::Trait<BandDataProvider> for Runtime {
+impl orml_oracle::Config<BandDataProvider> for Runtime {
 	type Event = Event;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, BandDataProvider>;
@@ -742,20 +741,31 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	}
 }
 
-impl orml_tokens::Trait for Runtime {
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Zero::zero()
+	};
+}
+
+parameter_types! {
+	pub TreasuryModuleAccount: AccountId = AcalaTreasuryModuleId::get().into_account();
+}
+
+impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = module_accounts::Module<Runtime>;
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryModuleAccount>;
 }
 
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 }
 
-impl module_prices::Trait for Runtime {
+impl module_prices::Config for Runtime {
 	type Event = Event;
 	type Source = AggregatedDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -780,7 +790,7 @@ parameter_types! {
 	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 }
 
-impl module_currencies::Trait for Runtime {
+impl module_currencies::Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
@@ -818,7 +828,7 @@ parameter_types! {
 	pub const MinVestedTransfer: Balance = 100 * DOLLARS;
 }
 
-impl orml_vesting::Trait for Runtime {
+impl orml_vesting::Config for Runtime {
 	type Event = Event;
 	type Currency = pallet_balances::Module<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
@@ -831,7 +841,7 @@ parameter_types! {
 	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
-impl pallet_scheduler::Trait for Runtime {
+impl pallet_scheduler::Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
 	type PalletsOrigin = OriginCaller;
@@ -846,7 +856,7 @@ parameter_types! {
 	pub const UpdateFrequency: BlockNumber = 10;
 }
 
-impl orml_gradually_update::Trait for Runtime {
+impl orml_gradually_update::Config for Runtime {
 	type Event = Event;
 	type UpdateFrequency = UpdateFrequency;
 	type DispatchOrigin = EnsureRoot<AccountId>;
@@ -859,7 +869,7 @@ parameter_types! {
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
 }
 
-impl module_auction_manager::Trait for Runtime {
+impl module_auction_manager::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type Auction = Auction;
@@ -876,7 +886,7 @@ impl module_auction_manager::Trait for Runtime {
 	type WeightInfo = weights::auction_manager::WeightInfo<Runtime>;
 }
 
-impl module_loans::Trait for Runtime {
+impl module_loans::Config for Runtime {
 	type Event = Event;
 	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Currencies;
@@ -917,7 +927,7 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_accounts::ChargeTransactionPayment::<Runtime>::from(tip),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -953,7 +963,7 @@ parameter_types! {
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
 }
 
-impl module_cdp_engine::Trait for Runtime {
+impl module_cdp_engine::Config for Runtime {
 	type Event = Event;
 	type PriceSource = Prices;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
@@ -971,12 +981,12 @@ impl module_cdp_engine::Trait for Runtime {
 	type WeightInfo = weights::cdp_engine::WeightInfo<Runtime>;
 }
 
-impl module_honzon::Trait for Runtime {
+impl module_honzon::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::honzon::WeightInfo<Runtime>;
 }
 
-impl module_emergency_shutdown::Trait for Runtime {
+impl module_emergency_shutdown::Config for Runtime {
 	type Event = Event;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type PriceSource = Prices;
@@ -998,22 +1008,22 @@ parameter_types! {
 	];
 }
 
-impl module_dex::Trait for Runtime {
+impl module_dex::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type EnabledTradingPairs = EnabledTradingPairs;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::dex::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 100;
 }
 
-impl module_cdp_treasury::Trait for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -1028,12 +1038,9 @@ impl module_cdp_treasury::Trait for Runtime {
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
-	// This cannot be changed without migration code to adjust reserved balances or
-	// update module_accounts::Module::do_merge_account_check
-	pub const NewAccountDeposit: Balance = 100 * MILLICENTS;
 }
 
-impl module_accounts::Trait for Runtime {
+impl module_transaction_payment::Config for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
@@ -1044,33 +1051,20 @@ impl module_accounts::Trait for Runtime {
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
-	type OnCreatedAccount = frame_system::CallOnCreatedAccount<Runtime>;
-	type KillAccount = (
-		module_accounts::CallKillAccount<Runtime>,
-		module_evm::CallKillAccount<Runtime>,
-		module_evm_accounts::CallKillAccount<Runtime>,
-	);
-	type NewAccountDeposit = NewAccountDeposit;
-	type TreasuryModuleId = AcalaTreasuryModuleId;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type WeightInfo = weights::accounts::WeightInfo<Runtime>;
+	type WeightInfo = weights::transaction_payment::WeightInfo<Runtime>;
 }
 
-impl module_evm_accounts::Trait for Runtime {
+impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type KillAccount = (
-		module_accounts::CallKillAccount<Runtime>,
-		module_evm::CallKillAccount<Runtime>,
-		module_evm_accounts::CallKillAccount<Runtime>,
-	);
-	type NewAccountDeposit = NewAccountDeposit;
+	type KillAccount = frame_system::CallKillAccount<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type MergeAccount = (Accounts, Currencies);
+	type MergeAccount = Currencies;
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
 }
 
-impl orml_rewards::Trait for Runtime {
+impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = module_incentives::PoolId;
@@ -1082,7 +1076,7 @@ parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
 }
 
-impl module_incentives::Trait for Runtime {
+impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type LoansIncentivePool = ZeroAccountId;
 	type DexIncentivePool = ZeroAccountId;
@@ -1104,7 +1098,7 @@ parameter_types! {
 	pub const EraLength: BlockNumber = DAYS;
 }
 
-impl module_polkadot_bridge::Trait for Runtime {
+impl module_polkadot_bridge::Config for Runtime {
 	type DOTCurrency = Currency<Runtime, GetStakingCurrencyId>;
 	type OnNewEra = (NomineesElection, StakingPool);
 	type BondingDuration = PolkadotBondingDuration;
@@ -1119,7 +1113,7 @@ parameter_types! {
 	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
 }
 
-impl module_staking_pool::Trait for Runtime {
+impl module_staking_pool::Config for Runtime {
 	type Event = Event;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
@@ -1133,7 +1127,7 @@ impl module_staking_pool::Trait for Runtime {
 	type Currency = Currencies;
 }
 
-impl module_homa::Trait for Runtime {
+impl module_homa::Config for Runtime {
 	type Homa = StakingPool;
 }
 
@@ -1144,7 +1138,7 @@ parameter_types! {
 	pub const NomineesElectionBondingDuration: EraIndex = 7;
 }
 
-impl module_nominees_election::Trait for Runtime {
+impl module_nominees_election::Config for Runtime {
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 	type PolkadotAccountId = AccountId;
 	type MinBondThreshold = MinCouncilBondThreshold;
@@ -1158,7 +1152,7 @@ parameter_types! {
 	pub const CreateTokenDeposit: Balance = 100 * MILLICENTS;
 }
 
-impl module_nft::Trait for Runtime {
+impl module_nft::Config for Runtime {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
@@ -1167,7 +1161,7 @@ impl module_nft::Trait for Runtime {
 	type WeightInfo = weights::nft::WeightInfo<Runtime>;
 }
 
-impl orml_nft::Trait for Runtime {
+impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData;
@@ -1185,7 +1179,7 @@ parameter_types! {
 	pub const MaxPending: u16 = 32;
 }
 
-impl pallet_proxy::Trait for Runtime {
+impl pallet_proxy::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
@@ -1206,7 +1200,7 @@ parameter_types! {
 	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
-impl ecosystem_renvm_bridge::Trait for Runtime {
+impl ecosystem_renvm_bridge::Config for Runtime {
 	type Event = Event;
 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
 	type PublicKey = RenVmPublickKey;
@@ -1219,33 +1213,38 @@ parameter_types! {
 	pub const RentByteFee: Balance = 4 * MILLICENTS;
 	pub const RentDepositOffset: Balance = 1000 * MILLICENTS;
 	pub const SurchargeReward: Balance = 150 * MILLICENTS;
+	pub const SignedClaimHandicap: u32 = 2;
+	pub const MaxDepth: u32 = 32;
+	pub const StorageSizeOffset: u32 = 8;
+	pub const MaxValueSize: u32 = 16 * 1024;
 }
 
-impl pallet_contracts::Trait for Runtime {
+impl pallet_contracts::Config for Runtime {
 	type Time = Timestamp;
 	type Randomness = RandomnessCollectiveFlip;
 	type Currency = Balances;
 	type Event = Event;
-	type DetermineContractAddress = pallet_contracts::SimpleAddressDeterminer<Runtime>;
-	type TrieIdGenerator = pallet_contracts::TrieIdFromParentCounter<Runtime>;
 	type RentPayment = ();
-	type SignedClaimHandicap = pallet_contracts::DefaultSignedClaimHandicap;
+	type SignedClaimHandicap = SignedClaimHandicap;
 	type TombstoneDeposit = TombstoneDeposit;
-	type StorageSizeOffset = pallet_contracts::DefaultStorageSizeOffset;
+	type StorageSizeOffset = StorageSizeOffset;
 	type RentByteFee = RentByteFee;
 	type RentDepositOffset = RentDepositOffset;
 	type SurchargeReward = SurchargeReward;
-	type MaxDepth = pallet_contracts::DefaultMaxDepth;
-	type MaxValueSize = pallet_contracts::DefaultMaxValueSize;
-	type WeightPrice = module_accounts::Module<Self>;
+	type MaxDepth = MaxDepth;
+	type MaxValueSize = MaxValueSize;
+	type WeightPrice = module_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 }
 
 parameter_types! {
+	// TODO: update
 	pub const ChainId: u64 = 686;
-	// TODO: update
-	pub const ContractExistentialDeposit: Balance = 0;
-	// TODO: update
+	pub const ContractExistentialDeposit: Balance = DOLLARS;
+	pub const TransferMaintainerDeposit: Balance = DOLLARS;
+	pub const StorageDepositPerByte: Balance = MICROCENTS;
+	// https://eips.ethereum.org/EIPS/eip-170
+	pub const StorageDefaultQuota: u32 = 0x6000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
@@ -1254,11 +1253,14 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 
-impl module_evm::Trait for Runtime {
+impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
-	type MergeAccount = (Accounts, Currencies);
+	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type StorageDefaultQuota = StorageDefaultQuota;
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
@@ -1266,9 +1268,10 @@ impl module_evm::Trait for Runtime {
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
+	type WeightInfo = weights::evm::WeightInfo<Runtime>;
 }
 
-impl module_evm_bridge::Trait for Runtime {
+impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
@@ -1287,7 +1290,7 @@ construct_runtime!(
 		// Tokens & Related
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 
-		Accounts: module_accounts::{Module, Call, Storage},
+		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
 		EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
 		Currencies: module_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
@@ -1342,7 +1345,7 @@ construct_runtime!(
 		Prices: module_prices::{Module, Storage, Call, Event},
 
 		// DEX
-		Dex: module_dex::{Module, Storage, Call, Event<T>},
+		Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
 
 		// Honzon
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
@@ -1393,7 +1396,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	module_accounts::ChargeTransactionPayment<Runtime>,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
@@ -1562,7 +1565,7 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-			Accounts::query_info(uxt, len)
+			TransactionPayment::query_info(uxt, len)
 		}
 	}
 
@@ -1639,13 +1642,23 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			<Runtime as module_evm::Trait>::Runner::call(
+			let config = if estimate {
+				let mut config = <Runtime as module_evm::Config>::config().clone();
+				config.estimate = true;
+				Some(config)
+			} else {
+				None
+			};
+
+			<Runtime as module_evm::Config>::Runner::call(
 				from,
 				to,
 				data,
 				value,
 				gas_limit,
+				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
 
@@ -1654,12 +1667,22 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			<Runtime as module_evm::Trait>::Runner::create(
+			let config = if estimate {
+				let mut config = <Runtime as module_evm::Config>::config().clone();
+				config.estimate = true;
+				Some(config)
+			} else {
+				None
+			};
+
+			<Runtime as module_evm::Config>::Runner::create(
 				from,
 				data,
 				value,
 				gas_limit,
+				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
 
@@ -1675,7 +1698,7 @@ impl_runtime_apis! {
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft_benchmarking::Module as NftBench;
-			impl module_nft_benchmarking::Trait for Runtime {}
+			impl module_nft_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number

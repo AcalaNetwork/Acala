@@ -8,7 +8,7 @@ use frame_support::weights::{constants::RocksDbWeight as DbWeight, Weight};
 use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Trait> module_emergency_shutdown::WeightInfo for WeightInfo<T> {
+impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightInfo<T> {
 	fn emergency_shutdown(c: u32) -> Weight {
 		(564_107_000 as Weight)
 			.saturating_add((32_606_000 as Weight).saturating_mul(c as Weight))

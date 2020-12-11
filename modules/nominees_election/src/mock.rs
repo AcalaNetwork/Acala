@@ -4,6 +4,7 @@
 
 use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
@@ -30,7 +31,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -59,13 +60,20 @@ impl frame_system::Trait for Runtime {
 }
 pub type System = frame_system::Module<Runtime>;
 
-impl orml_tokens::Trait for Runtime {
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
 	type Event = ();
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type TokensModule = orml_tokens::Module<Runtime>;
 
@@ -73,7 +81,7 @@ parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
@@ -92,7 +100,7 @@ parameter_types! {
 pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 pub type LDOTCurrency = module_currencies::Currency<Runtime, GetLDOTCurrencyId>;
 
-impl module_currencies::Trait for Runtime {
+impl module_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
@@ -109,7 +117,7 @@ parameter_types! {
 	pub const MaxUnlockingChunks: usize = 3;
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Currency = LDOTCurrency;
 	type PolkadotAccountId = AccountId;
 	type MinBondThreshold = MinBondThreshold;

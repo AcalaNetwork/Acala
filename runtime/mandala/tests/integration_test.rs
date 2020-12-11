@@ -7,14 +7,16 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
-	get_all_module_accounts, AccountId, Accounts, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, Event, EvmAccounts, GetNativeCurrencyId,
-	NewAccountDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, TokenSymbol, NFT,
+	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
+	CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts, GetNativeCurrencyId,
+	NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, System,
+	TokenSymbol, EVM, NFT,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
+use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
@@ -76,7 +78,15 @@ impl ExtBuilder {
 			.unwrap();
 
 		let native_currency_id = GetNativeCurrencyId::get();
-		let new_account_deposit = NewAccountDeposit::get();
+		let existential_deposit = NativeTokenExistentialDeposit::get();
+		let initial_enabled_trading_pairs = EnabledTradingPairs::get();
+
+		module_dex::GenesisConfig::<Runtime> {
+			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
+			initial_listing_trading_pairs: Default::default(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
@@ -88,7 +98,7 @@ impl ExtBuilder {
 				.chain(
 					get_all_module_accounts()
 						.iter()
-						.map(|x| (x.clone(), new_account_deposit)),
+						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.collect::<Vec<_>>(),
 		}
@@ -122,8 +132,8 @@ impl ExtBuilder {
 	}
 }
 
-pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Trait>::Origin {
-	<Runtime as frame_system::Trait>::Origin::signed(account_id)
+pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Config>::Origin {
+	<Runtime as frame_system::Config>::Origin::signed(account_id)
 }
 
 fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
@@ -152,6 +162,14 @@ fn bob() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
 }
 
+pub fn alice_account_id() -> AccountId {
+	let address = EvmAccounts::eth_address(&alice());
+	let mut data = [0u8; 32];
+	data[0..4].copy_from_slice(b"evm:");
+	data[4..24].copy_from_slice(&address[..]);
+	AccountId::from(Into::<[u8; 32]>::into(data))
+}
+
 pub fn bob_account_id() -> AccountId {
 	let address = EvmAccounts::eth_address(&bob());
 	let mut data = [0u8; 32];
@@ -160,24 +178,38 @@ pub fn bob_account_id() -> AccountId {
 	AccountId::from(Into::<[u8; 32]>::into(data))
 }
 
+fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Factory {
+	//     Contract[] newContracts;
+	//
+	//     function createContract () public payable {
+	//         Contract newContract = new Contract();
+	//         newContracts.push(newContract);
+	//     }
+	// }
+	//
+	// contract Contract {}
+	let contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a40029").to_vec();
+
+	EVM::create(Origin::signed(account), contract, 0, 1000000000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
+
+	if let Event::module_evm(module_evm::RawEvent::Created(address)) = System::events().iter().last().unwrap().event {
+		Ok(address)
+	} else {
+		Err("deploy_contract failed".into())
+	}
+}
+
 #[test]
 fn emergency_shutdown_and_cdp_treasury() {
 	ExtBuilder::default()
 		.balances(vec![
 			(
 				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
-			(
-				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				2_000_000u128,
-			),
-			(
-				AccountId::from(BOB),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
 			),
 			(
 				AccountId::from(BOB),
@@ -235,10 +267,10 @@ fn emergency_shutdown_and_cdp_treasury() {
 				module_emergency_shutdown::Error::<Runtime>::CanNotRefund,
 			);
 			assert_ok!(EmergencyShutdownModule::emergency_shutdown(
-				<Runtime as frame_system::Trait>::Origin::root()
+				<Runtime as frame_system::Config>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::open_collateral_refund(
-				<Runtime as frame_system::Trait>::Origin::root()
+				<Runtime as frame_system::Config>::Origin::root()
 			));
 			assert_ok!(EmergencyShutdownModule::refund_collaterals(
 				origin_of(AccountId::from(ALICE)),
@@ -280,17 +312,7 @@ fn emergency_shutdown_and_cdp_treasury() {
 fn liquidate_cdp() {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
 			(AccountId::from(ALICE), CurrencyId::Token(TokenSymbol::XBTC), amount(10)),
-			(
-				AccountId::from(BOB),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
 			(
 				AccountId::from(BOB),
 				CurrencyId::Token(TokenSymbol::AUSD),
@@ -315,7 +337,7 @@ fn liquidate_cdp() {
 			));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NewValue(Some(Rate::zero())),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
@@ -358,7 +380,7 @@ fn liquidate_cdp() {
 			assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
@@ -618,18 +640,11 @@ fn test_dex_module() {
 #[test]
 fn test_honzon_module() {
 	ExtBuilder::default()
-		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(1_000),
-			),
-		])
+		.balances(vec![(
+			AccountId::from(ALICE),
+			CurrencyId::Token(TokenSymbol::XBTC),
+			amount(1_000),
+		)])
 		.build()
 		.execute_with(|| {
 			assert_ok!(set_oracle_price(vec![(
@@ -638,7 +653,7 @@ fn test_honzon_module() {
 			)]));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -670,7 +685,7 @@ fn test_honzon_module() {
 			);
 			assert_eq!(
 				CdpEngineModule::liquidate(
-					<Runtime as frame_system::Trait>::Origin::none(),
+					<Runtime as frame_system::Config>::Origin::none(),
 					CurrencyId::Token(TokenSymbol::XBTC),
 					AccountId::from(ALICE)
 				)
@@ -678,7 +693,7 @@ fn test_honzon_module() {
 				false
 			);
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
@@ -687,7 +702,7 @@ fn test_honzon_module() {
 				Change::NoChange,
 			));
 			assert_ok!(CdpEngineModule::liquidate(
-				<Runtime as frame_system::Trait>::Origin::none(),
+				<Runtime as frame_system::Config>::Origin::none(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				AccountId::from(ALICE)
 			));
@@ -717,11 +732,6 @@ fn test_cdp_engine_module() {
 		.balances(vec![
 			(
 				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
-			(
-				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				amount(1000),
 			),
@@ -734,7 +744,7 @@ fn test_cdp_engine_module() {
 		.build()
 		.execute_with(|| {
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Trait>::Origin::root(),
+				<Runtime as frame_system::Config>::Origin::root(),
 				CurrencyId::Token(TokenSymbol::XBTC),
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -863,11 +873,6 @@ fn test_authority_module() {
 
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
 			(
 				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
@@ -1056,10 +1061,10 @@ fn test_authority_module() {
 			assert_eq!(last_event(), event);
 
 			let schedule_origin = {
-				let origin: <Runtime as orml_authority::Trait>::Origin = From::from(Origin::root());
-				let origin: <Runtime as orml_authority::Trait>::Origin = From::from(DelayedOrigin::<
+				let origin: <Runtime as orml_authority::Config>::Origin = From::from(Origin::root());
+				let origin: <Runtime as orml_authority::Config>::Origin = From::from(DelayedOrigin::<
 					BlockNumber,
-					<Runtime as orml_authority::Trait>::PalletsOrigin,
+					<Runtime as orml_authority::Config>::PalletsOrigin,
 				> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
@@ -1111,18 +1116,11 @@ fn test_authority_module() {
 #[test]
 fn test_nft_module() {
 	ExtBuilder::default()
-		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				GetNativeCurrencyId::get(),
-				NewAccountDeposit::get(),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::ACA),
-				amount(1000),
-			),
-		])
+		.balances(vec![(
+			AccountId::from(ALICE),
+			CurrencyId::Token(TokenSymbol::ACA),
+			amount(1000),
+		)])
 		.build()
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), amount(1000));
@@ -1158,45 +1156,6 @@ fn test_nft_module() {
 			assert_eq!(
 				Balances::free_balance(AccountId::from(ALICE)),
 				amount(1000) - (CreateClassDeposit::get() + Proxy::deposit(1u32))
-			);
-		});
-}
-
-#[test]
-fn test_accounts_module() {
-	ExtBuilder::default()
-		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::ACA),
-				amount(1000),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(1000),
-			),
-		])
-		.build()
-		.execute_with(|| {
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1000000000000000000000);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
-				amount(1000)
-			);
-			assert_ok!(Accounts::close_account(
-				origin_of(AccountId::from(ALICE)),
-				Some(AccountId::from(BOB))
-			));
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
-				0
-			);
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), 1000000000000000000000);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(BOB)),
-				amount(1000)
 			);
 		});
 }
@@ -1241,5 +1200,78 @@ fn test_evm_accounts_module() {
 				),
 				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
 			);
+		});
+}
+
+#[test]
+fn test_evm_module() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
+			(bob_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
+		])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
+
+			let alice_address = EvmAccounts::eth_address(&alice());
+			let bob_address = EvmAccounts::eth_address(&bob());
+
+			let address = deploy_contract(alice_account_id()).unwrap();
+			let event = Event::module_evm(module_evm::RawEvent::Created(address));
+			assert_eq!(last_event(), event);
+
+			assert_ok!(EVM::add_storage_quota(Origin::signed(bob_account_id()), address, 10));
+			let event = Event::module_evm(module_evm::RawEvent::AddStorageQuota(address, 10));
+			assert_eq!(last_event(), event);
+
+			assert_ok!(EVM::remove_storage_quota(
+				Origin::signed(alice_account_id()),
+				address,
+				10
+			));
+			let event = Event::module_evm(module_evm::RawEvent::RemoveStorageQuota(address, 10));
+			assert_eq!(last_event(), event);
+
+			assert_ok!(EVM::request_transfer_maintainer(
+				Origin::signed(bob_account_id()),
+				address
+			));
+			let event = Event::module_evm(module_evm::RawEvent::RequestedTransferMaintainer(address, bob_address));
+			assert_eq!(last_event(), event);
+
+			assert_ok!(EVM::cancel_transfer_maintainer(
+				Origin::signed(bob_account_id()),
+				address
+			));
+			let event = Event::module_evm(module_evm::RawEvent::CanceledTransferMaintainer(address, bob_address));
+			assert_eq!(last_event(), event);
+
+			// confirm_transfer_maintainer
+			assert_ok!(EVM::request_transfer_maintainer(
+				Origin::signed(bob_account_id()),
+				address
+			));
+			assert_ok!(EVM::confirm_transfer_maintainer(
+				Origin::signed(alice_account_id()),
+				address,
+				EvmAccounts::eth_address(&bob())
+			));
+			let event = Event::module_evm(module_evm::RawEvent::ConfirmedTransferMaintainer(address, bob_address));
+			assert_eq!(last_event(), event);
+
+			// reject_transfer_maintainer
+			assert_ok!(EVM::request_transfer_maintainer(
+				Origin::signed(alice_account_id()),
+				address
+			));
+			assert_ok!(EVM::reject_transfer_maintainer(
+				Origin::signed(bob_account_id()),
+				address,
+				alice_address
+			));
+			let event = Event::module_evm(module_evm::RawEvent::RejectedTransferMaintainer(address, alice_address));
+			assert_eq!(last_event(), event);
 		});
 }

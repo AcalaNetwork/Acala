@@ -8,6 +8,7 @@ use frame_support::{
 	impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 };
 use frame_system::EnsureSignedBy;
+use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
@@ -52,7 +53,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
@@ -81,13 +82,20 @@ impl frame_system::Trait for Runtime {
 }
 pub type System = frame_system::Module<Runtime>;
 
-impl orml_tokens::Trait for Runtime {
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
 	type Event = TestEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type TokensModule = orml_tokens::Module<Runtime>;
 
@@ -197,7 +205,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 	}
 }
 
-impl orml_rewards::Trait for Runtime {
+impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
@@ -220,7 +228,7 @@ ord_parameter_types! {
 	pub const Four: AccountId = 4;
 }
 
-impl Trait for Runtime {
+impl Config for Runtime {
 	type Event = TestEvent;
 	type LoansIncentivePool = LoansIncentivePool;
 	type DexIncentivePool = DexIncentivePool;

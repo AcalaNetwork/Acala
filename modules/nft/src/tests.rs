@@ -11,15 +11,15 @@ use mock::{
 };
 
 fn free_balance(who: &AccountId) -> Balance {
-	<Runtime as Trait>::Currency::free_balance(who)
+	<Runtime as Config>::Currency::free_balance(who)
 }
 
 fn reserved_balance(who: &AccountId) -> Balance {
-	<Runtime as Trait>::Currency::reserved_balance(who)
+	<Runtime as Config>::Currency::reserved_balance(who)
 }
 
 fn class_id_account() -> AccountId {
-	<Runtime as Trait>::ModuleId::get().into_sub_account(CLASS_ID)
+	<Runtime as Config>::ModuleId::get().into_sub_account(CLASS_ID)
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn create_class_should_work() {
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Trait>::CreateClassDeposit::get() + Proxy::deposit(1u32)
+			<Runtime as Config>::CreateClassDeposit::get() + Proxy::deposit(1u32)
 		);
 	});
 }
@@ -66,7 +66,7 @@ fn mint_should_work() {
 		assert_eq!(last_event(), event);
 
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -82,8 +82,8 @@ fn mint_should_work() {
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Trait>::CreateClassDeposit::get()
-				+ 2 * <Runtime as Trait>::CreateTokenDeposit::get()
+			<Runtime as Config>::CreateClassDeposit::get()
+				+ 2 * <Runtime as Config>::CreateTokenDeposit::get()
 				+ Proxy::deposit(1u32)
 		);
 	});
@@ -113,10 +113,10 @@ fn mint_should_fail() {
 		);
 
 		orml_nft::NextTokenId::<Runtime>::mutate(CLASS_ID, |id| {
-			*id = <Runtime as orml_nft::Trait>::TokenId::max_value()
+			*id = <Runtime as orml_nft::Config>::TokenId::max_value()
 		});
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -136,7 +136,7 @@ fn transfer_should_work() {
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -167,7 +167,7 @@ fn transfer_should_fail() {
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -199,7 +199,7 @@ fn transfer_should_fail() {
 			Default::default()
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -226,7 +226,7 @@ fn burn_should_work() {
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -243,7 +243,7 @@ fn burn_should_work() {
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Trait>::CreateClassDeposit::get() + Proxy::deposit(1u32)
+			<Runtime as Config>::CreateClassDeposit::get() + Proxy::deposit(1u32)
 		);
 	});
 }
@@ -257,7 +257,7 @@ fn burn_should_fail() {
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -294,7 +294,7 @@ fn burn_should_fail() {
 			Default::default()
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);
@@ -321,7 +321,7 @@ fn destroy_class_should_work() {
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		); // + 100
@@ -356,7 +356,7 @@ fn destroy_class_should_fail() {
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
 		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Trait>::CreateTokenDeposit::get())
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
 			true
 		);

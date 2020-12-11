@@ -6,12 +6,12 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_oracle::DefaultCombineData;
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::H160;
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
 	traits::IdentityLookup,
-	DispatchError, DispatchResult, ModuleId,
+	DispatchResult, ModuleId,
 };
 use sp_std::vec;
 use support::{AuctionManager, ExchangeRate, ExchangeRateProvider, Price, Rate, Ratio};
@@ -41,7 +41,7 @@ pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
 
-impl frame_system::Trait for Runtime {
+impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = AccountIndex;
 	type BlockNumber = BlockNumber;
@@ -68,13 +68,20 @@ impl frame_system::Trait for Runtime {
 	type BaseCallFilter = ();
 }
 
-impl orml_tokens::Trait for Runtime {
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
 	type Event = ();
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type OnReceived = ();
 	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
@@ -82,7 +89,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
@@ -99,7 +106,7 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl module_currencies::Trait for Runtime {
+impl module_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -113,7 +120,7 @@ parameter_types! {
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
 }
 
-impl loans::Trait for Runtime {
+impl loans::Config for Runtime {
 	type Event = ();
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Currencies;
@@ -177,7 +184,7 @@ parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
 }
 
-impl cdp_treasury::Trait for Runtime {
+impl cdp_treasury::Config for Runtime {
 	type Event = ();
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -199,7 +206,7 @@ parameter_types! {
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
-impl cdp_engine::Trait for Runtime {
+impl cdp_engine::Config for Runtime {
 	type Event = ();
 	type PriceSource = prices::Module<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
@@ -227,7 +234,7 @@ where
 	type Extrinsic = Extrinsic;
 }
 
-impl emergency_shutdown::Trait for Runtime {
+impl emergency_shutdown::Config for Runtime {
 	type Event = ();
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type PriceSource = prices::Module<Runtime>;
@@ -241,7 +248,7 @@ parameter_types! {
 	pub const MinimumPeriod: u64 = 5;
 }
 
-impl pallet_timestamp::Trait for Runtime {
+impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
@@ -252,7 +259,7 @@ parameter_types! {
 	pub const ExpiresIn: u32 = 1000 * 60 * 30; // 30 mins
 }
 
-impl orml_oracle::Trait for Runtime {
+impl orml_oracle::Config for Runtime {
 	type Event = ();
 	type OnNewData = ();
 	type CombineData = DefaultCombineData<Self, MinimumCount, ExpiresIn>;
@@ -277,7 +284,7 @@ parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::one();
 }
 
-impl prices::Trait for Runtime {
+impl prices::Config for Runtime {
 	type Event = ();
 	type Source = orml_oracle::Module<Runtime>;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -288,7 +295,7 @@ impl prices::Trait for Runtime {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 }
 
-impl crate::Trait for Runtime {}
+impl crate::Config for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
