@@ -95,25 +95,25 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-impl AddressMapping<u128> for () {
-	fn to_account(_evm: &H160) -> u128 {
+impl AddressMapping<AccountId> for () {
+	fn to_account(_evm: &H160) -> AccountId {
 		unimplemented!()
 	}
-	fn to_evm_address(_account: &u128) -> Option<H160> {
+	fn to_evm_address(_account: &AccountId) -> Option<H160> {
 		unimplemented!()
 	}
 }
 
-impl EVMBridge<u128> for () {
-	fn total_supply(_context: InvokeContext) -> Result<u128, DispatchError> {
+impl EVMBridge<Balance> for () {
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
 		unimplemented!()
 	}
 
-	fn balance_of(_context: InvokeContext, _address: H160) -> Result<u128, DispatchError> {
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
 		unimplemented!()
 	}
 
-	fn transfer(_context: InvokeContext, _to: H160, _value: u128) -> DispatchResult {
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
 		unimplemented!()
 	}
 }
