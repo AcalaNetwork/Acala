@@ -14,11 +14,14 @@ toolchain:
 build-full: githooks
 	cargo build
 
+.PHONY: build-all
 build-all: build-dev build-acala
 
+.PHONY: build-dev
 build-dev:
 	cargo build --manifest-path bin/acala-dev/Cargo.toml --locked
 
+.PHONY: build-acala
 build-acala:
 	cargo build --manifest-path bin/acala/Cargo.toml --locked --features with-all-runtime
 
@@ -30,11 +33,14 @@ check: githooks
 check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
+.PHONY: check-all
 check-all: check-dev check-acala
 
+.PHONY: check-dev
 check-dev:
 	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala-dev/Cargo.toml --tests --all
 
+.PHONY: check-acala
 check-acala:
 	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala/Cargo.toml --tests --all --features with-all-runtime
 
@@ -46,11 +52,14 @@ check-debug:
 test: githooks
 	SKIP_WASM_BUILD= cargo test --all
 
+.PHONY: test-all
 test-all: test-dev test-acala
 
+.PHONY: test-dev
 test-dev:
 	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all
 
+.PHONY: test-acala
 test-acala:
 	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all --features with-all-runtime
 
@@ -58,13 +67,14 @@ test-acala:
 build: githooks
 	SKIP_WASM_BUILD= cargo build
 
+.PHONY: purge
 purge: target/debug/acala-dev
 	target/debug/acala-dev purge-chain --dev -y
 
 .PHONY: restart
 restart: purge run
 
-target/debug/acala-dev: build
+target/debug/acala-dev:
 	SKIP_WASM_BUILD= cargo build
 
 GITHOOKS_SRC = $(wildcard githooks/*)
