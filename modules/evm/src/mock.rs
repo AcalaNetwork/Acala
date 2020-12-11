@@ -2,7 +2,6 @@
 
 use super::*;
 
-use frame_support::dispatch::DispatchResult;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
@@ -10,10 +9,9 @@ use sp_core::{Blake2Hasher, Hasher, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	AccountId32, DispatchError, Perbill,
+	AccountId32, Perbill,
 };
 use std::{collections::BTreeMap, str::FromStr};
-use support::{EVMBridge, InvokeContext};
 
 /// Hashed address mapping.
 pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
@@ -128,21 +126,6 @@ impl orml_tokens::Trait for Test {
 }
 pub type Tokens = orml_tokens::Module<Test>;
 
-pub struct MockEVMBridge;
-impl EVMBridge<Balance> for MockEVMBridge {
-	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
@@ -154,7 +137,7 @@ impl module_currencies::Trait for Test {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
-	type EVMBridge = MockEVMBridge;
+	type EVMBridge = ();
 }
 pub type Currencies = module_currencies::Module<Test>;
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;

@@ -94,21 +94,6 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
-pub struct EvmAddressMapping;
-impl AddressMapping<AccountId> for EvmAddressMapping {
-	fn to_account(address: &H160) -> AccountId {
-		let mut data: [u8; 32] = [0u8; 32];
-		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&address[..]);
-		AccountId32::from(data).into()
-	}
-
-	fn to_evm_address(account_id: &AccountId) -> Option<H160> {
-		let data: [u8; 32] = account_id.clone().into();
-		Some(H160::from_slice(&data[4..24]))
-	}
-}
-
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
@@ -145,7 +130,7 @@ ord_parameter_types! {
 }
 
 impl module_evm::Trait for Runtime {
-	type AddressMapping = EvmAddressMapping;
+	type AddressMapping = ();
 	type Currency = PalletBalances;
 	type MergeAccount = ();
 	type ContractExistentialDeposit = ContractExistentialDeposit;
@@ -167,6 +152,21 @@ impl module_evm_bridge::Trait for Runtime {
 
 pub type EVMBridge = module_evm_bridge::Module<Runtime>;
 
+pub struct EvmAddressMapping;
+impl AddressMapping<AccountId32> for EvmAddressMapping {
+	fn to_account(evm: &H160) -> AccountId32 {
+		let mut data: [u8; 32] = [0u8; 32];
+		data[0..4].copy_from_slice(b"evm:");
+		data[4..24].copy_from_slice(&evm[..]);
+		AccountId32::from(data)
+	}
+
+	fn to_evm_address(account: &AccountId32) -> Option<H160> {
+		let data: [u8; 32] = account.clone().into();
+		Some(H160::from_slice(&data[4..24]))
+	}
+}
+
 impl Trait for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
@@ -185,11 +185,11 @@ pub fn erc20_address() -> H160 {
 }
 
 pub fn alice() -> AccountId {
-	EvmAddressMapping::to_account(&H160::from_str("1000000000000000000000000000000000000001").unwrap())
+	<Runtime as Trait>::AddressMapping::to_account(&H160::from_str("1000000000000000000000000000000000000001").unwrap())
 }
 
 pub fn bob() -> AccountId {
-	EvmAddressMapping::to_account(&H160::from_str("1000000000000000000000000000000000000002").unwrap())
+	<Runtime as Trait>::AddressMapping::to_account(&H160::from_str("1000000000000000000000000000000000000002").unwrap())
 }
 
 parameter_types! {

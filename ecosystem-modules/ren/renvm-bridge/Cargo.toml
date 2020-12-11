@@ -21,7 +21,6 @@ primitives = { package = "acala-primitives", path = "../../../primitives", defau
 hex-literal = { version = "0.3.1" }
 module-currencies = { path = "../../../modules/currencies" }
 pallet-balances = { version = "2.0.0" }
-support = { package = "module-support", path = "../../../modules/support"}
 
 [features]
 default = ["std"]

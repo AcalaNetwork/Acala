@@ -96,29 +96,6 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-impl AddressMapping<AccountId> for () {
-	fn to_account(_evm: &H160) -> AccountId {
-		unimplemented!()
-	}
-	fn to_evm_address(_account: &AccountId) -> Option<H160> {
-		unimplemented!()
-	}
-}
-
-impl EVMBridge<Balance> for () {
-	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }

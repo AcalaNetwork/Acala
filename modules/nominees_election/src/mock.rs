@@ -3,12 +3,10 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::dispatch::DispatchResult;
 use frame_support::{impl_outer_origin, parameter_types};
-use primitives::{evm::AddressMapping, Amount, CurrencyId, TokenSymbol};
-use sp_core::{H160, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchError, Perbill};
-use support::{EVMBridge, InvokeContext};
+use primitives::{Amount, CurrencyId, TokenSymbol};
+use sp_core::H256;
+use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -94,39 +92,14 @@ parameter_types! {
 pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 pub type LDOTCurrency = module_currencies::Currency<Runtime, GetLDOTCurrencyId>;
 
-pub struct MockAddressMapping;
-impl AddressMapping<AccountId> for MockAddressMapping {
-	fn to_account(_evm: &H160) -> AccountId {
-		unimplemented!()
-	}
-	fn to_evm_address(_account: &AccountId) -> Option<H160> {
-		unimplemented!()
-	}
-}
-
-pub struct MockEVMBridge;
-impl EVMBridge<Balance> for MockEVMBridge {
-	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
 impl module_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = MockAddressMapping;
-	type EVMBridge = MockEVMBridge;
+	type AddressMapping = ();
+	type EVMBridge = ();
 }
 
 parameter_types! {

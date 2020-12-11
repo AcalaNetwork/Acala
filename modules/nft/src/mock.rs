@@ -10,14 +10,13 @@ use frame_support::{
 	weights::Weight,
 	RuntimeDebug,
 };
-use primitives::{evm::AddressMapping, Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::{H160, H256};
+use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
+use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, Perbill,
+	Perbill,
 };
-use support::{EVMBridge, InvokeContext};
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
@@ -172,31 +171,6 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-pub struct MockAddressMapping;
-impl AddressMapping<AccountId> for MockAddressMapping {
-	fn to_account(_evm: &H160) -> AccountId {
-		unimplemented!()
-	}
-	fn to_evm_address(_account: &AccountId) -> Option<H160> {
-		unimplemented!()
-	}
-}
-
-pub struct MockEVMBridge;
-impl EVMBridge<Balance> for MockEVMBridge {
-	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
@@ -207,8 +181,8 @@ impl module_currencies::Trait for Runtime {
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = MockAddressMapping;
-	type EVMBridge = MockEVMBridge;
+	type AddressMapping = ();
+	type EVMBridge = ();
 }
 
 parameter_types! {

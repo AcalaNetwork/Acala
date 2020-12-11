@@ -76,15 +76,16 @@ pub type Balances = pallet_balances::Module<Runtime>;
 
 pub struct EvmAddressMapping;
 impl AddressMapping<AccountId> for EvmAddressMapping {
-	fn to_account(address: &H160) -> AccountId {
+	fn to_account(evm: &H160) -> AccountId {
 		let mut data: [u8; 32] = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&address[..]);
-		AccountId32::from(data).into()
+		data[4..24].copy_from_slice(&evm[..]);
+		AccountId32::from(data)
 	}
 
-	fn to_evm_address(_account_id: &AccountId) -> Option<H160> {
-		None
+	fn to_evm_address(account: &AccountId) -> Option<H160> {
+		let data: [u8; 32] = account.clone().into();
+		Some(H160::from_slice(&data[4..24]))
 	}
 }
 

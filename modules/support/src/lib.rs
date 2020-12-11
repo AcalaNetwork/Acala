@@ -282,3 +282,20 @@ pub trait EVMBridge<Balance> {
 	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
 	fn transfer(context: InvokeContext, to: H160, value: Balance) -> DispatchResult;
 }
+
+impl<Balance> EVMBridge<Balance> for ()
+where
+	Balance: Default,
+{
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
+		Ok(())
+	}
+}

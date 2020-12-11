@@ -42,3 +42,16 @@ pub trait AddressMapping<AccountId> {
 	fn to_account(evm: &H160) -> AccountId;
 	fn to_evm_address(account: &AccountId) -> Option<H160>;
 }
+
+impl<AccountId> AddressMapping<AccountId> for ()
+where
+	AccountId: Default,
+{
+	fn to_account(_evm: &H160) -> AccountId {
+		Default::default()
+	}
+
+	fn to_evm_address(_account: &AccountId) -> Option<H160> {
+		None
+	}
+}
