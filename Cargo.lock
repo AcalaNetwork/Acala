@@ -4005,30 +4005,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-accounts"
-version = "0.6.3"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-currencies",
- "module-dex",
- "module-support",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-proxy",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "smallvec 1.4.2",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "module-airdrop"
 version = "0.7.0"
 dependencies = [
@@ -4642,9 +4618,9 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-dex",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
