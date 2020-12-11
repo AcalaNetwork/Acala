@@ -45,6 +45,7 @@ where
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
 		EthereumPrecompiles::execute(address, input, target_gas, context).or_else(|| {
 			if is_system_contract(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
+				debug::debug!(target: "evm", "Precompile no permission");
 				return Some(Err(ExitError::Other("no permission".into())));
 			}
 

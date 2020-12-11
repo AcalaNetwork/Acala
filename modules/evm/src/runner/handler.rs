@@ -495,6 +495,12 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			}
 
 			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas), &context) {
+				debug::debug!(
+					target: "evm",
+					"handler: call-result: precompile result {:?}",
+					ret
+				);
+
 				return match ret {
 					Ok((s, out, cost)) => {
 						try_or_rollback!(self.gasometer.record_cost(cost));
