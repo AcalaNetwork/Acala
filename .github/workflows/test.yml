@@ -36,4 +36,4 @@ jobs:
     - name: Run tests
       run: make test-all
     - name: Run benchmarking tests
-      run: cargo test --features runtime-benchmarks -p mandala-runtime benchmarking
+      run: make test-benchmarking
