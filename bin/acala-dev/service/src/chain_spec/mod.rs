@@ -10,10 +10,6 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::IdentifyAccount;
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
-#[cfg(feature = "with-acala-runtime")]
-pub mod acala;
-#[cfg(feature = "with-karura-runtime")]
-pub mod karura;
 #[cfg(feature = "with-mandala-runtime")]
 pub mod mandala;
 
@@ -60,7 +56,7 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 
 /// Returns `(evm_genesis_accounts, network_contract_index)`
 pub fn evm_genesis() -> (BTreeMap<H160, GenesisAccount<Balance, Nonce>>, u64) {
-	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts_json = &include_bytes!("../../../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
 	let mut network_contract_index = PREDEPLOY_ADDRESS_START;

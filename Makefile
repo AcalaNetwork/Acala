@@ -1,10 +1,10 @@
 .PHONY: run
 run: githooks
-	SKIP_WASM_BUILD= cargo run -- --dev -lruntime=debug --instant-sealing
+	SKIP_WASM_BUILD= cargo run --manifest-path bin/acala-dev/Cargo.toml -- --dev -lruntime=debug --instant-sealing
 
 .PHONY: run-eth
 run-eth: githooks
-	cargo run --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
+	cargo run --manifest-path bin/acala-dev/Cargo.toml --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
 
 .PHONY: toolchain
 toolchain:
@@ -14,6 +14,17 @@ toolchain:
 build-full: githooks
 	cargo build
 
+.PHONY: build-all
+build-all: build-dev build-acala
+
+.PHONY: build-dev
+build-dev:
+	cargo build --manifest-path bin/acala-dev/Cargo.toml --locked
+
+.PHONY: build-acala
+build-acala:
+	cargo build --manifest-path bin/acala/Cargo.toml --locked --features with-all-runtime
+
 .PHONY: check
 check: githooks
 	SKIP_WASM_BUILD= cargo check
@@ -22,9 +33,16 @@ check: githooks
 check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
-.PHONY: check-all-runtime
-check-all-runtime:
-	SKIP_WASM_BUILD= cargo check --tests --all --features with-all-runtime
+.PHONY: check-all
+check-all: check-dev check-acala
+
+.PHONY: check-dev
+check-dev:
+	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala-dev/Cargo.toml --tests --all
+
+.PHONY: check-acala
+check-acala:
+	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala/Cargo.toml --tests --all --features with-all-runtime
 
 .PHONY: check-debug
 check-debug:
@@ -34,22 +52,33 @@ check-debug:
 test: githooks
 	SKIP_WASM_BUILD= cargo test --all
 
-.PHONY: test-all-runtime
-test-all-runtime:
-	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
+.PHONY: test-all
+test-all: test-dev test-acala
+
+.PHONY: test-dev
+test-dev:
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala-dev/Cargo.toml --all
+
+.PHONY: test-acala
+test-acala:
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --all --features with-all-runtime
+
+.PHONY: test-benchmarking
+test-benchmarking:
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala-dev/Cargo.toml --features runtime-benchmarks -p mandala-runtime benchmarking
 
 .PHONY: build
 build: githooks
 	SKIP_WASM_BUILD= cargo build
 
 .PHONY: purge
-purge: target/debug/acala
-	target/debug/acala purge-chain --dev -y
+purge: target/debug/acala-dev
+	target/debug/acala-dev purge-chain --dev -y
 
 .PHONY: restart
 restart: purge run
 
-target/debug/acala:
+target/debug/acala-dev:
 	SKIP_WASM_BUILD= cargo build
 
 GITHOOKS_SRC = $(wildcard githooks/*)

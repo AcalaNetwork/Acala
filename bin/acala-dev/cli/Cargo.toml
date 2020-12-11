@@ -1,6 +1,6 @@
 [package]
-name = "acala-cli"
-version = "0.7.0"
+name = "acala-dev-cli"
+version = "0.6.3"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -11,8 +11,8 @@ sc-cli = { version = "0.8.0", optional = true }
 sc-service = { version = "0.8.0", optional = true }
 frame-benchmarking-cli = { version = "2.0.0", optional = true }
 
-inspect = { package = "acala-inspect", path = "../inspect" }
-service = { package = "acala-service", path = "../service", default-features = false, optional = true }
+inspect = { package = "acala-inspect", path = "../../../inspect" }
+service = { package = "acala-dev-service", path = "../service", default-features = false, optional = true }
 
 [build-dependencies]
 substrate-build-script-utils = { version = "2.0.0", default-features = false }
