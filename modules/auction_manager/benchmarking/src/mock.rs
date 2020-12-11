@@ -3,17 +3,20 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{
+	dispatch::DispatchResult, impl_outer_dispatch, impl_outer_origin, ord_parameter_types, parameter_types,
+};
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_oracle::DefaultCombineData;
-use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+use primitives::{evm::AddressMapping, Amount, Balance, CurrencyId, TokenSymbol};
+use sp_core::H160;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{Convert, IdentityLookup},
 	ModuleId,
 };
 use sp_std::vec;
-use support::{ExchangeRate, ExchangeRateProvider, Price, Rate};
+use support::{EVMBridge, ExchangeRate, ExchangeRateProvider, InvokeContext, Price, Rate};
 
 impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
@@ -92,20 +95,47 @@ impl pallet_balances::Trait for Runtime {
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+
+pub struct MockAddressMapping;
+impl AddressMapping<AccountId> for MockAddressMapping {
+	fn to_account(_evm: &H160) -> AccountId {
+		unimplemented!()
+	}
+	fn to_evm_address(_account: &AccountId) -> Option<H160> {
+		unimplemented!()
+	}
+}
+
+pub struct MockEVMBridge;
+impl EVMBridge<Balance> for MockEVMBridge {
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
+		unimplemented!()
+	}
+}
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl orml_currencies::Trait for Runtime {
+impl module_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
-pub type Currencies = orml_currencies::Module<Runtime>;
+pub type Currencies = module_currencies::Module<Runtime>;
 
 impl orml_auction::Trait for Runtime {
 	type Event = ();

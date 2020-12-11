@@ -3,11 +3,13 @@
 #![cfg(test)]
 
 use super::*;
+use frame_support::dispatch::DispatchResult;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
-use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+use module_support::{EVMBridge, InvokeContext};
+use primitives::{evm::AddressMapping, Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchError, Perbill};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -34,7 +36,7 @@ impl_outer_event! {
 		pallet_balances<T>,
 		evm_accounts<T>,
 		orml_tokens<T>,
-		orml_currencies<T>,
+		module_currencies<T>,
 	}
 }
 
@@ -99,19 +101,46 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
+pub struct MockAddressMapping;
+impl AddressMapping<AccountId> for MockAddressMapping {
+	fn to_account(_evm: &H160) -> AccountId {
+		unimplemented!()
+	}
+	fn to_evm_address(_account: &AccountId) -> Option<H160> {
+		unimplemented!()
+	}
+}
+
+pub struct MockEVMBridge;
+impl EVMBridge<Balance> for MockEVMBridge {
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
+		unimplemented!()
+	}
+}
+
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Trait for Runtime {
+impl module_currencies::Trait for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
-pub type Currencies = orml_currencies::Module<Runtime>;
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+pub type Currencies = module_currencies::Module<Runtime>;
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 impl Trait for Runtime {
 	type Event = TestEvent;

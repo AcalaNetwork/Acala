@@ -11,13 +11,14 @@ use frame_support::{
 	weights::Weight,
 	RuntimeDebug,
 };
-use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::H256;
+use primitives::{evm::AddressMapping, Amount, BlockNumber, CurrencyId, TokenSymbol};
+use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	ModuleId, Perbill,
+	DispatchError, ModuleId, Perbill,
 };
+use support::{EVMBridge, InvokeContext};
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
@@ -150,7 +151,7 @@ type Balances = pallet_balances::Module<Runtime>;
 type Utility = pallet_utility::Module<Runtime>;
 type Proxy = pallet_proxy::Module<Runtime>;
 
-pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = ();
@@ -162,16 +163,43 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
+pub struct MockAddressMapping;
+impl AddressMapping<AccountId> for MockAddressMapping {
+	fn to_account(_evm: &H160) -> AccountId {
+		unimplemented!()
+	}
+	fn to_evm_address(_account: &AccountId) -> Option<H160> {
+		unimplemented!()
+	}
+}
+
+pub struct MockEVMBridge;
+impl EVMBridge<Balance> for MockEVMBridge {
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
+		unimplemented!()
+	}
+}
+
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Trait for Runtime {
+impl module_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
 
 parameter_types! {
@@ -195,6 +223,7 @@ impl orml_nft::Trait for Runtime {
 	type TokenData = TokenData;
 }
 
+use frame_support::dispatch::DispatchResult;
 use frame_system::Call as SystemCall;
 
 impl crate::Trait for Runtime {}

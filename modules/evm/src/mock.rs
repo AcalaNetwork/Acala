@@ -2,6 +2,7 @@
 
 use super::*;
 
+use frame_support::dispatch::DispatchResult;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
@@ -9,9 +10,10 @@ use sp_core::{Blake2Hasher, Hasher, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	AccountId32, Perbill,
+	AccountId32, DispatchError, Perbill,
 };
 use std::{collections::BTreeMap, str::FromStr};
+use support::{EVMBridge, InvokeContext};
 
 /// Hashed address mapping.
 pub struct HashedAddressMapping<H>(sp_std::marker::PhantomData<H>);
@@ -49,10 +51,12 @@ impl_outer_event! {
 		frame_system<T>,
 		pallet_balances<T>,
 		orml_tokens<T>,
-		orml_currencies<T>,
+		module_currencies<T>,
 		evm_mod<T>,
 	}
 }
+
+pub type Balance = u128;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
@@ -84,18 +88,18 @@ impl frame_system::Trait for Test {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 	type PalletInfo = ();
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-	pub const ContractExistentialDeposit: u64 = 1;
+	pub const ExistentialDeposit: Balance = 1;
+	pub const ContractExistentialDeposit: Balance = 1;
 }
 impl pallet_balances::Trait for Test {
-	type Balance = u64;
+	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
@@ -116,7 +120,7 @@ impl pallet_timestamp::Trait for Test {
 
 impl orml_tokens::Trait for Test {
 	type Event = TestEvent;
-	type Balance = u64;
+	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type OnReceived = ();
@@ -124,19 +128,36 @@ impl orml_tokens::Trait for Test {
 }
 pub type Tokens = orml_tokens::Module<Test>;
 
+pub struct MockEVMBridge;
+impl EVMBridge<Balance> for MockEVMBridge {
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
+		unimplemented!()
+	}
+}
+
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Trait for Test {
+impl module_currencies::Trait for Test {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = HashedAddressMapping<Blake2Hasher>;
+	type EVMBridge = MockEVMBridge;
 }
-pub type Currencies = orml_currencies::Module<Test>;
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
+pub type Currencies = module_currencies::Module<Test>;
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub struct GasToWeight;
 
@@ -174,7 +195,7 @@ pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type EVM = Module<Test>;
 
-pub const INITIAL_BALANCE: u64 = 1_000_000_000_000;
+pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
 
 pub fn alice() -> H160 {
 	H160::from_str("1000000000000000000000000000000000000001").unwrap()
@@ -229,12 +250,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	t.into()
 }
 
-pub fn balance(address: H160) -> u64 {
+pub fn balance(address: H160) -> Balance {
 	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
 	Balances::free_balance(account_id)
 }
 
-pub fn reserved_balance(address: H160) -> u64 {
+pub fn reserved_balance(address: H160) -> Balance {
 	let account_id = <Test as Trait>::AddressMapping::to_account(&address);
 	Balances::reserved_balance(account_id)
 }

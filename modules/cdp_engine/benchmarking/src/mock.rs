@@ -7,6 +7,7 @@ use frame_support::{impl_outer_dispatch, impl_outer_origin, ord_parameter_types,
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_oracle::DefaultCombineData;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+use sp_core::H160;
 use sp_runtime::{
 	testing::{Header, TestXt, UintAuthorityId},
 	traits::{Convert, IdentityLookup},
@@ -92,19 +93,44 @@ impl pallet_balances::Trait for Runtime {
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+
+impl AddressMapping<u128> for () {
+	fn to_account(_evm: &H160) -> u128 {
+		unimplemented!()
+	}
+	fn to_evm_address(_account: &u128) -> Option<H160> {
+		unimplemented!()
+	}
+}
+
+impl EVMBridge<u128> for () {
+	fn total_supply(_context: InvokeContext) -> Result<u128, DispatchError> {
+		unimplemented!()
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<u128, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: u128) -> DispatchResult {
+		unimplemented!()
+	}
+}
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl orml_currencies::Trait for Runtime {
+impl module_currencies::Trait for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type AddressMapping = ();
+	type EVMBridge = ();
 }
-pub type Currencies = orml_currencies::Module<Runtime>;
+pub type Currencies = module_currencies::Module<Runtime>;
 
 parameter_types! {
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");

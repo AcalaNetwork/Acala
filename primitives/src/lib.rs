@@ -4,6 +4,7 @@
 pub mod evm;
 
 use codec::{Decode, Encode};
+use sp_core::H160;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
@@ -105,6 +106,7 @@ impl TryFrom<u8> for TokenSymbol {
 pub enum CurrencyId {
 	Token(TokenSymbol),
 	DEXShare(TokenSymbol, TokenSymbol),
+	ERC20(H160),
 }
 
 /// Note the pre-deployed ERC20 contracts depend on `CurrencyId` implementation,
@@ -147,8 +149,18 @@ impl Into<[u8; 32]> for CurrencyId {
 				bytes[30] = left as u8;
 				bytes[31] = right as u8;
 			}
+			_ => {}
 		}
 		bytes
+	}
+}
+
+impl CurrencyId {
+	pub fn is_erc20(&self) -> bool {
+		match self {
+			CurrencyId::ERC20(_) => true,
+			_ => false,
+		}
 	}
 }
 

@@ -14,7 +14,7 @@ fn should_read_total_supply() {
 				contract: H160::default(),
 				source: Default::default()
 			}),
-			Ok(0)
+			Err(Error::<Runtime>::ExecutionFail.into())
 		);
 
 		assert_eq!(
@@ -55,7 +55,7 @@ fn should_transfer() {
 				alice(),
 				10
 			),
-			Error::<Runtime>::Revert
+			Error::<Runtime>::ExecutionRevert
 		);
 
 		assert_ok!(EvmBridgeModule::transfer(
@@ -106,7 +106,7 @@ fn should_transfer() {
 				alice(),
 				100
 			),
-			Error::<Runtime>::Revert
+			Error::<Runtime>::ExecutionRevert
 		);
 	});
 }

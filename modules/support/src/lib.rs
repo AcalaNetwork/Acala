@@ -5,7 +5,7 @@ use primitives::evm::CallInfo;
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
-	DispatchError, DispatchResult, FixedU128,
+	DispatchError, DispatchResult, FixedU128, RuntimeDebug,
 };
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -266,8 +266,14 @@ pub trait EVM {
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
 }
 
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
+pub struct InvokeContext {
+	pub contract: H160,
+	pub source: H160,
+}
+
 /// An abstraction of EVMBridge
-pub trait EVMBridge<InvokeContext, Balance> {
+pub trait EVMBridge<Balance> {
 	/// Execute ERC20.totalSupply() to read total supply from ERC20 contract
 	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20

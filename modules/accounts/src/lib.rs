@@ -199,7 +199,7 @@ where
 	}
 }
 
-pub trait Trait: system::Trait + orml_currencies::Trait + pallet_proxy::Trait {
+pub trait Trait: system::Trait + module_currencies::Trait + pallet_proxy::Trait {
 	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
@@ -721,7 +721,7 @@ impl<T: Trait + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> 
 impl<T: Trait + Send + Sync> ChargeTransactionPayment<T>
 where
 	<T as frame_system::Trait>::Call:
-		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<module_currencies::Call<T>>,
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
 	/// utility constructor. Used only in client/factory code.
@@ -826,7 +826,7 @@ impl<T: Trait + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
 	<T as frame_system::Trait>::Call:
-		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<module_currencies::Call<T>>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;

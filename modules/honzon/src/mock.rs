@@ -5,15 +5,15 @@
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
-use primitives::{Balance, TokenSymbol};
-use sp_core::H256;
+use primitives::{evm::AddressMapping, Balance, TokenSymbol};
+use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
-	FixedPointNumber, ModuleId, Perbill,
+	DispatchError, FixedPointNumber, ModuleId, Perbill,
 };
 use sp_std::cell::RefCell;
-use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+use support::{AuctionManager, EVMBridge, ExchangeRate, InvokeContext, Price, PriceProvider, Rate, Ratio};
 
 mod honzon {
 	pub use super::super::*;
@@ -33,7 +33,7 @@ impl_outer_event! {
 		orml_tokens<T>,
 		loans<T>,
 		pallet_balances<T>,
-		orml_currencies<T>,
+		module_currencies<T>,
 		cdp_treasury,
 	}
 }
@@ -117,20 +117,47 @@ impl pallet_balances::Trait for Runtime {
 	type WeightInfo = ();
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+
+pub struct MockAddressMapping;
+impl AddressMapping<AccountId> for MockAddressMapping {
+	fn to_account(_evm: &H160) -> AccountId {
+		unimplemented!()
+	}
+	fn to_evm_address(_account: &AccountId) -> Option<H160> {
+		unimplemented!()
+	}
+}
+
+pub struct MockEVMBridge;
+impl EVMBridge<Balance> for MockEVMBridge {
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
+		unimplemented!()
+	}
+}
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl orml_currencies::Trait for Runtime {
+impl module_currencies::Trait for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
-pub type Currencies = orml_currencies::Module<Runtime>;
+pub type Currencies = module_currencies::Module<Runtime>;
 
 parameter_types! {
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");

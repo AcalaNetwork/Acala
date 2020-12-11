@@ -115,6 +115,7 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
@@ -649,9 +650,9 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.54.0"
+version = "0.55.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66c0bb6167449588ff70803f4127f0684f9063097eca5016f37eb52b92c2cf36"
+checksum = "75b13ce559e6433d360c26305643803cb52cfbabbc2b9c47ce04a58493dfb443"
 dependencies = [
  "bitflags",
  "cexpr",
@@ -962,13 +963,13 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
-version = "0.29.3"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe6837df1d5cba2397b835c8530f51723267e16abbf83892e9e5af4f0e5dd10a"
+checksum = "0659001ab56b791be01d4b729c44376edc6718cf389a502e579b77b758f3296c"
 dependencies = [
  "glob",
  "libc",
- "libloading",
+ "libloading 0.6.6",
 ]
 
 [[package]]
@@ -1445,7 +1446,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal 0.3.1",
- "orml-currencies",
+ "module-currencies",
+ "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -1995,7 +1997,7 @@ checksum = "5839fda247e24ca4919c87c71dd5ca658f1f39e4f06829f80e3f15c3bafcfc2c"
 dependencies = [
  "lazy_static",
  "libc",
- "libloading",
+ "libloading 0.5.2",
  "winapi 0.3.9",
 ]
 
@@ -3016,6 +3018,7 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
@@ -3190,6 +3193,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
 dependencies = [
  "cc",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "libloading"
+version = "0.6.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9367bdfa836b7e3cf895867f7a570283444da90562980ec2263d6e1569b16bc"
+dependencies = [
+ "cfg-if 1.0.0",
  "winapi 0.3.9",
 ]
 
@@ -3613,8 +3626,7 @@ dependencies = [
 [[package]]
 name = "librocksdb-sys"
 version = "6.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb5b56f651c204634b936be2f92dbb42c36867e00ff7fe2405591f3b9fa66f09"
+source = "git+https://github.com/hdevalence/rust-rocksdb.git?rev=33cd4281570b229b628d6d827fa0053cff57000a#33cd4281570b229b628d6d827fa0053cff57000a"
 dependencies = [
  "bindgen",
  "cc",
@@ -3777,6 +3789,7 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
@@ -4059,9 +4072,9 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-dex",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4123,12 +4136,12 @@ dependencies = [
  "frame-system",
  "module-auction-manager",
  "module-cdp-treasury",
+ "module-currencies",
  "module-emergency-shutdown",
  "module-loans",
  "module-prices",
  "module-support",
  "orml-auction",
- "orml-currencies",
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
@@ -4150,10 +4163,10 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-loans",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "orml-utilities",
@@ -4177,12 +4190,12 @@ dependencies = [
  "frame-system",
  "module-cdp-engine",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-emergency-shutdown",
  "module-loans",
  "module-prices",
  "module-support",
- "orml-currencies",
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
@@ -4204,13 +4217,37 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-dex",
  "module-support",
  "orml-auction",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-currencies"
+version = "0.3.3-dev"
+dependencies = [
+ "acala-primitives",
+ "clear_on_drop",
+ "frame-support",
+ "frame-system",
+ "module-evm",
+ "module-evm-bridge",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "orml-utilities",
+ "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -4227,8 +4264,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4248,9 +4285,9 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
+ "module-currencies",
  "module-loans",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "pallet-balances",
  "parity-scale-codec",
@@ -4271,11 +4308,11 @@ dependencies = [
  "frame-system",
  "module-cdp-engine",
  "module-cdp-treasury",
+ "module-currencies",
  "module-emergency-shutdown",
  "module-loans",
  "module-prices",
  "module-support",
- "orml-currencies",
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
@@ -4300,8 +4337,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
+ "module-currencies",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4326,9 +4363,9 @@ dependencies = [
  "frame-support",
  "frame-system",
  "libsecp256k1",
+ "module-currencies",
  "module-evm",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4398,9 +4435,9 @@ dependencies = [
  "frame-system",
  "module-cdp-engine",
  "module-cdp-treasury",
+ "module-currencies",
  "module-loans",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4422,11 +4459,11 @@ dependencies = [
  "frame-system",
  "module-cdp-engine",
  "module-cdp-treasury",
+ "module-currencies",
  "module-honzon",
  "module-loans",
  "module-prices",
  "module-support",
- "orml-currencies",
  "orml-oracle",
  "orml-tokens",
  "orml-traits",
@@ -4468,8 +4505,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-cdp-treasury",
+ "module-currencies",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4489,7 +4526,8 @@ dependencies = [
  "enumflags2",
  "frame-support",
  "frame-system",
- "orml-currencies",
+ "module-currencies",
+ "module-support",
  "orml-nft",
  "orml-tokens",
  "orml-traits",
@@ -4512,9 +4550,9 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-nft",
  "module-support",
- "orml-currencies",
  "orml-nft",
  "orml-tokens",
  "orml-traits",
@@ -4536,8 +4574,8 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4590,8 +4628,8 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -6576,8 +6614,7 @@ dependencies = [
 [[package]]
 name = "rocksdb"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23d83c02c429044d58474eaf5ae31e062d0de894e21125b47437ec0edc1397e6"
+source = "git+https://github.com/hdevalence/rust-rocksdb.git?rev=33cd4281570b229b628d6d827fa0053cff57000a#33cd4281570b229b628d6d827fa0053cff57000a"
 dependencies = [
  "libc",
  "librocksdb-sys",

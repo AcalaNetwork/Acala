@@ -4,10 +4,11 @@
 
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
-use orml_currencies::BasicCurrencyAdapter;
-use primitives::{Amount, CurrencyId, TokenSymbol};
-use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use module_currencies::BasicCurrencyAdapter;
+use primitives::{evm::AddressMapping, Amount, CurrencyId, TokenSymbol};
+use sp_core::{H160, H256};
+use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchError, Perbill};
+use support::{EVMBridge, InvokeContext};
 
 pub type AccountId = H256;
 pub type BlockNumber = u64;
@@ -25,7 +26,7 @@ impl_outer_origin! {
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
-		orml_currencies<T>,
+		module_currencies<T>,
 		orml_tokens<T>,
 		frame_system<T>,
 		pallet_balances<T>,
@@ -91,7 +92,7 @@ parameter_types! {
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 impl orml_tokens::Trait for Runtime {
 	type Event = TestEvent;
@@ -103,16 +104,43 @@ impl orml_tokens::Trait for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
+pub struct MockAddressMapping;
+impl AddressMapping<AccountId> for MockAddressMapping {
+	fn to_account(_evm: &H160) -> AccountId {
+		unimplemented!()
+	}
+	fn to_evm_address(_account: &AccountId) -> Option<H160> {
+		unimplemented!()
+	}
+}
+
+pub struct MockEVMBridge;
+impl EVMBridge<Balance> for MockEVMBridge {
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
+		unimplemented!()
+	}
+}
+
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Trait for Runtime {
+impl module_currencies::Trait for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
 
 impl Trait for Runtime {
