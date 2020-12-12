@@ -244,15 +244,14 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::ERC20(contract) => {
-				let address = T::AddressMapping::to_evm_address(&who).unwrap_or_default();
-				T::EVMBridge::balance_of(
-					InvokeContext {
+				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+					let context = InvokeContext {
 						contract,
 						source: Default::default(),
-					},
-					address,
-				)
-				.unwrap_or_default()
+					};
+					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
+				}
+				Default::default()
 			}
 			_ => {
 				if currency_id == T::GetNativeCurrencyId::get() {
@@ -267,15 +266,14 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	fn free_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::ERC20(contract) => {
-				let address = T::AddressMapping::to_evm_address(&who).unwrap_or_default();
-				T::EVMBridge::balance_of(
-					InvokeContext {
+				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+					let context = InvokeContext {
 						contract,
 						source: Default::default(),
-					},
-					address,
-				)
-				.unwrap_or_default()
+					};
+					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
+				}
+				Default::default()
 			}
 			_ => {
 				if currency_id == T::GetNativeCurrencyId::get() {
