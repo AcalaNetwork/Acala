@@ -212,101 +212,80 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	type Balance = BalanceOf<T>;
 
 	fn minimum_balance(currency_id: Self::CurrencyId) -> Self::Balance {
-		match currency_id {
-			CurrencyId::ERC20(_) => Default::default(),
-			_ => {
-				if currency_id == T::GetNativeCurrencyId::get() {
-					T::NativeCurrency::minimum_balance()
-				} else {
-					T::MultiCurrency::minimum_balance(currency_id)
-				}
-			}
+		if currency_id.is_erc20() {
+			Default::default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
+			T::NativeCurrency::minimum_balance()
+		} else {
+			T::MultiCurrency::minimum_balance(currency_id)
 		}
 	}
 
 	fn total_issuance(currency_id: Self::CurrencyId) -> Self::Balance {
-		match currency_id {
-			CurrencyId::ERC20(contract) => T::EVMBridge::total_supply(InvokeContext {
+		if let CurrencyId::ERC20(contract) = currency_id {
+			T::EVMBridge::total_supply(InvokeContext {
 				contract,
 				source: Default::default(),
 			})
-			.unwrap_or_default(),
-			_ => {
-				if currency_id == T::GetNativeCurrencyId::get() {
-					T::NativeCurrency::total_issuance()
-				} else {
-					T::MultiCurrency::total_issuance(currency_id)
-				}
-			}
+			.unwrap_or_default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
+			T::NativeCurrency::total_issuance()
+		} else {
+			T::MultiCurrency::total_issuance(currency_id)
 		}
 	}
 
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
-		match currency_id {
-			CurrencyId::ERC20(contract) => {
-				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
-					let context = InvokeContext {
-						contract,
-						source: Default::default(),
-					};
-					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
-				}
-				Default::default()
+		if let CurrencyId::ERC20(contract) = currency_id {
+			if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+				let context = InvokeContext {
+					contract,
+					source: Default::default(),
+				};
+				return T::EVMBridge::balance_of(context, address).unwrap_or_default();
 			}
-			_ => {
-				if currency_id == T::GetNativeCurrencyId::get() {
-					T::NativeCurrency::total_balance(who)
-				} else {
-					T::MultiCurrency::total_balance(currency_id, who)
-				}
-			}
+			Default::default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
+			T::NativeCurrency::total_balance(who)
+		} else {
+			T::MultiCurrency::total_balance(currency_id, who)
 		}
 	}
 
 	fn free_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
-		match currency_id {
-			CurrencyId::ERC20(contract) => {
-				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
-					let context = InvokeContext {
-						contract,
-						source: Default::default(),
-					};
-					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
-				}
-				Default::default()
+		if let CurrencyId::ERC20(contract) = currency_id {
+			if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+				let context = InvokeContext {
+					contract,
+					source: Default::default(),
+				};
+				return T::EVMBridge::balance_of(context, address).unwrap_or_default();
 			}
-			_ => {
-				if currency_id == T::GetNativeCurrencyId::get() {
-					T::NativeCurrency::free_balance(who)
-				} else {
-					T::MultiCurrency::free_balance(currency_id, who)
-				}
-			}
+			Default::default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
+			T::NativeCurrency::free_balance(who)
+		} else {
+			T::MultiCurrency::free_balance(currency_id, who)
 		}
 	}
 
 	fn ensure_can_withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		match currency_id {
-			CurrencyId::ERC20(contract) => {
-				let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
-				let balance = T::EVMBridge::balance_of(
-					InvokeContext {
-						contract,
-						source: Default::default(),
-					},
-					address,
-				)
-				.unwrap_or_default();
-				ensure!(balance >= amount, Error::<T>::BalanceTooLow);
-				Ok(())
-			}
-			_ => {
-				if currency_id == T::GetNativeCurrencyId::get() {
-					T::NativeCurrency::ensure_can_withdraw(who, amount)
-				} else {
-					T::MultiCurrency::ensure_can_withdraw(currency_id, who, amount)
-				}
-			}
+		if let CurrencyId::ERC20(contract) = currency_id {
+			let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
+			let balance = T::EVMBridge::balance_of(
+				InvokeContext {
+					contract,
+					source: Default::default(),
+				},
+				address,
+			)
+			.unwrap_or_default();
+			ensure!(balance >= amount, Error::<T>::BalanceTooLow);
+			Ok(())
+		} else if currency_id == T::GetNativeCurrencyId::get() {
+			T::NativeCurrency::ensure_can_withdraw(who, amount)
+		} else {
+			T::MultiCurrency::ensure_can_withdraw(currency_id, who, amount)
 		}
 	}
 
@@ -319,20 +298,17 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 		if amount.is_zero() || from == to {
 			return Ok(());
 		}
-		match currency_id {
-			CurrencyId::ERC20(contract) => {
-				let source = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
-				let address = T::AddressMapping::to_evm_address(&to).ok_or(Error::<T>::AccountNotFound)?;
-				T::EVMBridge::transfer(InvokeContext { contract, source }, address, amount)?;
-			}
-			_ => {
-				if currency_id == T::GetNativeCurrencyId::get() {
-					T::NativeCurrency::transfer(from, to, amount)?;
-				} else {
-					T::MultiCurrency::transfer(currency_id, from, to, amount)?;
-				}
-			}
+
+		if let CurrencyId::ERC20(contract) = currency_id {
+			let source = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
+			let address = T::AddressMapping::to_evm_address(&to).ok_or(Error::<T>::AccountNotFound)?;
+			T::EVMBridge::transfer(InvokeContext { contract, source }, address, amount)?;
+		} else if currency_id == T::GetNativeCurrencyId::get() {
+			T::NativeCurrency::transfer(from, to, amount)?;
+		} else {
+			T::MultiCurrency::transfer(currency_id, from, to, amount)?;
 		}
+
 		Self::deposit_event(RawEvent::Transferred(currency_id, from.clone(), to.clone(), amount));
 		Ok(())
 	}
@@ -367,9 +343,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 
 	fn can_slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> bool {
 		if currency_id.is_erc20() {
-			return false;
-		}
-		if currency_id == T::GetNativeCurrencyId::get() {
+			false
+		} else if currency_id == T::GetNativeCurrencyId::get() {
 			T::NativeCurrency::can_slash(who, amount)
 		} else {
 			T::MultiCurrency::can_slash(currency_id, who, amount)
@@ -378,9 +353,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 
 	fn slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> Self::Balance {
 		if currency_id.is_erc20() {
-			return Default::default();
-		}
-		if currency_id == T::GetNativeCurrencyId::get() {
+			Default::default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
 			T::NativeCurrency::slash(who, amount)
 		} else {
 			T::MultiCurrency::slash(currency_id, who, amount)
@@ -440,9 +414,8 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Module<T> {
 impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 	fn can_reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> bool {
 		if currency_id.is_erc20() {
-			return false;
-		}
-		if currency_id == T::GetNativeCurrencyId::get() {
+			false
+		} else if currency_id == T::GetNativeCurrencyId::get() {
 			T::NativeCurrency::can_reserve(who, value)
 		} else {
 			T::MultiCurrency::can_reserve(currency_id, who, value)
@@ -451,9 +424,8 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn slash_reserved(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		if currency_id.is_erc20() {
-			return Default::default();
-		}
-		if currency_id == T::GetNativeCurrencyId::get() {
+			Default::default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
 			T::NativeCurrency::slash_reserved(who, value)
 		} else {
 			T::MultiCurrency::slash_reserved(currency_id, who, value)
@@ -462,9 +434,8 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn reserved_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		if currency_id.is_erc20() {
-			return Default::default();
-		}
-		if currency_id == T::GetNativeCurrencyId::get() {
+			Default::default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
 			T::NativeCurrency::reserved_balance(who)
 		} else {
 			T::MultiCurrency::reserved_balance(currency_id, who)
@@ -482,9 +453,8 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn unreserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		if currency_id.is_erc20() {
-			return Default::default();
-		}
-		if currency_id == T::GetNativeCurrencyId::get() {
+			Default::default()
+		} else if currency_id == T::GetNativeCurrencyId::get() {
 			T::NativeCurrency::unreserve(who, value)
 		} else {
 			T::MultiCurrency::unreserve(currency_id, who, value)
