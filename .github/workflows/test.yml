@@ -35,5 +35,7 @@ jobs:
       run: make build-all
     - name: Run tests
       run: make test-all
+    - name: Run test-eth
+      run: make test-eth
     - name: Run benchmarking tests
       run: make test-benchmarking
