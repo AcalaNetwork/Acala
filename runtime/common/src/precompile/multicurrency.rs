@@ -65,7 +65,7 @@ where
 
 		match action {
 			Action::QueryTotalIssuance => {
-				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id))?;
+				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id));
 				debug::debug!(target: "evm", "total issuance: {:?}", total_issuance);
 
 				Ok((ExitSucceed::Returned, total_issuance, 0))
@@ -74,7 +74,7 @@ where
 				let who = input.account_id_at(2)?;
 				debug::debug!(target: "evm", "who: {:?}", who);
 
-				let balance = vec_u8_from_balance(MultiCurrency::total_balance(currency_id, &who))?;
+				let balance = vec_u8_from_balance(MultiCurrency::total_balance(currency_id, &who));
 				debug::debug!(target: "evm", "balance: {:?}", balance);
 
 				Ok((ExitSucceed::Returned, balance, 0))
@@ -102,8 +102,8 @@ where
 	}
 }
 
-fn vec_u8_from_balance(balance: Balance) -> result::Result<Vec<u8>, ExitError> {
+fn vec_u8_from_balance(balance: Balance) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(balance).to_big_endian(&mut be_bytes[..]);
-	Ok(be_bytes.to_vec())
+	be_bytes.to_vec()
 }
