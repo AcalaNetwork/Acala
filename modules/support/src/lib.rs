@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use primitives::evm::{CallInfo, Config};
+use primitives::evm::{CallInfo, Config, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -269,8 +269,8 @@ pub trait EVM {
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
 pub struct InvokeContext {
-	pub contract: H160,
-	pub source: H160,
+	pub contract: EvmAddress,
+	pub source: EvmAddress,
 }
 
 /// An abstraction of EVMBridge
@@ -279,24 +279,7 @@ pub trait EVMBridge<Balance> {
 	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20
 	/// contract
-	fn balance_of(context: InvokeContext, address: H160) -> Result<Balance, DispatchError>;
+	fn balance_of(context: InvokeContext, address: EvmAddress) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
-	fn transfer(context: InvokeContext, to: H160, value: Balance) -> DispatchResult;
-}
-
-impl<Balance> EVMBridge<Balance> for ()
-where
-	Balance: Default,
-{
-	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn balance_of(_context: InvokeContext, _address: H160) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn transfer(_context: InvokeContext, _to: H160, _value: Balance) -> DispatchResult {
-		Ok(())
-	}
+	fn transfer(context: InvokeContext, to: EvmAddress, value: Balance) -> DispatchResult;
 }

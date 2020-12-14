@@ -56,12 +56,10 @@ impl_outer_event! {
 		frame_system<T>,
 		pallet_balances<T>,
 		orml_tokens<T>,
-		module_currencies<T>,
+		orml_currencies<T>,
 		evm_mod<T>,
 	}
 }
-
-pub type Balance = u128;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
@@ -93,17 +91,17 @@ impl frame_system::Config for Test {
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
 	type PalletInfo = ();
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
+	pub const ExistentialDeposit: u64 = 1;
 }
 impl pallet_balances::Config for Test {
-	type Balance = Balance;
+	type Balance = u64;
 	type DustRemoval = ();
 	type Event = TestEvent;
 	type ExistentialDeposit = ExistentialDeposit;
@@ -123,14 +121,14 @@ impl pallet_timestamp::Config for Test {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> u128 {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> u64 {
 		Default::default()
 	};
 }
 
 impl orml_tokens::Config for Test {
 	type Event = TestEvent;
-	type Balance = Balance;
+	type Balance = u64;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
@@ -139,16 +137,19 @@ impl orml_tokens::Config for Test {
 }
 pub type Tokens = orml_tokens::Module<Test>;
 
-impl module_currencies::Config for Test {
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+}
+
+impl orml_currencies::Config for Test {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
-pub type Currencies = module_currencies::Module<Test>;
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
+pub type Currencies = orml_currencies::Module<Test>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub struct GasToWeight;
 
@@ -164,9 +165,9 @@ parameter_types! {
 
 ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const ContractExistentialDeposit: u128 = 1;
-	pub const TransferMaintainerDeposit: u128 = 1;
-	pub const StorageDepositPerByte: u128 = 10;
+	pub const ContractExistentialDeposit: u64 = 1;
+	pub const TransferMaintainerDeposit: u64 = 1;
+	pub const StorageDepositPerByte: u64 = 10;
 	pub const StorageDefaultQuota: u32 = 400;
 }
 
@@ -193,7 +194,7 @@ pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type EVM = Module<Test>;
 
-pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
+pub const INITIAL_BALANCE: u64 = 1_000_000_000_000;
 
 pub fn alice() -> H160 {
 	H160::from_str("1000000000000000000000000000000000000001").unwrap()
@@ -251,12 +252,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	ext
 }
 
-pub fn balance(address: H160) -> Balance {
+pub fn balance(address: H160) -> u64 {
 	let account_id = <Test as Config>::AddressMapping::to_account(&address);
 	Balances::free_balance(account_id)
 }
 
-pub fn reserved_balance(address: H160) -> Balance {
+pub fn reserved_balance(address: H160) -> u64 {
 	let account_id = <Test as Config>::AddressMapping::to_account(&address);
 	Balances::reserved_balance(account_id)
 }

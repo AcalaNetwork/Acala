@@ -8,12 +8,15 @@ use frame_support::{
 	weights::WeightToFeeCoefficients,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, TokenSymbol, TradingPair};
+use primitives::{
+	evm::{AddressMapping, EvmAddress},
+	Amount, TokenSymbol, TradingPair,
+};
 use smallvec::smallvec;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, ModuleId, Perbill};
 use sp_std::cell::RefCell;
-use support::Ratio;
+use support::{EVMBridge, InvokeContext, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -119,6 +122,38 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
+pub struct MockAddressMapping;
+impl<AccountId> AddressMapping<AccountId> for MockAddressMapping
+where
+	AccountId: Default,
+{
+	fn to_account(_evm: &EvmAddress) -> AccountId {
+		Default::default()
+	}
+
+	fn to_evm_address(_account: &AccountId) -> Option<EvmAddress> {
+		None
+	}
+}
+
+pub struct MockEVMBridge;
+impl<Balance> EVMBridge<Balance> for MockEVMBridge
+where
+	Balance: Default,
+{
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
+		Ok(())
+	}
+}
+
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
@@ -128,8 +163,8 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
 pub type Currencies = module_currencies::Module<Runtime>;
 
