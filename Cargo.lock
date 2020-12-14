@@ -3704,6 +3704,7 @@ version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
+ "evm",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
