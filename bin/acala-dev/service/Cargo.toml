@@ -83,3 +83,6 @@ with-all-runtime = [
 	"with-karura-runtime",
 	"with-acala-runtime",
 ]
+with-ethereum-compatibility = [
+	"mandala-runtime/with-ethereum-compatibility"
+]
