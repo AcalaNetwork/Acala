@@ -1266,6 +1266,9 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 
+#[cfg(feature = "with-ethereum-compatibility")]
+static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
+
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
@@ -1283,6 +1286,11 @@ impl module_evm::Config for Runtime {
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
 	type WeightInfo = weights::evm::WeightInfo<Runtime>;
+
+	#[cfg(feature = "with-ethereum-compatibility")]
+	fn config() -> &'static evm::Config {
+		&ISTANBUL_CONFIG
+	}
 }
 
 impl module_evm_bridge::Config for Runtime {
