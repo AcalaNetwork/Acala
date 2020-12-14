@@ -16,7 +16,6 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
-use serde_json::Value;
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{

@@ -122,7 +122,6 @@ impl module_evm::Config for Runtime {
 	type Event = ();
 	type Precompiles = ();
 	type ChainId = ();
-	type Runner = module_evm::runner::native::Runner<Self>;
 	type GasToWeight = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;

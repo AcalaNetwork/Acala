@@ -2,10 +2,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::runner::handler::Handler;
-use crate::{
-	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Module, Runner as RunnerT,
-	Vicinity,
-};
+use crate::{precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Module, Vicinity};
 use evm::CreateScheme;
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
@@ -141,8 +138,8 @@ impl<T: Config> Runner<T> {
 	}
 }
 
-impl<T: Config> RunnerT<T> for Runner<T> {
-	fn call(
+impl<T: Config> Runner<T> {
+	pub fn call(
 		source: H160,
 		target: H160,
 		input: Vec<u8>,
@@ -199,7 +196,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})
 	}
 
-	fn create(
+	pub fn create(
 		source: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,
@@ -209,7 +206,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		Self::inner_create(source, init, value, gas_limit, None, None, "create", config)
 	}
 
-	fn create2(
+	pub fn create2(
 		source: H160,
 		init: Vec<u8>,
 		salt: H256,
@@ -220,7 +217,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		Self::inner_create(source, init, value, gas_limit, None, Some(salt), "create2", config)
 	}
 
-	fn create_at_address(
+	pub fn create_at_address(
 		source: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,

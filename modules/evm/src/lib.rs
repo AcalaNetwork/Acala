@@ -119,8 +119,7 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type Precompiles: Precompiles;
 	/// Chain ID of EVM.
 	type ChainId: Get<u64>;
-	/// EVM execution runner.
-	type Runner: Runner<Self>;
+
 	/// Convert gas to weight.
 	type GasToWeight: Convert<u32, Weight>;
 
@@ -340,7 +339,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::call(source, target, input, value, gas_limit, T::config())?;
+			let info = Runner::<T>::call(source, target, input, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Executed(target));
@@ -368,7 +367,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::create(source, init, value, gas_limit, T::config())?;
+			let info = Runner::<T>::create(source, init, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -396,7 +395,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = T::Runner::create2(source, init, salt, value, gas_limit, T::config())?;
+			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -424,7 +423,7 @@ decl_module! {
 
 			let source = T::NetworkContractSource::get();
 			let address = EvmAddress::from_low_u64_be(Self::network_contract_index());
-			let info = T::Runner::create_at_address(source, init, value, address, gas_limit, T::config())?;
+			let info = Runner::<T>::create_at_address(source, init, value, address, gas_limit, T::config())?;
 
 			NetworkContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
 
@@ -979,7 +978,7 @@ impl<T: Config> EVMTrait for Module<T> {
 		gas_limit: u32,
 		config: Option<evm::Config>,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
-		let info = T::Runner::call(
+		let info = Runner::<T>::call(
 			source,
 			target,
 			input,
