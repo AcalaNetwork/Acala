@@ -1300,14 +1300,6 @@ fn test_evm_module() {
 				.collect::<Vec<String>>();
 
 			for file in file_names {
-				if file.ends_with("/LinkdropFactory.json") || file.ends_with("/ERC721Metadata.json") {
-					println!(
-						"The constructor of the contract {:?} requires initialization parameters, skip it.",
-						file
-					);
-					continue;
-				}
-
 				let mut f = File::open(&file).expect("File not found");
 				let mut contents = String::new();
 				f.read_to_string(&mut contents)
@@ -1323,8 +1315,11 @@ fn test_evm_module() {
 				match System::events().iter().last().unwrap().event {
 					Event::module_evm(module_evm::RawEvent::Created(_)) => {}
 					_ => {
-						println!("input file {}", file);
-						println!("{:?}", System::events().iter().last().unwrap().event);
+						println!(
+							"contract {:?} create failed, event: {:?}",
+							file,
+							System::events().iter().last().unwrap().event
+						);
 						assert!(false);
 					}
 				};
