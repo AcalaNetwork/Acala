@@ -51,11 +51,11 @@ impl<AccountId> AddressMapping<AccountId> for ()
 where
 	AccountId: Default,
 {
-	fn to_account(_evm: &H160) -> AccountId {
+	fn to_account(_evm: &EvmAddress) -> AccountId {
 		Default::default()
 	}
 
-	fn to_evm_address(_account: &AccountId) -> Option<H160> {
+	fn to_evm_address(_account: &AccountId) -> Option<EvmAddress> {
 		None
 	}
 }
