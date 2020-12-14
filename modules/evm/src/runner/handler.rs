@@ -177,6 +177,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 /// Create `try_or_fail` and `try_or_rollback`.
 macro_rules! create_try {
 	( $map_err:expr ) => {
+		#[allow(unused_macros)]
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {
