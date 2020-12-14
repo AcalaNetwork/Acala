@@ -118,10 +118,6 @@ impl CurrencyId {
 		matches!(self, CurrencyId::DEXShare(_, _))
 	}
 
-	pub fn is_erc20(&self) -> bool {
-		matches!(self, CurrencyId::ERC20(_))
-	}
-
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
 		match self {
 			CurrencyId::DEXShare(token_symbol_0, token_symbol_1) => {

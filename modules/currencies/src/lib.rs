@@ -29,7 +29,7 @@ use orml_traits::{
 	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
 use orml_utilities::with_transaction_result;
-use primitives::{evm::AddressMapping, CurrencyId};
+use primitives::{evm::AddressMapping, CurrencyId, TokenSymbol};
 use support::{EVMBridge, InvokeContext};
 
 mod default_weight;
@@ -60,7 +60,6 @@ pub trait Config: frame_system::Config {
 	type NativeCurrency: BasicCurrencyExtended<Self::AccountId, Balance = BalanceOf<Self>, Amount = AmountOf<Self>>
 		+ BasicLockableCurrency<Self::AccountId, Balance = BalanceOf<Self>>
 		+ BasicReservableCurrency<Self::AccountId, Balance = BalanceOf<Self>>;
-	type GetNativeCurrencyId: Get<CurrencyIdOf<Self>>;
 
 	/// Weight information for extrinsics in this module.
 	type WeightInfo: WeightInfo;
@@ -105,8 +104,6 @@ decl_error! {
 decl_module! {
 	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
-
-		const NativeCurrencyId: CurrencyIdOf<T> = T::GetNativeCurrencyId::get();
 
 		fn deposit_event() = default;
 
@@ -162,7 +159,7 @@ decl_module! {
 			let to = T::Lookup::lookup(dest)?;
 			T::NativeCurrency::transfer(&from, &to, amount)?;
 
-			Self::deposit_event(RawEvent::Transferred(T::GetNativeCurrencyId::get(), from, to, amount));
+			Self::deposit_event(RawEvent::Transferred(CurrencyId::Token(TokenSymbol::ACA), from, to, amount));
 		}
 
 		/// update amount of account `who` under `currency_id`.
@@ -198,94 +195,81 @@ decl_module! {
 	}
 }
 
-impl<T: Config> Module<T> {
-	fn ensure_not_erc20(currency_id: CurrencyIdOf<T>) -> DispatchResult {
-		if currency_id.is_erc20() {
-			return Err(Error::<T>::ERC20InvalidOperation.into());
-		}
-		Ok(())
-	}
-}
-
 impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	type CurrencyId = CurrencyIdOf<T>;
 	type Balance = BalanceOf<T>;
 
 	fn minimum_balance(currency_id: Self::CurrencyId) -> Self::Balance {
-		if currency_id.is_erc20() {
-			Default::default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::minimum_balance()
-		} else {
-			T::MultiCurrency::minimum_balance(currency_id)
+		match currency_id {
+			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::minimum_balance(),
+			_ => T::MultiCurrency::minimum_balance(currency_id),
 		}
 	}
 
 	fn total_issuance(currency_id: Self::CurrencyId) -> Self::Balance {
-		if let CurrencyId::ERC20(contract) = currency_id {
-			T::EVMBridge::total_supply(InvokeContext {
+		match currency_id {
+			CurrencyId::ERC20(contract) => T::EVMBridge::total_supply(InvokeContext {
 				contract,
 				source: Default::default(),
 			})
-			.unwrap_or_default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::total_issuance()
-		} else {
-			T::MultiCurrency::total_issuance(currency_id)
+			.unwrap_or_default(),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::total_issuance(),
+			_ => T::MultiCurrency::total_issuance(currency_id),
 		}
 	}
 
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
-		if let CurrencyId::ERC20(contract) = currency_id {
-			if let Some(address) = T::AddressMapping::to_evm_address(&who) {
-				let context = InvokeContext {
-					contract,
-					source: Default::default(),
-				};
-				return T::EVMBridge::balance_of(context, address).unwrap_or_default();
+		match currency_id {
+			CurrencyId::ERC20(contract) => {
+				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+					let context = InvokeContext {
+						contract,
+						source: Default::default(),
+					};
+					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
+				}
+				Default::default()
 			}
-			Default::default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::total_balance(who)
-		} else {
-			T::MultiCurrency::total_balance(currency_id, who)
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::total_balance(who),
+			_ => T::MultiCurrency::total_balance(currency_id, who),
 		}
 	}
 
 	fn free_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
-		if let CurrencyId::ERC20(contract) = currency_id {
-			if let Some(address) = T::AddressMapping::to_evm_address(&who) {
-				let context = InvokeContext {
-					contract,
-					source: Default::default(),
-				};
-				return T::EVMBridge::balance_of(context, address).unwrap_or_default();
+		match currency_id {
+			CurrencyId::ERC20(contract) => {
+				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+					let context = InvokeContext {
+						contract,
+						source: Default::default(),
+					};
+					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
+				}
+				Default::default()
 			}
-			Default::default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::free_balance(who)
-		} else {
-			T::MultiCurrency::free_balance(currency_id, who)
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::free_balance(who),
+			_ => T::MultiCurrency::free_balance(currency_id, who),
 		}
 	}
 
 	fn ensure_can_withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		if let CurrencyId::ERC20(contract) = currency_id {
-			let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
-			let balance = T::EVMBridge::balance_of(
-				InvokeContext {
-					contract,
-					source: Default::default(),
-				},
-				address,
-			)
-			.unwrap_or_default();
-			ensure!(balance >= amount, Error::<T>::BalanceTooLow);
-			Ok(())
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::ensure_can_withdraw(who, amount)
-		} else {
-			T::MultiCurrency::ensure_can_withdraw(currency_id, who, amount)
+		match currency_id {
+			CurrencyId::ERC20(contract) => {
+				let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
+				let balance = T::EVMBridge::balance_of(
+					InvokeContext {
+						contract,
+						source: Default::default(),
+					},
+					address,
+				)
+				.unwrap_or_default();
+				ensure!(balance >= amount, Error::<T>::BalanceTooLow);
+				Ok(())
+			}
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::ensure_can_withdraw(who, amount),
+			_ => T::MultiCurrency::ensure_can_withdraw(currency_id, who, amount),
 		}
 	}
 
@@ -299,14 +283,14 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 			return Ok(());
 		}
 
-		if let CurrencyId::ERC20(contract) = currency_id {
-			let source = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
-			let address = T::AddressMapping::to_evm_address(&to).ok_or(Error::<T>::AccountNotFound)?;
-			T::EVMBridge::transfer(InvokeContext { contract, source }, address, amount)?;
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::transfer(from, to, amount)?;
-		} else {
-			T::MultiCurrency::transfer(currency_id, from, to, amount)?;
+		match currency_id {
+			CurrencyId::ERC20(contract) => {
+				let source = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
+				let address = T::AddressMapping::to_evm_address(&to).ok_or(Error::<T>::AccountNotFound)?;
+				T::EVMBridge::transfer(InvokeContext { contract, source }, address, amount)?;
+			}
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::transfer(from, to, amount)?,
+			_ => T::MultiCurrency::transfer(currency_id, from, to, amount)?,
 		}
 
 		Self::deposit_event(RawEvent::Transferred(currency_id, from.clone(), to.clone(), amount));
@@ -314,50 +298,44 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	}
 
 	fn deposit(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::ensure_not_erc20(currency_id)?;
 		if amount.is_zero() {
 			return Ok(());
 		}
-		if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::deposit(who, amount)?;
-		} else {
-			T::MultiCurrency::deposit(currency_id, who, amount)?;
+		match currency_id {
+			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::deposit(who, amount)?,
+			_ => T::MultiCurrency::deposit(currency_id, who, amount)?,
 		}
 		Self::deposit_event(RawEvent::Deposited(currency_id, who.clone(), amount));
 		Ok(())
 	}
 
 	fn withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::ensure_not_erc20(currency_id)?;
 		if amount.is_zero() {
 			return Ok(());
 		}
-		if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::withdraw(who, amount)?;
-		} else {
-			T::MultiCurrency::withdraw(currency_id, who, amount)?;
+		match currency_id {
+			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::withdraw(who, amount)?,
+			_ => T::MultiCurrency::withdraw(currency_id, who, amount)?,
 		}
 		Self::deposit_event(RawEvent::Withdrawn(currency_id, who.clone(), amount));
 		Ok(())
 	}
 
 	fn can_slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> bool {
-		if currency_id.is_erc20() {
-			false
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::can_slash(who, amount)
-		} else {
-			T::MultiCurrency::can_slash(currency_id, who, amount)
+		match currency_id {
+			CurrencyId::ERC20(_) => false,
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::can_slash(who, amount),
+			_ => T::MultiCurrency::can_slash(currency_id, who, amount),
 		}
 	}
 
 	fn slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> Self::Balance {
-		if currency_id.is_erc20() {
-			Default::default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::slash(who, amount)
-		} else {
-			T::MultiCurrency::slash(currency_id, who, amount)
+		match currency_id {
+			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::slash(who, amount),
+			_ => T::MultiCurrency::slash(currency_id, who, amount),
 		}
 	}
 }
@@ -366,11 +344,10 @@ impl<T: Config> MultiCurrencyExtended<T::AccountId> for Module<T> {
 	type Amount = AmountOf<T>;
 
 	fn update_balance(currency_id: Self::CurrencyId, who: &T::AccountId, by_amount: Self::Amount) -> DispatchResult {
-		Self::ensure_not_erc20(currency_id)?;
-		if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::update_balance(who, by_amount)?;
-		} else {
-			T::MultiCurrency::update_balance(currency_id, who, by_amount)?;
+		match currency_id {
+			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::update_balance(who, by_amount)?,
+			_ => T::MultiCurrency::update_balance(currency_id, who, by_amount)?,
 		}
 		Self::deposit_event(RawEvent::BalanceUpdated(currency_id, who.clone(), by_amount));
 		Ok(())
@@ -381,83 +358,68 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Module<T> {
 	type Moment = T::BlockNumber;
 
 	fn set_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) {
-		if !currency_id.is_erc20() {
-			if currency_id == T::GetNativeCurrencyId::get() {
-				T::NativeCurrency::set_lock(lock_id, who, amount);
-			} else {
-				T::MultiCurrency::set_lock(lock_id, currency_id, who, amount);
-			}
+		match currency_id {
+			CurrencyId::ERC20(_) => {}
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::set_lock(lock_id, who, amount),
+			_ => T::MultiCurrency::set_lock(lock_id, currency_id, who, amount),
 		}
 	}
 
 	fn extend_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) {
-		if !currency_id.is_erc20() {
-			if currency_id == T::GetNativeCurrencyId::get() {
-				T::NativeCurrency::extend_lock(lock_id, who, amount);
-			} else {
-				T::MultiCurrency::extend_lock(lock_id, currency_id, who, amount);
-			}
+		match currency_id {
+			CurrencyId::ERC20(_) => {}
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::extend_lock(lock_id, who, amount),
+			_ => T::MultiCurrency::extend_lock(lock_id, currency_id, who, amount),
 		}
 	}
 
 	fn remove_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId) {
-		if !currency_id.is_erc20() {
-			if currency_id == T::GetNativeCurrencyId::get() {
-				T::NativeCurrency::remove_lock(lock_id, who);
-			} else {
-				T::MultiCurrency::remove_lock(lock_id, currency_id, who);
-			}
+		match currency_id {
+			CurrencyId::ERC20(_) => {}
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::remove_lock(lock_id, who),
+			_ => T::MultiCurrency::remove_lock(lock_id, currency_id, who),
 		}
 	}
 }
 
 impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 	fn can_reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> bool {
-		if currency_id.is_erc20() {
-			false
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::can_reserve(who, value)
-		} else {
-			T::MultiCurrency::can_reserve(currency_id, who, value)
+		match currency_id {
+			CurrencyId::ERC20(_) => false,
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::can_reserve(who, value),
+			_ => T::MultiCurrency::can_reserve(currency_id, who, value),
 		}
 	}
 
 	fn slash_reserved(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
-		if currency_id.is_erc20() {
-			Default::default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::slash_reserved(who, value)
-		} else {
-			T::MultiCurrency::slash_reserved(currency_id, who, value)
+		match currency_id {
+			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::slash_reserved(who, value),
+			_ => T::MultiCurrency::slash_reserved(currency_id, who, value),
 		}
 	}
 
 	fn reserved_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
-		if currency_id.is_erc20() {
-			Default::default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::reserved_balance(who)
-		} else {
-			T::MultiCurrency::reserved_balance(currency_id, who)
+		match currency_id {
+			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::reserved_balance(who),
+			_ => T::MultiCurrency::reserved_balance(currency_id, who),
 		}
 	}
 
 	fn reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> DispatchResult {
-		Self::ensure_not_erc20(currency_id)?;
-		if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::reserve(who, value)
-		} else {
-			T::MultiCurrency::reserve(currency_id, who, value)
+		match currency_id {
+			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::reserve(who, value),
+			_ => T::MultiCurrency::reserve(currency_id, who, value),
 		}
 	}
 
 	fn unreserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
-		if currency_id.is_erc20() {
-			Default::default()
-		} else if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::unreserve(who, value)
-		} else {
-			T::MultiCurrency::unreserve(currency_id, who, value)
+		match currency_id {
+			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::unreserve(who, value),
+			_ => T::MultiCurrency::unreserve(currency_id, who, value),
 		}
 	}
 
@@ -468,11 +430,12 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 		value: Self::Balance,
 		status: BalanceStatus,
 	) -> result::Result<Self::Balance, DispatchError> {
-		Self::ensure_not_erc20(currency_id)?;
-		if currency_id == T::GetNativeCurrencyId::get() {
-			T::NativeCurrency::repatriate_reserved(slashed, beneficiary, value, status)
-		} else {
-			T::MultiCurrency::repatriate_reserved(currency_id, slashed, beneficiary, value, status)
+		match currency_id {
+			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Token(TokenSymbol::ACA) => {
+				T::NativeCurrency::repatriate_reserved(slashed, beneficiary, value, status)
+			}
+			_ => T::MultiCurrency::repatriate_reserved(currency_id, slashed, beneficiary, value, status),
 		}
 	}
 }
@@ -599,8 +562,6 @@ where
 		)
 	}
 }
-
-pub type NativeCurrencyOf<T> = Currency<T, <T as Config>::GetNativeCurrencyId>;
 
 /// Adapt other currency traits implementation to `BasicCurrency`.
 pub struct BasicCurrencyAdapter<T, Currency, Amount, Moment>(marker::PhantomData<(T, Currency, Amount, Moment)>);

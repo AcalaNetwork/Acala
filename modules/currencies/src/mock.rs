@@ -194,13 +194,12 @@ impl Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = EvmAddressMapping;
 	type EVMBridge = EVMBridge;
 }
 pub type Currencies = Module<Runtime>;
-pub type NativeCurrency = NativeCurrencyOf<Runtime>;
+pub type NativeCurrency = Currency<Runtime, GetNativeCurrencyId>;
 pub type AdaptedBasicCurrency = BasicCurrencyAdapter<Runtime, PalletBalances, i64, u64>;
 
 pub fn erc20_address() -> H160 {

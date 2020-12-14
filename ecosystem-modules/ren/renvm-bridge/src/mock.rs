@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use module_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, CurrencyId, TokenSymbol};
+use primitives::{Amount, CurrencyId};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 
@@ -111,15 +111,10 @@ impl orml_tokens::Config for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-}
-
 impl module_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = ();
 	type EVMBridge = ();

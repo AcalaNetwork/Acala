@@ -23,7 +23,7 @@ pub type PolkadotAccountId = u128;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
@@ -116,15 +116,10 @@ impl pallet_balances::Config for Runtime {
 type PalletBalances = pallet_balances::Module<Runtime>;
 pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
-}
-
 impl module_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = ();
 	type EVMBridge = ();

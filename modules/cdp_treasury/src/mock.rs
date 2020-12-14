@@ -18,7 +18,7 @@ pub type AuctionId = u32;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 
@@ -113,15 +113,10 @@ impl pallet_balances::Config for Runtime {
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
-}
-
 impl module_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = ();
 	type EVMBridge = ();

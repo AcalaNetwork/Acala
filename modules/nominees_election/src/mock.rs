@@ -14,7 +14,7 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -93,7 +93,6 @@ impl pallet_balances::Config for Runtime {
 type PalletBalances = pallet_balances::Module<Runtime>;
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetLDOTCurrencyId: CurrencyId = LDOT;
 }
 
@@ -104,7 +103,6 @@ impl module_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = ();
 	type EVMBridge = ();
