@@ -38,7 +38,6 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::{CallInfo, CreateInfo, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
@@ -1263,7 +1262,6 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
-	type Runner = module_evm::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
@@ -1651,7 +1649,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			<Runtime as module_evm::Config>::Runner::call(
+			module_evm::Runner::<Runtime>::call(
 				from,
 				to,
 				data,
@@ -1676,7 +1674,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			<Runtime as module_evm::Config>::Runner::create(
+			module_evm::Runner::<Runtime>::create(
 				from,
 				data,
 				value,

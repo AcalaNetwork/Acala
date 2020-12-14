@@ -5,8 +5,8 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, BlockNumber, CurrencyId};
-use sp_core::H256;
+use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
+use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -182,7 +182,6 @@ impl Config for Test {
 	type Event = Event<Test>;
 	type Precompiles = ();
 	type ChainId = SystemChainId;
-	type Runner = crate::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;

@@ -38,7 +38,7 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::{CallInfo, CreateInfo, Runner};
+use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
@@ -1267,6 +1267,9 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 
+#[cfg(feature = "with-ethereum-compatibility")]
+static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
+
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
@@ -1279,11 +1282,15 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
 	type ChainId = ChainId;
-	type Runner = module_evm::runner::native::Runner<Self>;
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
 	type WeightInfo = weights::evm::WeightInfo<Runtime>;
+
+	#[cfg(feature = "with-ethereum-compatibility")]
+	fn config() -> &'static evm::Config {
+		&ISTANBUL_CONFIG
+	}
 }
 
 impl module_evm_bridge::Config for Runtime {
@@ -1668,7 +1675,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			<Runtime as module_evm::Config>::Runner::call(
+			module_evm::Runner::<Runtime>::call(
 				from,
 				to,
 				data,
@@ -1693,7 +1700,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			<Runtime as module_evm::Config>::Runner::create(
+			module_evm::Runner::<Runtime>::create(
 				from,
 				data,
 				value,
