@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
-use primitives::evm::AddressMapping;
+use primitives::evm::{AddressMapping, EvmAddress};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -76,16 +76,16 @@ pub type Balances = pallet_balances::Module<Runtime>;
 
 pub struct EvmAddressMapping;
 impl AddressMapping<AccountId> for EvmAddressMapping {
-	fn to_account(evm: &H160) -> AccountId {
+	fn to_account(evm: &EvmAddress) -> AccountId {
 		let mut data: [u8; 32] = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
 		data[4..24].copy_from_slice(&evm[..]);
 		AccountId32::from(data)
 	}
 
-	fn to_evm_address(account: &AccountId) -> Option<H160> {
+	fn to_evm_address(account: &AccountId) -> Option<EvmAddress> {
 		let data: [u8; 32] = account.clone().into();
-		Some(H160::from_slice(&data[4..24]))
+		Some(EvmAddress::from_slice(&data[4..24]))
 	}
 }
 
@@ -102,7 +102,7 @@ impl pallet_timestamp::Config for Runtime {
 parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
 	pub const TransferMaintainerDeposit: u64 = 1;
-	pub NetworkContractSource: H160 = alice();
+	pub NetworkContractSource: EvmAddress = alice();
 }
 
 ord_parameter_types! {
@@ -144,16 +144,16 @@ impl Default for ExtBuilder {
 	}
 }
 
-pub fn erc20_address() -> H160 {
-	H160::from_str("2000000000000000000000000000000000000001").unwrap()
+pub fn erc20_address() -> EvmAddress {
+	EvmAddress::from_str("2000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn alice() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000001").unwrap()
+pub fn alice() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn bob() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000002").unwrap()
+pub fn bob() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
 }
 
 impl ExtBuilder {

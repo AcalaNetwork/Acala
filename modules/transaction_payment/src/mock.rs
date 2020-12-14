@@ -14,7 +14,9 @@ use primitives::{
 };
 use smallvec::smallvec;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, ModuleId, Perbill};
+use sp_runtime::{
+	testing::Header, traits::IdentityLookup, DispatchError, DispatchResult, FixedPointNumber, ModuleId, Perbill,
+};
 use sp_std::cell::RefCell;
 use support::{EVMBridge, InvokeContext, Ratio};
 

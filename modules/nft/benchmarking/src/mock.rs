@@ -20,7 +20,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	ModuleId, Perbill,
+	DispatchError, DispatchResult, ModuleId, Perbill,
 };
 use support::{EVMBridge, InvokeContext};
 

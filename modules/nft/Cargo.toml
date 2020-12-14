@@ -24,6 +24,7 @@ pallet-balances = { version = "2.0.0" }
 pallet-utility = { version = "2.0.0", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
+support = { package = "module-support", path = "../../modules/support" }
 
 [features]
 default = ["std"]

@@ -3,8 +3,9 @@
 
 pub mod evm;
 
+use crate::evm::EvmAddress;
+
 use codec::{Decode, Encode};
-use sp_core::H160;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
@@ -106,7 +107,7 @@ impl TryFrom<u8> for TokenSymbol {
 pub enum CurrencyId {
 	Token(TokenSymbol),
 	DEXShare(TokenSymbol, TokenSymbol),
-	ERC20(H160),
+	ERC20(EvmAddress),
 }
 
 impl CurrencyId {
