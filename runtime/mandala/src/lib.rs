@@ -88,7 +88,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 700,
+	spec_version: 701,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1289,6 +1289,17 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+impl cumulus_parachain_upgrade::Config for Runtime {
+	type Event = Event;
+	type OnValidationData = ();
+}
+
+impl cumulus_message_broker::Config for Runtime {
+	type DownwardMessageHandlers = ();
+}
+
+impl parachain_info::Config for Runtime {}
+
 #[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
@@ -1387,6 +1398,11 @@ construct_runtime!(
 		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
 		EVMBridge: module_evm_bridge::{Module},
+
+		// Parachain
+		ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
+		MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
+		ParachainInfo: parachain_info::{Module, Storage, Config},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
