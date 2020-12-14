@@ -45,18 +45,18 @@ sp-transaction-pool = { version = "2.0.0" }
 sp-blockchain = { version = "2.0.0" }
 sp-std = { version = "2.0.0" }
 
-module-evm = { path = "../modules/evm" }
-module-staking-pool = { path = "../modules/staking_pool" }
-module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
-orml-oracle-rpc = { path = "../orml/oracle/rpc" }
-acala-primitives = { path = "../primitives" }
-acala-rpc = { path = "../rpc" }
-module-evm-rpc-runtime-api = { path = "../modules/evm/rpc/runtime_api" }
+module-evm = { path = "../../../modules/evm" }
+module-staking-pool = { path = "../../../modules/staking_pool" }
+module-staking-pool-rpc = { path = "../../../modules/staking_pool/rpc" }
+orml-oracle-rpc = { path = "../../../orml/oracle/rpc" }
+acala-primitives = { path = "../../../primitives" }
+acala-rpc = { path = "../../../rpc" }
+module-evm-rpc-runtime-api = { path = "../../../modules/evm/rpc/runtime_api" }
 
-runtime-common = { path = "../runtime/common" }
-mandala-runtime = { path = "../runtime/mandala", optional = true }
-karura-runtime = { path = "../runtime/karura", optional = true }
-acala-runtime = { path = "../runtime/acala", optional = true }
+runtime-common = { path = "../../../runtime/common" }
+mandala-runtime = { path = "../../../runtime/mandala", optional = true }
+karura-runtime = { path = "../../../runtime/karura", optional = true }
+acala-runtime = { path = "../../../runtime/acala", optional = true }
 
 [dev-dependencies]
 sc-consensus-babe = { version = "0.8.0", features = ["test-helpers"] }

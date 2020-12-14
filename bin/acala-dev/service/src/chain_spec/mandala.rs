@@ -173,7 +173,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 }
 
 pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../resources/mandala-dist.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../../resources/mandala-dist.json")[..])
 }
 
 fn testnet_genesis(
@@ -510,7 +510,8 @@ fn mandala_genesis(
 		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: {
-				let airdrop_accounts_json = &include_bytes!("../../../resources/mandala-airdrop-accounts.json")[..];
+				let airdrop_accounts_json =
+					&include_bytes!("../../../../../resources/mandala-airdrop-accounts.json")[..];
 				let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
 					serde_json::from_slice(airdrop_accounts_json).unwrap();
 				airdrop_accounts

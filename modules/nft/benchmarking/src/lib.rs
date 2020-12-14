@@ -49,7 +49,7 @@ benchmarks! {
 		<T as orml_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
 
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Module::<T>::next_class_id());
-		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
 		<T as orml_currencies::Config>::NativeCurrency::update_balance(&module_account, base_currency_amount.unique_saturated_into())?;
 	}: _(RawOrigin::Signed(module_account), to, 0u32.into(), vec![1], i)
 
@@ -64,7 +64,7 @@ benchmarks! {
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Module::<T>::next_class_id());
 		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
 		<T as orml_currencies::Config>::NativeCurrency::update_balance(&module_account, base_currency_amount.unique_saturated_into())?;
-		module_nft::Module::<T>::mint(RawOrigin::Signed(module_account.clone()).into(), to.clone(), 0u32.into(), vec![1], 1)?;
+		module_nft::Module::<T>::mint(RawOrigin::Signed(module_account).into(), to.clone(), 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), caller, (0u32.into(), 0u32.into()))
 
 	// burn NFT token
@@ -76,9 +76,9 @@ benchmarks! {
 		<T as orml_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
 
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Module::<T>::next_class_id());
-		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
 		<T as orml_currencies::Config>::NativeCurrency::update_balance(&module_account, base_currency_amount.unique_saturated_into())?;
-		module_nft::Module::<T>::mint(RawOrigin::Signed(module_account.clone()).into(), to.clone(), 0u32.into(), vec![1], 1)?;
+		module_nft::Module::<T>::mint(RawOrigin::Signed(module_account).into(), to.clone(), 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()))
 
 	// destroy NFT class
@@ -90,7 +90,7 @@ benchmarks! {
 		<T as orml_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
 
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Module::<T>::next_class_id());
-		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller.clone()).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		module_nft::Module::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
 	}: _(RawOrigin::Signed(module_account), 0u32.into(), to)
 }
 

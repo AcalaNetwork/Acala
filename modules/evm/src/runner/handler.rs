@@ -177,6 +177,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 /// Create `try_or_fail` and `try_or_rollback`.
 macro_rules! create_try {
 	( $map_err:expr ) => {
+		#[allow(unused_macros)]
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {
@@ -451,8 +452,12 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
 		debug::debug!(
 			target: "evm",
-			"handler: call: code_address {:?}",
+			"handler: call: source {:?} code_address {:?} input: {:?} target_gas {:?} gas_left {:?}",
+			context.caller,
 			code_address,
+			input,
+			target_gas,
+			self.gas_left()
 		);
 
 		create_try!(|e: ExitError| (e.into(), Vec::new()));
@@ -474,8 +479,6 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			}
 		}
 
-		try_or_fail!(self.gasometer.record_cost(target_gas));
-
 		let code = self.code(code_address);
 
 		frame_support::storage::with_transaction(|| {
@@ -492,6 +495,12 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			}
 
 			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas), &context) {
+				debug::debug!(
+					target: "evm",
+					"handler: call-result: precompile result {:?}",
+					ret
+				);
+
 				return match ret {
 					Ok((s, out, cost)) => {
 						try_or_rollback!(self.gasometer.record_cost(cost));
@@ -501,7 +510,15 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 				};
 			}
 
+			try_or_rollback!(self.gasometer.record_cost(target_gas));
+
 			let (reason, out) = substate.execute(context.caller, context.address, context.apparent_value, code, input);
+
+			debug::debug!(
+				target: "evm",
+				"handler: call-result: reason {:?} out {:?} gas_left {:?}",
+				reason, out, substate.gas_left()
+			);
 
 			match reason {
 				ExitReason::Succeed(s) => {

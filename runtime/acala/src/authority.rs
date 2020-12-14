@@ -14,22 +14,11 @@ use orml_authority::EnsureDelayed;
 pub struct AuthorityConfigImpl;
 impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for AuthorityConfigImpl {
 	fn check_schedule_dispatch(origin: Origin, _priority: Priority) -> DispatchResult {
-		let origin: Result<frame_system::RawOrigin<AccountId>, _> = origin.into();
-		match origin {
-			Ok(frame_system::RawOrigin::Root) => Ok(()),
-			Ok(frame_system::RawOrigin::Signed(caller)) => {
-				if caller == AcalaTreasuryModuleId::get().into_account()
-					|| caller == HonzonTreasuryModuleId::get().into_account()
-					|| caller == HomaTreasuryModuleId::get().into_account()
-					|| caller == DSWFModuleId::get().into_account()
-				{
-					Ok(())
-				} else {
-					Err(BadOrigin.into())
-				}
-			}
-			_ => Err(BadOrigin.into()),
-		}
+		EnsureRoot::<AccountId>::try_origin(origin)
+			.or_else(|o| EnsureRootOrHalfGeneralCouncil::try_origin(o).map(|_| ()))
+			.or_else(|o| EnsureRootOrHalfHonzonCouncil::try_origin(o).map(|_| ()))
+			.or_else(|o| EnsureRootOrHalfHomaCouncil::try_origin(o).map(|_| ()))
+			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 	}
 
 	fn check_fast_track_schedule(

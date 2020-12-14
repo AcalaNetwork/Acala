@@ -152,9 +152,10 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CallInfo, DispatchError> {
 		debug::debug!(
 			target: "evm",
-			"call: source {:?}, target: {:?}, gas_limit: {:?}",
+			"call: source {:?}, target: {:?}, input: {:?}, gas_limit: {:?}",
 			source,
 			target,
+			input,
 			gas_limit,
 		);
 

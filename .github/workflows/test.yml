@@ -32,8 +32,8 @@ jobs:
     - name: Run clippy
       run: cargo clippy -- -D warnings
     - name: Build
-      run: cargo build --locked --features with-all-runtime
+      run: make build-all
     - name: Run tests
-      run: cargo test --all --features with-all-runtime
+      run: make test-all
     - name: Run benchmarking tests
-      run: cargo test --features runtime-benchmarks -p mandala-runtime benchmarking
+      run: make test-benchmarking

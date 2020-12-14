@@ -1,57 +1,16 @@
-[package]
-name = "acala"
-version = "0.7.0"
-authors = ["Acala Developers"]
-edition = "2018"
-
-[[bin]]
-name = "acala"
-path = "src/main.rs"
-
-[dependencies]
-futures = "0.3.4"
-parity-util-mem = { version = "0.7.0", default-features = false, features = ["jemalloc-global"] }
-acala-cli = { path = "cli" }
-acala-service = { path = "service" }
-mandala-runtime = { path = "runtime/mandala", optional = true }
-
-[features]
-default = [ "with-mandala-runtime" ]
-runtime-benchmarks = [
-	"acala-cli/runtime-benchmarks",
-]
-with-mandala-runtime = [
-	"acala-service/with-mandala-runtime",
-	"acala-cli/with-mandala-runtime",
-]
-with-karura-runtime = [
-	"acala-service/with-karura-runtime",
-	"acala-cli/with-karura-runtime",
-]
-with-acala-runtime = [
-	"acala-service/with-acala-runtime",
-	"acala-cli/with-acala-runtime",
-]
-with-all-runtime = [
-	"acala-service/with-all-runtime",
-	"acala-cli/with-all-runtime",
-]
-with-ethereum-compatibility = [
-  "mandala-runtime/with-ethereum-compatibility"
-]
-
-[profile.release]
-# Acala runtime requires unwinding.
-panic = "unwind"
-
 [workspace]
 members = [
+	"bin/acala",
+	"bin/acala/cli",
+	"bin/acala/service",
+	"bin/acala-dev",
+	"bin/acala-dev/cli",
+	"bin/acala-dev/service",
+
 	"modules/*",
-	"cli",
 	"inspect",
 	"primitives",
 	"rpc",
-	"service",
 
 	"runtime/common",
 	"runtime/mandala",
@@ -74,6 +33,10 @@ members = [
 	"ecosystem-modules/template/template",
 	"ecosystem-modules/ren/renvm-bridge",
 ]
+
+[profile.release]
+# Acala runtime requires unwinding.
+panic = "unwind"
 
 # The list of dependencies below (which can be both direct and indirect dependencies) are crates
 # that are suspected to be CPU-intensive, and that are unlikely to require debugging (as some of
