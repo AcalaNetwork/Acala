@@ -23,7 +23,7 @@ pub type PolkadotAccountId = u128;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
@@ -44,7 +44,7 @@ impl_outer_event! {
 		staking_pool<T>,
 		orml_tokens<T>,
 		pallet_balances<T>,
-		module_currencies<T>,
+		orml_currencies<T>,
 	}
 }
 
@@ -114,17 +114,20 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 type PalletBalances = pallet_balances::Module<Runtime>;
-pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-impl module_currencies::Config for Runtime {
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+}
+
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
-pub type CurrenciesModule = module_currencies::Module<Runtime>;
+pub type CurrenciesModule = orml_currencies::Module<Runtime>;
 
 pub struct MockNomineesProvider;
 impl NomineesProvider<PolkadotAccountId> for MockNomineesProvider {

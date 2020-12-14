@@ -93,19 +93,19 @@ impl pallet_balances::Config for Runtime {
 type PalletBalances = pallet_balances::Module<Runtime>;
 
 parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetLDOTCurrencyId: CurrencyId = LDOT;
 }
 
-pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
-pub type LDOTCurrency = module_currencies::Currency<Runtime, GetLDOTCurrencyId>;
+pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLDOTCurrencyId>;
 
-impl module_currencies::Config for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
 
 parameter_types! {

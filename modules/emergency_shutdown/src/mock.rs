@@ -21,7 +21,7 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -40,7 +40,7 @@ impl_outer_event! {
 		orml_tokens<T>,
 		loans<T>,
 		pallet_balances<T>,
-		module_currencies<T>,
+		orml_currencies<T>,
 		cdp_treasury,
 	}
 }
@@ -116,17 +116,20 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-impl module_currencies::Config for Runtime {
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+}
+
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
-pub type Currencies = module_currencies::Module<Runtime>;
+pub type Currencies = orml_currencies::Module<Runtime>;
 
 // mock convert
 pub struct MockConvert;

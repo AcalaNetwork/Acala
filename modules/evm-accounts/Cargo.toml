@@ -20,8 +20,8 @@ module-evm = { path = "../../modules/evm", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "2.0.0" }
-module-currencies = { path = "../../modules/currencies"}
-orml-tokens = { path = "../../orml/tokens" }
+orml-currencies = { path = "../../orml/currencies", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
 
 [features]
 default = ["std"]

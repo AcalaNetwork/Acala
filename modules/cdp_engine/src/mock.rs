@@ -43,7 +43,7 @@ impl_outer_event! {
 		orml_tokens<T>,
 		loans<T>,
 		pallet_balances<T>,
-		module_currencies<T>,
+		orml_currencies<T>,
 		module_dex<T>,
 		cdp_treasury,
 	}
@@ -126,17 +126,20 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-impl module_currencies::Config for Runtime {
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+}
+
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
-pub type Currencies = module_currencies::Module<Runtime>;
+pub type Currencies = orml_currencies::Module<Runtime>;
 
 parameter_types! {
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");

@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
@@ -35,7 +35,7 @@ impl_outer_event! {
 		pallet_balances<T>,
 		evm_accounts<T>,
 		orml_tokens<T>,
-		module_currencies<T>,
+		orml_currencies<T>,
 	}
 }
 
@@ -106,16 +106,19 @@ impl orml_tokens::Config for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-impl module_currencies::Config for Runtime {
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+}
+
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
-pub type Currencies = module_currencies::Module<Runtime>;
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+pub type Currencies = orml_currencies::Module<Runtime>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 impl Config for Runtime {
 	type Event = TestEvent;

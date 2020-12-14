@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
-use module_currencies::BasicCurrencyAdapter;
+use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId};
 use sp_core::H256;
@@ -26,7 +26,7 @@ impl_outer_origin! {
 
 impl_outer_event! {
 	pub enum TestEvent for Runtime {
-		module_currencies<T>,
+		orml_currencies<T>,
 		orml_tokens<T>,
 		frame_system<T>,
 		pallet_balances<T>,
@@ -92,7 +92,7 @@ parameter_types! {
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
@@ -111,13 +111,16 @@ impl orml_tokens::Config for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-impl module_currencies::Config for Runtime {
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+}
+
+impl orml_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
 
 impl Config for Runtime {

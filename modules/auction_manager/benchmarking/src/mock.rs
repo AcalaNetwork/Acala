@@ -100,21 +100,20 @@ impl pallet_balances::Config for Runtime {
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl module_currencies::Config for Runtime {
+impl orml_currencies::Config for Runtime {
 	type Event = ();
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = ();
-	type EVMBridge = ();
 }
-pub type Currencies = module_currencies::Module<Runtime>;
+pub type Currencies = orml_currencies::Module<Runtime>;
 
 impl orml_auction::Config for Runtime {
 	type Event = ();
