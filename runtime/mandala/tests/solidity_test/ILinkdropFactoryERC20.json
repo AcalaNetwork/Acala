@@ -1,0 +1,129 @@
+{
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "_weiAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "_tokenAddress",
+          "type": "address"
+        },
+        {
+          "name": "_tokenAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "_expiration",
+          "type": "uint256"
+        },
+        {
+          "name": "_linkId",
+          "type": "address"
+        },
+        {
+          "name": "_linkdropMaster",
+          "type": "address"
+        },
+        {
+          "name": "_campaignId",
+          "type": "uint256"
+        },
+        {
+          "name": "_linkdropSignerSignature",
+          "type": "bytes"
+        },
+        {
+          "name": "_receiver",
+          "type": "address"
+        },
+        {
+          "name": "_receiverSignature",
+          "type": "bytes"
+        }
+      ],
+      "name": "checkClaimParams",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_weiAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "_tokenAddress",
+          "type": "address"
+        },
+        {
+          "name": "_tokenAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "_expiration",
+          "type": "uint256"
+        },
+        {
+          "name": "_linkId",
+          "type": "address"
+        },
+        {
+          "name": "_linkdropMaster",
+          "type": "address"
+        },
+        {
+          "name": "_campaignId",
+          "type": "uint256"
+        },
+        {
+          "name": "_linkdropSignerSignature",
+          "type": "bytes"
+        },
+        {
+          "name": "_receiver",
+          "type": "address"
+        },
+        {
+          "name": "_receiverSignature",
+          "type": "bytes"
+        }
+      ],
+      "name": "claim",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "evm": {
+    "bytecode": {
+      "linkReferences": {},
+      "object": "",
+      "opcodes": "",
+      "sourceMap": ""
+    },
+    "deployedBytecode": {
+      "linkReferences": {},
+      "object": "",
+      "opcodes": "",
+      "sourceMap": ""
+    }
+  },
+  "bytecode": ""
+}
