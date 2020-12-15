@@ -8,8 +8,7 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	Call, Currencies, DEXModule, ExtBuilder, MaximumBlockWeight, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD,
-	BOB,
+	BlockWeights, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB,
 };
 use orml_traits::MultiCurrency;
 use sp_runtime::testing::TestXt;
@@ -143,7 +142,7 @@ fn query_info_works() {
 					class: info.class,
 					partial_fee: 5 * 2 /* base * weight_fee */
 						+ len as u128  /* len * 1 */
-						+ info.weight.min(MaximumBlockWeight::get() as u64) as u128 * 2 * 3 / 2 /* weight */
+						+ info.weight.min(BlockWeights::get().max_block) as u128 * 2 * 3 / 2 /* weight */
 				},
 			);
 		});

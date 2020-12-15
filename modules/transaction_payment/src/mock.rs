@@ -50,10 +50,22 @@ impl_outer_event! {
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: u32 = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub static ExtrinsicBaseWeight: u64 = 0;
+}
+
+pub struct BlockWeights;
+impl Get<frame_system::limits::BlockWeights> for BlockWeights {
+	fn get() -> frame_system::limits::BlockWeights {
+		frame_system::limits::BlockWeights::builder()
+			.base_block(0)
+			.for_class(DispatchClass::all(), |weights| {
+				weights.base_extrinsic = EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow()).into();
+			})
+			.for_class(DispatchClass::non_mandatory(), |weights| {
+				weights.max_total = 1024.into();
+			})
+			.build_or_panic()
+	}
 }
 
 impl frame_system::Config for Runtime {
@@ -68,18 +80,14 @@ impl frame_system::Config for Runtime {
 	type Header = Header;
 	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
-	type MaximumBlockWeight = MaximumBlockWeight;
-	type MaximumBlockLength = MaximumBlockLength;
-	type AvailableBlockRatio = AvailableBlockRatio;
+	type BlockWeights = BlockWeights;
+	type BlockLength = ();
 	type Version = ();
 	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type DbWeight = ();
-	type BlockExecutionWeight = ();
-	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
-	type MaximumExtrinsicWeight = MaximumBlockWeight;
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 }

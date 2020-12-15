@@ -1203,6 +1203,7 @@ fn test_evm_accounts_module() {
 		});
 }
 
+#[cfg(not(feature = "with-ethereum-compatibility"))]
 #[test]
 fn test_evm_module() {
 	ExtBuilder::default()
@@ -1273,5 +1274,54 @@ fn test_evm_module() {
 			));
 			let event = Event::module_evm(module_evm::RawEvent::RejectedTransferMaintainer(address, alice_address));
 			assert_eq!(last_event(), event);
+		});
+}
+
+#[cfg(feature = "with-ethereum-compatibility")]
+#[test]
+fn test_evm_module() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
+			(bob_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
+		])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
+
+			use std::fs::{self, File};
+			use std::io::Read;
+
+			let paths = fs::read_dir("../../runtime/mandala/tests/solidity_test").unwrap();
+			let file_names = paths
+				.filter_map(|entry| entry.ok().and_then(|e| e.path().to_str().map(|s| String::from(s))))
+				.collect::<Vec<String>>();
+
+			for file in file_names {
+				let mut f = File::open(&file).expect("File not found");
+				let mut contents = String::new();
+				f.read_to_string(&mut contents)
+					.expect("Something went wrong reading the file.");
+				let json: serde_json::Value = serde_json::from_str(&contents).unwrap();
+
+				let bytecode_str = serde_json::to_string(&json["bytecode"]).unwrap();
+				let bytecode_str = bytecode_str.replace("\"", "");
+
+				let bytecode = hex::decode(bytecode_str).unwrap();
+				assert_ok!(EVM::create(Origin::signed(alice_account_id()), bytecode, 0, u32::MAX));
+
+				match System::events().iter().last().unwrap().event {
+					Event::module_evm(module_evm::RawEvent::Created(_)) => {}
+					_ => {
+						println!(
+							"contract {:?} create failed, event: {:?}",
+							file,
+							System::events().iter().last().unwrap().event
+						);
+						assert!(false);
+					}
+				};
+			}
 		});
 }

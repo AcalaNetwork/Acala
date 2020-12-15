@@ -17,11 +17,10 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use orml_traits::account::MergeAccount;
-use primitives::evm::AddressMapping;
-use sp_core::{crypto::AccountId32, ecdsa, H160};
+use primitives::evm::{AddressMapping, EvmAddress};
+use sp_core::{crypto::AccountId32, ecdsa};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
-use sp_std::marker::PhantomData;
-use sp_std::vec::Vec;
+use sp_std::{marker::PhantomData, vec::Vec};
 
 mod default_weight;
 mod mock;
@@ -32,8 +31,6 @@ pub trait WeightInfo {
 }
 
 pub type EcdsaSignature = ecdsa::Signature;
-/// Evm Address.
-pub type EvmAddress = sp_core::H160;
 
 pub trait Config: frame_system::Config {
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
@@ -199,7 +196,7 @@ impl<T: Config> AddressMapping<T::AccountId> for EvmAddressMapping<T>
 where
 	T::AccountId: From<AccountId32> + Into<AccountId32>,
 {
-	fn to_account(address: &H160) -> T::AccountId {
+	fn to_account(address: &EvmAddress) -> T::AccountId {
 		if let Some(acc) = Accounts::<T>::get(address) {
 			acc
 		} else {
@@ -210,11 +207,11 @@ where
 		}
 	}
 
-	fn to_evm_address(account_id: &T::AccountId) -> Option<H160> {
+	fn to_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
 		EvmAddresses::<T>::get(account_id).or_else(|| {
 			let data: [u8; 32] = account_id.clone().into().into();
 			if data.starts_with(b"evm:") {
-				Some(H160::from_slice(&data[4..24]))
+				Some(EvmAddress::from_slice(&data[4..24]))
 			} else {
 				None
 			}
