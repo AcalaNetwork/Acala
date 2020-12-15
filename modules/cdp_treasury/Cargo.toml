@@ -23,7 +23,7 @@ sp-io = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 orml-auction = { path = "../../orml/auction", default-features = false }
-module-dex = { path = "../dex", default-features = false }
+module-dex = { path = "../dex" }
 
 [features]
 default = ["std"]

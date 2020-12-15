@@ -52,18 +52,14 @@ impl frame_system::Config for Runtime {
 	type Header = Header;
 	type Event = ();
 	type BlockHashCount = ();
-	type MaximumBlockWeight = ();
-	type MaximumBlockLength = ();
-	type AvailableBlockRatio = ();
+	type BlockWeights = ();
+	type BlockLength = ();
 	type Version = ();
 	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = (PalletBalances,);
 	type DbWeight = ();
-	type BlockExecutionWeight = ();
-	type ExtrinsicBaseWeight = ();
-	type MaximumExtrinsicWeight = ();
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 }

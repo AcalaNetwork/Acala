@@ -21,7 +21,7 @@ use sp_core::{
 	OpaqueMetadata, H160,
 };
 use sp_runtime::traits::{
-	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating, StaticLookup,
+	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
 };
 use sp_runtime::{
 	create_runtime_str,
@@ -56,10 +56,7 @@ pub use frame_support::{
 		Contains, ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier,
 		Randomness, U128CurrencyToVote,
 	},
-	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
-		IdentityFee, Weight,
-	},
+	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	StorageValue,
 };
 
@@ -76,7 +73,8 @@ pub use primitives::{
 	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	CurveFeeModel, ExchangeRate, GasToWeight, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice,
+	BlockLength, BlockWeights, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit, Price, Rate,
+	Ratio, SystemContractsFilter, TimeStampedPrice,
 };
 
 mod authority;
@@ -144,13 +142,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
-	/// We allow for 2 seconds of compute with a 4 second average block time.
-	pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
-	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-	/// Assume 10% of weight for average on_initialize calls.
-	pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
-		.saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
-	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	pub const Version: RuntimeVersion = VERSION;
 }
 
@@ -166,9 +157,8 @@ impl frame_system::Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
 	type BlockHashCount = BlockHashCount;
-	type MaximumBlockWeight = MaximumBlockWeight;
-	type MaximumBlockLength = MaximumBlockLength;
-	type AvailableBlockRatio = AvailableBlockRatio;
+	type BlockWeights = BlockWeights;
+	type BlockLength = BlockLength;
 	type Version = Version;
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
@@ -178,9 +168,6 @@ impl frame_system::Config for Runtime {
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
 	type DbWeight = RocksDbWeight;
-	type BlockExecutionWeight = BlockExecutionWeight;
-	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
-	type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 }
@@ -605,9 +592,6 @@ parameter_types! {
 	pub const MaxIterations: u32 = 5;
 	// 0.05%. The higher the value, the more strict solution acceptance becomes.
 	pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
-	pub OffchainSolutionWeightLimit: Weight = MaximumExtrinsicWeight::get()
-		.saturating_sub(BlockExecutionWeight::get())
-		.saturating_sub(ExtrinsicBaseWeight::get());
 }
 
 impl pallet_staking::Config for Runtime {
@@ -836,7 +820,7 @@ impl orml_vesting::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * MaximumBlockWeight::get();
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
 	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
