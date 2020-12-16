@@ -32,7 +32,7 @@ mod mock_timestamp_data_provider;
 
 #[cfg(feature = "with-mandala-runtime")]
 native_executor_instance!(
-	pub MandalaExecutor,
+	pub Executor,
 	mandala_runtime::api::dispatch,
 	mandala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -40,7 +40,7 @@ native_executor_instance!(
 
 #[cfg(feature = "with-karura-runtime")]
 native_executor_instance!(
-	pub KaruraExecutor,
+	pub Executor,
 	karura_runtime::api::dispatch,
 	karura_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -48,7 +48,7 @@ native_executor_instance!(
 
 #[cfg(feature = "with-acala-runtime")]
 native_executor_instance!(
-	pub AcalaExecutor,
+	pub Executor,
 	acala_runtime::api::dispatch,
 	acala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -568,7 +568,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false, false)?;
+			} = new_partial::<mandala_runtime::RuntimeApi, Executor>(config, false, false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -582,7 +582,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false, false)?;
+			} = new_partial::<karura_runtime::RuntimeApi, Executor>(config, false, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-kaura-runtime"))]
@@ -596,7 +596,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false, false)?;
+			} = new_partial::<acala_runtime::RuntimeApi, Executor>(config, false, false)?;
 			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
@@ -608,17 +608,17 @@ pub fn new_chain_ops(
 pub fn build_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 	if config.chain_spec.is_acala() {
 		#[cfg(feature = "with-acala-runtime")]
-		return new_light::<acala_runtime::RuntimeApi, AcalaExecutor>(config).map(|r| r.0);
+		return new_light::<acala_runtime::RuntimeApi, Executor>(config).map(|r| r.0);
 		#[cfg(not(feature = "with-acala-runtime"))]
 		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
 		#[cfg(feature = "with-kaura-runtime")]
-		return new_light::<karura_runtime::RuntimeApi, KaruraExecutor>(config).map(|r| r.0);
+		return new_light::<karura_runtime::RuntimeApi, Executor>(config).map(|r| r.0);
 		#[cfg(not(feature = "with-kaura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-mandala-runtime")]
-		return new_light::<mandala_runtime::RuntimeApi, MandalaExecutor>(config).map(|r| r.0);
+		return new_light::<mandala_runtime::RuntimeApi, Executor>(config).map(|r| r.0);
 		#[cfg(not(feature = "with-mandala-runtime"))]
 		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	}
@@ -633,7 +633,7 @@ pub fn build_full(
 		#[cfg(feature = "with-acala-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, instant_sealing, test)?;
+				new_full::<acala_runtime::RuntimeApi, Executor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Acala(client)), network_status_sinks, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
@@ -642,7 +642,7 @@ pub fn build_full(
 		#[cfg(feature = "with-kaura-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, instant_sealing, test)?;
+				new_full::<karura_runtime::RuntimeApi, Executor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
 		}
 		#[cfg(not(feature = "with-kaura-runtime"))]
@@ -651,7 +651,7 @@ pub fn build_full(
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, instant_sealing, test)?;
+				new_full::<mandala_runtime::RuntimeApi, Executor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Mandala(client)), network_status_sinks, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]

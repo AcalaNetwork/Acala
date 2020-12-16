@@ -32,8 +32,10 @@ sc-consensus-slots = { version = "0.8.0" }
 sc-transaction-pool = { version = "2.0.0" }
 sc-basic-authorship = { version = "0.8.0" }
 sc-network = { version = "0.8.0" }
+sc-cli = { version = "0.8.0" }
 frame-benchmarking = { version = "2.0.0" }
 sp-trie = { version = "2.0.0" }
+sp-timestamp = { version = "2.0.0" }
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", version = "0.8.0"}
 
 sp-block-builder = { version = "2.0.0" }

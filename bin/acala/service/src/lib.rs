@@ -3,25 +3,26 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
-use std::sync::Arc;
-
-use acala_primitives::Block;
-use prometheus_endpoint::Registry;
-use sc_client_api::{ExecutorProvider, RemoteBackend};
-use sc_executor::native_executor_instance;
-use sc_finality_grandpa::FinalityProofProvider as GrandpaFinalityProofProvider;
-use sc_service::{config::Configuration, error::Error as ServiceError, PartialComponents, RpcHandlers, TaskManager};
-use sp_inherents::InherentDataProviders;
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
-
-pub use client::*;
+use cumulus_network::build_block_announce_validator;
+use cumulus_service::{prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams};
 
 #[cfg(feature = "with-acala-runtime")]
-pub use acala_runtime;
+pub use acala_runtime::{self, RuntimeApi};
 #[cfg(feature = "with-karurua-runtime")]
-pub use karura_runtime;
+pub use karura_runtime::{self, RuntimeApi};
 #[cfg(feature = "with-mandala-runtime")]
-pub use mandala_runtime;
+pub use mandala_runtime::{self, RuntimeApi};
+
+use acala_primitives::Block;
+use polkadot_primitives::v0::CollatorPair;
+use sc_executor::native_executor_instance;
+use sc_service::{error::Error as ServiceError, Configuration, PartialComponents, Role, TFullClient, TaskManager};
+use sp_core::Pair;
+use sp_runtime::traits::BlakeTwo256;
+use sp_trie::PrefixedMemoryDB;
+use std::sync::Arc;
+
+pub use client::*;
 
 pub use sc_executor::NativeExecutionDispatch;
 pub use sc_service::{
@@ -30,16 +31,13 @@ pub use sc_service::{
 };
 pub use sp_api::ConstructRuntimeApi;
 
-use cumulus_network::build_block_announce_validator;
-use cumulus_service::{prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams};
-
 pub mod chain_spec;
 mod client;
 mod mock_timestamp_data_provider;
 
 #[cfg(feature = "with-mandala-runtime")]
 native_executor_instance!(
-	pub MandalaExecutor,
+	pub Executor,
 	mandala_runtime::api::dispatch,
 	mandala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -47,7 +45,7 @@ native_executor_instance!(
 
 #[cfg(feature = "with-karura-runtime")]
 native_executor_instance!(
-	pub KaruraExecutor,
+	pub Executor,
 	karura_runtime::api::dispatch,
 	karura_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -55,7 +53,7 @@ native_executor_instance!(
 
 #[cfg(feature = "with-acala-runtime")]
 native_executor_instance!(
-	pub AcalaExecutor,
+	pub Executor,
 	acala_runtime::api::dispatch,
 	acala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -91,39 +89,20 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 /// Acala's full backend.
 type FullBackend = sc_service::TFullBackend<Block>;
 
-/// Acala's select chain.
-type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
-
 /// Acala's full client.
 type FullClient<RuntimeApi, Executor> = sc_service::TFullClient<Block, RuntimeApi, Executor>;
 
-/// Acala's full Grandpa block import.
-type FullGrandpaBlockImport<RuntimeApi, Executor> =
-	sc_finality_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<RuntimeApi, Executor>, FullSelectChain>;
-
 pub fn new_partial<RuntimeApi, Executor>(
-	config: &mut Configuration,
-	test: bool,
+	config: &Configuration,
+	_test: bool,
 ) -> Result<
 	PartialComponents<
 		FullClient<RuntimeApi, Executor>,
 		FullBackend,
-		FullSelectChain,
+		(),
 		sp_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
-		(
-			impl Fn(acala_rpc::DenyUnsafe, acala_rpc::SubscriptionTaskExecutor) -> acala_rpc::RpcExtension,
-			(
-				sc_consensus_babe::BabeBlockImport<
-					Block,
-					FullClient<RuntimeApi, Executor>,
-					FullGrandpaBlockImport<RuntimeApi, Executor>,
-				>,
-				sc_finality_grandpa::LinkHalf<Block, FullClient<RuntimeApi, Executor>, FullSelectChain>,
-				sc_consensus_babe::BabeLink<Block>,
-			),
-			sc_finality_grandpa::SharedVoterState,
-		),
+		(),
 	>,
 	sc_service::Error,
 >
@@ -132,18 +111,12 @@ where
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
 {
-	if !test {
-		// If we're using prometheus, use a registry with a prefix of `acala`.
-		if let Some(PrometheusConfig { registry, .. }) = config.prometheus_config.as_mut() {
-			*registry = Registry::new_custom(Some("acala".into()), None)?;
-		}
-	}
+	// TODO: custom registry with `acala` prefix?
+	let registry = config.prometheus_registry();
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
 	let client = Arc::new(client);
-
-	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
@@ -151,16 +124,6 @@ where
 		task_manager.spawn_handle(),
 		client.clone(),
 	);
-
-	let (grandpa_block_import, grandpa_link) =
-		sc_finality_grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain.clone())?;
-	let justification_import = grandpa_block_import.clone();
-
-	let (block_import, babe_link) = sc_consensus_babe::block_import(
-		sc_consensus_babe::Config::get_or_compute(&*client)?,
-		grandpa_block_import,
-		client.clone(),
-	)?;
 
 	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
@@ -172,58 +135,16 @@ where
 		registry.clone(),
 	)?;
 
-	let justification_stream = grandpa_link.justification_stream();
-	let shared_authority_set = grandpa_link.shared_authority_set().clone();
-	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
-
-	let import_setup = (block_import, grandpa_link, babe_link.clone());
-	let rpc_setup = shared_voter_state.clone();
-
-	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
-
-	let babe_config = babe_link.config().clone();
-	let shared_epoch_changes = babe_link.epoch_changes().clone();
-
-	let rpc_extensions_builder = {
-		let client = client.clone();
-		let keystore = keystore_container.sync_keystore();
-		let transaction_pool = transaction_pool.clone();
-		let select_chain = select_chain.clone();
-
-		move |deny_unsafe, subscription_executor| -> acala_rpc::RpcExtension {
-			let deps = acala_rpc::FullDeps {
-				client: client.clone(),
-				pool: transaction_pool.clone(),
-				select_chain: select_chain.clone(),
-				deny_unsafe,
-				babe: acala_rpc::BabeDeps {
-					babe_config: babe_config.clone(),
-					shared_epoch_changes: shared_epoch_changes.clone(),
-					keystore: keystore.clone(),
-				},
-				grandpa: acala_rpc::GrandpaDeps {
-					shared_voter_state: shared_voter_state.clone(),
-					shared_authority_set: shared_authority_set.clone(),
-					justification_stream: justification_stream.clone(),
-					subscription_executor,
-					finality_provider: finality_proof_provider.clone(),
-				},
-			};
-
-			acala_rpc::create_full(deps)
-		}
-	};
-
 	Ok(PartialComponents {
 		client,
 		backend,
 		task_manager,
 		keystore_container,
-		select_chain,
+		select_chain: (),
 		import_queue,
 		transaction_pool,
 		inherent_data_providers,
-		other: (rpc_extensions_builder, import_setup, rpc_setup),
+		other: (),
 	})
 }
 
@@ -248,7 +169,7 @@ async fn start_node_impl(
 
 	let polkadot_full_node = cumulus_service::build_polkadot_full_node(polkadot_config, collator_key.public())?;
 
-	let params = new_partial(&parachain_config)?;
+	let params = new_partial(&parachain_config, false)?;
 	params
 		.inherent_data_providers
 		.register_provider(sp_timestamp::InherentDataProvider)
@@ -278,17 +199,30 @@ async fn start_node_impl(
 			block_announce_validator_builder: Some(Box::new(|_| block_announce_validator)),
 		})?;
 
-	if config.offchain_worker.enabled {
+	let rpc_extensions_builder = {
+		let client = client.clone();
+		let transaction_pool = transaction_pool.clone();
+
+		Box::new(move |deny_unsafe, _| -> acala_rpc::RpcExtension {
+			let deps = acala_rpc::FullDeps {
+				client: client.clone(),
+				pool: transaction_pool.clone(),
+				deny_unsafe,
+			};
+
+			acala_rpc::create_full(deps)
+		})
+	};
+
+	if parachain_config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
-			&config,
+			&parachain_config,
 			backend.clone(),
 			task_manager.spawn_handle(),
 			client.clone(),
 			network.clone(),
 		);
 	};
-
-	let rpc_extensions_builder = Box::new(params.other.0);
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: None,
@@ -371,7 +305,7 @@ pub fn new_chain_ops(
 	(
 		Arc<Client>,
 		Arc<FullBackend>,
-		sp_consensus::import_queue::BasicQueue<Block, sp_trie::PrefixedMemoryDB<BlakeTwo256>>,
+		sp_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
 		TaskManager,
 	),
 	ServiceError,
@@ -386,7 +320,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false)?;
+			} = new_partial::<mandala_runtime::RuntimeApi, Executor>(config, false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -400,7 +334,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false)?;
+			} = new_partial::<karura_runtime::RuntimeApi, Executor>(config, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-kaura-runtime"))]
@@ -414,45 +348,10 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false)?;
+			} = new_partial::<acala_runtime::RuntimeApi, Executor>(config, false)?;
 			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
 		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
-	}
-}
-
-pub fn build_full(
-	config: Configuration,
-	instant_sealing: bool,
-	test: bool,
-) -> Result<(Arc<Client>, sc_service::NetworkStatusSinks<Block>, TaskManager), ServiceError> {
-	if config.chain_spec.is_acala() {
-		#[cfg(feature = "with-acala-runtime")]
-		{
-			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<acala_runtime::RuntimeApi, AcalaExecutor>(config, instant_sealing, test)?;
-			Ok((Arc::new(Client::Acala(client)), network_status_sinks, task_manager))
-		}
-		#[cfg(not(feature = "with-acala-runtime"))]
-		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
-	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
-		{
-			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, instant_sealing, test)?;
-			Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
-		}
-		#[cfg(not(feature = "with-kaura-runtime"))]
-		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
-	} else {
-		#[cfg(feature = "with-mandala-runtime")]
-		{
-			let (task_manager, _, client, _, _, network_status_sinks) =
-				new_full::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, instant_sealing, test)?;
-			Ok((Arc::new(Client::Mandala(client)), network_status_sinks, task_manager))
-		}
-		#[cfg(not(feature = "with-mandala-runtime"))]
-		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	}
 }

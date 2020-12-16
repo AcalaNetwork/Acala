@@ -1287,6 +1287,7 @@ impl cumulus_parachain_upgrade::Config for Runtime {
 
 impl cumulus_message_broker::Config for Runtime {
 	type DownwardMessageHandlers = ();
+	type HrmpMessageHandlers = ();
 }
 
 impl parachain_info::Config for Runtime {}

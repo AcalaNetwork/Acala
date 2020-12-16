@@ -27,8 +27,8 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 
 	Ok(ChainSpec::from_genesis(
-		"Development",
-		"dev",
+		"Mandala PC1",
+		"mandalapc1",
 		ChainType::Development,
 		move || {
 			testnet_genesis(
@@ -108,8 +108,8 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Mandala runtime wasm binary not available")?;
 
 	Ok(ChainSpec::from_genesis(
-		"Acala Mandala TC5",
-		"mandala5",
+		"Acala Mandala PC1",
+		"mandala-pc1",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -161,14 +161,17 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![
-			"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz"
+			"/ip4/54.254.37.221/tcp/30333/p2p/12D3KooWNUPp9ervpypz95DCMHfb3CAbQdfrmmBbYehUaJsFvRvT"
 				.parse()
 				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala5"),
+		Some("mandala-pc1"),
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: "rococo".into(),
+			para_id: 5_000_u32.into(),
+		},
 	))
 }
 
@@ -188,7 +191,7 @@ fn testnet_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EVMConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		ParachainInfoConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
 	};
 
@@ -357,6 +360,9 @@ fn testnet_genesis(
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 		}),
+		parachain_info: Some(ParachainInfoConfig {
+			parachain_id: 5_000.into(),
+		}),
 	}
 }
 
@@ -372,8 +378,9 @@ fn mandala_genesis(
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig,
 		EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
-		OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		OperatorMembershipBandConfig, ParachainInfoConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, CENTS, DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -541,6 +548,9 @@ fn mandala_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+		}),
+		parachain_info: Some(ParachainInfoConfig {
+			parachain_id: 5_000.into(),
 		}),
 	}
 }
