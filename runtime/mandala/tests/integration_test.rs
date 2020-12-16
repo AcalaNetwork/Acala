@@ -16,7 +16,6 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
-use serde_json::Value;
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
@@ -1304,7 +1303,7 @@ fn test_evm_module() {
 				let mut contents = String::new();
 				f.read_to_string(&mut contents)
 					.expect("Something went wrong reading the file.");
-				let json: Value = serde_json::from_str(&contents).unwrap();
+				let json: serde_json::Value = serde_json::from_str(&contents).unwrap();
 
 				let bytecode_str = serde_json::to_string(&json["bytecode"]).unwrap();
 				let bytecode_str = bytecode_str.replace("\"", "");

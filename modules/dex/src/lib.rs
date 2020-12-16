@@ -930,9 +930,9 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
-		gas_price_limit: Option<Ratio>,
+		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		Self::do_swap_with_exact_supply(who, path, supply_amount, min_target_amount, gas_price_limit)
+		Self::do_swap_with_exact_supply(who, path, supply_amount, min_target_amount, price_impact_limit)
 	}
 
 	fn swap_with_exact_target(
@@ -940,8 +940,8 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Module<T> {
 		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
-		gas_price_limit: Option<Ratio>,
+		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		Self::do_swap_with_exact_target(who, path, target_amount, max_supply_amount, gas_price_limit)
+		Self::do_swap_with_exact_target(who, path, target_amount, max_supply_amount, price_impact_limit)
 	}
 }

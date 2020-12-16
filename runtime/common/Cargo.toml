@@ -5,11 +5,14 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
+static_assertions = "1.1.0"
+
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
+frame-system = { version = "2.0.0", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -27,6 +30,7 @@ std = [
 	"sp-std/std",
 	"sp-runtime/std",
 	"frame-support/std",
+	"frame-system/std",
 	"module-evm/std",
 	"orml-oracle/std",
 	"orml-traits/std",

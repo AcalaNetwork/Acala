@@ -2,12 +2,15 @@ use codec::{Decode, Encode};
 use evm::ExitReason;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, U256};
+use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
 pub use evm::backend::{Basic as Account, Log};
 pub use evm::Config;
+
+/// Evm Address.
+pub type EvmAddress = sp_core::H160;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -16,7 +19,7 @@ pub struct Vicinity {
 	/// Current transaction gas price.
 	pub gas_price: U256,
 	/// Origin of the transaction.
-	pub origin: H160,
+	pub origin: EvmAddress,
 	/// Create contract opcode.
 	pub creating: bool,
 }
@@ -25,7 +28,7 @@ pub struct Vicinity {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CreateInfo {
 	pub exit_reason: ExitReason,
-	pub address: H160,
+	pub address: EvmAddress,
 	pub output: Vec<u8>,
 	pub used_gas: U256,
 }
@@ -38,8 +41,8 @@ pub struct CallInfo {
 	pub used_gas: U256,
 }
 
-/// A mapping between `AccountId` and `H160`.
+/// A mapping between `AccountId` and `EvmAddress`.
 pub trait AddressMapping<AccountId> {
-	fn to_account(evm: &H160) -> AccountId;
-	fn to_evm_address(account: &AccountId) -> Option<H160>;
+	fn to_account(evm: &EvmAddress) -> AccountId;
+	fn to_evm_address(account: &AccountId) -> Option<EvmAddress>;
 }

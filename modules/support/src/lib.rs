@@ -97,7 +97,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
-		gas_price_limit: Option<Ratio>,
+		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError>;
 
 	fn swap_with_exact_target(
@@ -105,7 +105,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
-		gas_price_limit: Option<Ratio>,
+		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError>;
 }
 
@@ -138,7 +138,7 @@ where
 		_path: &[CurrencyId],
 		_supply_amount: Balance,
 		_min_target_amount: Balance,
-		_gas_price_limit: Option<Ratio>,
+		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
@@ -148,7 +148,7 @@ where
 		_path: &[CurrencyId],
 		_target_amount: Balance,
 		_max_supply_amount: Balance,
-		_gas_price_limit: Option<Ratio>,
+		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
