@@ -1044,10 +1044,18 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 		Module::<T>::do_cancel_transfer_maintainer(from, contract, requester)
 	}
 
-	fn confirm_transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
+	fn confirm_transfer_maintainer(
+		from: T::AccountId,
+		contract: EvmAddress,
+		new_maintainer: EvmAddress,
+	) -> DispatchResult {
 		Module::<T>::do_confirm_transfer_maintainer(from, contract, new_maintainer)
 	}
-	fn reject_transfer_maintainer(from: T::AccountId, contract: EvmAddress, invalid_maintainer: EvmAddress) -> DispatchResult {
+	fn reject_transfer_maintainer(
+		from: T::AccountId,
+		contract: EvmAddress,
+		invalid_maintainer: EvmAddress,
+	) -> DispatchResult {
 		Module::<T>::do_reject_transfer_maintainer(from, contract, invalid_maintainer)
 	}
 }
