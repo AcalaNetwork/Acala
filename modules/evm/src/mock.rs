@@ -66,8 +66,11 @@ pub struct Test;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
+
 impl frame_system::Config for Test {
 	type BaseCallFilter = ();
+	type BlockWeights = ();
+	type BlockLength = ();
 	type Origin = Origin;
 	type Call = OuterCall;
 	type Index = u64;
@@ -80,8 +83,6 @@ impl frame_system::Config for Test {
 	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
-	type BlockWeights = ();
-	type BlockLength = ();
 	type Version = ();
 	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<u64>;
@@ -157,11 +158,15 @@ parameter_types! {
 }
 
 ord_parameter_types! {
+	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
+	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const ContractExistentialDeposit: u64 = 1;
 	pub const TransferMaintainerDeposit: u64 = 1;
 	pub const StorageDepositPerByte: u64 = 10;
 	pub const StorageDefaultQuota: u32 = 400;
+	pub const DeveloperDeposit: u64 = 1000;
+	pub const DeploymentFee: u64 = 200;
 }
 
 impl Config for Test {
@@ -180,6 +185,11 @@ impl Config for Test {
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = TreasuryAccount;
+	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+
 	type WeightInfo = ();
 }
 
@@ -188,6 +198,14 @@ pub type Balances = pallet_balances::Module<Test>;
 pub type EVM = Module<Test>;
 
 pub const INITIAL_BALANCE: u64 = 1_000_000_000_000;
+
+pub fn contract_a() -> H160 {
+	H160::from_str("2000000000000000000000000000000000000001").unwrap()
+}
+
+pub fn contract_b() -> H160 {
+	H160::from_str("2000000000000000000000000000000000000002").unwrap()
+}
 
 pub fn alice() -> H160 {
 	H160::from_str("1000000000000000000000000000000000000001").unwrap()
@@ -207,15 +225,37 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut accounts = BTreeMap::new();
+
+	accounts.insert(
+		contract_a(),
+		GenesisAccount {
+			nonce: 1,
+			balance: Default::default(),
+			storage: Default::default(),
+			code: vec![
+				0x00, // STOP
+			],
+		},
+	);
+	accounts.insert(
+		contract_b(),
+		GenesisAccount {
+			nonce: 1,
+			balance: Default::default(),
+			storage: Default::default(),
+			code: vec![
+				0xff, // INVALID
+			],
+		},
+	);
+
 	accounts.insert(
 		alice(),
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
 			storage: Default::default(),
-			code: vec![
-				0x00, // STOP
-			],
+			code: Default::default(),
 		},
 	);
 	accounts.insert(
@@ -224,9 +264,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
 			storage: Default::default(),
-			code: vec![
-				0xff, // INVALID
-			],
+			code: Default::default(),
 		},
 	);
 
@@ -253,4 +291,8 @@ pub fn balance(address: H160) -> u64 {
 pub fn reserved_balance(address: H160) -> u64 {
 	let account_id = <Test as Config>::AddressMapping::to_account(&address);
 	Balances::reserved_balance(account_id)
+}
+
+pub fn deploy_free(contract: H160) {
+	let _ = EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract);
 }
