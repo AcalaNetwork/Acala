@@ -1,3 +1,4 @@
+use frame_support::debug;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use sp_core::U256;
 use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
@@ -72,6 +73,7 @@ where
 		_target_gas: Option<usize>,
 		_context: &Context,
 	) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+		debug::debug!(target: "evm", "state_rent input: {:?}", input);
 		let input = Input::<Action, AccountId, AddressMapping>::new(input);
 
 		let action = input.action()?;
@@ -99,7 +101,10 @@ where
 				let maintainer =
 					EVM::query_maintainer(contract).map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
-				Ok((ExitSucceed::Returned, maintainer.as_bytes().to_vec(), 0))
+				let mut address = [0u8; 32];
+				address[12..].copy_from_slice(&maintainer.as_bytes().to_vec());
+
+				Ok((ExitSucceed::Returned, address.to_vec(), 0))
 			}
 			Action::AddStorageQuota => {
 				let from = input.account_id_at(1)?;

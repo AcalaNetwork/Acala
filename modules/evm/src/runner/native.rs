@@ -94,9 +94,10 @@ impl<T: Config> Runner<T> {
 
 			debug::debug!(
 				target: "evm",
-				"{:?}-result: create_info {:?}",
+				"{:?}-result: create_info {:?}, output: {:?}",
 				tag,
-				create_info
+				create_info,
+				out
 			);
 
 			if !reason.is_succeed() {
