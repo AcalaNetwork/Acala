@@ -363,8 +363,6 @@ decl_module! {
 			value: BalanceOf<T>,
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
-			// TODO: if contract is not public
-			// TODO: ensure caller is contract or developer_deposit is some
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
