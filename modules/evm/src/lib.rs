@@ -337,7 +337,7 @@ decl_module! {
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::to_evm_address(&who);
 
 			let info = Runner::<T>::call(source, target, input, value, gas_limit, T::config())?;
 
@@ -365,7 +365,7 @@ decl_module! {
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::to_evm_address(&who);
 
 			let info = Runner::<T>::create(source, init, value, gas_limit, T::config())?;
 
@@ -393,7 +393,7 @@ decl_module! {
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::to_evm_address(&who);
 
 			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, T::config())?;
 
@@ -463,7 +463,7 @@ decl_module! {
 		#[transactional]
 		pub fn request_transfer_maintainer(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let new_maintainer = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let new_maintainer = T::AddressMapping::to_evm_address(&who);
 
 			Self::do_request_transfer_maintainer(who, contract, new_maintainer)?;
 
@@ -474,7 +474,7 @@ decl_module! {
 		#[transactional]
 		pub fn cancel_transfer_maintainer(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let requester = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let requester = T::AddressMapping::to_evm_address(&who);
 
 			Self::do_cancel_transfer_maintainer(who, contract, requester)?;
 
@@ -1063,9 +1063,8 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
-		if let Some(address) = T::AddressMapping::to_evm_address(who) {
-			let _ = Module::<T>::remove_account(&address);
-		}
+		let address = T::AddressMapping::to_evm_address(who);
+		let _ = Module::<T>::remove_account(&address);
 	}
 }
 

@@ -13,10 +13,8 @@ use sp_runtime::{testing::Header, traits::IdentityLookup};
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-parameter_types! {
-	pub ALICE: AccountId = AccountId32::from([0u8; 32]);
-	pub BOB: AccountId = AccountId32::from([1u8; 32]);
-}
+pub const ALICE: AccountId = AccountId32::new([0u8; 32]);
+pub const BOB: AccountId = AccountId32::new([1u8; 32]);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
