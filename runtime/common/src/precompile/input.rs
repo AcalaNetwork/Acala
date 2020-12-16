@@ -76,7 +76,7 @@ where
 		let mut address = [0u8; 20];
 		address.copy_from_slice(&param[12..]);
 
-		Ok(AddressMapping::to_account(&address.into()))
+		Ok(AddressMapping::get_account_id(&address.into()))
 	}
 
 	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error> {
@@ -214,7 +214,7 @@ mod tests {
 	fn account_id_works() {
 		let mut address = [0u8; 20];
 		address[19] = 1;
-		let account_id = EvmAddressMapping::to_account(&address.into());
+		let account_id = EvmAddressMapping::get_account_id(&address.into());
 
 		let mut raw_input = [0u8; 32];
 		raw_input[31] = 1;

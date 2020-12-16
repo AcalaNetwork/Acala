@@ -215,6 +215,10 @@ where
 		})
 	}
 
+	fn get_default_evm_address(account_id: &T::AccountId) -> EvmAddress {
+		account_to_default_evm_address(account_id)
+	}
+
 	fn is_linked(account_id: &T::AccountId, evm: &EvmAddress) -> bool {
 		Self::get_evm_address(account_id).as_ref() == Some(evm)
 			|| &account_to_default_evm_address(account_id.into_ref()) == evm

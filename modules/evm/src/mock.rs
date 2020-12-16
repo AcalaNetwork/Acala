@@ -246,11 +246,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
 	Balances::free_balance(account_id)
 }
 
 pub fn reserved_balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
 	Balances::reserved_balance(account_id)
 }
