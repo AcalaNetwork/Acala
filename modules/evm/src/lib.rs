@@ -258,7 +258,7 @@ decl_storage! {
 					account.balance,
 				);
 
-				if account.code.len() > 0 { // if code len > 0 then it's a contract
+				if !account.code.is_empty() { // if code len > 0 then it's a contract
 					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
 
 					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
