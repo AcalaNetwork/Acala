@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "acala-dev-cli"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-dev-service",
  "acala-inspect",
@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "acala-dev-service"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -4235,7 +4235,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm"
-version = "2.0.0"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "evm",
@@ -4285,7 +4285,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-bridge"
-version = "2.0.0"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -4427,7 +4427,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "acala-primitives",
  "enumflags2",

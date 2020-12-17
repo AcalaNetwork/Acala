@@ -34,7 +34,7 @@ use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::traits::{CheckedAdd, CheckedSub, Convert, One, Saturating, UniqueSaturatedInto, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::EVM as EVMTrait;
+use support::{EVMStateRentTrait, EVM as EVMTrait};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -998,6 +998,65 @@ impl<T: Config> EVMTrait for Module<T> {
 		}
 
 		Ok(info)
+	}
+}
+
+impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
+	fn query_contract_existential_deposit() -> BalanceOf<T> {
+		T::ContractExistentialDeposit::get()
+	}
+
+	fn query_transfer_maintainer_deposit() -> BalanceOf<T> {
+		T::TransferMaintainerDeposit::get()
+	}
+
+	fn query_qtorage_deposit_per_byte() -> BalanceOf<T> {
+		T::StorageDepositPerByte::get()
+	}
+
+	fn query_storage_default_quota() -> u32 {
+		T::StorageDefaultQuota::get()
+	}
+
+	fn query_maintainer(contract: EvmAddress) -> Result<EvmAddress, DispatchError> {
+		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound.into()), |account_info| {
+			account_info
+				.contract_info
+				.map_or(Err(Error::<T>::ContractNotFound.into()), |v| Ok(v.maintainer))
+		})
+	}
+
+	fn add_storage_quota(from: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
+		Module::<T>::do_add_storage_quota(from, contract, bytes)
+	}
+
+	fn remove_storage_quota(from: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
+		Module::<T>::do_remove_storage_quota(from, contract, bytes)
+	}
+
+	fn request_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
+		let new_maintainer = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
+		Module::<T>::do_request_transfer_maintainer(from, contract, new_maintainer)
+	}
+
+	fn cancel_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
+		let requester = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
+		Module::<T>::do_cancel_transfer_maintainer(from, contract, requester)
+	}
+
+	fn confirm_transfer_maintainer(
+		from: T::AccountId,
+		contract: EvmAddress,
+		new_maintainer: EvmAddress,
+	) -> DispatchResult {
+		Module::<T>::do_confirm_transfer_maintainer(from, contract, new_maintainer)
+	}
+	fn reject_transfer_maintainer(
+		from: T::AccountId,
+		contract: EvmAddress,
+		invalid_maintainer: EvmAddress,
+	) -> DispatchResult {
+		Module::<T>::do_reject_transfer_maintainer(from, contract, invalid_maintainer)
 	}
 }
 

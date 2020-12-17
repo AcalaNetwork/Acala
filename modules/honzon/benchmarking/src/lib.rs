@@ -13,7 +13,7 @@ use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use sp_runtime::{
-	traits::{Saturating, UniqueSaturatedInto},
+	traits::{Saturating, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 
@@ -46,19 +46,21 @@ benchmarks! {
 
 		let caller: T::AccountId = account("caller", u, SEED);
 		let to: T::AccountId = account("to", u, SEED);
-	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to)
+		let to_lookup = T::Lookup::unlookup(to);
+	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to_lookup)
 
 	unauthorize {
 		let u in 0 .. 1000;
 
 		let caller: T::AccountId = account("caller", u, SEED);
 		let to: T::AccountId = account("to", u, SEED);
+		let to_lookup = T::Lookup::unlookup(to);
 		Honzon::<T>::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
 			CurrencyId::Token(TokenSymbol::DOT),
-			to.clone()
+			to_lookup.clone()
 		)?;
-	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to)
+	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to_lookup)
 
 	unauthorize_all {
 		let u in 0 .. 1000;
@@ -70,12 +72,13 @@ benchmarks! {
 
 		for i in 0 .. v {
 			let to: T::AccountId = account("to", i, SEED);
+			let to_lookup = T::Lookup::unlookup(to);
 
 			for j in 0 .. c {
 				Honzon::<T>::authorize(
 					RawOrigin::Signed(caller.clone()).into(),
 					currency_ids[j as usize],
-					to.clone(),
+					to_lookup.clone(),
 				)?;
 			}
 		}
@@ -119,7 +122,9 @@ benchmarks! {
 
 		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
 		let sender: T::AccountId = account("sender", u, SEED);
+		let sender_lookup = T::Lookup::unlookup(sender.clone());
 		let receiver: T::AccountId = account("receiver", u, SEED);
+		let receiver_lookup = T::Lookup::unlookup(receiver.clone());
 		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
@@ -154,11 +159,11 @@ benchmarks! {
 
 		// authorize receiver
 		Honzon::<T>::authorize(
-			RawOrigin::Signed(sender.clone()).into(),
+			RawOrigin::Signed(sender).into(),
 			currency_id,
-			receiver.clone()
+			receiver_lookup
 		)?;
-	}: _(RawOrigin::Signed(receiver), currency_id, sender)
+	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 }
 
 #[cfg(feature = "runtime-benchmarks")]

@@ -1,5 +1,5 @@
 use crate::{
-	AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, ExchangeRate, Honzon,
+	AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, ExchangeRate, Honzon, Indices,
 	MinimumDebitValue, Price, Rate, Ratio, Runtime, TokenSymbol,
 };
 
@@ -10,7 +10,7 @@ use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{Saturating, UniqueSaturatedInto},
+	traits::{Saturating, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;
@@ -25,17 +25,19 @@ runtime_benchmarks! {
 	authorize {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);
-	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to)
+		let to_lookup = Indices::unlookup(to);
+	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to_lookup)
 
 	unauthorize {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);
+		let to_lookup = Indices::unlookup(to);
 		Honzon::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
 			CurrencyId::Token(TokenSymbol::DOT),
-			to.clone()
+			to_lookup.clone()
 		)?;
-	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to)
+	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to_lookup)
 
 	unauthorize_all {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
@@ -43,12 +45,13 @@ runtime_benchmarks! {
 		let caller: AccountId = account("caller", 0, SEED);
 		let currency_ids = CollateralCurrencyIds::get();
 		let to: AccountId = account("to", 0, SEED);
+		let to_lookup = Indices::unlookup(to);
 
 		for i in 0 .. c {
 			Honzon::authorize(
 				RawOrigin::Signed(caller.clone()).into(),
 				currency_ids[i as usize],
-				to.clone(),
+				to_lookup.clone(),
 			)?;
 		}
 	}: _(RawOrigin::Signed(caller))
@@ -87,7 +90,9 @@ runtime_benchmarks! {
 	transfer_loan_from {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let sender: AccountId = account("sender", 0, SEED);
+		let sender_lookup = Indices::unlookup(sender.clone());
 		let receiver: AccountId = account("receiver", 0, SEED);
+		let receiver_lookup = Indices::unlookup(receiver.clone());
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
@@ -124,9 +129,9 @@ runtime_benchmarks! {
 		Honzon::authorize(
 			RawOrigin::Signed(sender.clone()).into(),
 			currency_id,
-			receiver.clone()
+			receiver_lookup,
 		)?;
-	}: _(RawOrigin::Signed(receiver), currency_id, sender)
+	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 }
 
 #[cfg(test)]
