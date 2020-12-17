@@ -409,7 +409,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::reserve(who, value),
 			_ => T::MultiCurrency::reserve(currency_id, who, value),
 		}
@@ -431,7 +431,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 		status: BalanceStatus,
 	) -> result::Result<Self::Balance, DispatchError> {
 		match currency_id {
-			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
 			CurrencyId::Token(TokenSymbol::ACA) => {
 				T::NativeCurrency::repatriate_reserved(slashed, beneficiary, value, status)
 			}
