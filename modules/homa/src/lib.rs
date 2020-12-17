@@ -20,11 +20,11 @@ mod default_weight;
 
 /// Redemption modes:
 /// 1. Immediately: User will immediately get back DOT from the free pool, which
-/// is a liquid pool operated by staking pool, 	but they have to pay extra fee.
+/// is a liquid pool operated by staking pool, but they have to pay extra fee.
 /// 2. Target: User can claim the unclaimed unbonding DOT of specific era, after
-/// the remaining unbinding period has passed, 		users can get back the DOT.
+/// the remaining unbinding period has passed, users can get back the DOT.
 /// 3. WaitForUnbonding: User request unbond, the staking pool will process
-/// unbonding in the next era, and user needs to wait 		for the complete unbonding
+/// unbonding in the next era, and user needs to wait for the complete unbonding
 /// era which determined by Polkadot.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub enum RedeemStrategy {

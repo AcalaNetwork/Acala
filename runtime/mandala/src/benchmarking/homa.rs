@@ -1,7 +1,5 @@
 use super::utils::{dollars, set_balance};
-use crate::{
-	AccountId, Currencies, GetStakingCurrencyId, Homa, PolkadotBondingDuration, PolkadotBridge, Runtime, StakingPool,
-};
+use crate::{AccountId, Currencies, GetStakingCurrencyId, Homa, PolkadotBondingDuration, PolkadotBridge, Runtime};
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
 use module_homa::RedeemStrategy;
@@ -42,9 +40,6 @@ runtime_benchmarks! {
 		Homa::mint(RawOrigin::Signed(caller.clone()).into(), dollars(1_000u128))?;
 		PolkadotBridge::new_era(Default::default());
 	}: redeem(RawOrigin::Signed(caller), dollars(1u128), RedeemStrategy::WaitForUnbonding)
-	verify {
-		assert!(StakingPool::next_era_unbond().0 > 0);
-	}
 
 	// redeem DOT by claim unbonding
 	redeem_by_claim_unbonding {
@@ -54,9 +49,6 @@ runtime_benchmarks! {
 		PolkadotBridge::new_era(Default::default());
 		PolkadotBridge::new_era(Default::default());
 	}: redeem(RawOrigin::Signed(caller.clone()), dollars(1u128), RedeemStrategy::Target(PolkadotBondingDuration::get() + 2))
-	verify {
-		assert!(StakingPool::claimed_unbond(&caller, PolkadotBondingDuration::get() + 2) > 0);
-	}
 
 	withdraw_redemption {
 		let caller: AccountId = account("caller", 0, SEED);

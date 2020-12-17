@@ -183,7 +183,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return Capture::Exit($map_err(e)),
-					}
+				}
 			};
 		}
 
@@ -192,7 +192,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return TransactionOutcome::Rollback(Capture::Exit($map_err(e))),
-					}
+				}
 			};
 		}
 	};

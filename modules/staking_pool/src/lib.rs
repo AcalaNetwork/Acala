@@ -248,7 +248,7 @@ decl_module! {
 					params.base_fee_rate = update;
 				}
 
-				ensure!(params.target_min_free_unbonded_ratio < params.target_max_free_unbonded_ratio, Error::<T>::InvalidConfig);
+				ensure!(params.target_min_free_unbonded_ratio <= params.target_max_free_unbonded_ratio, Error::<T>::InvalidConfig);
 				Ok(())
 			})?;
 		}
@@ -491,62 +491,6 @@ impl<T: Config> Module<T> {
 			})
 	}
 
-	/// Staking pool do bond by polkadot bridge and update related records.
-	pub fn staking_pool_bond() -> DispatchResult {
-		StakingPoolLedger::try_mutate(|ledger| -> DispatchResult {
-			let staking_pool_params = Self::staking_pool_params();
-			let bond_rate = ledger
-				.free_pool_ratio()
-				.saturating_sub(staking_pool_params.target_max_free_unbonded_ratio);
-			let bond_amount = bond_rate
-				.saturating_mul_int(ledger.total_belong_to_liquid_holders())
-				.min(ledger.free_pool);
-			Self::transfer_to_bridge(&Self::account_id(), bond_amount)?;
-			Self::bond_extra(bond_amount)?;
-
-			ledger.free_pool = ledger.free_pool.saturating_sub(bond_amount);
-			ledger.bonded = ledger.bonded.saturating_add(bond_amount);
-			Ok(())
-		})
-	}
-
-	/// Staking pool do unbond by polkadot bridge and update related records.
-	pub fn staking_pool_unbond(current_era: EraIndex) -> DispatchResult {
-		StakingPoolLedger::try_mutate(|ledger| -> DispatchResult {
-			let (mut total_unbond, claimed_unbond) = ledger.to_unbond_next_era;
-
-			// firstlly, adjust to_unbond_next_era if needed
-			let staking_pool_params = Self::staking_pool_params();
-			let unbond_to_free_rate = staking_pool_params
-				.target_unbonding_to_free_ratio
-				.saturating_sub(ledger.unbonding_to_free_ratio())
-				.min(staking_pool_params.unbonding_to_free_adjustment);
-			let unbond_to_free_amount = unbond_to_free_rate
-				.saturating_mul_int(ledger.total_belong_to_liquid_holders())
-				.min(ledger.bonded_belong_to_liquid_holders());
-
-			total_unbond = total_unbond.saturating_add(unbond_to_free_amount);
-
-			// unbond by polkadot bridge
-			Self::unbond(total_unbond)?;
-
-			let expired_era_index =
-				current_era.saturating_add(<<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get());
-			Unbonding::insert(expired_era_index, (total_unbond, claimed_unbond, claimed_unbond));
-			for (who, claimed) in NextEraUnbonds::<T>::drain() {
-				Unbondings::<T>::insert(who, expired_era_index, claimed);
-			}
-
-			ledger.bonded = ledger.bonded.saturating_sub(total_unbond);
-			ledger.unbonding_to_free = ledger
-				.unbonding_to_free
-				.saturating_add(total_unbond.saturating_sub(claimed_unbond));
-			ledger.to_unbond_next_era = (Zero::zero(), Zero::zero());
-
-			Ok(())
-		})
-	}
-
 	pub fn update_ledger_with_bridge(current_era: EraIndex) {
 		// require polkdaot bridge to withdraw unbonded.
 		Self::withdraw_unbonded();
@@ -577,20 +521,65 @@ impl<T: Config> Module<T> {
 		});
 	}
 
-	pub fn rebalance(era: EraIndex) {
+	pub fn rebalance(current_era: EraIndex) {
+		// require polkdaot bridge to update nominees.
 		Self::nominate(T::Nominees::nominees());
 
 		// require polkdaot bridge to withdraw unbonded and withdraw payout and update
 		// staking pool ledger.
-		Self::update_ledger_with_bridge(era);
+		Self::update_ledger_with_bridge(current_era);
 
-		// if failed, staking pool will try do it again on next era beginning,
-		// so ignore the result to continue.
-		let _ = Self::staking_pool_bond();
+		// staking pool require polkdaot bridge to bond and unbond according to ledger,
+		// and update related records.
+		StakingPoolLedger::mutate(|ledger| {
+			let (mut total_unbond, claimed_unbond) = ledger.to_unbond_next_era;
+			let staking_pool_params = Self::staking_pool_params();
 
-		// if failed, staking pool will try do it again on next era beginning,
-		// so ignore the result to continue.
-		let _ = Self::staking_pool_unbond(era);
+			let bond_rate = ledger
+				.free_pool_ratio()
+				.saturating_sub(staking_pool_params.target_max_free_unbonded_ratio);
+			let bond_amount = bond_rate
+				.saturating_mul_int(ledger.total_belong_to_liquid_holders())
+				.min(ledger.free_pool);
+
+			let unbond_to_free_rate = staking_pool_params
+				.target_unbonding_to_free_ratio
+				.saturating_sub(ledger.unbonding_to_free_ratio())
+				.min(staking_pool_params.unbonding_to_free_adjustment);
+			let unbond_to_free_amount = unbond_to_free_rate
+				.saturating_mul_int(ledger.total_belong_to_liquid_holders())
+				.min(ledger.bonded_belong_to_liquid_holders());
+			total_unbond = total_unbond.saturating_add(unbond_to_free_amount);
+
+			if !bond_amount.is_zero() {
+				if Self::transfer_to_bridge(&Self::account_id(), bond_amount).is_ok() {
+					ledger.free_pool = ledger.free_pool.saturating_sub(bond_amount);
+				}
+
+				if Self::bond_extra(bond_amount).is_ok() {
+					ledger.bonded = ledger.bonded.saturating_add(bond_amount);
+				}
+			}
+
+			if !total_unbond.is_zero() {
+				// if failed, will try unbonding on next era beginning.
+				if Self::unbond(total_unbond).is_ok() {
+					let expired_era_index = current_era
+						.saturating_add(<<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get());
+
+					Unbonding::insert(expired_era_index, (total_unbond, claimed_unbond, claimed_unbond));
+					for (who, claimed) in NextEraUnbonds::<T>::drain() {
+						Unbondings::<T>::insert(who, expired_era_index, claimed);
+					}
+
+					ledger.bonded = ledger.bonded.saturating_sub(total_unbond);
+					ledger.unbonding_to_free = ledger
+						.unbonding_to_free
+						.saturating_add(total_unbond.saturating_sub(claimed_unbond));
+					ledger.to_unbond_next_era = (Zero::zero(), Zero::zero());
+				}
+			}
+		});
 	}
 }
 
@@ -713,7 +702,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Module<T> {
 						)
 						.saturating_sub(staking_pool_params.target_min_free_unbonded_ratio),
 					)
-					.expect("shouldn't panic expect the fee config is incorrect; qed");
+					.unwrap_or_default();
 				let fee_in_staking = T::FeeModel::get_fee(
 					remain_available_percent,
 					available_free_pool,
