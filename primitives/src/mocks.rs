@@ -6,7 +6,7 @@ impl crate::evm::AddressMapping<AccountId32> for MockAddressMapping {
 		let mut data = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
 		data[4..24].copy_from_slice(&address[..]);
-		AccountId32::from(data).into()
+		AccountId32::from(data)
 	}
 
 	fn get_evm_address(account_id: &AccountId32) -> Option<H160> {

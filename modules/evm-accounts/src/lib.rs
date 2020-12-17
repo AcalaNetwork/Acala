@@ -18,8 +18,11 @@ use frame_support::{
 use frame_system::ensure_signed;
 use orml_traits::account::MergeAccount;
 use primitives::evm::{AddressMapping, EvmAddress};
-use sp_core::{blake2_256, crypto::AccountId32, ecdsa};
-use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
+use sp_core::{crypto::AccountId32, ecdsa};
+use sp_io::{
+	crypto::secp256k1_ecdsa_recover,
+	hashing::{blake2_256, keccak_256},
+};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 mod default_weight;
