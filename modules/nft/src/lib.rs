@@ -14,7 +14,7 @@ use frame_system::ensure_signed;
 use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
 use primitives::{Balance, NFTBalance};
 use sp_runtime::{
-	traits::{AccountIdConversion, Zero},
+	traits::{AccountIdConversion, StaticLookup, Zero},
 	DispatchResult, ModuleId, RuntimeDebug,
 };
 
@@ -207,8 +207,9 @@ decl_module! {
 		/// # </weight>
 		#[weight = <T as Config>::WeightInfo::mint(*quantity)]
 		#[transactional]
-		pub fn mint(origin, to: T::AccountId, class_id: ClassIdOf<T>, metadata: CID, quantity: u32) {
+		pub fn mint(origin, to: <T::Lookup as StaticLookup>::Source, class_id: ClassIdOf<T>, metadata: CID, quantity: u32) {
 			let who = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
 			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
@@ -241,8 +242,9 @@ decl_module! {
 		///		- worst case: 99.99 µs
 		/// # </weight>
 		#[weight = <T as Config>::WeightInfo::transfer()]
-		pub fn transfer(origin, to: T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) {
+		pub fn transfer(origin, to: <T::Lookup as StaticLookup>::Source, token: (ClassIdOf<T>, TokenIdOf<T>)) {
 			let who = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			Self::do_transfer(&who, &to, token)?;
 		}
 
@@ -301,8 +303,9 @@ decl_module! {
 		/// # </weight>
 		#[weight = <T as Config>::WeightInfo::destroy_class()]
 		#[transactional]
-		pub fn destroy_class(origin, class_id: ClassIdOf<T>, dest: T::AccountId) {
+		pub fn destroy_class(origin, class_id: ClassIdOf<T>, dest: <T::Lookup as StaticLookup>::Source) {
 			let who = ensure_signed(origin)?;
+			let dest = T::Lookup::lookup(dest)?;
 			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
 			ensure!(class_info.total_issuance == Zero::zero(), Error::<T>::CannotDestroyClass);
