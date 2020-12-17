@@ -570,14 +570,9 @@ decl_module! {
 		pub fn disable_contract_development(origin) {
 			let who = ensure_signed(origin)?;
 			let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-			let deposit = Accounts::<T>::mutate(address, |maybe_account_info| -> Result<BalanceOf<T>, DispatchError> {
-				if let Some(account_info) = maybe_account_info.as_mut() {
-					if let Some(deposit) = account_info.developer_deposit {
-						account_info.developer_deposit = None;
-						return Ok(deposit);
-					}
-				}
-				Err(Error::<T>::ContractDevelopmentNotEnabled.into())
+			let deposit = Accounts::<T>::mutate(address, |maybe_account_info| -> Result<BalanceOf<T>, Error<T>> {
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractDevelopmentNotEnabled)?;
+				account_info.developer_deposit.take().ok_or(Error::<T>::ContractDevelopmentNotEnabled)
 			})?;
 			T::Currency::unreserve(&who, deposit);
 			Module::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
