@@ -159,7 +159,7 @@ benchmarks! {
 
 		// authorize receiver
 		Honzon::<T>::authorize(
-			RawOrigin::Signed(sender.clone()).into(),
+			RawOrigin::Signed(sender).into(),
 			currency_id,
 			receiver_lookup
 		)?;
