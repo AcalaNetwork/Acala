@@ -15,7 +15,10 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 use primitives::{Amount, CurrencyId};
-use sp_runtime::{traits::Zero, DispatchResult};
+use sp_runtime::{
+	traits::{StaticLookup, Zero},
+	DispatchResult,
+};
 use support::EmergencyShutdown;
 
 mod default_weight;
@@ -124,9 +127,10 @@ decl_module! {
 		pub fn transfer_loan_from(
 			origin,
 			currency_id: CurrencyId,
-			from: T::AccountId,
+			from: <T::Lookup as StaticLookup>::Source,
 		) {
 			let to = ensure_signed(origin)?;
+			let from = T::Lookup::lookup(from)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			Self::check_authorization(&from, &to, currency_id)?;
 			<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
@@ -149,9 +153,10 @@ decl_module! {
 		pub fn authorize(
 			origin,
 			currency_id: CurrencyId,
-			to: T::AccountId,
+			to: <T::Lookup as StaticLookup>::Source,
 		) {
 			let from = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			<Authorization<T>>::insert(&from, (currency_id, &to), true);
 			Self::deposit_event(RawEvent::Authorization(from, to, currency_id));
 		}
@@ -173,9 +178,10 @@ decl_module! {
 		pub fn unauthorize(
 			origin,
 			currency_id: CurrencyId,
-			to: T::AccountId,
+			to: <T::Lookup as StaticLookup>::Source,
 		) {
 			let from = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			<Authorization<T>>::remove(&from, (currency_id, &to));
 			Self::deposit_event(RawEvent::UnAuthorization(from, to, currency_id));
 		}
