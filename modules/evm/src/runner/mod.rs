@@ -119,14 +119,14 @@ impl<T: Config> Runner<T> {
 	}
 
 	fn transfer(source: H160, target: H160, value: BalanceOf<T>) -> Result<(), DispatchError> {
-		let from = T::AddressMapping::to_account(&source);
-		let to = T::AddressMapping::to_account(&target);
+		let from = T::AddressMapping::get_account_id(&source);
+		let to = T::AddressMapping::get_account_id(&target);
 		T::Currency::transfer(&from, &to, value, ExistenceRequirement::AllowDeath)
 	}
 
 	fn transfer_and_reserve_deposit(source: H160, target: H160) -> Result<(), DispatchError> {
-		let from = T::AddressMapping::to_account(&source);
-		let to = T::AddressMapping::to_account(&target);
+		let from = T::AddressMapping::get_account_id(&source);
+		let to = T::AddressMapping::get_account_id(&target);
 		T::Currency::transfer(
 			&from,
 			&to,

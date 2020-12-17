@@ -10,7 +10,7 @@
 use codec::Encode;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{Currency, Happened, OnKilledAccount, ReservableCurrency, StoredMap},
+	traits::{Currency, Happened, IsType, OnKilledAccount, ReservableCurrency, StoredMap},
 	transactional,
 	weights::Weight,
 	StorageMap,
@@ -19,7 +19,10 @@ use frame_system::ensure_signed;
 use orml_traits::account::MergeAccount;
 use primitives::evm::{AddressMapping, EvmAddress};
 use sp_core::{crypto::AccountId32, ecdsa};
-use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
+use sp_io::{
+	crypto::secp256k1_ecdsa_recover,
+	hashing::{blake2_256, keccak_256},
+};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 mod default_weight;
@@ -108,28 +111,14 @@ decl_module! {
 			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
 			// check if the evm padded address already exists
-			let account_id = T::AddressMapping::to_account(&eth_address);
-			let mut nonce = <T as frame_system::Config>::Index::default();
+			let account_id = T::AddressMapping::get_account_id(&eth_address);
 			if frame_system::Module::<T>::is_explicit(&account_id) {
 				// merge balance from `evm padded address` to `origin`
 				T::MergeAccount::merge_account(&account_id, &who)?;
-
-				nonce = frame_system::Module::<T>::account_nonce(&account_id);
 				// finally kill the account
 				T::KillAccount::happened(&account_id);
 			}
-			//	make the origin nonce the max between origin amd evm padded address
-			let origin_nonce = frame_system::Module::<T>::account_nonce(&who);
-			if origin_nonce < nonce {
-				frame_system::Account::<T>::mutate(&who, |v| {
-					v.nonce = nonce;
-				});
-			}
 
-			// update accounts
-			if let Some(evm_addr) = EvmAddresses::<T>::get(&who) {
-				Accounts::<T>::remove(&evm_addr);
-			}
 			Accounts::<T>::insert(eth_address, &who);
 			EvmAddresses::<T>::insert(&who, eth_address);
 
@@ -170,9 +159,11 @@ impl<T: Config> Module<T> {
 	pub fn eth_public(secret: &secp256k1::SecretKey) -> secp256k1::PublicKey {
 		secp256k1::PublicKey::from_secret_key(secret)
 	}
+
 	pub fn eth_address(secret: &secp256k1::SecretKey) -> EvmAddress {
 		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
 	}
+
 	pub fn eth_sign(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
 		let msg = keccak_256(&Self::ethereum_signable_message(&to_ascii_hex(what)[..], extra));
 		let (sig, recovery_id) = secp256k1::sign(&secp256k1::Message::parse(&msg), secret);
@@ -181,22 +172,20 @@ impl<T: Config> Module<T> {
 		r[64] = recovery_id.serialize();
 		EcdsaSignature::from_slice(&r)
 	}
+}
 
-	fn on_killed_account(who: &T::AccountId) {
-		// Here should be no balance, if there is, it will be burned
-		if let Some(evm_addr) = Self::evm_addresses(who) {
-			Accounts::<T>::remove(evm_addr);
-			EvmAddresses::<T>::remove(who);
-		}
-	}
+fn account_to_default_evm_address(account_id: &impl Encode) -> EvmAddress {
+	let payload = (b"evm:", account_id);
+	EvmAddress::from_slice(&payload.using_encoded(blake2_256)[0..20])
 }
 
 pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
+
 impl<T: Config> AddressMapping<T::AccountId> for EvmAddressMapping<T>
 where
-	T::AccountId: From<AccountId32> + Into<AccountId32>,
+	T::AccountId: IsType<AccountId32>,
 {
-	fn to_account(address: &EvmAddress) -> T::AccountId {
+	fn get_account_id(address: &EvmAddress) -> T::AccountId {
 		if let Some(acc) = Accounts::<T>::get(address) {
 			acc
 		} else {
@@ -207,9 +196,9 @@ where
 		}
 	}
 
-	fn to_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
+	fn get_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
 		EvmAddresses::<T>::get(account_id).or_else(|| {
-			let data: [u8; 32] = account_id.clone().into().into();
+			let data: &[u8] = account_id.into_ref().as_ref();
 			if data.starts_with(b"evm:") {
 				Some(EvmAddress::from_slice(&data[4..24]))
 			} else {
@@ -217,12 +206,40 @@ where
 			}
 		})
 	}
+
+	fn get_or_create_evm_address(account_id: &T::AccountId) -> EvmAddress {
+		Self::get_evm_address(account_id).unwrap_or_else(|| {
+			let addr = account_to_default_evm_address(account_id);
+
+			// create reverse mapping
+			Accounts::<T>::insert(&addr, account_id);
+
+			addr
+		})
+	}
+
+	fn get_default_evm_address(account_id: &T::AccountId) -> EvmAddress {
+		account_to_default_evm_address(account_id)
+	}
+
+	fn is_linked(account_id: &T::AccountId, evm: &EvmAddress) -> bool {
+		Self::get_evm_address(account_id).as_ref() == Some(evm)
+			|| &account_to_default_evm_address(account_id.into_ref()) == evm
+	}
 }
 
 pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
-		Module::<T>::on_killed_account(&who);
+		// remove the reserve mapping that could be created by
+		// `get_or_create_evm_address`
+		Accounts::<T>::remove(account_to_default_evm_address(who.into_ref()));
+
+		// remove mapping created by `claim_account`
+		if let Some(evm_addr) = Module::<T>::evm_addresses(who) {
+			Accounts::<T>::remove(evm_addr);
+			EvmAddresses::<T>::remove(who);
+		}
 	}
 }
 
