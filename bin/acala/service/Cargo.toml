@@ -55,6 +55,7 @@ cumulus-service = { git = "https://github.com/paritytech/cumulus" }
 cumulus-consensus = { git = "https://github.com/paritytech/cumulus" }
 
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot" }
 
 module-evm = { path = "../../../modules/evm" }
 module-staking-pool = { path = "../../../modules/staking_pool" }

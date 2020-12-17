@@ -167,7 +167,11 @@ async fn start_node_impl(
 
 	let parachain_config = prepare_node_config(parachain_config);
 
-	let polkadot_full_node = cumulus_service::build_polkadot_full_node(polkadot_config, collator_key.public())?;
+	let polkadot_full_node = cumulus_service::build_polkadot_full_node(polkadot_config, collator_key.public())
+		.map_err(|e| match e {
+			polkadot_service::Error::Sub(x) => x,
+			s => format!("{}", s).into(),
+		})?;
 
 	let params = new_partial(&parachain_config, false)?;
 	params
