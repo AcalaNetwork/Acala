@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
-use primitives::evm::AddressMapping;
+use primitives::mocks::MockAddressMapping;
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -67,20 +67,6 @@ impl pallet_balances::Config for Runtime {
 
 pub type Balances = pallet_balances::Module<Runtime>;
 
-pub struct EvmAddressMapping;
-impl AddressMapping<AccountId> for EvmAddressMapping {
-	fn to_account(address: &H160) -> AccountId {
-		let mut data: [u8; 32] = [0u8; 32];
-		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&address[..]);
-		AccountId32::from(data).into()
-	}
-
-	fn to_evm_address(_account_id: &AccountId) -> Option<H160> {
-		None
-	}
-}
-
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
@@ -104,7 +90,7 @@ ord_parameter_types! {
 }
 
 impl module_evm::Config for Runtime {
-	type AddressMapping = EvmAddressMapping;
+	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type MergeAccount = ();
 	type ContractExistentialDeposit = ContractExistentialDeposit;

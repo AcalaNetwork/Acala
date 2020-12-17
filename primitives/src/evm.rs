@@ -40,7 +40,6 @@ pub struct CallInfo {
 	pub output: Vec<u8>,
 	pub used_gas: U256,
 }
-
 /// A mapping between `AccountId` and `EvmAddress`.
 pub trait AddressMapping<AccountId> {
 	fn get_account_id(evm: &EvmAddress) -> AccountId;

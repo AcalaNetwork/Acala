@@ -1035,12 +1035,12 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 	}
 
 	fn request_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
-		let new_maintainer = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
+		let new_maintainer = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
 		Module::<T>::do_request_transfer_maintainer(from, contract, new_maintainer)
 	}
 
 	fn cancel_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
-		let requester = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
+		let requester = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
 		Module::<T>::do_cancel_transfer_maintainer(from, contract, requester)
 	}
 
