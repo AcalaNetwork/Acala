@@ -1,6 +1,7 @@
 use crate::{
 	AcalaOracle, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId, Dex, EmergencyShutdown,
-	GetStableCurrencyId, MaxSlippageSwapWithDEX, MinimumDebitValue, Price, Rate, Ratio, Runtime, TokenSymbol, DOLLARS,
+	GetStableCurrencyId, Indices, MaxSlippageSwapWithDEX, MinimumDebitValue, Price, Rate, Ratio, Runtime, TokenSymbol,
+	DOLLARS,
 };
 
 use super::utils::set_balance;
@@ -10,7 +11,10 @@ use frame_system::RawOrigin;
 use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
-use sp_runtime::{traits::UniqueSaturatedInto, FixedPointNumber};
+use sp_runtime::{
+	traits::{StaticLookup, UniqueSaturatedInto},
+	FixedPointNumber,
+};
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
@@ -68,6 +72,7 @@ runtime_benchmarks! {
 	// `liquidate` by_auction
 	liquidate_by_auction {
 		let owner: AccountId = account("owner", 0, SEED);
+		let owner_lookup = Indices::unlookup(owner.clone());
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
@@ -106,11 +111,12 @@ runtime_benchmarks! {
 			Change::NoChange,
 			Change::NoChange,
 		)?;
-	}: liquidate(RawOrigin::None, currency_id, owner)
+	}: liquidate(RawOrigin::None, currency_id, owner_lookup)
 
 	// `liquidate` by dex
 	liquidate_by_dex {
 		let owner: AccountId = account("owner", 0, SEED);
+		let owner_lookup = Indices::unlookup(owner.clone());
 		let funder: AccountId = account("funder", 0, SEED);
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let min_debit_value = MinimumDebitValue::get();
@@ -156,7 +162,7 @@ runtime_benchmarks! {
 			Change::NoChange,
 			Change::NoChange,
 		)?;
-	}: liquidate(RawOrigin::None, currency_id, owner)
+	}: liquidate(RawOrigin::None, currency_id, owner_lookup)
 	verify {
 		let (other_currency_amount, base_currency_amount) = Dex::get_liquidity_pool(currency_id, base_currency_id);
 		assert!(other_currency_amount > collateral_amount_in_dex);
@@ -165,6 +171,7 @@ runtime_benchmarks! {
 
 	settle {
 		let owner: AccountId = account("owner", 0, SEED);
+		let owner_lookup = Indices::unlookup(owner.clone());
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
@@ -195,7 +202,7 @@ runtime_benchmarks! {
 
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;
-	}: _(RawOrigin::None, currency_id, owner)
+	}: _(RawOrigin::None, currency_id, owner_lookup)
 }
 
 #[cfg(test)]
