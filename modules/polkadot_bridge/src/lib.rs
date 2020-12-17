@@ -6,7 +6,7 @@ use frame_system::{self as system, ensure_root, ensure_signed};
 use orml_traits::BasicCurrency;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
-	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
+	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, StaticLookup, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, prelude::*};
@@ -114,8 +114,9 @@ decl_module! {
 
 		#[weight = 10_000]
 		#[transactional]
-		pub fn simualte_receive_from_sub_account(origin, account_index: u32, to: T::AccountId, amount: Balance) {
+		pub fn simualte_receive_from_sub_account(origin, account_index: u32, to: <T::Lookup as StaticLookup>::Source, amount: Balance) {
 			ensure_root(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			Self::receive_from_sub_account(account_index, &to, amount)?;
 		}
 

@@ -67,7 +67,10 @@ where
 					Default::default()
 				};
 
-				Ok((ExitSucceed::Returned, owner.as_bytes().to_vec(), 0))
+				let mut address = [0u8; 32];
+				address[12..].copy_from_slice(&owner.as_bytes().to_vec());
+
+				Ok((ExitSucceed::Returned, address.to_vec(), 0))
 			}
 			Action::Transfer => {
 				let from = input.account_id_at(1)?;

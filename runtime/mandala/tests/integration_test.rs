@@ -20,7 +20,7 @@ use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
-	DispatchError, DispatchResult, FixedPointNumber,
+	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 
 const ORACLE1: [u8; 32] = [0u8; 32];
@@ -687,7 +687,7 @@ fn test_honzon_module() {
 				CdpEngineModule::liquidate(
 					<Runtime as frame_system::Config>::Origin::none(),
 					CurrencyId::Token(TokenSymbol::XBTC),
-					AccountId::from(ALICE)
+					MultiAddress::Id(AccountId::from(ALICE))
 				)
 				.is_ok(),
 				false
@@ -704,7 +704,7 @@ fn test_honzon_module() {
 			assert_ok!(CdpEngineModule::liquidate(
 				<Runtime as frame_system::Config>::Origin::none(),
 				CurrencyId::Token(TokenSymbol::XBTC),
-				AccountId::from(ALICE)
+				MultiAddress::Id(AccountId::from(ALICE))
 			));
 
 			assert_eq!(
@@ -1136,7 +1136,7 @@ fn test_nft_module() {
 			);
 			assert_ok!(NFT::mint(
 				origin_of(NftModuleId::get().into_sub_account(0)),
-				AccountId::from(BOB),
+				MultiAddress::Id(AccountId::from(BOB)),
 				0,
 				vec![1],
 				1
@@ -1146,7 +1146,7 @@ fn test_nft_module() {
 			assert_ok!(NFT::destroy_class(
 				origin_of(NftModuleId::get().into_sub_account(0)),
 				0,
-				AccountId::from(BOB)
+				MultiAddress::Id(AccountId::from(BOB))
 			));
 			assert_eq!(
 				Balances::free_balance(AccountId::from(BOB)),

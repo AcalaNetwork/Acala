@@ -424,8 +424,6 @@ where
 			task_manager
 				.spawn_essential_handle()
 				.spawn_blocking("grandpa-voter", sc_finality_grandpa::run_grandpa_voter(grandpa_config)?);
-		} else {
-			sc_finality_grandpa::setup_disabled_grandpa(network.clone())?;
 		}
 	}
 

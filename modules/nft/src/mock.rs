@@ -7,7 +7,6 @@ use codec::{Decode, Encode};
 use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
 	traits::{Filter, InstanceFilter},
-	weights::Weight,
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
@@ -19,7 +18,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, DispatchResult, Perbill,
+	DispatchError, DispatchResult,
 };
 use support::{EVMBridge, InvokeContext};
 
@@ -51,9 +50,6 @@ impl_outer_dispatch! {
 pub struct Runtime;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
 pub type AccountId = u128;
@@ -71,13 +67,9 @@ impl frame_system::Config for Runtime {
 	type Header = Header;
 	type Event = TestEvent;
 	type BlockHashCount = BlockHashCount;
-	type MaximumBlockWeight = MaximumBlockWeight;
 	type DbWeight = ();
-	type BlockExecutionWeight = ();
-	type ExtrinsicBaseWeight = ();
-	type MaximumExtrinsicWeight = MaximumBlockWeight;
-	type MaximumBlockLength = MaximumBlockLength;
-	type AvailableBlockRatio = AvailableBlockRatio;
+	type BlockWeights = ();
+	type BlockLength = ();
 	type Version = ();
 	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;

@@ -3,6 +3,7 @@ use sp_std::{convert::TryInto, marker::PhantomData, mem, result::Result};
 
 use module_evm::ExitError;
 use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
+use sp_core::H160;
 
 const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
@@ -21,6 +22,7 @@ pub trait InputT {
 	fn action(&self) -> Result<Self::Action, Self::Error>;
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error>;
+	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
@@ -75,6 +77,15 @@ where
 		address.copy_from_slice(&param[12..]);
 
 		Ok(AddressMapping::to_account(&address.into()))
+	}
+
+	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error> {
+		let param = self.nth_param(index)?;
+
+		let mut address = [0u8; 20];
+		address.copy_from_slice(&param[12..]);
+
+		Ok(H160::from_slice(&address))
 	}
 
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
@@ -209,6 +220,18 @@ mod tests {
 		raw_input[31] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.account_id_at(0), account_id);
+	}
+
+	#[test]
+	fn evm_address_works() {
+		let mut address = [0u8; 20];
+		address[19] = 1;
+		let evm_address = H160::from_slice(&address);
+
+		let mut raw_input = [0u8; 32];
+		raw_input[31] = 1;
+		let input = TestInput::new(&raw_input[..]);
+		assert_ok!(input.evm_address_at(0), evm_address);
 	}
 
 	#[test]

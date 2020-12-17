@@ -12,7 +12,10 @@ use sp_std::vec;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::{traits::UniqueSaturatedInto, DispatchError, FixedPointNumber};
+use sp_runtime::{
+	traits::{StaticLookup, UniqueSaturatedInto},
+	DispatchError, FixedPointNumber,
+};
 
 use cdp_engine::Module as CdpEngine;
 use cdp_engine::*;
@@ -103,6 +106,7 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let owner: T::AccountId = account("owner", u, SEED);
+		let owner_lookup = T::Lookup::unlookup(owner.clone());
 		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
 		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
@@ -141,13 +145,14 @@ benchmarks! {
 			Change::NoChange,
 			Change::NoChange,
 		)?;
-	}: liquidate(RawOrigin::None, currency_id, owner)
+	}: liquidate(RawOrigin::None, currency_id, owner_lookup)
 
 	// `liquidate` by dex
 	liquidate_by_dex {
 		let u in 0 .. 1000;
 
 		let owner: T::AccountId = account("owner", u, SEED);
+		let owner_lookup = T::Lookup::unlookup(owner.clone());
 		let funder: T::AccountId = account("funder", u, SEED);
 		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
 		let base_currency_id: CurrencyId = <T as cdp_engine::Config>::GetStableCurrencyId::get();
@@ -194,7 +199,7 @@ benchmarks! {
 			Change::NoChange,
 			Change::NoChange,
 		)?;
-	}: liquidate(RawOrigin::None, currency_id, owner)
+	}: liquidate(RawOrigin::None, currency_id, owner_lookup)
 	verify {
 		let (other_currency_amount, base_currency_amount) = Dex::<T>::get_liquidity_pool(base_currency_id, currency_id);
 		assert!(other_currency_amount > collateral_amount_in_dex);
@@ -205,6 +210,7 @@ benchmarks! {
 		let u in 0 .. 1000;
 
 		let owner: T::AccountId = account("owner", u, SEED);
+		let owner_lookup = T::Lookup::unlookup(owner.clone());
 		let currency_id: CurrencyId = <T as cdp_engine::Config>::CollateralCurrencyIds::get()[0];
 		let min_debit_value = <T as cdp_engine::Config>::MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::<T>::get_debit_exchange_rate(currency_id);
@@ -235,7 +241,7 @@ benchmarks! {
 
 		// shutdown
 		emergency_shutdown::<T>()?;
-	}: _(RawOrigin::None, currency_id, owner)
+	}: _(RawOrigin::None, currency_id, owner_lookup)
 }
 
 #[cfg(all(feature = "runtime-benchmarks", test))]

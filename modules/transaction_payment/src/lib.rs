@@ -13,7 +13,8 @@ use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
 	traits::{Currency, ExistenceRequirement, Get, Imbalance, IsSubType, OnUnbalanced, WithdrawReasons},
 	weights::{
-		DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, Weight, WeightToFeeCoefficient, WeightToFeePolynomial,
+		DispatchClass, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, Weight, WeightToFeeCoefficient,
+		WeightToFeePolynomial,
 	},
 };
 use frame_system::{self as system};
@@ -152,12 +153,14 @@ where
 		let min_multiplier = M::get();
 		let previous = previous.max(min_multiplier);
 
+		let weights = T::BlockWeights::get();
 		// the computed ratio is only among the normal class.
-		let normal_max_weight = <T as frame_system::Config>::AvailableBlockRatio::get()
-			* <T as frame_system::Config>::MaximumBlockWeight::get();
-		let normal_block_weight = <frame_system::Module<T>>::block_weight()
-			.get(frame_support::weights::DispatchClass::Normal)
-			.min(normal_max_weight);
+		let normal_max_weight = weights
+			.get(DispatchClass::Normal)
+			.max_total
+			.unwrap_or(weights.max_block);
+		let current_block_weight = <frame_system::Module<T>>::block_weight();
+		let normal_block_weight = *current_block_weight.get(DispatchClass::Normal).min(&normal_max_weight);
 
 		let s = S::get();
 		let v = V::get();
@@ -278,7 +281,7 @@ decl_module! {
 			assert!(
 				<Multiplier as sp_runtime::traits::Bounded>::max_value() >=
 				Multiplier::checked_from_integer(
-					<T as frame_system::Config>::MaximumBlockWeight::get().try_into().unwrap()
+					T::BlockWeights::get().max_block.try_into().unwrap()
 				).unwrap(),
 			);
 
@@ -287,9 +290,11 @@ decl_module! {
 			// that if we collapse to minimum, the trend will be positive with a weight value
 			// which is 1% more than the target.
 			let min_value = T::FeeMultiplierUpdate::min();
-			let mut target =
-				T::FeeMultiplierUpdate::target() *
-				(T::AvailableBlockRatio::get() * T::MaximumBlockWeight::get());
+			let mut target = T::FeeMultiplierUpdate::target() *
+				T::BlockWeights::get().get(DispatchClass::Normal).max_total.expect(
+					"Setting `max_total` for `Normal` dispatch class is not compatible with \
+					`transaction-payment` module."
+				);
 
 			// add 1 percent;
 			let addition = target / 100;
@@ -300,7 +305,7 @@ decl_module! {
 			target += addition;
 
 			sp_io::TestExternalities::new_empty().execute_with(|| {
-				<frame_system::Module<T>>::set_block_limits(target, 0);
+				<frame_system::Module<T>>::set_block_consumed_resources(target, 0);
 				let next = T::FeeMultiplierUpdate::convert(min_value);
 				assert!(next > min_value, "The minimum bound of the multiplier is too low. When \
 					block saturation is more than target by 1% and multiplier is minimal then \
@@ -383,7 +388,7 @@ where
 	where
 		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
 	{
-		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee)
+		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee, info.class)
 	}
 
 	/// Compute the actual post dispatch fee for a particular transaction.
@@ -399,10 +404,22 @@ where
 	where
 		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
-		Self::compute_fee_raw(len, post_info.calc_actual_weight(info), tip, post_info.pays_fee(info))
+		Self::compute_fee_raw(
+			len,
+			post_info.calc_actual_weight(info),
+			tip,
+			post_info.pays_fee(info),
+			info.class,
+		)
 	}
 
-	fn compute_fee_raw(len: u32, weight: Weight, tip: PalletBalanceOf<T>, pays_fee: Pays) -> PalletBalanceOf<T> {
+	fn compute_fee_raw(
+		len: u32,
+		weight: Weight,
+		tip: PalletBalanceOf<T>,
+		pays_fee: Pays,
+		class: DispatchClass,
+	) -> PalletBalanceOf<T> {
 		if pays_fee == Pays::Yes {
 			let len = <PalletBalanceOf<T>>::from(len);
 			let per_byte = T::TransactionByteFee::get();
@@ -416,7 +433,7 @@ where
 			// final adjusted weight fee.
 			let adjusted_weight_fee = multiplier.saturating_mul_int(unadjusted_weight_fee);
 
-			let base_fee = Self::weight_to_fee(T::ExtrinsicBaseWeight::get());
+			let base_fee = Self::weight_to_fee(T::BlockWeights::get().get(class).base_extrinsic);
 			base_fee
 				.saturating_add(fixed_len_fee)
 				.saturating_add(adjusted_weight_fee)
@@ -429,7 +446,7 @@ where
 	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
 		// cap the weight to the maximum defined in runtime, otherwise it will be the
 		// `Bounded` maximum of its data type, which is not desired.
-		let capped_weight = weight.min(<T as frame_system::Config>::MaximumBlockWeight::get());
+		let capped_weight = weight.min(T::BlockWeights::get().max_block);
 		T::WeightToFee::calc(&capped_weight)
 	}
 }
@@ -559,8 +576,9 @@ where
 		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
 		final_fee: PalletBalanceOf<T>,
 	) -> TransactionPriority {
-		let weight_saturation = T::MaximumBlockWeight::get() / info.weight.max(1);
-		let len_saturation = T::MaximumBlockLength::get() as u64 / (len as u64).max(1);
+		let weight_saturation = T::BlockWeights::get().max_block / info.weight.max(1);
+		let max_block_length = *T::BlockLength::get().max.get(DispatchClass::Normal);
+		let len_saturation = max_block_length as u64 / (len as u64).max(1);
 		let coefficient: PalletBalanceOf<T> = weight_saturation
 			.min(len_saturation)
 			.saturated_into::<PalletBalanceOf<T>>();
