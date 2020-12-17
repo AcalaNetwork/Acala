@@ -55,6 +55,9 @@ sp-staking = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-transaction-pool = { version = "2.0.0", default-features = false }
 sp-version = { version = "2.0.0", default-features = false }
+#TODO: use cargo version once `bounties` and `tips` pallets are released.
+pallet-bounties = { git = "https://github.com/paritytech/substrate.git", rev = "987a9723920217917f2708388d150add5ef52ef7", default-features = false }
+pallet-tips = { git = "https://github.com/paritytech/substrate.git", rev = "987a9723920217917f2708388d150add5ef52ef7", default-features = false }
 
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-primitives = { git = "https://github.com/paritytech/cumulus", default-features = false }
@@ -159,6 +162,8 @@ std = [
 	"sp-std/std",
 	"sp-transaction-pool/std",
 	"sp-version/std",
+	"pallet-bounties/std",
+	"pallet-tips/std",
 
 	"cumulus-parachain-upgrade/std",
 	"cumulus-primitives/std",
