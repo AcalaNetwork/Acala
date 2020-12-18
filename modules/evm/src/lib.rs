@@ -132,6 +132,12 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type NetworkContractOrigin: EnsureOrigin<Self::Origin>;
 	/// The EVM address for creating system contract.
 	type NetworkContractSource: Get<EvmAddress>;
+
+	type DeveloperDeposit: Get<BalanceOf<Self>>;
+	type DeploymentFee: Get<BalanceOf<Self>>;
+	type TreasuryAccount: Get<Self::AccountId>;
+	type FreeDeploymentOrigin: EnsureOrigin<Self::Origin>;
+
 	/// Weight information for the extrinsics in this module.
 	type WeightInfo: WeightInfo;
 }
@@ -145,6 +151,7 @@ pub struct ContractInfo<T: Config> {
 	pub code_hash: H256,
 	pub existential_deposit: BalanceOf<T>,
 	pub maintainer: EvmAddress,
+	pub deployed: bool,
 }
 
 impl<T: Config> ContractInfo<T> {
@@ -162,6 +169,7 @@ pub struct AccountInfo<T: Config> {
 	/// The storage_usage is the sum of additional storage required by all
 	/// contracts.
 	pub storage_usage: u32,
+	pub developer_deposit: Option<BalanceOf<T>>,
 }
 
 impl<T: Config> AccountInfo<T> {
@@ -172,6 +180,7 @@ impl<T: Config> AccountInfo<T> {
 			storage_rent_deposit: Zero::zero(),
 			storage_quota: T::StorageDefaultQuota::get(),
 			storage_usage: Zero::zero(),
+			developer_deposit: None,
 		}
 	}
 
@@ -195,6 +204,7 @@ impl<T: Config> AccountInfo<T> {
 			storage_rent_deposit: Zero::zero(),
 			storage_quota,
 			storage_usage: Zero::zero(),
+			developer_deposit: None,
 		})
 	}
 }
@@ -242,15 +252,20 @@ decl_storage! {
 
 				let account_info = <AccountInfo<T>>::new(account.nonce);
 				<Accounts<T>>::insert(address, account_info);
-				<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
 
 				T::Currency::deposit_creating(
 					&account_id,
 					account.balance,
 				);
 
-				for (index, value) in &account.storage {
-					AccountStorages::insert(address, index, value);
+				if !account.code.is_empty() { // if code len > 0 then it's a contract
+					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
+
+					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
+
+					for (index, value) in &account.storage {
+						AccountStorages::insert(address, index, value);
+					}
 				}
 			}
 		});
@@ -288,6 +303,12 @@ decl_event! {
 		ConfirmedTransferMaintainer(EvmAddress, EvmAddress),
 		/// Rejected the transfer maintainer. \[contract, address\]
 		RejectedTransferMaintainer(EvmAddress, EvmAddress),
+		/// Enabled contract development. \[who\]
+		ContractDevelopmentEnabled(AccountId),
+		/// Disabled contract development. \[who\]
+		ContractDevelopmentDisabled(AccountId),
+		/// Deployed contract. \[contract\]
+		ContractDeployed(EvmAddress),
 	}
 }
 
@@ -309,6 +330,12 @@ decl_error! {
 		PendingTransferMaintainersExists,
 		/// Pending transfer maintainers not exists
 		PendingTransferMaintainersNotExists,
+		/// Contract development is not enabled
+		ContractDevelopmentNotEnabled,
+		/// Contract development is already enabled
+		ContractDevelopmentAlreadyEnabled,
+		/// Contract already deployed
+		ContractAlreadyDeployed,
 	}
 }
 
@@ -498,6 +525,57 @@ decl_module! {
 
 			Module::<T>::deposit_event(Event::<T>::RejectedTransferMaintainer(contract, invalid_maintainer));
 		}
+
+		#[weight = 0]
+		#[transactional]
+		pub fn deploy(origin, contract: EvmAddress) {
+			let who = ensure_signed(origin)?;
+			let address = T::AddressMapping::get_or_create_evm_address(&who);
+			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::DeploymentFee::get(), ExistenceRequirement::AllowDeath)?;
+			Self::mark_deployed(contract, Some(address))?;
+			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+		}
+
+		#[weight = 0]
+		#[transactional]
+		pub fn deploy_free(origin, contract: EvmAddress) {
+			T::FreeDeploymentOrigin::ensure_origin(origin)?;
+			Self::mark_deployed(contract, None)?;
+			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+		}
+
+		#[weight = 0]
+		#[transactional]
+		pub fn enable_contract_development(origin) {
+			let who = ensure_signed(origin)?;
+			let address = T::AddressMapping::get_or_create_evm_address(&who);
+			T::Currency::reserve(&who, T::DeveloperDeposit::get())?;
+			Accounts::<T>::mutate(address, |maybe_account_info| -> DispatchResult {
+				if let Some(account_info) = maybe_account_info.as_mut() {
+					ensure!(account_info.developer_deposit.is_none(), Error::<T>::ContractDevelopmentAlreadyEnabled);
+					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
+				} else {
+					let mut account_info = AccountInfo::<T>::new(Default::default());
+					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
+					*maybe_account_info = Some(account_info);
+				}
+				Ok(())
+			})?;
+			Module::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
+		}
+
+		#[weight = 0]
+		#[transactional]
+		pub fn disable_contract_development(origin) {
+			let who = ensure_signed(origin)?;
+			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let deposit = Accounts::<T>::mutate(address, |maybe_account_info| -> Result<BalanceOf<T>, Error<T>> {
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractDevelopmentNotEnabled)?;
+				account_info.developer_deposit.take().ok_or(Error::<T>::ContractDevelopmentNotEnabled)
+			})?;
+			T::Currency::unreserve(&who, deposit);
+			Module::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
+		}
 	}
 }
 
@@ -580,6 +658,7 @@ impl<T: Config> Module<T> {
 			code_hash,
 			existential_deposit: T::ContractExistentialDeposit::get(),
 			maintainer: *maintainer,
+			deployed: false,
 		};
 
 		let code_size = code.len() as u32;
@@ -964,6 +1043,28 @@ impl<T: Config> Module<T> {
 				}
 			},
 		)
+	}
+
+	/// Mark contract as deployed
+	///
+	/// If maintainer is provider then it will check maintainer
+	fn mark_deployed(contract: EvmAddress, maintainer: Option<EvmAddress>) -> DispatchResult {
+		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
+			if let Some(AccountInfo {
+				contract_info: Some(contract_info),
+				..
+			}) = maybe_account_info.as_mut()
+			{
+				if let Some(maintainer) = maintainer {
+					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+				}
+				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+				contract_info.deployed = true;
+				Ok(())
+			} else {
+				Err(Error::<T>::ContractNotFound.into())
+			}
+		})
 	}
 }
 

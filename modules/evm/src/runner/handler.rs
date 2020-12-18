@@ -1,8 +1,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, Event, Log, MergeAccount, Module,
-	Vicinity,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, ContractInfo, Event, Log,
+	MergeAccount, Module, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -170,6 +170,31 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 				H256::from_slice(Keccak256::digest(&stream.out()).as_slice()).into()
 			}
 			CreateScheme::Fixed(naddress) => naddress,
+		}
+	}
+
+	pub fn is_contract_deployed(&self, address: &H160) -> bool {
+		if let Some(AccountInfo {
+			contract_info: Some(ContractInfo { deployed, .. }),
+			..
+		}) = Accounts::<T>::get(address)
+		{
+			deployed
+		} else {
+			false
+		}
+	}
+
+	pub fn has_permission_to_call(&self, address: &H160) -> bool {
+		if let Some(AccountInfo {
+			contract_info,
+			developer_deposit,
+			..
+		}) = Accounts::<T>::get(address)
+		{
+			contract_info.is_some() || developer_deposit.is_some()
+		} else {
+			false
 		}
 	}
 }

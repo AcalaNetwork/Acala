@@ -18,15 +18,9 @@ fn fail_call_return_ok() {
 		data[0..4].copy_from_slice(b"evm:");
 		let signer: AccountId32 = AccountId32::from(data).into();
 
-		assert_ok!(EVM::call(
-			Origin::signed(signer.clone()),
-			alice(),
-			Vec::new(),
-			0,
-			1000000,
-		));
-
-		assert_ok!(EVM::call(Origin::signed(signer), bob(), Vec::new(), 0, 1000000,));
+		let origin = Origin::signed(signer);
+		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 1000000));
+		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 0, 1000000));
 	});
 }
 
@@ -94,6 +88,7 @@ fn should_create_and_call_contract() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
 		let contract_address = result.address;
+		deploy_free(contract_address);
 
 		assert_eq!(contract_address, H160::from_str("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
 
@@ -166,6 +161,7 @@ fn call_reverts_with_message() {
 		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get());
 
 		let contract_address = result.address;
+		deploy_free(contract_address);
 
 		// call method `foo`
 		let foo = from_hex("0xc2985578").unwrap();
@@ -216,6 +212,7 @@ fn should_deploy_payable_contract() {
 
 		let result = Runner::<Test>::create(alice(), contract, amount, 100000, <Test as Config>::config()).unwrap();
 		let contract_address = result.address;
+		deploy_free(contract_address);
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(
@@ -277,6 +274,7 @@ fn should_transfer_from_contract() {
 			.expect("create shouldn't fail");
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		let contract_address = result.address;
+		deploy_free(contract_address);
 
 		// send via transfer
 		let mut via_transfer = Vec::from(from_hex("0x636e082b").unwrap());
@@ -367,6 +365,7 @@ fn contract_should_deploy_contracts() {
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		let factory_contract_address = result.address;
+		deploy_free(factory_contract_address);
 		assert_eq!(balance(result.address), 0);
 		assert_eq!(
 			reserved_balance(result.address),
@@ -429,6 +428,8 @@ fn contract_deploy_contracts_failed() {
 			reserved_balance(result.address),
 			<Test as Config>::ContractExistentialDeposit::get()
 		);
+
+		deploy_free(result.address);
 
 		// Factory.createContract
 		// need factory contract pay for the ContractExistentialDeposit. But factory not
@@ -551,6 +552,8 @@ fn should_add_and_remove_storage_quota() {
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		let factory_contract_address = result.address;
+		deploy_free(factory_contract_address);
+
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
@@ -896,6 +899,168 @@ fn should_reject_transfer_maintainer() {
 		assert_noop!(
 			EVM::confirm_transfer_maintainer(Origin::signed(bob_account_id.clone()), result.address, bob()),
 			Error::<Test>::PendingTransferMaintainersNotExists
+		);
+	});
+}
+
+#[test]
+fn should_deploy() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//	 function multiply(uint a, uint b) public pure returns(uint) {
+	// 	 	return a * b;
+	// 	 }
+	// }
+	let contract = from_hex("0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032").unwrap();
+
+	new_test_ext().execute_with(|| {
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
+
+		// contract not created yet
+		assert_noop!(EVM::deploy(Origin::signed(alice_account_id.clone()), H160::default()), Error::<Test>::ContractNotFound);
+
+		// create contract
+		let result = Runner::<Test>::create(alice(), contract, 0, 21_000_000, <Test as Config>::config()).unwrap();
+		let contract_address = result.address;
+		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get());
+
+		// multiply(2, 3)
+		let multiply = from_hex("0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
+
+		// call method `multiply` will fail, not deployed yet
+		assert_noop!(Runner::<Test>::call(
+			alice(),
+			contract_address,
+			multiply.clone(),
+			0,
+			1000000,
+			<Test as Config>::config(),
+		), Error::<Test>::NoPermission);
+
+		// not maintainer
+		assert_noop!(EVM::deploy(Origin::signed(bob_account_id), contract_address), Error::<Test>::NoPermission);
+
+		assert_ok!(EVM::deploy(Origin::signed(alice_account_id.clone()), contract_address));
+		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get() - DeploymentFee::get());
+		assert_eq!(Balances::free_balance(TreasuryAccount::get()), DeploymentFee::get());
+
+		// call method `multiply` will work
+		assert_ok!(Runner::<Test>::call(
+			alice(),
+			contract_address,
+			multiply,
+			0,
+			1000000,
+			<Test as Config>::config(),
+		));
+
+		// contract already deployed
+		assert_noop!(EVM::deploy(Origin::signed(alice_account_id), contract_address), Error::<Test>::ContractAlreadyDeployed);
+	});
+}
+
+#[test]
+fn should_deploy_free() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//	 function multiply(uint a, uint b) public pure returns(uint) {
+	// 	 	return a * b;
+	// 	 }
+	// }
+	let contract = from_hex("0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032").unwrap();
+
+	new_test_ext().execute_with(|| {
+		// contract not created yet
+		assert_noop!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), H160::default()), Error::<Test>::ContractNotFound);
+
+		// create contract
+		let result = Runner::<Test>::create(alice(), contract, 0, 21_000_000, <Test as Config>::config()).unwrap();
+		let contract_address = result.address;
+
+		// multiply(2, 3)
+		let multiply = from_hex("0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
+
+		// call method `multiply` will fail, not deployed yet
+		assert_noop!(Runner::<Test>::call(
+			alice(),
+			contract_address,
+			multiply.clone(),
+			0,
+			1000000,
+			<Test as Config>::config(),
+		), Error::<Test>::NoPermission);
+
+		assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract_address));
+
+		// multiply(2, 3)
+		let multiply = from_hex("0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
+
+		// call method `multiply`
+		assert_ok!(Runner::<Test>::call(
+			alice(),
+			contract_address,
+			multiply.clone(),
+			0,
+			1000000,
+			<Test as Config>::config(),
+		));
+
+		// contract already deployed
+		assert_noop!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract_address), Error::<Test>::ContractAlreadyDeployed);
+	});
+}
+
+#[test]
+fn should_enable_contract_development() {
+	new_test_ext().execute_with(|| {
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		assert_ok!(EVM::enable_contract_development(Origin::signed(alice_account_id)));
+		assert_eq!(
+			Accounts::<Test>::get(alice()).unwrap().developer_deposit,
+			Some(DeveloperDeposit::get())
+		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DeveloperDeposit::get());
+	});
+}
+
+#[test]
+fn should_disable_contract_development() {
+	new_test_ext().execute_with(|| {
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+
+		// contract development is not enabled yet
+		assert_noop!(
+			EVM::disable_contract_development(Origin::signed(alice_account_id.clone())),
+			Error::<Test>::ContractDevelopmentNotEnabled
+		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
+
+		// enable contract development
+		assert_ok!(EVM::enable_contract_development(Origin::signed(
+			alice_account_id.clone()
+		)));
+		assert_eq!(
+			Accounts::<Test>::get(alice()).unwrap().developer_deposit,
+			Some(DeveloperDeposit::get())
+		);
+
+		// deposit reserved
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DeveloperDeposit::get());
+
+		// disable contract development
+		assert_ok!(EVM::disable_contract_development(Origin::signed(
+			alice_account_id.clone()
+		)));
+		// deposit unreserved
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
+
+		// contract development already disabled
+		assert_noop!(
+			EVM::disable_contract_development(Origin::signed(alice_account_id)),
+			Error::<Test>::ContractDevelopmentNotEnabled
 		);
 	});
 }

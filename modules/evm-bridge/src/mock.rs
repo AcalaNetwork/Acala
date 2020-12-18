@@ -84,9 +84,12 @@ parameter_types! {
 }
 
 ord_parameter_types! {
+	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u64 = 10;
 	pub const StorageDefaultQuota: u32 = 0x6000;
+	pub const DeveloperDeposit: u64 = 1000;
+	pub const DeploymentFee: u64 = 200;
 }
 
 impl module_evm::Config for Runtime {
@@ -104,6 +107,12 @@ impl module_evm::Config for Runtime {
 	type GasToWeight = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
+
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = ();
+	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+
 	type WeightInfo = ();
 }
 

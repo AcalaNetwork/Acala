@@ -1229,6 +1229,8 @@ parameter_types! {
 	// https://eips.ethereum.org/EIPS/eip-170
 	pub const StorageDefaultQuota: u32 = 0x6000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
+	pub const DeveloperDeposit: Balance = DOLLARS;
+	pub const DeploymentFee: Balance = DOLLARS;
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1256,6 +1258,10 @@ impl module_evm::Config for Runtime {
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = TreasuryModuleAccount;
+	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::evm::WeightInfo<Runtime>;
 }
 

@@ -11,14 +11,6 @@ fn should_read_total_supply() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			EvmBridgeModule::total_supply(InvokeContext {
-				contract: H160::default(),
-				source: Default::default()
-			}),
-			Ok(0)
-		);
-
-		assert_eq!(
-			EvmBridgeModule::total_supply(InvokeContext {
 				contract: erc20_address(),
 				source: Default::default(),
 			}),
