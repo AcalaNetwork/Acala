@@ -5,6 +5,7 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
+use primitives::mocks::MockAddressMapping;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
@@ -13,30 +14,6 @@ use sp_runtime::{
 	AccountId32,
 };
 use std::{collections::BTreeMap, str::FromStr};
-
-/// Mock address mapping.
-pub struct MockAddressMapping<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: Config> AddressMapping<AccountId32> for MockAddressMapping<T>
-where
-	T::AccountId: From<AccountId32> + Into<AccountId32>,
-{
-	fn to_account(address: &H160) -> AccountId32 {
-		let mut data = [0u8; 32];
-		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&address[..]);
-		AccountId32::from(data).into()
-	}
-
-	fn to_evm_address(account_id: &AccountId32) -> Option<H160> {
-		let data: [u8; 32] = account_id.clone().into();
-		if data.starts_with(b"evm:") {
-			Some(H160::from_slice(&data[4..24]))
-		} else {
-			None
-		}
-	}
-}
 
 impl_outer_origin! {
 	pub enum Origin for Test where system = frame_system {}
@@ -165,7 +142,7 @@ ord_parameter_types! {
 }
 
 impl Config for Test {
-	type AddressMapping = MockAddressMapping<Test>;
+	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
@@ -246,11 +223,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
 	Balances::free_balance(account_id)
 }
 
 pub fn reserved_balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::to_account(&address);
+	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
 	Balances::reserved_balance(account_id)
 }

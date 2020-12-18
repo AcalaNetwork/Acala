@@ -103,8 +103,8 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	}
 
 	fn transfer(&self, transfer: Transfer) -> Result<(), ExitError> {
-		let source = T::AddressMapping::to_account(&transfer.source);
-		let target = T::AddressMapping::to_account(&transfer.target);
+		let source = T::AddressMapping::get_account_id(&transfer.source);
+		let target = T::AddressMapping::get_account_id(&transfer.target);
 
 		T::Currency::transfer(
 			&source,
@@ -116,13 +116,13 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	}
 
 	fn reserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
-		let account_id = T::AddressMapping::to_account(&address);
+		let account_id = T::AddressMapping::get_account_id(&address);
 
 		T::Currency::reserve(&account_id, value).map_err(|_| ExitError::Other("Reserve failed".into()))
 	}
 
 	fn unreserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
-		let account_id = T::AddressMapping::to_account(&address);
+		let account_id = T::AddressMapping::get_account_id(&address);
 
 		if T::Currency::unreserve(&account_id, value).is_zero() {
 			Ok(())
@@ -309,8 +309,8 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			return Err(ExitError::OutOfGas);
 		}
 
-		let source = T::AddressMapping::to_account(&address);
-		let dest = T::AddressMapping::to_account(&target);
+		let source = T::AddressMapping::get_account_id(&address);
+		let dest = T::AddressMapping::get_account_id(&target);
 
 		// unreserve ContractExistentialDeposit
 		self.unreserve(address, T::ContractExistentialDeposit::get())?;

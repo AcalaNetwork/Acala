@@ -238,7 +238,7 @@ decl_storage! {
 		config(accounts): std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>;
 		build(|config: &GenesisConfig<T>| {
 			for (address, account) in &config.accounts {
-				let account_id = T::AddressMapping::to_account(address);
+				let account_id = T::AddressMapping::get_account_id(address);
 
 				let account_info = <AccountInfo<T>>::new(account.nonce);
 				<Accounts<T>>::insert(address, account_info);
@@ -337,7 +337,7 @@ decl_module! {
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			let info = Runner::<T>::call(source, target, input, value, gas_limit, T::config())?;
 
@@ -365,7 +365,7 @@ decl_module! {
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			let info = Runner::<T>::create(source, init, value, gas_limit, T::config())?;
 
@@ -393,7 +393,7 @@ decl_module! {
 			gas_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, T::config())?;
 
@@ -463,7 +463,7 @@ decl_module! {
 		#[transactional]
 		pub fn request_transfer_maintainer(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let new_maintainer = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let new_maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			Self::do_request_transfer_maintainer(who, contract, new_maintainer)?;
 
@@ -474,7 +474,7 @@ decl_module! {
 		#[transactional]
 		pub fn cancel_transfer_maintainer(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let requester = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let requester = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			Self::do_cancel_transfer_maintainer(who, contract, requester)?;
 
@@ -529,7 +529,7 @@ impl<T: Config> Module<T> {
 
 	/// Get the account basic in EVM format.
 	pub fn account_basic(address: &EvmAddress) -> Account {
-		let account_id = T::AddressMapping::to_account(address);
+		let account_id = T::AddressMapping::get_account_id(address);
 
 		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
 		let balance = T::Currency::free_balance(&account_id);
@@ -731,7 +731,7 @@ impl<T: Config> Module<T> {
 				.checked_add(bytes)
 				.ok_or(Error::<T>::NumOutOfBound)?;
 
-			let maintainer_account = T::AddressMapping::to_account(&contract_info.maintainer);
+			let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
 			if who != maintainer_account {
 				T::Currency::transfer(
 					&who,
@@ -777,7 +777,7 @@ impl<T: Config> Module<T> {
 				.as_ref()
 				.ok_or(Error::<T>::ContractNotFound)?;
 
-			let maintainer_account = T::AddressMapping::to_account(&contract_info.maintainer);
+			let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
 			ensure!(who == maintainer_account, Error::<T>::NoPermission);
 
 			if bytes.is_zero() {
@@ -878,10 +878,10 @@ impl<T: Config> Module<T> {
 						.as_mut()
 						.ok_or(Error::<T>::ContractNotFound)?;
 
-					let maintainer_account = T::AddressMapping::to_account(&contract_info.maintainer);
+					let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
 					ensure!(who == maintainer_account, Error::<T>::NoPermission);
 
-					let new_maintainer_account = T::AddressMapping::to_account(&new_maintainer);
+					let new_maintainer_account = T::AddressMapping::get_account_id(&new_maintainer);
 					T::Currency::unreserve(&new_maintainer_account, transfer_maintainer_deposit);
 
 					contract_info.maintainer = new_maintainer;
@@ -910,7 +910,7 @@ impl<T: Config> Module<T> {
 					account_info
 						.contract_info
 						.map_or(Err(Error::<T>::ContractNotFound), |contract_info| {
-							let maintainer_account = T::AddressMapping::to_account(&contract_info.maintainer);
+							let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
 							if who != maintainer_account {
 								Err(Error::<T>::NoPermission)
 							} else {
@@ -920,7 +920,7 @@ impl<T: Config> Module<T> {
 				})?;
 
 				// repatriate_reserved the reserve from requester to contract maintainer
-				let from = T::AddressMapping::to_account(&invalid_maintainer);
+				let from = T::AddressMapping::get_account_id(&invalid_maintainer);
 				T::Currency::repatriate_reserved(&from, &who, transfer_maintainer_deposit, BalanceStatus::Free)?;
 
 				Ok(())
@@ -1035,12 +1035,12 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 	}
 
 	fn request_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
-		let new_maintainer = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
+		let new_maintainer = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
 		Module::<T>::do_request_transfer_maintainer(from, contract, new_maintainer)
 	}
 
 	fn cancel_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
-		let requester = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
+		let requester = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
 		Module::<T>::do_cancel_transfer_maintainer(from, contract, requester)
 	}
 
@@ -1063,9 +1063,11 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
-		if let Some(address) = T::AddressMapping::to_evm_address(who) {
+		if let Some(address) = T::AddressMapping::get_evm_address(who) {
 			let _ = Module::<T>::remove_account(&address);
 		}
+		let address = T::AddressMapping::get_default_evm_address(who);
+		let _ = Module::<T>::remove_account(&address);
 	}
 }
 

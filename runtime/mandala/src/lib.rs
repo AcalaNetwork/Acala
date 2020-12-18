@@ -1117,6 +1117,7 @@ impl module_staking_pool::Config for Runtime {
 
 impl module_homa::Config for Runtime {
 	type Homa = StakingPool;
+	type WeightInfo = weights::homa::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1744,6 +1745,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, evm_accounts, benchmarking::evm_accounts);
+			orml_add_benchmark!(params, batches, homa, benchmarking::homa);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);

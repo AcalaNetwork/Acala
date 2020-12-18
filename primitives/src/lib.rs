@@ -2,6 +2,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 pub mod evm;
+pub mod mocks;
 
 use crate::evm::EvmAddress;
 

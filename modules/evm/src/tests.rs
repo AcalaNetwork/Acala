@@ -591,8 +591,8 @@ fn should_add_and_remove_storage_quota() {
 
 		assert_eq!(EVM::additional_storage(factory_contract_address), 95);
 
-		let alice_account_id = <Test as Config>::AddressMapping::to_account(&alice());
-		let bob_account_id = <Test as Config>::AddressMapping::to_account(&bob());
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		let add_storage_quota: u32 = 10;
 		assert_ok!(EVM::add_storage_quota(
 			Origin::signed(alice_account_id.clone()),
@@ -669,8 +669,8 @@ fn should_request_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
-		let alice_account_id = <Test as Config>::AddressMapping::to_account(&alice());
-		let bob_account_id = <Test as Config>::AddressMapping::to_account(&bob());
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 		// request_transfer_maintainer
 		assert_ok!(EVM::request_transfer_maintainer(
@@ -733,7 +733,7 @@ fn should_cancel_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
-		let bob_account_id = <Test as Config>::AddressMapping::to_account(&bob());
+		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 		// request_transfer_maintainer
 		assert_ok!(EVM::request_transfer_maintainer(
@@ -789,8 +789,8 @@ fn should_confirm_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
-		let alice_account_id = <Test as Config>::AddressMapping::to_account(&alice());
-		let bob_account_id = <Test as Config>::AddressMapping::to_account(&bob());
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 		// request_transfer_maintainer
 		assert_ok!(EVM::request_transfer_maintainer(
@@ -858,8 +858,8 @@ fn should_reject_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
-		let alice_account_id = <Test as Config>::AddressMapping::to_account(&alice());
-		let bob_account_id = <Test as Config>::AddressMapping::to_account(&bob());
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 		// request_transfer_maintainer
 		assert_ok!(EVM::request_transfer_maintainer(
