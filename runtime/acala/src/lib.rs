@@ -39,7 +39,7 @@ use sp_version::RuntimeVersion;
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo};
-use module_evm_accounts::EvmAddressMapping;
+use module_evm_accounts::EVMAddressMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
@@ -779,7 +779,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 	type WeightInfo = ();
-	type AddressMapping = EvmAddressMapping<Runtime>;
+	type AddressMapping = EVMAddressMapping<Runtime>;
 	type EVMBridge = EVMBridge;
 }
 
@@ -1043,7 +1043,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type KillAccount = frame_system::CallKillAccount<Runtime>;
-	type AddressMapping = EvmAddressMapping<Runtime>;
+	type AddressMapping = EVMAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
 }
@@ -1236,13 +1236,13 @@ parameter_types! {
 }
 
 pub type MultiCurrencyPrecompile =
-	runtime_common::MultiCurrencyPrecompile<AccountId, EvmAddressMapping<Runtime>, Currencies>;
+	runtime_common::MultiCurrencyPrecompile<AccountId, EVMAddressMapping<Runtime>, Currencies>;
 
-pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
-pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
+pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EVMAddressMapping<Runtime>, NFT>;
+pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EVMAddressMapping<Runtime>, EVM>;
 
 impl module_evm::Config for Runtime {
-	type AddressMapping = EvmAddressMapping<Runtime>;
+	type AddressMapping = EVMAddressMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type ContractExistentialDeposit = ContractExistentialDeposit;
@@ -1287,7 +1287,7 @@ construct_runtime!(
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 
 		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
-		EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
+		EVMAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
 		Currencies: module_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},

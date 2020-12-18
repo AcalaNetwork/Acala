@@ -4,13 +4,13 @@
 
 use super::*;
 use frame_support::{assert_err, assert_ok};
-use mock::{alice, bob, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
+use mock::{alice, bob, erc20_address, EVMBridgeModule, ExtBuilder, Runtime};
 
 #[test]
 fn should_read_total_supply() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			EvmBridgeModule::total_supply(InvokeContext {
+			EVMBridgeModule::total_supply(InvokeContext {
 				contract: erc20_address(),
 				source: Default::default(),
 			}),
@@ -27,11 +27,11 @@ fn should_read_balance_of() {
 			source: Default::default(),
 		};
 
-		assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
+		assert_eq!(EVMBridgeModule::balance_of(context, bob()), Ok(0));
 
-		assert_eq!(EvmBridgeModule::balance_of(context, alice()), Ok(u128::max_value()));
+		assert_eq!(EVMBridgeModule::balance_of(context, alice()), Ok(u128::max_value()));
 
-		assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
+		assert_eq!(EVMBridgeModule::balance_of(context, bob()), Ok(0));
 	});
 }
 
@@ -39,7 +39,7 @@ fn should_read_balance_of() {
 fn should_transfer() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_err!(
-			EvmBridgeModule::transfer(
+			EVMBridgeModule::transfer(
 				InvokeContext {
 					contract: erc20_address(),
 					source: bob(),
@@ -50,7 +50,7 @@ fn should_transfer() {
 			Error::<Runtime>::ExecutionRevert
 		);
 
-		assert_ok!(EvmBridgeModule::transfer(
+		assert_ok!(EVMBridgeModule::transfer(
 			InvokeContext {
 				contract: erc20_address(),
 				source: alice()
@@ -59,7 +59,7 @@ fn should_transfer() {
 			100
 		));
 		assert_eq!(
-			EvmBridgeModule::balance_of(
+			EVMBridgeModule::balance_of(
 				InvokeContext {
 					contract: erc20_address(),
 					source: alice()
@@ -69,7 +69,7 @@ fn should_transfer() {
 			Ok(100)
 		);
 
-		assert_ok!(EvmBridgeModule::transfer(
+		assert_ok!(EVMBridgeModule::transfer(
 			InvokeContext {
 				contract: erc20_address(),
 				source: bob(),
@@ -79,7 +79,7 @@ fn should_transfer() {
 		));
 
 		assert_eq!(
-			EvmBridgeModule::balance_of(
+			EVMBridgeModule::balance_of(
 				InvokeContext {
 					contract: erc20_address(),
 					source: alice()
@@ -90,7 +90,7 @@ fn should_transfer() {
 		);
 
 		assert_err!(
-			EvmBridgeModule::transfer(
+			EVMBridgeModule::transfer(
 				InvokeContext {
 					contract: erc20_address(),
 					source: bob(),

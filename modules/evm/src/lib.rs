@@ -12,10 +12,10 @@ mod tests;
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use primitives::evm::{Account, CallInfo, CreateInfo, EvmAddress, Log, Vicinity};
+pub use primitives::evm::{Account, CallInfo, CreateInfo, EVMAddress, Log, Vicinity};
 
 use codec::{Decode, Encode};
-use evm::Config as EvmConfig;
+use evm::Config as EVMConfig;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
@@ -58,7 +58,7 @@ pub trait WeightInfo {
 }
 
 // Initially based on Istanbul hard fork configuration.
-static ACALA_CONFIG: EvmConfig = EvmConfig {
+static ACALA_CONFIG: EVMConfig = EVMConfig {
 	gas_ext_code: 700,
 	gas_ext_code_hash: 700,
 	gas_balance: 700,
@@ -124,14 +124,14 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type GasToWeight: Convert<u32, Weight>;
 
 	/// EVM config used in the module.
-	fn config() -> &'static EvmConfig {
+	fn config() -> &'static EVMConfig {
 		&ACALA_CONFIG
 	}
 
 	/// Required origin for creating system contract.
 	type NetworkContractOrigin: EnsureOrigin<Self::Origin>;
 	/// The EVM address for creating system contract.
-	type NetworkContractSource: Get<EvmAddress>;
+	type NetworkContractSource: Get<EVMAddress>;
 
 	type DeveloperDeposit: Get<BalanceOf<Self>>;
 	type DeploymentFee: Get<BalanceOf<Self>>;
@@ -150,7 +150,7 @@ pub struct ContractInfo<T: Config> {
 	pub storage_count: u32,
 	pub code_hash: H256,
 	pub existential_deposit: BalanceOf<T>,
-	pub maintainer: EvmAddress,
+	pub maintainer: EVMAddress,
 	pub deployed: bool,
 }
 
@@ -231,21 +231,21 @@ pub struct GenesisAccount<Balance, Index> {
 
 decl_storage! {
 	trait Store for Module<T: Config> as EVM {
-		Accounts get(fn accounts): map hasher(twox_64_concat) EvmAddress => Option<AccountInfo<T>>;
+		Accounts get(fn accounts): map hasher(twox_64_concat) EVMAddress => Option<AccountInfo<T>>;
 		AccountStorages get(fn account_storages):
-			double_map hasher(twox_64_concat) EvmAddress, hasher(blake2_128_concat) H256 => H256;
+			double_map hasher(twox_64_concat) EVMAddress, hasher(blake2_128_concat) H256 => H256;
 
 		Codes get(fn codes): map hasher(identity) H256 => Vec<u8>;
 		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
 		/// Pending transfer maintainers: double_map (contract, new_maintainer) => TransferMaintainerDeposit
-		PendingTransferMaintainers get(fn pending_transfer_maintainers): double_map hasher(twox_64_concat) EvmAddress, hasher(twox_64_concat) EvmAddress => Option<BalanceOf<T>>;
+		PendingTransferMaintainers get(fn pending_transfer_maintainers): double_map hasher(twox_64_concat) EVMAddress, hasher(twox_64_concat) EVMAddress => Option<BalanceOf<T>>;
 
 		/// Next available system contract address.
 		NetworkContractIndex get(fn network_contract_index) config(): u64;
 	}
 
 	add_extra_genesis {
-		config(accounts): std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>;
+		config(accounts): std::collections::BTreeMap<EVMAddress, GenesisAccount<BalanceOf<T>, T::Index>>;
 		build(|config: &GenesisConfig<T>| {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::get_account_id(address);
@@ -259,7 +259,7 @@ decl_storage! {
 				);
 
 				if !account.code.is_empty() { // if code len > 0 then it's a contract
-					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
+					<Module<T>>::on_contract_initialization(address, &EVMAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
 
 					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
 
@@ -280,35 +280,35 @@ decl_event! {
 		/// Ethereum events from contracts.
 		Log(Log),
 		/// A contract has been created at given \[address\].
-		Created(EvmAddress),
+		Created(EVMAddress),
 		/// A contract was attempted to be created, but the execution failed. \[contract, exit_reason, output\]
-		CreatedFailed(EvmAddress, ExitReason, Vec<u8>),
+		CreatedFailed(EVMAddress, ExitReason, Vec<u8>),
 		/// A \[contract\] has been executed successfully with states applied.
-		Executed(EvmAddress),
+		Executed(EVMAddress),
 		/// A contract has been executed with errors. States are reverted with only gas fees applied. \[contract, exit_reason, output\]
-		ExecutedFailed(EvmAddress, ExitReason, Vec<u8>),
+		ExecutedFailed(EVMAddress, ExitReason, Vec<u8>),
 		/// A deposit has been made at a given address. \[sender, address, value\]
-		BalanceDeposit(AccountId, EvmAddress, U256),
+		BalanceDeposit(AccountId, EVMAddress, U256),
 		/// A withdrawal has been made from a given address. \[sender, address, value\]
-		BalanceWithdraw(AccountId, EvmAddress, U256),
+		BalanceWithdraw(AccountId, EVMAddress, U256),
 		/// A quota has been added at a given address. \[address, bytes\]
-		AddStorageQuota(EvmAddress, u32),
+		AddStorageQuota(EVMAddress, u32),
 		/// A quota has been removed at a given address. \[address, bytes\]
-		RemoveStorageQuota(EvmAddress, u32),
+		RemoveStorageQuota(EVMAddress, u32),
 		/// Requested the transfer maintainer. \[contract, address\]
-		RequestedTransferMaintainer(EvmAddress, EvmAddress),
+		RequestedTransferMaintainer(EVMAddress, EVMAddress),
 		/// Canceled the transfer maintainer. \[contract, address\]
-		CanceledTransferMaintainer(EvmAddress, EvmAddress),
+		CanceledTransferMaintainer(EVMAddress, EVMAddress),
 		/// Confirmed the transfer maintainer. \[contract, address\]
-		ConfirmedTransferMaintainer(EvmAddress, EvmAddress),
+		ConfirmedTransferMaintainer(EVMAddress, EVMAddress),
 		/// Rejected the transfer maintainer. \[contract, address\]
-		RejectedTransferMaintainer(EvmAddress, EvmAddress),
+		RejectedTransferMaintainer(EVMAddress, EVMAddress),
 		/// Enabled contract development. \[who\]
 		ContractDevelopmentEnabled(AccountId),
 		/// Disabled contract development. \[who\]
 		ContractDevelopmentDisabled(AccountId),
 		/// Deployed contract. \[contract\]
-		ContractDeployed(EvmAddress),
+		ContractDeployed(EVMAddress),
 	}
 }
 
@@ -358,7 +358,7 @@ decl_module! {
 		#[weight = T::GasToWeight::convert(*gas_limit)]
 		pub fn call(
 			origin,
-			target: EvmAddress,
+			target: EVMAddress,
 			input: Vec<u8>,
 			value: BalanceOf<T>,
 			gas_limit: u32,
@@ -449,7 +449,7 @@ decl_module! {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
-			let address = EvmAddress::from_low_u64_be(Self::network_contract_index());
+			let address = EVMAddress::from_low_u64_be(Self::network_contract_index());
 			let info = Runner::<T>::create_at_address(source, init, value, address, gas_limit, T::config())?;
 
 			NetworkContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
@@ -470,7 +470,7 @@ decl_module! {
 
 		#[weight = <T as Config>::WeightInfo::add_storage_quota()]
 		#[transactional]
-		pub fn add_storage_quota(origin, contract: EvmAddress, bytes: u32) {
+		pub fn add_storage_quota(origin, contract: EVMAddress, bytes: u32) {
 			let who = ensure_signed(origin)?;
 			Self::do_add_storage_quota(who, contract, bytes)?;
 
@@ -479,7 +479,7 @@ decl_module! {
 
 		#[weight = <T as Config>::WeightInfo::remove_storage_quota()]
 		#[transactional]
-		pub fn remove_storage_quota(origin, contract: EvmAddress, bytes: u32) {
+		pub fn remove_storage_quota(origin, contract: EVMAddress, bytes: u32) {
 			let who = ensure_signed(origin)?;
 			Self::do_remove_storage_quota(who, contract, bytes)?;
 
@@ -488,7 +488,7 @@ decl_module! {
 
 		#[weight = <T as Config>::WeightInfo::request_transfer_maintainer()]
 		#[transactional]
-		pub fn request_transfer_maintainer(origin, contract: EvmAddress) {
+		pub fn request_transfer_maintainer(origin, contract: EVMAddress) {
 			let who = ensure_signed(origin)?;
 			let new_maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
@@ -499,7 +499,7 @@ decl_module! {
 
 		#[weight = <T as Config>::WeightInfo::cancel_transfer_maintainer()]
 		#[transactional]
-		pub fn cancel_transfer_maintainer(origin, contract: EvmAddress) {
+		pub fn cancel_transfer_maintainer(origin, contract: EVMAddress) {
 			let who = ensure_signed(origin)?;
 			let requester = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
@@ -510,7 +510,7 @@ decl_module! {
 
 		#[weight = <T as Config>::WeightInfo::confirm_transfer_maintainer()]
 		#[transactional]
-		pub fn confirm_transfer_maintainer(origin, contract: EvmAddress, new_maintainer: EvmAddress) {
+		pub fn confirm_transfer_maintainer(origin, contract: EVMAddress, new_maintainer: EVMAddress) {
 			let who = ensure_signed(origin)?;
 			Self::do_confirm_transfer_maintainer(who, contract, new_maintainer)?;
 
@@ -519,7 +519,7 @@ decl_module! {
 
 		#[weight = <T as Config>::WeightInfo::reject_transfer_maintainer()]
 		#[transactional]
-		pub fn reject_transfer_maintainer(origin, contract: EvmAddress, invalid_maintainer: EvmAddress) {
+		pub fn reject_transfer_maintainer(origin, contract: EVMAddress, invalid_maintainer: EVMAddress) {
 			let who = ensure_signed(origin)?;
 			Self::do_reject_transfer_maintainer(who, contract, invalid_maintainer)?;
 
@@ -528,7 +528,7 @@ decl_module! {
 
 		#[weight = 0]
 		#[transactional]
-		pub fn deploy(origin, contract: EvmAddress) {
+		pub fn deploy(origin, contract: EVMAddress) {
 			let who = ensure_signed(origin)?;
 			let address = T::AddressMapping::get_or_create_evm_address(&who);
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::DeploymentFee::get(), ExistenceRequirement::AllowDeath)?;
@@ -538,7 +538,7 @@ decl_module! {
 
 		#[weight = 0]
 		#[transactional]
-		pub fn deploy_free(origin, contract: EvmAddress) {
+		pub fn deploy_free(origin, contract: EVMAddress) {
 			T::FreeDeploymentOrigin::ensure_origin(origin)?;
 			Self::mark_deployed(contract, None)?;
 			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
@@ -581,7 +581,7 @@ decl_module! {
 
 impl<T: Config> Module<T> {
 	/// Remove an account.
-	pub fn remove_account(address: &EvmAddress) -> Result<(), ExitError> {
+	pub fn remove_account(address: &EVMAddress) -> Result<(), ExitError> {
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
@@ -606,7 +606,7 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Get the account basic in EVM format.
-	pub fn account_basic(address: &EvmAddress) -> Account {
+	pub fn account_basic(address: &EVMAddress) -> Account {
 		let account_id = T::AddressMapping::get_account_id(address);
 
 		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
@@ -619,7 +619,7 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Get code hash at given address.
-	pub fn code_hash_at_address(address: &EvmAddress) -> H256 {
+	pub fn code_hash_at_address(address: &EVMAddress) -> H256 {
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
 			..
@@ -632,7 +632,7 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Get code at given address.
-	pub fn code_at_address(address: &EvmAddress) -> Vec<u8> {
+	pub fn code_at_address(address: &EVMAddress) -> Vec<u8> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
@@ -646,8 +646,8 @@ impl<T: Config> Module<T> {
 	/// - Update codes info.
 	/// - Save `code` if not saved yet.
 	pub fn on_contract_initialization(
-		address: &EvmAddress,
-		maintainer: &EvmAddress,
+		address: &EVMAddress,
+		maintainer: &EVMAddress,
 		code: Vec<u8>,
 		storage_count: Option<u32>,
 	) -> Result<(), ExitError> {
@@ -705,7 +705,7 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Set account storage.
-	pub fn set_storage(address: EvmAddress, index: H256, value: H256) -> Result<(), ExitError> {
+	pub fn set_storage(address: EVMAddress, index: H256, value: H256) -> Result<(), ExitError> {
 		enum StorageChange {
 			None,
 			Added,
@@ -775,7 +775,7 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Get additional storage of the contract.
-	fn additional_storage(contract: EvmAddress) -> u32 {
+	fn additional_storage(contract: EVMAddress) -> u32 {
 		Accounts::<T>::get(contract).map_or(0, |account_info| {
 			let (total_storage_size, code_size) = account_info.contract_info.map_or((0, 0), |contract_info| {
 				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
@@ -787,7 +787,7 @@ impl<T: Config> Module<T> {
 		})
 	}
 
-	fn do_add_storage_quota(who: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
+	fn do_add_storage_quota(who: T::AccountId, contract: EVMAddress, bytes: u32) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info
@@ -848,7 +848,7 @@ impl<T: Config> Module<T> {
 		})
 	}
 
-	fn do_remove_storage_quota(who: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
+	fn do_remove_storage_quota(who: T::AccountId, contract: EVMAddress, bytes: u32) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info
@@ -903,8 +903,8 @@ impl<T: Config> Module<T> {
 
 	fn do_request_transfer_maintainer(
 		who: T::AccountId,
-		contract: EvmAddress,
-		new_maintainer: EvmAddress,
+		contract: EVMAddress,
+		new_maintainer: EVMAddress,
 	) -> DispatchResult {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
 			account_info
@@ -922,7 +922,7 @@ impl<T: Config> Module<T> {
 		Ok(())
 	}
 
-	fn do_cancel_transfer_maintainer(who: T::AccountId, contract: EvmAddress, requester: EvmAddress) -> DispatchResult {
+	fn do_cancel_transfer_maintainer(who: T::AccountId, contract: EVMAddress, requester: EVMAddress) -> DispatchResult {
 		PendingTransferMaintainers::<T>::mutate_exists(
 			contract,
 			requester,
@@ -939,8 +939,8 @@ impl<T: Config> Module<T> {
 
 	fn do_confirm_transfer_maintainer(
 		who: T::AccountId,
-		contract: EvmAddress,
-		new_maintainer: EvmAddress,
+		contract: EVMAddress,
+		new_maintainer: EVMAddress,
 	) -> DispatchResult {
 		PendingTransferMaintainers::<T>::mutate_exists(
 			contract,
@@ -974,8 +974,8 @@ impl<T: Config> Module<T> {
 
 	fn do_reject_transfer_maintainer(
 		who: T::AccountId,
-		contract: EvmAddress,
-		invalid_maintainer: EvmAddress,
+		contract: EVMAddress,
+		invalid_maintainer: EVMAddress,
 	) -> DispatchResult {
 		PendingTransferMaintainers::<T>::mutate_exists(
 			contract,
@@ -1008,7 +1008,7 @@ impl<T: Config> Module<T> {
 	}
 
 	fn do_update_maintainer_storage_usage(
-		maintainer: &EvmAddress,
+		maintainer: &EVMAddress,
 		pre_storage_usage: u32,
 		current_storage_usage: u32,
 	) -> DispatchResult {
@@ -1048,7 +1048,7 @@ impl<T: Config> Module<T> {
 	/// Mark contract as deployed
 	///
 	/// If maintainer is provider then it will check maintainer
-	fn mark_deployed(contract: EvmAddress, maintainer: Option<EvmAddress>) -> DispatchResult {
+	fn mark_deployed(contract: EVMAddress, maintainer: Option<EVMAddress>) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
@@ -1072,8 +1072,8 @@ impl<T: Config> EVMTrait for Module<T> {
 	type Balance = BalanceOf<T>;
 
 	fn execute(
-		source: EvmAddress,
-		target: EvmAddress,
+		source: EVMAddress,
+		target: EVMAddress,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
@@ -1119,7 +1119,7 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 		T::StorageDefaultQuota::get()
 	}
 
-	fn query_maintainer(contract: EvmAddress) -> Result<EvmAddress, DispatchError> {
+	fn query_maintainer(contract: EVMAddress) -> Result<EVMAddress, DispatchError> {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound.into()), |account_info| {
 			account_info
 				.contract_info
@@ -1127,35 +1127,35 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 		})
 	}
 
-	fn add_storage_quota(from: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
+	fn add_storage_quota(from: T::AccountId, contract: EVMAddress, bytes: u32) -> DispatchResult {
 		Module::<T>::do_add_storage_quota(from, contract, bytes)
 	}
 
-	fn remove_storage_quota(from: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
+	fn remove_storage_quota(from: T::AccountId, contract: EVMAddress, bytes: u32) -> DispatchResult {
 		Module::<T>::do_remove_storage_quota(from, contract, bytes)
 	}
 
-	fn request_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
+	fn request_transfer_maintainer(from: T::AccountId, contract: EVMAddress) -> DispatchResult {
 		let new_maintainer = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
 		Module::<T>::do_request_transfer_maintainer(from, contract, new_maintainer)
 	}
 
-	fn cancel_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
+	fn cancel_transfer_maintainer(from: T::AccountId, contract: EVMAddress) -> DispatchResult {
 		let requester = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
 		Module::<T>::do_cancel_transfer_maintainer(from, contract, requester)
 	}
 
 	fn confirm_transfer_maintainer(
 		from: T::AccountId,
-		contract: EvmAddress,
-		new_maintainer: EvmAddress,
+		contract: EVMAddress,
+		new_maintainer: EVMAddress,
 	) -> DispatchResult {
 		Module::<T>::do_confirm_transfer_maintainer(from, contract, new_maintainer)
 	}
 	fn reject_transfer_maintainer(
 		from: T::AccountId,
-		contract: EvmAddress,
-		invalid_maintainer: EvmAddress,
+		contract: EVMAddress,
+		invalid_maintainer: EVMAddress,
 	) -> DispatchResult {
 		Module::<T>::do_reject_transfer_maintainer(from, contract, invalid_maintainer)
 	}

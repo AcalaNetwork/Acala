@@ -9,7 +9,7 @@ use evm::{
 	Transfer,
 };
 use evm_gasometer::{self as gasometer, Gasometer};
-use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
+use evm_runtime::{Config as EVMRuntimeConfig, Handler as HandlerT};
 use frame_support::{
 	debug,
 	storage::{StorageDoubleMap, StorageMap},
@@ -25,7 +25,7 @@ use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, rc::Rc, vec::Ve
 
 pub struct Handler<'vicinity, 'config, T: Config> {
 	pub vicinity: &'vicinity Vicinity,
-	pub config: &'config EvmRuntimeConfig,
+	pub config: &'config EVMRuntimeConfig,
 	pub gasometer: Gasometer<'config>,
 	pub precompile:
 		fn(H160, &[u8], Option<usize>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
@@ -43,7 +43,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		vicinity: &'vicinity Vicinity,
 		gas_limit: usize,
 		is_static: bool,
-		config: &'config EvmRuntimeConfig,
+		config: &'config EVMRuntimeConfig,
 		precompile: fn(
 			H160,
 			&[u8],
@@ -208,7 +208,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return Capture::Exit($map_err(e)),
-					}
+				}
 			};
 		}
 
@@ -217,7 +217,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return TransactionOutcome::Rollback(Capture::Exit($map_err(e))),
-					}
+				}
 			};
 		}
 	};

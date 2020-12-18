@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use primitives::evm::{CallInfo, Config, EvmAddress};
+use primitives::evm::{CallInfo, Config, EVMAddress};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -269,8 +269,8 @@ pub trait EVM {
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
 pub struct InvokeContext {
-	pub contract: EvmAddress,
-	pub source: EvmAddress,
+	pub contract: EVMAddress,
+	pub source: EVMAddress,
 }
 
 /// An abstraction of EVMBridge
@@ -279,9 +279,9 @@ pub trait EVMBridge<Balance> {
 	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20
 	/// contract
-	fn balance_of(context: InvokeContext, address: EvmAddress) -> Result<Balance, DispatchError>;
+	fn balance_of(context: InvokeContext, address: EVMAddress) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
-	fn transfer(context: InvokeContext, to: EvmAddress, value: Balance) -> DispatchResult;
+	fn transfer(context: InvokeContext, to: EVMAddress, value: Balance) -> DispatchResult;
 }
 
 /// An abstraction of EVMStateRentTrait

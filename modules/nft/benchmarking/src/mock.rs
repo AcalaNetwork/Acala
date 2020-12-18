@@ -12,7 +12,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId};
+use primitives::{evm::EVMAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
@@ -176,11 +176,11 @@ where
 		Ok(Default::default())
 	}
 
-	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
+	fn balance_of(_context: InvokeContext, _address: EVMAddress) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 
-	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
+	fn transfer(_context: InvokeContext, _to: EVMAddress, _value: Balance) -> DispatchResult {
 		Ok(())
 	}
 }

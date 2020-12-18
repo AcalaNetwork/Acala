@@ -4,7 +4,7 @@
 pub mod evm;
 pub mod mocks;
 
-use crate::evm::EvmAddress;
+use crate::evm::EVMAddress;
 
 use codec::{Decode, Encode};
 use sp_runtime::{
@@ -108,7 +108,7 @@ impl TryFrom<u8> for TokenSymbol {
 pub enum CurrencyId {
 	Token(TokenSymbol),
 	DEXShare(TokenSymbol, TokenSymbol),
-	ERC20(EvmAddress),
+	ERC20(EVMAddress),
 }
 
 impl CurrencyId {

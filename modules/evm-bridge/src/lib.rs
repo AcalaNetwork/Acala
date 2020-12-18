@@ -17,7 +17,7 @@ mod tests;
 
 pub type BalanceOf<T> = <<T as Config>::EVM as EVM>::Balance;
 
-/// EvmBridge module trait
+/// EVMBridge module trait
 pub trait Config: frame_system::Config {
 	type EVM: EVM;
 }

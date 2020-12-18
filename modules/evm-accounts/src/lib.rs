@@ -1,8 +1,8 @@
-//! # Evm Accounts Module
+//! # EVM Accounts Module
 //!
 //! ## Overview
 //!
-//! Evm Accounts module provide a two way mapping between Substrate accounts and
+//! EVM Accounts module provide a two way mapping between Substrate accounts and
 //! EVM accounts so user only have deal with one account / private key.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -17,7 +17,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use orml_traits::account::MergeAccount;
-use primitives::evm::{AddressMapping, EvmAddress};
+use primitives::evm::{AddressMapping, EVMAddress};
 use sp_core::{crypto::AccountId32, ecdsa};
 use sp_io::{
 	crypto::secp256k1_ecdsa_recover,
@@ -38,7 +38,7 @@ pub type EcdsaSignature = ecdsa::Signature;
 pub trait Config: frame_system::Config {
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
-	/// The Currency for managing Evm account assets.
+	/// The Currency for managing EVM account assets.
 	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
 	/// Mapping from address to account id.
@@ -57,11 +57,11 @@ pub trait Config: frame_system::Config {
 decl_event!(
 	pub enum Event<T> where
 		<T as frame_system::Config>::AccountId,
-		EvmAddress = EvmAddress,
+		EVMAddress = EVMAddress,
 	{
 		/// Mapping between Substrate accounts and EVM accounts
 		/// claim account. \[account_id, evm_address\]
-		ClaimAccount(AccountId, EvmAddress),
+		ClaimAccount(AccountId, EVMAddress),
 	}
 );
 
@@ -84,9 +84,9 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Config> as EvmAccounts {
-		pub Accounts get(fn accounts): map hasher(twox_64_concat) EvmAddress => Option<T::AccountId>;
-		pub EvmAddresses get(fn evm_addresses): map hasher(twox_64_concat) T::AccountId => Option<EvmAddress>;
+	trait Store for Module<T: Config> as EVMAccounts {
+		pub Accounts get(fn accounts): map hasher(twox_64_concat) EVMAddress => Option<T::AccountId>;
+		pub EVMAddresses get(fn evm_addresses): map hasher(twox_64_concat) T::AccountId => Option<EVMAddress>;
 	}
 }
 
@@ -99,11 +99,11 @@ decl_module! {
 		/// Ensure eth_address has not been mapped.
 		#[weight = T::WeightInfo::claim_account()]
 		#[transactional]
-		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
+		pub fn claim_account(origin, eth_address: EVMAddress, eth_signature: EcdsaSignature) {
 			let who = ensure_signed(origin)?;
 
 			// ensure account_id and eth_address has not been mapped
-			ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
+			ensure!(!EVMAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
 			ensure!(!Accounts::<T>::contains_key(eth_address), Error::<T>::EthAddressHasMapped);
 
 			// recover evm address from signature
@@ -120,7 +120,7 @@ decl_module! {
 			}
 
 			Accounts::<T>::insert(eth_address, &who);
-			EvmAddresses::<T>::insert(&who, eth_address);
+			EVMAddresses::<T>::insert(&who, eth_address);
 
 			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
 		}
@@ -148,9 +148,9 @@ impl<T: Config> Module<T> {
 
 	// Attempts to recover the Ethereum address from a message signature signed by
 	// using the Ethereum RPC's `personal_sign` and `eth_sign`.
-	pub fn eth_recover(s: &EcdsaSignature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
+	pub fn eth_recover(s: &EcdsaSignature, what: &[u8], extra: &[u8]) -> Option<EVMAddress> {
 		let msg = keccak_256(&Self::ethereum_signable_message(what, extra));
-		let mut res = EvmAddress::default();
+		let mut res = EVMAddress::default();
 		res.0
 			.copy_from_slice(&keccak_256(&secp256k1_ecdsa_recover(&s.0, &msg).ok()?[..])[12..]);
 		Some(res)
@@ -160,8 +160,8 @@ impl<T: Config> Module<T> {
 		secp256k1::PublicKey::from_secret_key(secret)
 	}
 
-	pub fn eth_address(secret: &secp256k1::SecretKey) -> EvmAddress {
-		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
+	pub fn eth_address(secret: &secp256k1::SecretKey) -> EVMAddress {
+		EVMAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
 	}
 
 	pub fn eth_sign(secret: &secp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
@@ -174,18 +174,18 @@ impl<T: Config> Module<T> {
 	}
 }
 
-fn account_to_default_evm_address(account_id: &impl Encode) -> EvmAddress {
+fn account_to_default_evm_address(account_id: &impl Encode) -> EVMAddress {
 	let payload = (b"evm:", account_id);
-	EvmAddress::from_slice(&payload.using_encoded(blake2_256)[0..20])
+	EVMAddress::from_slice(&payload.using_encoded(blake2_256)[0..20])
 }
 
-pub struct EvmAddressMapping<T>(sp_std::marker::PhantomData<T>);
+pub struct EVMAddressMapping<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Config> AddressMapping<T::AccountId> for EvmAddressMapping<T>
+impl<T: Config> AddressMapping<T::AccountId> for EVMAddressMapping<T>
 where
 	T::AccountId: IsType<AccountId32>,
 {
-	fn get_account_id(address: &EvmAddress) -> T::AccountId {
+	fn get_account_id(address: &EVMAddress) -> T::AccountId {
 		if let Some(acc) = Accounts::<T>::get(address) {
 			acc
 		} else {
@@ -196,18 +196,18 @@ where
 		}
 	}
 
-	fn get_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
-		EvmAddresses::<T>::get(account_id).or_else(|| {
+	fn get_evm_address(account_id: &T::AccountId) -> Option<EVMAddress> {
+		EVMAddresses::<T>::get(account_id).or_else(|| {
 			let data: &[u8] = account_id.into_ref().as_ref();
 			if data.starts_with(b"evm:") {
-				Some(EvmAddress::from_slice(&data[4..24]))
+				Some(EVMAddress::from_slice(&data[4..24]))
 			} else {
 				None
 			}
 		})
 	}
 
-	fn get_or_create_evm_address(account_id: &T::AccountId) -> EvmAddress {
+	fn get_or_create_evm_address(account_id: &T::AccountId) -> EVMAddress {
 		Self::get_evm_address(account_id).unwrap_or_else(|| {
 			let addr = account_to_default_evm_address(account_id);
 
@@ -218,11 +218,11 @@ where
 		})
 	}
 
-	fn get_default_evm_address(account_id: &T::AccountId) -> EvmAddress {
+	fn get_default_evm_address(account_id: &T::AccountId) -> EVMAddress {
 		account_to_default_evm_address(account_id)
 	}
 
-	fn is_linked(account_id: &T::AccountId, evm: &EvmAddress) -> bool {
+	fn is_linked(account_id: &T::AccountId, evm: &EVMAddress) -> bool {
 		Self::get_evm_address(account_id).as_ref() == Some(evm)
 			|| &account_to_default_evm_address(account_id.into_ref()) == evm
 	}
@@ -238,7 +238,7 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 		// remove mapping created by `claim_account`
 		if let Some(evm_addr) = Module::<T>::evm_addresses(who) {
 			Accounts::<T>::remove(evm_addr);
-			EvmAddresses::<T>::remove(who);
+			EVMAddresses::<T>::remove(who);
 		}
 	}
 }

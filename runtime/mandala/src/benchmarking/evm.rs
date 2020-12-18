@@ -1,4 +1,4 @@
-use crate::{AccountId, Balance, Event, EvmAccounts, Origin, Runtime, System, DOLLARS, EVM};
+use crate::{AccountId, Balance, EVMAccounts, Event, Origin, Runtime, System, DOLLARS, EVM};
 
 use super::utils::set_aca_balance;
 use frame_support::dispatch::DispatchError;
@@ -47,7 +47,7 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 }
 
 pub fn alice_account_id() -> AccountId {
-	let address = EvmAccounts::eth_address(&alice());
+	let address = EVMAccounts::eth_address(&alice());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -55,7 +55,7 @@ pub fn alice_account_id() -> AccountId {
 }
 
 pub fn bob_account_id() -> AccountId {
-	let address = EvmAccounts::eth_address(&bob());
+	let address = EVMAccounts::eth_address(&bob());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -102,7 +102,7 @@ runtime_benchmarks! {
 		let address = deploy_contract(alice_account_id())?;
 
 		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-		let new_maintainer = EvmAccounts::eth_address(&bob());
+		let new_maintainer = EVMAccounts::eth_address(&bob());
 	}: _(RawOrigin::Signed(alice_account_id()), address, new_maintainer)
 
 	reject_transfer_maintainer {
@@ -111,7 +111,7 @@ runtime_benchmarks! {
 		let address = deploy_contract(alice_account_id())?;
 
 		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-		let new_maintainer = EvmAccounts::eth_address(&bob());
+		let new_maintainer = EVMAccounts::eth_address(&bob());
 	}: _(RawOrigin::Signed(alice_account_id()), address, new_maintainer)
 }
 

@@ -8,7 +8,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
-	CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts, GetNativeCurrencyId,
+	CreateTokenDeposit, CurrencyId, DSWFModuleId, EVMAccounts, EnabledTradingPairs, Event, GetNativeCurrencyId,
 	NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, System,
 	TokenSymbol, EVM, NFT,
 };
@@ -163,7 +163,7 @@ fn bob() -> secp256k1::SecretKey {
 }
 
 pub fn alice_account_id() -> AccountId {
-	let address = EvmAccounts::eth_address(&alice());
+	let address = EVMAccounts::eth_address(&alice());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -171,7 +171,7 @@ pub fn alice_account_id() -> AccountId {
 }
 
 pub fn bob_account_id() -> AccountId {
-	let address = EvmAccounts::eth_address(&bob());
+	let address = EVMAccounts::eth_address(&bob());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -1172,31 +1172,31 @@ fn test_evm_accounts_module() {
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
 			assert_eq!(Balances::free_balance(bob_account_id()), 1000000000000000000000);
-			assert_ok!(EvmAccounts::claim_account(
+			assert_ok!(EVMAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
-				EvmAccounts::eth_address(&alice()),
-				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+				EVMAccounts::eth_address(&alice()),
+				EVMAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
 			));
 			let event = Event::module_evm_accounts(module_evm_accounts::RawEvent::ClaimAccount(
 				AccountId::from(ALICE),
-				EvmAccounts::eth_address(&alice()),
+				EVMAccounts::eth_address(&alice()),
 			));
 			assert_eq!(last_event(), event);
 
 			// claim another eth address
 			assert_noop!(
-				EvmAccounts::claim_account(
+				EVMAccounts::claim_account(
 					Origin::signed(AccountId::from(ALICE)),
-					EvmAccounts::eth_address(&alice()),
-					EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+					EVMAccounts::eth_address(&alice()),
+					EVMAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
 				),
 				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
 			);
 			assert_noop!(
-				EvmAccounts::claim_account(
+				EVMAccounts::claim_account(
 					Origin::signed(AccountId::from(BOB)),
-					EvmAccounts::eth_address(&alice()),
-					EvmAccounts::eth_sign(&alice(), &AccountId::from(BOB).encode(), &[][..])
+					EVMAccounts::eth_address(&alice()),
+					EVMAccounts::eth_sign(&alice(), &AccountId::from(BOB).encode(), &[][..])
 				),
 				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
 			);
@@ -1216,8 +1216,8 @@ fn test_evm_module() {
 			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
 			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
 
-			let alice_address = EvmAccounts::eth_address(&alice());
-			let bob_address = EvmAccounts::eth_address(&bob());
+			let alice_address = EVMAccounts::eth_address(&alice());
+			let bob_address = EVMAccounts::eth_address(&bob());
 
 			let address = deploy_contract(alice_account_id()).unwrap();
 			let event = Event::module_evm(module_evm::RawEvent::Created(address));
@@ -1257,7 +1257,7 @@ fn test_evm_module() {
 			assert_ok!(EVM::confirm_transfer_maintainer(
 				Origin::signed(alice_account_id()),
 				address,
-				EvmAccounts::eth_address(&bob())
+				EVMAccounts::eth_address(&bob())
 			));
 			let event = Event::module_evm(module_evm::RawEvent::ConfirmedTransferMaintainer(address, bob_address));
 			assert_eq!(last_event(), event);

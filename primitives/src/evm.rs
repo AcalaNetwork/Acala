@@ -9,8 +9,8 @@ use sp_std::vec::Vec;
 pub use evm::backend::{Basic as Account, Log};
 pub use evm::Config;
 
-/// Evm Address.
-pub type EvmAddress = sp_core::H160;
+/// EVMAddress.
+pub type EVMAddress = sp_core::H160;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -19,7 +19,7 @@ pub struct Vicinity {
 	/// Current transaction gas price.
 	pub gas_price: U256,
 	/// Origin of the transaction.
-	pub origin: EvmAddress,
+	pub origin: EVMAddress,
 	/// Create contract opcode.
 	pub creating: bool,
 }
@@ -28,7 +28,7 @@ pub struct Vicinity {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CreateInfo {
 	pub exit_reason: ExitReason,
-	pub address: EvmAddress,
+	pub address: EVMAddress,
 	pub output: Vec<u8>,
 	pub used_gas: U256,
 }
@@ -40,11 +40,11 @@ pub struct CallInfo {
 	pub output: Vec<u8>,
 	pub used_gas: U256,
 }
-/// A mapping between `AccountId` and `EvmAddress`.
+/// A mapping between `AccountId` and `EVMAddress`.
 pub trait AddressMapping<AccountId> {
-	fn get_account_id(evm: &EvmAddress) -> AccountId;
-	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
-	fn get_or_create_evm_address(account_id: &AccountId) -> EvmAddress;
-	fn get_default_evm_address(account_id: &AccountId) -> EvmAddress;
-	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
+	fn get_account_id(evm: &EVMAddress) -> AccountId;
+	fn get_evm_address(account_id: &AccountId) -> Option<EVMAddress>;
+	fn get_or_create_evm_address(account_id: &AccountId) -> EVMAddress;
+	fn get_default_evm_address(account_id: &AccountId) -> EVMAddress;
+	fn is_linked(account_id: &AccountId, evm: &EVMAddress) -> bool;
 }

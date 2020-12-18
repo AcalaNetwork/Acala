@@ -114,12 +114,12 @@ pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, B
 impl Config for Runtime {
 	type Event = TestEvent;
 	type Currency = Balances;
-	type AddressMapping = EvmAddressMapping<Runtime>;
+	type AddressMapping = EVMAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type KillAccount = ();
 	type WeightInfo = ();
 }
-pub type EvmAccountsModule = Module<Runtime>;
+pub type EVMAccountsModule = Module<Runtime>;
 
 pub struct ExtBuilder();
 
@@ -156,7 +156,7 @@ pub fn bob() -> secp256k1::SecretKey {
 }
 
 pub fn bob_account_id() -> AccountId {
-	let address = EvmAccountsModule::eth_address(&bob());
+	let address = EVMAccountsModule::eth_address(&bob());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);

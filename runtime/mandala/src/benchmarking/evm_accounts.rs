@@ -1,4 +1,4 @@
-use crate::{AccountId, Balance, EvmAccounts, Runtime, DOLLARS};
+use crate::{AccountId, Balance, EVMAccounts, Runtime, DOLLARS};
 
 use super::utils::set_aca_balance;
 use codec::Encode;
@@ -24,7 +24,7 @@ fn bob() -> secp256k1::SecretKey {
 }
 
 pub fn bob_account_id() -> AccountId {
-	let address = EvmAccounts::eth_address(&bob());
+	let address = EVMAccounts::eth_address(&bob());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -40,7 +40,7 @@ runtime_benchmarks! {
 		let caller: AccountId = account("caller", 0, SEED);
 		let eth: AccountId = account("eth", 0, SEED);
 		set_aca_balance(&bob_account_id(), dollar(1000));
-	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
+	}: _(RawOrigin::Signed(caller), EVMAccounts::eth_address(&alice()), EVMAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
 }
 
 #[cfg(test)]

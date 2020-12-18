@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping};
+use primitives::{evm::EVMAddress, mocks::MockAddressMapping};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -81,7 +81,7 @@ impl pallet_timestamp::Config for Runtime {
 parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
 	pub const TransferMaintainerDeposit: u64 = 1;
-	pub NetworkContractSource: EvmAddress = alice();
+	pub NetworkContractSource: EVMAddress = alice();
 }
 
 ord_parameter_types! {
@@ -122,7 +122,7 @@ pub type EVM = module_evm::Module<Runtime>;
 impl Config for Runtime {
 	type EVM = EVM;
 }
-pub type EvmBridgeModule = Module<Runtime>;
+pub type EVMBridgeModule = Module<Runtime>;
 
 pub struct ExtBuilder();
 
@@ -132,16 +132,16 @@ impl Default for ExtBuilder {
 	}
 }
 
-pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("2000000000000000000000000000000000000001").unwrap()
+pub fn erc20_address() -> EVMAddress {
+	EVMAddress::from_str("2000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn alice() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+pub fn alice() -> EVMAddress {
+	EVMAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn bob() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
+pub fn bob() -> EVMAddress {
+	EVMAddress::from_str("1000000000000000000000000000000000000002").unwrap()
 }
 
 impl ExtBuilder {
