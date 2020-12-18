@@ -105,7 +105,7 @@ fn karura_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		ParachainInfoConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
@@ -271,6 +271,9 @@ fn karura_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+		}),
+		parachain_info: Some(ParachainInfoConfig {
+			parachain_id: 5_000.into(),
 		}),
 	}
 }

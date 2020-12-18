@@ -9,7 +9,6 @@ use acala_primitives::Block;
 use prometheus_endpoint::Registry;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sc_executor::native_executor_instance;
-use sc_finality_grandpa::FinalityProofProvider as GrandpaFinalityProofProvider;
 use sc_service::{config::Configuration, error::Error as ServiceError, PartialComponents, RpcHandlers, TaskManager};
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
@@ -189,42 +188,20 @@ where
 		)?
 	};
 
-	let justification_stream = grandpa_link.justification_stream();
-	let shared_authority_set = grandpa_link.shared_authority_set().clone();
 	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
 
 	let import_setup = (block_import, grandpa_link, babe_link.clone());
 	let rpc_setup = shared_voter_state.clone();
 
-	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
-
-	let babe_config = babe_link.config().clone();
-	let shared_epoch_changes = babe_link.epoch_changes().clone();
-
 	let rpc_extensions_builder = {
 		let client = client.clone();
-		let keystore = keystore_container.sync_keystore();
 		let transaction_pool = transaction_pool.clone();
-		let select_chain = select_chain.clone();
 
-		move |deny_unsafe, subscription_executor| -> acala_rpc::RpcExtension {
+		move |deny_unsafe, _| -> acala_rpc::RpcExtension {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
 				pool: transaction_pool.clone(),
-				select_chain: select_chain.clone(),
 				deny_unsafe,
-				babe: acala_rpc::BabeDeps {
-					babe_config: babe_config.clone(),
-					shared_epoch_changes: shared_epoch_changes.clone(),
-					keystore: keystore.clone(),
-				},
-				grandpa: acala_rpc::GrandpaDeps {
-					shared_voter_state: shared_voter_state.clone(),
-					shared_authority_set: shared_authority_set.clone(),
-					justification_stream: justification_stream.clone(),
-					subscription_executor,
-					finality_provider: finality_proof_provider.clone(),
-				},
 			};
 
 			acala_rpc::create_full(deps)

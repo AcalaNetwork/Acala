@@ -188,7 +188,7 @@ fn testnet_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EVMConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		ParachainInfoConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
 	};
 
@@ -357,6 +357,9 @@ fn testnet_genesis(
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 		}),
+		parachain_info: Some(ParachainInfoConfig {
+			parachain_id: 5_000.into(),
+		}),
 	}
 }
 
@@ -372,8 +375,9 @@ fn mandala_genesis(
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig,
 		EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
-		OperatorMembershipBandConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		OperatorMembershipBandConfig, ParachainInfoConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, CENTS, DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -541,6 +545,9 @@ fn mandala_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+		}),
+		parachain_info: Some(ParachainInfoConfig {
+			parachain_id: 5_000.into(),
 		}),
 	}
 }

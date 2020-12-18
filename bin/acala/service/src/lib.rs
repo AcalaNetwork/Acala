@@ -7,11 +7,11 @@ use cumulus_network::build_block_announce_validator;
 use cumulus_service::{prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams};
 
 #[cfg(feature = "with-acala-runtime")]
-pub use acala_runtime::{self, RuntimeApi};
+pub use acala_runtime;
 #[cfg(feature = "with-karurua-runtime")]
-pub use karura_runtime::{self, RuntimeApi};
+pub use karura_runtime;
 #[cfg(feature = "with-mandala-runtime")]
-pub use mandala_runtime::{self, RuntimeApi};
+pub use mandala_runtime;
 
 use acala_primitives::Block;
 use polkadot_primitives::v0::CollatorPair;
@@ -37,7 +37,7 @@ mod mock_timestamp_data_provider;
 
 #[cfg(feature = "with-mandala-runtime")]
 native_executor_instance!(
-	pub Executor,
+	pub MandalaExecutor,
 	mandala_runtime::api::dispatch,
 	mandala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -45,7 +45,7 @@ native_executor_instance!(
 
 #[cfg(feature = "with-karura-runtime")]
 native_executor_instance!(
-	pub Executor,
+	pub KaruraExecutor,
 	karura_runtime::api::dispatch,
 	karura_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -53,7 +53,7 @@ native_executor_instance!(
 
 #[cfg(feature = "with-acala-runtime")]
 native_executor_instance!(
-	pub Executor,
+	pub AcalaExecutor,
 	acala_runtime::api::dispatch,
 	acala_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
@@ -154,13 +154,18 @@ where
 /// This is the actual implementation that is abstract over the executor and the
 /// runtime api.
 #[sc_cli::prefix_logs_with("Parachain")]
-async fn start_node_impl(
+async fn start_node_impl<RuntimeApi, Executor>(
 	parachain_config: Configuration,
 	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: polkadot_primitives::v0::Id,
 	validator: bool,
-) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)> {
+) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	Executor: NativeExecutionDispatch + 'static,
+{
 	if matches!(parachain_config.role, Role::Light) {
 		return Err("Light client not supported!".into());
 	}
@@ -292,13 +297,18 @@ async fn start_node_impl(
 }
 
 /// Start a normal parachain node.
-pub async fn start_node(
+pub async fn start_node<RuntimeApi, Executor>(
 	parachain_config: Configuration,
 	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: polkadot_primitives::v0::Id,
 	validator: bool,
-) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)> {
+) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	Executor: NativeExecutionDispatch + 'static,
+{
 	start_node_impl(parachain_config, collator_key, polkadot_config, id, validator).await
 }
 
@@ -324,7 +334,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<mandala_runtime::RuntimeApi, Executor>(config, false)?;
+			} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -338,7 +348,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<karura_runtime::RuntimeApi, Executor>(config, false)?;
+			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-kaura-runtime"))]
@@ -352,7 +362,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<acala_runtime::RuntimeApi, Executor>(config, false)?;
+			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutor>(config, false)?;
 			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
