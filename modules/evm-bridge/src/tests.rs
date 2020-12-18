@@ -47,7 +47,7 @@ fn should_transfer() {
 				alice(),
 				10
 			),
-			Error::<Runtime>::Revert
+			Error::<Runtime>::ExecutionRevert
 		);
 
 		assert_ok!(EvmBridgeModule::transfer(
@@ -98,7 +98,7 @@ fn should_transfer() {
 				alice(),
 				100
 			),
-			Error::<Runtime>::Revert
+			Error::<Runtime>::ExecutionRevert
 		);
 	});
 }

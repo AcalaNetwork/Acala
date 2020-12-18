@@ -193,6 +193,7 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
@@ -217,7 +218,6 @@ dependencies = [
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
- "orml-currencies",
  "orml-gradually-update",
  "orml-nft",
  "orml-oracle",
@@ -2993,6 +2993,7 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
@@ -3017,7 +3018,6 @@ dependencies = [
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
- "orml-currencies",
  "orml-gradually-update",
  "orml-nft",
  "orml-oracle",
@@ -3734,6 +3734,7 @@ dependencies = [
  "module-cdp-engine",
  "module-cdp-engine-benchmarking",
  "module-cdp-treasury",
+ "module-currencies",
  "module-dex",
  "module-emergency-shutdown",
  "module-emergency-shutdown-benchmarking",
@@ -3758,7 +3759,6 @@ dependencies = [
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
- "orml-currencies",
  "orml-gradually-update",
  "orml-nft",
  "orml-oracle",
@@ -4163,6 +4163,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-currencies"
+version = "0.3.3-dev"
+dependencies = [
+ "acala-primitives",
+ "clear_on_drop",
+ "frame-support",
+ "frame-system",
+ "module-evm",
+ "module-evm-bridge",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "orml-utilities",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-dex"
 version = "0.7.0"
 dependencies = [
@@ -4171,7 +4195,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -4432,7 +4455,8 @@ dependencies = [
  "enumflags2",
  "frame-support",
  "frame-system",
- "orml-currencies",
+ "module-currencies",
+ "module-support",
  "orml-nft",
  "orml-tokens",
  "orml-traits",
@@ -4455,9 +4479,9 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-nft",
  "module-support",
- "orml-currencies",
  "orml-nft",
  "orml-tokens",
  "orml-traits",
@@ -4608,9 +4632,9 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-dex",
  "module-support",
- "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",

@@ -10,12 +10,14 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::H256;
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId};
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	DispatchError, DispatchResult,
 };
+use support::{EVMBridge, InvokeContext};
 
 impl_outer_origin! {
 	pub enum Origin for Runtime {}
@@ -27,7 +29,7 @@ impl_outer_event! {
 		pallet_proxy<T>,
 		pallet_utility,
 		orml_tokens<T>,
-		orml_currencies<T>,
+		module_currencies<T>,
 		nft<T>,
 	}
 }
@@ -47,7 +49,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = BaseFilter;
@@ -151,7 +153,7 @@ pub type Balances = pallet_balances::Module<Runtime>;
 type Utility = pallet_utility::Module<Runtime>;
 pub type Proxy = pallet_proxy::Module<Runtime>;
 
-pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
@@ -170,16 +172,31 @@ impl orml_tokens::Config for Runtime {
 }
 pub type Tokens = orml_tokens::Module<Runtime>;
 
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub struct MockEVMBridge;
+impl<Balance> EVMBridge<Balance> for MockEVMBridge
+where
+	Balance: Default,
+{
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
+		Ok(())
+	}
 }
 
-impl orml_currencies::Config for Runtime {
+impl module_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
 
 parameter_types! {
@@ -206,8 +223,8 @@ impl orml_nft::Config for Runtime {
 
 use frame_system::Call as SystemCall;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
+pub const ALICE: AccountId = AccountId::new([1u8; 32]);
+pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const CLASS_ID: <Runtime as orml_nft::Config>::ClassId = 0;
 pub const CLASS_ID_NOT_EXIST: <Runtime as orml_nft::Config>::ClassId = 1;
 pub const TOKEN_ID: <Runtime as orml_nft::Config>::TokenId = 0;

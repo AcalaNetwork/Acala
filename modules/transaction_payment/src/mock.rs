@@ -8,18 +8,20 @@ use frame_support::{
 	weights::WeightToFeeCoefficients,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, TokenSymbol, TradingPair};
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
-use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, ModuleId, Perbill};
+use sp_core::{crypto::AccountId32, H256};
+use sp_runtime::{
+	testing::Header, traits::IdentityLookup, DispatchError, DispatchResult, FixedPointNumber, ModuleId, Perbill,
+};
 use sp_std::cell::RefCell;
-use support::Ratio;
+use support::{EVMBridge, InvokeContext, Ratio};
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
+pub const ALICE: AccountId = AccountId::new([1u8; 32]);
+pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 
@@ -32,7 +34,7 @@ impl_outer_origin! {
 
 impl_outer_dispatch! {
 	pub enum Call for Runtime where origin: Origin {
-		orml_currencies::Currencies,
+		module_currencies::Currencies,
 		pallet_balances::PalletBalances,
 		frame_system::System,
 	}
@@ -43,7 +45,7 @@ impl_outer_event! {
 		frame_system<T>,
 		orml_tokens<T>,
 		pallet_balances<T>,
-		orml_currencies<T>,
+		module_currencies<T>,
 		module_dex<T>,
 	}
 }
@@ -125,27 +127,46 @@ impl pallet_balances::Config for Runtime {
 }
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+
+pub struct MockEVMBridge;
+impl<Balance> EVMBridge<Balance> for MockEVMBridge
+where
+	Balance: Default,
+{
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
+		Ok(())
+	}
+}
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
 
-impl orml_currencies::Config for Runtime {
+impl module_currencies::Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = MockEVMBridge;
 }
-pub type Currencies = orml_currencies::Module<Runtime>;
+pub type Currencies = module_currencies::Module<Runtime>;
 
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
 ord_parameter_types! {
-	pub const Zero: AccountId = 0;
+	pub const Zero: AccountId = AccountId::new([0u8; 32]);
 }
 
 parameter_types! {

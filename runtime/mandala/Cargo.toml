@@ -63,7 +63,6 @@ libsecp256k1 = { version = "0.3.4", default-features = false, optional = true }
 orml-auction = { path = "../../orml/auction", default-features = false }
 orml-authority = { path = "../../orml/authority", default-features = false }
 orml-benchmarking = { path = "../../orml/benchmarking", default-features = false, optional = true }
-orml-currencies = { path = "../../orml/currencies", default-features = false }
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
 orml-gradually-update = { path = "../../orml/gradually-update", default-features = false }
@@ -79,6 +78,7 @@ module-auction-manager = { path = "../../modules/auction_manager", default-featu
 module-cdp-engine = { path = "../../modules/cdp_engine", default-features = false }
 module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
+module-currencies = { path = "../../modules/currencies", default-features = false }
 module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
@@ -163,7 +163,6 @@ std = [
 	"orml-auction/std",
 	"orml-authority/std",
 	"orml-benchmarking/std",
-	"orml-currencies/std",
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
 	"orml-gradually-update/std",
@@ -179,6 +178,7 @@ std = [
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
 	"module-dex/std",
+	"module-currencies/std",
 	"module-emergency-shutdown/std",
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",

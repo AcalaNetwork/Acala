@@ -1,26 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
 use ethereum_types::BigEndianHash;
 use frame_support::{
 	decl_error, decl_module,
 	dispatch::{DispatchError, DispatchResult},
 };
 use hex_literal::hex;
-use module_evm::ExitReason;
+use module_evm::{ExitReason, ExitSucceed};
 use primitive_types::H256;
 use sp_core::{H160, U256};
-use sp_runtime::{RuntimeDebug, SaturatedConversion};
-use support::{EVMBridge as EVMBridgeTrait, EVM};
+use sp_runtime::SaturatedConversion;
+use support::{EVMBridge as EVMBridgeTrait, InvokeContext, EVM};
 
 mod mock;
 mod tests;
-
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
-pub struct InvokeContext {
-	pub contract: H160,
-	pub source: H160,
-}
 
 pub type BalanceOf<T> = <<T as Config>::EVM as EVM>::Balance;
 
@@ -31,9 +24,10 @@ pub trait Config: frame_system::Config {
 
 decl_error! {
 	pub enum Error for Module<T: Config> {
-		Revert,
-		Fatal,
-		Error
+		ExecutionFail,
+		ExecutionRevert,
+		ExecutionFatal,
+		ExecutionError
 	}
 }
 
@@ -43,7 +37,7 @@ decl_module! {
 	}
 }
 
-impl<T: Config> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
+impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
@@ -109,10 +103,11 @@ impl<T: Config> EVMBridgeTrait<InvokeContext, BalanceOf<T>> for Module<T> {
 impl<T: Config> Module<T> {
 	fn handle_exit_reason(exit_reason: ExitReason) -> Result<(), DispatchError> {
 		match exit_reason {
-			ExitReason::Succeed(_) => Ok(()),
-			ExitReason::Revert(_) => Err(Error::<T>::Revert.into()),
-			ExitReason::Fatal(_) => Err(Error::<T>::Fatal.into()),
-			ExitReason::Error(_) => Err(Error::<T>::Error.into()),
+			ExitReason::Succeed(ExitSucceed::Returned) => Ok(()),
+			ExitReason::Succeed(_) => Err(Error::<T>::ExecutionFail.into()),
+			ExitReason::Revert(_) => Err(Error::<T>::ExecutionRevert.into()),
+			ExitReason::Fatal(_) => Err(Error::<T>::ExecutionFatal.into()),
+			ExitReason::Error(_) => Err(Error::<T>::ExecutionError.into()),
 		}
 	}
 }

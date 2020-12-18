@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
-use primitives::mocks::MockAddressMapping;
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -70,6 +70,7 @@ pub type Balances = pallet_balances::Module<Runtime>;
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
+
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
@@ -80,13 +81,13 @@ impl pallet_timestamp::Config for Runtime {
 parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
 	pub const TransferMaintainerDeposit: u64 = 1;
-	pub NetworkContractSource: H160 = alice();
+	pub NetworkContractSource: EvmAddress = alice();
 }
 
 ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const StorageDepositPerByte: u64 = 10;
+	pub const StorageDepositPerByte: u128 = 10;
 	pub const StorageDefaultQuota: u32 = 0x6000;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
@@ -131,16 +132,16 @@ impl Default for ExtBuilder {
 	}
 }
 
-pub fn erc20_address() -> H160 {
-	H160::from_str("2000000000000000000000000000000000000001").unwrap()
+pub fn erc20_address() -> EvmAddress {
+	EvmAddress::from_str("2000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn alice() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000001").unwrap()
+pub fn alice() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn bob() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000002").unwrap()
+pub fn bob() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
 }
 
 impl ExtBuilder {
@@ -153,11 +154,11 @@ impl ExtBuilder {
 		let mut storage = BTreeMap::new();
 		storage.insert(
 			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
-			H256::from_str("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
 		);
 		storage.insert(
 			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
-			H256::from_str("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
 		);
 		accounts.insert(
 			erc20_address(),

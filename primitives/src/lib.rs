@@ -4,6 +4,8 @@
 pub mod evm;
 pub mod mocks;
 
+use crate::evm::EvmAddress;
+
 use codec::{Decode, Encode};
 use sp_runtime::{
 	generic,
@@ -106,6 +108,7 @@ impl TryFrom<u8> for TokenSymbol {
 pub enum CurrencyId {
 	Token(TokenSymbol),
 	DEXShare(TokenSymbol, TokenSymbol),
+	ERC20(EvmAddress),
 }
 
 impl CurrencyId {
@@ -176,6 +179,7 @@ impl Into<[u8; 32]> for CurrencyId {
 				bytes[30] = left as u8;
 				bytes[31] = right as u8;
 			}
+			_ => {}
 		}
 		bytes
 	}
