@@ -915,8 +915,8 @@ fn should_deploy() {
 	let contract = from_hex("0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032").unwrap();
 
 	new_test_ext().execute_with(|| {
-		let alice_account_id = <Test as Config>::AddressMapping::to_account(&alice());
-		let bob_account_id = <Test as Config>::AddressMapping::to_account(&bob());
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 
 		// contract not created yet
 		assert_noop!(EVM::deploy(Origin::signed(alice_account_id.clone()), H160::default()), Error::<Test>::ContractNotFound);
@@ -1016,7 +1016,7 @@ fn should_deploy_free() {
 #[test]
 fn should_enable_contract_development() {
 	new_test_ext().execute_with(|| {
-		let alice_account_id = <Test as Config>::AddressMapping::to_account(&alice());
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		assert_ok!(EVM::enable_contract_development(Origin::signed(alice_account_id)));
 		assert_eq!(
 			Accounts::<Test>::get(alice()).unwrap().developer_deposit,
@@ -1029,7 +1029,7 @@ fn should_enable_contract_development() {
 #[test]
 fn should_disable_contract_development() {
 	new_test_ext().execute_with(|| {
-		let alice_account_id = <Test as Config>::AddressMapping::to_account(&alice());
+		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 
 		// contract development is not enabled yet
 		assert_noop!(
