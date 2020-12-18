@@ -8,10 +8,7 @@ use frame_support::{
 	weights::WeightToFeeCoefficients,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{
-	evm::{AddressMapping, EvmAddress},
-	Amount, TokenSymbol, TradingPair,
-};
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::H256;
 use sp_runtime::{
@@ -131,20 +128,6 @@ impl pallet_balances::Config for Runtime {
 pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
-
-pub struct MockAddressMapping;
-impl<AccountId> AddressMapping<AccountId> for MockAddressMapping
-where
-	AccountId: Default,
-{
-	fn to_account(_evm: &EvmAddress) -> AccountId {
-		Default::default()
-	}
-
-	fn to_evm_address(_account: &AccountId) -> Option<EvmAddress> {
-		None
-	}
-}
 
 pub struct MockEVMBridge;
 impl<Balance> EVMBridge<Balance> for MockEVMBridge

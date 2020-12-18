@@ -5,7 +5,7 @@
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use orml_traits::parameter_type_with_key;
 use pallet_balances;
-use primitives::TokenSymbol;
+use primitives::{mocks::MockAddressMapping, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -145,7 +145,7 @@ ord_parameter_types! {
 }
 
 impl module_evm::Config for Runtime {
-	type AddressMapping = EvmAddressMapping;
+	type AddressMapping = MockAddressMapping;
 	type Currency = PalletBalances;
 	type MergeAccount = ();
 	type ContractExistentialDeposit = ContractExistentialDeposit;
@@ -170,27 +170,12 @@ impl module_evm_bridge::Config for Runtime {
 
 pub type EVMBridge = module_evm_bridge::Module<Runtime>;
 
-pub struct EvmAddressMapping;
-impl AddressMapping<AccountId32> for EvmAddressMapping {
-	fn to_account(evm: &H160) -> AccountId32 {
-		let mut data: [u8; 32] = [0u8; 32];
-		data[0..4].copy_from_slice(b"evm:");
-		data[4..24].copy_from_slice(&evm[..]);
-		AccountId32::from(data)
-	}
-
-	fn to_evm_address(account: &AccountId32) -> Option<H160> {
-		let data: [u8; 32] = account.clone().into();
-		Some(H160::from_slice(&data[4..24]))
-	}
-}
-
 impl Config for Runtime {
 	type Event = TestEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type WeightInfo = ();
-	type AddressMapping = EvmAddressMapping;
+	type AddressMapping = MockAddressMapping;
 	type EVMBridge = EVMBridge;
 }
 pub type Currencies = Module<Runtime>;

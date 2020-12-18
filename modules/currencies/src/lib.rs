@@ -222,7 +222,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::ERC20(contract) => {
-				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
 					let context = InvokeContext {
 						contract,
 						source: Default::default(),
@@ -239,7 +239,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	fn free_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::ERC20(contract) => {
-				if let Some(address) = T::AddressMapping::to_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
 					let context = InvokeContext {
 						contract,
 						source: Default::default(),
@@ -256,7 +256,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 	fn ensure_can_withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		match currency_id {
 			CurrencyId::ERC20(contract) => {
-				let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
+				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
 				let balance = T::EVMBridge::balance_of(
 					InvokeContext {
 						contract,
@@ -285,8 +285,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 
 		match currency_id {
 			CurrencyId::ERC20(contract) => {
-				let source = T::AddressMapping::to_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
-				let address = T::AddressMapping::to_evm_address(&to).ok_or(Error::<T>::AccountNotFound)?;
+				let source = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
+				let address = T::AddressMapping::get_or_create_evm_address(&to);
 				T::EVMBridge::transfer(InvokeContext { contract, source }, address, amount)?;
 			}
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::transfer(from, to, amount)?,
