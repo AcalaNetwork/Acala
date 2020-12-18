@@ -133,11 +133,11 @@ pub trait ClientHandle {
 #[derive(Clone)]
 pub enum Client {
 	#[cfg(feature = "with-mandala-runtime")]
-	Mandala(Arc<crate::FullClient<mandala_runtime::RuntimeApi, crate::Executor>>),
+	Mandala(Arc<crate::FullClient<mandala_runtime::RuntimeApi, crate::MandalaExecutor>>),
 	#[cfg(feature = "with-karura-runtime")]
-	Karura(Arc<crate::FullClient<karura_runtime::RuntimeApi, crate::Executor>>),
+	Karura(Arc<crate::FullClient<karura_runtime::RuntimeApi, crate::KaruraExecutor>>),
 	#[cfg(feature = "with-acala-runtime")]
-	Acala(Arc<crate::FullClient<acala_runtime::RuntimeApi, crate::Executor>>),
+	Acala(Arc<crate::FullClient<acala_runtime::RuntimeApi, crate::AcalaExecutor>>),
 }
 
 impl ClientHandle for Client {
