@@ -139,9 +139,13 @@ parameter_types! {
 }
 
 ord_parameter_types! {
+	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
+	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = 10;
 	pub const StorageDefaultQuota: u32 = 0x6000;
+	pub const DeveloperDeposit: u64 = 1000;
+	pub const DeploymentFee: u64 = 200;
 }
 
 impl module_evm::Config for Runtime {
@@ -159,6 +163,12 @@ impl module_evm::Config for Runtime {
 	type GasToWeight = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
+
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = TreasuryAccount;
+	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+
 	type WeightInfo = ();
 }
 
@@ -187,22 +197,21 @@ pub fn erc20_address() -> H160 {
 }
 
 pub fn alice() -> AccountId {
-	<Runtime as Config>::AddressMapping::to_account(
+	<Runtime as Config>::AddressMapping::get_account_id(
 		&H160::from_str("1000000000000000000000000000000000000001").unwrap(),
 	)
 }
 
 pub fn bob() -> AccountId {
-	<Runtime as Config>::AddressMapping::to_account(
+	<Runtime as Config>::AddressMapping::get_account_id(
 		&H160::from_str("1000000000000000000000000000000000000002").unwrap(),
 	)
 }
 
-parameter_types! {
-	pub ALICE: AccountId = AccountId32::from([1u8; 32]);
-	pub BOB: AccountId = AccountId32::from([2u8; 32]);
-	pub EVA: AccountId = AccountId32::from([5u8; 32]);
-}
+pub const ALICE: AccountId = AccountId::new([1u8; 32]);
+pub const BOB: AccountId = AccountId::new([2u8; 32]);
+pub const EVA: AccountId = AccountId::new([5u8; 32]);
+
 pub const ID_1: LockIdentifier = *b"1       ";
 
 pub struct ExtBuilder {
@@ -225,10 +234,10 @@ impl ExtBuilder {
 
 	pub fn one_hundred_for_alice_n_bob(self) -> Self {
 		self.balances(vec![
-			(ALICE::get(), NATIVE_CURRENCY_ID, 100),
-			(BOB::get(), NATIVE_CURRENCY_ID, 100),
-			(ALICE::get(), X_TOKEN_ID, 100),
-			(BOB::get(), X_TOKEN_ID, 100),
+			(ALICE, NATIVE_CURRENCY_ID, 100),
+			(BOB, NATIVE_CURRENCY_ID, 100),
+			(ALICE, X_TOKEN_ID, 100),
+			(BOB, X_TOKEN_ID, 100),
 		])
 	}
 

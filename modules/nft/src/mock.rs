@@ -10,8 +10,8 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, Amount, BlockNumber, CurrencyId};
-use sp_core::H256;
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId};
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -49,7 +49,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = BaseFilter;
@@ -195,7 +195,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
 	type WeightInfo = ();
-	type AddressMapping = primitives::emv::mock::AddressMapping;
+	type AddressMapping = MockAddressMapping;
 	type EVMBridge = MockEVMBridge;
 }
 
@@ -223,8 +223,8 @@ impl orml_nft::Config for Runtime {
 
 use frame_system::Call as SystemCall;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
+pub const ALICE: AccountId = AccountId::new([1u8; 32]);
+pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const CLASS_ID: <Runtime as orml_nft::Config>::ClassId = 0;
 pub const CLASS_ID_NOT_EXIST: <Runtime as orml_nft::Config>::ClassId = 1;
 pub const TOKEN_ID: <Runtime as orml_nft::Config>::TokenId = 0;

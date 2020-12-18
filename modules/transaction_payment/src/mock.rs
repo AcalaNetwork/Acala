@@ -10,18 +10,18 @@ use frame_support::{
 use orml_traits::parameter_type_with_key;
 use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
-use sp_core::H256;
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header, traits::IdentityLookup, DispatchError, DispatchResult, FixedPointNumber, ModuleId, Perbill,
 };
 use sp_std::cell::RefCell;
 use support::{EVMBridge, InvokeContext, Ratio};
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
+pub const ALICE: AccountId = AccountId::new([1u8; 32]);
+pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 
@@ -166,7 +166,7 @@ thread_local! {
 }
 
 ord_parameter_types! {
-	pub const Zero: AccountId = 0;
+	pub const Zero: AccountId = AccountId::new([0u8; 32]);
 }
 
 parameter_types! {

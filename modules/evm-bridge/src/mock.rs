@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
-use primitives::mocks::MockAddressMapping;
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -66,6 +66,10 @@ impl pallet_balances::Config for Runtime {
 }
 
 pub type Balances = pallet_balances::Module<Runtime>;
+
+parameter_types! {
+	pub const MinimumPeriod: u64 = 1000;
+}
 
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;

@@ -12,8 +12,8 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, Amount, BlockNumber, CurrencyId};
-use sp_core::H256;
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId};
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -44,7 +44,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = BaseFilter;
@@ -190,7 +190,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
 	type WeightInfo = ();
-	type AddressMapping = primitives::emv::mock::AddressMapping;
+	type AddressMapping = MockAddressMapping;
 	type EVMBridge = MockEVMBridge;
 }
 

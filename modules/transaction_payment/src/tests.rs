@@ -8,7 +8,8 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	BlockWeights, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB,
+	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, TransactionPayment, ACA, ALICE,
+	AUSD, BOB,
 };
 use orml_traits::MultiCurrency;
 use sp_runtime::testing::TestXt;
@@ -124,7 +125,7 @@ fn query_info_works() {
 		.weight_fee(2)
 		.build()
 		.execute_with(|| {
-			let call = Call::PalletBalances(pallet_balances::Call::transfer(2, 69));
+			let call = Call::PalletBalances(pallet_balances::Call::transfer(AccountId::new([2u8; 32]), 69));
 			let origin = 111111;
 			let extra = ();
 			let xt = TestXt::new(call, Some((origin, extra)));
