@@ -3,6 +3,7 @@ use sp_std::{convert::TryInto, marker::PhantomData, mem, result::Result};
 
 use module_evm::ExitError;
 use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
+use sp_core::H160;
 
 const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
@@ -21,6 +22,7 @@ pub trait InputT {
 	fn action(&self) -> Result<Self::Action, Self::Error>;
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error>;
+	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
@@ -74,7 +76,16 @@ where
 		let mut address = [0u8; 20];
 		address.copy_from_slice(&param[12..]);
 
-		Ok(AddressMapping::to_account(&address.into()))
+		Ok(AddressMapping::get_account_id(&address.into()))
+	}
+
+	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error> {
+		let param = self.nth_param(index)?;
+
+		let mut address = [0u8; 20];
+		address.copy_from_slice(&param[12..]);
+
+		Ok(H160::from_slice(&address))
 	}
 
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
@@ -135,9 +146,9 @@ mod tests {
 	use super::*;
 
 	use frame_support::{assert_err, assert_ok};
-	use sp_core::{crypto::AccountId32, H160};
+	use sp_core::H160;
 
-	use primitives::{AccountId, CurrencyId, TokenSymbol};
+	use primitives::{mocks::MockAddressMapping, AccountId, CurrencyId, TokenSymbol};
 
 	#[derive(Debug, PartialEq, Eq)]
 	pub enum Action {
@@ -155,26 +166,7 @@ mod tests {
 		}
 	}
 
-	pub struct EvmAddressMapping;
-	impl AddressMappingT<AccountId> for EvmAddressMapping {
-		fn to_account(address: &H160) -> AccountId {
-			let mut data: [u8; 32] = [0u8; 32];
-			data[0..4].copy_from_slice(b"evm:");
-			data[4..24].copy_from_slice(&address[..]);
-			AccountId32::from(data).into()
-		}
-
-		fn to_evm_address(account_id: &AccountId) -> Option<H160> {
-			let data: [u8; 32] = account_id.clone().into();
-			if data.starts_with(b"evm:") {
-				Some(H160::from_slice(&data[4..24]))
-			} else {
-				None
-			}
-		}
-	}
-
-	pub type TestInput<'a> = Input<'a, Action, AccountId, EvmAddressMapping>;
+	pub type TestInput<'a> = Input<'a, Action, AccountId, MockAddressMapping>;
 
 	#[test]
 	fn nth_param_works() {
@@ -203,12 +195,24 @@ mod tests {
 	fn account_id_works() {
 		let mut address = [0u8; 20];
 		address[19] = 1;
-		let account_id = EvmAddressMapping::to_account(&address.into());
+		let account_id = MockAddressMapping::get_account_id(&address.into());
 
 		let mut raw_input = [0u8; 32];
 		raw_input[31] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.account_id_at(0), account_id);
+	}
+
+	#[test]
+	fn evm_address_works() {
+		let mut address = [0u8; 20];
+		address[19] = 1;
+		let evm_address = H160::from_slice(&address);
+
+		let mut raw_input = [0u8; 32];
+		raw_input[31] = 1;
+		let input = TestInput::new(&raw_input[..]);
+		assert_ok!(input.evm_address_at(0), evm_address);
 	}
 
 	#[test]
