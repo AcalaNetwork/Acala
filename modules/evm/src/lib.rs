@@ -554,13 +554,12 @@ decl_module! {
 				if let Some(account_info) = maybe_account_info.as_mut() {
 					ensure!(account_info.developer_deposit.is_none(), Error::<T>::ContractDevelopmentAlreadyEnabled);
 					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
-					Ok(())
 				} else {
 					let mut account_info = AccountInfo::<T>::new(Default::default());
 					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
 					*maybe_account_info = Some(account_info);
-					Ok(())
 				}
+				Ok(())
 			})?;
 			Module::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
 		}

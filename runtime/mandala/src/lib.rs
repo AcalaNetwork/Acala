@@ -1228,8 +1228,6 @@ parameter_types! {
 	pub const ChainId: u64 = 595;
 	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub const DeveloperDeposit: Balance = DOLLARS;
-	pub const DeploymentFee: Balance = DOLLARS;
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1237,6 +1235,8 @@ parameter_types! {
 	pub const ContractExistentialDeposit: Balance = 0;
 	pub const StorageDepositPerByte: Balance = 0;
 	pub const StorageDefaultQuota: u32 = u32::MAX;
+	pub const DeveloperDeposit: Balance = 0;
+	pub const DeploymentFee: Balance = 0;
 }
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -1245,6 +1245,8 @@ parameter_types! {
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	// https://eips.ethereum.org/EIPS/eip-170
 	pub const StorageDefaultQuota: u32 = 0x6000;
+	pub const DeveloperDeposit: Balance = DOLLARS;
+	pub const DeploymentFee: Balance = DOLLARS;
 }
 
 pub type MultiCurrencyPrecompile =
