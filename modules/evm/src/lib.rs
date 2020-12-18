@@ -530,7 +530,7 @@ decl_module! {
 		#[transactional]
 		pub fn deploy(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let address = T::AddressMapping::get_or_create_evm_address(&who);
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::DeploymentFee::get(), ExistenceRequirement::AllowDeath)?;
 			Self::mark_deployed(contract, Some(address))?;
 			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
@@ -548,7 +548,7 @@ decl_module! {
 		#[transactional]
 		pub fn enable_contract_development(origin) {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let address = T::AddressMapping::get_or_create_evm_address(&who);
 			T::Currency::reserve(&who, T::DeveloperDeposit::get())?;
 			Accounts::<T>::mutate(address, |maybe_account_info| -> DispatchResult {
 				if let Some(account_info) = maybe_account_info.as_mut() {
@@ -568,7 +568,7 @@ decl_module! {
 		#[transactional]
 		pub fn disable_contract_development(origin) {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::to_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			let deposit = Accounts::<T>::mutate(address, |maybe_account_info| -> Result<BalanceOf<T>, Error<T>> {
 				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractDevelopmentNotEnabled)?;
 				account_info.developer_deposit.take().ok_or(Error::<T>::ContractDevelopmentNotEnabled)
