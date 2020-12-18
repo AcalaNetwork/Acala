@@ -1,6 +1,8 @@
 pub mod handler;
 
-use crate::{precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Module, Vicinity};
+use crate::{
+	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Module, Vicinity,
+};
 use evm::CreateScheme;
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
@@ -163,6 +165,10 @@ impl<T: Config> Runner<T> {
 
 		let mut substate =
 			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		if !substate.is_contract_deployed(&target) && !substate.has_permission_to_call(&source) {
+			return Err(Error::<T>::NoPermission.into());
+		}
 
 		substate.inc_nonce(source);
 
