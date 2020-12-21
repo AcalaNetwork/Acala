@@ -37,10 +37,10 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
+use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_grandpa::fg_primitives;
@@ -775,12 +775,13 @@ parameter_types! {
 	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 }
 
-impl orml_currencies::Config for Runtime {
+impl module_currencies::Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type EVMBridge = EVMBridge;
 }
 
 pub struct EnsureRootOrAcalaTreasury;
@@ -1116,6 +1117,7 @@ impl module_staking_pool::Config for Runtime {
 
 impl module_homa::Config for Runtime {
 	type Homa = StakingPool;
+	type WeightInfo = weights::homa::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1235,6 +1237,8 @@ parameter_types! {
 	pub const ContractExistentialDeposit: Balance = 0;
 	pub const StorageDepositPerByte: Balance = 0;
 	pub const StorageDefaultQuota: u32 = u32::MAX;
+	pub const DeveloperDeposit: Balance = 0;
+	pub const DeploymentFee: Balance = 0;
 }
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -1243,6 +1247,8 @@ parameter_types! {
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	// https://eips.ethereum.org/EIPS/eip-170
 	pub const StorageDefaultQuota: u32 = 0x6000;
+	pub const DeveloperDeposit: Balance = DOLLARS;
+	pub const DeploymentFee: Balance = DOLLARS;
 }
 
 pub type MultiCurrencyPrecompile =
@@ -1274,6 +1280,10 @@ impl module_evm::Config for Runtime {
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = TreasuryModuleAccount;
+	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
@@ -1303,7 +1313,7 @@ construct_runtime!(
 
 		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
 		EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Module, Call, Event<T>},
+		Currencies: module_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
 
@@ -1743,11 +1753,12 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, evm_accounts, benchmarking::evm_accounts);
+			orml_add_benchmark!(params, batches, homa, benchmarking::homa);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
 			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
+			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
 			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);

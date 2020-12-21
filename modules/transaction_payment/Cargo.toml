@@ -16,7 +16,7 @@ pallet-balances = { version = "2.0.0", default-features = false }
 pallet-proxy = { version = "2.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
-orml-currencies = { path = "../../orml/currencies", default-features = false }
+module-currencies = { path = "../../modules/currencies", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
@@ -38,7 +38,7 @@ std = [
 	"sp-io/std",
 	"sp-std/std",
 	"orml-tokens/std",
-	"orml-currencies/std",
+	"module-currencies/std",
 	"pallet-balances/std",
 	"pallet-proxy/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",

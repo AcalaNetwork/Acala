@@ -157,7 +157,7 @@ decl_module! {
 }
 
 impl<T: Config> Module<T> {
-	fn new_era(now: T::BlockNumber) {
+	pub fn new_era(now: T::BlockNumber) {
 		let new_era = CurrentEra::mutate(|era| {
 			*era += 1;
 			*era

@@ -39,7 +39,7 @@ pub type SystemModule = frame_system::Module<Runtime>;
 pub type EmergencyShutdownModule = module_emergency_shutdown::Module<Runtime>;
 pub type AuctionManagerModule = module_auction_manager::Module<Runtime>;
 pub type AuthorityModule = orml_authority::Module<Runtime>;
-pub type Currencies = orml_currencies::Module<Runtime>;
+pub type Currencies = module_currencies::Module<Runtime>;
 pub type SchedulerModule = pallet_scheduler::Module<Runtime>;
 
 fn run_to_block(n: u32) {
@@ -925,7 +925,7 @@ fn test_authority_module() {
 			// schedule_dispatch
 			run_to_block(1);
 			// DSWF transfer
-			let transfer_call = Call::Currencies(orml_currencies::Call::transfer(
+			let transfer_call = Call::Currencies(module_currencies::Call::transfer(
 				AccountId::from(BOB).into(),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				amount(500),

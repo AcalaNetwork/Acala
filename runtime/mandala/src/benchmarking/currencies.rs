@@ -15,7 +15,7 @@ use orml_traits::MultiCurrency;
 const SEED: u32 = 0;
 
 runtime_benchmarks! {
-	{ Runtime, orml_currencies }
+	{ Runtime, module_currencies }
 
 	_ {}
 
