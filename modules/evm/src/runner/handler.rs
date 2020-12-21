@@ -1,8 +1,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, ContractInfo, Event, Log,
-	MergeAccount, Module, Vicinity,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, CodeInfos, Codes, Config, ContractInfo, Event,
+	Log, MergeAccount, Module, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -349,14 +349,14 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			}) = maybe_account_info.as_mut()
 			{
 				if !storage_usage.is_zero() {
-					// need to find maintainer and update maintainer_storage_usage
-					let additional_storage = Module::<T>::additional_storage(address);
-					if *storage_usage != additional_storage {
-						return Err(ExitError::Other(
-							"this contract is maintainer of some other contracts".into(),
-						));
-					}
+					return Err(ExitError::Other(
+						"this contract is the maintainer of some other contracts".into(),
+					));
+				}
 
+				let additional_storage = Module::<T>::additional_storage(address);
+				if !additional_storage.is_zero() {
+					// need to find maintainer and update maintainer_storage_usage
 					<Accounts<T>>::mutate(
 						&contract_info.maintainer,
 						|maybe_maintainer_account_info| -> Result<(), ExitError> {
@@ -366,7 +366,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 							}) = maybe_maintainer_account_info.as_mut()
 							{
 								*maintainer_storage_usage = maintainer_storage_usage
-									.checked_sub(*storage_usage)
+									.checked_sub(additional_storage)
 									.ok_or_else(|| ExitError::Other("NumOutOfBound".into()))?;
 								Ok(())
 							} else {
@@ -448,11 +448,10 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 						try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
-						if <Module<T>>::on_contract_initialization(&address, &maintainer, out, None).is_ok() {
-							TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
-						} else {
-							TransactionOutcome::Rollback(Capture::Exit((s.into(), None, Vec::new())))
-						}
+						<Module<T>>::on_contract_initialization(&address, &maintainer, out, None).map_or_else(
+							|e| TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
+							|_| TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new()))),
+						)
 					}
 					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
 				},
@@ -536,8 +535,15 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			}
 
 			try_or_rollback!(self.gasometer.record_cost(target_gas));
+			let pre_additional_storage = Module::<T>::additional_storage(context.caller);
 
-			let (reason, out) = substate.execute(context.caller, context.address, context.apparent_value, code, input);
+			let (reason, out) = substate.execute(
+				context.caller,
+				context.address,
+				context.apparent_value,
+				code.clone(),
+				input,
+			);
 
 			debug::debug!(
 				target: "evm",
@@ -550,7 +556,44 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 					try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 					try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 
-					TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
+					// update storage_usage
+					<Accounts<T>>::mutate(&context.caller, |maybe_account_info| -> Result<(), ExitError> {
+						if let Some(AccountInfo {
+							contract_info: Some(contract_info),
+							storage_quota,
+							..
+						}) = maybe_account_info.as_mut()
+						{
+							let code_size =
+								CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
+							let additional_storage = contract_info
+								.total_storage_size()
+								.saturating_add(code_size)
+								.saturating_sub(*storage_quota);
+
+							if additional_storage != pre_additional_storage {
+								// get maintainer quota and pay for the additional_storage
+								Module::<T>::do_update_maintainer_storage_usage(
+									&contract_info.maintainer,
+									pre_additional_storage,
+									additional_storage,
+								)
+								.map_or_else(
+									|_| Err(ExitError::Other("update maintainer storage usage failed".into())),
+									|_| Ok(()),
+								)?;
+							}
+
+							Ok(())
+						} else {
+							// create contract
+							Ok(())
+						}
+					})
+					.map_or_else(
+						|e| TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
+						|_| TransactionOutcome::Commit(Capture::Exit((s.into(), out))),
+					)
 				}
 				ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), out))),
 				ExitReason::Error(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),

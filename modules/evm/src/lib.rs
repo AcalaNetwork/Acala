@@ -716,7 +716,6 @@ impl<T: Config> Module<T> {
 
 		let default_value = H256::default();
 		let is_prev_value_default = Self::account_storages(address, index) == default_value;
-		let pre_additional_storage = Self::additional_storage(address);
 
 		if value == default_value {
 			if !is_prev_value_default {
@@ -735,7 +734,6 @@ impl<T: Config> Module<T> {
 		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
-				storage_quota,
 				..
 			}) = maybe_account_info.as_mut()
 			{
@@ -747,27 +745,6 @@ impl<T: Config> Module<T> {
 						contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
 					}
 					_ => (),
-				}
-
-				let additional_storage = {
-					let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-					contract_info
-						.total_storage_size()
-						.saturating_add(code_size)
-						.saturating_sub(*storage_quota)
-				};
-
-				if additional_storage != pre_additional_storage {
-					// get maintainer quota and pay for the additional_storage
-					Self::do_update_maintainer_storage_usage(
-						&contract_info.maintainer,
-						pre_additional_storage,
-						additional_storage,
-					)
-					.map_or_else(
-						|_| Err(ExitError::Other("update maintainer storage usage failed".into())),
-						|_| Ok(()),
-					)?;
 				}
 			}
 			Ok(())
@@ -800,6 +777,13 @@ impl<T: Config> Module<T> {
 			}
 
 			let adjust_deposit = T::StorageDepositPerByte::get().saturating_mul(bytes.into());
+			let additional_storage = {
+				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
+				contract_info
+					.total_storage_size()
+					.saturating_add(code_size)
+					.saturating_sub(account_info.storage_quota)
+			};
 
 			account_info.storage_rent_deposit = account_info
 				.storage_rent_deposit
@@ -820,14 +804,6 @@ impl<T: Config> Module<T> {
 				)?;
 			}
 			T::Currency::reserve(&maintainer_account, adjust_deposit)?;
-
-			let additional_storage = {
-				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-				contract_info
-					.total_storage_size()
-					.saturating_add(code_size)
-					.saturating_sub(account_info.storage_quota)
-			};
 
 			if !additional_storage.is_zero() {
 				if additional_storage > bytes {

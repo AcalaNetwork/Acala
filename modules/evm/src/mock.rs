@@ -141,7 +141,7 @@ ord_parameter_types! {
 	pub const ContractExistentialDeposit: u64 = 1;
 	pub const TransferMaintainerDeposit: u64 = 1;
 	pub const StorageDepositPerByte: u64 = 10;
-	pub const StorageDefaultQuota: u32 = 400;
+	pub const StorageDefaultQuota: u32 = 800;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 }

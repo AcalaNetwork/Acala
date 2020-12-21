@@ -297,7 +297,7 @@ fn should_transfer_from_contract() {
 		);
 		assert_eq!(balance(charlie()), 1 * amount);
 
-		// send via transfer
+		// send via send
 		let mut via_send = from_hex("0x74be4806").unwrap();
 		via_send.append(&mut Vec::from(H256::from(charlie()).as_bytes()));
 
@@ -567,24 +567,28 @@ fn should_add_and_remove_storage_quota() {
 
 		// Factory.createContract
 		let amount = 1000000000;
-		let create_contract = from_hex("0x412a5a6d").unwrap();
-		let result = Runner::<Test>::call(
-			alice(),
-			result.address,
-			create_contract,
-			amount,
-			1000000000,
-			<Test as Config>::config(),
-		)
-		.unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
+		let mut create_times = 0u64;
+		while EVM::additional_storage(factory_contract_address) == 0 {
+			let create_contract = from_hex("0x412a5a6d").unwrap();
+			let result = Runner::<Test>::call(
+				alice(),
+				result.address,
+				create_contract,
+				amount,
+				1000000000,
+				<Test as Config>::config(),
+			)
+			.unwrap();
+			assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
+			create_times += 1;
+		}
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - amount - <Test as Config>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE - amount * create_times - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(
 			balance(factory_contract_address),
-			amount - <Test as Config>::ContractExistentialDeposit::get()
+			amount * create_times - <Test as Config>::ContractExistentialDeposit::get() * create_times
 		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
 		assert_eq!(
@@ -592,7 +596,7 @@ fn should_add_and_remove_storage_quota() {
 			<Test as Config>::ContractExistentialDeposit::get()
 		);
 
-		assert_eq!(EVM::additional_storage(factory_contract_address), 95);
+		assert_eq!(EVM::additional_storage(factory_contract_address), 15);
 
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -602,11 +606,12 @@ fn should_add_and_remove_storage_quota() {
 			factory_contract_address,
 			add_storage_quota
 		));
-		assert_eq!(EVM::additional_storage(factory_contract_address), 85);
+		assert_eq!(EVM::additional_storage(factory_contract_address), 5);
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- amount - <Test as Config>::ContractExistentialDeposit::get()
+				- amount * create_times
+				- <Test as Config>::ContractExistentialDeposit::get()
 				- ((add_storage_quota as u64) * <Test as Config>::StorageDepositPerByte::get())
 		);
 
