@@ -34,6 +34,8 @@ enum Action {
 	QueryStorageDepositPerByte,
 	QueryStorageDefaultQuota,
 	QueryMaintainer,
+	QueryDeveloperDeposit,
+	QueryDeploymentFee,
 	AddStorageQuota,
 	RemoveStorageQuota,
 	RequestTransferMaintainer,
@@ -51,12 +53,14 @@ impl From<u8> for Action {
 			2 => Action::QueryStorageDepositPerByte,
 			3 => Action::QueryStorageDefaultQuota,
 			4 => Action::QueryMaintainer,
-			5 => Action::AddStorageQuota,
-			6 => Action::RemoveStorageQuota,
-			7 => Action::RequestTransferMaintainer,
-			8 => Action::CancelTransferMaintainer,
-			9 => Action::ConfirmTransferMaintainer,
-			10 => Action::RejectTransferMaintainer,
+			5 => Action::QueryDeveloperDeposit,
+			6 => Action::QueryDeploymentFee,
+			7 => Action::AddStorageQuota,
+			8 => Action::RemoveStorageQuota,
+			9 => Action::RequestTransferMaintainer,
+			10 => Action::CancelTransferMaintainer,
+			11 => Action::ConfirmTransferMaintainer,
+			12 => Action::RejectTransferMaintainer,
 			_ => Action::Unknown,
 		}
 	}
@@ -105,6 +109,14 @@ where
 				address[12..].copy_from_slice(&maintainer.as_bytes().to_vec());
 
 				Ok((ExitSucceed::Returned, address.to_vec(), 0))
+			}
+			Action::QueryDeveloperDeposit => {
+				let deposit = vec_u8_from_balance(EVM::query_developer_deposit());
+				Ok((ExitSucceed::Returned, deposit, 0))
+			}
+			Action::QueryDeploymentFee => {
+				let fee = vec_u8_from_balance(EVM::query_deployment_fee());
+				Ok((ExitSucceed::Returned, fee, 0))
 			}
 			Action::AddStorageQuota => {
 				let from = input.account_id_at(1)?;
