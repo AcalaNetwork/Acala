@@ -226,5 +226,6 @@ runtime-benchmarks = [
 # in WASM.
 disable-runtime-api = []
 with-ethereum-compatibility = [
-	"evm"
+	"evm",
+	"module-evm/with-ethereum-compatibility",
 ]

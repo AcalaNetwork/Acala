@@ -658,6 +658,9 @@ impl<T: Config> Module<T> {
 			code_hash,
 			existential_deposit: T::ContractExistentialDeposit::get(),
 			maintainer: *maintainer,
+			#[cfg(feature = "with-ethereum-compatibility")]
+			deployed: true,
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			deployed: false,
 		};
 
