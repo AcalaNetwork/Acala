@@ -60,3 +60,4 @@ std = [
 	"orml-traits/std",
 	"support/std",
 ]
+with-ethereum-compatibility = []

@@ -88,6 +88,8 @@ fn should_create_and_call_contract() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
 		let contract_address = result.address;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(contract_address);
 
 		assert_eq!(contract_address, H160::from_str("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
@@ -161,6 +163,8 @@ fn call_reverts_with_message() {
 		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get());
 
 		let contract_address = result.address;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(contract_address);
 
 		// call method `foo`
@@ -212,6 +216,8 @@ fn should_deploy_payable_contract() {
 
 		let result = Runner::<Test>::create(alice(), contract, amount, 100000, <Test as Config>::config()).unwrap();
 		let contract_address = result.address;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(contract_address);
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
@@ -274,6 +280,8 @@ fn should_transfer_from_contract() {
 			.expect("create shouldn't fail");
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		let contract_address = result.address;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(contract_address);
 
 		// send via transfer
@@ -365,7 +373,10 @@ fn contract_should_deploy_contracts() {
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		let factory_contract_address = result.address;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(factory_contract_address);
+
 		assert_eq!(balance(result.address), 0);
 		assert_eq!(
 			reserved_balance(result.address),
@@ -429,6 +440,7 @@ fn contract_deploy_contracts_failed() {
 			<Test as Config>::ContractExistentialDeposit::get()
 		);
 
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(result.address);
 
 		// Factory.createContract
@@ -552,6 +564,8 @@ fn should_add_and_remove_storage_quota() {
 			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
 		);
 		let factory_contract_address = result.address;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(factory_contract_address);
 
 		assert_eq!(balance(factory_contract_address), 0);
