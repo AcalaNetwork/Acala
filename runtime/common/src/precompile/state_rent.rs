@@ -18,6 +18,8 @@ use primitives::{evm::AddressMapping as AddressMappingT, Balance};
 /// - QueryStorageDepositPerByte.
 /// - QueryStorageDefaultQuota.
 /// - QueryMaintainer.
+/// - QueryDeveloperDeposit.
+/// - QueryDeploymentFee.
 /// - AddStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
 /// - RemoveStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
 /// - RequestTransferMaintainer. Rest `input` bytes: `from`, `contract`.
@@ -47,6 +49,7 @@ enum Action {
 
 impl From<u8> for Action {
 	fn from(a: u8) -> Self {
+		// reserve 0 - 127 for query, 128 - 255 for action
 		match a {
 			0 => Action::QueryContractExistentialDeposit,
 			1 => Action::QueryTransferMaintainerDeposit,
@@ -55,12 +58,12 @@ impl From<u8> for Action {
 			4 => Action::QueryMaintainer,
 			5 => Action::QueryDeveloperDeposit,
 			6 => Action::QueryDeploymentFee,
-			7 => Action::AddStorageQuota,
-			8 => Action::RemoveStorageQuota,
-			9 => Action::RequestTransferMaintainer,
-			10 => Action::CancelTransferMaintainer,
-			11 => Action::ConfirmTransferMaintainer,
-			12 => Action::RejectTransferMaintainer,
+			128 => Action::AddStorageQuota,
+			129 => Action::RemoveStorageQuota,
+			130 => Action::RequestTransferMaintainer,
+			131 => Action::CancelTransferMaintainer,
+			132 => Action::ConfirmTransferMaintainer,
+			133 => Action::RejectTransferMaintainer,
 			_ => Action::Unknown,
 		}
 	}
