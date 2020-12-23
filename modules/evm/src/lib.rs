@@ -1106,6 +1106,14 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 		})
 	}
 
+	fn query_developer_deposit() -> BalanceOf<T> {
+		T::DeveloperDeposit::get()
+	}
+
+	fn query_deployment_fee() -> BalanceOf<T> {
+		T::DeploymentFee::get()
+	}
+
 	fn add_storage_quota(from: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
 		Module::<T>::do_add_storage_quota(from, contract, bytes)
 	}

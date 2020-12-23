@@ -296,6 +296,10 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_storage_default_quota() -> u32;
 	/// Query the maintainer address from the ERC20 contract.
 	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
+	/// Query the constants `DeveloperDeposit` value from evm module.
+	fn query_developer_deposit() -> Balance;
+	/// Query the constants `DeploymentFee` value from evm module.
+	fn query_deployment_fee() -> Balance;
 	/// Add the quota at the given contract address.
 	fn add_storage_quota(from: AccountId, contract: H160, bytes: u32) -> DispatchResult;
 	/// Remove the quota at the given contract address.

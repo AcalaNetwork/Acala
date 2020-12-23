@@ -18,6 +18,8 @@ use primitives::{evm::AddressMapping as AddressMappingT, Balance};
 /// - QueryStorageDepositPerByte.
 /// - QueryStorageDefaultQuota.
 /// - QueryMaintainer.
+/// - QueryDeveloperDeposit.
+/// - QueryDeploymentFee.
 /// - AddStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
 /// - RemoveStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
 /// - RequestTransferMaintainer. Rest `input` bytes: `from`, `contract`.
@@ -34,6 +36,8 @@ enum Action {
 	QueryStorageDepositPerByte,
 	QueryStorageDefaultQuota,
 	QueryMaintainer,
+	QueryDeveloperDeposit,
+	QueryDeploymentFee,
 	AddStorageQuota,
 	RemoveStorageQuota,
 	RequestTransferMaintainer,
@@ -45,18 +49,21 @@ enum Action {
 
 impl From<u8> for Action {
 	fn from(a: u8) -> Self {
+		// reserve 0 - 127 for query, 128 - 255 for action
 		match a {
 			0 => Action::QueryContractExistentialDeposit,
 			1 => Action::QueryTransferMaintainerDeposit,
 			2 => Action::QueryStorageDepositPerByte,
 			3 => Action::QueryStorageDefaultQuota,
 			4 => Action::QueryMaintainer,
-			5 => Action::AddStorageQuota,
-			6 => Action::RemoveStorageQuota,
-			7 => Action::RequestTransferMaintainer,
-			8 => Action::CancelTransferMaintainer,
-			9 => Action::ConfirmTransferMaintainer,
-			10 => Action::RejectTransferMaintainer,
+			5 => Action::QueryDeveloperDeposit,
+			6 => Action::QueryDeploymentFee,
+			128 => Action::AddStorageQuota,
+			129 => Action::RemoveStorageQuota,
+			130 => Action::RequestTransferMaintainer,
+			131 => Action::CancelTransferMaintainer,
+			132 => Action::ConfirmTransferMaintainer,
+			133 => Action::RejectTransferMaintainer,
 			_ => Action::Unknown,
 		}
 	}
@@ -105,6 +112,14 @@ where
 				address[12..].copy_from_slice(&maintainer.as_bytes().to_vec());
 
 				Ok((ExitSucceed::Returned, address.to_vec(), 0))
+			}
+			Action::QueryDeveloperDeposit => {
+				let deposit = vec_u8_from_balance(EVM::query_developer_deposit());
+				Ok((ExitSucceed::Returned, deposit, 0))
+			}
+			Action::QueryDeploymentFee => {
+				let fee = vec_u8_from_balance(EVM::query_deployment_fee());
+				Ok((ExitSucceed::Returned, fee, 0))
 			}
 			Action::AddStorageQuota => {
 				let from = input.account_id_at(1)?;
