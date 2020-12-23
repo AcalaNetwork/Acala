@@ -55,6 +55,10 @@ pub trait WeightInfo {
 	fn cancel_transfer_maintainer() -> Weight;
 	fn confirm_transfer_maintainer() -> Weight;
 	fn reject_transfer_maintainer() -> Weight;
+	fn deploy() -> Weight;
+	fn deploy_free() -> Weight;
+	fn enable_contract_development() -> Weight;
+	fn disable_contract_development() -> Weight;
 }
 
 // Initially based on Istanbul hard fork configuration.
@@ -526,7 +530,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::RejectedTransferMaintainer(contract, invalid_maintainer));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::deploy()]
 		#[transactional]
 		pub fn deploy(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
@@ -536,7 +540,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::deploy_free()]
 		#[transactional]
 		pub fn deploy_free(origin, contract: EvmAddress) {
 			T::FreeDeploymentOrigin::ensure_origin(origin)?;
@@ -544,7 +548,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::enable_contract_development()]
 		#[transactional]
 		pub fn enable_contract_development(origin) {
 			let who = ensure_signed(origin)?;
@@ -564,7 +568,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::disable_contract_development()]
 		#[transactional]
 		pub fn disable_contract_development(origin) {
 			let who = ensure_signed(origin)?;

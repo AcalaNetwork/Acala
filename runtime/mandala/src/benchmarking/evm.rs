@@ -113,6 +113,27 @@ runtime_benchmarks! {
 		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
 		let new_maintainer = EvmAccounts::eth_address(&bob());
 	}: _(RawOrigin::Signed(alice_account_id()), address, new_maintainer)
+
+	deploy {
+		set_aca_balance(&alice_account_id(), dollar(1000));
+		set_aca_balance(&bob_account_id(), dollar(1000));
+		let address = deploy_contract(alice_account_id())?;
+	}: _(RawOrigin::Signed(alice_account_id()), address)
+
+	deploy_free {
+		set_aca_balance(&alice_account_id(), dollar(1000));
+		set_aca_balance(&bob_account_id(), dollar(1000));
+		let address = deploy_contract(alice_account_id())?;
+	}: _(RawOrigin::Root, address)
+
+	enable_contract_development {
+		set_aca_balance(&alice_account_id(), dollar(1000));
+	}: _(RawOrigin::Signed(alice_account_id()))
+
+	disable_contract_development {
+		set_aca_balance(&alice_account_id(), dollar(1000));
+		EVM::enable_contract_development(Origin::signed(alice_account_id()))?;
+	}: _(RawOrigin::Signed(alice_account_id()))
 }
 
 #[cfg(test)]
@@ -169,6 +190,34 @@ mod tests {
 	fn test_reject_transfer_maintainer() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_reject_transfer_maintainer());
+		});
+	}
+
+	#[test]
+	fn test_deploy() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_deploy());
+		});
+	}
+
+	#[test]
+	fn test_deploy_free() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_deploy_free());
+		});
+	}
+
+	#[test]
+	fn test_enable_contract_development() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_enable_contract_development());
+		});
+	}
+
+	#[test]
+	fn test_disable_contract_development() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_disable_contract_development());
 		});
 	}
 }
