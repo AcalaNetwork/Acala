@@ -262,8 +262,7 @@ impl<T: Config> StaticLookup for Module<T> {
 	}
 
 	fn unlookup(a: Self::Target) -> Self::Source {
-		let evm_address = T::AddressMapping::get_or_create_evm_address(&a);
-		MultiAddress::Address20(evm_address.0)
+		MultiAddress::Id(a)
 	}
 }
 

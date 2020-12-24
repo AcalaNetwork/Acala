@@ -2,7 +2,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Codec;
 use frame_support::{
 	parameter_types,
 	weights::{
@@ -12,14 +11,13 @@ use frame_support::{
 };
 use frame_system::limits;
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::AddressMapping, AccountIndex, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
+use primitives::{PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
 use sp_core::H160;
 use sp_runtime::{
-	traits::{Convert, Lookup, LookupError, Saturating},
+	traits::{Convert, Saturating},
 	transaction_validity::TransactionPriority,
-	FixedPointNumber, FixedPointOperand, MultiAddress, Perbill,
+	FixedPointNumber, FixedPointOperand, Perbill,
 };
-use sp_std::{fmt::Debug, marker::PhantomData};
 
 use static_assertions::const_assert;
 
@@ -289,21 +287,6 @@ pub struct GasToWeight;
 impl Convert<u32, Weight> for GasToWeight {
 	fn convert(a: u32) -> u64 {
 		a as Weight
-	}
-}
-
-pub struct EvmIndicesLookup<AccountId, AddressMapping>(PhantomData<(AccountId, AddressMapping)>);
-impl<AccountId, EvmAddressMapping> Lookup for EvmIndicesLookup<AccountId, EvmAddressMapping>
-where
-	AccountId: Codec + Clone + PartialEq + Debug,
-	EvmAddressMapping: AddressMapping<AccountId>,
-{
-	type Source = AccountId;
-	type Target = MultiAddress<AccountId, AccountIndex>;
-
-	fn lookup(&self, a: Self::Source) -> Result<Self::Target, LookupError> {
-		let evm_address = EvmAddressMapping::get_or_create_evm_address(&a);
-		Ok(MultiAddress::Address20(evm_address.0))
 	}
 }
 
