@@ -17,11 +17,18 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use orml_traits::account::MergeAccount;
-use primitives::evm::{AddressMapping, EvmAddress};
+use primitives::{
+	evm::{AddressMapping, EvmAddress},
+	AccountIndex,
+};
 use sp_core::{crypto::AccountId32, ecdsa};
 use sp_io::{
 	crypto::secp256k1_ecdsa_recover,
 	hashing::{blake2_256, keccak_256},
+};
+use sp_runtime::{
+	traits::{LookupError, StaticLookup},
+	MultiAddress,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
 
@@ -240,6 +247,22 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 			Accounts::<T>::remove(evm_addr);
 			EvmAddresses::<T>::remove(who);
 		}
+	}
+}
+
+impl<T: Config> StaticLookup for Module<T> {
+	type Source = MultiAddress<T::AccountId, AccountIndex>;
+	type Target = T::AccountId;
+
+	fn lookup(a: Self::Source) -> Result<Self::Target, LookupError> {
+		match a {
+			MultiAddress::Address20(i) => Ok(T::AddressMapping::get_account_id(&EvmAddress::from_slice(&i))),
+			_ => Err(LookupError),
+		}
+	}
+
+	fn unlookup(a: Self::Target) -> Self::Source {
+		MultiAddress::Id(a)
 	}
 }
 
