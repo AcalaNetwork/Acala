@@ -190,8 +190,8 @@ where
 
 	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
 
-	let import_setup = (block_import, grandpa_link, babe_link.clone());
-	let rpc_setup = shared_voter_state.clone();
+	let import_setup = (block_import, grandpa_link, babe_link);
+	let rpc_setup = shared_voter_state;
 
 	let rpc_extensions_builder = {
 		let client = client.clone();

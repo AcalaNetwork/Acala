@@ -51,7 +51,10 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: "rococo".into(),
+			para_id: 5_000_u32.into(),
+		},
 	))
 }
 
@@ -96,7 +99,10 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: "rococo".into(),
+			para_id: 5_000_u32.into(),
+		},
 	))
 }
 
@@ -210,10 +216,10 @@ fn testnet_genesis(
 		}),
 		pallet_indices: Some(IndicesConfig { indices: vec![] }),
 		pallet_balances: Some(BalancesConfig {
-			balances: initial_authorities
+			balances: endowed_accounts
 				.iter()
-				.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
-				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+				.cloned()
+				.map(|k| (k, INITIAL_BALANCE))
 				.chain(
 					get_all_module_accounts()
 						.iter()
@@ -398,10 +404,10 @@ fn mandala_genesis(
 		}),
 		pallet_indices: Some(IndicesConfig { indices: vec![] }),
 		pallet_balances: Some(BalancesConfig {
-			balances: initial_authorities
+			balances: endowed_accounts
 				.iter()
-				.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
-				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+				.cloned()
+				.map(|k| (k, INITIAL_BALANCE))
 				.chain(
 					get_all_module_accounts()
 						.iter()

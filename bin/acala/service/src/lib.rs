@@ -100,7 +100,7 @@ pub fn new_partial<RuntimeApi, Executor>(
 		FullClient<RuntimeApi, Executor>,
 		FullBackend,
 		(),
-		sp_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
+		sp_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
 		(),
 	>,
@@ -111,12 +111,14 @@ where
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
 {
-	// TODO: custom registry with `acala` prefix?
-	let registry = config.prometheus_registry();
+	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
 	let client = Arc::new(client);
+
+	// TODO: custom registry with `acala` prefix?
+	let registry = config.prometheus_registry();
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
@@ -124,8 +126,6 @@ where
 		task_manager.spawn_handle(),
 		client.clone(),
 	);
-
-	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
 	let import_queue = cumulus_consensus::import_queue::import_queue(
 		client.clone(),
@@ -136,14 +136,14 @@ where
 	)?;
 
 	Ok(PartialComponents {
-		client,
 		backend,
-		task_manager,
-		keystore_container,
-		select_chain: (),
+		client,
 		import_queue,
+		keystore_container,
+		task_manager,
 		transaction_pool,
 		inherent_data_providers,
+		select_chain: (),
 		other: (),
 	})
 }
@@ -263,6 +263,8 @@ where
 		);
 		let spawner = task_manager.spawn_handle();
 
+		let polkadot_backend = polkadot_full_node.backend.clone();
+
 		let params = StartCollatorParams {
 			para_id: id,
 			block_import: client.clone(),
@@ -276,6 +278,7 @@ where
 			polkadot_full_node,
 			spawner,
 			backend,
+			polkadot_backend,
 		};
 
 		start_collator(params).await?;
