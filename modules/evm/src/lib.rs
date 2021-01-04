@@ -715,7 +715,7 @@ impl<T: Config> Module<T> {
 
 		let code_size = code.len() as u32;
 		if code_size > T::MaxCodeSize::get() {
-			return Err(ExitError::OutOfGas.into());
+			return Err(ExitError::OutOfGas);
 		}
 		CodeInfos::mutate_exists(&code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
@@ -1204,7 +1204,7 @@ impl<T: Config> Module<T> {
 
 	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
 		EnsureOneOf::<T::AccountId, EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
-			.map_or(Err(BadOrigin), |v| Ok(v))
+			.map_or(Err(BadOrigin), Ok)
 	}
 }
 
