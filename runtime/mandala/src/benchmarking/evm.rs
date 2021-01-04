@@ -134,6 +134,19 @@ runtime_benchmarks! {
 		set_aca_balance(&alice_account_id(), dollar(1000));
 		EVM::enable_contract_development(Origin::signed(alice_account_id()))?;
 	}: _(RawOrigin::Signed(alice_account_id()))
+
+	set_code {
+		set_aca_balance(&alice_account_id(), dollar(1000));
+		let address = deploy_contract(alice_account_id())?;
+
+		let new_contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a400291234").to_vec();
+
+	}: _(RawOrigin::Signed(alice_account_id()), address, new_contract)
+
+	selfdestruct {
+		set_aca_balance(&alice_account_id(), dollar(1000));
+		let address = deploy_contract(alice_account_id())?;
+	}: _(RawOrigin::Signed(alice_account_id()), address)
 }
 
 #[cfg(test)]
@@ -218,6 +231,20 @@ mod tests {
 	fn test_disable_contract_development() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_disable_contract_development());
+		});
+	}
+
+	#[test]
+	fn test_set_code() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_set_code());
+		});
+	}
+
+	#[test]
+	fn test_selfdestruct() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_selfdestruct());
 		});
 	}
 }

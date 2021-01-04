@@ -63,6 +63,8 @@ pub trait WeightInfo {
 	fn deploy_free() -> Weight;
 	fn enable_contract_development() -> Weight;
 	fn disable_contract_development() -> Weight;
+	fn set_code() -> Weight;
+	fn selfdestruct() -> Weight;
 }
 
 // Initially based on Istanbul hard fork configuration.
@@ -606,7 +608,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::set_code()]
 		#[transactional]
 		pub fn set_code(origin, contract: EvmAddress, code: Vec<u8>) {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
@@ -615,7 +617,7 @@ decl_module! {
 			Module::<T>::deposit_event(Event::<T>::ContractSetedCode(contract));
 		}
 
-		#[weight = 0]
+		#[weight = <T as Config>::WeightInfo::selfdestruct()]
 		#[transactional]
 		pub fn selfdestruct(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
