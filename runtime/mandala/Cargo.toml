@@ -25,6 +25,7 @@ frame-system-rpc-runtime-api = { version = "2.0.0", default-features = false }
 pallet-authorship = { version = "2.0.0", default-features = false }
 pallet-babe = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
+pallet-bounties = { version = "2.0.0", default-features = false }
 pallet-collective = { version = "2.0.0", default-features = false }
 pallet-elections-phragmen = { version = "2.0.0", default-features = false }
 pallet-grandpa = { version = "2.0.0", default-features = false }

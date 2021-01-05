@@ -66,6 +66,7 @@ impl frame_system::Config for Test {
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
+	type SS58Prefix = ();
 }
 
 parameter_types! {
@@ -145,6 +146,7 @@ ord_parameter_types! {
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 	pub const MaxCodeSize: u32 = 1000;
+	pub const ChainId: u64 = 1;
 }
 
 impl Config for Test {
@@ -159,7 +161,7 @@ impl Config for Test {
 
 	type Event = Event<Test>;
 	type Precompiles = ();
-	type ChainId = SystemChainId;
+	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
