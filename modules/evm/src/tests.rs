@@ -1106,11 +1106,6 @@ fn should_set_code() {
 		let contract_address = result.address;
 		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get());
 
-		assert_ok!(EVM::deploy_free(
-			Origin::signed(CouncilAccount::get()),
-			contract_address
-		));
-
 		assert_noop!(
 			EVM::set_code(Origin::signed(bob_account_id), contract_address, contract.clone()),
 			Error::<Test>::NoPermission
@@ -1123,8 +1118,22 @@ fn should_set_code() {
 		assert_ok!(EVM::set_code(Origin::root(), contract_address, contract));
 
 		assert_noop!(
-			EVM::set_code(Origin::signed(alice_account_id), contract_address, contract_err),
+			EVM::set_code(
+				Origin::signed(alice_account_id.clone()),
+				contract_address,
+				contract_err.clone()
+			),
 			Error::<Test>::ContractExceedsMaxCodeSize
+		);
+
+		assert_ok!(EVM::deploy_free(
+			Origin::signed(CouncilAccount::get()),
+			contract_address
+		));
+
+		assert_noop!(
+			EVM::set_code(Origin::signed(alice_account_id), contract_address, contract_err),
+			Error::<Test>::ContractAlreadyDeployed
 		);
 	});
 }
@@ -1150,10 +1159,6 @@ fn should_selfdestruct() {
 		let contract_address = result.address;
 		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get());
 
-		assert_ok!(EVM::deploy_free(
-			Origin::signed(CouncilAccount::get()),
-			contract_address
-		));
 		assert_noop!(
 			EVM::selfdestruct(Origin::signed(bob_account_id), contract_address),
 			Error::<Test>::NoPermission
