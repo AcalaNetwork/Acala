@@ -142,7 +142,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
 	pub const Version: RuntimeVersion = VERSION;
-	pub const SS58Prefix: u8 = 42;
+	pub const SS58Prefix: u8 = 8; // Ss58AddressFormat::KaruraAccount
 }
 
 impl frame_system::Config for Runtime {
