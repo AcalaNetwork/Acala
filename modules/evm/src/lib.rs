@@ -48,7 +48,8 @@ pub struct SystemChainId;
 
 impl Get<u64> for SystemChainId {
 	fn get() -> u64 {
-		sp_io::misc::chain_id()
+		//sp_io::misc::chain_id()
+		42u64
 	}
 }
 

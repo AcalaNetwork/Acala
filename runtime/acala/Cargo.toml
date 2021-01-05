@@ -41,6 +41,9 @@ pallet-timestamp = { version = "2.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0", default-features = false }
 pallet-treasury = { version = "2.0.0", default-features = false }
 pallet-utility = { version = "2.0.0", default-features = false }
+#TODO: use cargo version once `bounties` and `tips` pallets are released.
+pallet-tips = { git = "https://github.com/paritytech/substrate.git", rev = "2eaeb91bc6d20786aa4ad5f5538c0deac46e14cd" }
+pallet-bounties = { git = "https://github.com/paritytech/substrate.git", rev = "2eaeb91bc6d20786aa4ad5f5538c0deac46e14cd" }
 sp-api = { version = "2.0.0", default-features = false }
 sp-application-crypto = { version = "2.0.0", default-features = false }
 sp-block-builder = { version = "2.0.0", default-features = false }
@@ -143,6 +146,8 @@ std = [
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-treasury/std",
 	"pallet-utility/std",
+	"pallet-tips/std",
+	"pallet-bounties/std",
 	"sp-api/std",
 	"sp-block-builder/std",
 	"sp-consensus-babe/std",

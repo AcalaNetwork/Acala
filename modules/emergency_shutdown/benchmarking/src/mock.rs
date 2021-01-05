@@ -66,6 +66,7 @@ impl frame_system::Config for Runtime {
 	type ExtrinsicBaseWeight = ();
 	type MaximumExtrinsicWeight = ();
 	type BaseCallFilter = ();
+	type SS58Prefix = ();
 }
 
 parameter_type_with_key! {
