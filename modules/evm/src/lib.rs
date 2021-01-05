@@ -43,15 +43,6 @@ use support::{EVMStateRentTrait, EVM as EVMTrait};
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-/// Substrate system chain ID.
-pub struct SystemChainId;
-
-impl Get<u64> for SystemChainId {
-	fn get() -> u64 {
-		sp_io::misc::chain_id()
-	}
-}
-
 pub trait WeightInfo {
 	fn add_storage_quota() -> Weight;
 	fn remove_storage_quota() -> Weight;

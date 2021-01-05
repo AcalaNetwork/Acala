@@ -17,9 +17,9 @@ fn multi_lockable_currency_should_work() {
 		.one_hundred_for_alice_n_bob()
 		.build()
 		.execute_with(|| {
-			Currencies::set_lock(ID_1, X_TOKEN_ID, &ALICE, 50);
+			assert_ok!(Currencies::set_lock(ID_1, X_TOKEN_ID, &ALICE, 50));
 			assert_eq!(Tokens::locks(&ALICE, X_TOKEN_ID).len(), 1);
-			Currencies::set_lock(ID_1, NATIVE_CURRENCY_ID, &ALICE, 50);
+			assert_ok!(Currencies::set_lock(ID_1, NATIVE_CURRENCY_ID, &ALICE, 50));
 			assert_eq!(PalletBalances::locks(&ALICE).len(), 1);
 		});
 }
@@ -48,9 +48,9 @@ fn native_currency_lockable_should_work() {
 		.one_hundred_for_alice_n_bob()
 		.build()
 		.execute_with(|| {
-			NativeCurrency::set_lock(ID_1, &ALICE, 10);
+			assert_ok!(NativeCurrency::set_lock(ID_1, &ALICE, 10));
 			assert_eq!(PalletBalances::locks(&ALICE).len(), 1);
-			NativeCurrency::remove_lock(ID_1, &ALICE);
+			assert_ok!(NativeCurrency::remove_lock(ID_1, &ALICE));
 			assert_eq!(PalletBalances::locks(&ALICE).len(), 0);
 		});
 }
@@ -72,9 +72,9 @@ fn basic_currency_adapting_pallet_balances_lockable() {
 		.one_hundred_for_alice_n_bob()
 		.build()
 		.execute_with(|| {
-			AdaptedBasicCurrency::set_lock(ID_1, &ALICE, 10);
+			assert_ok!(AdaptedBasicCurrency::set_lock(ID_1, &ALICE, 10));
 			assert_eq!(PalletBalances::locks(&ALICE).len(), 1);
-			AdaptedBasicCurrency::remove_lock(ID_1, &ALICE);
+			assert_ok!(AdaptedBasicCurrency::remove_lock(ID_1, &ALICE));
 			assert_eq!(PalletBalances::locks(&ALICE).len(), 0);
 		});
 }
@@ -446,17 +446,17 @@ fn erc20_invalid_operation() {
 			Currencies::update_balance(Origin::root(), alice(), CurrencyId::ERC20(H160::default()), 1),
 			Error::<Runtime>::ERC20InvalidOperation,
 		);
-		assert_eq!(
+		assert_noop!(
 			Currencies::set_lock(ID_1, CurrencyId::ERC20(H160::default()), &alice(), 1),
-			(),
+			Error::<Runtime>::ERC20InvalidOperation
 		);
-		assert_eq!(
+		assert_noop!(
 			Currencies::extend_lock(ID_1, CurrencyId::ERC20(H160::default()), &alice(), 1),
-			(),
+			Error::<Runtime>::ERC20InvalidOperation
 		);
-		assert_eq!(
+		assert_noop!(
 			Currencies::remove_lock(ID_1, CurrencyId::ERC20(H160::default()), &alice()),
-			(),
+			Error::<Runtime>::ERC20InvalidOperation
 		);
 		assert_eq!(
 			Currencies::can_reserve(CurrencyId::ERC20(H160::default()), &alice(), 1),

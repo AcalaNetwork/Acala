@@ -357,25 +357,35 @@ impl<T: Config> MultiCurrencyExtended<T::AccountId> for Module<T> {
 impl<T: Config> MultiLockableCurrency<T::AccountId> for Module<T> {
 	type Moment = T::BlockNumber;
 
-	fn set_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) {
+	fn set_lock(
+		lock_id: LockIdentifier,
+		currency_id: Self::CurrencyId,
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => {}
+			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::set_lock(lock_id, who, amount),
 			_ => T::MultiCurrency::set_lock(lock_id, currency_id, who, amount),
 		}
 	}
 
-	fn extend_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) {
+	fn extend_lock(
+		lock_id: LockIdentifier,
+		currency_id: Self::CurrencyId,
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => {}
+			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::extend_lock(lock_id, who, amount),
 			_ => T::MultiCurrency::extend_lock(lock_id, currency_id, who, amount),
 		}
 	}
 
-	fn remove_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId) {
+	fn remove_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => {}
+			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::remove_lock(lock_id, who),
 			_ => T::MultiCurrency::remove_lock(lock_id, currency_id, who),
 		}
@@ -509,16 +519,16 @@ where
 {
 	type Moment = T::BlockNumber;
 
-	fn set_lock(lock_id: LockIdentifier, who: &T::AccountId, amount: Self::Balance) {
-		<Module<T> as MultiLockableCurrency<T::AccountId>>::set_lock(lock_id, GetCurrencyId::get(), who, amount);
+	fn set_lock(lock_id: LockIdentifier, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		<Module<T> as MultiLockableCurrency<T::AccountId>>::set_lock(lock_id, GetCurrencyId::get(), who, amount)
 	}
 
-	fn extend_lock(lock_id: LockIdentifier, who: &T::AccountId, amount: Self::Balance) {
-		<Module<T> as MultiLockableCurrency<T::AccountId>>::extend_lock(lock_id, GetCurrencyId::get(), who, amount);
+	fn extend_lock(lock_id: LockIdentifier, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		<Module<T> as MultiLockableCurrency<T::AccountId>>::extend_lock(lock_id, GetCurrencyId::get(), who, amount)
 	}
 
-	fn remove_lock(lock_id: LockIdentifier, who: &T::AccountId) {
-		<Module<T> as MultiLockableCurrency<T::AccountId>>::remove_lock(lock_id, GetCurrencyId::get(), who);
+	fn remove_lock(lock_id: LockIdentifier, who: &T::AccountId) -> DispatchResult {
+		<Module<T> as MultiLockableCurrency<T::AccountId>>::remove_lock(lock_id, GetCurrencyId::get(), who)
 	}
 }
 
@@ -664,16 +674,19 @@ where
 {
 	type Moment = Moment;
 
-	fn set_lock(lock_id: LockIdentifier, who: &AccountId, amount: Self::Balance) {
+	fn set_lock(lock_id: LockIdentifier, who: &AccountId, amount: Self::Balance) -> DispatchResult {
 		Currency::set_lock(lock_id, who, amount, WithdrawReasons::all());
+		Ok(())
 	}
 
-	fn extend_lock(lock_id: LockIdentifier, who: &AccountId, amount: Self::Balance) {
+	fn extend_lock(lock_id: LockIdentifier, who: &AccountId, amount: Self::Balance) -> DispatchResult {
 		Currency::extend_lock(lock_id, who, amount, WithdrawReasons::all());
+		Ok(())
 	}
 
-	fn remove_lock(lock_id: LockIdentifier, who: &AccountId) {
+	fn remove_lock(lock_id: LockIdentifier, who: &AccountId) -> DispatchResult {
 		Currency::remove_lock(lock_id, who);
+		Ok(())
 	}
 }
 

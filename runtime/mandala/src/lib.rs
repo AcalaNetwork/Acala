@@ -143,6 +143,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
 	pub const Version: RuntimeVersion = VERSION;
+	pub const SS58Prefix: u8 = 42; // Ss58AddressFormat::SubstrateAccount
 }
 
 impl frame_system::Config for Runtime {
@@ -170,6 +171,7 @@ impl frame_system::Config for Runtime {
 	type DbWeight = RocksDbWeight;
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
+	type SS58Prefix = SS58Prefix;
 }
 
 parameter_types! {
@@ -511,7 +513,6 @@ parameter_types! {
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
 	pub const TipReportDepositBase: Balance = DOLLARS;
-	pub const DataDepositPerByte: Balance = CENTS;
 	pub const SevenDays: BlockNumber = 7 * DAYS;
 	pub const ZeroDay: BlockNumber = 0;
 	pub const OneDay: BlockNumber = DAYS;
@@ -520,6 +521,7 @@ parameter_types! {
 	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
 	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
 	pub const BountyValueMinimum: Balance = 5 * DOLLARS;
+	pub const DataDepositPerByte: Balance = CENTS;
 	pub const MaximumReasonLength: u32 = 16384;
 }
 
@@ -528,24 +530,37 @@ impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
-	type Tippers = GeneralCouncilProvider;
-	type TipCountdown = TipCountdown;
-	type TipFindersFee = TipFindersFee;
-	type TipReportDepositBase = TipReportDepositBase;
-	type DataDepositPerByte = DataDepositPerByte;
 	type Event = Event;
 	type OnSlash = ();
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
+	type BurnDestination = ();
+	type SpendFunds = Bounties;
+	type WeightInfo = ();
+}
+
+impl pallet_bounties::Config for Runtime {
+	type Event = Event;
 	type BountyDepositBase = BountyDepositBase;
 	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
 	type BountyUpdatePeriod = BountyUpdatePeriod;
 	type BountyCuratorDeposit = BountyCuratorDeposit;
 	type BountyValueMinimum = BountyValueMinimum;
+	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
-	type BurnDestination = ();
+	type WeightInfo = ();
+}
+
+impl pallet_tips::Config for Runtime {
+	type Event = Event;
+	type DataDepositPerByte = DataDepositPerByte;
+	type MaximumReasonLength = MaximumReasonLength;
+	type Tippers = GeneralCouncilProvider;
+	type TipCountdown = TipCountdown;
+	type TipFindersFee = TipFindersFee;
+	type TipReportDepositBase = TipReportDepositBase;
 	type WeightInfo = ();
 }
 
@@ -1321,6 +1336,8 @@ construct_runtime!(
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
 
 		AcalaTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
+		Bounties: pallet_bounties::{Module, Call, Storage, Event<T>},
+		Tips: pallet_tips::{Module, Call, Storage, Event<T>},
 
 		// Utility
 		Utility: pallet_utility::{Module, Call, Event},
@@ -1509,6 +1526,10 @@ impl_runtime_apis! {
 
 		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
 			Babe::current_epoch_start()
+		}
+
+		fn current_epoch() -> sp_consensus_babe::Epoch {
+			Babe::current_epoch()
 		}
 
 		fn generate_key_ownership_proof(
