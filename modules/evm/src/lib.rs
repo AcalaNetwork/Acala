@@ -166,7 +166,6 @@ pub struct ContractInfo<T: Config> {
 	pub existential_deposit: BalanceOf<T>,
 	pub maintainer: EvmAddress,
 	pub deployed: bool,
-	pub is_public: bool,
 }
 
 impl<T: Config> ContractInfo<T> {
@@ -324,8 +323,8 @@ decl_event! {
 		ContractDevelopmentDisabled(AccountId),
 		/// Deployed contract. \[contract\]
 		ContractDeployed(EvmAddress),
-		/// Seted contract code. \[contract\]
-		ContractSetedCode(EvmAddress),
+		/// Set contract code. \[contract\]
+		ContractSetCode(EvmAddress),
 		/// Selfdestructed contract code. \[contract\]
 		ContractSelfdestructed(EvmAddress),
 	}
@@ -355,10 +354,6 @@ decl_error! {
 		ContractDevelopmentAlreadyEnabled,
 		/// Contract already deployed
 		ContractAlreadyDeployed,
-		/// Contract is public
-		ContractIsPublic,
-		/// Contract is not public
-		ContractIsNotPublic,
 		/// Contract exceeds max code size
 		ContractExceedsMaxCodeSize,
 	}
@@ -614,7 +609,7 @@ decl_module! {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
 			Self::do_set_code(root_or_signed, contract, code)?;
 
-			Module::<T>::deposit_event(Event::<T>::ContractSetedCode(contract));
+			Module::<T>::deposit_event(Event::<T>::ContractSetCode(contract));
 		}
 
 		#[weight = <T as Config>::WeightInfo::selfdestruct()]
@@ -712,7 +707,6 @@ impl<T: Config> Module<T> {
 			deployed: true,
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			deployed: false,
-			is_public: *maintainer == EvmAddress::default(),
 		};
 
 		let code_size = code.len() as u32;
@@ -1111,7 +1105,7 @@ impl<T: Config> Module<T> {
 			if let Either::Right(signer) = root_or_signed {
 				let maintainer = T::AddressMapping::get_evm_address(&signer).ok_or(Error::<T>::AddressNotMapped)?;
 				ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
-				ensure!(!contract_info.is_public, Error::<T>::ContractIsPublic);
+				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 			}
 
 			let code_size = code.len() as u32;
@@ -1169,7 +1163,7 @@ impl<T: Config> Module<T> {
 				.ok_or(Error::<T>::ContractNotFound)?;
 
 			ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
-			ensure!(!contract_info.is_public, Error::<T>::ContractIsPublic);
+			ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
 			// delete contract & storage & refund to maintainer
 			let additional_storage = Self::additional_storage(contract);
