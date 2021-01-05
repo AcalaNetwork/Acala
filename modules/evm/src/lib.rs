@@ -20,19 +20,23 @@ use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
+	error::BadOrigin,
 	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
 	RuntimeDebug,
 };
-use frame_system::ensure_signed;
+use frame_system::{ensure_signed, EnsureOneOf, EnsureRoot, EnsureSigned};
 use orml_traits::account::MergeAccount;
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
-use sp_runtime::traits::{CheckedAdd, CheckedSub, Convert, One, Saturating, UniqueSaturatedInto, Zero};
+use sp_runtime::{
+	traits::{CheckedAdd, CheckedSub, Convert, One, Saturating, UniqueSaturatedInto, Zero},
+	Either,
+};
 use sp_std::{marker::PhantomData, vec::Vec};
 use support::{EVMStateRentTrait, EVM as EVMTrait};
 
@@ -59,6 +63,8 @@ pub trait WeightInfo {
 	fn deploy_free() -> Weight;
 	fn enable_contract_development() -> Weight;
 	fn disable_contract_development() -> Weight;
+	fn set_code() -> Weight;
+	fn selfdestruct() -> Weight;
 }
 
 // Initially based on Istanbul hard fork configuration.
@@ -116,6 +122,8 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type StorageDepositPerByte: Get<BalanceOf<Self>>;
 	/// Storage quota default value.
 	type StorageDefaultQuota: Get<u32>;
+	/// Contract max code size.
+	type MaxCodeSize: Get<u32>;
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
@@ -137,7 +145,9 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	/// The EVM address for creating system contract.
 	type NetworkContractSource: Get<EvmAddress>;
 
+	/// Deposit for the developer.
 	type DeveloperDeposit: Get<BalanceOf<Self>>;
+	/// The fee for deploying the contract.
 	type DeploymentFee: Get<BalanceOf<Self>>;
 	type TreasuryAccount: Get<Self::AccountId>;
 	type FreeDeploymentOrigin: EnsureOrigin<Self::Origin>;
@@ -313,6 +323,10 @@ decl_event! {
 		ContractDevelopmentDisabled(AccountId),
 		/// Deployed contract. \[contract\]
 		ContractDeployed(EvmAddress),
+		/// Set contract code. \[contract\]
+		ContractSetCode(EvmAddress),
+		/// Selfdestructed contract code. \[contract\]
+		ContractSelfdestructed(EvmAddress),
 	}
 }
 
@@ -340,6 +354,8 @@ decl_error! {
 		ContractDevelopmentAlreadyEnabled,
 		/// Contract already deployed
 		ContractAlreadyDeployed,
+		/// Contract exceeds max code size
+		ContractExceedsMaxCodeSize,
 	}
 }
 
@@ -357,6 +373,12 @@ decl_module! {
 		const StorageDepositPerByte: BalanceOf<T> = T::StorageDepositPerByte::get();
 		/// Storage quota default value.
 		const StorageDefaultQuota: u32 = T::StorageDefaultQuota::get();
+		/// Contract max code size.
+		const MaxCodeSize: u32 = T::MaxCodeSize::get();
+		/// Deposit for the developer.
+		const DeveloperDeposit: BalanceOf<T> = T::DeveloperDeposit::get();
+		/// The fee for deploying the contract.
+		const DeploymentFee: BalanceOf<T> = T::DeploymentFee::get();
 
 		/// Issue an EVM call operation. This is similar to a message call transaction in Ethereum.
 		#[weight = T::GasToWeight::convert(*gas_limit)]
@@ -580,6 +602,25 @@ decl_module! {
 			T::Currency::unreserve(&who, deposit);
 			Module::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
 		}
+
+		#[weight = <T as Config>::WeightInfo::set_code()]
+		#[transactional]
+		pub fn set_code(origin, contract: EvmAddress, code: Vec<u8>) {
+			let root_or_signed = Self::ensure_root_or_signed(origin)?;
+			Self::do_set_code(root_or_signed, contract, code)?;
+
+			Module::<T>::deposit_event(Event::<T>::ContractSetCode(contract));
+		}
+
+		#[weight = <T as Config>::WeightInfo::selfdestruct()]
+		#[transactional]
+		pub fn selfdestruct(origin, contract: EvmAddress) {
+			let who = ensure_signed(origin)?;
+			let maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			Self::do_selfdestruct(who, &maintainer, contract)?;
+
+			Module::<T>::deposit_event(Event::<T>::ContractSelfdestructed(contract));
+		}
 	}
 }
 
@@ -669,6 +710,9 @@ impl<T: Config> Module<T> {
 		};
 
 		let code_size = code.len() as u32;
+		if code_size > T::MaxCodeSize::get() {
+			return Err(ExitError::OutOfGas);
+		}
 		CodeInfos::mutate_exists(&code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
 				code_info.ref_count = code_info.ref_count.saturating_add(1);
@@ -1048,6 +1092,115 @@ impl<T: Config> Module<T> {
 				Err(Error::<T>::ContractNotFound.into())
 			}
 		})
+	}
+
+	fn do_set_code(root_or_signed: Either<(), T::AccountId>, contract: EvmAddress, code: Vec<u8>) -> DispatchResult {
+		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
+			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info
+				.contract_info
+				.as_ref()
+				.ok_or(Error::<T>::ContractNotFound)?;
+
+			if let Either::Right(signer) = root_or_signed {
+				let maintainer = T::AddressMapping::get_evm_address(&signer).ok_or(Error::<T>::AddressNotMapped)?;
+				ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+			}
+
+			let code_size = code.len() as u32;
+			let code_hash = code_hash(&code.as_slice());
+			if code_hash == contract_info.code_hash {
+				return Ok(());
+			}
+
+			ensure!(
+				code_size <= T::MaxCodeSize::get(),
+				Error::<T>::ContractExceedsMaxCodeSize
+			);
+
+			let pre_additional_storage = Self::additional_storage(contract);
+
+			CodeInfos::mutate_exists(&code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_add(1);
+				} else {
+					let new = CodeInfo {
+						code_size,
+						ref_count: 1,
+					};
+					*maybe_code_info = Some(new);
+
+					Codes::insert(&code_hash, code);
+				}
+			});
+
+			let additional_storage = contract_info
+				.total_storage_size()
+				.saturating_add(code_size)
+				.saturating_sub(account_info.storage_quota);
+			if additional_storage != pre_additional_storage {
+				// get maintainer quota and pay for the additional_storage
+				Self::do_update_maintainer_storage_usage(
+					&contract_info.maintainer,
+					pre_additional_storage,
+					additional_storage,
+				)?;
+			}
+
+			Ok(())
+		})?;
+
+		Ok(())
+	}
+
+	fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
+		Accounts::<T>::mutate_exists(contract, |maybe_account_info| -> DispatchResult {
+			let account_info = maybe_account_info.take().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info
+				.contract_info
+				.as_ref()
+				.ok_or(Error::<T>::ContractNotFound)?;
+
+			ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
+			ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+
+			// delete contract & storage & refund to maintainer
+			let additional_storage = Self::additional_storage(contract);
+			if !additional_storage.is_zero() {
+				// get maintainer quota and refund the additional_storage
+				Self::do_update_maintainer_storage_usage(&contract_info.maintainer, additional_storage, 0)?;
+			}
+
+			AccountStorages::remove_prefix(contract);
+
+			CodeInfos::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_sub(1);
+					if code_info.ref_count == 0 {
+						Codes::remove(&contract_info.code_hash);
+						*maybe_code_info = None;
+					}
+				}
+			});
+
+			let contract_account_id = T::AddressMapping::get_account_id(&contract);
+			// storage_rent_deposit + contract_info.existential_deposit + developer_deposit
+			T::Currency::unreserve(
+				&contract_account_id,
+				T::Currency::reserved_balance(&contract_account_id),
+			);
+			T::MergeAccount::merge_account(&contract_account_id, &who)?;
+
+			Ok(())
+		})?;
+
+		Ok(())
+	}
+
+	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
+		EnsureOneOf::<T::AccountId, EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
+			.map_or(Err(BadOrigin), Ok)
 	}
 }
 

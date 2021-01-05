@@ -144,6 +144,7 @@ ord_parameter_types! {
 	pub const StorageDefaultQuota: u32 = 800;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
+	pub const MaxCodeSize: u32 = 1000;
 }
 
 impl Config for Test {
@@ -154,6 +155,7 @@ impl Config for Test {
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type StorageDefaultQuota = StorageDefaultQuota;
+	type MaxCodeSize = MaxCodeSize;
 
 	type Event = Event<Test>;
 	type Precompiles = ();

@@ -89,6 +89,7 @@ ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = 10;
 	pub const StorageDefaultQuota: u32 = 0x6000;
+	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 }
@@ -101,6 +102,7 @@ impl module_evm::Config for Runtime {
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type StorageDefaultQuota = StorageDefaultQuota;
+	type MaxCodeSize = MaxCodeSize;
 
 	type Event = ();
 	type Precompiles = ();

@@ -337,13 +337,10 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		let source = T::AddressMapping::get_account_id(&address);
 		let dest = T::AddressMapping::get_account_id(&target);
 
-		// unreserve ContractExistentialDeposit
-		self.unreserve(address, T::ContractExistentialDeposit::get())?;
-		// unreserve storage_rent_deposit
+		// unreserve deposit
 		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
-				storage_rent_deposit,
 				storage_usage,
 				..
 			}) = maybe_account_info.as_mut()
@@ -357,25 +354,14 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 				let additional_storage = Module::<T>::additional_storage(address);
 				if !additional_storage.is_zero() {
 					// need to find maintainer and update maintainer_storage_usage
-					<Accounts<T>>::mutate(
-						&contract_info.maintainer,
-						|maybe_maintainer_account_info| -> Result<(), ExitError> {
-							if let Some(AccountInfo {
-								storage_usage: maintainer_storage_usage,
-								..
-							}) = maybe_maintainer_account_info.as_mut()
-							{
-								*maintainer_storage_usage = maintainer_storage_usage
-									.checked_sub(additional_storage)
-									.ok_or_else(|| ExitError::Other("NumOutOfBound".into()))?;
-								Ok(())
-							} else {
-								Err(ExitError::Other("maintainer not found".into()))
-							}
-						},
+					Module::<T>::do_update_maintainer_storage_usage(&contract_info.maintainer, additional_storage, 0)
+						.map_or_else(
+						|_| Err(ExitError::Other("update maintainer storage usage failed".into())),
+						|_| Ok(()),
 					)?;
 				}
-				self.unreserve(address, *storage_rent_deposit)?;
+				// storage_rent_deposit + contract_info.existential_deposit + developer_deposit
+				self.unreserve(address, T::Currency::reserved_balance(&source))?;
 			}
 
 			Ok(())
