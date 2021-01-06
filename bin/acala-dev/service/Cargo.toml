@@ -71,6 +71,7 @@ runtime-benchmarks = [
 ]
 with-mandala-runtime = [
 	"mandala-runtime",
+	"mandala-runtime/standalone",
 ]
 with-karura-runtime = [
 	"karura-runtime",

@@ -248,3 +248,4 @@ with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
 ]
 parachain = []
+standalone = []

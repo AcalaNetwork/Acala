@@ -1314,20 +1314,24 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+#[cfg(feature = "parachain")]
 impl cumulus_parachain_upgrade::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 }
 
+#[cfg(feature = "parachain")]
 impl cumulus_message_broker::Config for Runtime {
 	type DownwardMessageHandlers = ();
 	type HrmpMessageHandlers = ();
 }
 
+#[cfg(feature = "parachain")]
 impl parachain_info::Config for Runtime {}
 
 #[allow(clippy::large_enum_variant)]
-construct_runtime!(
+#[cfg(feature = "parachain")]
+construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
 		NodeBlock = primitives::Block,
@@ -1427,15 +1431,122 @@ construct_runtime!(
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
 		EVMBridge: module_evm_bridge::{Module},
 
+		// Dev
+		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
+
 		// Parachain
 		ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
 		MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
 		ParachainInfo: parachain_info::{Module, Storage, Config},
+	}
+}
+
+#[allow(clippy::large_enum_variant)]
+#[cfg(feature = "standalone")]
+construct_runtime! {
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = primitives::Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		// Core
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
+
+		// Tokens & Related
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+
+		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
+		EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
+		Currencies: module_currencies::{Module, Call, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
+
+		AcalaTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
+		Bounties: pallet_bounties::{Module, Call, Storage, Event<T>},
+		Tips: pallet_tips::{Module, Call, Storage, Event<T>},
+
+		// Utility
+		Utility: pallet_utility::{Module, Call, Event},
+		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
+		Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+
+		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
+		GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
+
+		// Consensus & Staking
+		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
+		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
+		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
+		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
+		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
+		Historical: pallet_session_historical::{Module},
+
+		// Governance
+		GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		GeneralCouncilMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+		HonzonCouncil: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		HonzonCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
+		HomaCouncil: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
+		TechnicalCommittee: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
+
+		Authority: orml_authority::{Module, Call, Event<T>, Origin<T>},
+		ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>},
+
+		// Oracle
+		AcalaOracle: orml_oracle::<Instance1>::{Module, Storage, Call, Config<T>, Event<T>},
+		BandOracle: orml_oracle::<Instance2>::{Module, Storage, Call, Config<T>, Event<T>},
+		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
+		OperatorMembershipAcala: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
+		OperatorMembershipBand: pallet_membership::<Instance6>::{Module, Call, Storage, Event<T>, Config<T>},
+
+		// ORML Core
+		Auction: orml_auction::{Module, Storage, Call, Event<T>},
+		Rewards: orml_rewards::{Module, Storage, Call},
+		OrmlNFT: orml_nft::{Module, Storage},
+
+		// Acala Core
+		Prices: module_prices::{Module, Storage, Call, Event},
+
+		// DEX
+		Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
+
+		// Honzon
+		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
+		Loans: module_loans::{Module, Storage, Call, Event<T>},
+		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event},
+		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
+		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
+
+		// Homa
+		Homa: module_homa::{Module, Call},
+		NomineesElection: module_nominees_election::{Module, Call, Storage},
+		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>, Config},
+		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage},
+
+		// Acala Other
+		Incentives: module_incentives::{Module, Storage, Call, Event<T>},
+		AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
+		NFT: module_nft::{Module, Call, Event<T>},
+
+		// Ecosystem modules
+		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+
+		// Smart contracts
+		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
+		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Module},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 	}
-);
+}
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
