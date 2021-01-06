@@ -1766,6 +1766,8 @@ impl_runtime_apis! {
 	}
 }
 
+cumulus_runtime::register_validate_block!(Block, Executive);
+
 #[cfg(test)]
 mod tests {
 	use super::*;

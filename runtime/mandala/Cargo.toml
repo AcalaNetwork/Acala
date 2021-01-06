@@ -63,6 +63,7 @@ libsecp256k1 = { version = "0.3.4", default-features = false, optional = true }
 pallet-bounties = { git = "https://github.com/paritytech/substrate.git", rev = "2eaeb91bc6d20786aa4ad5f5538c0deac46e14cd", default-features = false }
 pallet-tips = { git = "https://github.com/paritytech/substrate.git", rev = "2eaeb91bc6d20786aa4ad5f5538c0deac46e14cd", default-features = false }
 
+cumulus-runtime = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-primitives = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", default-features = false }
@@ -170,6 +171,7 @@ std = [
 	"pallet-bounties/std",
 	"pallet-tips/std",
 
+	"cumulus-runtime/std",
 	"cumulus-parachain-upgrade/std",
 	"cumulus-primitives/std",
 	"cumulus-message-broker/std",
@@ -243,3 +245,4 @@ disable-runtime-api = []
 with-ethereum-compatibility = [
 	"evm"
 ]
+parachain = []

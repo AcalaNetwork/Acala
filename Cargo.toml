@@ -356,3 +356,4 @@ parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "44dbe
 cumulus-network = { git = "https://github.com/paritytech//cumulus", rev = "44dbe6aa9e60e0ca16acd8f776aaf85f8949b06e" }
 cumulus-service = { git = "https://github.com/paritytech//cumulus", rev = "44dbe6aa9e60e0ca16acd8f776aaf85f8949b06e" }
 cumulus-consensus = { git = "https://github.com/paritytech//cumulus", rev = "44dbe6aa9e60e0ca16acd8f776aaf85f8949b06e" }
+cumulus-runtime = { git = "https://github.com/paritytech//cumulus", rev = "44dbe6aa9e60e0ca16acd8f776aaf85f8949b06e" }

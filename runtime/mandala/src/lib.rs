@@ -1792,6 +1792,9 @@ impl_runtime_apis! {
 	}
 }
 
+#[cfg(feature = "parachain")]
+cumulus_runtime::register_validate_block!(Block, Executive);
+
 #[cfg(test)]
 mod tests {
 	use super::*;
