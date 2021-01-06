@@ -6,22 +6,24 @@ edition = "2018"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
+libsecp256k1 = { version = "0.3.4", default-features = false, features = ["hmac"] }
+
 frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
-libsecp256k1 = { version = "0.3.4", default-features = false, features = ["hmac"] }
 sp-core = { version = "2.0.0", default-features = false }
-sp-runtime = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
+sp-runtime = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+
 orml-traits = { path = "../../orml/traits", default-features = false }
+
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-support = { path = "../support", default-features = false }
-module-evm = { path = "../../modules/evm", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "2.0.0" }
-orml-currencies = { path = "../../orml/currencies", default-features = false }
-orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-currencies = { path = "../../orml/currencies" }
+orml-tokens = { path = "../../orml/tokens" }
 
 [features]
 default = ["std"]
@@ -36,6 +38,5 @@ std = [
 	"frame-system/std",
 	"primitives/std",
 	"orml-traits/std",
-	"module-evm/std",
 	"module-support/std",
 ]

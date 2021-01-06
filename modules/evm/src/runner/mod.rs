@@ -1,6 +1,8 @@
 pub mod handler;
 
-use crate::{precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Module, Vicinity};
+use crate::{
+	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Module, Vicinity,
+};
 use evm::CreateScheme;
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
@@ -119,14 +121,14 @@ impl<T: Config> Runner<T> {
 	}
 
 	fn transfer(source: H160, target: H160, value: BalanceOf<T>) -> Result<(), DispatchError> {
-		let from = T::AddressMapping::to_account(&source);
-		let to = T::AddressMapping::to_account(&target);
+		let from = T::AddressMapping::get_account_id(&source);
+		let to = T::AddressMapping::get_account_id(&target);
 		T::Currency::transfer(&from, &to, value, ExistenceRequirement::AllowDeath)
 	}
 
 	fn transfer_and_reserve_deposit(source: H160, target: H160) -> Result<(), DispatchError> {
-		let from = T::AddressMapping::to_account(&source);
-		let to = T::AddressMapping::to_account(&target);
+		let from = T::AddressMapping::get_account_id(&source);
+		let to = T::AddressMapping::get_account_id(&target);
 		T::Currency::transfer(
 			&from,
 			&to,
@@ -163,6 +165,10 @@ impl<T: Config> Runner<T> {
 
 		let mut substate =
 			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+
+		if !substate.is_contract_deployed(&target) && !substate.has_permission_to_call(&source) {
+			return Err(Error::<T>::NoPermission.into());
+		}
 
 		substate.inc_nonce(source);
 

@@ -29,7 +29,7 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, Zero},
+	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, StaticLookup, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
@@ -283,9 +283,10 @@ decl_module! {
 		pub fn liquidate(
 			origin,
 			currency_id: CurrencyId,
-			who: T::AccountId,
+			who: <T::Lookup as StaticLookup>::Source,
 		) {
 			ensure_none(origin)?;
+			let who = T::Lookup::lookup(who)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			Self::liquidate_unsafe_cdp(who, currency_id)?;
 		}
@@ -311,9 +312,10 @@ decl_module! {
 		pub fn settle(
 			origin,
 			currency_id: CurrencyId,
-			who: T::AccountId,
+			who: <T::Lookup as StaticLookup>::Source,
 		) {
 			ensure_none(origin)?;
+			let who = T::Lookup::lookup(who)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			Self::settle_cdp_has_debit(who, currency_id)?;
 		}
@@ -449,6 +451,7 @@ decl_module! {
 
 impl<T: Config> Module<T> {
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) {
+		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::liquidate(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::info!(
@@ -460,6 +463,7 @@ impl<T: Config> Module<T> {
 	}
 
 	fn submit_unsigned_settlement_tx(currency_id: CurrencyId, who: T::AccountId) {
+		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::settle(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			debug::info!(
@@ -776,7 +780,8 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 		match call {
 			Call::liquidate(currency_id, who) => {
-				let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+				let account = T::Lookup::lookup(who.clone())?;
+				let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &account);
 				if !Self::is_cdp_unsafe(*currency_id, collateral, debit) || T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}
@@ -789,7 +794,8 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 					.build()
 			}
 			Call::settle(currency_id, who) => {
-				let Position { debit, .. } = <LoansOf<T>>::positions(currency_id, who);
+				let account = T::Lookup::lookup(who.clone())?;
+				let Position { debit, .. } = <LoansOf<T>>::positions(currency_id, account);
 				if debit.is_zero() || !T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Stale.into();
 				}

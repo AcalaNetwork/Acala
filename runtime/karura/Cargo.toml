@@ -22,6 +22,7 @@ frame-system-rpc-runtime-api = { version = "2.0.0", default-features = false }
 pallet-authorship = { version = "2.0.0", default-features = false }
 pallet-babe = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
+pallet-bounties = { version = "2.0.0", default-features = false }
 pallet-collective = { version = "2.0.0", default-features = false }
 pallet-elections-phragmen = { version = "2.0.0", default-features = false }
 pallet-grandpa = { version = "2.0.0", default-features = false }
@@ -38,6 +39,7 @@ pallet-staking = { version = "2.0.0", default-features = false }
 pallet-staking-reward-curve = { version = "2.0.0", default-features = false }
 pallet-sudo = { version = "2.0.0", default-features = false }
 pallet-timestamp = { version = "2.0.0", default-features = false }
+pallet-tips = { version = "2.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0", default-features = false }
 pallet-treasury = { version = "2.0.0", default-features = false }
 pallet-utility = { version = "2.0.0", default-features = false }
@@ -55,9 +57,6 @@ sp-staking = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-transaction-pool = { version = "2.0.0", default-features = false }
 sp-version = { version = "2.0.0", default-features = false }
-#TODO: use cargo version once `bounties` and `tips` pallets are released.
-pallet-bounties = { git = "https://github.com/paritytech/substrate.git", rev = "2eaeb91bc6d20786aa4ad5f5538c0deac46e14cd", default-features = false }
-pallet-tips = { git = "https://github.com/paritytech/substrate.git", rev = "2eaeb91bc6d20786aa4ad5f5538c0deac46e14cd", default-features = false }
 
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus", default-features = false }
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", default-features = false }
@@ -68,7 +67,6 @@ parachain-info = { git = "https://github.com/paritytech/cumulus", default-featur
 orml-auction = { path = "../../orml/auction", default-features = false }
 orml-authority = { path = "../../orml/authority", default-features = false }
 orml-benchmarking = { path = "../../orml/benchmarking", default-features = false, optional = true }
-orml-currencies = { path = "../../orml/currencies", default-features = false }
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
 orml-gradually-update = { path = "../../orml/gradually-update", default-features = false }
@@ -84,6 +82,7 @@ module-auction-manager = { path = "../../modules/auction_manager", default-featu
 module-cdp-engine = { path = "../../modules/cdp_engine", default-features = false }
 module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
+module-currencies = { path = "../../modules/currencies", default-features = false }
 module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
@@ -131,6 +130,7 @@ std = [
 	"frame-benchmarking/std",
 	"pallet-babe/std",
 	"pallet-balances/std",
+	"pallet-bounties/std",
 	"pallet-collective/std",
 	"pallet-contracts-primitives/std",
 	"pallet-contracts-rpc-runtime-api/std",
@@ -149,6 +149,7 @@ std = [
 	"pallet-staking/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
+	"pallet-tips/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-treasury/std",
 	"pallet-utility/std",
@@ -174,7 +175,6 @@ std = [
 	"orml-auction/std",
 	"orml-authority/std",
 	"orml-benchmarking/std",
-	"orml-currencies/std",
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
 	"orml-gradually-update/std",
@@ -190,6 +190,7 @@ std = [
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
 	"module-dex/std",
+	"module-currencies/std",
 	"module-emergency-shutdown/std",
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",

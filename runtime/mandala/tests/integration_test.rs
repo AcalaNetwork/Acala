@@ -20,7 +20,7 @@ use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
-	DispatchError, DispatchResult, FixedPointNumber,
+	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 
 const ORACLE1: [u8; 32] = [0u8; 32];
@@ -39,7 +39,7 @@ pub type SystemModule = frame_system::Module<Runtime>;
 pub type EmergencyShutdownModule = module_emergency_shutdown::Module<Runtime>;
 pub type AuctionManagerModule = module_auction_manager::Module<Runtime>;
 pub type AuthorityModule = orml_authority::Module<Runtime>;
-pub type Currencies = orml_currencies::Module<Runtime>;
+pub type Currencies = module_currencies::Module<Runtime>;
 pub type SchedulerModule = pallet_scheduler::Module<Runtime>;
 
 fn run_to_block(n: u32) {
@@ -687,7 +687,7 @@ fn test_honzon_module() {
 				CdpEngineModule::liquidate(
 					<Runtime as frame_system::Config>::Origin::none(),
 					CurrencyId::Token(TokenSymbol::XBTC),
-					AccountId::from(ALICE)
+					MultiAddress::Id(AccountId::from(ALICE))
 				)
 				.is_ok(),
 				false
@@ -704,7 +704,7 @@ fn test_honzon_module() {
 			assert_ok!(CdpEngineModule::liquidate(
 				<Runtime as frame_system::Config>::Origin::none(),
 				CurrencyId::Token(TokenSymbol::XBTC),
-				AccountId::from(ALICE)
+				MultiAddress::Id(AccountId::from(ALICE))
 			));
 
 			assert_eq!(
@@ -925,7 +925,7 @@ fn test_authority_module() {
 			// schedule_dispatch
 			run_to_block(1);
 			// DSWF transfer
-			let transfer_call = Call::Currencies(orml_currencies::Call::transfer(
+			let transfer_call = Call::Currencies(module_currencies::Call::transfer(
 				AccountId::from(BOB).into(),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				amount(500),
@@ -1136,7 +1136,7 @@ fn test_nft_module() {
 			);
 			assert_ok!(NFT::mint(
 				origin_of(NftModuleId::get().into_sub_account(0)),
-				AccountId::from(BOB),
+				MultiAddress::Id(AccountId::from(BOB)),
 				0,
 				vec![1],
 				1
@@ -1146,7 +1146,7 @@ fn test_nft_module() {
 			assert_ok!(NFT::destroy_class(
 				origin_of(NftModuleId::get().into_sub_account(0)),
 				0,
-				AccountId::from(BOB)
+				MultiAddress::Id(AccountId::from(BOB))
 			));
 			assert_eq!(
 				Balances::free_balance(AccountId::from(BOB)),
@@ -1274,6 +1274,25 @@ fn test_evm_module() {
 			));
 			let event = Event::module_evm(module_evm::RawEvent::RejectedTransferMaintainer(address, alice_address));
 			assert_eq!(last_event(), event);
+
+			// test EvmAccounts Lookup
+			assert_eq!(Balances::free_balance(alice_account_id()), 998000000100000000000);
+			assert_eq!(Balances::free_balance(bob_account_id()), 1000999999900000000000);
+			let to = EvmAccounts::eth_address(&alice());
+			assert_ok!(Currencies::transfer(
+				Origin::signed(bob_account_id()),
+				MultiAddress::Address20(to.0),
+				CurrencyId::Token(TokenSymbol::ACA),
+				amount(10)
+			));
+			assert_eq!(
+				Balances::free_balance(alice_account_id()),
+				998000000100000000000 + amount(10)
+			);
+			assert_eq!(
+				Balances::free_balance(bob_account_id()),
+				1000999999900000000000 - amount(10)
+			);
 		});
 }
 

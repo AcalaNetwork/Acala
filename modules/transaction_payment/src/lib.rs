@@ -193,7 +193,7 @@ where
 	}
 }
 
-pub trait Config: system::Config + orml_currencies::Config {
+pub trait Config: system::Config + module_currencies::Config {
 	/// All non-native currency ids in Acala.
 	type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
 
@@ -486,7 +486,7 @@ impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T>
 impl<T: Config + Send + Sync> ChargeTransactionPayment<T>
 where
 	<T as frame_system::Config>::Call:
-		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<module_currencies::Call<T>>,
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
 	/// utility constructor. Used only in client/factory code.
@@ -592,7 +592,7 @@ impl<T: Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
 	<T as frame_system::Config>::Call:
-		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<orml_currencies::Call<T>>,
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<module_currencies::Call<T>>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;

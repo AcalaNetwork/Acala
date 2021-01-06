@@ -62,12 +62,15 @@ where
 				let token_id = input.u64_at(2)?;
 
 				let owner: H160 = if let Some(o) = NFT::owner((class_id, token_id)) {
-					AddressMapping::to_evm_address(&o).unwrap_or_default()
+					AddressMapping::get_evm_address(&o).unwrap_or_else(|| AddressMapping::get_default_evm_address(&o))
 				} else {
 					Default::default()
 				};
 
-				Ok((ExitSucceed::Returned, owner.as_bytes().to_vec(), 0))
+				let mut address = [0u8; 32];
+				address[12..].copy_from_slice(&owner.as_bytes().to_vec());
+
+				Ok((ExitSucceed::Returned, address.to_vec(), 0))
 			}
 			Action::Transfer => {
 				let from = input.account_id_at(1)?;

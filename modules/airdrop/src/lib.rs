@@ -3,6 +3,7 @@
 use frame_support::{decl_event, decl_module, decl_storage, transactional};
 use frame_system::{self as system, ensure_root};
 use primitives::{AirDropCurrencyId, Balance};
+use sp_runtime::traits::StaticLookup;
 
 mod mock;
 mod tests;
@@ -48,11 +49,12 @@ decl_module! {
 		#[transactional]
 		pub fn airdrop(
 			origin,
-			to: T::AccountId,
+			to: <T::Lookup as StaticLookup>::Source,
 			currency_id: AirDropCurrencyId,
 			amount: Balance,
 		) {
 			ensure_root(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			<AirDrops<T>>::mutate(&to, currency_id, |balance| *balance += amount);
 			Self::deposit_event(RawEvent::Airdrop(to, currency_id, amount));
 		}
@@ -61,11 +63,12 @@ decl_module! {
 		#[transactional]
 		pub fn update_airdrop(
 			origin,
-			to: T::AccountId,
+			to: <T::Lookup as StaticLookup>::Source,
 			currency_id: AirDropCurrencyId,
 			amount: Balance,
 		) {
 			ensure_root(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			<AirDrops<T>>::insert(&to, currency_id, amount);
 			Self::deposit_event(RawEvent::UpdateAirdrop(to, currency_id, amount));
 		}

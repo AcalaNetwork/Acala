@@ -37,10 +37,10 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
+use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use orml_currencies::{BasicCurrencyAdapter, Currency};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_grandpa::fg_primitives;
@@ -143,13 +143,13 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
 	pub const Version: RuntimeVersion = VERSION;
-	pub const SS58Prefix: u8 = 42;
+	pub const SS58Prefix: u8 = 42; // Ss58AddressFormat::SubstrateAccount
 }
 
 impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
-	type Lookup = Indices;
+	type Lookup = (Indices, EvmAccounts);
 	type Index = Nonce;
 	type BlockNumber = BlockNumber;
 	type Hash = Hash;
@@ -513,7 +513,6 @@ parameter_types! {
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
 	pub const TipReportDepositBase: Balance = DOLLARS;
-	pub const DataDepositPerByte: Balance = CENTS;
 	pub const SevenDays: BlockNumber = 7 * DAYS;
 	pub const ZeroDay: BlockNumber = 0;
 	pub const OneDay: BlockNumber = DAYS;
@@ -522,6 +521,7 @@ parameter_types! {
 	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
 	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
 	pub const BountyValueMinimum: Balance = 5 * DOLLARS;
+	pub const DataDepositPerByte: Balance = CENTS;
 	pub const MaximumReasonLength: u32 = 16384;
 }
 
@@ -557,7 +557,7 @@ impl pallet_tips::Config for Runtime {
 	type Event = Event;
 	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
-	type Tippers = ElectionsPhragmen;
+	type Tippers = GeneralCouncilProvider;
 	type TipCountdown = TipCountdown;
 	type TipFindersFee = TipFindersFee;
 	type TipReportDepositBase = TipReportDepositBase;
@@ -790,12 +790,13 @@ parameter_types! {
 	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 }
 
-impl orml_currencies::Config for Runtime {
+impl module_currencies::Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type EVMBridge = EVMBridge;
 }
 
 pub struct EnsureRootOrAcalaTreasury;
@@ -1131,6 +1132,7 @@ impl module_staking_pool::Config for Runtime {
 
 impl module_homa::Config for Runtime {
 	type Homa = StakingPool;
+	type WeightInfo = weights::homa::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1250,6 +1252,9 @@ parameter_types! {
 	pub const ContractExistentialDeposit: Balance = 0;
 	pub const StorageDepositPerByte: Balance = 0;
 	pub const StorageDefaultQuota: u32 = u32::MAX;
+	pub const MaxCodeSize: u32 = 0x6000;
+	pub const DeveloperDeposit: Balance = 0;
+	pub const DeploymentFee: Balance = 0;
 }
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -1258,12 +1263,16 @@ parameter_types! {
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	// https://eips.ethereum.org/EIPS/eip-170
 	pub const StorageDefaultQuota: u32 = 0x6000;
+	pub const MaxCodeSize: u32 = 60 * 1024;
+	pub const DeveloperDeposit: Balance = DOLLARS;
+	pub const DeploymentFee: Balance = DOLLARS;
 }
 
 pub type MultiCurrencyPrecompile =
 	runtime_common::MultiCurrencyPrecompile<AccountId, EvmAddressMapping<Runtime>, Currencies>;
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
+pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
 
 #[cfg(feature = "with-ethereum-compatibility")]
 static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
@@ -1276,13 +1285,23 @@ impl module_evm::Config for Runtime {
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type StorageDefaultQuota = StorageDefaultQuota;
+	type MaxCodeSize = MaxCodeSize;
 
 	type Event = Event;
-	type Precompiles = runtime_common::AllPrecompiles<SystemContractsFilter, MultiCurrencyPrecompile, NFTPrecompile>;
+	type Precompiles = runtime_common::AllPrecompiles<
+		SystemContractsFilter,
+		MultiCurrencyPrecompile,
+		NFTPrecompile,
+		StateRentPrecompile,
+	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = TreasuryModuleAccount;
+	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
@@ -1324,7 +1343,7 @@ construct_runtime!(
 
 		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
 		EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Module, Call, Event<T>},
+		Currencies: module_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
 
@@ -1419,7 +1438,7 @@ construct_runtime!(
 );
 
 /// The address format for describing accounts.
-pub type Address = <Indices as StaticLookup>::Source;
+pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -1775,11 +1794,12 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, evm_accounts, benchmarking::evm_accounts);
+			orml_add_benchmark!(params, batches, homa, benchmarking::homa);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
 			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
+			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
 			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);

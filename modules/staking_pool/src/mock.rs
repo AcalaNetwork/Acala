@@ -6,8 +6,7 @@ use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::Amount;
-use primitives::TokenSymbol;
+use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -75,6 +74,7 @@ impl frame_system::Config for Runtime {
 	type DbWeight = ();
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
+	type SS58Prefix = ();
 }
 pub type System = frame_system::Module<Runtime>;
 

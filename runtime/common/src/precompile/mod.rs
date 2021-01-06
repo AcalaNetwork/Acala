@@ -15,9 +15,11 @@ use sp_std::{marker::PhantomData, prelude::*};
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
+pub mod state_rent;
 
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
+pub use state_rent::StateRentPrecompile;
 
 pub type EthereumPrecompiles = (
 	module_evm::precompiles::ECRecover,
@@ -26,15 +28,21 @@ pub type EthereumPrecompiles = (
 	module_evm::precompiles::Identity,
 );
 
-pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile>(
-	PhantomData<(PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile)>,
+pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile>(
+	PhantomData<(
+		PrecompileCallerFilter,
+		MultiCurrencyPrecompile,
+		NFTPrecompile,
+		StateRentPrecompile,
+	)>,
 );
 
-impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile> Precompiles
-	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile>
+impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile> Precompiles
+	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile>
 where
 	MultiCurrencyPrecompile: Precompile,
 	NFTPrecompile: Precompile,
+	StateRentPrecompile: Precompile,
 	PrecompileCallerFilter: PrecompileCallerFilterT,
 {
 	#[allow(clippy::type_complexity)]
@@ -54,6 +62,8 @@ where
 				Some(MultiCurrencyPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
 				Some(NFTPrecompile::execute(input, target_gas, context))
+			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 2) {
+				Some(StateRentPrecompile::execute(input, target_gas, context))
 			} else {
 				None
 			}
@@ -77,7 +87,8 @@ mod tests {
 		}
 	}
 
-	pub type WithSystemContractFilter = AllPrecompiles<crate::SystemContractsFilter, DummyPrecompile, DummyPrecompile>;
+	pub type WithSystemContractFilter =
+		AllPrecompiles<crate::SystemContractsFilter, DummyPrecompile, DummyPrecompile, DummyPrecompile>;
 
 	#[test]
 	fn precompile_filter_works_on_acala_precompiles() {

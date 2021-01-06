@@ -260,12 +260,12 @@ decl_module! {
 
 impl<T: Config> Module<T> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
-		T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
+		let _ = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
 		<Ledger<T>>::insert(who, ledger);
 	}
 
 	fn remove_ledger(who: &T::AccountId) {
-		T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
+		let _ = T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
 		<Ledger<T>>::remove(who);
 		<Nominations<T>>::remove(who);
 	}
