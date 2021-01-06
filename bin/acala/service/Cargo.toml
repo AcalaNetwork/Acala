@@ -66,7 +66,7 @@ acala-rpc = { path = "../../../rpc" }
 module-evm-rpc-runtime-api = { path = "../../../modules/evm/rpc/runtime_api" }
 
 runtime-common = { path = "../../../runtime/common" }
-mandala-runtime = { path = "../../../runtime/mandala", features = ["parachain"], optional = true }
+mandala-runtime = { path = "../../../runtime/mandala", optional = true }
 karura-runtime = { path = "../../../runtime/karura", optional = true }
 acala-runtime = { path = "../../../runtime/acala", optional = true }
 
@@ -83,7 +83,6 @@ runtime-benchmarks = [
 ]
 with-mandala-runtime = [
 	"mandala-runtime",
-	"mandala-runtime/parachain",
 ]
 with-karura-runtime = [
 	"karura-runtime",

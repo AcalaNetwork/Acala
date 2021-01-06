@@ -247,5 +247,4 @@ with-ethereum-compatibility = [
 	"evm",
 	"module-evm/with-ethereum-compatibility",
 ]
-parachain = []
 standalone = []

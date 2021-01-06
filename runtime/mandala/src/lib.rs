@@ -1314,19 +1314,19 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
-#[cfg(feature = "parachain")]
+#[cfg(not(feature = "standalone"))]
 impl cumulus_parachain_upgrade::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 }
 
-#[cfg(feature = "parachain")]
+#[cfg(not(feature = "standalone"))]
 impl cumulus_message_broker::Config for Runtime {
 	type DownwardMessageHandlers = ();
 	type HrmpMessageHandlers = ();
 }
 
-#[cfg(feature = "parachain")]
+#[cfg(not(feature = "standalone"))]
 impl parachain_info::Config for Runtime {}
 
 macro_rules! construct_mandala_runtime {
@@ -1441,7 +1441,7 @@ macro_rules! construct_mandala_runtime {
 	}
 }
 
-#[cfg(feature = "parachain")]
+#[cfg(not(feature = "standalone"))]
 construct_mandala_runtime! {
 	// Parachain
 	ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
@@ -1827,7 +1827,7 @@ impl_runtime_apis! {
 	}
 }
 
-#[cfg(feature = "parachain")]
+#[cfg(not(feature = "standalone"))]
 cumulus_runtime::register_validate_block!(Block, Executive);
 
 #[cfg(test)]
