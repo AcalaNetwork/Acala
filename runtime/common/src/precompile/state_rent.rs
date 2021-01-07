@@ -156,9 +156,3 @@ fn vec_u8_from_balance(b: Balance) -> Vec<u8> {
 	U256::from(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
 }
-
-fn vec_u8_from_u32(b: u32) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
-}

@@ -351,6 +351,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 				if !additional_storage.is_zero() {
 					// need to find maintainer and update storage_usage
 					Module::<T>::do_update_storage_usage(
+						&address,
 						&self.vicinity.origin,
 						additional_storage,
 						0,
@@ -563,6 +564,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 					if additional_storage != pre_additional_storage {
 						// get maintainer quota and pay for the additional_storage
 						Module::<T>::do_update_storage_usage(
+							&code_address,
 							&self.vicinity.origin,
 							pre_additional_storage,
 							additional_storage,

@@ -233,6 +233,7 @@ fn should_deploy_payable_contract() {
 			INITIAL_BALANCE
 				- amount - (EVM::additional_storage(contract_address) as u64
 				* <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(contract_address), amount);
 
@@ -252,7 +253,10 @@ fn should_deploy_payable_contract() {
 		assert_eq!(result.output, stored_value);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - 2 * amount - <Test as Config>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE
+				- 2 * amount - (EVM::additional_storage(contract_address) as u64
+				* <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(contract_address), 2 * amount);
 	});
@@ -516,6 +520,7 @@ fn deploy_factory() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 	});
 }
@@ -605,6 +610,7 @@ fn should_request_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -638,6 +644,7 @@ fn should_request_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
+				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 				- <Test as Config>::TransferMaintainerDeposit::get()
 		);
@@ -671,6 +678,7 @@ fn should_cancel_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
@@ -729,6 +737,7 @@ fn should_confirm_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -744,7 +753,9 @@ fn should_confirm_transfer_maintainer() {
 		);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
+			INITIAL_BALANCE
+				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 
 		// confirm_transfer_maintainer
@@ -763,7 +774,9 @@ fn should_confirm_transfer_maintainer() {
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
+			INITIAL_BALANCE
+				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 
 		assert_noop!(
@@ -800,6 +813,7 @@ fn should_reject_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -829,7 +843,9 @@ fn should_reject_transfer_maintainer() {
 		assert!(System::events().iter().any(|record| record.event == event));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get() * 2
+			INITIAL_BALANCE
+				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- <Test as Config>::ContractExistentialDeposit::get() * 2
 				+ <Test as Config>::TransferMaintainerDeposit::get()
 		);
 		assert_eq!(

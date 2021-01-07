@@ -179,6 +179,7 @@ impl<T: Config> AccountInfo<T> {
 
 	pub fn new_with_contract(
 		nonce: T::Index,
+		contract: &EvmAddress,
 		contract_info: ContractInfo<T>,
 		storage_limit: u32,
 	) -> Result<Self, DispatchError> {
@@ -186,7 +187,13 @@ impl<T: Config> AccountInfo<T> {
 
 		if !additional_storage.is_zero() {
 			// update the additional_storage
-			Module::<T>::do_update_storage_usage(&contract_info.maintainer, 0, additional_storage, storage_limit)?;
+			Module::<T>::do_update_storage_usage(
+				&contract,
+				&contract_info.maintainer,
+				0,
+				additional_storage,
+				storage_limit,
+			)?;
 		}
 
 		Ok(Self {
@@ -247,7 +254,7 @@ decl_storage! {
 				);
 
 				if !account.code.is_empty() { // if code len > 0 then it's a contract
-					<Module<T>>::on_contract_initialization(address, None, &EvmAddress::default(),  account.code.clone(), 100000, Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
+					<Module<T>>::on_contract_initialization(address, None, &EvmAddress::default(), account.code.clone(), 100000, Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
 
 					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
 
@@ -694,10 +701,11 @@ impl<T: Config> Module<T> {
 					// ignore genesis contract
 					if let Some(origin) = origin {
 						// update the additional_storage
-						Self::do_update_storage_usage(&origin, 0, additional_storage, storage_limit).map_or_else(
-							|_| Err(ExitError::Other("update storage usage failed".into())),
-							|_| Ok(()),
-						)?;
+						Self::do_update_storage_usage(&address, &origin, 0, additional_storage, storage_limit)
+							.map_or_else(
+								|_| Err(ExitError::Other("update storage usage failed".into())),
+								|_| Ok(()),
+							)?;
 					}
 				}
 
@@ -705,7 +713,7 @@ impl<T: Config> Module<T> {
 				Ok(())
 			} else {
 				let account_info =
-					AccountInfo::<T>::new_with_contract(Default::default(), contract_info, storage_limit)
+					AccountInfo::<T>::new_with_contract(Default::default(), &address, contract_info, storage_limit)
 						.map_or_else(|_| Err(ExitError::Other("update storage usage failed".into())), Ok)?;
 				*maybe_account_info = Some(account_info);
 				Ok(())
@@ -876,6 +884,7 @@ impl<T: Config> Module<T> {
 	}
 
 	fn do_update_storage_usage(
+		contract: &EvmAddress,
 		origin: &EvmAddress,
 		pre_storage_usage: u32,
 		current_storage_usage: u32,
@@ -888,11 +897,24 @@ impl<T: Config> Module<T> {
 
 			let reserve_amount = T::StorageDepositPerByte::get().saturating_mul(delta.into());
 			let origin_account = T::AddressMapping::get_account_id(&origin);
-			T::Currency::reserve(&origin_account, reserve_amount)?;
+			let contract_account = T::AddressMapping::get_account_id(&contract);
+			T::Currency::transfer(
+				&origin_account,
+				&contract_account,
+				reserve_amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
+			T::Currency::reserve(&contract_account, reserve_amount)?;
 		} else if let Some(delta) = pre_storage_usage.checked_sub(current_storage_usage) {
 			let unreserve_amount = T::StorageDepositPerByte::get().saturating_mul(delta.into());
 			let origin_account = T::AddressMapping::get_account_id(&origin);
-			T::Currency::unreserve(&origin_account, unreserve_amount);
+			let contract_account = T::AddressMapping::get_account_id(&contract);
+			T::Currency::repatriate_reserved(
+				&contract_account,
+				&origin_account,
+				unreserve_amount,
+				BalanceStatus::Free,
+			)?;
 		}
 
 		Ok(())
@@ -965,6 +987,7 @@ impl<T: Config> Module<T> {
 			if additional_storage != pre_additional_storage {
 				// update the additional_storage
 				Self::do_update_storage_usage(
+					&contract,
 					&contract_info.maintainer,
 					pre_additional_storage,
 					additional_storage,
@@ -993,7 +1016,7 @@ impl<T: Config> Module<T> {
 			let additional_storage = contract_info.total_storage_size();
 			if !additional_storage.is_zero() {
 				// refund the additional_storage
-				Self::do_update_storage_usage(&contract_info.maintainer, additional_storage, 0, 100000)?;
+				Self::do_update_storage_usage(&contract, &contract_info.maintainer, additional_storage, 0, 100000)?;
 			}
 
 			AccountStorages::remove_prefix(contract);
