@@ -1,8 +1,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, CodeInfos, Codes, Config, ContractInfo, Event,
-	Log, MergeAccount, Module, Vicinity,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, ContractInfo, Event, Log,
+	MergeAccount, Module, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -25,6 +25,7 @@ use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, rc::Rc, vec::Ve
 
 pub struct Handler<'vicinity, 'config, T: Config> {
 	pub vicinity: &'vicinity Vicinity,
+	pub storage_limit: u32,
 	pub config: &'config EvmRuntimeConfig,
 	pub gasometer: Gasometer<'config>,
 	pub precompile:
@@ -42,6 +43,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	pub fn new_with_precompile(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: usize,
+		storage_limit: u32,
 		is_static: bool,
 		config: &'config EvmRuntimeConfig,
 		precompile: fn(
@@ -53,6 +55,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	) -> Self {
 		Self {
 			vicinity,
+			storage_limit,
 			config,
 			is_static,
 			gasometer: Gasometer::new(gas_limit, config),
@@ -341,26 +344,24 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
-				storage_usage,
 				..
 			}) = maybe_account_info.as_mut()
 			{
-				if !storage_usage.is_zero() {
-					return Err(ExitError::Other(
-						"this contract is the maintainer of some other contracts".into(),
-					));
-				}
-
-				let additional_storage = Module::<T>::additional_storage(address);
+				let additional_storage = contract_info.total_storage_size();
 				if !additional_storage.is_zero() {
-					// need to find maintainer and update maintainer_storage_usage
-					Module::<T>::do_update_maintainer_storage_usage(&contract_info.maintainer, additional_storage, 0)
-						.map_or_else(
+					// need to find maintainer and update storage_usage
+					Module::<T>::do_update_storage_usage(
+						&self.vicinity.origin,
+						additional_storage,
+						0,
+						self.storage_limit,
+					)
+					.map_or_else(
 						|_| Err(ExitError::Other("update maintainer storage usage failed".into())),
 						|_| Ok(()),
 					)?;
 				}
-				// storage_rent_deposit + contract_info.existential_deposit + developer_deposit
+				// contract_info.existential_deposit + developer_deposit
 				self.unreserve(address, T::Currency::reserved_balance(&source))?;
 			}
 
@@ -399,8 +400,14 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		target_gas = min(target_gas, after_gas);
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
-		let mut substate =
-			Self::new_with_precompile(self.vicinity, target_gas, self.is_static, self.config, self.precompile);
+		let mut substate = Self::new_with_precompile(
+			self.vicinity,
+			target_gas,
+			self.storage_limit,
+			self.is_static,
+			self.config,
+			self.precompile,
+		);
 
 		let address = self.create_address(scheme);
 		substate.inc_nonce(caller);
@@ -434,7 +441,15 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 						try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 						substate.inc_nonce(address);
-						<Module<T>>::on_contract_initialization(&address, &maintainer, out, None).map_or_else(
+						<Module<T>>::on_contract_initialization(
+							&address,
+							Some(self.vicinity.origin),
+							&maintainer,
+							out,
+							self.storage_limit,
+							None,
+						)
+						.map_or_else(
 							|e| TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
 							|_| TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new()))),
 						)
@@ -495,6 +510,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			let mut substate = Self::new_with_precompile(
 				self.vicinity,
 				target_gas,
+				self.storage_limit,
 				self.is_static || is_static,
 				self.config,
 				self.precompile,
@@ -543,43 +559,27 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 					try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 
 					// update storage_usage
-					<Accounts<T>>::mutate(&context.caller, |maybe_account_info| -> Result<(), ExitError> {
-						if let Some(AccountInfo {
-							contract_info: Some(contract_info),
-							storage_quota,
-							..
-						}) = maybe_account_info.as_mut()
-						{
-							let code_size =
-								CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-							let additional_storage = contract_info
-								.total_storage_size()
-								.saturating_add(code_size)
-								.saturating_sub(*storage_quota);
-
-							if additional_storage != pre_additional_storage {
-								// get maintainer quota and pay for the additional_storage
-								Module::<T>::do_update_maintainer_storage_usage(
-									&contract_info.maintainer,
-									pre_additional_storage,
-									additional_storage,
-								)
-								.map_or_else(
-									|_| Err(ExitError::Other("update maintainer storage usage failed".into())),
-									|_| Ok(()),
-								)?;
-							}
-
-							Ok(())
-						} else {
-							// create contract
-							Ok(())
-						}
-					})
-					.map_or_else(
-						|e| TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
-						|_| TransactionOutcome::Commit(Capture::Exit((s.into(), out))),
-					)
+					let additional_storage = Module::<T>::additional_storage(context.caller);
+					if additional_storage != pre_additional_storage {
+						// get maintainer quota and pay for the additional_storage
+						Module::<T>::do_update_storage_usage(
+							&self.vicinity.origin,
+							pre_additional_storage,
+							additional_storage,
+							self.storage_limit,
+						)
+						.map_or_else(
+							|_e| {
+								TransactionOutcome::Rollback(Capture::Exit((
+									ExitError::Other("update storage usage failed".into()).into(),
+									Vec::new(),
+								)))
+							},
+							|_| TransactionOutcome::Commit(Capture::Exit((s.into(), out))),
+						)
+					} else {
+						TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
+					}
 				}
 				ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), out))),
 				ExitReason::Error(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),

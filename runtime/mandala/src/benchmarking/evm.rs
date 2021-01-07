@@ -67,21 +67,6 @@ runtime_benchmarks! {
 
 	_ {}
 
-	add_storage_quota {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-	}: _(RawOrigin::Signed(bob_account_id()), address, 10)
-
-	remove_storage_quota {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::add_storage_quota(Origin::signed(bob_account_id()), address, 10)?;
-
-	}: _(RawOrigin::Signed(alice_account_id()), address, 10)
-
 	request_transfer_maintainer {
 		set_aca_balance(&alice_account_id(), dollar(1000));
 		set_aca_balance(&bob_account_id(), dollar(1000));
@@ -162,20 +147,6 @@ mod tests {
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
-	}
-
-	#[test]
-	fn test_add_storage_quota() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_add_storage_quota());
-		});
-	}
-
-	#[test]
-	fn test_remove_storage_quota() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_remove_storage_quota());
-		});
 	}
 
 	#[test]

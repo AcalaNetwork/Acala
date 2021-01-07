@@ -156,7 +156,6 @@ impl Config for Test {
 	type ContractExistentialDeposit = ContractExistentialDeposit;
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type StorageDefaultQuota = StorageDefaultQuota;
 	type MaxCodeSize = MaxCodeSize;
 
 	type Event = Event<Test>;

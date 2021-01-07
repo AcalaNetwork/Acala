@@ -1243,8 +1243,6 @@ parameter_types! {
 	pub const ContractExistentialDeposit: Balance = DOLLARS;
 	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
-	// https://eips.ethereum.org/EIPS/eip-170
-	pub const StorageDefaultQuota: u32 = 0x6000;
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub const DeveloperDeposit: Balance = DOLLARS;
@@ -1264,7 +1262,6 @@ impl module_evm::Config for Runtime {
 	type ContractExistentialDeposit = ContractExistentialDeposit;
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type StorageDefaultQuota = StorageDefaultQuota;
 	type MaxCodeSize = MaxCodeSize;
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<
@@ -1661,6 +1658,7 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			storage_limit: u32,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -1677,6 +1675,7 @@ impl_runtime_apis! {
 				data,
 				value,
 				gas_limit,
+				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -1686,6 +1685,7 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			storage_limit: u32,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -1701,6 +1701,7 @@ impl_runtime_apis! {
 				data,
 				value,
 				gas_limit,
+				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}

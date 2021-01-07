@@ -26,6 +26,7 @@ impl<T: Config> Runner<T> {
 		init: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		storage_limit: u32,
 		assigned_address: Option<H160>,
 		salt: Option<H256>,
 		tag: &'static str,
@@ -33,10 +34,11 @@ impl<T: Config> Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		debug::debug!(
 			target: "evm",
-			"{:?}: source {:?}, gas_limit: {:?}",
+			"{:?}: source {:?}, gas_limit: {:?}, storage_limit: {:?}",
 			tag,
 			source,
 			gas_limit,
+			storage_limit,
 		);
 
 		let vicinity = Vicinity {
@@ -45,8 +47,14 @@ impl<T: Config> Runner<T> {
 			creating: true,
 		};
 
-		let mut substate =
-			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+		let mut substate = Handler::<T>::new_with_precompile(
+			&vicinity,
+			gas_limit as usize,
+			storage_limit,
+			false,
+			config,
+			T::Precompiles::execute,
+		);
 
 		let address = if let Some(addr) = assigned_address {
 			addr
@@ -111,7 +119,9 @@ impl<T: Config> Runner<T> {
 
 			substate.inc_nonce(address);
 
-			if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out, None) {
+			if let Err(e) =
+				<Module<T>>::on_contract_initialization(&address, Some(source), &source, out, storage_limit, None)
+			{
 				create_info.exit_reason = e.into();
 				TransactionOutcome::Rollback(Ok(create_info))
 			} else {
@@ -146,15 +156,17 @@ impl<T: Config> Runner<T> {
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		debug::debug!(
 			target: "evm",
-			"call: source {:?}, target: {:?}, input: {:?}, gas_limit: {:?}",
+			"call: source {:?}, target: {:?}, input: {:?}, gas_limit: {:?}, storage_limit: {:?}",
 			source,
 			target,
 			input,
 			gas_limit,
+			storage_limit,
 		);
 
 		let vicinity = Vicinity {
@@ -163,8 +175,14 @@ impl<T: Config> Runner<T> {
 			creating: false,
 		};
 
-		let mut substate =
-			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
+		let mut substate = Handler::<T>::new_with_precompile(
+			&vicinity,
+			gas_limit as usize,
+			storage_limit,
+			false,
+			config,
+			T::Precompiles::execute,
+		);
 
 		if !substate.is_contract_deployed(&target) && !substate.has_permission_to_call(&source) {
 			return Err(Error::<T>::NoPermission.into());
@@ -206,9 +224,20 @@ impl<T: Config> Runner<T> {
 		init: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
-		Self::inner_create(source, init, value, gas_limit, None, None, "create", config)
+		Self::inner_create(
+			source,
+			init,
+			value,
+			gas_limit,
+			storage_limit,
+			None,
+			None,
+			"create",
+			config,
+		)
 	}
 
 	pub fn create2(
@@ -217,9 +246,20 @@ impl<T: Config> Runner<T> {
 		salt: H256,
 		value: BalanceOf<T>,
 		gas_limit: u32,
+		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
-		Self::inner_create(source, init, value, gas_limit, None, Some(salt), "create2", config)
+		Self::inner_create(
+			source,
+			init,
+			value,
+			gas_limit,
+			storage_limit,
+			None,
+			Some(salt),
+			"create2",
+			config,
+		)
 	}
 
 	pub fn create_at_address(
@@ -228,6 +268,7 @@ impl<T: Config> Runner<T> {
 		value: BalanceOf<T>,
 		assigned_address: H160,
 		gas_limit: u32,
+		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		Self::inner_create(
@@ -235,6 +276,7 @@ impl<T: Config> Runner<T> {
 			init,
 			value,
 			gas_limit,
+			storage_limit,
 			Some(assigned_address),
 			None,
 			"create-system-contract",

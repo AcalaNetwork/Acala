@@ -48,6 +48,7 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 			input,
 			Default::default(),
 			2_100_000,
+			0,
 			None,
 		)?;
 
@@ -69,6 +70,7 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 			input,
 			Default::default(),
 			2_100_000,
+			0,
 			None,
 		)?;
 
@@ -92,6 +94,7 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 			context.contract,
 			input,
 			Default::default(),
+			2_100_000,
 			2_100_000,
 			None,
 		)?;

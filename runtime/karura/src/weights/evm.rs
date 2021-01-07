@@ -14,16 +14,6 @@ use sp_std::marker::PhantomData;
 /// Weight functions for evm.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
-	fn add_storage_quota() -> Weight {
-		(332_262_000 as Weight)
-			.saturating_add(DbWeight::get().reads(5 as Weight))
-			.saturating_add(DbWeight::get().writes(3 as Weight))
-	}
-	fn remove_storage_quota() -> Weight {
-		(264_501_000 as Weight)
-			.saturating_add(DbWeight::get().reads(4 as Weight))
-			.saturating_add(DbWeight::get().writes(2 as Weight))
-	}
 	fn request_transfer_maintainer() -> Weight {
 		(249_253_000 as Weight)
 			.saturating_add(DbWeight::get().reads(4 as Weight))

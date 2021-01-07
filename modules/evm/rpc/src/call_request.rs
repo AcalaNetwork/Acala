@@ -14,6 +14,8 @@ pub struct CallRequest {
 	pub to: Option<H160>,
 	/// Gas Limit
 	pub gas_limit: Option<u32>,
+	/// Storage Limit
+	pub storage_limit: Option<u32>,
 	/// Value
 	pub value: Option<NumberOrHex>,
 	/// Data
