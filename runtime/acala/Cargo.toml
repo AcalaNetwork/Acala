@@ -167,6 +167,7 @@ std = [
 	"pallet-bounties/std",
 	"pallet-tips/std",
 
+	"cumulus-runtime/std",
 	"cumulus-parachain-upgrade/std",
 	"cumulus-primitives/std",
 	"cumulus-message-broker/std",
