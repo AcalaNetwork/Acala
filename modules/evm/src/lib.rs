@@ -21,6 +21,7 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
 	error::BadOrigin,
+	require_transactional,
 	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
@@ -883,6 +884,7 @@ impl<T: Config> Module<T> {
 		)
 	}
 
+	#[require_transactional]
 	fn do_update_storage_usage(
 		contract: &EvmAddress,
 		origin: &EvmAddress,
