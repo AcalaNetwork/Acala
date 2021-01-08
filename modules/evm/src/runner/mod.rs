@@ -166,7 +166,7 @@ impl<T: Config> Runner<T> {
 		let mut substate =
 			Handler::<T>::new_with_precompile(&vicinity, gas_limit as usize, false, config, T::Precompiles::execute);
 
-		if !substate.is_contract_deployed(&target) && !substate.has_permission_to_call(&source) {
+		if substate.is_undeployed_contract(&target) && !substate.has_permission_to_call(&source) {
 			return Err(Error::<T>::NoPermission.into());
 		}
 
