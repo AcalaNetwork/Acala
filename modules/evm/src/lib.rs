@@ -266,6 +266,7 @@ decl_storage! {
 				if !account.code.is_empty() { // if code len > 0 then it's a contract
 					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
 
+					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
 
 					for (index, value) in &account.storage {
