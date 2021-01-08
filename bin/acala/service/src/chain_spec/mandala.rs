@@ -453,7 +453,7 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_membership_Instance6: Some(OperatorMembershipBandConfig {
-			members: endowed_accounts.clone(),
+			members: endowed_accounts,
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),
