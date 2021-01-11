@@ -19,8 +19,8 @@ fn fail_call_return_ok() {
 		let signer: AccountId32 = AccountId32::from(data).into();
 
 		let origin = Origin::signed(signer);
-		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 1000000, 1000000));
-		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 0, 1000000, 1000000));
+		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 1000000, 0));
+		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 0, 1000000, 0));
 	});
 }
 
@@ -231,8 +231,7 @@ fn should_deploy_payable_contract() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- amount - (EVM::additional_storage(contract_address) as u64
-				* <Test as Config>::StorageDepositPerByte::get())
+				- amount - (EVM::storage_usage(contract_address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(contract_address), amount);
@@ -254,7 +253,7 @@ fn should_deploy_payable_contract() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- 2 * amount - (EVM::additional_storage(contract_address) as u64
+				- 2 * amount - (EVM::storage_usage(contract_address) as u64
 				* <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get()
 		);
@@ -516,10 +515,12 @@ fn deploy_factory() {
 			Runner::<Test>::create(alice(), contract, 0, 12_000_000, 12_000_000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_gas.as_u64(), 95_203u64);
+		assert_eq!(result.used_storage.as_u64(), 64u64);
+		assert_eq!(result.used_storage.as_u64(), EVM::storage_usage(result.address) as u64);
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 	});
@@ -609,7 +610,7 @@ fn should_request_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
@@ -644,7 +645,7 @@ fn should_request_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 				- <Test as Config>::TransferMaintainerDeposit::get()
 		);
@@ -677,7 +678,7 @@ fn should_cancel_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -736,7 +737,7 @@ fn should_confirm_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
@@ -754,7 +755,7 @@ fn should_confirm_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 
@@ -775,7 +776,7 @@ fn should_confirm_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 
@@ -812,7 +813,7 @@ fn should_reject_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
@@ -844,7 +845,7 @@ fn should_reject_transfer_maintainer() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::additional_storage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 				- <Test as Config>::ContractExistentialDeposit::get() * 2
 				+ <Test as Config>::TransferMaintainerDeposit::get()
 		);
@@ -1119,5 +1120,132 @@ fn should_selfdestruct() {
 			Error::<Test>::NoPermission
 		);
 		assert_ok!(EVM::selfdestruct(Origin::signed(alice_account_id), contract_address));
+	});
+}
+
+#[test]
+fn storage_limit_should_work() {
+	// pragma solidity ^0.5.0;
+
+	// contract Factory {
+	// 	Contract[] newContracts;
+
+	// 	function createContract (uint num) public payable {
+	// 		for(uint i = 0; i < num; i++) {
+	// 			Contract newContract = new Contract();
+	// 			newContracts.push(newContract);
+	// 		}
+	// 	}
+	// }
+
+	// contract Contract {}
+	let contract = from_hex("0x608060405234801561001057600080fd5b506101a0806100206000396000f3fe60806040526004361061001e5760003560e01c80639db8d7d514610023575b600080fd5b61004f6004803603602081101561003957600080fd5b8101908080359060200190929190505050610051565b005b60008090505b8181101561010057600060405161006d90610104565b604051809103906000f080158015610089573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555050508080600101915050610057565b5050565b605b806101118339019056fe6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a7231582035666e9471716d6d05ed9f0c1ab13d0371f49d536270f905bff06cd98212dcb064736f6c63430005110032a265627a7a723158203b6aaf6588bc3e6a35986612a62f715255430eab09ffb24401e5f18eb58a05d564736f6c63430005110032").unwrap();
+	new_test_ext().execute_with(|| {
+		let result =
+			Runner::<Test>::create(alice(), contract.clone(), 0, 1000000000, 0, <Test as Config>::config()).unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
+		);
+		let factory_contract_address = result.address;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		deploy_free(factory_contract_address);
+
+		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(
+			reserved_balance(factory_contract_address),
+			<Test as Config>::ContractExistentialDeposit::get()
+		);
+		assert_eq!(result.used_storage.as_u64(), 0u64);
+		assert_eq!(
+			result.used_storage.as_u64(),
+			EVM::storage_usage(factory_contract_address) as u64
+		);
+
+		// Factory.createContract(1)
+		let amount = 1000000000;
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
+		let result = Runner::<Test>::call(
+			alice(),
+			factory_contract_address,
+			create_contract,
+			amount,
+			1000000000,
+			0,
+			<Test as Config>::config(),
+		)
+		.unwrap();
+		assert_eq!(
+			result.exit_reason,
+			ExitReason::Error(ExitError::Other("OutOfStorageLimit".into()))
+		);
+		assert_eq!(result.used_storage.as_u64(), 0u64);
+		assert_eq!(
+			result.used_storage.as_u64(),
+			EVM::storage_usage(factory_contract_address) as u64
+		);
+
+		// Factory.createContract(1)
+		let amount = 1000000000;
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
+		let result = Runner::<Test>::call(
+			alice(),
+			factory_contract_address,
+			create_contract,
+			amount,
+			1000000000,
+			1000000000,
+			<Test as Config>::config(),
+		)
+		.unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
+		assert_eq!(result.used_storage.as_u64(), 128u64);
+		assert_eq!(
+			result.used_storage.as_u64(),
+			EVM::storage_usage(factory_contract_address) as u64
+		);
+
+		// Factory.createContract(2)
+		let amount = 1000000000;
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
+		let result = Runner::<Test>::call(
+			alice(),
+			factory_contract_address,
+			create_contract,
+			amount,
+			1000000000,
+			127,
+			<Test as Config>::config(),
+		)
+		.unwrap();
+		assert_eq!(
+			result.exit_reason,
+			ExitReason::Error(ExitError::Other("OutOfStorageLimit".into()))
+		);
+		assert_eq!(result.used_storage.as_u64(), 0u64);
+		assert_eq!(EVM::storage_usage(factory_contract_address) as u64, 128u64);
+
+		// Factory.createContract(2)
+		let amount = 1000000000;
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
+		let result = Runner::<Test>::call(
+			alice(),
+			factory_contract_address,
+			create_contract,
+			amount,
+			1000000000,
+			1000000000,
+			<Test as Config>::config(),
+		)
+		.unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
+		assert_eq!(result.used_storage.as_u64(), 128u64);
+		assert_eq!(EVM::storage_usage(factory_contract_address) as u64, 256u64);
 	});
 }

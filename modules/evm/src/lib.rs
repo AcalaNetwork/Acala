@@ -21,7 +21,6 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
 	error::BadOrigin,
-	require_transactional,
 	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
@@ -35,7 +34,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::{
-	traits::{Convert, One, Saturating, UniqueSaturatedInto, Zero},
+	traits::{Convert, One, UniqueSaturatedInto},
 	Either,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -170,38 +169,12 @@ pub struct AccountInfo<T: Config> {
 }
 
 impl<T: Config> AccountInfo<T> {
-	pub fn new(nonce: T::Index) -> Self {
+	pub fn new(nonce: T::Index, contract_info: Option<ContractInfo<T>>) -> Self {
 		Self {
 			nonce,
-			contract_info: None,
+			contract_info,
 			developer_deposit: None,
 		}
-	}
-
-	pub fn new_with_contract(
-		nonce: T::Index,
-		contract: &EvmAddress,
-		contract_info: ContractInfo<T>,
-		storage_limit: u32,
-	) -> Result<Self, DispatchError> {
-		let additional_storage = contract_info.total_storage_size();
-
-		if !additional_storage.is_zero() {
-			// update the additional_storage
-			Module::<T>::do_update_storage_usage(
-				&contract,
-				&contract_info.maintainer,
-				0,
-				additional_storage,
-				storage_limit,
-			)?;
-		}
-
-		Ok(Self {
-			nonce,
-			contract_info: Some(contract_info),
-			developer_deposit: None,
-		})
 	}
 }
 
@@ -246,7 +219,7 @@ decl_storage! {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::get_account_id(address);
 
-				let account_info = <AccountInfo<T>>::new(account.nonce);
+				let account_info = <AccountInfo<T>>::new(account.nonce, None);
 				<Accounts<T>>::insert(address, account_info);
 
 				T::Currency::deposit_creating(
@@ -255,7 +228,7 @@ decl_storage! {
 				);
 
 				if !account.code.is_empty() { // if code len > 0 then it's a contract
-					<Module<T>>::on_contract_initialization(address, None, &EvmAddress::default(), account.code.clone(), 100000, Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
+					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
 
 					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
 
@@ -547,7 +520,7 @@ decl_module! {
 					ensure!(account_info.developer_deposit.is_none(), Error::<T>::ContractDevelopmentAlreadyEnabled);
 					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
 				} else {
-					let mut account_info = AccountInfo::<T>::new(Default::default());
+					let mut account_info = AccountInfo::<T>::new(Default::default(), None);
 					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
 					*maybe_account_info = Some(account_info);
 				}
@@ -658,10 +631,8 @@ impl<T: Config> Module<T> {
 	/// - Save `code` if not saved yet.
 	pub fn on_contract_initialization(
 		address: &EvmAddress,
-		origin: Option<EvmAddress>,
 		maintainer: &EvmAddress,
 		code: Vec<u8>,
-		storage_limit: u32,
 		storage_count: Option<u32>,
 	) -> Result<(), ExitError> {
 		let code_hash = code_hash(&code.as_slice());
@@ -695,31 +666,16 @@ impl<T: Config> Module<T> {
 			}
 		});
 
-		Accounts::<T>::mutate(address, |maybe_account_info| -> Result<(), ExitError> {
+		Accounts::<T>::mutate(address, |maybe_account_info| {
 			if let Some(account_info) = maybe_account_info.as_mut() {
-				let additional_storage = contract_info.total_storage_size();
-				if !additional_storage.is_zero() {
-					// ignore genesis contract
-					if let Some(origin) = origin {
-						// update the additional_storage
-						Self::do_update_storage_usage(&address, &origin, 0, additional_storage, storage_limit)
-							.map_or_else(
-								|_| Err(ExitError::Other("update storage usage failed".into())),
-								|_| Ok(()),
-							)?;
-					}
-				}
-
-				account_info.contract_info = Some(contract_info);
-				Ok(())
+				account_info.contract_info = Some(contract_info.clone());
 			} else {
-				let account_info =
-					AccountInfo::<T>::new_with_contract(Default::default(), &address, contract_info, storage_limit)
-						.map_or_else(|_| Err(ExitError::Other("update storage usage failed".into())), Ok)?;
+				let account_info = AccountInfo::<T>::new(Default::default(), Some(contract_info.clone()));
 				*maybe_account_info = Some(account_info);
-				Ok(())
 			}
-		})
+		});
+
+		Ok(())
 	}
 
 	/// Set account storage.
@@ -770,11 +726,13 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Get additional storage of the contract.
-	fn additional_storage(contract: EvmAddress) -> u32 {
+	fn storage_usage(contract: EvmAddress) -> usize {
 		Accounts::<T>::get(contract).map_or(0, |account_info| {
 			account_info
 				.contract_info
-				.map_or(0, |contract_info| contract_info.total_storage_size())
+				.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
+					contract_info.total_storage_size()
+				}) as usize
 		})
 	}
 
@@ -884,44 +842,6 @@ impl<T: Config> Module<T> {
 		)
 	}
 
-	#[require_transactional]
-	fn do_update_storage_usage(
-		contract: &EvmAddress,
-		origin: &EvmAddress,
-		pre_storage_usage: u32,
-		current_storage_usage: u32,
-		storage_limit: u32,
-	) -> DispatchResult {
-		if let Some(delta) = current_storage_usage.checked_sub(pre_storage_usage) {
-			if delta > storage_limit {
-				return Err(Error::<T>::StorageExceedsStorageLimit.into());
-			}
-
-			let reserve_amount = T::StorageDepositPerByte::get().saturating_mul(delta.into());
-			let origin_account = T::AddressMapping::get_account_id(&origin);
-			let contract_account = T::AddressMapping::get_account_id(&contract);
-			T::Currency::transfer(
-				&origin_account,
-				&contract_account,
-				reserve_amount,
-				ExistenceRequirement::AllowDeath,
-			)?;
-			T::Currency::reserve(&contract_account, reserve_amount)?;
-		} else if let Some(delta) = pre_storage_usage.checked_sub(current_storage_usage) {
-			let unreserve_amount = T::StorageDepositPerByte::get().saturating_mul(delta.into());
-			let origin_account = T::AddressMapping::get_account_id(&origin);
-			let contract_account = T::AddressMapping::get_account_id(&contract);
-			T::Currency::repatriate_reserved(
-				&contract_account,
-				&origin_account,
-				unreserve_amount,
-				BalanceStatus::Free,
-			)?;
-		}
-
-		Ok(())
-	}
-
 	/// Mark contract as deployed
 	///
 	/// If maintainer is provider then it will check maintainer
@@ -969,8 +889,6 @@ impl<T: Config> Module<T> {
 				Error::<T>::ContractExceedsMaxCodeSize
 			);
 
-			let pre_additional_storage = contract_info.total_storage_size();
-
 			CodeInfos::mutate_exists(&code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
 					code_info.ref_count = code_info.ref_count.saturating_add(1);
@@ -984,18 +902,6 @@ impl<T: Config> Module<T> {
 					Codes::insert(&code_hash, code);
 				}
 			});
-
-			let additional_storage = contract_info.total_storage_size().saturating_add(code_size);
-			if additional_storage != pre_additional_storage {
-				// update the additional_storage
-				Self::do_update_storage_usage(
-					&contract,
-					&contract_info.maintainer,
-					pre_additional_storage,
-					additional_storage,
-					100000,
-				)?;
-			}
 
 			Ok(())
 		})?;
@@ -1013,13 +919,6 @@ impl<T: Config> Module<T> {
 
 			ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
 			ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
-
-			// delete contract & storage & refund to maintainer
-			let additional_storage = contract_info.total_storage_size();
-			if !additional_storage.is_zero() {
-				// refund the additional_storage
-				Self::do_update_storage_usage(&contract, &contract_info.maintainer, additional_storage, 0, 100000)?;
-			}
 
 			AccountStorages::remove_prefix(contract);
 
