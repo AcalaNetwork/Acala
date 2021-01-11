@@ -15,6 +15,6 @@
 
 // #![warn(missing_docs)]
 
-fn main() -> acala_dev_cli::Result<()> {
-	acala_dev_cli::run()
+fn main() -> acala_cli::Result<()> {
+	acala_cli::run()
 }

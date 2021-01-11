@@ -1,16 +1,14 @@
 [workspace]
 members = [
 	"bin/acala",
-	"bin/acala/cli",
-	"bin/acala/service",
 	"bin/acala-dev",
-	"bin/acala-dev/cli",
-	"bin/acala-dev/service",
 
 	"modules/*",
 	"inspect",
 	"primitives",
 	"rpc",
+	"service",
+	"cli",
 
 	"runtime/common",
 	"runtime/mandala",

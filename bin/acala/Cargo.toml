@@ -11,8 +11,8 @@ path = "src/main.rs"
 [dependencies]
 futures = "0.3.4"
 parity-util-mem = { version = "0.7.0", default-features = false, features = ["jemalloc-global"] }
-acala-cli = { path = "cli" }
-acala-service = { path = "service" }
+acala-cli = { path = "../../cli" }
+acala-service = { path = "../../service" }
 mandala-runtime = { path = "../../runtime/mandala", optional = true }
 
 [features]

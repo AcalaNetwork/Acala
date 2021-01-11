@@ -11,13 +11,13 @@ path = "src/main.rs"
 [dependencies]
 futures = "0.3.4"
 parity-util-mem = { version = "0.7.0", default-features = false, features = ["jemalloc-global"] }
-acala-dev-cli = { path = "cli" }
-acala-dev-service = { path = "service" }
+acala-cli = { path = "../../cli" }
+acala-service = { path = "../../service" }
 
 [features]
 runtime-benchmarks = [
-	"acala-dev-cli/runtime-benchmarks",
+	"acala-cli/runtime-benchmarks",
 ]
 with-ethereum-compatibility = [
-	"acala-dev-service/with-ethereum-compatibility"
+	"acala-service/with-ethereum-compatibility"
 ]
