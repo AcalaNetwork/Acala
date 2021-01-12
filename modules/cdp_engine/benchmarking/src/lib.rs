@@ -83,8 +83,6 @@ fn emergency_shutdown<T: Config>() -> Result<(), DispatchError> {
 }
 
 benchmarks! {
-	_ { }
-
 	set_collateral_params {
 		let u in 0 .. 1000;
 	}: _(

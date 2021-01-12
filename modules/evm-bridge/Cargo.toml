@@ -16,10 +16,10 @@ sp-core = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a
 sp-runtime = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-primitive-types = { version = "0.7.0", default-features = false, features = ["rlp", "byteorder"] }
+primitive-types = { version = "0.8.0", default-features = false, features = ["rlp", "byteorder"] }
 sha3 = { version = "0.8", default-features = false }
 impl-trait-for-tuples = "0.1"
-ethereum-types = { version = "0.9", default-features = false }
+ethereum-types = { version = "0.10.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 module-evm = { path = "../evm", default-features = false }

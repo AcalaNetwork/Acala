@@ -9,7 +9,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86b
 sp-api = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-ethereum-types = { version = "0.9", default-features = false }
+ethereum-types = { version = "0.10", default-features = false }
 primitives = { package = "acala-primitives", path = "../../../../primitives", default-features = false }
 
 [features]

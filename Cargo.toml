@@ -1,11 +1,13 @@
+cargo-features = ["resolver"]
+
 [workspace]
 members = [
 	"bin/acala",
 	"bin/acala/cli",
 	"bin/acala/service",
-	"bin/acala-dev",
-	"bin/acala-dev/cli",
-	"bin/acala-dev/service",
+	# "bin/acala-dev",
+	# "bin/acala-dev/cli",
+	# "bin/acala-dev/service",
 
 	"modules/*",
 	"inspect",
@@ -33,6 +35,8 @@ members = [
 	"ecosystem-modules/template/template",
 	"ecosystem-modules/ren/renvm-bridge",
 ]
+
+resolver = "2"
 
 [profile.release]
 # Acala runtime requires unwinding.
@@ -213,7 +217,12 @@ pallet-tips = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c8
 sp-npos-elections = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
 sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
-primitive-types = { git = "https://github.com/paritytech/parity-common", rev = "e1dfdceeca11efb476f75ae2739e9f8dd0634e58" }
+
+# hotfixes
+ethereum = { git = "https://github.com/shaopengw/ethereum.git", branch = "sw/update-dependencies" }
+evm = { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
+evm-runtime= { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
+evm-gasometer= { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
 
 [patch."https://github.com/paritytech/substrate"]
 frame-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
@@ -327,12 +336,6 @@ pallet-tips = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c8
 sp-npos-elections = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
 sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
-
-# hotfixes
-ethereum = { git = "https://github.com/shaopengw/ethereum.git", branch = "sw/update-dependencies" }
-evm = { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
-evm-runtime= { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
-evm-gasometer= { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
 
 [patch."https://github.com/paritytech/polkadot"]
 xcm = { git = "https://github.com/paritytech//polkadot", rev = "05b91fb4fc3862e8684b1a29b36fca0c7d9fd983" }
