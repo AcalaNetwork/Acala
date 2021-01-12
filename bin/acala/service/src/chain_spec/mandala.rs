@@ -208,6 +208,20 @@ fn testnet_genesis(
 
 	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
 
+	let mut balances = initial_authorities
+		.iter()
+		.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
+		.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+		.chain(
+			get_all_module_accounts()
+				.iter()
+				.map(|x| (x.clone(), existential_deposit)),
+		)
+		.collect::<Vec<_>>();
+
+	balances.sort_by_key(|x| x.0.clone());
+	balances.dedup_by_key(|x| x.0.clone());
+
 	mandala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
@@ -215,18 +229,7 @@ fn testnet_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		pallet_indices: Some(IndicesConfig { indices: vec![] }),
-		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, INITIAL_BALANCE))
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), existential_deposit)),
-				)
-				.collect(),
-		}),
+		pallet_balances: Some(BalancesConfig { balances }),
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
@@ -396,6 +399,20 @@ fn mandala_genesis(
 
 	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
 
+	let mut balances = initial_authorities
+		.iter()
+		.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
+		.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+		.chain(
+			get_all_module_accounts()
+				.iter()
+				.map(|x| (x.clone(), existential_deposit)),
+		)
+		.collect::<Vec<_>>();
+
+	balances.sort_by_key(|x| x.0.clone());
+	balances.dedup_by_key(|x| x.0.clone());
+
 	mandala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
@@ -403,18 +420,7 @@ fn mandala_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		pallet_indices: Some(IndicesConfig { indices: vec![] }),
-		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, INITIAL_BALANCE))
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), existential_deposit)),
-				)
-				.collect(),
-		}),
+		pallet_balances: Some(BalancesConfig { balances }),
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
 				.iter()
@@ -460,7 +466,7 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_membership_Instance6: Some(OperatorMembershipBandConfig {
-			members: endowed_accounts.clone(),
+			members: endowed_accounts,
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),

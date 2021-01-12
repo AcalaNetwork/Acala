@@ -173,13 +173,14 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		}
 	}
 
-	pub fn is_contract_deployed(&self, address: &H160) -> bool {
+	// is contract && not deployed
+	pub fn is_undeployed_contract(&self, address: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info: Some(ContractInfo { deployed, .. }),
 			..
 		}) = Accounts::<T>::get(address)
 		{
-			deployed
+			!deployed
 		} else {
 			false
 		}
