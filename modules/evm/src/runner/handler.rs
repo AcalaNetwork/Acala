@@ -1,8 +1,8 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, ContractInfo, Event, Log,
-	MergeAccount, Module, Vicinity,
+	runner::storage_meter::Storagemeter, AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes,
+	Config, ContractInfo, Event, Log, MergeAccount, Module, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -43,7 +43,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	pub fn new_with_precompile(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: usize,
-		storage_limit: usize,
+		storage_limit: u32,
 		is_static: bool,
 		config: &'config EvmRuntimeConfig,
 		precompile: fn(
@@ -73,8 +73,11 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 			)
 	}
 
-	pub fn used_storage(&self) -> usize {
-		self.storagemeter.total_used_storage() - self.storagemeter.refunded_storage()
+	pub fn used_storage(&self) -> u32 {
+		self.storagemeter
+			.total_used_storage()
+			.checked_sub(self.storagemeter.refunded_storage())
+			.unwrap_or_default()
 	}
 
 	pub fn execute(
@@ -582,81 +585,6 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 
 		self.gasometer.record_opcode(gas_cost, memory_cost)?;
 
-		Ok(())
-	}
-}
-
-/// Storagemeter.
-#[derive(Clone)]
-pub struct Storagemeter {
-	storage_limit: usize,
-	inner: Result<Inner, ExitError>,
-}
-
-#[derive(Clone)]
-struct Inner {
-	used_storage: usize,
-	refunded_storage: usize,
-}
-
-impl Storagemeter {
-	/// Create a new storagemeter with given storage limit.
-	pub fn new(storage_limit: usize) -> Self {
-		Self {
-			storage_limit,
-			inner: Ok(Inner {
-				used_storage: 0,
-				refunded_storage: 0,
-			}),
-		}
-	}
-
-	fn inner_mut(&mut self) -> Result<&mut Inner, ExitError> {
-		self.inner.as_mut().map_err(|e| e.clone())
-	}
-
-	pub fn storage(&self) -> usize {
-		match self.inner.as_ref() {
-			Ok(inner) => self.storage_limit - inner.used_storage + inner.refunded_storage,
-			Err(_) => 0,
-		}
-	}
-
-	/// Total used gas.
-	pub fn total_used_storage(&self) -> usize {
-		match self.inner.as_ref() {
-			Ok(inner) => inner.used_storage,
-			Err(_) => self.storage_limit,
-		}
-	}
-
-	pub fn refunded_storage(&self) -> usize {
-		match self.inner.as_ref() {
-			Ok(inner) => inner.refunded_storage,
-			Err(_) => 0,
-		}
-	}
-
-	/// Record an explict cost.
-	pub fn record_cost(&mut self, cost: usize) -> Result<(), ExitError> {
-		let all_storage_cost = self.total_used_storage() + cost;
-		if self.storage_limit < all_storage_cost {
-			self.inner = Err(ExitError::Other("OutOfStorageLimit".into()));
-			return Err(ExitError::Other("OutOfStorageLimit".into()));
-		}
-
-		self.inner_mut()?.used_storage += cost;
-		Ok(())
-	}
-
-	/// Record an explict refund.
-	pub fn record_refund(&mut self, refund: usize) -> Result<(), ExitError> {
-		self.inner_mut()?.refunded_storage += refund;
-		Ok(())
-	}
-
-	pub fn record_stipend(&mut self, stipend: usize) -> Result<(), ExitError> {
-		self.inner_mut()?.used_storage -= stipend;
 		Ok(())
 	}
 }

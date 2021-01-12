@@ -125,11 +125,15 @@ impl Config for Runtime {
 }
 pub type EvmBridgeModule = Module<Runtime>;
 
-pub struct ExtBuilder();
+pub struct ExtBuilder {
+	endowed_accounts: Vec<(AccountId, Balance)>,
+}
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self()
+		Self {
+			endowed_accounts: vec![],
+		}
 	}
 }
 
@@ -146,10 +150,21 @@ pub fn bob() -> EvmAddress {
 }
 
 impl ExtBuilder {
+	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, Balance)>) -> Self {
+		self.endowed_accounts = endowed_accounts;
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.endowed_accounts.clone().into_iter().collect::<Vec<_>>(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		let mut accounts = BTreeMap::new();
 		let mut storage = BTreeMap::new();

@@ -726,13 +726,13 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Get additional storage of the contract.
-	fn storage_usage(contract: EvmAddress) -> usize {
+	fn storage_usage(contract: EvmAddress) -> u32 {
 		Accounts::<T>::get(contract).map_or(0, |account_info| {
 			account_info
 				.contract_info
 				.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
 					contract_info.total_storage_size()
-				}) as usize
+				})
 		})
 	}
 

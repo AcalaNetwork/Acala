@@ -1,4 +1,5 @@
 pub mod handler;
+pub mod storage_meter;
 
 use crate::{
 	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Module, Vicinity,
@@ -53,7 +54,7 @@ impl<T: Config> Runner<T> {
 		let mut substate = Handler::<T>::new_with_precompile(
 			&vicinity,
 			gas_limit as usize,
-			storage_limit as usize,
+			storage_limit,
 			false,
 			config,
 			T::Precompiles::execute,
@@ -82,7 +83,7 @@ impl<T: Config> Runner<T> {
 				return TransactionOutcome::Rollback(Err(e));
 			}
 
-			if let Err(e) = Self::deduct_storage(source, address, storage_limit as usize) {
+			if let Err(e) = Self::deduct_storage(source, address, storage_limit) {
 				return TransactionOutcome::Rollback(Err(e));
 			}
 
@@ -174,7 +175,7 @@ impl<T: Config> Runner<T> {
 		T::Currency::reserve(&to, T::ContractExistentialDeposit::get())
 	}
 
-	fn deduct_storage(source: H160, target: H160, used_storage: usize) -> Result<(), DispatchError> {
+	fn deduct_storage(source: H160, target: H160, used_storage: u32) -> Result<(), DispatchError> {
 		if used_storage.is_zero() {
 			return Ok(());
 		}
@@ -187,7 +188,7 @@ impl<T: Config> Runner<T> {
 		T::Currency::reserve(&to, amount)
 	}
 
-	fn refund_storage(source: H160, target: H160, refunded_storage: usize) -> Result<(), DispatchError> {
+	fn refund_storage(source: H160, target: H160, refunded_storage: u32) -> Result<(), DispatchError> {
 		if refunded_storage.is_zero() {
 			return Ok(());
 		}
@@ -230,7 +231,7 @@ impl<T: Config> Runner<T> {
 		let mut substate = Handler::<T>::new_with_precompile(
 			&vicinity,
 			gas_limit as usize,
-			storage_limit as usize,
+			storage_limit,
 			false,
 			config,
 			T::Precompiles::execute,
@@ -248,7 +249,7 @@ impl<T: Config> Runner<T> {
 				return TransactionOutcome::Rollback(Err(e));
 			}
 
-			if let Err(e) = Self::deduct_storage(source, target, storage_limit as usize) {
+			if let Err(e) = Self::deduct_storage(source, target, storage_limit) {
 				return TransactionOutcome::Rollback(Err(e));
 			}
 

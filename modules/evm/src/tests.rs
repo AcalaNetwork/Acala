@@ -422,7 +422,10 @@ fn contract_should_deploy_contracts() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - amount - <Test as Config>::ContractExistentialDeposit::get()
+			INITIAL_BALANCE
+				- amount - <Test as Config>::ContractExistentialDeposit::get()
+				- (EVM::storage_usage(factory_contract_address) as u64
+					* <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(
 			balance(factory_contract_address),
