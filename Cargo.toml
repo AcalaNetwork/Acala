@@ -219,10 +219,10 @@ sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", rev = "8b
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
 
 # hotfixes
-ethereum = { git = "https://github.com/shaopengw/ethereum.git", branch = "sw/update-dependencies" }
-evm = { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
-evm-runtime= { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
-evm-gasometer= { git = "https://github.com/shaopengw/evm.git", branch = "sw/update-dependencies" }
+ethereum = { git = "https://github.com/AcalaNetwork/ethereum.git", branch = "sw/bump-dependencies" }
+evm = { git = "https://github.com/AcalaNetwork/evm.git", branch = "sw/bump-dependencies" }
+evm-runtime= { git = "https://github.com/AcalaNetwork/evm.git", branch = "sw/bump-dependencies" }
+evm-gasometer= { git = "https://github.com/AcalaNetwork/evm.git", branch = "sw/bump-dependencies" }
 
 [patch."https://github.com/paritytech/substrate"]
 frame-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }

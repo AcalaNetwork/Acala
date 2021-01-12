@@ -1759,7 +1759,7 @@ dependencies = [
 [[package]]
 name = "ethereum"
 version = "0.5.1"
-source = "git+https://github.com/shaopengw/ethereum.git?branch=sw/update-dependencies#5582e7dad7d5f22df65c833df643bbd47b07d972"
+source = "git+https://github.com/AcalaNetwork/ethereum.git?branch=sw/bump-dependencies#5582e7dad7d5f22df65c833df643bbd47b07d972"
 dependencies = [
  "ethereum-types",
  "hash-db",
@@ -1796,7 +1796,7 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 [[package]]
 name = "evm"
 version = "0.20.0"
-source = "git+https://github.com/shaopengw/evm.git?branch=sw/update-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
+source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
 dependencies = [
  "ethereum",
  "evm-core",
@@ -1813,7 +1813,7 @@ dependencies = [
 [[package]]
 name = "evm-core"
 version = "0.20.0"
-source = "git+https://github.com/shaopengw/evm.git?branch=sw/update-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
+source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
 dependencies = [
  "parity-scale-codec",
  "primitive-types",
@@ -1823,7 +1823,7 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.20.0"
-source = "git+https://github.com/shaopengw/evm.git?branch=sw/update-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
+source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
 dependencies = [
  "evm-core",
  "evm-runtime",
@@ -1859,7 +1859,7 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.20.0"
-source = "git+https://github.com/shaopengw/evm.git?branch=sw/update-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
+source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
 dependencies = [
  "evm-core",
  "primitive-types",
