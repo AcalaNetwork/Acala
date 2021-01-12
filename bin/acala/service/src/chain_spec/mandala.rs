@@ -182,7 +182,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 }
 
 pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../../../resources/mandala-dist.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../../resources/mandala-pc-dist.json")[..])
 }
 
 fn testnet_genesis(
@@ -370,7 +370,7 @@ fn testnet_genesis(
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 		}),
 		parachain_info: Some(ParachainInfoConfig {
-			parachain_id: 5_000.into(),
+			parachain_id: 666.into(),
 		}),
 	}
 }
@@ -562,7 +562,7 @@ fn mandala_genesis(
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 		}),
 		parachain_info: Some(ParachainInfoConfig {
-			parachain_id: 5_000.into(),
+			parachain_id: 666.into(),
 		}),
 	}
 }

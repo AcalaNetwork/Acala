@@ -276,7 +276,7 @@ fn karura_genesis(
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 		}),
 		parachain_info: Some(ParachainInfoConfig {
-			parachain_id: 5_000.into(),
+			parachain_id: 666.into(),
 		}),
 	}
 }
