@@ -8,18 +8,18 @@ edition = "2018"
 jsonrpc-core = "15.0.0"
 jsonrpc-derive = "14.0.3"
 ethereum-types = "0.9.0"
-sp-api = { version = "2.0.0" }
-sp-blockchain = { version = "2.0.0" }
-sp-core = { version = "2.0.0" }
-sp-io = { version = "2.0.0" }
-sp-rpc = { version = "2.0.0" }
-sp-runtime = { version = "2.0.0" }
-sp-storage = { version = "2.0.0" }
-sp-transaction-pool = { version = "2.0.0" }
-sc-service = { version = "0.8.0" }
-sc-client-api = { version = "2.0.0" }
-sc-rpc = { version = "2.0.0" }
-sc-network = { version = "0.8.0" }
+sp-api = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sp-core = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sp-io = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sp-rpc = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sp-storage = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sc-service = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sc-client-api = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
+sc-network = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
 rustc-hex = "2.1.0"
 serde = { version = "1.0", features = ["derive"] }
 module-evm-rpc-runtime-api = { path = "runtime_api" }
