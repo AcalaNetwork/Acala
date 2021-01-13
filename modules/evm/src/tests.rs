@@ -597,7 +597,7 @@ fn should_transfer_maintainer() {
 			result.address,
 			bob()
 		));
-		let event = TestEvent::evm_mod(RawEvent::TransferedMaintainer(result.address, bob()));
+		let event = TestEvent::evm_mod(RawEvent::TransferredMaintainer(result.address, bob()));
 		assert!(System::events().iter().any(|record| record.event == event));
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 

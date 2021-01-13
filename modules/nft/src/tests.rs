@@ -149,11 +149,11 @@ fn transfer_should_work() {
 		));
 
 		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
-		let event = TestEvent::nft(RawEvent::TransferedToken(BOB, ALICE, CLASS_ID, TOKEN_ID));
+		let event = TestEvent::nft(RawEvent::TransferredToken(BOB, ALICE, CLASS_ID, TOKEN_ID));
 		assert_eq!(last_event(), event);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
-		let event = TestEvent::nft(RawEvent::TransferedToken(ALICE, BOB, CLASS_ID, TOKEN_ID));
+		let event = TestEvent::nft(RawEvent::TransferredToken(ALICE, BOB, CLASS_ID, TOKEN_ID));
 		assert_eq!(last_event(), event);
 	});
 }

@@ -258,8 +258,8 @@ decl_event! {
 		AddStorageQuota(EvmAddress, u32),
 		/// A quota has been removed at a given address. \[address, bytes\]
 		RemoveStorageQuota(EvmAddress, u32),
-		/// Transfered maintainer. \[contract, address\]
-		TransferedMaintainer(EvmAddress, EvmAddress),
+		/// Transferred maintainer. \[contract, address\]
+		TransferredMaintainer(EvmAddress, EvmAddress),
 		/// Canceled the transfer maintainer. \[contract, address\]
 		CanceledTransferMaintainer(EvmAddress, EvmAddress),
 		/// Confirmed the transfer maintainer. \[contract, address\]
@@ -445,7 +445,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			Self::do_transfer_maintainer(who, contract, new_maintainer)?;
 
-			Module::<T>::deposit_event(Event::<T>::TransferedMaintainer(contract, new_maintainer));
+			Module::<T>::deposit_event(Event::<T>::TransferredMaintainer(contract, new_maintainer));
 		}
 
 		#[weight = <T as Config>::WeightInfo::deploy()]

@@ -1229,7 +1229,7 @@ fn test_evm_module() {
 				contract,
 				bob_address
 			));
-			let event = Event::module_evm(module_evm::RawEvent::TransferedMaintainer(contract, bob_address));
+			let event = Event::module_evm(module_evm::RawEvent::TransferredMaintainer(contract, bob_address));
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
