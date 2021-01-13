@@ -1249,7 +1249,7 @@ parameter_types! {
 
 #[cfg(feature = "with-ethereum-compatibility")]
 parameter_types! {
-	pub const ContractExistentialDeposit: Balance = 0;
+	pub const NewContractExtraBytes: u32 = 0;
 	pub const StorageDepositPerByte: Balance = 0;
 	pub const MaxCodeSize: u32 = 0x6000;
 	pub const DeveloperDeposit: Balance = 0;
@@ -1258,7 +1258,7 @@ parameter_types! {
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
-	pub const ContractExistentialDeposit: Balance = DOLLARS;
+	pub const NewContractExtraBytes: u32 = 10_000;
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub const DeveloperDeposit: Balance = DOLLARS;
@@ -1278,7 +1278,7 @@ impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
-	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

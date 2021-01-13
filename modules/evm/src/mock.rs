@@ -139,10 +139,9 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const ContractExistentialDeposit: u64 = 1;
+	pub const NewContractExtraBytes: u32 = 100;
 	pub const TransferMaintainerDeposit: u64 = 1;
 	pub const StorageDepositPerByte: u64 = 10;
-	pub const StorageDefaultQuota: u32 = 800;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 	pub const MaxCodeSize: u32 = 1000;
@@ -153,7 +152,7 @@ impl Config for Test {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
-	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

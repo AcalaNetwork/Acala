@@ -13,7 +13,7 @@ use primitives::{evm::AddressMapping as AddressMappingT, Balance};
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - QueryContractExistentialDeposit.
+/// - QueryNewContractExtraBytes.
 /// - QueryTransferMaintainerDeposit.
 /// - QueryStorageDepositPerByte.
 /// - QueryMaintainer.
@@ -28,7 +28,7 @@ use primitives::{evm::AddressMapping as AddressMappingT, Balance};
 pub struct StateRentPrecompile<AccountId, AddressMapping, EVM>(PhantomData<(AccountId, AddressMapping, EVM)>);
 
 enum Action {
-	QueryContractExistentialDeposit,
+	QueryNewContractExtraBytes,
 	QueryTransferMaintainerDeposit,
 	QueryStorageDepositPerByte,
 	QueryMaintainer,
@@ -45,7 +45,7 @@ impl From<u8> for Action {
 	fn from(a: u8) -> Self {
 		// reserve 0 - 127 for query, 128 - 255 for action
 		match a {
-			0 => Action::QueryContractExistentialDeposit,
+			0 => Action::QueryNewContractExtraBytes,
 			1 => Action::QueryTransferMaintainerDeposit,
 			2 => Action::QueryStorageDepositPerByte,
 			3 => Action::QueryMaintainer,
@@ -77,9 +77,9 @@ where
 		let action = input.action()?;
 
 		match action {
-			Action::QueryContractExistentialDeposit => {
-				let deposit = vec_u8_from_balance(EVM::query_contract_existential_deposit());
-				Ok((ExitSucceed::Returned, deposit, 0))
+			Action::QueryNewContractExtraBytes => {
+				let bytes = vec_u8_from_u32(EVM::query_new_contract_extra_bytes());
+				Ok((ExitSucceed::Returned, bytes, 0))
 			}
 			Action::QueryTransferMaintainerDeposit => {
 				let deposit = vec_u8_from_balance(EVM::query_transfer_maintainer_deposit());
@@ -152,6 +152,12 @@ where
 }
 
 fn vec_u8_from_balance(b: Balance) -> Vec<u8> {
+	let mut be_bytes = [0u8; 32];
+	U256::from(b).to_big_endian(&mut be_bytes[..]);
+	be_bytes.to_vec()
+}
+
+fn vec_u8_from_u32(b: u32) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()

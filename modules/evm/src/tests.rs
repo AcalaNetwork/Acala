@@ -32,7 +32,6 @@ fn should_calculate_contract_address() {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: addr,
-			creating: false,
 		};
 
 		let config = <Test as Config>::config();
@@ -165,7 +164,7 @@ fn call_reverts_with_message() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
 		let contract_address = result.address;
 
@@ -184,7 +183,7 @@ fn call_reverts_with_message() {
 			<Test as Config>::config(),
 		).unwrap();
 
-		assert_eq!(balance(alice()), INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
 		assert_eq!(
 			to_hex(&result.output, true),
@@ -232,7 +231,6 @@ fn should_deploy_payable_contract() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- amount - (EVM::storage_usage(contract_address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(contract_address), amount);
 
@@ -255,7 +253,6 @@ fn should_deploy_payable_contract() {
 			INITIAL_BALANCE
 				- 2 * amount - (EVM::storage_usage(contract_address) as u64
 				* <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get()
 		);
 		assert_eq!(balance(contract_address), 2 * amount);
 	});
@@ -313,10 +310,7 @@ fn should_transfer_from_contract() {
 		.expect("call shouldn't fail");
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE - 1 * amount - <Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE - 1 * amount);
 		assert_eq!(balance(charlie()), 1 * amount);
 
 		// send via send
@@ -336,10 +330,7 @@ fn should_transfer_from_contract() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(balance(charlie()), 2 * amount);
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE - 2 * amount - <Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE - 2 * amount);
 
 		// send via call
 		let mut via_call = from_hex("0x830c29ae").unwrap();
@@ -358,10 +349,7 @@ fn should_transfer_from_contract() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(balance(charlie()), 3 * amount);
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE - 3 * amount - <Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE - 3 * amount);
 	})
 }
 
@@ -391,20 +379,14 @@ fn contract_should_deploy_contracts() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 		let factory_contract_address = result.address;
 
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(factory_contract_address);
 
 		assert_eq!(balance(result.address), 0);
-		assert_eq!(
-			reserved_balance(result.address),
-			<Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(reserved_balance(result.address), 0);
 
 		// Factory.createContract
 		let amount = 1000000000;
@@ -423,24 +405,17 @@ fn contract_should_deploy_contracts() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- amount - <Test as Config>::ContractExistentialDeposit::get()
-				- (EVM::storage_usage(factory_contract_address) as u64
-					* <Test as Config>::StorageDepositPerByte::get())
+				- amount - (EVM::storage_usage(factory_contract_address) as u64
+				* <Test as Config>::StorageDepositPerByte::get())
 		);
-		assert_eq!(
-			balance(factory_contract_address),
-			amount - <Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(balance(factory_contract_address), amount);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
-		assert_eq!(
-			reserved_balance(contract_address),
-			<Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(reserved_balance(contract_address), 0);
 	});
 }
 
 #[test]
-fn contract_deploy_contracts_failed() {
+fn contract_should_deploy_contracts_without_payable() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Factory {
@@ -465,21 +440,13 @@ fn contract_deploy_contracts_failed() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
-		);
-		assert_eq!(
-			reserved_balance(result.address),
-			<Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
+		let factory_contract_address = result.address;
 
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(result.address);
 
 		// Factory.createContract
-		// need factory contract pay for the ContractExistentialDeposit. But factory not
-		// payable.
 		let create_contract = from_hex("0x412a5a6d").unwrap();
 		let result = Runner::<Test>::call(
 			alice(),
@@ -491,7 +458,14 @@ fn contract_deploy_contracts_failed() {
 			<Test as Config>::config(),
 		)
 		.unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
+		assert_eq!(
+			balance(alice()),
+			INITIAL_BALANCE
+				- (EVM::storage_usage(factory_contract_address) as u64
+					* <Test as Config>::StorageDepositPerByte::get())
+		);
+		assert_eq!(balance(factory_contract_address), 0);
 	});
 }
 
@@ -524,7 +498,6 @@ fn deploy_factory() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 	});
 }
@@ -614,7 +587,6 @@ fn should_request_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -649,7 +621,6 @@ fn should_request_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 				- <Test as Config>::TransferMaintainerDeposit::get()
 		);
 	});
@@ -682,7 +653,6 @@ fn should_cancel_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
@@ -741,7 +711,6 @@ fn should_confirm_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -759,7 +728,6 @@ fn should_confirm_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 
 		// confirm_transfer_maintainer
@@ -780,7 +748,6 @@ fn should_confirm_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 
 		assert_noop!(
@@ -817,7 +784,6 @@ fn should_reject_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -849,7 +815,6 @@ fn should_reject_transfer_maintainer() {
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::ContractExistentialDeposit::get() * 2
 				+ <Test as Config>::TransferMaintainerDeposit::get()
 		);
 		assert_eq!(
@@ -884,7 +849,7 @@ fn should_deploy() {
 		// create contract
 		let result = Runner::<Test>::create(alice(), contract, 0, 21_000_000, 21_000_000, <Test as Config>::config()).unwrap();
 		let contract_address = result.address;
-		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
 		// multiply(2, 3)
 		let multiply = from_hex("0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
@@ -904,7 +869,10 @@ fn should_deploy() {
 		assert_noop!(EVM::deploy(Origin::signed(bob_account_id), contract_address), Error::<Test>::NoPermission);
 
 		assert_ok!(EVM::deploy(Origin::signed(alice_account_id.clone()), contract_address));
-		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get() - DeploymentFee::get());
+		let code_size = Accounts::<Test>::get(contract_address).map_or(0, |account_info| -> u32 {
+			account_info.contract_info.map_or(0, |contract_info| CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
+		});
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get()+code_size) as u64 * StorageDepositPerByte::get()));
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), DeploymentFee::get());
 
 		// call method `multiply` will work
@@ -1056,7 +1024,7 @@ fn should_set_code() {
 		)
 		.unwrap();
 		let contract_address = result.address;
-		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
 		assert_noop!(
 			EVM::set_code(Origin::signed(bob_account_id), contract_address, contract.clone()),
@@ -1116,7 +1084,7 @@ fn should_selfdestruct() {
 		)
 		.unwrap();
 		let contract_address = result.address;
-		assert_eq!(balance(alice()), INITIAL_BALANCE - ContractExistentialDeposit::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
 		assert_noop!(
 			EVM::selfdestruct(Origin::signed(bob_account_id), contract_address),
@@ -1147,20 +1115,14 @@ fn storage_limit_should_work() {
 		let result =
 			Runner::<Test>::create(alice(), contract.clone(), 0, 1000000000, 0, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE - <Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(balance(alice()), INITIAL_BALANCE);
 		let factory_contract_address = result.address;
 
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(factory_contract_address);
 
 		assert_eq!(balance(factory_contract_address), 0);
-		assert_eq!(
-			reserved_balance(factory_contract_address),
-			<Test as Config>::ContractExistentialDeposit::get()
-		);
+		assert_eq!(reserved_balance(factory_contract_address), 0);
 		assert_eq!(result.used_storage.as_u64(), 0u64);
 		assert_eq!(
 			result.used_storage.as_u64(),
