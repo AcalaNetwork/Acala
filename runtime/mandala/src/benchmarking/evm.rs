@@ -37,7 +37,8 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 	let contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a40029").to_vec();
 
 	System::set_block_number(1);
-	EVM::create(Origin::signed(caller), contract, 0, 1000000000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
+	EVM::create(Origin::signed(caller), contract, 0, 1000000000, 1000000000)
+		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
 	if let Event::module_evm(module_evm::RawEvent::Created(address)) = System::events().iter().last().unwrap().event {
 		Ok(address)
@@ -66,21 +67,6 @@ runtime_benchmarks! {
 	{ Runtime, module_evm }
 
 	_ {}
-
-	add_storage_quota {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-	}: _(RawOrigin::Signed(bob_account_id()), address, 10)
-
-	remove_storage_quota {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::add_storage_quota(Origin::signed(bob_account_id()), address, 10)?;
-
-	}: _(RawOrigin::Signed(alice_account_id()), address, 10)
 
 	request_transfer_maintainer {
 		set_aca_balance(&alice_account_id(), dollar(1000));
@@ -162,20 +148,6 @@ mod tests {
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
-	}
-
-	#[test]
-	fn test_add_storage_quota() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_add_storage_quota());
-		});
-	}
-
-	#[test]
-	fn test_remove_storage_quota() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_remove_storage_quota());
-		});
 	}
 
 	#[test]

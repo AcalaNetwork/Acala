@@ -5,6 +5,7 @@
 use super::*;
 use frame_support::{assert_err, assert_ok};
 use mock::{alice, bob, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
+use primitives::evm::AddressMapping;
 
 #[test]
 fn should_read_total_supply() {
@@ -37,68 +38,80 @@ fn should_read_balance_of() {
 
 #[test]
 fn should_transfer() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_err!(
-			EvmBridgeModule::transfer(
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
+				100000,
+			),
+			(
+				<Runtime as module_evm::Config>::AddressMapping::get_account_id(&bob()),
+				100000,
+			),
+		])
+		.build()
+		.execute_with(|| {
+			assert_err!(
+				EvmBridgeModule::transfer(
+					InvokeContext {
+						contract: erc20_address(),
+						source: bob(),
+					},
+					alice(),
+					10
+				),
+				Error::<Runtime>::ExecutionRevert
+			);
+
+			assert_ok!(EvmBridgeModule::transfer(
+				InvokeContext {
+					contract: erc20_address(),
+					source: alice()
+				},
+				bob(),
+				100
+			));
+			assert_eq!(
+				EvmBridgeModule::balance_of(
+					InvokeContext {
+						contract: erc20_address(),
+						source: alice()
+					},
+					bob()
+				),
+				Ok(100)
+			);
+
+			assert_ok!(EvmBridgeModule::transfer(
 				InvokeContext {
 					contract: erc20_address(),
 					source: bob(),
 				},
 				alice(),
 				10
-			),
-			Error::<Runtime>::ExecutionRevert
-		);
+			));
 
-		assert_ok!(EvmBridgeModule::transfer(
-			InvokeContext {
-				contract: erc20_address(),
-				source: alice()
-			},
-			bob(),
-			100
-		));
-		assert_eq!(
-			EvmBridgeModule::balance_of(
-				InvokeContext {
-					contract: erc20_address(),
-					source: alice()
-				},
-				bob()
-			),
-			Ok(100)
-		);
+			assert_eq!(
+				EvmBridgeModule::balance_of(
+					InvokeContext {
+						contract: erc20_address(),
+						source: alice()
+					},
+					bob()
+				),
+				Ok(90)
+			);
 
-		assert_ok!(EvmBridgeModule::transfer(
-			InvokeContext {
-				contract: erc20_address(),
-				source: bob(),
-			},
-			alice(),
-			10
-		));
-
-		assert_eq!(
-			EvmBridgeModule::balance_of(
-				InvokeContext {
-					contract: erc20_address(),
-					source: alice()
-				},
-				bob()
-			),
-			Ok(90)
-		);
-
-		assert_err!(
-			EvmBridgeModule::transfer(
-				InvokeContext {
-					contract: erc20_address(),
-					source: bob(),
-				},
-				alice(),
-				100
-			),
-			Error::<Runtime>::ExecutionRevert
-		);
-	});
+			assert_err!(
+				EvmBridgeModule::transfer(
+					InvokeContext {
+						contract: erc20_address(),
+						source: bob(),
+					},
+					alice(),
+					100
+				),
+				Error::<Runtime>::ExecutionRevert
+			);
+		});
 }

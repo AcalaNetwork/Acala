@@ -16,12 +16,9 @@ use primitives::{evm::AddressMapping as AddressMappingT, Balance};
 /// - QueryContractExistentialDeposit.
 /// - QueryTransferMaintainerDeposit.
 /// - QueryStorageDepositPerByte.
-/// - QueryStorageDefaultQuota.
 /// - QueryMaintainer.
 /// - QueryDeveloperDeposit.
 /// - QueryDeploymentFee.
-/// - AddStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
-/// - RemoveStorageQuota. Rest `input` bytes: `from`, `contract`, `bytes`.
 /// - RequestTransferMaintainer. Rest `input` bytes: `from`, `contract`.
 /// - CancelTransferMaintainer. Rest `input` bytes: `from`, `contract`.
 /// - ConfirmTransferMaintainer. Rest `input` bytes: `from`, `contract`,
@@ -34,12 +31,9 @@ enum Action {
 	QueryContractExistentialDeposit,
 	QueryTransferMaintainerDeposit,
 	QueryStorageDepositPerByte,
-	QueryStorageDefaultQuota,
 	QueryMaintainer,
 	QueryDeveloperDeposit,
 	QueryDeploymentFee,
-	AddStorageQuota,
-	RemoveStorageQuota,
 	RequestTransferMaintainer,
 	CancelTransferMaintainer,
 	ConfirmTransferMaintainer,
@@ -54,16 +48,13 @@ impl From<u8> for Action {
 			0 => Action::QueryContractExistentialDeposit,
 			1 => Action::QueryTransferMaintainerDeposit,
 			2 => Action::QueryStorageDepositPerByte,
-			3 => Action::QueryStorageDefaultQuota,
-			4 => Action::QueryMaintainer,
-			5 => Action::QueryDeveloperDeposit,
-			6 => Action::QueryDeploymentFee,
-			128 => Action::AddStorageQuota,
-			129 => Action::RemoveStorageQuota,
-			130 => Action::RequestTransferMaintainer,
-			131 => Action::CancelTransferMaintainer,
-			132 => Action::ConfirmTransferMaintainer,
-			133 => Action::RejectTransferMaintainer,
+			3 => Action::QueryMaintainer,
+			4 => Action::QueryDeveloperDeposit,
+			5 => Action::QueryDeploymentFee,
+			128 => Action::RequestTransferMaintainer,
+			129 => Action::CancelTransferMaintainer,
+			130 => Action::ConfirmTransferMaintainer,
+			131 => Action::RejectTransferMaintainer,
 			_ => Action::Unknown,
 		}
 	}
@@ -95,12 +86,8 @@ where
 				Ok((ExitSucceed::Returned, deposit, 0))
 			}
 			Action::QueryStorageDepositPerByte => {
-				let deposit = vec_u8_from_balance(EVM::query_qtorage_deposit_per_byte());
+				let deposit = vec_u8_from_balance(EVM::query_storage_deposit_per_byte());
 				Ok((ExitSucceed::Returned, deposit, 0))
-			}
-			Action::QueryStorageDefaultQuota => {
-				let quota = vec_u8_from_u32(EVM::query_storage_default_quota());
-				Ok((ExitSucceed::Returned, quota, 0))
 			}
 			Action::QueryMaintainer => {
 				let contract = input.evm_address_at(1)?;
@@ -120,25 +107,6 @@ where
 			Action::QueryDeploymentFee => {
 				let fee = vec_u8_from_balance(EVM::query_deployment_fee());
 				Ok((ExitSucceed::Returned, fee, 0))
-			}
-			Action::AddStorageQuota => {
-				let from = input.account_id_at(1)?;
-				let contract = input.evm_address_at(2)?;
-				let bytes = input.u32_at(3)?;
-
-				EVM::add_storage_quota(from, contract, bytes).map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
-
-				Ok((ExitSucceed::Returned, vec![], 0))
-			}
-			Action::RemoveStorageQuota => {
-				let from = input.account_id_at(1)?;
-				let contract = input.evm_address_at(2)?;
-				let bytes = input.u32_at(3)?;
-
-				EVM::remove_storage_quota(from, contract, bytes)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
-
-				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 			Action::RequestTransferMaintainer => {
 				let from = input.account_id_at(1)?;
@@ -184,12 +152,6 @@ where
 }
 
 fn vec_u8_from_balance(b: Balance) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
-}
-
-fn vec_u8_from_u32(b: u32) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()

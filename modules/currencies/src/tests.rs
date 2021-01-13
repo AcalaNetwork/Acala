@@ -335,84 +335,93 @@ fn erc20_total_balance_works() {
 
 #[test]
 fn erc20_ensure_withdraw() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Currencies::ensure_can_withdraw(
-			CurrencyId::ERC20(erc20_address()),
-			&alice(),
-			100
-		));
-		assert_eq!(
-			Currencies::ensure_can_withdraw(CurrencyId::ERC20(erc20_address()), &bob(), 100),
-			Err(Error::<Runtime>::BalanceTooLow.into()),
-		);
-		assert_ok!(Currencies::transfer(
-			Origin::signed(alice()),
-			bob(),
-			CurrencyId::ERC20(erc20_address()),
-			100
-		));
-		assert_ok!(Currencies::ensure_can_withdraw(
-			CurrencyId::ERC20(erc20_address()),
-			&bob(),
-			100
-		));
-		assert_eq!(
-			Currencies::ensure_can_withdraw(CurrencyId::ERC20(erc20_address()), &bob(), 101),
-			Err(Error::<Runtime>::BalanceTooLow.into()),
-		);
-	});
+	ExtBuilder::default()
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100000)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Currencies::ensure_can_withdraw(
+				CurrencyId::ERC20(erc20_address()),
+				&alice(),
+				100
+			));
+			assert_eq!(
+				Currencies::ensure_can_withdraw(CurrencyId::ERC20(erc20_address()), &bob(), 100),
+				Err(Error::<Runtime>::BalanceTooLow.into()),
+			);
+			assert_ok!(Currencies::transfer(
+				Origin::signed(alice()),
+				bob(),
+				CurrencyId::ERC20(erc20_address()),
+				100
+			));
+			assert_ok!(Currencies::ensure_can_withdraw(
+				CurrencyId::ERC20(erc20_address()),
+				&bob(),
+				100
+			));
+			assert_eq!(
+				Currencies::ensure_can_withdraw(CurrencyId::ERC20(erc20_address()), &bob(), 101),
+				Err(Error::<Runtime>::BalanceTooLow.into()),
+			);
+		});
 }
 
 #[test]
 fn erc20_transfer_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Currencies::transfer(
-			Origin::signed(alice()),
-			bob(),
-			CurrencyId::ERC20(erc20_address()),
-			100
-		));
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY_ID, 100000),
+			(bob(), NATIVE_CURRENCY_ID, 100000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Currencies::transfer(
+				Origin::signed(alice()),
+				bob(),
+				CurrencyId::ERC20(erc20_address()),
+				100
+			));
 
-		assert_eq!(
-			Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &bob()),
-			100
-		);
-		assert_eq!(
-			Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &bob()),
-			100
-		);
+			assert_eq!(
+				Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &bob()),
+				100
+			);
+			assert_eq!(
+				Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &bob()),
+				100
+			);
 
-		assert_eq!(
-			Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &alice()),
-			u128::max_value() - 100
-		);
-		assert_eq!(
-			Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &alice()),
-			u128::max_value() - 100
-		);
+			assert_eq!(
+				Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &alice()),
+				u128::max_value() - 100
+			);
+			assert_eq!(
+				Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &alice()),
+				u128::max_value() - 100
+			);
 
-		assert_ok!(Currencies::transfer(
-			Origin::signed(bob()),
-			alice(),
-			CurrencyId::ERC20(erc20_address()),
-			10
-		));
+			assert_ok!(Currencies::transfer(
+				Origin::signed(bob()),
+				alice(),
+				CurrencyId::ERC20(erc20_address()),
+				10
+			));
 
-		assert_eq!(Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &bob()), 90);
-		assert_eq!(
-			Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &bob()),
-			90
-		);
+			assert_eq!(Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &bob()), 90);
+			assert_eq!(
+				Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &bob()),
+				90
+			);
 
-		assert_eq!(
-			Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &alice()),
-			u128::max_value() - 90
-		);
-		assert_eq!(
-			Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &alice()),
-			u128::max_value() - 90
-		);
-	});
+			assert_eq!(
+				Currencies::free_balance(CurrencyId::ERC20(erc20_address()), &alice()),
+				u128::max_value() - 90
+			);
+			assert_eq!(
+				Currencies::total_balance(CurrencyId::ERC20(erc20_address()), &alice()),
+				u128::max_value() - 90
+			);
+		});
 }
 
 #[test]

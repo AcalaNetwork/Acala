@@ -263,6 +263,7 @@ pub trait EVM {
 		input: Vec<u8>,
 		value: Self::Balance,
 		gas_limit: u32,
+		storage_limit: u32,
 		config: Option<Config>,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
 }
@@ -291,19 +292,13 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	/// Query the constants `TransferMaintainerDeposit` value from evm module.
 	fn query_transfer_maintainer_deposit() -> Balance;
 	/// Query the constants `StorageDepositPerByte` value from evm module.
-	fn query_qtorage_deposit_per_byte() -> Balance;
-	/// Query the constants `StorageDefaultQuota` value from evm module.
-	fn query_storage_default_quota() -> u32;
+	fn query_storage_deposit_per_byte() -> Balance;
 	/// Query the maintainer address from the ERC20 contract.
 	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
 	/// Query the constants `DeveloperDeposit` value from evm module.
 	fn query_developer_deposit() -> Balance;
 	/// Query the constants `DeploymentFee` value from evm module.
 	fn query_deployment_fee() -> Balance;
-	/// Add the quota at the given contract address.
-	fn add_storage_quota(from: AccountId, contract: H160, bytes: u32) -> DispatchResult;
-	/// Remove the quota at the given contract address.
-	fn remove_storage_quota(from: AccountId, contract: H160, bytes: u32) -> DispatchResult;
 	/// Request to transfer the maintainer of the contract address.
 	fn request_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
 	/// Cancel to transfer the maintainer of the contract address.
