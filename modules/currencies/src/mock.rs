@@ -134,7 +134,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ContractExistentialDeposit: u64 = 1;
+	pub const NewContractExtraBytes: u32 = 1;
 	pub const TransferMaintainerDeposit: u64 = 1;
 	pub NetworkContractSource: H160 = H160::default();
 }
@@ -153,7 +153,7 @@ impl module_evm::Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = PalletBalances;
 	type MergeAccount = ();
-	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

@@ -1239,7 +1239,7 @@ impl pallet_contracts::Config for Runtime {
 parameter_types! {
 	// TODO: update
 	pub const ChainId: u64 = 686;
-	pub const ContractExistentialDeposit: Balance = DOLLARS;
+	pub const NewContractExtraBytes: u32 = 10_000;
 	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	// https://eips.ethereum.org/EIPS/eip-170
@@ -1259,7 +1259,7 @@ impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
-	type ContractExistentialDeposit = ContractExistentialDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

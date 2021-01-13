@@ -287,8 +287,8 @@ pub trait EVMBridge<Balance> {
 
 /// An abstraction of EVMStateRentTrait
 pub trait EVMStateRentTrait<AccountId, Balance> {
-	/// Query the constants `ContractExistentialDeposit` value from evm module.
-	fn query_contract_existential_deposit() -> Balance;
+	/// Query the constants `NewContractExtraBytes` value from evm module.
+	fn query_new_contract_extra_bytes() -> u32;
 	/// Query the constants `TransferMaintainerDeposit` value from evm module.
 	fn query_transfer_maintainer_deposit() -> Balance;
 	/// Query the constants `StorageDepositPerByte` value from evm module.

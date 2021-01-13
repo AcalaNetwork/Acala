@@ -34,7 +34,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::{
-	traits::{Convert, One, UniqueSaturatedInto},
+	traits::{Convert, One, Saturating, UniqueSaturatedInto},
 	Either,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -103,8 +103,9 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	/// Merge free balance from source to dest.
 	type MergeAccount: MergeAccount<Self::AccountId>;
-	/// Deposit for creating contract, would be reserved until contract deleted.
-	type ContractExistentialDeposit: Get<BalanceOf<Self>>;
+	/// Charge extra bytes for creating a contract, would be reserved until the
+	/// contract deleted.
+	type NewContractExtraBytes: Get<u32>;
 	/// Deposit for transferring the maintainer of the contract.
 	type TransferMaintainerDeposit: Get<BalanceOf<Self>>;
 	/// Storage required for per byte.
@@ -147,15 +148,14 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 pub const STORAGE_SIZE: u32 = 64;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-pub struct ContractInfo<T: Config> {
+pub struct ContractInfo {
 	pub storage_count: u32,
 	pub code_hash: H256,
-	pub existential_deposit: BalanceOf<T>,
 	pub maintainer: EvmAddress,
 	pub deployed: bool,
 }
 
-impl<T: Config> ContractInfo<T> {
+impl ContractInfo {
 	pub fn total_storage_size(&self) -> u32 {
 		self.storage_count.saturating_mul(STORAGE_SIZE)
 	}
@@ -164,12 +164,12 @@ impl<T: Config> ContractInfo<T> {
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 pub struct AccountInfo<T: Config> {
 	pub nonce: T::Index,
-	pub contract_info: Option<ContractInfo<T>>,
+	pub contract_info: Option<ContractInfo>,
 	pub developer_deposit: Option<BalanceOf<T>>,
 }
 
 impl<T: Config> AccountInfo<T> {
-	pub fn new(nonce: T::Index, contract_info: Option<ContractInfo<T>>) -> Self {
+	pub fn new(nonce: T::Index, contract_info: Option<ContractInfo>) -> Self {
 		Self {
 			nonce,
 			contract_info,
@@ -321,8 +321,8 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		/// Deploy a contract need the existential deposit.
-		const ContractExistentialDeposit: BalanceOf<T> = T::ContractExistentialDeposit::get();
+		/// Deploy a contract need the extra bytes.
+		const NewContractExtraBytes: u32 = T::NewContractExtraBytes::get();
 		/// Deposit for transferring the maintainer of the contract.
 		const TransferMaintainerDeposit: BalanceOf<T> = T::TransferMaintainerDeposit::get();
 		/// Storage required for per byte.
@@ -641,7 +641,6 @@ impl<T: Config> Module<T> {
 		let contract_info = ContractInfo {
 			storage_count,
 			code_hash,
-			existential_deposit: T::ContractExistentialDeposit::get(),
 			maintainer: *maintainer,
 			#[cfg(feature = "with-ethereum-compatibility")]
 			deployed: true,
@@ -855,6 +854,14 @@ impl<T: Config> Module<T> {
 			{
 				if let Some(maintainer) = maintainer {
 					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+
+					let from = T::AddressMapping::get_account_id(&maintainer);
+					let to = T::AddressMapping::get_account_id(&contract);
+					let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
+					let deposit_amount: BalanceOf<T> = T::StorageDepositPerByte::get()
+						.saturating_mul(T::NewContractExtraBytes::get().saturating_add(code_size).into());
+					T::Currency::transfer(&from, &to, deposit_amount, ExistenceRequirement::AllowDeath)?;
+					T::Currency::reserve(&to, deposit_amount)?;
 				}
 				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 				contract_info.deployed = true;
@@ -934,7 +941,6 @@ impl<T: Config> Module<T> {
 			});
 
 			let contract_account_id = T::AddressMapping::get_account_id(&contract);
-			// contract_info.existential_deposit + developer_deposit
 			T::Currency::unreserve(
 				&contract_account_id,
 				T::Currency::reserved_balance(&contract_account_id),
@@ -990,8 +996,8 @@ impl<T: Config> EVMTrait for Module<T> {
 }
 
 impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
-	fn query_contract_existential_deposit() -> BalanceOf<T> {
-		T::ContractExistentialDeposit::get()
+	fn query_new_contract_extra_bytes() -> u32 {
+		T::NewContractExtraBytes::get()
 	}
 
 	fn query_transfer_maintainer_deposit() -> BalanceOf<T> {

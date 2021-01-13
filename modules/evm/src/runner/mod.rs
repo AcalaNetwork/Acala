@@ -48,7 +48,6 @@ impl<T: Config> Runner<T> {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: source,
-			creating: true,
 		};
 
 		let mut substate = Handler::<T>::new_with_precompile(
@@ -84,10 +83,6 @@ impl<T: Config> Runner<T> {
 			}
 
 			if let Err(e) = Self::deduct_storage(source, address, storage_limit) {
-				return TransactionOutcome::Rollback(Err(e));
-			}
-
-			if let Err(e) = Self::transfer_and_reserve_deposit(source, address) {
 				return TransactionOutcome::Rollback(Err(e));
 			}
 
@@ -163,18 +158,6 @@ impl<T: Config> Runner<T> {
 		T::Currency::transfer(&from, &to, value, ExistenceRequirement::AllowDeath)
 	}
 
-	fn transfer_and_reserve_deposit(source: H160, target: H160) -> Result<(), DispatchError> {
-		let from = T::AddressMapping::get_account_id(&source);
-		let to = T::AddressMapping::get_account_id(&target);
-		T::Currency::transfer(
-			&from,
-			&to,
-			T::ContractExistentialDeposit::get(),
-			ExistenceRequirement::AllowDeath,
-		)?;
-		T::Currency::reserve(&to, T::ContractExistentialDeposit::get())
-	}
-
 	fn deduct_storage(source: H160, target: H160, used_storage: u32) -> Result<(), DispatchError> {
 		if used_storage.is_zero() {
 			return Ok(());
@@ -225,7 +208,6 @@ impl<T: Config> Runner<T> {
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
 			origin: source,
-			creating: false,
 		};
 
 		let mut substate = Handler::<T>::new_with_precompile(

@@ -125,12 +125,6 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		.map_err(|_| ExitError::OutOfGas)
 	}
 
-	fn reserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
-		let account_id = T::AddressMapping::get_account_id(&address);
-
-		T::Currency::reserve(&account_id, value).map_err(|_| ExitError::Other("Reserve failed".into()))
-	}
-
 	fn unreserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
 		let account_id = T::AddressMapping::get_account_id(&address);
 
@@ -411,20 +405,6 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 				value,
 			}));
 
-			let maintainer = if self.vicinity.creating {
-				self.vicinity.origin
-			} else {
-				caller
-			};
-			let contract_existential_deposit = Transfer {
-				source: maintainer,
-				target: address,
-				value: U256::from(T::ContractExistentialDeposit::get().saturated_into::<u128>()),
-			};
-
-			try_or_rollback!(self.transfer(contract_existential_deposit));
-			try_or_rollback!(self.reserve(address, T::ContractExistentialDeposit::get()));
-
 			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
 
 			match reason {
@@ -434,7 +414,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 
 						substate.inc_nonce(address);
-						match <Module<T>>::on_contract_initialization(&address, &maintainer, out, None) {
+						match <Module<T>>::on_contract_initialization(&address, &self.vicinity.origin, out, None) {
 							Ok(()) => {
 								let storage_usage = Module::<T>::storage_usage(address);
 								try_or_rollback!(substate.storagemeter.record_cost(storage_usage));
