@@ -9,13 +9,13 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.111", optional = true }
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 module-evm = { path = "../evm", default-features = false }
 module-evm-bridge = { path = "../evm-bridge", default-features = false }
@@ -27,9 +27,9 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 support = { package = "module-support", path = "../support", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 tokens = { package = "orml-tokens", path = "../../orml/tokens" }
 module-evm = { path = "../evm" }
 

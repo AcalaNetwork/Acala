@@ -9,23 +9,23 @@ log = "0.4.8"
 structopt = "0.3.8"
 codec = { package = 'parity-scale-codec', version = '1.0.0' }
 
-sp-core = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", optional = true }
-sc-cli = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", optional = true }
-sc-service = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", optional = true }
-sc-tracing = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
 
-cumulus-primitives = { git = "https://github.com/paritytech/cumulus", rev = "5dfd0756efbd5be85937c2f530cfeaa7108b6dec" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", rev = "05b91fb4fc3862e8684b1a29b36fca0c7d9fd983" }
-polkadot-cli = { git = "https://github.com/paritytech/polkadot", rev = "05b91fb4fc3862e8684b1a29b36fca0c7d9fd983" }
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", rev = "05b91fb4fc3862e8684b1a29b36fca0c7d9fd983" }
+cumulus-primitives = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 
 inspect = { package = "acala-inspect", path = "../../../inspect" }
 service = { package = "acala-service", path = "../service", default-features = false, optional = true }
 
 [build-dependencies]
-substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324", default-features = false }
+substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 [features]
 default = [ "wasmtime", "cli", "with-mandala-runtime" ]
