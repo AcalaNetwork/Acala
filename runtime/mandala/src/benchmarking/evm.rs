@@ -68,37 +68,11 @@ runtime_benchmarks! {
 
 	_ {}
 
-	request_transfer_maintainer {
+	transfer_maintainer {
 		set_aca_balance(&alice_account_id(), dollar(1000));
 		set_aca_balance(&bob_account_id(), dollar(1000));
 		let address = deploy_contract(alice_account_id())?;
-	}: _(RawOrigin::Signed(bob_account_id()), address)
-
-	cancel_transfer_maintainer {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-	}: _(RawOrigin::Signed(bob_account_id()), address)
-
-	confirm_transfer_maintainer {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-		let new_maintainer = EvmAccounts::eth_address(&bob());
-	}: _(RawOrigin::Signed(alice_account_id()), address, new_maintainer)
-
-	reject_transfer_maintainer {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-		let new_maintainer = EvmAccounts::eth_address(&bob());
-	}: _(RawOrigin::Signed(alice_account_id()), address, new_maintainer)
+	}: _(RawOrigin::Signed(bob_account_id()), address, bob())
 
 	deploy {
 		set_aca_balance(&alice_account_id(), dollar(1000));
@@ -151,30 +125,9 @@ mod tests {
 	}
 
 	#[test]
-	fn test_request_transfer_maintainer() {
+	fn test_transfer_maintainer() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_request_transfer_maintainer());
-		});
-	}
-
-	#[test]
-	fn test_cancel_transfer_maintainer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_cancel_transfer_maintainer());
-		});
-	}
-
-	#[test]
-	fn test_confirm_transfer_maintainer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_confirm_transfer_maintainer());
-		});
-	}
-
-	#[test]
-	fn test_reject_transfer_maintainer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_reject_transfer_maintainer());
+			assert_ok!(test_benchmark_transfer_maintainer());
 		});
 	}
 

@@ -289,8 +289,6 @@ pub trait EVMBridge<Balance> {
 pub trait EVMStateRentTrait<AccountId, Balance> {
 	/// Query the constants `NewContractExtraBytes` value from evm module.
 	fn query_new_contract_extra_bytes() -> u32;
-	/// Query the constants `TransferMaintainerDeposit` value from evm module.
-	fn query_transfer_maintainer_deposit() -> Balance;
 	/// Query the constants `StorageDepositPerByte` value from evm module.
 	fn query_storage_deposit_per_byte() -> Balance;
 	/// Query the maintainer address from the ERC20 contract.
@@ -299,12 +297,6 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_developer_deposit() -> Balance;
 	/// Query the constants `DeploymentFee` value from evm module.
 	fn query_deployment_fee() -> Balance;
-	/// Request to transfer the maintainer of the contract address.
-	fn request_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
-	/// Cancel to transfer the maintainer of the contract address.
-	fn cancel_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
-	/// Confirm to transfer the maintainer of the contract address.
-	fn confirm_transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
-	/// Reject to transfer the maintainer of the contract address.
-	fn reject_transfer_maintainer(from: AccountId, contract: H160, invalid_maintainer: H160) -> DispatchResult;
+	/// Transfer the maintainer of the contract address.
+	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
 }

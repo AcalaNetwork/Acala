@@ -1241,7 +1241,6 @@ parameter_types! {
 	// TODO: update
 	pub const ChainId: u64 = 787;
 	pub const NewContractExtraBytes: u32 = 10_000;
-	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
@@ -1260,7 +1259,6 @@ impl module_evm::Config for Runtime {
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 	type Event = Event;

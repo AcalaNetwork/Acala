@@ -140,7 +140,6 @@ ord_parameter_types! {
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const NewContractExtraBytes: u32 = 100;
-	pub const TransferMaintainerDeposit: u64 = 1;
 	pub const StorageDepositPerByte: u64 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
@@ -153,7 +152,6 @@ impl Config for Test {
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 
