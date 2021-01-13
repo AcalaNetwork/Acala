@@ -15,7 +15,7 @@ use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{Saturating, Zero},
-	DispatchError, SaturatedConversion, TransactionOutcome,
+	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
 
@@ -219,9 +219,16 @@ impl<T: Config> Runner<T> {
 			T::Precompiles::execute,
 		);
 
-		if substate.is_undeployed_contract(&target) && !substate.has_permission_to_call(&source) {
-			return Err(Error::<T>::NoPermission.into());
-		}
+		// if the contract not deployed, the caller must be developer or contract.
+		substate.is_undeployed_contract(&target).map_or(
+			Err(Error::<T>::NoPermission.into()),
+			|is_undeployed| -> DispatchResult {
+				if is_undeployed && !substate.has_permission_to_call(&source) {
+					return Err(Error::<T>::NoPermission.into());
+				}
+				Ok(())
+			},
+		)?;
 
 		let pre_storage_usage = Module::<T>::storage_usage(target);
 		substate.inc_nonce(source);
