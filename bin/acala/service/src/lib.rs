@@ -222,6 +222,7 @@ where
 			acala_rpc::create_full(deps)
 		})
 	};
+	let telemetry_connection_sinks = sc_service::TelemetryConnectionSinks::default();
 
 	if parachain_config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
@@ -240,7 +241,7 @@ where
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
-		telemetry_connection_sinks: Default::default(),
+		telemetry_connection_sinks,
 		config: parachain_config,
 		keystore: params.keystore_container.sync_keystore(),
 		backend: backend.clone(),

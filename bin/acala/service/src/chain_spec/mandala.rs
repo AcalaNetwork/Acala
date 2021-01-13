@@ -96,7 +96,10 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![],
-		None,
+		Some(
+			TelemetryEndpoints::new(vec![(TELEMETRY_URL.to_string(), 0)])
+				.expect("Polkadot Staging telemetry url is valid; qed"),
+		),
 		None,
 		Some(properties),
 		Extensions {
