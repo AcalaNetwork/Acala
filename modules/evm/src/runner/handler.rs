@@ -178,15 +178,15 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	}
 
 	// is contract && not deployed
-	pub fn is_undeployed_contract(&self, address: &H160) -> Result<bool, ExitError> {
+	pub fn is_undeployed_contract(&self, address: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info: Some(ContractInfo { deployed, .. }),
 			..
 		}) = Accounts::<T>::get(address)
 		{
-			Ok(!deployed)
+			!deployed
 		} else {
-			Err(ExitError::Other("Contract not exists".into()))
+			false
 		}
 	}
 

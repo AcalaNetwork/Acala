@@ -846,8 +846,8 @@ fn should_deploy() {
 		// contract not created yet
 		assert_noop!(EVM::deploy(Origin::signed(alice_account_id.clone()), H160::default()), Error::<Test>::ContractNotFound);
 
-		// if the contract not exists, call will fail
-		assert_noop!(Runner::<Test>::call(
+		// if the contract not exists, evm will return ExitSucceed::Stopped.
+		let result = Runner::<Test>::call(
 			alice(),
 			EvmAddress::default(),
 			vec![],
@@ -855,7 +855,8 @@ fn should_deploy() {
 			1000000,
 			1000000,
 			<Test as Config>::config(),
-		), Error::<Test>::NoPermission);
+		).unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 
 		// create contract
 		let result = Runner::<Test>::create(alice(), contract, 0, 21_000_000, 21_000_000, <Test as Config>::config()).unwrap();
