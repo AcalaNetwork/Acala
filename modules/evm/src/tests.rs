@@ -561,7 +561,7 @@ fn create_network_contract_fails_if_non_network_contract_origin() {
 }
 
 #[test]
-fn should_request_transfer_maintainer() {
+fn should_transfer_maintainer() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Factory {
@@ -591,239 +591,29 @@ fn should_request_transfer_maintainer() {
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
-		// request_transfer_maintainer
-		assert_ok!(EVM::request_transfer_maintainer(
-			Origin::signed(bob_account_id.clone()),
-			result.address
-		));
-		let event = TestEvent::evm_mod(RawEvent::RequestedTransferMaintainer(result.address, bob()));
-		assert!(System::events().iter().any(|record| record.event == event));
-		assert_eq!(
-			balance(bob()),
-			INITIAL_BALANCE - <Test as Config>::TransferMaintainerDeposit::get()
-		);
-
-		assert_noop!(
-			EVM::request_transfer_maintainer(Origin::signed(bob_account_id.clone()), H160::default()),
-			Error::<Test>::ContractNotFound
-		);
-
-		assert_noop!(
-			EVM::request_transfer_maintainer(Origin::signed(bob_account_id.clone()), result.address),
-			Error::<Test>::PendingTransferMaintainersExists
-		);
-
-		assert_ok!(EVM::request_transfer_maintainer(
-			Origin::signed(alice_account_id.clone()),
-			result.address
-		));
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				- <Test as Config>::TransferMaintainerDeposit::get()
-		);
-	});
-}
-
-#[test]
-fn should_cancel_transfer_maintainer() {
-	// pragma solidity ^0.5.0;
-	//
-	// contract Factory {
-	//     Contract c;
-	//     constructor() public {
-	//         c = new Contract();
-	//         c.foo();
-	//     }
-	// }
-	//
-	// contract Contract {
-	//     function foo() public pure returns (uint) {
-	//         return 123;
-	//     }
-	// }
-	let contract = from_hex("0x608060405234801561001057600080fd5b5060405161001d90610121565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663c29855786040518163ffffffff1660e01b815260040160206040518083038186803b1580156100e057600080fd5b505afa1580156100f4573d6000803e3d6000fd5b505050506040513d602081101561010a57600080fd5b81019080805190602001909291905050505061012d565b60a58061017983390190565b603e8061013b6000396000f3fe6080604052600080fdfea265627a7a7231582064177030ee644a03aaf8d65027df9e0331c8bc4b161de25bfb8aa3142848e0f864736f6c634300051100326080604052348015600f57600080fd5b5060878061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336049565b6040518082815260200191505060405180910390f35b6000607b90509056fea265627a7a7231582031e5a4abae00962cfe9875df1b5b0d3ce6624e220cb8c714a948794fcddb6b4f64736f6c63430005110032").unwrap();
-	new_test_ext().execute_with(|| {
-		let result =
-			Runner::<Test>::create(alice(), contract, 0, 12_000_000, 12_000_000, <Test as Config>::config()).unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-		);
-		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
-		assert_eq!(balance(bob()), INITIAL_BALANCE);
-		// request_transfer_maintainer
-		assert_ok!(EVM::request_transfer_maintainer(
-			Origin::signed(bob_account_id.clone()),
-			result.address
-		));
-
-		assert_eq!(
-			balance(bob()),
-			INITIAL_BALANCE - <Test as Config>::TransferMaintainerDeposit::get()
-		);
-
-		assert_noop!(
-			EVM::cancel_transfer_maintainer(Origin::signed(bob_account_id.clone()), H160::default()),
-			Error::<Test>::PendingTransferMaintainersNotExists
-		);
-
-		// cancel_transfer_maintainer
-		assert_ok!(EVM::cancel_transfer_maintainer(
-			Origin::signed(bob_account_id.clone()),
-			result.address,
-		));
-		let event = TestEvent::evm_mod(RawEvent::CanceledTransferMaintainer(result.address, bob()));
-		assert!(System::events().iter().any(|record| record.event == event));
-
-		assert_eq!(balance(bob()), INITIAL_BALANCE);
-	});
-}
-
-#[test]
-fn should_confirm_transfer_maintainer() {
-	// pragma solidity ^0.5.0;
-	//
-	// contract Factory {
-	//     Contract c;
-	//     constructor() public {
-	//         c = new Contract();
-	//         c.foo();
-	//     }
-	// }
-	//
-	// contract Contract {
-	//     function foo() public pure returns (uint) {
-	//         return 123;
-	//     }
-	// }
-	let contract = from_hex("0x608060405234801561001057600080fd5b5060405161001d90610121565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663c29855786040518163ffffffff1660e01b815260040160206040518083038186803b1580156100e057600080fd5b505afa1580156100f4573d6000803e3d6000fd5b505050506040513d602081101561010a57600080fd5b81019080805190602001909291905050505061012d565b60a58061017983390190565b603e8061013b6000396000f3fe6080604052600080fdfea265627a7a7231582064177030ee644a03aaf8d65027df9e0331c8bc4b161de25bfb8aa3142848e0f864736f6c634300051100326080604052348015600f57600080fd5b5060878061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336049565b6040518082815260200191505060405180910390f35b6000607b90509056fea265627a7a7231582031e5a4abae00962cfe9875df1b5b0d3ce6624e220cb8c714a948794fcddb6b4f64736f6c63430005110032").unwrap();
-	new_test_ext().execute_with(|| {
-		let result =
-			Runner::<Test>::create(alice(), contract, 0, 12_000_000, 12_000_000, <Test as Config>::config()).unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-		);
-		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
-		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
-		assert_eq!(balance(bob()), INITIAL_BALANCE);
-		// request_transfer_maintainer
-		assert_ok!(EVM::request_transfer_maintainer(
-			Origin::signed(bob_account_id.clone()),
-			result.address
-		));
-		assert_eq!(
-			balance(bob()),
-			INITIAL_BALANCE - <Test as Config>::TransferMaintainerDeposit::get()
-		);
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-		);
-
-		// confirm_transfer_maintainer
-		assert_noop!(
-			EVM::confirm_transfer_maintainer(Origin::signed(bob_account_id.clone()), result.address, bob()),
-			Error::<Test>::NoPermission
-		);
-
-		assert_ok!(EVM::confirm_transfer_maintainer(
+		// transfer_maintainer
+		assert_ok!(EVM::transfer_maintainer(
 			Origin::signed(alice_account_id.clone()),
 			result.address,
 			bob()
 		));
-		let event = TestEvent::evm_mod(RawEvent::ConfirmedTransferMaintainer(result.address, bob()));
+		let event = TestEvent::evm_mod(RawEvent::TransferredMaintainer(result.address, bob()));
 		assert!(System::events().iter().any(|record| record.event == event));
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+
+		assert_noop!(
+			EVM::transfer_maintainer(Origin::signed(bob_account_id.clone()), H160::default(), alice()),
+			Error::<Test>::ContractNotFound
 		);
 
 		assert_noop!(
-			EVM::confirm_transfer_maintainer(Origin::signed(alice_account_id.clone()), result.address, bob()),
-			Error::<Test>::PendingTransferMaintainersNotExists
-		);
-	});
-}
-
-#[test]
-fn should_reject_transfer_maintainer() {
-	// pragma solidity ^0.5.0;
-	//
-	// contract Factory {
-	//     Contract c;
-	//     constructor() public {
-	//         c = new Contract();
-	//         c.foo();
-	//     }
-	// }
-	//
-	// contract Contract {
-	//     function foo() public pure returns (uint) {
-	//         return 123;
-	//     }
-	// }
-	let contract = from_hex("0x608060405234801561001057600080fd5b5060405161001d90610121565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663c29855786040518163ffffffff1660e01b815260040160206040518083038186803b1580156100e057600080fd5b505afa1580156100f4573d6000803e3d6000fd5b505050506040513d602081101561010a57600080fd5b81019080805190602001909291905050505061012d565b60a58061017983390190565b603e8061013b6000396000f3fe6080604052600080fdfea265627a7a7231582064177030ee644a03aaf8d65027df9e0331c8bc4b161de25bfb8aa3142848e0f864736f6c634300051100326080604052348015600f57600080fd5b5060878061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336049565b6040518082815260200191505060405180910390f35b6000607b90509056fea265627a7a7231582031e5a4abae00962cfe9875df1b5b0d3ce6624e220cb8c714a948794fcddb6b4f64736f6c63430005110032").unwrap();
-	new_test_ext().execute_with(|| {
-		let result =
-			Runner::<Test>::create(alice(), contract, 0, 12_000_000, 12_000_000, <Test as Config>::config()).unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-
-		assert_eq!(
-			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-		);
-		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
-		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
-		assert_eq!(balance(bob()), INITIAL_BALANCE);
-		// request_transfer_maintainer
-		assert_ok!(EVM::request_transfer_maintainer(
-			Origin::signed(bob_account_id.clone()),
-			result.address
-		));
-		assert_eq!(
-			balance(bob()),
-			INITIAL_BALANCE - <Test as Config>::TransferMaintainerDeposit::get()
-		);
-
-		// reject_transfer_maintainer
-		assert_noop!(
-			EVM::confirm_transfer_maintainer(Origin::signed(bob_account_id.clone()), result.address, bob()),
+			EVM::transfer_maintainer(Origin::signed(alice_account_id.clone()), result.address, bob()),
 			Error::<Test>::NoPermission
 		);
-
-		assert_ok!(EVM::reject_transfer_maintainer(
-			Origin::signed(alice_account_id.clone()),
-			result.address,
-			bob(),
-		));
-		let event = TestEvent::evm_mod(RawEvent::RejectedTransferMaintainer(result.address, bob()));
-		assert!(System::events().iter().any(|record| record.event == event));
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
 				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
-				+ <Test as Config>::TransferMaintainerDeposit::get()
-		);
-		assert_eq!(
-			balance(bob()),
-			INITIAL_BALANCE - <Test as Config>::TransferMaintainerDeposit::get()
-		);
-		assert_noop!(
-			EVM::confirm_transfer_maintainer(Origin::signed(bob_account_id.clone()), result.address, bob()),
-			Error::<Test>::PendingTransferMaintainersNotExists
 		);
 	});
 }

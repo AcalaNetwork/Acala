@@ -1240,7 +1240,6 @@ parameter_types! {
 	// TODO: update
 	pub const ChainId: u64 = 686;
 	pub const NewContractExtraBytes: u32 = 10_000;
-	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
 	// https://eips.ethereum.org/EIPS/eip-170
 	pub const MaxCodeSize: u32 = 60 * 1024;
@@ -1260,7 +1259,6 @@ impl module_evm::Config for Runtime {
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 	type Event = Event;

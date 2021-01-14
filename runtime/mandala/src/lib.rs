@@ -1243,7 +1243,6 @@ impl pallet_contracts::Config for Runtime {
 
 parameter_types! {
 	pub const ChainId: u64 = 595;
-	pub const TransferMaintainerDeposit: Balance = DOLLARS;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
 
@@ -1279,7 +1278,6 @@ impl module_evm::Config for Runtime {
 	type Currency = Balances;
 	type MergeAccount = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 

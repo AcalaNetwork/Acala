@@ -86,8 +86,8 @@ decl_event!(
 		 CreatedClass(AccountId, ClassId),
 		 /// Minted NFT token. \[from, to, class_id, quantity\]
 		 MintedToken(AccountId, AccountId, ClassId, u32),
-		 /// Transfered NFT token. \[from, to, class_id, token_id\]
-		 TransferedToken(AccountId, AccountId, ClassId, TokenId),
+		 /// Transferred NFT token. \[from, to, class_id, token_id\]
+		 TransferredToken(AccountId, AccountId, ClassId, TokenId),
 		 /// Burned NFT token. \[owner, class_id, token_id\]
 		 BurnedToken(AccountId, ClassId, TokenId),
 		 /// Destroyed NFT class. \[owner, class_id, dest\]
@@ -341,7 +341,7 @@ impl<T: Config> Module<T> {
 
 		orml_nft::Module::<T>::transfer(from, to, token)?;
 
-		Self::deposit_event(RawEvent::TransferedToken(from.clone(), to.clone(), token.0, token.1));
+		Self::deposit_event(RawEvent::TransferredToken(from.clone(), to.clone(), token.0, token.1));
 
 		Ok(())
 	}

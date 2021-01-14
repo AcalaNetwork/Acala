@@ -68,49 +68,24 @@ runtime_benchmarks! {
 
 	_ {}
 
-	request_transfer_maintainer {
+	transfer_maintainer {
 		set_aca_balance(&alice_account_id(), dollar(1000));
 		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-	}: _(RawOrigin::Signed(bob_account_id()), address)
-
-	cancel_transfer_maintainer {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-	}: _(RawOrigin::Signed(bob_account_id()), address)
-
-	confirm_transfer_maintainer {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-		let new_maintainer = EvmAccounts::eth_address(&bob());
-	}: _(RawOrigin::Signed(alice_account_id()), address, new_maintainer)
-
-	reject_transfer_maintainer {
-		set_aca_balance(&alice_account_id(), dollar(1000));
-		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-
-		EVM::request_transfer_maintainer(Origin::signed(bob_account_id()), address)?;
-		let new_maintainer = EvmAccounts::eth_address(&bob());
-	}: _(RawOrigin::Signed(alice_account_id()), address, new_maintainer)
+		let contract = deploy_contract(alice_account_id())?;
+		let bob_address = EvmAccounts::eth_address(&bob());
+	}: _(RawOrigin::Signed(alice_account_id()), contract, bob_address)
 
 	deploy {
 		set_aca_balance(&alice_account_id(), dollar(1000));
 		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-	}: _(RawOrigin::Signed(alice_account_id()), address)
+		let contract = deploy_contract(alice_account_id())?;
+	}: _(RawOrigin::Signed(alice_account_id()), contract)
 
 	deploy_free {
 		set_aca_balance(&alice_account_id(), dollar(1000));
 		set_aca_balance(&bob_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-	}: _(RawOrigin::Root, address)
+		let contract = deploy_contract(alice_account_id())?;
+	}: _(RawOrigin::Root, contract)
 
 	enable_contract_development {
 		set_aca_balance(&alice_account_id(), dollar(1000));
@@ -123,16 +98,16 @@ runtime_benchmarks! {
 
 	set_code {
 		set_aca_balance(&alice_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
+		let contract = deploy_contract(alice_account_id())?;
 
 		let new_contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a400291234").to_vec();
 
-	}: _(RawOrigin::Signed(alice_account_id()), address, new_contract)
+	}: _(RawOrigin::Signed(alice_account_id()), contract, new_contract)
 
 	selfdestruct {
 		set_aca_balance(&alice_account_id(), dollar(1000));
-		let address = deploy_contract(alice_account_id())?;
-	}: _(RawOrigin::Signed(alice_account_id()), address)
+		let contract = deploy_contract(alice_account_id())?;
+	}: _(RawOrigin::Signed(alice_account_id()), contract)
 }
 
 #[cfg(test)]
@@ -151,30 +126,9 @@ mod tests {
 	}
 
 	#[test]
-	fn test_request_transfer_maintainer() {
+	fn test_transfer_maintainer() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_request_transfer_maintainer());
-		});
-	}
-
-	#[test]
-	fn test_cancel_transfer_maintainer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_cancel_transfer_maintainer());
-		});
-	}
-
-	#[test]
-	fn test_confirm_transfer_maintainer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_confirm_transfer_maintainer());
-		});
-	}
-
-	#[test]
-	fn test_reject_transfer_maintainer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_reject_transfer_maintainer());
+			assert_ok!(test_benchmark_transfer_maintainer());
 		});
 	}
 

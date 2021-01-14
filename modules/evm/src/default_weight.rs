@@ -13,25 +13,10 @@ use frame_support::weights::{constants::RocksDbWeight as DbWeight, Weight};
 
 /// Weight functions for evm.
 impl crate::WeightInfo for () {
-	fn request_transfer_maintainer() -> Weight {
+	fn transfer_maintainer() -> Weight {
 		(249_253_000 as Weight)
 			.saturating_add(DbWeight::get().reads(4 as Weight))
 			.saturating_add(DbWeight::get().writes(2 as Weight))
-	}
-	fn cancel_transfer_maintainer() -> Weight {
-		(254_467_000 as Weight)
-			.saturating_add(DbWeight::get().reads(3 as Weight))
-			.saturating_add(DbWeight::get().writes(2 as Weight))
-	}
-	fn confirm_transfer_maintainer() -> Weight {
-		(262_265_000 as Weight)
-			.saturating_add(DbWeight::get().reads(5 as Weight))
-			.saturating_add(DbWeight::get().writes(3 as Weight))
-	}
-	fn reject_transfer_maintainer() -> Weight {
-		(275_416_000 as Weight)
-			.saturating_add(DbWeight::get().reads(6 as Weight))
-			.saturating_add(DbWeight::get().writes(3 as Weight))
 	}
 	fn deploy() -> Weight {
 		(359_916_000 as Weight)
