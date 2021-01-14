@@ -706,7 +706,7 @@ impl<T: Config> Module<T> {
 				.as_mut()
 				.ok_or(Error::<T>::ContractNotFound)?;
 
-			let maintainer = T::AddressMapping::get_or_create_evm_address(&who);
+			let maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
 
 			contract_info.maintainer = new_maintainer;
