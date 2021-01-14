@@ -38,7 +38,7 @@ use sp_runtime::{
 	Either,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{EVMStateRentTrait, EVM as EVMTrait};
+use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, EVM as EVMTrait};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -837,29 +837,33 @@ impl<T: Config> EVMTrait for Module<T> {
 	type Balance = BalanceOf<T>;
 
 	fn execute(
-		source: EvmAddress,
-		target: EvmAddress,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
 		storage_limit: u32,
-		config: Option<evm::Config>,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
+		let mut config = T::config().clone();
+		if let ExecutionMode::EstimateGas = mode {
+			config.estimate = true;
+		}
+
 		let info = Runner::<T>::call(
-			source,
-			target,
+			context.origin,
+			context.contract,
 			input,
 			value,
 			gas_limit,
 			storage_limit,
-			config.as_ref().unwrap_or(T::config()),
+			&config,
 		)?;
 
 		if info.exit_reason.is_succeed() {
-			Module::<T>::deposit_event(Event::<T>::Executed(target));
+			Module::<T>::deposit_event(Event::<T>::Executed(context.contract));
 		} else {
 			Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
-				target,
+				context.contract,
 				info.exit_reason.clone(),
 				info.output.clone(),
 			));
