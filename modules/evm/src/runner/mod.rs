@@ -223,7 +223,7 @@ impl<T: Config> Runner<T> {
 		// if the contract not exists, let evm try to execute it and handle the error.
 		if substate.is_undeployed_contract(&target) && !substate.has_permission_to_call(&source) {
 			return Err(Error::<T>::NoPermission.into());
-		};
+		}
 
 		let pre_storage_usage = Module::<T>::storage_usage(target);
 		substate.inc_nonce(source);
