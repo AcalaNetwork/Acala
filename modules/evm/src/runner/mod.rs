@@ -219,6 +219,8 @@ impl<T: Config> Runner<T> {
 			T::Precompiles::execute,
 		);
 
+		// if the contract not deployed, the caller must be developer or contract.
+		// if the contract not exists, let evm try to execute it and handle the error.
 		if substate.is_undeployed_contract(&target) && !substate.has_permission_to_call(&source) {
 			return Err(Error::<T>::NoPermission.into());
 		}
