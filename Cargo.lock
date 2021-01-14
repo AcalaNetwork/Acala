@@ -4348,6 +4348,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-example"
+version = "0.7.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "module-homa"
 version = "0.7.0"
 dependencies = [
@@ -4614,19 +4627,6 @@ dependencies = [
  "orml-traits",
  "parity-scale-codec",
  "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-template"
-version = "0.7.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "serde",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
