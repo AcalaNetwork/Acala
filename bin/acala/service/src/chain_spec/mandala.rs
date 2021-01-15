@@ -27,8 +27,8 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 
 	Ok(ChainSpec::from_genesis(
-		"Mandala PC1",
-		"mandalapc1",
+		"Mandala PC Dev",
+		"mandala-pc-dev",
 		ChainType::Development,
 		move || {
 			testnet_genesis(
@@ -114,8 +114,8 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Mandala runtime wasm binary not available")?;
 
 	Ok(ChainSpec::from_genesis(
-		"Acala Mandala PC1",
-		"mandala-pc1",
+		"Acala Mandala PC2",
+		"mandala-pc2",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -172,7 +172,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala-pc1"),
+		Some("mandala-pc2"),
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
