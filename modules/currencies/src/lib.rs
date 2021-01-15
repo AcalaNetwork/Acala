@@ -211,7 +211,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 		match currency_id {
 			CurrencyId::ERC20(contract) => T::EVMBridge::total_supply(InvokeContext {
 				contract,
-				source: Default::default(),
+				sender: Default::default(),
+				origin: Default::default(),
 			})
 			.unwrap_or_default(),
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::total_issuance(),
@@ -225,7 +226,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
 					let context = InvokeContext {
 						contract,
-						source: Default::default(),
+						sender: Default::default(),
+						origin: Default::default(),
 					};
 					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
 				}
@@ -242,7 +244,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
 					let context = InvokeContext {
 						contract,
-						source: Default::default(),
+						sender: Default::default(),
+						origin: Default::default(),
 					};
 					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
 				}
@@ -260,7 +263,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 				let balance = T::EVMBridge::balance_of(
 					InvokeContext {
 						contract,
-						source: Default::default(),
+						sender: Default::default(),
+						origin: Default::default(),
 					},
 					address,
 				)
@@ -285,9 +289,17 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 
 		match currency_id {
 			CurrencyId::ERC20(contract) => {
-				let source = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
+				let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
 				let address = T::AddressMapping::get_or_create_evm_address(&to);
-				T::EVMBridge::transfer(InvokeContext { contract, source }, address, amount)?;
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender,
+						origin: sender,
+					},
+					address,
+					amount,
+				)?;
 			}
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::transfer(from, to, amount)?,
 			_ => T::MultiCurrency::transfer(currency_id, from, to, amount)?,

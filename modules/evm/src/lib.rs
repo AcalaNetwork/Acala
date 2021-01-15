@@ -35,10 +35,10 @@ use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::{
 	traits::{Convert, One, Saturating, UniqueSaturatedInto},
-	Either,
+	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{EVMStateRentTrait, EVM as EVMTrait};
+use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, EVM as EVMTrait};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -334,7 +334,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = Runner::<T>::call(source, target, input, value, gas_limit, storage_limit, T::config())?;
+			let info = Runner::<T>::call(source, source, target, input, value, gas_limit, storage_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Executed(target));
@@ -837,35 +837,50 @@ impl<T: Config> EVMTrait for Module<T> {
 	type Balance = BalanceOf<T>;
 
 	fn execute(
-		source: EvmAddress,
-		target: EvmAddress,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
 		storage_limit: u32,
-		config: Option<evm::Config>,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
-		let info = Runner::<T>::call(
-			source,
-			target,
-			input,
-			value,
-			gas_limit,
-			storage_limit,
-			config.as_ref().unwrap_or(T::config()),
-		)?;
-
-		if info.exit_reason.is_succeed() {
-			Module::<T>::deposit_event(Event::<T>::Executed(target));
-		} else {
-			Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
-				target,
-				info.exit_reason.clone(),
-				info.output.clone(),
-			));
+		let mut config = T::config().clone();
+		if let ExecutionMode::EstimateGas = mode {
+			config.estimate = true;
 		}
 
-		Ok(info)
+		frame_support::storage::with_transaction(|| {
+			let result = Runner::<T>::call(
+				context.sender,
+				context.origin,
+				context.contract,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				&config,
+			);
+
+			match result {
+				Ok(info) => match mode {
+					ExecutionMode::Execute => {
+						if info.exit_reason.is_succeed() {
+							Module::<T>::deposit_event(Event::<T>::Executed(context.contract));
+							TransactionOutcome::Commit(Ok(info))
+						} else {
+							Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
+								context.contract,
+								info.exit_reason.clone(),
+								info.output.clone(),
+							));
+							TransactionOutcome::Rollback(Ok(info))
+						}
+					}
+					ExecutionMode::View | ExecutionMode::EstimateGas => TransactionOutcome::Rollback(Ok(info)),
+				},
+				Err(e) => TransactionOutcome::Rollback(Err(e)),
+			}
+		})
 	}
 }
 

@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use primitives::evm::{CallInfo, Config, EvmAddress};
+use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -258,20 +258,31 @@ pub trait PrecompileCallerFilter {
 pub trait EVM {
 	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
 	fn execute(
-		source: H160,
-		target: H160,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: Self::Balance,
 		gas_limit: u32,
 		storage_limit: u32,
-		config: Option<Config>,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
+pub enum ExecutionMode {
+	Execute,
+	/// Discard any state changes
+	View,
+	/// Also discard any state changes and use estimate gas mode for evm config
+	EstimateGas,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
 pub struct InvokeContext {
 	pub contract: EvmAddress,
-	pub source: EvmAddress,
+	/// similar to msg.sender
+	pub sender: EvmAddress,
+	/// similar to tx.origin
+	pub origin: EvmAddress,
 }
 
 /// An abstraction of EVMBridge
