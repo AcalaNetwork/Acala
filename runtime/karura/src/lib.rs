@@ -47,6 +47,7 @@ use pallet_contracts::WeightInfo;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
+use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -1305,6 +1306,7 @@ impl module_evm_bridge::Config for Runtime {
 impl cumulus_parachain_upgrade::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
+	type SelfParaId = ParachainInfo;
 }
 
 impl cumulus_message_broker::Config for Runtime {
@@ -1618,8 +1620,11 @@ impl_runtime_apis! {
 		Block,
 		Balance,
 	> for Runtime {
-		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
+		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
+		}
+		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> FeeDetails<Balance> {
+			TransactionPayment::query_fee_details(uxt, len)
 		}
 	}
 

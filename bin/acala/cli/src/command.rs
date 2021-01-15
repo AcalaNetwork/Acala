@@ -405,6 +405,7 @@ pub fn run() -> sc_cli::Result<()> {
 				)
 				.await
 				.map(|r| r.0)
+				.map_err(Into::into)
 			})
 		}
 	}
