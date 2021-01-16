@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	runner::storage_meter::Storagemeter, AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes,
+	runner::storage_meter::StorageMeter, AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes,
 	Config, ContractInfo, Event, Log, MergeAccount, Module, Vicinity,
 };
 use evm::{
@@ -27,9 +27,7 @@ pub struct Handler<'vicinity, 'config, T: Config> {
 	pub vicinity: &'vicinity Vicinity,
 	pub config: &'config EvmRuntimeConfig,
 	pub gasometer: Gasometer<'config>,
-	pub storagemeter: Storagemeter,
-	pub precompile:
-		fn(H160, &[u8], Option<usize>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
+	pub storage_meter: StorageMeter,
 	pub is_static: bool,
 	pub _marker: PhantomData<T>,
 }
@@ -40,26 +38,19 @@ fn l64(gas: usize) -> usize {
 
 impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	/// Create a new handler with given vicinity.
-	pub fn new_with_precompile(
+	pub fn new(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: usize,
-		storage_limit: u32,
+		storage_meter: StorageMeter,
 		is_static: bool,
 		config: &'config EvmRuntimeConfig,
-		precompile: fn(
-			H160,
-			&[u8],
-			Option<usize>,
-			&Context,
-		) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
 	) -> Self {
 		Self {
 			vicinity,
 			config,
 			is_static,
 			gasometer: Gasometer::new(gas_limit, config),
-			storagemeter: Storagemeter::new(storage_limit),
-			precompile,
+			storage_meter,
 			_marker: PhantomData,
 		}
 	}
@@ -74,9 +65,9 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	}
 
 	pub fn used_storage(&self) -> u32 {
-		self.storagemeter
+		self.storage_meter
 			.total_used_storage()
-			.checked_sub(self.storagemeter.refunded_storage())
+			.checked_sub(self.storage_meter.refunded_storage())
 			.unwrap_or_default()
 	}
 
@@ -135,12 +126,12 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		}
 	}
 
-	pub fn nonce(&self, address: H160) -> U256 {
+	pub fn nonce(address: H160) -> U256 {
 		let account = Module::<T>::account_basic(&address);
 		account.nonce
 	}
 
-	pub fn inc_nonce(&self, address: H160) {
+	pub fn inc_nonce(address: H160) {
 		Accounts::<T>::mutate(&address, |maybe_account| {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
@@ -167,7 +158,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 				H256::from_slice(hasher.result().as_slice()).into()
 			}
 			CreateScheme::Legacy { caller } => {
-				let nonce = self.nonce(caller);
+				let nonce = Self::nonce(caller);
 				let mut stream = rlp::RlpStream::new_list(2);
 				stream.append(&caller);
 				stream.append(&nonce);
@@ -213,7 +204,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return Capture::Exit($map_err(e)),
-					}
+				}
 			};
 		}
 
@@ -222,7 +213,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return TransactionOutcome::Rollback(Capture::Exit($map_err(e))),
-					}
+				}
 			};
 		}
 	};
@@ -383,17 +374,10 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		target_gas = min(target_gas, after_gas);
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
-		let target_storage = self.storagemeter.storage();
-		try_or_fail!(self.storagemeter.record_cost(target_storage));
+		let target_storage = self.storage_meter.storage();
+		try_or_fail!(self.storage_meter.record_cost(target_storage));
 
-		let mut substate = Self::new_with_precompile(
-			self.vicinity,
-			target_gas,
-			target_storage,
-			self.is_static,
-			self.config,
-			self.precompile,
-		);
+		let mut substate = Self::new(self.vicinity, target_gas, target_storage, self.is_static, self.config);
 
 		let address = self.create_address(scheme);
 		substate.inc_nonce(caller);
@@ -417,8 +401,8 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 						match <Module<T>>::on_contract_initialization(&address, &self.vicinity.origin, out, None) {
 							Ok(()) => {
 								let storage_usage = Module::<T>::storage_usage(address);
-								try_or_rollback!(substate.storagemeter.record_cost(storage_usage));
-								try_or_rollback!(self.storagemeter.record_stipend(substate.storagemeter.storage()));
+								try_or_rollback!(substate.storage_meter.record_cost(storage_usage));
+								try_or_rollback!(self.storage_meter.record_stipend(substate.storage_meter.storage()));
 								TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
 							}
 							Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
@@ -468,8 +452,8 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		let mut target_gas = target_gas.unwrap_or(after_gas);
 		target_gas = min(target_gas, after_gas);
 
-		let target_storage = self.storagemeter.storage();
-		try_or_fail!(self.storagemeter.record_cost(target_storage));
+		let target_storage = self.storage_meter.storage();
+		try_or_fail!(self.storage_meter.record_cost(target_storage));
 
 		if let Some(transfer) = transfer.as_ref() {
 			if !transfer.value.is_zero() {
@@ -480,13 +464,12 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		let code = self.code(code_address);
 
 		frame_support::storage::with_transaction(|| {
-			let mut substate = Self::new_with_precompile(
+			let mut substate = Self::new(
 				self.vicinity,
 				target_gas,
 				target_storage,
 				self.is_static || is_static,
 				self.config,
-				self.precompile,
 			);
 
 			if let Some(transfer) = transfer {
@@ -496,7 +479,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 			try_or_rollback!(self.gasometer.record_cost(target_gas));
 			let pre_storage_usage = Module::<T>::storage_usage(context.caller);
 
-			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas), &context) {
+			if let Some(ret) = T::Precompiles::execute(code_address, &input, Some(target_gas), &context) {
 				debug::debug!(
 					target: "evm",
 					"handler: call-result: precompile result {:?}",
@@ -507,7 +490,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 					Ok((s, out, cost)) => {
 						try_or_rollback!(self.gasometer.record_cost(cost));
 						// precompile contract cost 0
-						// try_or_rollback!(self.storagemeter.record_cost(0));
+						// try_or_rollback!(self.storage_meter.record_cost(0));
 						TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 					}
 					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
@@ -533,16 +516,16 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 					try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
 					try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
 
-					// update storagemeter
+					// update storage_meter
 					let storage_usage = Module::<T>::storage_usage(context.caller);
 					if storage_usage != pre_storage_usage {
 						if let Some(delta) = storage_usage.checked_sub(pre_storage_usage) {
-							try_or_rollback!(substate.storagemeter.record_cost(delta));
+							try_or_rollback!(substate.storage_meter.record_cost(delta));
 						} else if let Some(delta) = pre_storage_usage.checked_sub(storage_usage) {
-							try_or_rollback!(substate.storagemeter.record_refund(delta));
+							try_or_rollback!(substate.storage_meter.record_refund(delta));
 						}
 					}
-					try_or_rollback!(self.storagemeter.record_stipend(substate.storagemeter.storage()));
+					try_or_rollback!(self.storage_meter.record_stipend(substate.storage_meter.storage()));
 					TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 				}
 				ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), out))),

@@ -1,88 +1,103 @@
 use evm::ExitError;
+use frame_support::RuntimeDebug;
 
-/// Storagemeter.
-#[derive(Clone, Debug)]
-pub struct Storagemeter {
-	storage_limit: u32,
-	inner: Result<Inner, ExitError>,
+trait StorageMeterHandler {
+	fn reserve_storage(&mut self, limit: u32) -> Result<(), ExitError>;
+	fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> Result<(), ExitError>;
+
+	fn charge_storage(&mut self, contract: H160, used: u32, refunded: u32) -> Result<(), ExitError>;
 }
 
-#[derive(Clone, Debug)]
-struct Inner {
-	used_storage: u32,
-	refunded_storage: u32,
+/// StorageMeter.
+#[derive(Clone, RuntimeDebug)]
+pub struct StorageMeter {
+	contract: H160,
+	limit: u32,
+	used: u32,
+	refunded: u32,
+	handler: Box<dyn StorageMeterHandler>,
+	reuslt: Result<(), ExitError>,
 }
 
-impl Storagemeter {
-	/// Create a new storagemeter with given storage limit.
-	pub fn new(storage_limit: u32) -> Self {
-		Self {
-			storage_limit,
-			inner: Ok(Inner {
-				used_storage: 0,
-				refunded_storage: 0,
-			}),
-		}
+const OUT_OF_STORAGE_ERROR: ExitError = ExitError::Other("OutOfStorage".into());
+
+impl StorageMeter {
+	/// Create a new storage_meter with given storage limit.
+	pub fn new(handler: Box<dyn StorageMeterHandler>, contract: H160, limit: u32) -> Result<Self, ExitError> {
+		handler.reserve_storage(limit)?;
+		Ok(Self {
+			contract,
+			limit,
+			used: 0,
+			refunded: 0,
+			handler,
+			reuslt: Ok(()),
+		})
 	}
 
-	fn inner_mut(&mut self) -> Result<&mut Inner, ExitError> {
-		self.inner.as_mut().map_err(|e| e.clone())
+	pub fn child_meter(&mut self, contract: H160) -> Result<Self, ExitError> {
+		self.handle(|| Self::new(self, contract, self.available_storage()))
 	}
 
-	/// Remaining storage.
-	pub fn storage(&self) -> u32 {
-		match self.inner.as_ref() {
-			Ok(inner) => self.storage_limit - inner.used_storage + inner.refunded_storage,
-			Err(_) => 0,
-		}
-	}
-
-	/// Total used gas.
-	pub fn total_used_storage(&self) -> u32 {
-		match self.inner.as_ref() {
-			Ok(inner) => inner.used_storage,
-			Err(_) => self.storage_limit,
-		}
-	}
-
-	/// Refunded storage.
-	pub fn refunded_storage(&self) -> u32 {
-		match self.inner.as_ref() {
-			Ok(inner) => inner.refunded_storage,
-			Err(_) => 0,
-		}
-	}
-
-	/// Record an explict cost.
-	pub fn record_cost(&mut self, cost: u32) -> Result<(), ExitError> {
-		let all_storage_cost = self.total_used_storage() + cost;
-		if self.storage_limit < all_storage_cost {
-			self.inner = Err(ExitError::Other("OutOfStorageLimit".into()));
-			return Err(ExitError::Other("OutOfStorageLimit".into()));
-		}
-
-		self.inner_mut()?.used_storage += cost;
-		Ok(())
-	}
-
-	/// Record an explict refund.
-	pub fn record_refund(&mut self, refund: u32) -> Result<(), ExitError> {
-		self.inner_mut()?.refunded_storage += refund;
-		Ok(())
-	}
-
-	/// Record an explict stipend.
-	pub fn record_stipend(&mut self, stipend: u32) -> Result<(), ExitError> {
-		let inner = self.inner_mut()?;
-
-		if inner.used_storage > stipend {
-			inner.used_storage -= stipend;
+	pub fn available_storage() -> u32 {
+		if self.result.is_ok() {
+			self.limit.saturating_add(self.refunded).saturating_sub(self.used)
 		} else {
-			// stipend > used_storage
-			inner.refunded_storage += stipend - inner.used_storage;
-			inner.used_storage = 0;
+			0
 		}
-		Ok(())
+	}
+
+	pub fn charge(&mut self, storage: u32) -> Result<(), ExitError> {
+		self.handle(|| {
+			let used = self.used.saturating_add(limit);
+			if self.limit < used.saturating_sub(self.refunded) {
+				self.result = Err(OUT_OF_STORAGE_ERROR);
+				return self.result;
+			}
+			self.used = used;
+			Ok(())
+		})
+	}
+
+	pub fn uncharge(&mut self, storage: u32) -> Result<(), ExitError> {
+		self.handle(|| {
+			self.used = self.used.saturating_sub(storage);
+			Ok(())
+		})
+	}
+
+	pub fn refund(&mut self, storage: u32) -> Result<(), ExitError> {
+		self.handle(|| {
+			self.refunded = self.refunded.saturating_add(storage);
+			Ok(())
+		})
+	}
+
+	pub fn finish(self) -> Result<(), ExitError> {
+		self.handle(|| {
+			self.handler.charge_storage(self.contract, self.used, self.refunded)?;
+			self.handler.unreserve_storage(self.limit, self.used, self.refunded)?;
+		})
+	}
+
+	fn handle<F: FnOnce() -> Result<(), ExitError>>(f: F) -> Result<(), ExitError> {
+		self.result?;
+		self.result = f();
+		self.result
+	}
+}
+
+impl StorageMeterHandler for StorageMeter {
+	fn reserve_storage(&mut self, limit: u32) -> Result<(), ExitError> {
+		self.charge(limit)
+	}
+
+	fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> Result<(), ExitError> {
+		self.uncharge(limit.saturating_add(refunded).saturating_sub(used))?;
+	}
+
+	fn charge_storage(&mut self, contract: H160, storage: u32, refunded: u32) -> Result<(), ExitError> {
+		self.handler.charge_storage(contract, storage, refunded)
 	}
 }
 
@@ -90,69 +105,111 @@ impl Storagemeter {
 mod tests {
 	use super::*;
 	use frame_support::assert_ok;
+	struct DummyHandler {
+		storage: std::collections::BTreeMap<H160, u32>,
+		reserves: std::collections::BTreeMap<H160, u32>,
+	}
+
+	const ALICE: H160 = H160::from_low_u64_be(123);
+
+	impl StorageMeterHandler for DummyHandler {
+		fn reserve_storage(&mut self, limit: u32) -> Result<(), ExitError> {
+			self.storage
+				.get_mut(&ALICE)
+				.checked_sub(limit)
+				.ok_or(|_| ExitError::Other("error".into()))?;
+			self.reserves.get_mut(&ALICE) += limit;
+			Ok(())
+		}
+
+		fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> Result<(), ExitError> {
+			if used > refunded {
+				let diff = used - refunded;
+				self.reserves
+					.get_mut(&ALICE)
+					.checked_sub(limit)
+					.ok_or(|_| ExitError::Other("error".into()))?;
+				self.storage.get_mut(&ALICE) += limit - diff;
+			} else {
+				self.storage.get_mut(&ALICE) += limit + refunded - used;
+			}
+			Ok(())
+		}
+
+		fn charge_storage(&mut self, contract: H160, used: u32, refunded: u32) -> Result<(), ExitError> {
+			if used > refunded {
+				let diff = used - refunded;
+				self.reserves
+					.get_mut(&ALICE)
+					.checked_sub(diff)
+					.ok_or(|_| ExitError::Other("error".into()))?;
+			} else {
+				self.reserves.get_mut(&ALICE) += refunded - used;
+			}
+			Ok(())
+		}
+	}
 
 	#[test]
 	fn test_storage_with_limit_zero() {
-		let mut storagemeter = Storagemeter::new(0);
-		assert_eq!(storagemeter.storage(), 0);
-		assert_eq!(storagemeter.refunded_storage(), 0);
-		assert_eq!(storagemeter.total_used_storage(), 0);
+		let mut storage_meter = StorageMeter::new(0);
+		assert_eq!(storage_meter.available_storage(), 0);
 
 		// record_refund
-		assert_ok!(storagemeter.record_refund(1));
-		assert_eq!(storagemeter.storage(), 1);
-		assert_eq!(storagemeter.refunded_storage(), 1);
-		assert_eq!(storagemeter.total_used_storage(), 0);
+		assert_ok!(storage_meter.refund(1));
+		assert_eq!(storage_meter.available_storage(), 1);
+		assert_eq!(storage_meter.refunded_storage(), 1);
+		assert_eq!(storage_meter.total_used_storage(), 0);
 
 		// record_stipend
-		assert_ok!(storagemeter.record_stipend(1));
-		assert_eq!(storagemeter.storage(), 2);
-		assert_eq!(storagemeter.refunded_storage(), 2);
-		assert_eq!(storagemeter.total_used_storage(), 0);
+		assert_ok!(storage_meter.record_stipend(1));
+		assert_eq!(storage_meter.storage(), 2);
+		assert_eq!(storage_meter.refunded_storage(), 2);
+		assert_eq!(storage_meter.total_used_storage(), 0);
 
 		// record_cost
 		assert_eq!(
-			storagemeter.record_cost(1),
+			storage_meter.record_cost(1),
 			Err(ExitError::Other("OutOfStorageLimit".into()))
 		);
 	}
 
 	#[test]
 	fn test_storage_with_limit_ten() {
-		let mut storagemeter = Storagemeter::new(10);
-		assert_eq!(storagemeter.storage(), 10);
-		assert_eq!(storagemeter.refunded_storage(), 0);
-		assert_eq!(storagemeter.total_used_storage(), 0);
+		let mut storage_meter = StorageMeter::new(10);
+		assert_eq!(storage_meter.storage(), 10);
+		assert_eq!(storage_meter.refunded_storage(), 0);
+		assert_eq!(storage_meter.total_used_storage(), 0);
 
 		// record_refund
-		assert_ok!(storagemeter.record_refund(1));
-		assert_eq!(storagemeter.storage(), 11);
-		assert_eq!(storagemeter.refunded_storage(), 1);
-		assert_eq!(storagemeter.total_used_storage(), 0);
+		assert_ok!(storage_meter.record_refund(1));
+		assert_eq!(storage_meter.storage(), 11);
+		assert_eq!(storage_meter.refunded_storage(), 1);
+		assert_eq!(storage_meter.total_used_storage(), 0);
 
 		// record_cost
-		assert_ok!(storagemeter.record_cost(1));
-		assert_eq!(storagemeter.storage(), 10);
-		assert_eq!(storagemeter.refunded_storage(), 1);
-		assert_eq!(storagemeter.total_used_storage(), 1);
+		assert_ok!(storage_meter.record_cost(1));
+		assert_eq!(storage_meter.storage(), 10);
+		assert_eq!(storage_meter.refunded_storage(), 1);
+		assert_eq!(storage_meter.total_used_storage(), 1);
 
 		// record_stipend
-		assert_ok!(storagemeter.record_stipend(1));
-		assert_eq!(storagemeter.storage(), 11);
-		assert_eq!(storagemeter.refunded_storage(), 1);
-		assert_eq!(storagemeter.total_used_storage(), 0);
+		assert_ok!(storage_meter.record_stipend(1));
+		assert_eq!(storage_meter.storage(), 11);
+		assert_eq!(storage_meter.refunded_storage(), 1);
+		assert_eq!(storage_meter.total_used_storage(), 0);
 
 		// record_cost
 		assert_eq!(
-			storagemeter.record_cost(11),
+			storage_meter.record_cost(11),
 			Err(ExitError::Other("OutOfStorageLimit".into()))
 		);
 		assert_eq!(
-			storagemeter.record_stipend(1),
+			storage_meter.record_stipend(1),
 			Err(ExitError::Other("OutOfStorageLimit".into()))
 		);
 		assert_eq!(
-			storagemeter.record_refund(1),
+			storage_meter.record_refund(1),
 			Err(ExitError::Other("OutOfStorageLimit".into()))
 		);
 	}

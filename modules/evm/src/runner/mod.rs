@@ -50,7 +50,7 @@ impl<T: Config> Runner<T> {
 			origin: source,
 		};
 
-		let mut substate = Handler::<T>::new_with_precompile(
+		let mut substate = Handler::<T>::new(
 			&vicinity,
 			gas_limit as usize,
 			storage_limit,
@@ -128,11 +128,11 @@ impl<T: Config> Runner<T> {
 				TransactionOutcome::Rollback(Ok(create_info))
 			} else {
 				let storage_usage = Module::<T>::storage_usage(address);
-				if let Err(e) = substate.storagemeter.record_cost(storage_usage) {
+				if let Err(e) = substate.storage_meter.record_cost(storage_usage) {
 					create_info.exit_reason = e.into();
 					return TransactionOutcome::Rollback(Ok(create_info));
 				}
-				if let Err(e) = Self::refund_storage(source, address, substate.storagemeter.storage()) {
+				if let Err(e) = Self::refund_storage(source, address, substate.storage_meter.storage()) {
 					debug::debug!(
 						target: "evm",
 						"create-result: refund_storage {:?}",
@@ -148,7 +148,7 @@ impl<T: Config> Runner<T> {
 		})
 	}
 
-	fn transfer(source: H160, target: H160, value: BalanceOf<T>) -> Result<(), DispatchError> {
+	fn transfer(source: H160, target: H160, value: BalanceOf<T>) -> DispatchResult {
 		if value.is_zero() {
 			return Ok(());
 		}
@@ -158,7 +158,7 @@ impl<T: Config> Runner<T> {
 		T::Currency::transfer(&from, &to, value, ExistenceRequirement::AllowDeath)
 	}
 
-	fn deduct_storage(source: H160, target: H160, used_storage: u32) -> Result<(), DispatchError> {
+	fn create_storagemeter(source: H160, target: H160, stroage_limit: u32) -> DispatchResult {
 		if used_storage.is_zero() {
 			return Ok(());
 		}
@@ -166,20 +166,20 @@ impl<T: Config> Runner<T> {
 		let from = T::AddressMapping::get_account_id(&source);
 		let to = T::AddressMapping::get_account_id(&target);
 
-		let amount = T::StorageDepositPerByte::get().saturating_mul((used_storage as u32).into());
+		let amount = T::StorageDepositPerByte::get().saturating_mul(used_storage.into());
 		T::Currency::transfer(&from, &to, amount, ExistenceRequirement::AllowDeath)?;
 		T::Currency::reserve(&to, amount)
 	}
 
-	fn refund_storage(source: H160, target: H160, refunded_storage: u32) -> Result<(), DispatchError> {
-		if refunded_storage.is_zero() {
+	fn refund_storage(source: H160, target: H160, storage_change: i32) -> DispatchResult {
+		if storage_change.is_zero() {
 			return Ok(());
 		}
 
 		let from = T::AddressMapping::get_account_id(&target);
 		let to = T::AddressMapping::get_account_id(&source);
 
-		let amount = T::StorageDepositPerByte::get().saturating_mul((refunded_storage as u32).into());
+		let amount = T::StorageDepositPerByte::get().saturating_mul(storage_change.into());
 		T::Currency::repatriate_reserved(&from, &to, amount, BalanceStatus::Free)?;
 		Ok(())
 	}
@@ -210,21 +210,13 @@ impl<T: Config> Runner<T> {
 			origin: source,
 		};
 
-		let mut substate = Handler::<T>::new_with_precompile(
-			&vicinity,
-			gas_limit as usize,
-			storage_limit,
-			false,
-			config,
-			T::Precompiles::execute,
-		);
+		let mut substate = Handler::<T>::new(&vicinity, gas_limit as usize, storage_limit, false, config);
 
 		if substate.is_undeployed_contract(&target) && !substate.has_permission_to_call(&source) {
 			return Err(Error::<T>::NoPermission.into());
 		}
 
-		let pre_storage_usage = Module::<T>::storage_usage(target);
-		substate.inc_nonce(source);
+		Handler::<T>::inc_nonce(source);
 
 		frame_support::storage::with_transaction(|| {
 			if let Err(e) = Self::transfer(source, target, value) {
@@ -243,7 +235,7 @@ impl<T: Config> Runner<T> {
 				exit_reason: reason.clone(),
 				output: out,
 				used_gas: U256::from(substate.used_gas()),
-				used_storage: U256::from(substate.used_storage()),
+				used_storage: 0,
 			};
 
 			debug::debug!(
@@ -256,32 +248,31 @@ impl<T: Config> Runner<T> {
 				return TransactionOutcome::Rollback(Ok(call_info));
 			}
 
-			let storage_usage = Module::<T>::storage_usage(target);
-			if storage_usage != pre_storage_usage {
-				if let Some(delta) = storage_usage.checked_sub(pre_storage_usage) {
-					if let Err(e) = substate.storagemeter.record_cost(delta) {
-						call_info.exit_reason = e.into();
+			let used = substate
+				.storage_meter
+				.finish(|used, refunded| used as i32 - refunded as i32);
+
+			match used {
+				Ok(used) => {
+					if let Err(e) = Self::refund_storage(source, target, used) {
+						debug::debug!(
+							target: "evm",
+							"call-result: refund_storage {:?}",
+							e
+						);
+						call_info.exit_reason = ExitReason::Error(ExitError::Other("RefundedStorageFailed".into()));
 						return TransactionOutcome::Rollback(Ok(call_info));
 					}
-				} else if let Some(delta) = pre_storage_usage.checked_sub(storage_usage) {
-					if let Err(e) = substate.storagemeter.record_refund(delta) {
-						call_info.exit_reason = e.into();
-						return TransactionOutcome::Rollback(Ok(call_info));
-					}
+					call_info.used_storage = used;
+
+					TransactionOutcome::Commit(Ok(call_info))
+				}
+				Err(err) => {
+					// should never reach to this arm but handle it just in case
+					call_info.exit_reason = ExitReason::Error(err);
+					TransactionOutcome::Rollback(Ok(call_info));
 				}
 			}
-			if let Err(e) = Self::refund_storage(source, target, substate.storagemeter.storage()) {
-				debug::debug!(
-					target: "evm",
-					"call-result: refund_storage {:?}",
-					e
-				);
-				call_info.exit_reason = ExitReason::Error(ExitError::Other("RefundedStorageFailed".into()));
-				return TransactionOutcome::Rollback(Ok(call_info));
-			}
-			call_info.used_storage = U256::from(substate.used_storage());
-
-			TransactionOutcome::Commit(Ok(call_info))
 		})
 	}
 
