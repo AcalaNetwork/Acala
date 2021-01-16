@@ -55,7 +55,7 @@ cumulus-service = { git = "https://github.com/paritytech/cumulus", branch = "roc
 cumulus-consensus = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
-polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1", features = ["real-overseer"] }
 
 module-evm = { path = "../../../modules/evm" }
 module-staking-pool = { path = "../../../modules/staking_pool" }
