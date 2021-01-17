@@ -2,7 +2,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Codec;
+use codec::{Codec, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, ensure,
 	traits::{
@@ -13,7 +13,7 @@ use frame_support::{
 };
 use frame_system::{ensure_root, ensure_signed};
 use sp_runtime::{
-	traits::{CheckedSub, MaybeSerializeDeserialize, StaticLookup, Zero},
+	traits::{CheckedSub, MaybeSerializeDeserialize, Saturating, StaticLookup, Zero},
 	DispatchError, DispatchResult,
 };
 use sp_std::{
@@ -29,7 +29,11 @@ use orml_traits::{
 	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
 use orml_utilities::with_transaction_result;
-use primitives::{evm::AddressMapping, CurrencyId, TokenSymbol};
+use primitives::{
+	evm::{AddressMapping, EvmAddress},
+	CurrencyId, TokenSymbol,
+};
+use sp_io::hashing::blake2_256;
 use support::{EVMBridge, InvokeContext};
 
 mod default_weight;
@@ -385,7 +389,7 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Module<T> {
 impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 	fn can_reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> bool {
 		match currency_id {
-			CurrencyId::ERC20(_) => false,
+			CurrencyId::ERC20(_) => true,
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::can_reserve(who, value),
 			_ => T::MultiCurrency::can_reserve(currency_id, who, value),
 		}
@@ -393,7 +397,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn slash_reserved(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::ERC20(_) => value,
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::slash_reserved(who, value),
 			_ => T::MultiCurrency::slash_reserved(currency_id, who, value),
 		}
@@ -401,7 +405,19 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn reserved_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::ERC20(contract) => {
+				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+					return T::EVMBridge::balance_of(
+						InvokeContext {
+							contract,
+							source: Default::default(),
+						},
+						reserve_address(address),
+					)
+					.unwrap_or_default();
+				}
+				Default::default()
+			}
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::reserved_balance(who),
 			_ => T::MultiCurrency::reserved_balance(currency_id, who),
 		}
@@ -409,7 +425,13 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::ERC20(contract) => {
+				if value.is_zero() {
+					return Ok(());
+				}
+				let source = T::AddressMapping::get_or_create_evm_address(&who);
+				T::EVMBridge::transfer(InvokeContext { contract, source }, reserve_address(source), value)
+			}
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::reserve(who, value),
 			_ => T::MultiCurrency::reserve(currency_id, who, value),
 		}
@@ -417,7 +439,34 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 
 	fn unreserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::ERC20(contract) => {
+				if value.is_zero() {
+					return value;
+				}
+				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+					let reserved_balance = T::EVMBridge::balance_of(
+						InvokeContext {
+							contract,
+							source: Default::default(),
+						},
+						reserve_address(address),
+					)
+					.unwrap_or_default();
+					let actual = reserved_balance.min(value);
+					return match T::EVMBridge::transfer(
+						InvokeContext {
+							contract,
+							source: reserve_address(address),
+						},
+						address,
+						actual,
+					) {
+						Ok(_) => value - actual,
+						Err(_) => value,
+					};
+				}
+				value
+			}
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::unreserve(who, value),
 			_ => T::MultiCurrency::unreserve(currency_id, who, value),
 		}
@@ -431,7 +480,50 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 		status: BalanceStatus,
 	) -> result::Result<Self::Balance, DispatchError> {
 		match currency_id {
-			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::ERC20(contract) => {
+				if value.is_zero() {
+					return Ok(value);
+				}
+				if slashed == beneficiary {
+					return match status {
+						BalanceStatus::Free => Ok(Self::unreserve(currency_id, slashed, value)),
+						BalanceStatus::Reserved => {
+							Ok(value.saturating_sub(Self::reserved_balance(currency_id, slashed)))
+						}
+					};
+				}
+				let slashed_address =
+					T::AddressMapping::get_evm_address(&slashed).ok_or(Error::<T>::AccountNotFound)?;
+				let beneficiary_address = T::AddressMapping::get_or_create_evm_address(&beneficiary);
+				let slashed_reserved_balance = T::EVMBridge::balance_of(
+					InvokeContext {
+						contract,
+						source: Default::default(),
+					},
+					reserve_address(slashed_address),
+				)
+				.unwrap_or_default();
+				let actual = slashed_reserved_balance.min(value);
+				match status {
+					BalanceStatus::Free => T::EVMBridge::transfer(
+						InvokeContext {
+							contract,
+							source: reserve_address(slashed_address),
+						},
+						beneficiary_address,
+						actual,
+					),
+					BalanceStatus::Reserved => T::EVMBridge::transfer(
+						InvokeContext {
+							contract,
+							source: reserve_address(slashed_address),
+						},
+						reserve_address(beneficiary_address),
+						actual,
+					),
+				}
+				.map(|_| value - actual)
+			}
 			CurrencyId::Token(TokenSymbol::ACA) => {
 				T::NativeCurrency::repatriate_reserved(slashed, beneficiary, value, status)
 			}
@@ -728,4 +820,9 @@ impl<T: Config> MergeAccount<T::AccountId> for Module<T> {
 			T::NativeCurrency::transfer(source, dest, T::NativeCurrency::free_balance(source))
 		})
 	}
+}
+
+fn reserve_address(address: EvmAddress) -> EvmAddress {
+	let payload = (b"erc20:", address);
+	EvmAddress::from_slice(&payload.using_encoded(blake2_256)[0..20])
 }
