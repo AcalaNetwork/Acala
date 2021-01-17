@@ -70,7 +70,6 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 0;
-	pub const RenVmPublicKey: [u8; 20] = hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
@@ -123,7 +122,6 @@ impl orml_currencies::Config for Runtime {
 impl Config for Runtime {
 	type Event = TestEvent;
 	type Currency = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
-	type PublicKey = RenVmPublicKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = UnsignedPriority;
 }
@@ -140,9 +138,16 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		GenesisConfig {
+			ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
 		t.into()
 	}
 }
