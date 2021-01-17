@@ -328,51 +328,68 @@ fn erc20_total_balance_should_work() {
 
 #[test]
 fn erc20_ensure_withdraw_should_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Currencies::ensure_can_withdraw(ERC20, &alice(), 100));
-		assert_eq!(
-			Currencies::ensure_can_withdraw(ERC20, &bob(), 100),
-			Err(Error::<Runtime>::BalanceTooLow.into()),
-		);
-		assert_ok!(Currencies::transfer(Origin::signed(alice()), bob(), ERC20, 100));
-		assert_ok!(Currencies::ensure_can_withdraw(ERC20, &bob(), 100));
-		assert_eq!(
-			Currencies::ensure_can_withdraw(ERC20, &bob(), 101),
-			Err(Error::<Runtime>::BalanceTooLow.into()),
-		);
-	});
+	ExtBuilder::default()
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100000)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Currencies::ensure_can_withdraw(ERC20, &alice(), 100));
+			assert_eq!(
+				Currencies::ensure_can_withdraw(ERC20, &bob(), 100),
+				Err(Error::<Runtime>::BalanceTooLow.into()),
+			);
+			assert_ok!(Currencies::transfer(Origin::signed(alice()), bob(), ERC20, 100));
+			assert_ok!(Currencies::ensure_can_withdraw(ERC20, &bob(), 100));
+			assert_eq!(
+				Currencies::ensure_can_withdraw(ERC20, &bob(), 101),
+				Err(Error::<Runtime>::BalanceTooLow.into()),
+			);
+		});
 }
 
 #[test]
 fn erc20_transfer_should_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Currencies::transfer(Origin::signed(alice()), bob(), ERC20, 100));
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY_ID, 100000),
+			(bob(), NATIVE_CURRENCY_ID, 100000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Currencies::transfer(Origin::signed(alice()), bob(), ERC20, 100));
 
-		assert_eq!(Currencies::free_balance(ERC20, &bob()), 100);
-		assert_eq!(Currencies::total_balance(ERC20, &bob()), 100);
+			assert_eq!(Currencies::free_balance(ERC20, &bob()), 100);
+			assert_eq!(Currencies::total_balance(ERC20, &bob()), 100);
 
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 100);
-		assert_eq!(Currencies::total_balance(ERC20, &alice()), u128::max_value() - 100);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 100);
+			assert_eq!(Currencies::total_balance(ERC20, &alice()), u128::max_value() - 100);
 
-		assert_ok!(Currencies::transfer(Origin::signed(bob()), alice(), ERC20, 10));
+			assert_ok!(Currencies::transfer(Origin::signed(bob()), alice(), ERC20, 10));
 
-		assert_eq!(Currencies::free_balance(ERC20, &bob()), 90);
-		assert_eq!(Currencies::total_balance(ERC20, &bob()), 90);
+			assert_eq!(Currencies::free_balance(ERC20, &bob()), 90);
+			assert_eq!(Currencies::total_balance(ERC20, &bob()), 90);
 
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 90);
-		assert_eq!(Currencies::total_balance(ERC20, &alice()), u128::max_value() - 90);
-	});
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 90);
+			assert_eq!(Currencies::total_balance(ERC20, &alice()), u128::max_value() - 90);
+		});
 }
 
 #[test]
 fn erc20_transfer_should_fail() {
-	ExtBuilder::default().build().execute_with(|| {
-		// empty address
-		assert!(Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::ERC20(H160::default()), 100).is_err());
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY_ID, 100000),
+			(bob(), NATIVE_CURRENCY_ID, 100000),
+		])
+		.build()
+		.execute_with(|| {
+			// empty address
+			assert!(
+				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::ERC20(H160::default()), 100).is_err()
+			);
 
-		// bob can't transfer. bob balance 0
-		assert!(Currencies::transfer(Origin::signed(bob()), alice(), ERC20, 1).is_err());
-	});
+			// bob can't transfer. bob balance 0
+			assert!(Currencies::transfer(Origin::signed(bob()), alice(), ERC20, 1).is_err());
+		});
 }
 
 #[test]
@@ -384,49 +401,58 @@ fn erc20_can_reserve_should_work() {
 
 #[test]
 fn erc20_slash_reserve_should_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::slash_reserved(ERC20, &alice(), 1), 1);
-		assert_ok!(Currencies::reserve(ERC20, &alice(), 100));
-		assert_eq!(Currencies::slash_reserved(ERC20, &alice(), 10), 10);
-	});
+	ExtBuilder::default()
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100000)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Currencies::slash_reserved(ERC20, &alice(), 1), 1);
+			assert_ok!(Currencies::reserve(ERC20, &alice(), 100));
+			assert_eq!(Currencies::slash_reserved(ERC20, &alice(), 10), 10);
+		});
 }
 
 #[test]
 fn erc20_reserve_should_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value());
+	ExtBuilder::default()
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100000)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value());
 
-		assert_ok!(Currencies::reserve(ERC20, &alice(), 100));
+			assert_ok!(Currencies::reserve(ERC20, &alice(), 100));
 
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 100);
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 100);
-	});
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 100);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 100);
+		});
 }
 
 #[test]
 fn erc20_unreserve_should_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value());
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
-		assert_eq!(Currencies::unreserve(ERC20, &alice(), 0), 0);
-		assert_eq!(Currencies::unreserve(ERC20, &alice(), 50), 50);
-		assert_ok!(Currencies::reserve(ERC20, &alice(), 30));
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 30);
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 30);
-		assert_eq!(Currencies::unreserve(ERC20, &alice(), 15), 0);
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 15);
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 15);
-		assert_eq!(Currencies::unreserve(ERC20, &alice(), 30), 15);
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value());
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
-	});
+	ExtBuilder::default()
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100000)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value());
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
+			assert_eq!(Currencies::unreserve(ERC20, &alice(), 0), 0);
+			assert_eq!(Currencies::unreserve(ERC20, &alice(), 50), 50);
+			assert_ok!(Currencies::reserve(ERC20, &alice(), 30));
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 30);
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 30);
+			assert_eq!(Currencies::unreserve(ERC20, &alice(), 15), 0);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value() - 15);
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 15);
+			assert_eq!(Currencies::unreserve(ERC20, &alice(), 30), 15);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), u128::max_value());
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
+		});
 }
 
 #[test]
 fn erc20_should_not_slash() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::can_slash(ERC20, &alice(), 1), false,);
+		assert_eq!(Currencies::can_slash(ERC20, &alice(), 1), false);
 		// calling slash will return 0
 		assert_eq!(Currencies::slash(ERC20, &alice(), 1), 0);
 	});
@@ -434,61 +460,78 @@ fn erc20_should_not_slash() {
 
 #[test]
 fn erc20_should_not_be_lockable() {
-	assert_eq!(Currencies::set_lock(ID_1, ERC20, &alice(), 1), ());
-	assert_eq!(Currencies::extend_lock(ID_1, ERC20, &alice(), 1), ());
-	assert_eq!(Currencies::remove_lock(ID_1, ERC20, &alice()), ());
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			Currencies::set_lock(ID_1, ERC20, &alice(), 1),
+			Error::<Runtime>::ERC20InvalidOperation
+		);
+		assert_noop!(
+			Currencies::extend_lock(ID_1, ERC20, &alice(), 1),
+			Error::<Runtime>::ERC20InvalidOperation
+		);
+		assert_noop!(
+			Currencies::remove_lock(ID_1, ERC20, &alice()),
+			Error::<Runtime>::ERC20InvalidOperation
+		);
+	});
 }
 
 #[test]
 fn erc20_repatriate_reserved_should_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		let bob_balance = 100;
-		let alice_balance = u128::max_value() - bob_balance;
-		assert_ok!(Currencies::transfer(Origin::signed(alice()), bob(), ERC20, bob_balance));
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY_ID, 100000),
+			(bob(), NATIVE_CURRENCY_ID, 100000),
+		])
+		.build()
+		.execute_with(|| {
+			let bob_balance = 100;
+			let alice_balance = u128::max_value() - bob_balance;
+			assert_ok!(Currencies::transfer(Origin::signed(alice()), bob(), ERC20, bob_balance));
 
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance);
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
-		assert_eq!(
-			Currencies::repatriate_reserved(ERC20, &alice(), &alice(), 0, BalanceStatus::Free),
-			Ok(0)
-		);
-		assert_eq!(
-			Currencies::repatriate_reserved(ERC20, &alice(), &alice(), 50, BalanceStatus::Free),
-			Ok(50)
-		);
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance);
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance);
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
+			assert_eq!(
+				Currencies::repatriate_reserved(ERC20, &alice(), &alice(), 0, BalanceStatus::Free),
+				Ok(0)
+			);
+			assert_eq!(
+				Currencies::repatriate_reserved(ERC20, &alice(), &alice(), 50, BalanceStatus::Free),
+				Ok(50)
+			);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance);
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 0);
 
-		assert_eq!(Currencies::free_balance(ERC20, &bob()), bob_balance);
-		assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 0);
-		assert_ok!(Currencies::reserve(ERC20, &bob(), 50));
-		assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
-		assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 50);
-		assert_eq!(
-			Currencies::repatriate_reserved(ERC20, &bob(), &bob(), 60, BalanceStatus::Reserved),
-			Ok(10)
-		);
-		assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
-		assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 50);
+			assert_eq!(Currencies::free_balance(ERC20, &bob()), bob_balance);
+			assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 0);
+			assert_ok!(Currencies::reserve(ERC20, &bob(), 50));
+			assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
+			assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 50);
+			assert_eq!(
+				Currencies::repatriate_reserved(ERC20, &bob(), &bob(), 60, BalanceStatus::Reserved),
+				Ok(10)
+			);
+			assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
+			assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 50);
 
-		assert_eq!(
-			Currencies::repatriate_reserved(ERC20, &bob(), &alice(), 30, BalanceStatus::Reserved),
-			Ok(0)
-		);
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance);
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 30);
-		assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
-		assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 20);
+			assert_eq!(
+				Currencies::repatriate_reserved(ERC20, &bob(), &alice(), 30, BalanceStatus::Reserved),
+				Ok(0)
+			);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance);
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 30);
+			assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
+			assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 20);
 
-		assert_eq!(
-			Currencies::repatriate_reserved(ERC20, &bob(), &alice(), 30, BalanceStatus::Free),
-			Ok(10)
-		);
-		assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance + 20);
-		assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 30);
-		assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
-		assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 0);
-	});
+			assert_eq!(
+				Currencies::repatriate_reserved(ERC20, &bob(), &alice(), 30, BalanceStatus::Free),
+				Ok(10)
+			);
+			assert_eq!(Currencies::free_balance(ERC20, &alice()), alice_balance + 20);
+			assert_eq!(Currencies::reserved_balance(ERC20, &alice()), 30);
+			assert_eq!(Currencies::free_balance(ERC20, &bob()), 50);
+			assert_eq!(Currencies::reserved_balance(ERC20, &bob()), 0);
+		});
 }
 
 #[test]

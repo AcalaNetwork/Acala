@@ -432,7 +432,8 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 					return T::EVMBridge::balance_of(
 						InvokeContext {
 							contract,
-							source: Default::default(),
+							sender: Default::default(),
+							origin: Default::default(),
 						},
 						reserve_address(address),
 					)
@@ -451,8 +452,16 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 				if value.is_zero() {
 					return Ok(());
 				}
-				let source = T::AddressMapping::get_or_create_evm_address(&who);
-				T::EVMBridge::transfer(InvokeContext { contract, source }, reserve_address(source), value)
+				let address = T::AddressMapping::get_or_create_evm_address(&who);
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender: address,
+						origin: address,
+					},
+					reserve_address(address),
+					value,
+				)
 			}
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::reserve(who, value),
 			_ => T::MultiCurrency::reserve(currency_id, who, value),
@@ -466,19 +475,22 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 					return value;
 				}
 				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+					let sender = reserve_address(address);
 					let reserved_balance = T::EVMBridge::balance_of(
 						InvokeContext {
 							contract,
-							source: Default::default(),
+							sender: Default::default(),
+							origin: Default::default(),
 						},
-						reserve_address(address),
+						sender,
 					)
 					.unwrap_or_default();
 					let actual = reserved_balance.min(value);
 					return match T::EVMBridge::transfer(
 						InvokeContext {
 							contract,
-							source: reserve_address(address),
+							sender,
+							origin: address,
 						},
 						address,
 						actual,
@@ -514,15 +526,21 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 						}
 					};
 				}
+
 				let slashed_address =
 					T::AddressMapping::get_evm_address(&slashed).ok_or(Error::<T>::AccountNotFound)?;
 				let beneficiary_address = T::AddressMapping::get_or_create_evm_address(&beneficiary);
+
+				let slashed_reserve_address = reserve_address(slashed_address);
+				let beneficiary_reserve_address = reserve_address(beneficiary_address);
+
 				let slashed_reserved_balance = T::EVMBridge::balance_of(
 					InvokeContext {
 						contract,
-						source: Default::default(),
+						sender: Default::default(),
+						origin: Default::default(),
 					},
-					reserve_address(slashed_address),
+					slashed_reserve_address,
 				)
 				.unwrap_or_default();
 				let actual = slashed_reserved_balance.min(value);
@@ -530,7 +548,8 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 					BalanceStatus::Free => T::EVMBridge::transfer(
 						InvokeContext {
 							contract,
-							source: reserve_address(slashed_address),
+							sender: slashed_reserve_address,
+							origin: slashed_address,
 						},
 						beneficiary_address,
 						actual,
@@ -538,9 +557,10 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 					BalanceStatus::Reserved => T::EVMBridge::transfer(
 						InvokeContext {
 							contract,
-							source: reserve_address(slashed_address),
+							sender: slashed_reserve_address,
+							origin: slashed_address,
 						},
-						reserve_address(beneficiary_address),
+						beneficiary_reserve_address,
 						actual,
 					),
 				}
