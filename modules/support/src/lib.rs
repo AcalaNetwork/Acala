@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use primitives::evm::{CallInfo, Config, EvmAddress};
+use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -258,19 +258,31 @@ pub trait PrecompileCallerFilter {
 pub trait EVM {
 	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
 	fn execute(
-		source: H160,
-		target: H160,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: Self::Balance,
 		gas_limit: u32,
-		config: Option<Config>,
+		storage_limit: u32,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
+pub enum ExecutionMode {
+	Execute,
+	/// Discard any state changes
+	View,
+	/// Also discard any state changes and use estimate gas mode for evm config
+	EstimateGas,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
 pub struct InvokeContext {
 	pub contract: EvmAddress,
-	pub source: EvmAddress,
+	/// similar to msg.sender
+	pub sender: EvmAddress,
+	/// similar to tx.origin
+	pub origin: EvmAddress,
 }
 
 /// An abstraction of EVMBridge
@@ -286,26 +298,16 @@ pub trait EVMBridge<Balance> {
 
 /// An abstraction of EVMStateRentTrait
 pub trait EVMStateRentTrait<AccountId, Balance> {
-	/// Query the constants `ContractExistentialDeposit` value from evm module.
-	fn query_contract_existential_deposit() -> Balance;
-	/// Query the constants `TransferMaintainerDeposit` value from evm module.
-	fn query_transfer_maintainer_deposit() -> Balance;
+	/// Query the constants `NewContractExtraBytes` value from evm module.
+	fn query_new_contract_extra_bytes() -> u32;
 	/// Query the constants `StorageDepositPerByte` value from evm module.
-	fn query_qtorage_deposit_per_byte() -> Balance;
-	/// Query the constants `StorageDefaultQuota` value from evm module.
-	fn query_storage_default_quota() -> u32;
+	fn query_storage_deposit_per_byte() -> Balance;
 	/// Query the maintainer address from the ERC20 contract.
 	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
-	/// Add the quota at the given contract address.
-	fn add_storage_quota(from: AccountId, contract: H160, bytes: u32) -> DispatchResult;
-	/// Remove the quota at the given contract address.
-	fn remove_storage_quota(from: AccountId, contract: H160, bytes: u32) -> DispatchResult;
-	/// Request to transfer the maintainer of the contract address.
-	fn request_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
-	/// Cancel to transfer the maintainer of the contract address.
-	fn cancel_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
-	/// Confirm to transfer the maintainer of the contract address.
-	fn confirm_transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
-	/// Reject to transfer the maintainer of the contract address.
-	fn reject_transfer_maintainer(from: AccountId, contract: H160, invalid_maintainer: H160) -> DispatchResult;
+	/// Query the constants `DeveloperDeposit` value from evm module.
+	fn query_developer_deposit() -> Balance;
+	/// Query the constants `DeploymentFee` value from evm module.
+	fn query_deployment_fee() -> Balance;
+	/// Transfer the maintainer of the contract address.
+	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
 }

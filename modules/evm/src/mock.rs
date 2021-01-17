@@ -66,6 +66,7 @@ impl frame_system::Config for Test {
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
+	type SS58Prefix = ();
 }
 
 parameter_types! {
@@ -138,26 +139,25 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const ContractExistentialDeposit: u64 = 1;
-	pub const TransferMaintainerDeposit: u64 = 1;
+	pub const NewContractExtraBytes: u32 = 100;
 	pub const StorageDepositPerByte: u64 = 10;
-	pub const StorageDefaultQuota: u32 = 800;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
+	pub const MaxCodeSize: u32 = 1000;
+	pub const ChainId: u64 = 1;
 }
 
 impl Config for Test {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
-	type ContractExistentialDeposit = ContractExistentialDeposit;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type StorageDefaultQuota = StorageDefaultQuota;
+	type MaxCodeSize = MaxCodeSize;
 
 	type Event = Event<Test>;
 	type Precompiles = ();
-	type ChainId = SystemChainId;
+	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;

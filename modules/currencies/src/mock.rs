@@ -73,6 +73,7 @@ impl frame_system::Config for Runtime {
 	type DbWeight = ();
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
+	type SS58Prefix = ();
 }
 pub type System = frame_system::Module<Runtime>;
 
@@ -133,8 +134,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ContractExistentialDeposit: u64 = 1;
-	pub const TransferMaintainerDeposit: u64 = 1;
+	pub const NewContractExtraBytes: u32 = 1;
 	pub NetworkContractSource: H160 = H160::default();
 }
 
@@ -143,7 +143,7 @@ ord_parameter_types! {
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = 10;
-	pub const StorageDefaultQuota: u32 = 0x6000;
+	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 }
@@ -152,10 +152,9 @@ impl module_evm::Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = PalletBalances;
 	type MergeAccount = ();
-	type ContractExistentialDeposit = ContractExistentialDeposit;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type StorageDefaultQuota = StorageDefaultQuota;
+	type MaxCodeSize = MaxCodeSize;
 
 	type Event = TestEvent;
 	type Precompiles = ();
