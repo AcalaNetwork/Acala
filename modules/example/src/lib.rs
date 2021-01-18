@@ -3,10 +3,13 @@
 //! A simple example of a FRAME pallet demonstrating
 //! concepts, APIs and structures common to most FRAME runtimes.
 
-pub use module::*;
+#![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unused_unit)]
 
 mod mock;
 mod tests;
+
+pub use module::*;
 
 #[frame_support::pallet]
 pub mod module {
