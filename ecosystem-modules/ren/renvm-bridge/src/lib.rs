@@ -37,7 +37,7 @@ pub trait Config: system::Config {
 decl_storage! {
 	trait Store for Module<T: Config> as Template {
 		/// The RenVM split public key
-		RenVmPublicKey get(fn ren_vm_public_key): Option<PublicKey>;
+		RenVmPublicKey get(fn ren_vm_public_key) config(): Option<PublicKey>;
 		/// Signature blacklist. This is required to prevent double claim.
 		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
 
@@ -45,15 +45,6 @@ decl_storage! {
 		BurnEvents get(fn burn_events): map hasher(twox_64_concat) u32 => Option<(T::BlockNumber, DestAddress, Balance)>;
 		/// Next burn event ID
 		NextBurnEventId get(fn next_burn_event_id): u32;
-	}
-
-	add_extra_genesis {
-		config(ren_vm_public_key): PublicKey;
-
-		build(|config: &GenesisConfig| {
-			assert!(RenVmPublicKey::get().is_none(), "RenVmPublicKey are already initialized!");
-			RenVmPublicKey::set(Some(config.ren_vm_public_key))
-		})
 	}
 }
 
