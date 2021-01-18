@@ -26,7 +26,6 @@ sp-keystore = { git = "https://github.com/paritytech/substrate.git", branch = "r
 sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-pallet-contracts-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }

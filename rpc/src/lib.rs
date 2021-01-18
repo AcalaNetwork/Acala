@@ -2,7 +2,7 @@
 
 #![warn(missing_docs)]
 
-use primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Hash, Nonce};
+use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Hash, Nonce};
 use sc_client_api::light::{Fetcher, RemoteBlockchain};
 pub use sc_rpc_api::DenyUnsafe;
 use sp_api::ProvideRuntimeApi;
@@ -47,7 +47,6 @@ where
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
-	C::Api: pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
 	C::Api: module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>,
@@ -57,7 +56,6 @@ where
 {
 	use module_staking_pool_rpc::{StakingPool, StakingPoolApi};
 	use orml_oracle_rpc::{Oracle, OracleApi};
-	use pallet_contracts_rpc::{Contracts, ContractsApi};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
@@ -79,7 +77,6 @@ where
 	// Making synchronous calls in light client freezes the browser currently,
 	// more context: https://github.com/paritytech/substrate/pull/3480
 	// These RPCs should use an asynchronous caller instead.
-	io.extend_with(ContractsApi::to_delegate(Contracts::new(client.clone())));
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client.clone())));
 	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client)));

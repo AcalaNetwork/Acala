@@ -81,7 +81,6 @@ dependencies = [
  "jsonrpc-core",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
- "pallet-contracts-rpc",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "runtime-common",
@@ -165,9 +164,6 @@ dependencies = [
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
- "pallet-contracts",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
  "pallet-grandpa",
  "pallet-indices",
@@ -231,8 +227,6 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
- "pallet-contracts",
- "pallet-contracts-rpc-runtime-api",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "polkadot-primitives",
@@ -1301,7 +1295,7 @@ dependencies = [
 [[package]]
 name = "cumulus-collator"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "cumulus-network",
  "cumulus-primitives",
@@ -1316,7 +1310,6 @@ dependencies = [
  "polkadot-parachain",
  "polkadot-primitives",
  "polkadot-service",
- "polkadot-validation",
  "sc-cli",
  "sc-client-api",
  "sp-api",
@@ -1331,7 +1324,7 @@ dependencies = [
 [[package]]
 name = "cumulus-consensus"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "futures 0.3.11",
  "parity-scale-codec",
@@ -1353,7 +1346,7 @@ dependencies = [
 [[package]]
 name = "cumulus-message-broker"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "cumulus-parachain-upgrade",
  "cumulus-primitives",
@@ -1367,7 +1360,7 @@ dependencies = [
 [[package]]
 name = "cumulus-network"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "cumulus-primitives",
  "derive_more",
@@ -1382,7 +1375,6 @@ dependencies = [
  "polkadot-primitives",
  "polkadot-service",
  "polkadot-statement-table",
- "polkadot-validation",
  "sc-client-api",
  "sp-api",
  "sp-blockchain",
@@ -1394,7 +1386,7 @@ dependencies = [
 [[package]]
 name = "cumulus-parachain-upgrade"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "cumulus-primitives",
  "cumulus-runtime",
@@ -1418,7 +1410,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "impl-trait-for-tuples 0.1.3",
  "parity-scale-codec",
@@ -1436,7 +1428,7 @@ dependencies = [
 [[package]]
 name = "cumulus-runtime"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "cumulus-primitives",
  "frame-executive",
@@ -1457,7 +1449,7 @@ dependencies = [
 [[package]]
 name = "cumulus-service"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "cumulus-collator",
  "cumulus-consensus",
@@ -3216,9 +3208,6 @@ dependencies = [
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
- "pallet-contracts",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
  "pallet-grandpa",
  "pallet-indices",
@@ -4018,9 +4007,6 @@ dependencies = [
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
- "pallet-contracts",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
  "pallet-grandpa",
  "pallet-indices",
@@ -5532,79 +5518,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-contracts"
-version = "2.0.1"
-source = "git+https://github.com/paritytech//substrate?branch=rococo-v1#a9bbc7bdbfd3fa66537e5feedf1562dcb2c132a5"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-contracts-primitives",
- "pallet-contracts-proc-macro",
- "parity-scale-codec",
- "parity-wasm 0.41.0",
- "pwasm-utils 0.16.0",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-sandbox",
- "sp-std",
- "wasmi-validation",
-]
-
-[[package]]
-name = "pallet-contracts-primitives"
-version = "2.0.1"
-source = "git+https://github.com/paritytech//substrate?branch=rococo-v1#a9bbc7bdbfd3fa66537e5feedf1562dcb2c132a5"
-dependencies = [
- "bitflags",
- "parity-scale-codec",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-contracts-proc-macro"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//substrate?branch=rococo-v1#a9bbc7bdbfd3fa66537e5feedf1562dcb2c132a5"
-dependencies = [
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.58",
-]
-
-[[package]]
-name = "pallet-contracts-rpc"
-version = "0.8.1"
-source = "git+https://github.com/paritytech//substrate?branch=rococo-v1#a9bbc7bdbfd3fa66537e5feedf1562dcb2c132a5"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
-]
-
-[[package]]
-name = "pallet-contracts-rpc-runtime-api"
-version = "0.8.1"
-source = "git+https://github.com/paritytech//substrate?branch=rococo-v1#a9bbc7bdbfd3fa66537e5feedf1562dcb2c132a5"
-dependencies = [
- "pallet-contracts-primitives",
- "parity-scale-codec",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-democracy"
 version = "2.0.1"
 source = "git+https://github.com/paritytech//substrate?branch=rococo-v1#a9bbc7bdbfd3fa66537e5feedf1562dcb2c132a5"
@@ -6022,7 +5935,7 @@ dependencies = [
 [[package]]
 name = "parachain-info"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+source = "git+https://github.com/paritytech//cumulus?branch=rococo-v1#ad6fbcf7f4479398331f90c944b3b7365b5d0183"
 dependencies = [
  "cumulus-primitives",
  "frame-support",
@@ -7183,34 +7096,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "polkadot-validation"
-version = "0.8.27"
-source = "git+https://github.com/paritytech//polkadot?branch=rococo-v1#a3e1113655acfa42ae210310de90df086933ce26"
-dependencies = [
- "futures 0.3.11",
- "log",
- "parity-scale-codec",
- "polkadot-parachain",
- "polkadot-primitives",
- "sc-basic-authorship",
- "sc-block-builder",
- "sc-client-api",
- "sc-finality-grandpa",
- "sp-api",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-babe",
- "sp-core",
- "sp-inherents",
- "sp-runtime",
- "sp-timestamp",
- "sp-transaction-pool",
- "sp-trie",
- "substrate-prometheus-endpoint",
- "thiserror",
-]
-
-[[package]]
 name = "polling"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7396,17 +7281,6 @@ name = "pwasm-utils"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f53bc2558e8376358ebdc28301546471d67336584f6438ed4b7c7457a055fd7"
-dependencies = [
- "byteorder",
- "log",
- "parity-wasm 0.41.0",
-]
-
-[[package]]
-name = "pwasm-utils"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c8ac87af529432d3a4f0e2b3bbf08af49f28f09cc73ed7e551161bdaef5f78d"
 dependencies = [
  "byteorder",
  "log",
@@ -8488,7 +8362,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "parity-wasm 0.41.0",
- "pwasm-utils 0.14.0",
+ "pwasm-utils",
  "sc-executor-common",
  "scoped-tls",
  "sp-allocator",
@@ -9893,19 +9767,6 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "syn 1.0.58",
-]
-
-[[package]]
-name = "sp-sandbox"
-version = "0.8.1"
-source = "git+https://github.com/paritytech//substrate?branch=rococo-v1#a9bbc7bdbfd3fa66537e5feedf1562dcb2c132a5"
-dependencies = [
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-std",
- "sp-wasm-interface",
- "wasmi",
 ]
 
 [[package]]

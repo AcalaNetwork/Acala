@@ -116,10 +116,6 @@ pallet-authorship = { git = "https://github.com/paritytech//substrate", branch =
 pallet-babe = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-balances = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-collective = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts-primitives = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts-rpc = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts-rpc-runtime-api = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-elections-phragmen = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-grandpa = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-indices = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
@@ -177,7 +173,6 @@ sp-offchain = { git = "https://github.com/paritytech//substrate", branch = "roco
 sp-rpc = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-runtime = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-runtime-interface = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-sp-sandbox = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-session = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-staking = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-std = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
@@ -235,10 +230,6 @@ pallet-authorship = { git = "https://github.com/paritytech//substrate", branch =
 pallet-babe = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-balances = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-collective = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts-primitives = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts-rpc = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-pallet-contracts-rpc-runtime-api = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-elections-phragmen = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-grandpa = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 pallet-indices = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
@@ -296,7 +287,6 @@ sp-offchain = { git = "https://github.com/paritytech//substrate", branch = "roco
 sp-rpc = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-runtime = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-runtime-interface = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
-sp-sandbox = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-session = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-staking = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-std = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
@@ -351,7 +341,6 @@ kusama-runtime = { git = "https://github.com/paritytech//polkadot", branch = "ro
 polkadot-runtime-parachains = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-node-network-protocol = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-node-subsystem = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
-polkadot-validation = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-statement-table = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-overseer = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-node-primitives = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
