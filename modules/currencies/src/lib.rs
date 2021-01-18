@@ -411,7 +411,7 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Module<T> {
 impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 	fn can_reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> bool {
 		match currency_id {
-			CurrencyId::ERC20(_) => true,
+			CurrencyId::ERC20(_) => Self::ensure_can_withdraw(currency_id, who, value).is_ok(),
 			CurrencyId::Token(TokenSymbol::ACA) => T::NativeCurrency::can_reserve(who, value),
 			_ => T::MultiCurrency::can_reserve(currency_id, who, value),
 		}
@@ -452,7 +452,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Module<T> {
 				if value.is_zero() {
 					return Ok(());
 				}
-				let address = T::AddressMapping::get_or_create_evm_address(&who);
+				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
