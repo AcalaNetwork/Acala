@@ -81,7 +81,6 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub const TransferMaintainerDeposit: u64 = 1;
 	pub NetworkContractSource: EvmAddress = alice();
 }
 
@@ -99,7 +98,6 @@ impl module_evm::Config for Runtime {
 	type Currency = Balances;
 	type MergeAccount = ();
 	type NewContractExtraBytes = NewContractExtraBytes;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 

@@ -1217,56 +1217,24 @@ fn test_evm_module() {
 			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
 			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
 
-			let alice_address = EvmAccounts::eth_address(&alice());
+			let _alice_address = EvmAccounts::eth_address(&alice());
 			let bob_address = EvmAccounts::eth_address(&bob());
 
-			let address = deploy_contract(alice_account_id()).unwrap();
-			let event = Event::module_evm(module_evm::RawEvent::Created(address));
+			let contract = deploy_contract(alice_account_id()).unwrap();
+			let event = Event::module_evm(module_evm::RawEvent::Created(contract));
 			assert_eq!(last_event(), event);
 
-			assert_ok!(EVM::request_transfer_maintainer(
-				Origin::signed(bob_account_id()),
-				address
-			));
-			let event = Event::module_evm(module_evm::RawEvent::RequestedTransferMaintainer(address, bob_address));
-			assert_eq!(last_event(), event);
-
-			assert_ok!(EVM::cancel_transfer_maintainer(
-				Origin::signed(bob_account_id()),
-				address
-			));
-			let event = Event::module_evm(module_evm::RawEvent::CanceledTransferMaintainer(address, bob_address));
-			assert_eq!(last_event(), event);
-
-			// confirm_transfer_maintainer
-			assert_ok!(EVM::request_transfer_maintainer(
-				Origin::signed(bob_account_id()),
-				address
-			));
-			assert_ok!(EVM::confirm_transfer_maintainer(
+			assert_ok!(EVM::transfer_maintainer(
 				Origin::signed(alice_account_id()),
-				address,
-				EvmAccounts::eth_address(&bob())
+				contract,
+				bob_address
 			));
-			let event = Event::module_evm(module_evm::RawEvent::ConfirmedTransferMaintainer(address, bob_address));
-			assert_eq!(last_event(), event);
-
-			// reject_transfer_maintainer
-			assert_ok!(EVM::request_transfer_maintainer(
-				Origin::signed(alice_account_id()),
-				address
-			));
-			assert_ok!(EVM::reject_transfer_maintainer(
-				Origin::signed(bob_account_id()),
-				address,
-				alice_address
-			));
-			let event = Event::module_evm(module_evm::RawEvent::RejectedTransferMaintainer(address, alice_address));
+			let event = Event::module_evm(module_evm::RawEvent::TransferredMaintainer(contract, bob_address));
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(999));
-			assert_eq!(Balances::free_balance(bob_account_id()), amount(1001));
+			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
 			let to = EvmAccounts::eth_address(&alice());
 			assert_ok!(Currencies::transfer(
 				Origin::signed(bob_account_id()),
@@ -1274,8 +1242,8 @@ fn test_evm_module() {
 				CurrencyId::Token(TokenSymbol::ACA),
 				amount(10)
 			));
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(999) + amount(10));
-			assert_eq!(Balances::free_balance(bob_account_id()), amount(1001) - amount(10));
+			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000) + amount(10));
+			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000) - amount(10));
 		});
 }
 

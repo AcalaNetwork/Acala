@@ -19,13 +19,12 @@ mod mock;
 mod tests;
 
 type EcdsaSignature = ecdsa::Signature;
+type PublicKey = [u8; 20];
 type DestAddress = Vec<u8>;
 
 pub trait Config: system::Config {
 	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 	type Currency: BasicCurrency<Self::AccountId, Balance = Balance>;
-	/// The RenVM split public key
-	type PublicKey: Get<[u8; 20]>;
 	/// The RenVM Currency identifier
 	type CurrencyIdentifier: Get<[u8; 32]>;
 	/// A configuration for base priority of unsigned transactions.
@@ -37,6 +36,8 @@ pub trait Config: system::Config {
 
 decl_storage! {
 	trait Store for Module<T: Config> as Template {
+		/// The RenVM split public key
+		RenVmPublicKey get(fn ren_vm_public_key) config(): Option<PublicKey>;
 		/// Signature blacklist. This is required to prevent double claim.
 		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
 
@@ -55,11 +56,15 @@ decl_event!(
 		Minted(AccountId, Balance),
 		/// Asset burnt in this chain \[owner, dest, amount\]
 		Burnt(AccountId, DestAddress, Balance),
+		/// Rotated key \[new_key\]
+		RotatedKey(PublicKey),
 	}
 );
 
 decl_error! {
 	pub enum Error for Module<T: Config> {
+		/// The RenVM split public key is invalid.
+		InvalidRenVmPublicKey,
 		/// The mint signature is invalid.
 		InvalidMintSignature,
 		/// The mint signature has already been used.
@@ -113,6 +118,21 @@ decl_module! {
 				Ok(())
 			})?;
 		}
+
+		/// Allow RenVm rotate the public key.
+		///
+		/// The dispatch origin of this call must be _None_.
+		///
+		/// Verify input by `validate_unsigned`
+		#[weight = 10_000]
+		fn rotate_key(
+			origin,
+			new_key: PublicKey,
+			sig: EcdsaSignature,
+		) {
+			ensure_none(origin)?;
+			Self::do_rotate_key(new_key, sig)?;
+		}
 	}
 }
 
@@ -125,8 +145,22 @@ impl<T: Config> Module<T> {
 		Ok(())
 	}
 
+	fn do_rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> DispatchResult {
+		RenVmPublicKey::set(Some(new_key));
+		Signatures::insert(&sig, ());
+
+		Self::deposit_event(RawEvent::RotatedKey(new_key));
+		Ok(())
+	}
+
 	// ABI-encode the values for creating the signature hash.
-	fn signable_message(p_hash: &[u8; 32], amount: u128, to: &[u8], n_hash: &[u8; 32], token: &[u8; 32]) -> Vec<u8> {
+	fn signable_mint_message(
+		p_hash: &[u8; 32],
+		amount: u128,
+		to: &[u8],
+		n_hash: &[u8; 32],
+		token: &[u8; 32],
+	) -> Vec<u8> {
 		// p_hash ++ amount ++ token ++ to ++ n_hash
 		let length = 32 + 32 + 32 + 32 + 32;
 		let mut v = Vec::with_capacity(length);
@@ -140,7 +174,7 @@ impl<T: Config> Module<T> {
 	}
 
 	// Verify that the signature has been signed by RenVM.
-	fn verify_signature(
+	fn verify_mint_signature(
 		p_hash: &[u8; 32],
 		amount: u128,
 		to: &[u8],
@@ -149,12 +183,40 @@ impl<T: Config> Module<T> {
 	) -> DispatchResult {
 		let ren_btc_identifier = T::CurrencyIdentifier::get();
 
-		let signed_message_hash = keccak_256(&Self::signable_message(p_hash, amount, to, n_hash, &ren_btc_identifier));
+		let signed_message_hash = keccak_256(&Self::signable_mint_message(
+			p_hash,
+			amount,
+			to,
+			n_hash,
+			&ren_btc_identifier,
+		));
 		let recoverd =
 			secp256k1_ecdsa_recover(&sig, &signed_message_hash).map_err(|_| Error::<T>::InvalidMintSignature)?;
 		let addr = &keccak_256(&recoverd)[12..];
 
-		ensure!(addr == T::PublicKey::get(), Error::<T>::InvalidMintSignature);
+		let pubkey = RenVmPublicKey::get().ok_or(Error::<T>::InvalidRenVmPublicKey)?;
+		ensure!(addr == pubkey, Error::<T>::InvalidMintSignature);
+
+		Ok(())
+	}
+
+	fn signable_rotate_key_message(new_key: &PublicKey) -> Vec<u8> {
+		// new_key
+		let length = 20;
+		let mut v = Vec::with_capacity(length);
+		v.extend_from_slice(&new_key[..]);
+		v
+	}
+
+	// Verify that the signature has been signed by RenVM.
+	fn verify_rotate_key_signature(new_key: &PublicKey, sig: &[u8; 65]) -> DispatchResult {
+		let signed_message_hash = keccak_256(&Self::signable_rotate_key_message(new_key));
+		let recoverd =
+			secp256k1_ecdsa_recover(&sig, &signed_message_hash).map_err(|_| Error::<T>::InvalidMintSignature)?;
+		let addr = &keccak_256(&recoverd)[12..];
+
+		let pubkey = RenVmPublicKey::get().ok_or(Error::<T>::InvalidRenVmPublicKey)?;
+		ensure!(addr == pubkey, Error::<T>::InvalidMintSignature);
 
 		Ok(())
 	}
@@ -165,29 +227,48 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-		if let Call::mint(who, p_hash, amount, n_hash, sig) = call {
-			// check if already exists
-			if Signatures::contains_key(&sig) {
-				return InvalidTransaction::Stale.into();
+		match call {
+			Call::mint(who, p_hash, amount, n_hash, sig) => {
+				// check if already exists
+				if Signatures::contains_key(&sig) {
+					return InvalidTransaction::Stale.into();
+				}
+
+				let verify_result = Encode::using_encoded(&who, |encoded| -> DispatchResult {
+					Self::verify_mint_signature(&p_hash, *amount, encoded, &n_hash, &sig.0)
+				});
+
+				// verify signature
+				if verify_result.is_err() {
+					return InvalidTransaction::BadProof.into();
+				}
+
+				ValidTransaction::with_tag_prefix("renvm-bridge")
+					.priority(T::UnsignedPriority::get())
+					.and_provides(sig)
+					.longevity(64_u64)
+					.propagate(true)
+					.build()
 			}
+			Call::rotate_key(new_key, sig) => {
+				// check if already exists
+				if Signatures::contains_key(&sig) {
+					return InvalidTransaction::Stale.into();
+				}
 
-			let verify_result = Encode::using_encoded(&who, |encoded| -> DispatchResult {
-				Self::verify_signature(&p_hash, *amount, encoded, &n_hash, &sig.0)
-			});
+				// verify signature
+				if Self::verify_rotate_key_signature(new_key, &sig.0).is_err() {
+					return InvalidTransaction::BadProof.into();
+				}
 
-			// verify signature
-			if verify_result.is_err() {
-				return InvalidTransaction::BadProof.into();
+				ValidTransaction::with_tag_prefix("renvm-bridge")
+					.priority(T::UnsignedPriority::get())
+					.and_provides(sig)
+					.longevity(64_u64)
+					.propagate(true)
+					.build()
 			}
-
-			ValidTransaction::with_tag_prefix("renvm-bridge")
-				.priority(T::UnsignedPriority::get())
-				.and_provides(sig)
-				.longevity(64_u64)
-				.propagate(true)
-				.build()
-		} else {
-			InvalidTransaction::Call.into()
+			_ => InvalidTransaction::Call.into(),
 		}
 	}
 }

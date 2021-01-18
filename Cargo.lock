@@ -281,6 +281,7 @@ dependencies = [
  "acala-primitives",
  "acala-rpc",
  "acala-runtime",
+ "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",

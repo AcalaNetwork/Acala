@@ -13,7 +13,8 @@ fn should_read_total_supply() {
 		assert_eq!(
 			EvmBridgeModule::total_supply(InvokeContext {
 				contract: erc20_address(),
-				source: Default::default(),
+				sender: Default::default(),
+				origin: Default::default(),
 			}),
 			Ok(u128::max_value())
 		);
@@ -25,7 +26,8 @@ fn should_read_balance_of() {
 	ExtBuilder::default().build().execute_with(|| {
 		let context = InvokeContext {
 			contract: erc20_address(),
-			source: Default::default(),
+			sender: Default::default(),
+			origin: Default::default(),
 		};
 
 		assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
@@ -55,7 +57,8 @@ fn should_transfer() {
 				EvmBridgeModule::transfer(
 					InvokeContext {
 						contract: erc20_address(),
-						source: bob(),
+						sender: bob(),
+						origin: bob(),
 					},
 					alice(),
 					10
@@ -66,7 +69,8 @@ fn should_transfer() {
 			assert_ok!(EvmBridgeModule::transfer(
 				InvokeContext {
 					contract: erc20_address(),
-					source: alice()
+					sender: alice(),
+					origin: alice(),
 				},
 				bob(),
 				100
@@ -75,7 +79,8 @@ fn should_transfer() {
 				EvmBridgeModule::balance_of(
 					InvokeContext {
 						contract: erc20_address(),
-						source: alice()
+						sender: alice(),
+						origin: alice(),
 					},
 					bob()
 				),
@@ -85,7 +90,8 @@ fn should_transfer() {
 			assert_ok!(EvmBridgeModule::transfer(
 				InvokeContext {
 					contract: erc20_address(),
-					source: bob(),
+					sender: bob(),
+					origin: bob(),
 				},
 				alice(),
 				10
@@ -95,7 +101,8 @@ fn should_transfer() {
 				EvmBridgeModule::balance_of(
 					InvokeContext {
 						contract: erc20_address(),
-						source: alice()
+						sender: alice(),
+						origin: bob(),
 					},
 					bob()
 				),
@@ -106,7 +113,8 @@ fn should_transfer() {
 				EvmBridgeModule::transfer(
 					InvokeContext {
 						contract: erc20_address(),
-						source: bob(),
+						sender: bob(),
+						origin: bob(),
 					},
 					alice(),
 					100

@@ -24,6 +24,15 @@ fn mint_ren_btc(
 	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
 }
 
+fn rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> Result<DispatchResult, TransactionValidityError> {
+	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
+		TransactionSource::External,
+		&RenvmBridgeCall::rotate_key(new_key, sig.clone()),
+	)?;
+
+	Ok(RenVmBridge::rotate_key(Origin::none(), new_key, sig))
+}
+
 #[test]
 fn burn_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -56,56 +65,58 @@ fn burn_works() {
 }
 
 #[test]
-fn verify_signature_works() {
-	assert_ok!(
-		RenVmBridge::verify_signature(
-			&hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
-			93963,
-			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
-			&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"],
-		)
-	);
+fn verify_mint_signature_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(
+			RenVmBridge::verify_mint_signature(
+				&hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
+				93963,
+				&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
+				&hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
+				&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"],
+			)
+		);
 
-	assert_ok!(
-		RenVmBridge::verify_signature(
-			&hex!["ad8fae51f70e3a013962934614201466076fec72eb60f74183f3059d6ad2c4c1"],
-			86129,
-			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["1cdb2d4388e10ce8f89613f06a0d03a2d3fbcfd334d81d4564f7e1bfc5ebc9bb"],
-			&hex!["87f068a20cfaf7752151320dcfde3994f2861cb4dd36aa73a947f23f92f135507607c997b450053914f2e9313ea2d1abf3326a7984341fdf47e4e21f33b54cda1b"],
-		)
-	);
+		assert_ok!(
+			RenVmBridge::verify_mint_signature(
+				&hex!["ad8fae51f70e3a013962934614201466076fec72eb60f74183f3059d6ad2c4c1"],
+				86129,
+				&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
+				&hex!["1cdb2d4388e10ce8f89613f06a0d03a2d3fbcfd334d81d4564f7e1bfc5ebc9bb"],
+				&hex!["87f068a20cfaf7752151320dcfde3994f2861cb4dd36aa73a947f23f92f135507607c997b450053914f2e9313ea2d1abf3326a7984341fdf47e4e21f33b54cda1b"],
+			)
+		);
 
-	assert_ok!(
-		RenVmBridge::verify_signature(
-			&hex!["1a98ccc4004f71c29c3ae3ee3a8fe51ece4a0eda383443aa8aaafeec4fd55247"],
-			80411,
-			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["d45761c6d5123a10c5f707472613451de1e738b544acfbdd4b2680754ed2008a"],
-			&hex!["1281893709fd7f4e1d65147a948d9884adf65bb9bcb587ea32e2f3b633fa1e1f2d82488ae89105004a301eda66ef8e5f036b705716f1df42d357647e09dd3e581c"],
-		)
-	);
+		assert_ok!(
+			RenVmBridge::verify_mint_signature(
+				&hex!["1a98ccc4004f71c29c3ae3ee3a8fe51ece4a0eda383443aa8aaafeec4fd55247"],
+				80411,
+				&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
+				&hex!["d45761c6d5123a10c5f707472613451de1e738b544acfbdd4b2680754ed2008a"],
+				&hex!["1281893709fd7f4e1d65147a948d9884adf65bb9bcb587ea32e2f3b633fa1e1f2d82488ae89105004a301eda66ef8e5f036b705716f1df42d357647e09dd3e581c"],
+			)
+		);
 
-	assert_ok!(
-		RenVmBridge::verify_signature(
-			&hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
-			87266,
-			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
-			&hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"],
-		)
-	);
+		assert_ok!(
+			RenVmBridge::verify_mint_signature(
+				&hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
+				87266,
+				&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
+				&hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
+				&hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"],
+			)
+		);
 
-	assert_ok!(
-		RenVmBridge::verify_signature(
-			&hex!["046076abc0c7e2bd8cc15b9e22ed97deff2d8e2acfe3bec1ffbbd0255b2a094c"],
-			87403,
-			&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
-			&hex!["64962866cd5245005a06b8a10ac57626f176bc1c8e340a008c4a765a56aa4a6f"],
-			&hex!["63f68adcda25db1de27b0edeb0439f7d971a22afeebb5ddb07ed05d4b07ac4fd1f78e5ecd4f2d6a21aabcc73027e8b977f9a688ae16db5aaf6c0d0021e85e3f41b"],
-		)
-	);
+		assert_ok!(
+			RenVmBridge::verify_mint_signature(
+				&hex!["046076abc0c7e2bd8cc15b9e22ed97deff2d8e2acfe3bec1ffbbd0255b2a094c"],
+				87403,
+				&hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"],
+				&hex!["64962866cd5245005a06b8a10ac57626f176bc1c8e340a008c4a765a56aa4a6f"],
+				&hex!["63f68adcda25db1de27b0edeb0439f7d971a22afeebb5ddb07ed05d4b07ac4fd1f78e5ecd4f2d6a21aabcc73027e8b977f9a688ae16db5aaf6c0d0021e85e3f41b"],
+			)
+		);
+	});
 }
 
 #[test]
@@ -155,6 +166,21 @@ fn mint_works() {
 				87266,
 				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
 				EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]),
+			),
+			TransactionValidityError::Invalid(InvalidTransaction::BadProof)
+		);
+	});
+}
+
+#[test]
+fn rotate_key_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let new_key: PublicKey = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
+
+		assert_noop!(
+			rotate_key(
+				new_key,
+				EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]),
 			),
 			TransactionValidityError::Invalid(InvalidTransaction::BadProof)
 		);

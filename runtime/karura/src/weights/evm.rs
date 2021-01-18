@@ -14,25 +14,10 @@ use sp_std::marker::PhantomData;
 /// Weight functions for evm.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
-	fn request_transfer_maintainer() -> Weight {
+	fn transfer_maintainer() -> Weight {
 		(249_253_000 as Weight)
 			.saturating_add(DbWeight::get().reads(4 as Weight))
 			.saturating_add(DbWeight::get().writes(2 as Weight))
-	}
-	fn cancel_transfer_maintainer() -> Weight {
-		(254_467_000 as Weight)
-			.saturating_add(DbWeight::get().reads(3 as Weight))
-			.saturating_add(DbWeight::get().writes(2 as Weight))
-	}
-	fn confirm_transfer_maintainer() -> Weight {
-		(262_265_000 as Weight)
-			.saturating_add(DbWeight::get().reads(5 as Weight))
-			.saturating_add(DbWeight::get().writes(3 as Weight))
-	}
-	fn reject_transfer_maintainer() -> Weight {
-		(275_416_000 as Weight)
-			.saturating_add(DbWeight::get().reads(6 as Weight))
-			.saturating_add(DbWeight::get().writes(3 as Weight))
 	}
 	fn deploy() -> Weight {
 		(359_916_000 as Weight)

@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use primitives::evm::{CallInfo, Config, EvmAddress};
+use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -258,20 +258,31 @@ pub trait PrecompileCallerFilter {
 pub trait EVM {
 	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
 	fn execute(
-		source: H160,
-		target: H160,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: Self::Balance,
 		gas_limit: u32,
 		storage_limit: u32,
-		config: Option<Config>,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
+pub enum ExecutionMode {
+	Execute,
+	/// Discard any state changes
+	View,
+	/// Also discard any state changes and use estimate gas mode for evm config
+	EstimateGas,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
 pub struct InvokeContext {
 	pub contract: EvmAddress,
-	pub source: EvmAddress,
+	/// similar to msg.sender
+	pub sender: EvmAddress,
+	/// similar to tx.origin
+	pub origin: EvmAddress,
 }
 
 /// An abstraction of EVMBridge
@@ -289,8 +300,6 @@ pub trait EVMBridge<Balance> {
 pub trait EVMStateRentTrait<AccountId, Balance> {
 	/// Query the constants `NewContractExtraBytes` value from evm module.
 	fn query_new_contract_extra_bytes() -> u32;
-	/// Query the constants `TransferMaintainerDeposit` value from evm module.
-	fn query_transfer_maintainer_deposit() -> Balance;
 	/// Query the constants `StorageDepositPerByte` value from evm module.
 	fn query_storage_deposit_per_byte() -> Balance;
 	/// Query the maintainer address from the ERC20 contract.
@@ -299,12 +308,6 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_developer_deposit() -> Balance;
 	/// Query the constants `DeploymentFee` value from evm module.
 	fn query_deployment_fee() -> Balance;
-	/// Request to transfer the maintainer of the contract address.
-	fn request_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
-	/// Cancel to transfer the maintainer of the contract address.
-	fn cancel_transfer_maintainer(from: AccountId, contract: H160) -> DispatchResult;
-	/// Confirm to transfer the maintainer of the contract address.
-	fn confirm_transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
-	/// Reject to transfer the maintainer of the contract address.
-	fn reject_transfer_maintainer(from: AccountId, contract: H160, invalid_maintainer: H160) -> DispatchResult;
+	/// Transfer the maintainer of the contract address.
+	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
 }

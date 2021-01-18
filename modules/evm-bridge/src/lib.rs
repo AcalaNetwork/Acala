@@ -10,7 +10,7 @@ use module_evm::{ExitReason, ExitSucceed};
 use primitive_types::H256;
 use sp_core::{H160, U256};
 use sp_runtime::SaturatedConversion;
-use support::{EVMBridge as EVMBridgeTrait, InvokeContext, EVM};
+use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
 mod mock;
 mod tests;
@@ -42,15 +42,7 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
 
-		let info = T::EVM::execute(
-			H160::default(),
-			context.contract,
-			input,
-			Default::default(),
-			2_100_000,
-			0,
-			None,
-		)?;
+		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
@@ -64,15 +56,7 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 		// append address
 		input.extend_from_slice(H256::from(address).as_bytes());
 
-		let info = T::EVM::execute(
-			H160::default(),
-			context.contract,
-			input,
-			Default::default(),
-			2_100_000,
-			0,
-			None,
-		)?;
+		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
@@ -90,13 +74,12 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 		input.extend_from_slice(H256::from_uint(&U256::from(value.saturated_into::<u128>())).as_bytes());
 
 		let info = T::EVM::execute(
-			context.source,
-			context.contract,
+			context,
 			input,
 			Default::default(),
 			2_100_000,
 			1_000,
-			None,
+			ExecutionMode::Execute,
 		)?;
 
 		Self::handle_exit_reason(info.exit_reason)
