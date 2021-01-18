@@ -3,6 +3,8 @@
 //! A simple example of a FRAME pallet demonstrating
 //! concepts, APIs and structures common to most FRAME runtimes.
 
+pub use module::*;
+
 mod mock;
 mod tests;
 

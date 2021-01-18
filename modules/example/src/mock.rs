@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 
-use super::module as example;
+use crate as example;
 use frame_support::pallet_prelude::GenesisBuild;
 use frame_support::{construct_runtime, parameter_types};
 use sp_runtime::traits::Block as BlockT;
