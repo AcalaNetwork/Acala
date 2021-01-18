@@ -25,6 +25,7 @@ pallet-balances = { version = "2.0.0" }
 [features]
 default = ["std"]
 std = [
+	"serde",
 	"frame-system/std",
 	"frame-support/std",
 	"sp-std/std",

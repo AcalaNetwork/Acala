@@ -1196,14 +1196,12 @@ impl pallet_proxy::Config for Runtime {
 
 parameter_types! {
 	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
-	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
 impl ecosystem_renvm_bridge::Config for Runtime {
 	type Event = Event;
 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
-	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
 }
@@ -1376,7 +1374,7 @@ construct_runtime!(
 		NFT: module_nft::{Module, Call, Event<T>},
 
 		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
 
 		// Smart contracts
 		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
