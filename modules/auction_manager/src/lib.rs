@@ -43,10 +43,7 @@ pub mod module {
 		},
 		DispatchError, DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
 	};
-	use sp_std::{
-		cmp::{Eq, PartialEq},
-		prelude::*,
-	};
+	use sp_std::prelude::*;
 	use support::{
 		AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate,
 	};
