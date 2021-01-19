@@ -108,8 +108,9 @@ fn karura_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
 		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		ParachainInfoConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS,
+		DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -271,6 +272,9 @@ fn karura_genesis(
 		}),
 		parachain_info: Some(ParachainInfoConfig {
 			parachain_id: 666.into(),
+		}),
+		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
+			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
 	}
 }

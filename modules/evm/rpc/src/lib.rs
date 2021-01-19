@@ -105,11 +105,13 @@ where
 			from,
 			to,
 			gas_limit,
+			storage_limit,
 			value,
 			data,
 		} = request;
 
 		let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+		let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -136,6 +138,7 @@ where
 						data,
 						balance_value,
 						gas_limit,
+						storage_limit,
 						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -153,6 +156,7 @@ where
 						data,
 						balance_value,
 						gas_limit,
+						storage_limit,
 						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -172,11 +176,13 @@ where
 			from,
 			to,
 			gas_limit,
+			storage_limit,
 			value,
 			data,
 		} = request;
 
 		let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+		let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -203,6 +209,7 @@ where
 						data,
 						balance_value,
 						gas_limit,
+						storage_limit,
 						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -220,6 +227,7 @@ where
 						data,
 						balance_value,
 						gas_limit,
+						storage_limit,
 						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?

@@ -21,7 +21,7 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
 	error::BadOrigin,
-	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
+	traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
 	RuntimeDebug,
@@ -34,22 +34,17 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, Convert, One, Saturating, UniqueSaturatedInto, Zero},
-	Either,
+	traits::{Convert, One, Saturating, UniqueSaturatedInto},
+	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{EVMStateRentTrait, EVM as EVMTrait};
+use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, EVM as EVMTrait};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 pub trait WeightInfo {
-	fn add_storage_quota() -> Weight;
-	fn remove_storage_quota() -> Weight;
-	fn request_transfer_maintainer() -> Weight;
-	fn cancel_transfer_maintainer() -> Weight;
-	fn confirm_transfer_maintainer() -> Weight;
-	fn reject_transfer_maintainer() -> Weight;
+	fn transfer_maintainer() -> Weight;
 	fn deploy() -> Weight;
 	fn deploy_free() -> Weight;
 	fn enable_contract_development() -> Weight;
@@ -105,14 +100,11 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	/// Merge free balance from source to dest.
 	type MergeAccount: MergeAccount<Self::AccountId>;
-	/// Deposit for creating contract, would be reserved until contract deleted.
-	type ContractExistentialDeposit: Get<BalanceOf<Self>>;
-	/// Deposit for transferring the maintainer of the contract.
-	type TransferMaintainerDeposit: Get<BalanceOf<Self>>;
+	/// Charge extra bytes for creating a contract, would be reserved until the
+	/// contract deleted.
+	type NewContractExtraBytes: Get<u32>;
 	/// Storage required for per byte.
 	type StorageDepositPerByte: Get<BalanceOf<Self>>;
-	/// Storage quota default value.
-	type StorageDefaultQuota: Get<u32>;
 	/// Contract max code size.
 	type MaxCodeSize: Get<u32>;
 
@@ -151,15 +143,14 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 pub const STORAGE_SIZE: u32 = 64;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-pub struct ContractInfo<T: Config> {
+pub struct ContractInfo {
 	pub storage_count: u32,
 	pub code_hash: H256,
-	pub existential_deposit: BalanceOf<T>,
 	pub maintainer: EvmAddress,
 	pub deployed: bool,
 }
 
-impl<T: Config> ContractInfo<T> {
+impl ContractInfo {
 	pub fn total_storage_size(&self) -> u32 {
 		self.storage_count.saturating_mul(STORAGE_SIZE)
 	}
@@ -168,49 +159,17 @@ impl<T: Config> ContractInfo<T> {
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 pub struct AccountInfo<T: Config> {
 	pub nonce: T::Index,
-	pub contract_info: Option<ContractInfo<T>>,
-	pub storage_rent_deposit: BalanceOf<T>,
-	pub storage_quota: u32,
-	/// The storage_usage is the sum of additional storage required by all
-	/// contracts.
-	pub storage_usage: u32,
+	pub contract_info: Option<ContractInfo>,
 	pub developer_deposit: Option<BalanceOf<T>>,
 }
 
 impl<T: Config> AccountInfo<T> {
-	pub fn new(nonce: T::Index) -> Self {
+	pub fn new(nonce: T::Index, contract_info: Option<ContractInfo>) -> Self {
 		Self {
 			nonce,
-			contract_info: None,
-			storage_rent_deposit: Zero::zero(),
-			storage_quota: T::StorageDefaultQuota::get(),
-			storage_usage: Zero::zero(),
+			contract_info,
 			developer_deposit: None,
 		}
-	}
-
-	pub fn new_with_contract(nonce: T::Index, contract_info: ContractInfo<T>) -> Result<Self, DispatchError> {
-		let storage_quota = T::StorageDefaultQuota::get();
-
-		let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-		let additional_storage = contract_info
-			.total_storage_size()
-			.saturating_add(code_size)
-			.saturating_sub(storage_quota);
-
-		if !additional_storage.is_zero() {
-			// get maintainer quota and pay for the additional_storage
-			Module::<T>::do_update_maintainer_storage_usage(&contract_info.maintainer, 0, additional_storage)?;
-		}
-
-		Ok(Self {
-			nonce,
-			contract_info: Some(contract_info),
-			storage_rent_deposit: Zero::zero(),
-			storage_quota,
-			storage_usage: Zero::zero(),
-			developer_deposit: None,
-		})
 	}
 }
 
@@ -242,8 +201,6 @@ decl_storage! {
 
 		Codes get(fn codes): map hasher(identity) H256 => Vec<u8>;
 		CodeInfos get(fn code_infos): map hasher(identity) H256 => Option<CodeInfo>;
-		/// Pending transfer maintainers: double_map (contract, new_maintainer) => TransferMaintainerDeposit
-		PendingTransferMaintainers get(fn pending_transfer_maintainers): double_map hasher(twox_64_concat) EvmAddress, hasher(twox_64_concat) EvmAddress => Option<BalanceOf<T>>;
 
 		/// Next available system contract address.
 		NetworkContractIndex get(fn network_contract_index) config(): u64;
@@ -255,7 +212,7 @@ decl_storage! {
 			for (address, account) in &config.accounts {
 				let account_id = T::AddressMapping::get_account_id(address);
 
-				let account_info = <AccountInfo<T>>::new(account.nonce);
+				let account_info = <AccountInfo<T>>::new(account.nonce, None);
 				<Accounts<T>>::insert(address, account_info);
 
 				T::Currency::deposit_creating(
@@ -301,8 +258,8 @@ decl_event! {
 		AddStorageQuota(EvmAddress, u32),
 		/// A quota has been removed at a given address. \[address, bytes\]
 		RemoveStorageQuota(EvmAddress, u32),
-		/// Requested the transfer maintainer. \[contract, address\]
-		RequestedTransferMaintainer(EvmAddress, EvmAddress),
+		/// Transferred maintainer. \[contract, address\]
+		TransferredMaintainer(EvmAddress, EvmAddress),
 		/// Canceled the transfer maintainer. \[contract, address\]
 		CanceledTransferMaintainer(EvmAddress, EvmAddress),
 		/// Confirmed the transfer maintainer. \[contract, address\]
@@ -332,14 +289,10 @@ decl_error! {
 		NoPermission,
 		/// Number out of bound in calculation.
 		NumOutOfBound,
-		/// Storage quota not enough
-		StorageQuotaNotEnough,
+		/// Storage exceeds max code size
+		StorageExceedsStorageLimit,
 		/// Unreserve failed
 		UnreserveFailed,
-		/// Pending transfer maintainers exists
-		PendingTransferMaintainersExists,
-		/// Pending transfer maintainers not exists
-		PendingTransferMaintainersNotExists,
 		/// Contract development is not enabled
 		ContractDevelopmentNotEnabled,
 		/// Contract development is already enabled
@@ -357,14 +310,10 @@ decl_module! {
 
 		fn deposit_event() = default;
 
-		/// Deploy a contract need the existential deposit.
-		const ContractExistentialDeposit: BalanceOf<T> = T::ContractExistentialDeposit::get();
-		/// Deposit for transferring the maintainer of the contract.
-		const TransferMaintainerDeposit: BalanceOf<T> = T::TransferMaintainerDeposit::get();
+		/// Deploy a contract need the extra bytes.
+		const NewContractExtraBytes: u32 = T::NewContractExtraBytes::get();
 		/// Storage required for per byte.
 		const StorageDepositPerByte: BalanceOf<T> = T::StorageDepositPerByte::get();
-		/// Storage quota default value.
-		const StorageDefaultQuota: u32 = T::StorageDefaultQuota::get();
 		/// Contract max code size.
 		const MaxCodeSize: u32 = T::MaxCodeSize::get();
 		/// Deposit for the developer.
@@ -380,11 +329,12 @@ decl_module! {
 			input: Vec<u8>,
 			value: BalanceOf<T>,
 			gas_limit: u32,
+			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = Runner::<T>::call(source, target, input, value, gas_limit, T::config())?;
+			let info = Runner::<T>::call(source, source, target, input, value, gas_limit, storage_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Executed(target));
@@ -408,11 +358,12 @@ decl_module! {
 			init: Vec<u8>,
 			value: BalanceOf<T>,
 			gas_limit: u32,
+			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = Runner::<T>::create(source, init, value, gas_limit, T::config())?;
+			let info = Runner::<T>::create(source, init, value, gas_limit, storage_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -436,11 +387,12 @@ decl_module! {
 			salt: H256,
 			value: BalanceOf<T>,
 			gas_limit: u32,
+			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, T::config())?;
+			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Created(info.address));
@@ -463,12 +415,13 @@ decl_module! {
 			init: Vec<u8>,
 			value: BalanceOf<T>,
 			gas_limit: u32,
+			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
 			let address = EvmAddress::from_low_u64_be(Self::network_contract_index());
-			let info = Runner::<T>::create_at_address(source, init, value, address, gas_limit, T::config())?;
+			let info = Runner::<T>::create_at_address(source, init, value, address, gas_limit, storage_limit, T::config())?;
 
 			NetworkContractIndex::mutate(|v| *v = v.saturating_add(One::one()));
 
@@ -486,62 +439,13 @@ decl_module! {
 			})
 		}
 
-		#[weight = <T as Config>::WeightInfo::add_storage_quota()]
+		#[weight = <T as Config>::WeightInfo::transfer_maintainer()]
 		#[transactional]
-		pub fn add_storage_quota(origin, contract: EvmAddress, bytes: u32) {
+		pub fn transfer_maintainer(origin, contract: EvmAddress, new_maintainer: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			Self::do_add_storage_quota(who, contract, bytes)?;
+			Self::do_transfer_maintainer(who, contract, new_maintainer)?;
 
-			Module::<T>::deposit_event(Event::<T>::AddStorageQuota(contract, bytes));
-		}
-
-		#[weight = <T as Config>::WeightInfo::remove_storage_quota()]
-		#[transactional]
-		pub fn remove_storage_quota(origin, contract: EvmAddress, bytes: u32) {
-			let who = ensure_signed(origin)?;
-			Self::do_remove_storage_quota(who, contract, bytes)?;
-
-			Module::<T>::deposit_event(Event::<T>::RemoveStorageQuota(contract, bytes));
-		}
-
-		#[weight = <T as Config>::WeightInfo::request_transfer_maintainer()]
-		#[transactional]
-		pub fn request_transfer_maintainer(origin, contract: EvmAddress) {
-			let who = ensure_signed(origin)?;
-			let new_maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-
-			Self::do_request_transfer_maintainer(who, contract, new_maintainer)?;
-
-			Module::<T>::deposit_event(Event::<T>::RequestedTransferMaintainer(contract, new_maintainer));
-		}
-
-		#[weight = <T as Config>::WeightInfo::cancel_transfer_maintainer()]
-		#[transactional]
-		pub fn cancel_transfer_maintainer(origin, contract: EvmAddress) {
-			let who = ensure_signed(origin)?;
-			let requester = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-
-			Self::do_cancel_transfer_maintainer(who, contract, requester)?;
-
-			Module::<T>::deposit_event(Event::<T>::CanceledTransferMaintainer(contract, requester));
-		}
-
-		#[weight = <T as Config>::WeightInfo::confirm_transfer_maintainer()]
-		#[transactional]
-		pub fn confirm_transfer_maintainer(origin, contract: EvmAddress, new_maintainer: EvmAddress) {
-			let who = ensure_signed(origin)?;
-			Self::do_confirm_transfer_maintainer(who, contract, new_maintainer)?;
-
-			Module::<T>::deposit_event(Event::<T>::ConfirmedTransferMaintainer(contract, new_maintainer));
-		}
-
-		#[weight = <T as Config>::WeightInfo::reject_transfer_maintainer()]
-		#[transactional]
-		pub fn reject_transfer_maintainer(origin, contract: EvmAddress, invalid_maintainer: EvmAddress) {
-			let who = ensure_signed(origin)?;
-			Self::do_reject_transfer_maintainer(who, contract, invalid_maintainer)?;
-
-			Module::<T>::deposit_event(Event::<T>::RejectedTransferMaintainer(contract, invalid_maintainer));
+			Module::<T>::deposit_event(Event::<T>::TransferredMaintainer(contract, new_maintainer));
 		}
 
 		#[weight = <T as Config>::WeightInfo::deploy()]
@@ -573,7 +477,7 @@ decl_module! {
 					ensure!(account_info.developer_deposit.is_none(), Error::<T>::ContractDevelopmentAlreadyEnabled);
 					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
 				} else {
-					let mut account_info = AccountInfo::<T>::new(Default::default());
+					let mut account_info = AccountInfo::<T>::new(Default::default(), None);
 					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
 					*maybe_account_info = Some(account_info);
 				}
@@ -693,7 +597,6 @@ impl<T: Config> Module<T> {
 		let contract_info = ContractInfo {
 			storage_count,
 			code_hash,
-			existential_deposit: T::ContractExistentialDeposit::get(),
 			maintainer: *maintainer,
 			#[cfg(feature = "with-ethereum-compatibility")]
 			deployed: true,
@@ -719,32 +622,16 @@ impl<T: Config> Module<T> {
 			}
 		});
 
-		Accounts::<T>::mutate(address, |maybe_account_info| -> Result<(), ExitError> {
+		Accounts::<T>::mutate(address, |maybe_account_info| {
 			if let Some(account_info) = maybe_account_info.as_mut() {
-				let additional_storage = contract_info
-					.total_storage_size()
-					.saturating_add(code_size)
-					.saturating_sub(account_info.storage_quota);
-				if !additional_storage.is_zero() {
-					// get maintainer quota and pay for the additional_storage
-					Self::do_update_maintainer_storage_usage(&contract_info.maintainer, 0, additional_storage)
-						.map_or_else(
-							|_| Err(ExitError::Other("update maintainer storage usage failed".into())),
-							|_| Ok(()),
-						)?;
-				}
-
-				account_info.contract_info = Some(contract_info);
-				Ok(())
+				account_info.contract_info = Some(contract_info.clone());
 			} else {
-				let account_info = AccountInfo::<T>::new_with_contract(Default::default(), contract_info).map_or_else(
-					|_| Err(ExitError::Other("update maintainer storage usage failed".into())),
-					Ok,
-				)?;
+				let account_info = AccountInfo::<T>::new(Default::default(), Some(contract_info.clone()));
 				*maybe_account_info = Some(account_info);
-				Ok(())
 			}
-		})
+		});
+
+		Ok(())
 	}
 
 	/// Set account storage.
@@ -795,273 +682,38 @@ impl<T: Config> Module<T> {
 	}
 
 	/// Get additional storage of the contract.
-	fn additional_storage(contract: EvmAddress) -> u32 {
+	fn storage_usage(contract: EvmAddress) -> u32 {
 		Accounts::<T>::get(contract).map_or(0, |account_info| {
-			let (total_storage_size, code_size) = account_info.contract_info.map_or((0, 0), |contract_info| {
-				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-				(contract_info.total_storage_size(), code_size)
-			});
-			total_storage_size
-				.saturating_add(code_size)
-				.saturating_sub(account_info.storage_quota)
-		})
-	}
-
-	fn do_add_storage_quota(who: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
-		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-			let contract_info = account_info
+			account_info
 				.contract_info
-				.as_ref()
-				.ok_or(Error::<T>::ContractNotFound)?;
-
-			if bytes.is_zero() {
-				return Ok(());
-			}
-
-			let adjust_deposit = T::StorageDepositPerByte::get().saturating_mul(bytes.into());
-			let additional_storage = {
-				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-				contract_info
-					.total_storage_size()
-					.saturating_add(code_size)
-					.saturating_sub(account_info.storage_quota)
-			};
-
-			account_info.storage_rent_deposit = account_info
-				.storage_rent_deposit
-				.checked_add(&adjust_deposit)
-				.ok_or(Error::<T>::NumOutOfBound)?;
-			account_info.storage_quota = account_info
-				.storage_quota
-				.checked_add(bytes)
-				.ok_or(Error::<T>::NumOutOfBound)?;
-
-			let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
-			if who != maintainer_account {
-				T::Currency::transfer(
-					&who,
-					&maintainer_account,
-					adjust_deposit,
-					ExistenceRequirement::AllowDeath,
-				)?;
-			}
-			T::Currency::reserve(&maintainer_account, adjust_deposit)?;
-
-			if !additional_storage.is_zero() {
-				if additional_storage > bytes {
-					Self::do_update_maintainer_storage_usage(
-						&contract_info.maintainer,
-						additional_storage,
-						additional_storage
-							.checked_add(bytes)
-							.expect("Non-negative integers sub can't overflow; qed"),
-					)?;
-				} else {
-					Self::do_update_maintainer_storage_usage(&contract_info.maintainer, additional_storage, 0)?;
-					account_info.storage_usage = Zero::zero();
-				}
-			}
-
-			Ok(())
+				.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
+					contract_info.total_storage_size()
+				})
 		})
 	}
 
-	fn do_remove_storage_quota(who: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
-		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-			let contract_info = account_info
-				.contract_info
-				.as_ref()
-				.ok_or(Error::<T>::ContractNotFound)?;
-
-			let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
-			ensure!(who == maintainer_account, Error::<T>::NoPermission);
-
-			if bytes.is_zero() {
-				return Ok(());
-			}
-
-			let adjust_deposit = T::StorageDepositPerByte::get().saturating_mul(bytes.into());
-			ensure!(
-				account_info.storage_rent_deposit >= adjust_deposit,
-				Error::<T>::StorageQuotaNotEnough
-			);
-
-			account_info.storage_rent_deposit = account_info
-				.storage_rent_deposit
-				.checked_sub(&adjust_deposit)
-				.ok_or(Error::<T>::NumOutOfBound)?;
-			account_info.storage_quota = account_info
-				.storage_quota
-				.checked_sub(bytes)
-				.ok_or(Error::<T>::NumOutOfBound)?;
-
-			ensure!(
-				account_info.storage_usage <= account_info.storage_quota,
-				Error::<T>::StorageQuotaNotEnough
-			);
-
-			let additional_storage = {
-				let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-				contract_info
-					.total_storage_size()
-					.saturating_add(code_size)
-					.saturating_sub(account_info.storage_quota)
-			};
-
-			ensure!(additional_storage.is_zero(), Error::<T>::StorageQuotaNotEnough);
-			ensure!(
-				T::Currency::unreserve(&who, adjust_deposit).is_zero(),
-				Error::<T>::UnreserveFailed
-			);
-
-			Ok(())
-		})
-	}
-
-	fn do_request_transfer_maintainer(
-		who: T::AccountId,
-		contract: EvmAddress,
-		new_maintainer: EvmAddress,
-	) -> DispatchResult {
+	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
 			account_info
 				.contract_info
 				.map_or(Err(Error::<T>::ContractNotFound), |_| Ok(()))
 		})?;
-		ensure!(
-			PendingTransferMaintainers::<T>::get(contract, new_maintainer).is_none(),
-			Error::<T>::PendingTransferMaintainersExists
-		);
 
-		let transfer_maintainer_deposit = T::TransferMaintainerDeposit::get();
-		T::Currency::reserve(&who, transfer_maintainer_deposit)?;
-		PendingTransferMaintainers::<T>::insert(contract, new_maintainer, transfer_maintainer_deposit);
+		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
+			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info
+				.contract_info
+				.as_mut()
+				.ok_or(Error::<T>::ContractNotFound)?;
+
+			let maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+
+			contract_info.maintainer = new_maintainer;
+			Ok(())
+		})?;
+
 		Ok(())
-	}
-
-	fn do_cancel_transfer_maintainer(who: T::AccountId, contract: EvmAddress, requester: EvmAddress) -> DispatchResult {
-		PendingTransferMaintainers::<T>::mutate_exists(
-			contract,
-			requester,
-			|maybe_transfer_maintainer_deposit| -> DispatchResult {
-				let transfer_maintainer_deposit = maybe_transfer_maintainer_deposit
-					.take()
-					.ok_or(Error::<T>::PendingTransferMaintainersNotExists)?;
-
-				T::Currency::unreserve(&who, transfer_maintainer_deposit);
-				Ok(())
-			},
-		)
-	}
-
-	fn do_confirm_transfer_maintainer(
-		who: T::AccountId,
-		contract: EvmAddress,
-		new_maintainer: EvmAddress,
-	) -> DispatchResult {
-		PendingTransferMaintainers::<T>::mutate_exists(
-			contract,
-			new_maintainer,
-			|maybe_transfer_maintainer_deposit| -> DispatchResult {
-				let transfer_maintainer_deposit = maybe_transfer_maintainer_deposit
-					.take()
-					.ok_or(Error::<T>::PendingTransferMaintainersNotExists)?;
-
-				Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-					let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-					let contract_info = account_info
-						.contract_info
-						.as_mut()
-						.ok_or(Error::<T>::ContractNotFound)?;
-
-					let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
-					ensure!(who == maintainer_account, Error::<T>::NoPermission);
-
-					let new_maintainer_account = T::AddressMapping::get_account_id(&new_maintainer);
-					T::Currency::unreserve(&new_maintainer_account, transfer_maintainer_deposit);
-
-					contract_info.maintainer = new_maintainer;
-					Ok(())
-				})?;
-
-				Ok(())
-			},
-		)
-	}
-
-	fn do_reject_transfer_maintainer(
-		who: T::AccountId,
-		contract: EvmAddress,
-		invalid_maintainer: EvmAddress,
-	) -> DispatchResult {
-		PendingTransferMaintainers::<T>::mutate_exists(
-			contract,
-			invalid_maintainer,
-			|maybe_transfer_maintainer_deposit| -> DispatchResult {
-				let transfer_maintainer_deposit = maybe_transfer_maintainer_deposit
-					.take()
-					.ok_or(Error::<T>::PendingTransferMaintainersNotExists)?;
-
-				Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
-					account_info
-						.contract_info
-						.map_or(Err(Error::<T>::ContractNotFound), |contract_info| {
-							let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
-							if who != maintainer_account {
-								Err(Error::<T>::NoPermission)
-							} else {
-								Ok(())
-							}
-						})
-				})?;
-
-				// repatriate_reserved the reserve from requester to contract maintainer
-				let from = T::AddressMapping::get_account_id(&invalid_maintainer);
-				T::Currency::repatriate_reserved(&from, &who, transfer_maintainer_deposit, BalanceStatus::Free)?;
-
-				Ok(())
-			},
-		)
-	}
-
-	fn do_update_maintainer_storage_usage(
-		maintainer: &EvmAddress,
-		pre_storage_usage: u32,
-		current_storage_usage: u32,
-	) -> DispatchResult {
-		// get maintainer quota and pay for the additional_storage
-		<Accounts<T>>::mutate(
-			maintainer,
-			|maybe_maintainer_account_info| -> Result<(), DispatchError> {
-				if let Some(AccountInfo {
-					storage_quota: maintainer_storage_quota,
-					storage_usage: maintainer_storage_usage,
-					..
-				}) = maybe_maintainer_account_info.as_mut()
-				{
-					if let Some(delta) = current_storage_usage.checked_sub(pre_storage_usage) {
-						*maintainer_storage_usage = maintainer_storage_usage
-							.checked_add(delta)
-							.ok_or(Error::<T>::NumOutOfBound)?;
-					} else if let Some(delta) = pre_storage_usage.checked_sub(current_storage_usage) {
-						*maintainer_storage_usage = maintainer_storage_usage
-							.checked_sub(delta)
-							.ok_or(Error::<T>::NumOutOfBound)?;
-					}
-
-					if *maintainer_storage_usage > *maintainer_storage_quota {
-						return Err(Error::<T>::StorageQuotaNotEnough.into());
-					}
-
-					Ok(())
-				} else {
-					// maintainer not found.
-					Err(Error::<T>::StorageQuotaNotEnough.into())
-				}
-			},
-		)
 	}
 
 	/// Mark contract as deployed
@@ -1076,6 +728,14 @@ impl<T: Config> Module<T> {
 			{
 				if let Some(maintainer) = maintainer {
 					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+
+					let from = T::AddressMapping::get_account_id(&maintainer);
+					let to = T::AddressMapping::get_account_id(&contract);
+					let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
+					let deposit_amount: BalanceOf<T> = T::StorageDepositPerByte::get()
+						.saturating_mul(T::NewContractExtraBytes::get().saturating_add(code_size).into());
+					T::Currency::transfer(&from, &to, deposit_amount, ExistenceRequirement::AllowDeath)?;
+					T::Currency::reserve(&to, deposit_amount)?;
 				}
 				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 				contract_info.deployed = true;
@@ -1111,8 +771,6 @@ impl<T: Config> Module<T> {
 				Error::<T>::ContractExceedsMaxCodeSize
 			);
 
-			let pre_additional_storage = Self::additional_storage(contract);
-
 			CodeInfos::mutate_exists(&code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
 					code_info.ref_count = code_info.ref_count.saturating_add(1);
@@ -1126,19 +784,6 @@ impl<T: Config> Module<T> {
 					Codes::insert(&code_hash, code);
 				}
 			});
-
-			let additional_storage = contract_info
-				.total_storage_size()
-				.saturating_add(code_size)
-				.saturating_sub(account_info.storage_quota);
-			if additional_storage != pre_additional_storage {
-				// get maintainer quota and pay for the additional_storage
-				Self::do_update_maintainer_storage_usage(
-					&contract_info.maintainer,
-					pre_additional_storage,
-					additional_storage,
-				)?;
-			}
 
 			Ok(())
 		})?;
@@ -1157,13 +802,6 @@ impl<T: Config> Module<T> {
 			ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
 			ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
-			// delete contract & storage & refund to maintainer
-			let additional_storage = Self::additional_storage(contract);
-			if !additional_storage.is_zero() {
-				// get maintainer quota and refund the additional_storage
-				Self::do_update_maintainer_storage_usage(&contract_info.maintainer, additional_storage, 0)?;
-			}
-
 			AccountStorages::remove_prefix(contract);
 
 			CodeInfos::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
@@ -1177,7 +815,6 @@ impl<T: Config> Module<T> {
 			});
 
 			let contract_account_id = T::AddressMapping::get_account_id(&contract);
-			// storage_rent_deposit + contract_info.existential_deposit + developer_deposit
 			T::Currency::unreserve(
 				&contract_account_id,
 				T::Currency::reserved_balance(&contract_account_id),
@@ -1200,51 +837,60 @@ impl<T: Config> EVMTrait for Module<T> {
 	type Balance = BalanceOf<T>;
 
 	fn execute(
-		source: EvmAddress,
-		target: EvmAddress,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
-		config: Option<evm::Config>,
+		storage_limit: u32,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
-		let info = Runner::<T>::call(
-			source,
-			target,
-			input,
-			value,
-			gas_limit,
-			config.as_ref().unwrap_or(T::config()),
-		)?;
-
-		if info.exit_reason.is_succeed() {
-			Module::<T>::deposit_event(Event::<T>::Executed(target));
-		} else {
-			Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
-				target,
-				info.exit_reason.clone(),
-				info.output.clone(),
-			));
+		let mut config = T::config().clone();
+		if let ExecutionMode::EstimateGas = mode {
+			config.estimate = true;
 		}
 
-		Ok(info)
+		frame_support::storage::with_transaction(|| {
+			let result = Runner::<T>::call(
+				context.sender,
+				context.origin,
+				context.contract,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				&config,
+			);
+
+			match result {
+				Ok(info) => match mode {
+					ExecutionMode::Execute => {
+						if info.exit_reason.is_succeed() {
+							Module::<T>::deposit_event(Event::<T>::Executed(context.contract));
+							TransactionOutcome::Commit(Ok(info))
+						} else {
+							Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
+								context.contract,
+								info.exit_reason.clone(),
+								info.output.clone(),
+							));
+							TransactionOutcome::Rollback(Ok(info))
+						}
+					}
+					ExecutionMode::View | ExecutionMode::EstimateGas => TransactionOutcome::Rollback(Ok(info)),
+				},
+				Err(e) => TransactionOutcome::Rollback(Err(e)),
+			}
+		})
 	}
 }
 
 impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
-	fn query_contract_existential_deposit() -> BalanceOf<T> {
-		T::ContractExistentialDeposit::get()
+	fn query_new_contract_extra_bytes() -> u32 {
+		T::NewContractExtraBytes::get()
 	}
 
-	fn query_transfer_maintainer_deposit() -> BalanceOf<T> {
-		T::TransferMaintainerDeposit::get()
-	}
-
-	fn query_qtorage_deposit_per_byte() -> BalanceOf<T> {
+	fn query_storage_deposit_per_byte() -> BalanceOf<T> {
 		T::StorageDepositPerByte::get()
-	}
-
-	fn query_storage_default_quota() -> u32 {
-		T::StorageDefaultQuota::get()
 	}
 
 	fn query_maintainer(contract: EvmAddress) -> Result<EvmAddress, DispatchError> {
@@ -1263,37 +909,8 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
 		T::DeploymentFee::get()
 	}
 
-	fn add_storage_quota(from: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
-		Module::<T>::do_add_storage_quota(from, contract, bytes)
-	}
-
-	fn remove_storage_quota(from: T::AccountId, contract: EvmAddress, bytes: u32) -> DispatchResult {
-		Module::<T>::do_remove_storage_quota(from, contract, bytes)
-	}
-
-	fn request_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
-		let new_maintainer = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
-		Module::<T>::do_request_transfer_maintainer(from, contract, new_maintainer)
-	}
-
-	fn cancel_transfer_maintainer(from: T::AccountId, contract: EvmAddress) -> DispatchResult {
-		let requester = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AddressNotMapped)?;
-		Module::<T>::do_cancel_transfer_maintainer(from, contract, requester)
-	}
-
-	fn confirm_transfer_maintainer(
-		from: T::AccountId,
-		contract: EvmAddress,
-		new_maintainer: EvmAddress,
-	) -> DispatchResult {
-		Module::<T>::do_confirm_transfer_maintainer(from, contract, new_maintainer)
-	}
-	fn reject_transfer_maintainer(
-		from: T::AccountId,
-		contract: EvmAddress,
-		invalid_maintainer: EvmAddress,
-	) -> DispatchResult {
-		Module::<T>::do_reject_transfer_maintainer(from, contract, invalid_maintainer)
+	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
+		Module::<T>::do_transfer_maintainer(from, contract, new_maintainer)
 	}
 }
 

@@ -1197,14 +1197,12 @@ impl pallet_proxy::Config for Runtime {
 
 parameter_types! {
 	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
-	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
 impl ecosystem_renvm_bridge::Config for Runtime {
 	type Event = Event;
 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
-	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
 }
@@ -1212,11 +1210,8 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 parameter_types! {
 	// TODO: update
 	pub const ChainId: u64 = 787;
-	pub const ContractExistentialDeposit: Balance = DOLLARS;
-	pub const TransferMaintainerDeposit: Balance = DOLLARS;
+	pub const NewContractExtraBytes: u32 = 10_000;
 	pub const StorageDepositPerByte: Balance = MICROCENTS;
-	// https://eips.ethereum.org/EIPS/eip-170
-	pub const StorageDefaultQuota: u32 = 0x6000;
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub const DeveloperDeposit: Balance = DOLLARS;
@@ -1233,10 +1228,8 @@ impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
 	type MergeAccount = Currencies;
-	type ContractExistentialDeposit = ContractExistentialDeposit;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type StorageDefaultQuota = StorageDefaultQuota;
 	type MaxCodeSize = MaxCodeSize;
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<
@@ -1366,7 +1359,7 @@ construct_runtime!(
 		NFT: module_nft::{Module, Call, Event<T>},
 
 		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
 
 		// Smart contracts
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
@@ -1630,6 +1623,7 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			storage_limit: u32,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -1642,10 +1636,12 @@ impl_runtime_apis! {
 
 			module_evm::Runner::<Runtime>::call(
 				from,
+				from,
 				to,
 				data,
 				value,
 				gas_limit,
+				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -1655,6 +1651,7 @@ impl_runtime_apis! {
 			data: Vec<u8>,
 			value: Balance,
 			gas_limit: u32,
+			storage_limit: u32,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -1670,6 +1667,7 @@ impl_runtime_apis! {
 				data,
 				value,
 				gas_limit,
+				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}

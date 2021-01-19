@@ -25,6 +25,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "r
 [features]
 default = ["std"]
 std = [
+	"serde",
 	"frame-system/std",
 	"frame-support/std",
 	"sp-std/std",

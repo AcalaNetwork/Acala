@@ -80,8 +80,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ContractExistentialDeposit: u64 = 1;
-	pub const TransferMaintainerDeposit: u64 = 1;
+	pub const NewContractExtraBytes: u32 = 1;
 	pub NetworkContractSource: EvmAddress = alice();
 }
 
@@ -89,7 +88,6 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = 10;
-	pub const StorageDefaultQuota: u32 = 0x6000;
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
@@ -99,10 +97,8 @@ impl module_evm::Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type MergeAccount = ();
-	type ContractExistentialDeposit = ContractExistentialDeposit;
-	type TransferMaintainerDeposit = TransferMaintainerDeposit;
+	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type StorageDefaultQuota = StorageDefaultQuota;
 	type MaxCodeSize = MaxCodeSize;
 
 	type Event = ();
@@ -127,11 +123,15 @@ impl Config for Runtime {
 }
 pub type EvmBridgeModule = Module<Runtime>;
 
-pub struct ExtBuilder();
+pub struct ExtBuilder {
+	endowed_accounts: Vec<(AccountId, Balance)>,
+}
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self()
+		Self {
+			endowed_accounts: vec![],
+		}
 	}
 }
 
@@ -148,10 +148,21 @@ pub fn bob() -> EvmAddress {
 }
 
 impl ExtBuilder {
+	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, Balance)>) -> Self {
+		self.endowed_accounts = endowed_accounts;
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.endowed_accounts.clone().into_iter().collect::<Vec<_>>(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		let mut accounts = BTreeMap::new();
 		let mut storage = BTreeMap::new();

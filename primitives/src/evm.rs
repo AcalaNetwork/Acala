@@ -20,8 +20,6 @@ pub struct Vicinity {
 	pub gas_price: U256,
 	/// Origin of the transaction.
 	pub origin: EvmAddress,
-	/// Create contract opcode.
-	pub creating: bool,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
@@ -31,6 +29,7 @@ pub struct CreateInfo {
 	pub address: EvmAddress,
 	pub output: Vec<u8>,
 	pub used_gas: U256,
+	pub used_storage: U256,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
@@ -39,6 +38,7 @@ pub struct CallInfo {
 	pub exit_reason: ExitReason,
 	pub output: Vec<u8>,
 	pub used_gas: U256,
+	pub used_storage: U256,
 }
 /// A mapping between `AccountId` and `EvmAddress`.
 pub trait AddressMapping<AccountId> {
