@@ -5,7 +5,10 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
 use mock::*;
-use sp_runtime::traits::BadOrigin;
+use orml_traits::MultiCurrency;
+use primitives::Balance;
+use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+use support::{CDPTreasury, CDPTreasuryExtended, Ratio};
 
 #[test]
 fn surplus_pool_work() {
