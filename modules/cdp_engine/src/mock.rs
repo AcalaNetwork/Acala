@@ -45,7 +45,7 @@ impl_outer_event! {
 		pallet_balances<T>,
 		orml_currencies<T>,
 		module_dex<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 	}
 }
 

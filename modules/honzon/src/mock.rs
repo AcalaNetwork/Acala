@@ -35,7 +35,7 @@ impl_outer_event! {
 		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 	}
 }
 

@@ -51,7 +51,7 @@ impl_outer_event! {
 		auction_manager<T>,
 		orml_tokens<T>,
 		orml_auction<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 		module_dex<T>,
 	}
 }
