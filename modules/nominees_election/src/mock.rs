@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{impl_outer_origin, parameter_types};
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, CurrencyId, TokenSymbol};
+use primitives::{Amount, Balance, CurrencyId, EraIndex, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 
