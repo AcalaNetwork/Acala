@@ -4,11 +4,14 @@
 
 use super::*;
 use frame_support::StorageMap;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::Currency};
 use mock::{
 	last_event, AccountId, Balances, ExtBuilder, NFTModule, Origin, Proxy, Runtime, TestEvent, ALICE, BOB, CLASS_ID,
 	CLASS_ID_NOT_EXIST, TOKEN_ID, TOKEN_ID_NOT_EXIST,
 };
+use orml_traits::{BasicCurrency, BasicReservableCurrency};
+use primitives::Balance;
+use sp_runtime::traits::AccountIdConversion;
 
 fn free_balance(who: &AccountId) -> Balance {
 	<Runtime as Config>::Currency::free_balance(who)
@@ -30,7 +33,7 @@ fn create_class_should_work() {
 			vec![1],
 			Default::default()
 		));
-		let event = TestEvent::nft(RawEvent::CreatedClass(class_id_account(), CLASS_ID));
+		let event = TestEvent::nft(Event::CreatedClass(class_id_account(), CLASS_ID));
 		assert_eq!(last_event(), event);
 
 		assert_eq!(
@@ -62,7 +65,7 @@ fn mint_should_work() {
 			vec![1],
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
-		let event = TestEvent::nft(RawEvent::CreatedClass(class_id_account(), CLASS_ID));
+		let event = TestEvent::nft(Event::CreatedClass(class_id_account(), CLASS_ID));
 		assert_eq!(last_event(), event);
 
 		assert_eq!(
@@ -77,7 +80,7 @@ fn mint_should_work() {
 			vec![1],
 			2
 		));
-		let event = TestEvent::nft(RawEvent::MintedToken(class_id_account(), BOB, CLASS_ID, 2));
+		let event = TestEvent::nft(Event::MintedToken(class_id_account(), BOB, CLASS_ID, 2));
 		assert_eq!(last_event(), event);
 
 		assert_eq!(
@@ -149,11 +152,11 @@ fn transfer_should_work() {
 		));
 
 		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
-		let event = TestEvent::nft(RawEvent::TransferredToken(BOB, ALICE, CLASS_ID, TOKEN_ID));
+		let event = TestEvent::nft(Event::TransferredToken(BOB, ALICE, CLASS_ID, TOKEN_ID));
 		assert_eq!(last_event(), event);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
-		let event = TestEvent::nft(RawEvent::TransferredToken(ALICE, BOB, CLASS_ID, TOKEN_ID));
+		let event = TestEvent::nft(Event::TransferredToken(ALICE, BOB, CLASS_ID, TOKEN_ID));
 		assert_eq!(last_event(), event);
 	});
 }
@@ -238,7 +241,7 @@ fn burn_should_work() {
 			1
 		));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
-		let event = TestEvent::nft(RawEvent::BurnedToken(BOB, CLASS_ID, TOKEN_ID));
+		let event = TestEvent::nft(Event::BurnedToken(BOB, CLASS_ID, TOKEN_ID));
 		assert_eq!(last_event(), event);
 
 		assert_eq!(
@@ -338,7 +341,7 @@ fn destroy_class_should_work() {
 			CLASS_ID,
 			BOB
 		));
-		let event = TestEvent::nft(RawEvent::DestroyedClass(class_id_account(), CLASS_ID, BOB));
+		let event = TestEvent::nft(Event::DestroyedClass(class_id_account(), CLASS_ID, BOB));
 		assert_eq!(last_event(), event);
 
 		assert_eq!(reserved_balance(&class_id_account()), 2);

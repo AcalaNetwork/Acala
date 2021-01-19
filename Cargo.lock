@@ -4482,6 +4482,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-proxy",
+ "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
  "serde",
