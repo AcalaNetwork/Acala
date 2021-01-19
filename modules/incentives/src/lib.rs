@@ -9,13 +9,8 @@ pub use module::*;
 
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::pallet_prelude::*;
-	use frame_support::{
-		ensure,
-		traits::{EnsureOrigin, Happened},
-		transactional, IterableStorageMap,
-	};
-	use frame_system::{ensure_signed, pallet_prelude::*};
+	use frame_support::{pallet_prelude::*, traits::Happened, transactional, IterableStorageMap};
+	use frame_system::pallet_prelude::*;
 	use orml_traits::{MultiCurrency, RewardHandler};
 	use primitives::{Amount, Balance, CurrencyId};
 	use sp_runtime::{

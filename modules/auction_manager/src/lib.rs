@@ -22,9 +22,8 @@ pub use module::*;
 
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::{debug, ensure, pallet_prelude::*, transactional};
+	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::{
-		ensure_none,
 		offchain::{SendTransactionTypes, SubmitTransaction},
 		pallet_prelude::*,
 	};
