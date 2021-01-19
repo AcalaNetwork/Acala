@@ -65,9 +65,6 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
-	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
-
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -81,6 +78,9 @@ pub mod module {
 	#[pallet::getter(fn locked_price)]
 	/// Mapping from currency id to it's locked price
 	pub type LockedPrice<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Price, OptionQuery>;
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}

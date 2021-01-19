@@ -98,9 +98,6 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
-	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
-
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Share amount is not enough
@@ -139,6 +136,9 @@ pub mod module {
 	#[pallet::getter(fn dex_saving_rates)]
 	/// Mapping from dex liquidity currency type to its saving rate
 	pub type DEXSavingRates<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Rate, ValueQuery>;
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}

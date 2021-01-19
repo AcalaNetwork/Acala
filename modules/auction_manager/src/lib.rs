@@ -213,9 +213,6 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
-	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
-
 	#[pallet::error]
 	pub enum Error<T> {
 		/// The auction dose not exist
@@ -297,6 +294,9 @@ pub mod module {
 	#[pallet::getter(fn total_surplus_in_auction)]
 	/// Record of total surplus amount of all active surplus auctions
 	pub type TotalSurplusInAuction<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {

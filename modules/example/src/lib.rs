@@ -14,7 +14,6 @@ pub use module::*;
 #[frame_support::pallet]
 pub mod module {
 	use frame_support::pallet_prelude::*;
-	use frame_system::ensure_root;
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::config]
@@ -23,40 +22,6 @@ pub mod module {
 		#[pallet::constant]
 		type SomeConst: Get<Self::Balance>;
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-	}
-
-	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(_n: T::BlockNumber) -> Weight {
-			Dummy::<T>::put(T::Balance::from(10));
-			10
-		}
-
-		fn on_finalize(_n: T::BlockNumber) {
-			Dummy::<T>::put(T::Balance::from(11));
-		}
-	}
-
-	#[pallet::call]
-	impl<T: Config> Pallet<T> {
-		#[pallet::weight(<T::Balance as Into<Weight>>::into(new_value.clone()))]
-		pub fn set_dummy(origin: OriginFor<T>, #[pallet::compact] new_value: T::Balance) -> DispatchResultWithPostInfo {
-			ensure_root(origin)?;
-
-			Dummy::<T>::put(&new_value);
-			Self::deposit_event(Event::Dummy(new_value));
-
-			Ok(().into())
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
-		pub fn do_set_bar(who: &T::AccountId, amount: T::Balance) {
-			Bar::<T>::insert(who, amount);
-		}
 	}
 
 	#[pallet::error]
@@ -73,6 +38,11 @@ pub mod module {
 		Dummy(T::Balance),
 	}
 
+	#[pallet::type_value]
+	pub fn OnFooEmpty<T: Config>() -> T::Balance {
+		3.into()
+	}
+
 	#[pallet::storage]
 	#[pallet::getter(fn dummy)]
 	/// Some documentation
@@ -81,11 +51,6 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn bar)]
 	type Bar<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
-
-	#[pallet::type_value]
-	pub fn OnFooEmpty<T: Config>() -> T::Balance {
-		3.into()
-	}
 
 	#[pallet::storage]
 	type Foo<T: Config> = StorageValue<_, T::Balance, ValueQuery, OnFooEmpty<T>>;
@@ -120,6 +85,40 @@ pub mod module {
 				Bar::<T>::insert(k, v);
 			}
 			Foo::<T>::put(&self.foo);
+		}
+	}
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(_n: T::BlockNumber) -> Weight {
+			Dummy::<T>::put(T::Balance::from(10));
+			10
+		}
+
+		fn on_finalize(_n: T::BlockNumber) {
+			Dummy::<T>::put(T::Balance::from(11));
+		}
+	}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(<T::Balance as Into<Weight>>::into(new_value.clone()))]
+		pub fn set_dummy(origin: OriginFor<T>, #[pallet::compact] new_value: T::Balance) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+
+			Dummy::<T>::put(&new_value);
+			Self::deposit_event(Event::Dummy(new_value));
+
+			Ok(().into())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn do_set_bar(who: &T::AccountId, amount: T::Balance) {
+			Bar::<T>::insert(who, amount);
 		}
 	}
 }
