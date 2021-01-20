@@ -4,17 +4,17 @@
 
 use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
+use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use primitives::{TokenSymbol, TradingPair};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
-	ModuleId,
+	DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::cell::RefCell;
-use support::{AuctionManager, EmergencyShutdown};
+use support::{AuctionManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -45,7 +45,7 @@ impl_outer_event! {
 		pallet_balances<T>,
 		orml_currencies<T>,
 		module_dex<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 	}
 }
 

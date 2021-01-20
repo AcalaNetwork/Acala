@@ -1350,7 +1350,7 @@ construct_runtime!(
 		OrmlNFT: orml_nft::{Module, Storage},
 
 		// Acala Core
-		Prices: module_prices::{Module, Storage, Call, Event},
+		Prices: module_prices::{Module, Storage, Call, Event<T>},
 
 		// DEX
 		Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
@@ -1359,7 +1359,7 @@ construct_runtime!(
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event<T>},
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 

@@ -7,11 +7,12 @@ use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, pa
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
+use primitives::{Balance, CurrencyId};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{Convert, IdentityLookup},
-	DispatchResult, ModuleId,
+	DispatchResult, FixedPointNumber, ModuleId,
 };
 use support::{AuctionManager, Price, PriceProvider};
 
@@ -41,7 +42,7 @@ impl_outer_event! {
 		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 	}
 }
 

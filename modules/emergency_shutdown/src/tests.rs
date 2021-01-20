@@ -18,7 +18,7 @@ fn emergency_shutdown_work() {
 		);
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)));
 
-		let shutdown_event = TestEvent::emergency_shutdown(RawEvent::Shutdown(1));
+		let shutdown_event = TestEvent::emergency_shutdown(Event::Shutdown(1));
 		assert!(System::events().iter().any(|record| record.event == shutdown_event));
 
 		assert_eq!(EmergencyShutdownModule::is_shutdown(), true);
@@ -52,7 +52,7 @@ fn open_collateral_refund_work() {
 		);
 		assert_ok!(EmergencyShutdownModule::open_collateral_refund(Origin::signed(1)));
 
-		let open_refund_event = TestEvent::emergency_shutdown(RawEvent::OpenRefund(1));
+		let open_refund_event = TestEvent::emergency_shutdown(Event::OpenRefund(1));
 		assert!(System::events().iter().any(|record| record.event == open_refund_event));
 
 		assert_eq!(EmergencyShutdownModule::can_refund(), true);

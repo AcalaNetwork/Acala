@@ -6,15 +6,15 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use primitives::{Balance, TokenSymbol};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
-	FixedPointNumber, ModuleId,
+	DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::cell::RefCell;
-use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+use support::{AuctionManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 
 mod honzon {
 	pub use super::super::*;
@@ -35,7 +35,7 @@ impl_outer_event! {
 		loans<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 	}
 }
 

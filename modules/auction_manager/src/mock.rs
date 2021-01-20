@@ -6,15 +6,15 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{TokenSymbol, TradingPair};
+use primitives::{Balance, CurrencyId, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
-	ModuleId,
+	FixedPointNumber, ModuleId,
 };
 use sp_std::cell::RefCell;
-pub use support::Price;
+use support::{EmergencyShutdown, Price, PriceProvider, Rate};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -51,7 +51,7 @@ impl_outer_event! {
 		auction_manager<T>,
 		orml_tokens<T>,
 		orml_auction<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 		module_dex<T>,
 	}
 }
@@ -222,7 +222,7 @@ pub type AuctionManagerModule = Module<Runtime>;
 /// An extrinsic type used for tests.
 pub type Extrinsic = TestXt<Call, ()>;
 
-impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
 where
 	Call: From<LocalCall>,
 {

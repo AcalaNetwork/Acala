@@ -14,7 +14,7 @@ use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use sp_runtime::{
 	traits::{StaticLookup, UniqueSaturatedInto},
-	DispatchError, FixedPointNumber,
+	FixedPointNumber,
 };
 
 use cdp_engine::Module as CdpEngine;
@@ -78,7 +78,7 @@ fn inject_liquidity<T: Config>(
 	Ok(())
 }
 
-fn emergency_shutdown<T: Config>() -> Result<(), DispatchError> {
+fn emergency_shutdown<T: Config>() -> frame_support::dispatch::DispatchResultWithPostInfo {
 	emergency_shutdown::Module::<T>::emergency_shutdown(RawOrigin::Root.into())
 }
 
