@@ -191,10 +191,6 @@ pub type Currencies = Module<Runtime>;
 pub type NativeCurrency = Currency<Runtime, GetNativeCurrencyId>;
 pub type AdaptedBasicCurrency = BasicCurrencyAdapter<Runtime, PalletBalances, i64, u64>;
 
-pub fn erc20_address() -> H160 {
-	H160::from_str("2000000000000000000000000000000000000001").unwrap()
-}
-
 pub fn alice() -> AccountId {
 	<Runtime as Config>::AddressMapping::get_account_id(
 		&H160::from_str("1000000000000000000000000000000000000001").unwrap(),
@@ -212,6 +208,9 @@ pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const EVA: AccountId = AccountId::new([5u8; 32]);
 
 pub const ID_1: LockIdentifier = *b"1       ";
+
+pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+pub const ERC20: CurrencyId = CurrencyId::ERC20(ERC20_ADDRESS);
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
@@ -278,7 +277,7 @@ impl ExtBuilder {
 			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
 		);
 		accounts.insert(
-			erc20_address(),
+			ERC20_ADDRESS,
 			GenesisAccount {
 				nonce: 1,
 				balance: 0,

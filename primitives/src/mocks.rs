@@ -1,4 +1,7 @@
+use codec::Encode;
 use sp_core::{crypto::AccountId32, H160};
+use sp_io::hashing::blake2_256;
+
 pub struct MockAddressMapping;
 
 impl crate::evm::AddressMapping<AccountId32> for MockAddressMapping {
@@ -23,7 +26,10 @@ impl crate::evm::AddressMapping<AccountId32> for MockAddressMapping {
 	}
 
 	fn get_or_create_evm_address(account_id: &AccountId32) -> H160 {
-		Self::get_evm_address(account_id).unwrap_or_default()
+		Self::get_evm_address(account_id).unwrap_or({
+			let payload = (b"evm:", account_id);
+			H160::from_slice(&payload.using_encoded(blake2_256)[0..20])
+		})
 	}
 
 	fn is_linked(account_id: &AccountId32, evm: &H160) -> bool {
