@@ -295,8 +295,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Module<T> {
 			CurrencyId::ERC20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
 				let address = T::AddressMapping::get_or_create_evm_address(&to);
-				let origin = T::EVMBridge::get_origin();
-				let origin_address = T::AddressMapping::get_evm_address(&origin).ok_or(Error::<T>::AccountNotFound)?;
+				let origin = T::EVMBridge::get_origin().unwrap_or_default();
+				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,

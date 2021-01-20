@@ -887,8 +887,8 @@ impl<T: Config> EVMTrait<T::AccountId> for Module<T> {
 	}
 
 	/// Get the real origin account and charge storage rent from the origin.
-	fn get_origin() -> T::AccountId {
-		ExtrinsicOrigin::<T>::get().expect("There must be a value through `SignedExtension::pre_dispatch`")
+	fn get_origin() -> Option<T::AccountId> {
+		ExtrinsicOrigin::<T>::get()
 	}
 
 	/// Provide a method to set origin for `on_initialize`

@@ -148,8 +148,8 @@ where
 		Ok(())
 	}
 
-	fn get_origin() -> AccountId {
-		Default::default()
+	fn get_origin() -> Option<AccountId> {
+		None
 	}
 
 	fn set_origin(_origin: AccountId) {}

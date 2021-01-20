@@ -268,7 +268,7 @@ pub trait EVM<AccountId> {
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
 
 	/// Get the real origin account and charge storage rent from the origin.
-	fn get_origin() -> AccountId;
+	fn get_origin() -> Option<AccountId>;
 	/// Provide a method to set origin for `on_initialize`
 	fn set_origin(origin: AccountId);
 }
@@ -301,7 +301,7 @@ pub trait EVMBridge<AccountId, Balance> {
 	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
 	fn transfer(context: InvokeContext, to: EvmAddress, value: Balance) -> DispatchResult;
 	/// Get the real origin account and charge storage rent from the origin.
-	fn get_origin() -> AccountId;
+	fn get_origin() -> Option<AccountId>;
 	/// Provide a method to set origin for `on_initialize`
 	fn set_origin(origin: AccountId);
 }

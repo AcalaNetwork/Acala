@@ -88,7 +88,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Module<T> {
 		Self::handle_exit_reason(info.exit_reason)
 	}
 
-	fn get_origin() -> AccountIdOf<T> {
+	fn get_origin() -> Option<AccountIdOf<T>> {
 		T::EVM::get_origin()
 	}
 
