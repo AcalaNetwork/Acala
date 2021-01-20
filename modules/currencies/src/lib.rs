@@ -75,7 +75,7 @@ pub mod module {
 
 		/// Mapping from address to account id.
 		type AddressMapping: AddressMapping<Self::AccountId>;
-		type EVMBridge: EVMBridge<BalanceOf<Self>>;
+		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -267,12 +267,14 @@ pub mod module {
 			match currency_id {
 				CurrencyId::ERC20(contract) => {
 					let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
+					let origin = T::EVMBridge::get_origin().unwrap_or_default();
+					let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
 					let address = T::AddressMapping::get_or_create_evm_address(&to);
 					T::EVMBridge::transfer(
 						InvokeContext {
 							contract,
 							sender,
-							origin: sender,
+							origin: origin_address,
 						},
 						address,
 						amount,
