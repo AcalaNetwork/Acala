@@ -4,9 +4,7 @@
 
 use super::*;
 use codec::{Decode, Encode};
-use frame_support::{
-	impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types, traits::GenesisBuild, RuntimeDebug,
-};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types, RuntimeDebug};
 use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol};
@@ -381,23 +379,6 @@ impl Default for ExtBuilder {
 		Self {
 			endowed_accounts: vec![(ALICE, DOT, 1000), (BOB, DOT, 1000)],
 		}
-	}
-}
-
-#[cfg(feature = "std")]
-impl GenesisConfig {
-	/// Direct implementation of `GenesisBuild::build_storage`.
-	///
-	/// Kept in order not to break dependency.
-	pub fn build_storage<T: Config>(&self) -> Result<sp_runtime::Storage, String> {
-		<Self as GenesisBuild<T>>::build_storage(self)
-	}
-
-	/// Direct implementation of `GenesisBuild::assimilate_storage`.
-	///
-	/// Kept in order not to break dependency.
-	pub fn assimilate_storage<T: Config>(&self, storage: &mut sp_runtime::Storage) -> Result<(), String> {
-		<Self as GenesisBuild<T>>::assimilate_storage(self, storage)
 	}
 }
 

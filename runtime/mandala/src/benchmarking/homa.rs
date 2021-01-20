@@ -85,7 +85,7 @@ mod tests {
 				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
 			},
 		}
-		.assimilate_storage(&mut t)
+		.assimilate_storage::<Runtime>(&mut t)
 		.unwrap();
 		t.into()
 	}

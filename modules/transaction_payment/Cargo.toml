@@ -11,7 +11,7 @@ sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
-sp-io= { version = "2.0.0", default-features = false }
+sp-io = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 pallet-proxy = { version = "2.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0", default-features = false }
@@ -21,10 +21,10 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 support = { package = "module-support", path = "../support", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 module-dex = { path = "../dex", default-features = false }
+module-staking-pool = { path = "../staking_pool", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
-sp-io = { version = "2.0.0", default-features = false }
 smallvec = "1.4.1"
 
 [features]
