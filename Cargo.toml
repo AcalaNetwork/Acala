@@ -31,6 +31,8 @@ members = [
 	"orml/traits",
 	"orml/utilities",
 	"orml/vesting",
+	"orml/xtokens",
+	"orml/xcm-support",
 
 	"ecosystem-modules/template/template",
 	"ecosystem-modules/ren/renvm-bridge",
