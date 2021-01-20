@@ -3,9 +3,9 @@
 #![cfg(test)]
 
 use frame_support::{ord_parameter_types, parameter_types};
-use orml_traits::parameter_type_with_key;
+use orml_traits::{parameter_type_with_key, LockIdentifier};
 use pallet_balances;
-use primitives::{mocks::MockAddressMapping, TokenSymbol};
+use primitives::{evm::AddressMapping, mocks::MockAddressMapping, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,

@@ -3,7 +3,7 @@
 use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{schedule::DispatchTime, Currency, OnFinalize, OnInitialize, OriginTrait},
+	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait},
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
@@ -514,7 +514,7 @@ fn test_dex_module() {
 				false,
 			));
 
-			let add_liquidity_event = Event::module_dex(module_dex::RawEvent::AddLiquidity(
+			let add_liquidity_event = Event::module_dex(module_dex::Event::AddLiquidity(
 				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				10000000,

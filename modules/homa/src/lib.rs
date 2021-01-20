@@ -8,86 +8,103 @@
 //! rewards. Holders of LDOT can choose different ways to redeem DOT.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
-use codec::{Decode, Encode};
-use frame_support::{decl_module, transactional, weights::Weight};
-use frame_system::{self as system, ensure_signed};
-use primitives::{Balance, EraIndex};
-use sp_runtime::RuntimeDebug;
-use support::HomaProtocol;
+#![allow(clippy::unused_unit)]
 
 mod default_weight;
 
-/// Redemption modes:
-/// 1. Immediately: User will immediately get back DOT from the free pool, which
-/// is a liquid pool operated by staking pool, but they have to pay extra fee.
-/// 2. Target: User can claim the unclaimed unbonding DOT of specific era, after
-/// the remaining unbinding period has passed, users can get back the DOT.
-/// 3. WaitForUnbonding: User request unbond, the staking pool will process
-/// unbonding in the next era, and user needs to wait for the complete unbonding
-/// era which determined by Polkadot.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub enum RedeemStrategy {
-	Immediately,
-	Target(EraIndex),
-	WaitForUnbonding,
-}
+pub use module::*;
 
-pub trait WeightInfo {
-	fn mint() -> Weight;
-	fn redeem(strategy: &RedeemStrategy) -> Weight;
-	fn withdraw_redemption() -> Weight;
-}
+#[frame_support::pallet]
+pub mod module {
+	use frame_support::{pallet_prelude::*, transactional};
+	use frame_system::pallet_prelude::*;
+	use primitives::{Balance, EraIndex};
+	use sp_runtime::RuntimeDebug;
+	use support::HomaProtocol;
 
-pub trait Config: system::Config {
-	/// The core of Homa protocol.
-	type Homa: HomaProtocol<Self::AccountId, Balance, EraIndex>;
+	pub trait WeightInfo {
+		fn mint() -> Weight;
+		fn redeem(strategy: &RedeemStrategy) -> Weight;
+		fn withdraw_redemption() -> Weight;
+	}
 
-	/// Weight information for the extrinsics in this module.
-	type WeightInfo: WeightInfo;
-}
+	/// Redemption modes:
+	/// 1. Immediately: User will immediately get back DOT from the free pool,
+	/// which is a liquid pool operated by staking pool, but they have to pay
+	/// extra fee. 2. Target: User can claim the unclaimed unbonding DOT of
+	/// specific era, after the remaining unbinding period has passed, users can
+	/// get back the DOT. 3. WaitForUnbonding: User request unbond, the staking
+	/// pool will process unbonding in the next era, and user needs to wait for
+	/// the complete unbonding era which determined by Polkadot.
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	pub enum RedeemStrategy {
+		Immediately,
+		Target(EraIndex),
+		WaitForUnbonding,
+	}
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		/// Inject DOT to staking pool and mint LDOT in a certain exchange rate decided by staking pool.
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		/// The core of Homa protocol.
+		type Homa: HomaProtocol<Self::AccountId, Balance, EraIndex>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
+	}
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		/// Inject DOT to staking pool and mint LDOT in a certain exchange rate
+		/// decided by staking pool.
 		///
 		/// - `amount`: the DOT amount to inject into staking pool.
-		#[weight = <T as Config>::WeightInfo::mint()]
+		#[pallet::weight(<T as Config>::WeightInfo::mint())]
 		#[transactional]
-		pub fn mint(origin, #[compact] amount: Balance) {
+		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			T::Homa::mint(&who, amount)?;
+			Ok(().into())
 		}
 
 		/// Burn LDOT and redeem DOT from staking pool.
 		///
 		/// - `amount`: the LDOT amount to redeem.
 		/// - `strategy`: redemption mode.
-		#[weight = <T as Config>::WeightInfo::redeem(strategy)]
+		#[pallet::weight(<T as Config>::WeightInfo::redeem(strategy))]
 		#[transactional]
-		pub fn redeem(origin, #[compact] amount: Balance, strategy: RedeemStrategy) {
+		pub fn redeem(
+			origin: OriginFor<T>,
+			#[pallet::compact] amount: Balance,
+			strategy: RedeemStrategy,
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			match strategy {
 				RedeemStrategy::Immediately => {
 					T::Homa::redeem_by_free_unbonded(&who, amount)?;
-				},
+				}
 				RedeemStrategy::Target(target_era) => {
 					T::Homa::redeem_by_claim_unbonding(&who, amount, target_era)?;
-				},
+				}
 				RedeemStrategy::WaitForUnbonding => {
 					T::Homa::redeem_by_unbond(&who, amount)?;
-				},
+				}
 			}
+			Ok(().into())
 		}
 
 		/// Get back those DOT that have been unbonded.
-		#[weight = <T as Config>::WeightInfo::withdraw_redemption()]
+		#[pallet::weight(<T as Config>::WeightInfo::withdraw_redemption())]
 		#[transactional]
-		pub fn withdraw_redemption(origin) {
+		pub fn withdraw_redemption(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			T::Homa::withdraw_redemption(&who)?;
+			Ok(().into())
 		}
 	}
 }
-
-impl<T: Config> Module<T> {}
