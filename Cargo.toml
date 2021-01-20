@@ -332,6 +332,7 @@ substrate-build-script-utils = { git = "https://github.com/paritytech//substrate
 [patch."https://github.com/paritytech/polkadot"]
 xcm = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 xcm-executor = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
+xcm-builder = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-parachain = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-primitives = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
 polkadot-core-primitives = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
@@ -358,3 +359,4 @@ cumulus-network = { git = "https://github.com/paritytech//cumulus", branch = "ro
 cumulus-service = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
 cumulus-consensus = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
 cumulus-runtime = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
+xcm-handler = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
