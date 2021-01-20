@@ -174,8 +174,9 @@ impl orml_tokens::Config for Runtime {
 pub type Tokens = orml_tokens::Module<Runtime>;
 
 pub struct MockEVMBridge;
-impl<Balance> EVMBridge<Balance> for MockEVMBridge
+impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
 where
+	AccountId: Default,
 	Balance: Default,
 {
 	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
@@ -189,6 +190,12 @@ where
 	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
 		Ok(())
 	}
+
+	fn get_origin() -> Option<AccountId> {
+		None
+	}
+
+	fn set_origin(_origin: AccountId) {}
 }
 
 impl module_currencies::Config for Runtime {

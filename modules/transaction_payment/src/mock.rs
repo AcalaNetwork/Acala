@@ -131,8 +131,9 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
 pub struct MockEVMBridge;
-impl<Balance> EVMBridge<Balance> for MockEVMBridge
+impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
 where
+	AccountId: Default,
 	Balance: Default,
 {
 	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
@@ -146,6 +147,12 @@ where
 	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
 		Ok(())
 	}
+
+	fn get_origin() -> Option<AccountId> {
+		None
+	}
+
+	fn set_origin(_origin: AccountId) {}
 }
 
 parameter_types! {

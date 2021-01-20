@@ -34,7 +34,8 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::{
-	traits::{Convert, One, Saturating, UniqueSaturatedInto},
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto},
+	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -204,6 +205,9 @@ decl_storage! {
 
 		/// Next available system contract address.
 		NetworkContractIndex get(fn network_contract_index) config(): u64;
+
+		/// Extrinsics origin for the current tx.
+		ExtrinsicOrigin get(fn extrinsic_origin): Option<T::AccountId>;
 	}
 
 	add_extra_genesis {
@@ -833,9 +837,8 @@ impl<T: Config> Module<T> {
 	}
 }
 
-impl<T: Config> EVMTrait for Module<T> {
+impl<T: Config> EVMTrait<T::AccountId> for Module<T> {
 	type Balance = BalanceOf<T>;
-
 	fn execute(
 		context: InvokeContext,
 		input: Vec<u8>,
@@ -882,6 +885,16 @@ impl<T: Config> EVMTrait for Module<T> {
 			}
 		})
 	}
+
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<T::AccountId> {
+		ExtrinsicOrigin::<T>::get()
+	}
+
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: T::AccountId) {
+		ExtrinsicOrigin::<T>::set(Some(origin));
+	}
 }
 
 impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Module<T> {
@@ -927,4 +940,65 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 
 pub fn code_hash(code: &[u8]) -> H256 {
 	H256::from_slice(Keccak256::digest(code).as_slice())
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
+
+impl<T: Config + Send + Sync> sp_std::fmt::Debug for SetEvmOrigin<T> {
+	#[cfg(feature = "std")]
+	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		write!(f, "SetEvmOrigin")
+	}
+
+	#[cfg(not(feature = "std"))]
+	fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		Ok(())
+	}
+}
+
+impl<T: Config + Send + Sync> SetEvmOrigin<T> {
+	pub fn new() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
+
+impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
+	const IDENTIFIER: &'static str = "SetEvmOrigin";
+	type AccountId = T::AccountId;
+	type Call = T::Call;
+	type AdditionalSigned = ();
+	type Pre = ();
+
+	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn pre_dispatch(
+		self,
+		who: &Self::AccountId,
+		_call: &Self::Call,
+		_info: &DispatchInfoOf<Self::Call>,
+		_len: usize,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		Ok(())
+	}
+
+	fn post_dispatch(
+		_pre: Self::Pre,
+		_info: &DispatchInfoOf<Self::Call>,
+		_post_info: &PostDispatchInfoOf<Self::Call>,
+		_len: usize,
+		_result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::kill();
+		Ok(())
+	}
 }

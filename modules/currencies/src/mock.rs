@@ -2,14 +2,14 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{ord_parameter_types, parameter_types};
 use orml_traits::parameter_type_with_key;
 use pallet_balances;
 use primitives::{mocks::MockAddressMapping, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, IdentityLookup},
+	traits::{AccountIdConversion, Block as BlockT, IdentityLookup},
 	AccountId32, ModuleId, Perbill,
 };
 
@@ -22,27 +22,8 @@ use sp_core::{bytes::from_hex, H160};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::str::FromStr;
 
-mod currencies {
-	pub use crate::Event;
-}
+pub use crate as currencies;
 
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		currencies<T>,
-		tokens<T>,
-		pallet_balances<T>,
-		module_evm<T>,
-	}
-}
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
-// Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: u32 = 1024;
@@ -53,15 +34,15 @@ parameter_types! {
 pub type AccountId = AccountId32;
 impl frame_system::Config for Runtime {
 	type Origin = Origin;
-	type Call = ();
+	type Call = Call;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
+	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -75,7 +56,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 type Balance = u128;
 
@@ -90,7 +70,7 @@ parameter_types! {
 }
 
 impl tokens::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
@@ -98,7 +78,6 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 }
-pub type Tokens = tokens::Module<Runtime>;
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const X_TOKEN_ID: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
@@ -114,7 +93,7 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = TestEvent;
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
@@ -156,7 +135,7 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 
-	type Event = TestEvent;
+	type Event = Event;
 	type Precompiles = ();
 	type ChainId = ();
 	type GasToWeight = ();
@@ -171,25 +150,41 @@ impl module_evm::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub type EVM = module_evm::Module<Runtime>;
-
 impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
-pub type EVMBridge = module_evm_bridge::Module<Runtime>;
-
 impl Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = EVMBridge;
 }
-pub type Currencies = Module<Runtime>;
+
 pub type NativeCurrency = Currency<Runtime, GetNativeCurrencyId>;
 pub type AdaptedBasicCurrency = BasicCurrencyAdapter<Runtime, PalletBalances, i64, u64>;
+
+pub type SignedExtra = module_evm::SetEvmOrigin<Runtime>;
+
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, SignedExtra>;
+
+frame_support::construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+	NodeBlock = Block,
+	UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		Tokens: tokens::{Module, Storage, Event<T>, Config<T>},
+		Currencies: currencies::{Module, Call, Event<T>},
+		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Module},
+	}
+);
 
 pub fn alice() -> AccountId {
 	<Runtime as Config>::AddressMapping::get_account_id(
@@ -292,6 +287,8 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
 }

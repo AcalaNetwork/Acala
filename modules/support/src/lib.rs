@@ -255,8 +255,9 @@ pub trait PrecompileCallerFilter {
 }
 
 /// An abstraction of EVM for EVMBridge
-pub trait EVM {
+pub trait EVM<AccountId> {
 	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
+
 	fn execute(
 		context: InvokeContext,
 		input: Vec<u8>,
@@ -265,6 +266,11 @@ pub trait EVM {
 		storage_limit: u32,
 		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
+
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<AccountId>;
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: AccountId);
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
@@ -286,7 +292,7 @@ pub struct InvokeContext {
 }
 
 /// An abstraction of EVMBridge
-pub trait EVMBridge<Balance> {
+pub trait EVMBridge<AccountId, Balance> {
 	/// Execute ERC20.totalSupply() to read total supply from ERC20 contract
 	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20
@@ -294,6 +300,10 @@ pub trait EVMBridge<Balance> {
 	fn balance_of(context: InvokeContext, address: EvmAddress) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
 	fn transfer(context: InvokeContext, to: EvmAddress, value: Balance) -> DispatchResult;
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<AccountId>;
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: AccountId);
 }
 
 /// An abstraction of EVMStateRentTrait
