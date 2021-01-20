@@ -8,8 +8,9 @@ use mock::{
 	DexModule, ExtBuilder, ListingOrigin, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR,
 	AUSD_XBTC_PAIR, BOB, DOT, XBTC,
 };
-use orml_traits::MultiReservableCurrency;
-use sp_runtime::traits::BadOrigin;
+use orml_traits::{MultiCurrency, MultiReservableCurrency};
+use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+use support::Ratio;
 
 #[test]
 fn enable_new_trading_pair_work() {
@@ -35,7 +36,7 @@ fn enable_new_trading_pair_work() {
 			TradingPairStatus::<_, _>::Enabled
 		);
 
-		let enable_trading_pair_event = TestEvent::dex(RawEvent::EnableTradingPair(AUSD_DOT_PAIR));
+		let enable_trading_pair_event = TestEvent::dex(Event::EnableTradingPair(AUSD_DOT_PAIR));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == enable_trading_pair_event));
@@ -90,7 +91,7 @@ fn list_new_trading_pair_work() {
 			})
 		);
 
-		let list_trading_pair_event = TestEvent::dex(RawEvent::ListTradingPair(AUSD_DOT_PAIR));
+		let list_trading_pair_event = TestEvent::dex(Event::ListTradingPair(AUSD_DOT_PAIR));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == list_trading_pair_event));
@@ -141,7 +142,7 @@ fn disable_enabled_trading_pair_work() {
 			TradingPairStatus::<_, _>::NotEnabled
 		);
 
-		let disable_trading_pair_event = TestEvent::dex(RawEvent::DisableTradingPair(AUSD_DOT_PAIR));
+		let disable_trading_pair_event = TestEvent::dex(Event::DisableTradingPair(AUSD_DOT_PAIR));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == disable_trading_pair_event));
@@ -300,8 +301,7 @@ fn add_provision_work() {
 			let alice_ref_count_1 = System::refs(&ALICE);
 			assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
 
-			let add_provision_event_0 =
-				TestEvent::dex(RawEvent::AddProvision(ALICE, AUSD, 5_000_000_000_000u128, DOT, 0));
+			let add_provision_event_0 = TestEvent::dex(Event::AddProvision(ALICE, AUSD, 5_000_000_000_000u128, DOT, 0));
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == add_provision_event_0));
@@ -347,7 +347,7 @@ fn add_provision_work() {
 			assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
 
 			let add_provision_event_1 =
-				TestEvent::dex(RawEvent::AddProvision(BOB, AUSD, 0, DOT, 1_000_000_000_000_000u128));
+				TestEvent::dex(Event::AddProvision(BOB, AUSD, 0, DOT, 1_000_000_000_000_000u128));
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == add_provision_event_1));
@@ -411,7 +411,7 @@ fn add_provision_work() {
 			let bob_ref_count_2 = System::refs(&BOB);
 			assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1 + 1); // deposit dex share currency will add extra 1 ref count
 
-			let provisioning_to_enabled_event = TestEvent::dex(RawEvent::ProvisioningToEnabled(
+			let provisioning_to_enabled_event = TestEvent::dex(Event::ProvisioningToEnabled(
 				AUSD_DOT_PAIR,
 				1_000_000_000_000_000u128,
 				2_000_000_000_000_000u128,
@@ -426,7 +426,7 @@ fn add_provision_work() {
 #[test]
 fn get_liquidity_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		LiquidityPool::insert(AUSD_DOT_PAIR, (1000, 20));
+		LiquidityPool::<Runtime>::insert(AUSD_DOT_PAIR, (1000, 20));
 		assert_eq!(DexModule::liquidity_pool(AUSD_DOT_PAIR), (1000, 20));
 		assert_eq!(DexModule::get_liquidity(AUSD, DOT), (1000, 20));
 		assert_eq!(DexModule::get_liquidity(DOT, AUSD), (20, 1000));
@@ -465,8 +465,8 @@ fn get_target_amounts_work() {
 		.initialize_enabled_trading_pairs()
 		.build()
 		.execute_with(|| {
-			LiquidityPool::insert(AUSD_DOT_PAIR, (50000, 10000));
-			LiquidityPool::insert(AUSD_XBTC_PAIR, (100000, 10));
+			LiquidityPool::<Runtime>::insert(AUSD_DOT_PAIR, (50000, 10000));
+			LiquidityPool::<Runtime>::insert(AUSD_XBTC_PAIR, (100000, 10));
 			assert_noop!(
 				DexModule::get_target_amounts(&vec![DOT], 10000, None),
 				Error::<Runtime>::InvalidTradingPathLength,
@@ -509,7 +509,7 @@ fn get_target_amounts_work() {
 #[test]
 fn calculate_amount_for_big_number_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		LiquidityPool::insert(
+		LiquidityPool::<Runtime>::insert(
 			AUSD_DOT_PAIR,
 			(171_000_000_000_000_000_000_000, 56_000_000_000_000_000_000_000),
 		);
@@ -538,8 +538,8 @@ fn get_supply_amounts_work() {
 		.initialize_enabled_trading_pairs()
 		.build()
 		.execute_with(|| {
-			LiquidityPool::insert(AUSD_DOT_PAIR, (50000, 10000));
-			LiquidityPool::insert(AUSD_XBTC_PAIR, (100000, 10));
+			LiquidityPool::<Runtime>::insert(AUSD_DOT_PAIR, (50000, 10000));
+			LiquidityPool::<Runtime>::insert(AUSD_XBTC_PAIR, (100000, 10));
 			assert_noop!(
 				DexModule::get_supply_amounts(&vec![DOT], 10000, None),
 				Error::<Runtime>::InvalidTradingPathLength,
@@ -581,7 +581,7 @@ fn _swap_work() {
 		.initialize_enabled_trading_pairs()
 		.build()
 		.execute_with(|| {
-			LiquidityPool::insert(AUSD_DOT_PAIR, (50000, 10000));
+			LiquidityPool::<Runtime>::insert(AUSD_DOT_PAIR, (50000, 10000));
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
 			DexModule::_swap(AUSD, DOT, 1000, 1000);
@@ -597,8 +597,8 @@ fn _swap_by_path_work() {
 		.initialize_enabled_trading_pairs()
 		.build()
 		.execute_with(|| {
-			LiquidityPool::insert(AUSD_DOT_PAIR, (50000, 10000));
-			LiquidityPool::insert(AUSD_XBTC_PAIR, (100000, 10));
+			LiquidityPool::<Runtime>::insert(AUSD_DOT_PAIR, (50000, 10000));
+			LiquidityPool::<Runtime>::insert(AUSD_XBTC_PAIR, (100000, 10));
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
 			assert_eq!(DexModule::get_liquidity(AUSD, XBTC), (100000, 10));
@@ -649,7 +649,7 @@ fn add_liquidity_work() {
 				1_000_000_000_000,
 				false,
 			));
-			let add_liquidity_event_1 = TestEvent::dex(RawEvent::AddLiquidity(
+			let add_liquidity_event_1 = TestEvent::dex(Event::AddLiquidity(
 				ALICE,
 				AUSD,
 				5_000_000_000_000,
@@ -696,7 +696,7 @@ fn add_liquidity_work() {
 				8_000_000_000_000,
 				true,
 			));
-			let add_liquidity_event_2 = TestEvent::dex(RawEvent::AddLiquidity(
+			let add_liquidity_event_2 = TestEvent::dex(Event::AddLiquidity(
 				BOB,
 				AUSD,
 				40_000_000_000_000,
@@ -774,7 +774,7 @@ fn remove_liquidity_work() {
 				4_000_000_000_000,
 				false,
 			));
-			let remove_liquidity_event_1 = TestEvent::dex(RawEvent::RemoveLiquidity(
+			let remove_liquidity_event_1 = TestEvent::dex(Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				4_000_000_000_000,
@@ -806,7 +806,7 @@ fn remove_liquidity_work() {
 				1_000_000_000_000,
 				false,
 			));
-			let remove_liquidity_event_2 = TestEvent::dex(RawEvent::RemoveLiquidity(
+			let remove_liquidity_event_2 = TestEvent::dex(Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				1_000_000_000_000,
@@ -941,7 +941,7 @@ fn do_swap_with_exact_supply_work() {
 				200_000_000_000_000,
 				None
 			));
-			let swap_event_1 = TestEvent::dex(RawEvent::Swap(
+			let swap_event_1 = TestEvent::dex(Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				100_000_000_000_000,
@@ -974,7 +974,7 @@ fn do_swap_with_exact_supply_work() {
 				1,
 				None
 			));
-			let swap_event_2 = TestEvent::dex(RawEvent::Swap(
+			let swap_event_2 = TestEvent::dex(Event::Swap(
 				BOB,
 				vec![DOT, AUSD, XBTC],
 				200_000_000_000_000,
@@ -1087,7 +1087,7 @@ fn do_swap_with_exact_target_work() {
 				200_000_000_000_000,
 				None
 			));
-			let swap_event_1 = TestEvent::dex(RawEvent::Swap(
+			let swap_event_1 = TestEvent::dex(Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				101_010_101_010_102,
@@ -1120,7 +1120,7 @@ fn do_swap_with_exact_target_work() {
 				2_000_000_000_000_000,
 				None
 			));
-			let swap_event_2 = TestEvent::dex(RawEvent::Swap(
+			let swap_event_2 = TestEvent::dex(Event::Swap(
 				BOB,
 				vec![DOT, AUSD, XBTC],
 				137_654_580_386_993,
