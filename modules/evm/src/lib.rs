@@ -301,6 +301,8 @@ decl_error! {
 		ContractAlreadyDeployed,
 		/// Contract exceeds max code size
 		ContractExceedsMaxCodeSize,
+		/// Storage usage exceeds storage limit
+		OutOfStorage,
 	}
 }
 

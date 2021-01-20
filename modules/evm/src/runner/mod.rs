@@ -15,7 +15,7 @@ use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{Saturating, Zero},
-	DispatchError, SaturatedConversion, TransactionOutcome,
+	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
 
@@ -50,15 +50,6 @@ impl<T: Config> Runner<T> {
 			origin: source,
 		};
 
-		let mut substate = Handler::<T>::new(
-			&vicinity,
-			gas_limit as usize,
-			storage_limit,
-			false,
-			config,
-			T::Precompiles::execute,
-		);
-
 		let address = if let Some(addr) = assigned_address {
 			addr
 		} else {
@@ -72,80 +63,68 @@ impl<T: Config> Runner<T> {
 			} else {
 				CreateScheme::Legacy { caller: source }
 			};
-			substate.create_address(scheme)
+			Handler::<T>::create_address(scheme)
 		};
 
-		substate.inc_nonce(source);
+		Handler::<T>::inc_nonce(source);
 
-		frame_support::storage::with_transaction(|| {
-			if let Err(e) = Self::transfer(source, address, value) {
-				return TransactionOutcome::Rollback(Err(e));
-			}
+		Handler::<T>::run_transaction(
+			&vicinity,
+			gas_limit as usize,
+			storage_limit,
+			address,
+			false,
+			config,
+			|substate| {
+				if let Err(e) = Self::transfer(source, address, value) {
+					return TransactionOutcome::Rollback(Err(e));
+				}
 
-			if let Err(e) = Self::deduct_storage(source, address, storage_limit) {
-				return TransactionOutcome::Rollback(Err(e));
-			}
+				let (reason, out) = substate.execute(
+					source,
+					address,
+					U256::from(value.saturated_into::<u128>()),
+					init,
+					Vec::new(),
+				);
 
-			let (reason, out) = substate.execute(
-				source,
-				address,
-				U256::from(value.saturated_into::<u128>()),
-				init,
-				Vec::new(),
-			);
+				let mut create_info = CreateInfo {
+					exit_reason: reason.clone(),
+					address,
+					output: Vec::default(),
+					used_gas: U256::from(substate.used_gas()),
+					used_storage: substate.used_storage(),
+				};
 
-			let mut create_info = CreateInfo {
-				exit_reason: reason.clone(),
-				address,
-				output: Vec::default(),
-				used_gas: U256::from(substate.used_gas()),
-				used_storage: U256::from(substate.used_storage()),
-			};
+				debug::debug!(
+					target: "evm",
+					"{:?}-result: create_info {:?}",
+					tag,
+					create_info
+				);
 
-			debug::debug!(
-				target: "evm",
-				"{:?}-result: create_info {:?}",
-				tag,
-				create_info
-			);
+				if !reason.is_succeed() {
+					create_info.output = out;
+					return TransactionOutcome::Rollback(Ok(create_info));
+				}
 
-			if !reason.is_succeed() {
-				create_info.output = out;
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
-
-			if let Err(e) = substate.gasometer.record_deposit(out.len()) {
-				create_info.exit_reason = e.into();
-				return TransactionOutcome::Rollback(Ok(create_info));
-			}
-
-			create_info.used_gas = U256::from(substate.used_gas());
-
-			substate.inc_nonce(address);
-
-			if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out, None) {
-				create_info.exit_reason = e.into();
-				TransactionOutcome::Rollback(Ok(create_info))
-			} else {
-				let storage_usage = Module::<T>::storage_usage(address);
-				if let Err(e) = substate.storage_meter.record_cost(storage_usage) {
+				if let Err(e) = substate.gasometer.record_deposit(out.len()) {
 					create_info.exit_reason = e.into();
 					return TransactionOutcome::Rollback(Ok(create_info));
 				}
-				if let Err(e) = Self::refund_storage(source, address, substate.storage_meter.storage()) {
-					debug::debug!(
-						target: "evm",
-						"create-result: refund_storage {:?}",
-						e
-					);
-					create_info.exit_reason = ExitReason::Error(ExitError::Other("RefundedStorageFailed".into()));
+
+				create_info.used_gas = U256::from(substate.used_gas());
+
+				Handler::<T>::inc_nonce(address);
+
+				if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out, None) {
+					create_info.exit_reason = e.into();
 					return TransactionOutcome::Rollback(Ok(create_info));
 				}
 
-				create_info.used_storage = U256::from(substate.used_storage());
 				TransactionOutcome::Commit(Ok(create_info))
-			}
-		})
+			},
+		)
 	}
 
 	fn transfer(source: H160, target: H160, value: BalanceOf<T>) -> DispatchResult {
@@ -156,32 +135,6 @@ impl<T: Config> Runner<T> {
 		let from = T::AddressMapping::get_account_id(&source);
 		let to = T::AddressMapping::get_account_id(&target);
 		T::Currency::transfer(&from, &to, value, ExistenceRequirement::AllowDeath)
-	}
-
-	fn create_storagemeter(source: H160, target: H160, stroage_limit: u32) -> DispatchResult {
-		if used_storage.is_zero() {
-			return Ok(());
-		}
-
-		let from = T::AddressMapping::get_account_id(&source);
-		let to = T::AddressMapping::get_account_id(&target);
-
-		let amount = T::StorageDepositPerByte::get().saturating_mul(used_storage.into());
-		T::Currency::transfer(&from, &to, amount, ExistenceRequirement::AllowDeath)?;
-		T::Currency::reserve(&to, amount)
-	}
-
-	fn refund_storage(source: H160, target: H160, storage_change: i32) -> DispatchResult {
-		if storage_change.is_zero() {
-			return Ok(());
-		}
-
-		let from = T::AddressMapping::get_account_id(&target);
-		let to = T::AddressMapping::get_account_id(&source);
-
-		let amount = T::StorageDepositPerByte::get().saturating_mul(storage_change.into());
-		T::Currency::repatriate_reserved(&from, &to, amount, BalanceStatus::Free)?;
-		Ok(())
 	}
 }
 
@@ -210,70 +163,48 @@ impl<T: Config> Runner<T> {
 			origin: source,
 		};
 
-		let mut substate = Handler::<T>::new(&vicinity, gas_limit as usize, storage_limit, false, config);
-
-		if substate.is_undeployed_contract(&target) && !substate.has_permission_to_call(&source) {
+		if Handler::<T>::is_undeployed_contract(&target) && !Handler::<T>::has_permission_to_call(&source) {
 			return Err(Error::<T>::NoPermission.into());
 		}
 
 		Handler::<T>::inc_nonce(source);
 
-		frame_support::storage::with_transaction(|| {
-			if let Err(e) = Self::transfer(source, target, value) {
-				return TransactionOutcome::Rollback(Err(e));
-			}
-
-			if let Err(e) = Self::deduct_storage(source, target, storage_limit) {
-				return TransactionOutcome::Rollback(Err(e));
-			}
-
-			let code = substate.code(target);
-			let (reason, out) =
-				substate.execute(source, target, U256::from(value.saturated_into::<u128>()), code, input);
-
-			let mut call_info = CallInfo {
-				exit_reason: reason.clone(),
-				output: out,
-				used_gas: U256::from(substate.used_gas()),
-				used_storage: 0,
-			};
-
-			debug::debug!(
-				target: "evm",
-				"call-result: call_info {:?}",
-				call_info
-			);
-
-			if !reason.is_succeed() {
-				return TransactionOutcome::Rollback(Ok(call_info));
-			}
-
-			let used = substate
-				.storage_meter
-				.finish(|used, refunded| used as i32 - refunded as i32);
-
-			match used {
-				Ok(used) => {
-					if let Err(e) = Self::refund_storage(source, target, used) {
-						debug::debug!(
-							target: "evm",
-							"call-result: refund_storage {:?}",
-							e
-						);
-						call_info.exit_reason = ExitReason::Error(ExitError::Other("RefundedStorageFailed".into()));
-						return TransactionOutcome::Rollback(Ok(call_info));
-					}
-					call_info.used_storage = used;
-
-					TransactionOutcome::Commit(Ok(call_info))
+		Handler::<T>::run_transaction(
+			&vicinity,
+			gas_limit as usize,
+			storage_limit,
+			target,
+			false,
+			config,
+			|substate| {
+				if let Err(e) = Self::transfer(source, target, value) {
+					return TransactionOutcome::Rollback(Err(e));
 				}
-				Err(err) => {
-					// should never reach to this arm but handle it just in case
-					call_info.exit_reason = ExitReason::Error(err);
-					TransactionOutcome::Rollback(Ok(call_info));
+
+				let code = substate.code(target);
+				let (reason, out) =
+					substate.execute(source, target, U256::from(value.saturated_into::<u128>()), code, input);
+
+				let mut call_info = CallInfo {
+					exit_reason: reason.clone(),
+					output: out,
+					used_gas: U256::from(substate.used_gas()),
+					used_storage: substate.used_storage(),
+				};
+
+				debug::debug!(
+					target: "evm",
+					"call-result: call_info {:?}",
+					call_info
+				);
+
+				if !reason.is_succeed() {
+					return Err(Ok(call_info));
 				}
-			}
-		})
+
+				TransactionOutcome::Commit(Ok(call_info))
+			},
+		)
 	}
 
 	pub fn create(

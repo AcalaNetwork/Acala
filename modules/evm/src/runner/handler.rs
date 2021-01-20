@@ -1,8 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	runner::storage_meter::StorageMeter, AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes,
-	Config, ContractInfo, Event, Log, MergeAccount, Module, Vicinity,
+	runner::storage_meter::{StorageMeter, StorageMeterHandler},
+	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, ContractInfo, Error, Event, Log,
+	MergeAccount, Module, Vicinity,
 };
 use evm::{
 	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
@@ -11,15 +12,15 @@ use evm::{
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
-	debug,
+	debug, ensure,
 	storage::{StorageDoubleMap, StorageMap},
-	traits::{Currency, ExistenceRequirement, Get, ReservableCurrency},
+	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{One, UniqueSaturatedInto, Zero},
-	SaturatedConversion, TransactionOutcome,
+	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
 };
 use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, rc::Rc, vec::Vec};
 
@@ -29,7 +30,7 @@ pub struct Handler<'vicinity, 'config, T: Config> {
 	pub gasometer: Gasometer<'config>,
 	pub storage_meter: StorageMeter,
 	pub is_static: bool,
-	pub _marker: PhantomData<T>,
+	_marker: PhantomData<T>,
 }
 
 fn l64(gas: usize) -> usize {
@@ -37,22 +38,75 @@ fn l64(gas: usize) -> usize {
 }
 
 impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
-	/// Create a new handler with given vicinity.
-	pub fn new(
+	pub fn run_transaction<R, F: FnOnce(&mut Self) -> TransactionOutcome<R>>(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: usize,
-		storage_meter: StorageMeter,
+		storage_limit: u32,
+		contract: H160,
 		is_static: bool,
 		config: &'config EvmRuntimeConfig,
-	) -> Self {
-		Self {
-			vicinity,
-			config,
-			is_static,
-			gasometer: Gasometer::new(gas_limit, config),
-			storage_meter,
-			_marker: PhantomData,
-		}
+		f: F,
+	) -> Result<R, DispatchError> {
+		frame_support::storage::with_transaction(|| {
+			let storage_meter_handler = StorageMeterHandlerImpl {
+				origin: vicinity.origin,
+				_marker: PhantomData,
+			};
+			let storage_meter = match StorageMeter::new(Box::new(storage_meter_handler), contract, storage_limit) {
+				Ok(x) => x,
+				Err(e) => return TransactionOutcome::Rollback(Err(e)),
+			};
+
+			let substate = Self {
+				vicinity,
+				config,
+				is_static,
+				gasometer: Gasometer::new(gas_limit, config),
+				storage_meter,
+				_marker: PhantomData,
+			};
+
+			match f(&mut substate) {
+				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {
+					Ok(_) => TransactionOutcome::Commit(Ok(r)),
+					Err(e) => TransactionOutcome::Rollback(Err(e)),
+				},
+				TransactionOutcome::Rollback(e) => TransactionOutcome::Rollback(Err(e)),
+			}
+		})
+	}
+
+	pub fn run_sub_transaction(
+		&mut self,
+		vicinity: &'vicinity Vicinity,
+		gas_limit: usize,
+		contract: H160,
+		is_static: bool,
+		config: &'config EvmRuntimeConfig,
+	) -> Result<Self, DispatchError> {
+		frame_support::storage::with_transaction(|| {
+			let storage_meter = match self.storage_meter.child_meter(contract) {
+				Ok(x) => x,
+				Err(e) => return TransactionOutcome::Rollback(Err(e)),
+			};
+
+			let substate = Self {
+				vicinity,
+				config,
+				is_static,
+				gasometer: Gasometer::new(gas_limit, config),
+				storage_meter,
+				_marker: PhantomData,
+			};
+
+			match f(&mut substate) {
+				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {
+					Ok(_) => TransactionOutcome::Commit(Ok(r)),
+					Err(e) => TransactionOutcome::Rollback(Err(e)),
+				},
+				TransactionOutcome::Rollback(e) => TransactionOutcome::Rollback(Err(e)),
+			}
+		})
 	}
 
 	/// Get used gas for the current executor, given the price.
@@ -64,11 +118,8 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 			)
 	}
 
-	pub fn used_storage(&self) -> u32 {
-		self.storage_meter
-			.total_used_storage()
-			.checked_sub(self.storage_meter.refunded_storage())
-			.unwrap_or_default()
+	pub fn used_storage(&self) -> i32 {
+		self.storage_meter.used_storage()
 	}
 
 	pub fn execute(
@@ -143,7 +194,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		});
 	}
 
-	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
+	pub fn create_address(scheme: CreateScheme) -> H160 {
 		match scheme {
 			CreateScheme::Create2 {
 				caller,
@@ -169,7 +220,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	}
 
 	// is contract && not deployed
-	pub fn is_undeployed_contract(&self, address: &H160) -> bool {
+	pub fn is_undeployed_contract(address: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info: Some(ContractInfo { deployed, .. }),
 			..
@@ -181,7 +232,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		}
 	}
 
-	pub fn has_permission_to_call(&self, address: &H160) -> bool {
+	pub fn has_permission_to_call(address: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info,
 			developer_deposit,
@@ -380,7 +431,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		let mut substate = Self::new(self.vicinity, target_gas, target_storage, self.is_static, self.config);
 
 		let address = self.create_address(scheme);
-		substate.inc_nonce(caller);
+		Self::inc_nonce(caller);
 
 		frame_support::storage::with_transaction(|| {
 			try_or_rollback!(self.transfer(Transfer {
@@ -451,9 +502,6 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		}
 		let mut target_gas = target_gas.unwrap_or(after_gas);
 		target_gas = min(target_gas, after_gas);
-
-		let target_storage = self.storage_meter.storage();
-		try_or_fail!(self.storage_meter.record_cost(target_storage));
 
 		if let Some(transfer) = transfer.as_ref() {
 			if !transfer.value.is_zero() {
@@ -550,5 +598,69 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		self.gasometer.record_opcode(gas_cost, memory_cost)?;
 
 		Ok(())
+	}
+}
+
+struct StorageMeterHandlerImpl<T: Config> {
+	origin: H160,
+	_marker: PhantomData<T>,
+}
+
+impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
+	fn reserve_storage(&mut self, limit: u32) -> DispatchResult {
+		if limit.is_zero() {
+			return Ok(());
+		}
+
+		let user = T::AddressMapping::get_account_id(self.origin);
+
+		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
+
+		T::Currency::reserve(&user, amount)
+	}
+
+	fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> DispatchResult {
+		let total = limit.saturating_add(refunded);
+		let unused = total.saturating_sub(used);
+		if unused.is_zero() {
+			return Ok(());
+		}
+
+		let user = T::AddressMapping::get_account_id(self.origin);
+		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
+
+		// should always be able to unreserve the amount
+		// but otherwise we will just ignore the issue here
+		let _ = T::Currency::unreserve(&user, amount);
+
+		Ok(())
+	}
+
+	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
+		if used == refunded {
+			return Ok(());
+		}
+		let user = T::AddressMapping::get_account_id(self.origin);
+		let contract_acc = T::AddressMapping::get_account_id(contract);
+
+		let val = if used > refunded {
+			let storage = used - refunded;
+			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
+
+			T::Currency::repatriate_reserved(user, contract_acc, amount, BalanceStatus::Reserved)?;
+		} else {
+			let storage = refunded - used;
+			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
+
+			T::Currency::repatriate_reserved(contract_acc, user, amount, BalanceStatus::Reserved)?;
+		};
+
+		ensure!(val.is_zero(), Error::<T>::UnreserveFailed);
+
+		Ok(())
+	}
+
+	fn out_of_storage_error(&self) -> DispatchError {
+		Error::<T>::OutOfStorage.into()
 	}
 }
