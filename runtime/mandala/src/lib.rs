@@ -21,7 +21,7 @@ use sp_core::{
 	OpaqueMetadata, H160,
 };
 use sp_runtime::traits::{
-	BadOrigin, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
+	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
 };
 use sp_runtime::{
 	create_runtime_str,
@@ -47,6 +47,16 @@ use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
+
+use cumulus_primitives::relay_chain::Balance as RelayChainBalance;
+use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
+use polkadot_parachain::primitives::Sibling;
+use xcm::v0::{Junction, MultiLocation, NetworkId};
+use xcm_builder::{
+	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
+};
+use xcm_executor::{traits::NativeAsset, Config, XcmExecutor};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -1294,6 +1304,109 @@ impl cumulus_message_broker::Config for Runtime {
 #[cfg(not(feature = "standalone"))]
 impl parachain_info::Config for Runtime {}
 
+#[cfg(not(feature = "standalone"))]
+parameter_types! {
+	pub const PolkadotNetworkId: NetworkId = NetworkId::Polkadot;
+}
+
+#[cfg(not(feature = "standalone"))]
+pub struct AccountId32Convert;
+impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
+	fn convert(account_id: AccountId) -> [u8; 32] {
+		account_id.into()
+	}
+}
+
+#[cfg(not(feature = "standalone"))]
+parameter_types! {
+	pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
+	pub RelayChainOrigin: Origin = xcm_handler::Origin::Relay.into();
+	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
+		id: ParachainInfo::get().into(),
+	});
+	pub const RelayChainCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+}
+
+#[cfg(not(feature = "standalone"))]
+pub type LocationConverter = (
+	ParentIsDefault<AccountId>,
+	SiblingParachainConvertsVia<Sibling, AccountId>,
+	AccountId32Aliases<AcalaNetwork, AccountId>,
+);
+
+#[cfg(not(feature = "standalone"))]
+pub type LocalAssetTransactor = MultiCurrencyAdapter<
+	Currencies,
+	IsConcreteWithGeneralKey<CurrencyId, RelayToNative>,
+	LocationConverter,
+	AccountId,
+	CurrencyIdConverter<CurrencyId, RelayChainCurrencyId>,
+	CurrencyId,
+>;
+
+#[cfg(not(feature = "standalone"))]
+pub type LocalOriginConverter = (
+	SovereignSignedViaLocation<LocationConverter, Origin>,
+	RelayChainAsNative<RelayChainOrigin, Origin>,
+	SiblingParachainAsNative<xcm_handler::Origin, Origin>,
+	SignedAccountId32AsNative<AcalaNetwork, Origin>,
+);
+
+#[cfg(not(feature = "standalone"))]
+pub struct XcmConfig;
+#[cfg(not(feature = "standalone"))]
+impl Config for XcmConfig {
+	type Call = Call;
+	type XcmSender = XcmHandler;
+	type AssetTransactor = LocalAssetTransactor;
+	type OriginConverter = LocalOriginConverter;
+	//TODO: might need to add other assets based on orml-tokens
+	type IsReserve = NativeAsset;
+	type IsTeleporter = ();
+	type LocationInverter = LocationInverter<Ancestry>;
+}
+
+#[cfg(not(feature = "standalone"))]
+impl xcm_handler::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type UpwardMessageSender = MessageBroker;
+	type HrmpMessageSender = MessageBroker;
+}
+
+#[cfg(not(feature = "standalone"))]
+pub struct RelayToNative;
+impl Convert<RelayChainBalance, Balance> for RelayToNative {
+	fn convert(val: u128) -> Balance {
+		// native is 18
+		// relay is 12
+		val * 1_000_000
+	}
+}
+
+#[cfg(not(feature = "standalone"))]
+pub struct NativeToRelay;
+impl Convert<Balance, RelayChainBalance> for NativeToRelay {
+	fn convert(val: u128) -> Balance {
+		// native is 18
+		// relay is 12
+		val / 1_000_000
+	}
+}
+
+#[cfg(not(feature = "standalone"))]
+impl orml_xtokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type ToRelayChainBalance = NativeToRelay;
+	type AccountId32Convert = AccountId32Convert;
+	//TODO: change network id if kusama
+	type RelayChainNetworkId = PolkadotNetworkId;
+	type ParaId = ParachainInfo;
+	type AccountIdConverter = LocationConverter;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
 macro_rules! construct_mandala_runtime {
 	($( $modules:tt )*) => {
 		#[allow(clippy::large_enum_variant)]
@@ -1410,6 +1523,8 @@ construct_mandala_runtime! {
 	ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
 	MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
 	ParachainInfo: parachain_info::{Module, Storage, Config},
+	XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
+	XcmHandler: xcm_handler::{Module, Call, Event<T>, Origin},
 }
 
 #[cfg(feature = "standalone")]

@@ -2,6 +2,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use codec::{Decode, Encode};
+
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 use enumflags2::BitFlags;
 use frame_support::{
 	decl_error, decl_event, decl_module, ensure,
@@ -34,6 +38,7 @@ pub type CID = sp_std::vec::Vec<u8>;
 
 #[repr(u8)]
 #[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ClassProperty {
 	/// Token can be transferred
 	Transferable = 0b00000001,
@@ -42,6 +47,7 @@ pub enum ClassProperty {
 }
 
 #[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Properties(pub BitFlags<ClassProperty>);
 
 impl Eq for Properties {}
@@ -60,6 +66,7 @@ impl Decode for Properties {
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassData {
 	/// The minimum balance to create class
 	pub deposit: Balance,
@@ -68,6 +75,7 @@ pub struct ClassData {
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TokenData {
 	/// The minimum balance to create token
 	pub deposit: Balance,

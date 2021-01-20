@@ -12,7 +12,10 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	MultiSignature, RuntimeDebug,
 };
-use sp_std::convert::{Into, TryFrom, TryInto};
+use sp_std::{
+	convert::{Into, TryFrom, TryInto},
+	prelude::*,
+};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -135,6 +138,21 @@ impl CurrencyId {
 				Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
 			}
 			_ => None,
+		}
+	}
+}
+
+impl TryFrom<Vec<u8>> for CurrencyId {
+	type Error = ();
+	fn try_from(v: Vec<u8>) -> Result<CurrencyId, ()> {
+		match v.as_slice() {
+			b"ACA" => Ok(CurrencyId::Token(TokenSymbol::ACA)),
+			b"AUSD" => Ok(CurrencyId::Token(TokenSymbol::AUSD)),
+			b"DOT" => Ok(CurrencyId::Token(TokenSymbol::DOT)),
+			b"XBTC" => Ok(CurrencyId::Token(TokenSymbol::XBTC)),
+			b"LDOT" => Ok(CurrencyId::Token(TokenSymbol::LDOT)),
+			b"RENBTC" => Ok(CurrencyId::Token(TokenSymbol::RENBTC)),
+			_ => Err(()),
 		}
 	}
 }

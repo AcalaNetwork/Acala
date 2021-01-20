@@ -1691,6 +1691,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83c8d82922337cd23a15f88b70d8e4ef5f11da38dd7cdb55e84dd5de99695da0"
 dependencies = [
  "enumflags2_derive",
+ "serde",
 ]
 
 [[package]]
@@ -4017,6 +4018,8 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "orml-vesting",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
@@ -4044,6 +4047,7 @@ dependencies = [
  "pallet-utility",
  "parachain-info",
  "parity-scale-codec",
+ "polkadot-parachain",
  "runtime-common",
  "serde",
  "serde_json",
@@ -4063,6 +4067,10 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder",
+ "xcm",
+ "xcm-builder 0.8.22 (git+https://github.com/paritytech/polkadot?branch=rococo-v1)",
+ "xcm-executor",
+ "xcm-handler",
 ]
 
 [[package]]
@@ -5436,7 +5444,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-tokens",
- "orml-xcm-support",
  "parity-scale-codec",
  "polkadot-core-primitives",
  "serde",
@@ -5445,6 +5452,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -7817,7 +7825,7 @@ dependencies = [
  "sp-version",
  "substrate-wasm-builder",
  "xcm",
- "xcm-builder",
+ "xcm-builder 0.8.22 (git+https://github.com/paritytech//polkadot?branch=rococo-v1)",
  "xcm-executor",
 ]
 
@@ -11555,6 +11563,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "xcm-builder"
+version = "0.8.22"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#a3e1113655acfa42ae210310de90df086933ce26"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "polkadot-parachain",
+ "sp-arithmetic",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
+]
+
+[[package]]
 name = "xcm-executor"
 version = "0.8.22"
 source = "git+https://github.com/paritytech//polkadot?branch=rococo-v1#a3e1113655acfa42ae210310de90df086933ce26"
@@ -11566,6 +11590,19 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "xcm-handler"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#7277f7aae5c0b45543a53d823d0c6c1da2a3ab18"
+dependencies = [
+ "cumulus-primitives",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
  "sp-std",
  "xcm",
 ]
