@@ -124,7 +124,7 @@ impl<T: Config> Runner<T> {
 
 				TransactionOutcome::Commit(Ok(create_info))
 			},
-		)
+		)?
 	}
 
 	fn transfer(source: H160, target: H160, value: BalanceOf<T>) -> DispatchResult {
@@ -199,12 +199,12 @@ impl<T: Config> Runner<T> {
 				);
 
 				if !reason.is_succeed() {
-					return Err(Ok(call_info));
+					return TransactionOutcome::Rollback(Ok(call_info));
 				}
 
 				TransactionOutcome::Commit(Ok(call_info))
 			},
-		)
+		)?
 	}
 
 	pub fn create(

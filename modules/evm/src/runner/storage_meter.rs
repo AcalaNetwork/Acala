@@ -12,20 +12,22 @@ pub trait StorageMeterHandler {
 	fn out_of_storage_error(&self) -> DispatchError;
 }
 
-/// StorageMeter.
-#[derive(Clone, RuntimeDebug)]
-pub struct StorageMeter {
+pub struct StorageMeter<'handler> {
 	contract: H160,
 	limit: u32,
 	used: u32,
 	refunded: u32,
-	handler: Box<dyn StorageMeterHandler>,
+	handler: Box<&'handler mut dyn StorageMeterHandler>,
 	result: DispatchResult,
 }
 
-impl StorageMeter {
+impl<'handler> StorageMeter<'handler> {
 	/// Create a new storage_meter with given storage limit.
-	pub fn new(handler: Box<dyn StorageMeterHandler>, contract: H160, limit: u32) -> Result<Self, DispatchError> {
+	pub fn new(
+		handler: Box<&'handler mut dyn StorageMeterHandler>,
+		contract: H160,
+		limit: u32,
+	) -> Result<Self, DispatchError> {
 		handler.reserve_storage(limit)?;
 		Ok(Self {
 			contract,
@@ -37,8 +39,13 @@ impl StorageMeter {
 		})
 	}
 
-	pub fn child_meter(&mut self, contract: H160) -> Result<Self, DispatchError> {
-		self.handle(|| Self::new(self, contract, self.available_storage()))
+	pub fn child_meter<'a>(&'a mut self, contract: H160) -> Result<StorageMeter<'a>, DispatchError> {
+		self.handle(|this| {
+			let storage = this.available_storage();
+			// can't make this.result = Err if `new` fails
+			// because some rust lifetime thing never happy
+			StorageMeter::<'a>::new(Box::new(this), contract, storage)
+		})
 	}
 
 	pub fn available_storage(&self) -> u32 {
@@ -58,46 +65,55 @@ impl StorageMeter {
 	}
 
 	pub fn charge(&mut self, storage: u32) -> DispatchResult {
-		self.handle(|| {
-			let used = self.used.saturating_add(self.limit);
-			if self.limit < used.saturating_sub(self.refunded) {
-				self.result = Err(self.out_of_storage_error());
-				return self.result;
+		self.handle(|this| {
+			let used = this.used.saturating_add(this.limit);
+			if this.limit < used.saturating_sub(this.refunded) {
+				this.result = Err(this.out_of_storage_error());
+				return this.result;
 			}
-			self.used = used;
+			this.used = used;
 			Ok(())
 		})
 	}
 
 	pub fn uncharge(&mut self, storage: u32) -> DispatchResult {
-		self.handle(|| {
-			self.used = self.used.saturating_sub(storage);
+		self.handle(|this| {
+			this.used = this.used.saturating_sub(storage);
 			Ok(())
 		})
 	}
 
 	pub fn refund(&mut self, storage: u32) -> DispatchResult {
-		self.handle(|| {
-			self.refunded = self.refunded.saturating_add(storage);
+		self.handle(|this| {
+			this.refunded = this.refunded.saturating_add(storage);
 			Ok(())
 		})
 	}
 
-	pub fn finish(self) -> DispatchResult {
-		self.handle(|| {
-			self.handler.charge_storage(self.contract, self.used, self.refunded)?;
-			self.handler.unreserve_storage(self.limit, self.used, self.refunded)?;
+	pub fn finish(mut self) -> DispatchResult {
+		self.handle(|this| {
+			if let Err(x) = (|| {
+				this.handler.charge_storage(&this.contract, this.used, this.refunded)?;
+				this.handler.unreserve_storage(this.limit, this.used, this.refunded)
+			})() {
+				this.result = Err(x);
+				Err(x)
+			} else {
+				Ok(())
+			}
 		})
 	}
 
-	fn handle<F: FnOnce() -> DispatchResult>(&mut self, f: F) -> DispatchResult {
+	fn handle<'a, R, F: FnOnce(&'a mut Self) -> Result<R, DispatchError>>(
+		&'a mut self,
+		f: F,
+	) -> Result<R, DispatchError> {
 		self.result?;
-		self.result = f();
-		self.result
+		f(self)
 	}
 }
 
-impl StorageMeterHandler for StorageMeter {
+impl<'handler> StorageMeterHandler for StorageMeter<'handler> {
 	fn reserve_storage(&mut self, limit: u32) -> DispatchResult {
 		self.charge(limit)
 	}
