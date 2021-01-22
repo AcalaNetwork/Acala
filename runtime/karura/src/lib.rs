@@ -1251,6 +1251,8 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
+pub type OraclePrecompile =
+	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, AggregatedDataProvider>;
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1265,6 +1267,7 @@ impl module_evm::Config for Runtime {
 		MultiCurrencyPrecompile,
 		NFTPrecompile,
 		StateRentPrecompile,
+		OraclePrecompile,
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
