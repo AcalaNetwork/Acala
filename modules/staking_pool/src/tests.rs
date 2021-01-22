@@ -8,7 +8,9 @@ use mock::{
 	BondingDuration, CurrenciesModule, ExtBuilder, One, Origin, Runtime, StakingPoolModule, Status, System, TestEvent,
 	ALICE, BOB, BRIDGE_STATUS, DOT, LDOT,
 };
-use sp_runtime::traits::BadOrigin;
+use orml_traits::MultiCurrency;
+use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+use support::{ExchangeRate, HomaProtocol, PolkadotStakingLedger, PolkadotUnlockChunk, Ratio};
 
 #[test]
 fn distribute_increment_work() {
@@ -390,7 +392,7 @@ fn unbond_work() {
 			*v.borrow_mut() = old_map;
 		});
 
-		CurrentEra::put(5);
+		CurrentEra::<Runtime>::put(5);
 		assert_ok!(StakingPoolModule::unbond(600));
 		assert_eq!(
 			*BRIDGE_STATUS
@@ -479,7 +481,7 @@ fn withdraw_unbonded_work() {
 			*v.borrow_mut() = old_map;
 		});
 
-		CurrentEra::put(3);
+		CurrentEra::<Runtime>::put(3);
 		StakingPoolModule::withdraw_unbonded();
 		assert_eq!(
 			*BRIDGE_STATUS
@@ -645,7 +647,7 @@ fn liquid_exchange_rate_work() {
 			ExchangeRate::saturating_from_rational(10, 100)
 		);
 
-		StakingPoolLedger::put(Ledger {
+		StakingPoolLedger::<Runtime>::put(Ledger {
 			bonded: 1000,
 			free_pool: 300,
 			unbonding_to_free: 400,
@@ -681,10 +683,10 @@ fn get_available_unbonded_work() {
 
 		assert_eq!(StakingPoolModule::get_available_unbonded(&ALICE), 0);
 
-		CurrentEra::put(1);
+		CurrentEra::<Runtime>::put(1);
 		assert_eq!(StakingPoolModule::get_available_unbonded(&ALICE), 300);
 
-		CurrentEra::put(3);
+		CurrentEra::<Runtime>::put(3);
 		assert_eq!(StakingPoolModule::get_available_unbonded(&ALICE), 550);
 	});
 }
@@ -763,7 +765,7 @@ fn mint_work() {
 			}
 		);
 
-		let mint_liquid_event = TestEvent::staking_pool(RawEvent::MintLiquid(ALICE, 500, 5000));
+		let mint_liquid_event = TestEvent::staking_pool(Event::MintLiquid(ALICE, 500, 5000));
 		assert!(System::events().iter().any(|record| record.event == mint_liquid_event));
 	});
 }
@@ -803,7 +805,7 @@ fn redeem_by_unbond_work() {
 			500
 		));
 		assert_ok!(StakingPoolModule::bond_extra(500));
-		StakingPoolLedger::mutate(|ledger| {
+		StakingPoolLedger::<Runtime>::mutate(|ledger| {
 			ledger.free_pool = ledger.free_pool.saturating_sub(500);
 			ledger.bonded = ledger.bonded.saturating_add(500);
 		});
@@ -828,7 +830,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&ALICE), 0);
 
 		assert_ok!(StakingPoolModule::redeem_by_unbond(&ALICE, 1000));
-		let redeem_by_unbond_event_1 = TestEvent::staking_pool(RawEvent::RedeemByUnbond(ALICE, 1000, 100));
+		let redeem_by_unbond_event_1 = TestEvent::staking_pool(Event::RedeemByUnbond(ALICE, 1000, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_unbond_event_1));
@@ -851,7 +853,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&BOB), 0);
 
 		assert_ok!(StakingPoolModule::redeem_by_unbond(&BOB, 9000));
-		let redeem_by_unbond_event_2 = TestEvent::staking_pool(RawEvent::RedeemByUnbond(BOB, 4000, 400));
+		let redeem_by_unbond_event_2 = TestEvent::staking_pool(Event::RedeemByUnbond(BOB, 4000, 400));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_unbond_event_2));
@@ -881,7 +883,7 @@ fn redeem_by_free_unbonded_work() {
 			500
 		));
 		assert_ok!(StakingPoolModule::bond_extra(500));
-		StakingPoolLedger::mutate(|ledger| {
+		StakingPoolLedger::<Runtime>::mutate(|ledger| {
 			ledger.free_pool = ledger.free_pool.saturating_sub(500);
 			ledger.bonded = ledger.bonded.saturating_add(500);
 		});
@@ -902,8 +904,7 @@ fn redeem_by_free_unbonded_work() {
 		assert_eq!(CurrenciesModule::total_issuance(LDOT), 10000);
 
 		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&ALICE, 1000));
-		let redeem_by_free_unbonded_event_1 =
-			TestEvent::staking_pool(RawEvent::RedeemByFreeUnbonded(ALICE, 1000, 80, 20));
+		let redeem_by_free_unbonded_event_1 = TestEvent::staking_pool(Event::RedeemByFreeUnbonded(ALICE, 1000, 80, 20));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_free_unbonded_event_1));
@@ -921,8 +922,7 @@ fn redeem_by_free_unbonded_work() {
 
 		// when overflow available
 		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&BOB, 9000));
-		let redeem_by_free_unbonded_event_2 =
-			TestEvent::staking_pool(RawEvent::RedeemByFreeUnbonded(BOB, 3662, 300, 74));
+		let redeem_by_free_unbonded_event_2 = TestEvent::staking_pool(Event::RedeemByFreeUnbonded(BOB, 3662, 300, 74));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_free_unbonded_event_2));
@@ -949,8 +949,8 @@ fn redeem_by_claim_unbonding_work() {
 			1000
 		));
 		assert_ok!(StakingPoolModule::bond_extra(1000));
-		Unbonding::insert(4, (500, 0, 0));
-		StakingPoolLedger::mutate(|ledger| {
+		Unbonding::<Runtime>::insert(4, (500, 0, 0));
+		StakingPoolLedger::<Runtime>::mutate(|ledger| {
 			ledger.free_pool = ledger.free_pool.saturating_sub(1000);
 			ledger.bonded = ledger.bonded.saturating_add(1000).saturating_sub(500);
 			ledger.unbonding_to_free = ledger.free_pool.saturating_sub(500);
@@ -979,7 +979,7 @@ fn redeem_by_claim_unbonding_work() {
 
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 1000, 4));
 		let redeem_by_claimed_unbonding_event_1 =
-			TestEvent::staking_pool(RawEvent::RedeemByClaimUnbonding(ALICE, 4, 1000, 80, 20));
+			TestEvent::staking_pool(Event::RedeemByClaimUnbonding(ALICE, 4, 1000, 80, 20));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_claimed_unbonding_event_1));
@@ -1001,7 +1001,7 @@ fn redeem_by_claim_unbonding_work() {
 		// when overflow available
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&BOB, 10000, 4));
 		let redeem_by_claimed_unbonding_event_2 =
-			TestEvent::staking_pool(RawEvent::RedeemByClaimUnbonding(BOB, 4, 3910, 316, 79));
+			TestEvent::staking_pool(Event::RedeemByClaimUnbonding(BOB, 4, 3910, 316, 79));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_claimed_unbonding_event_2));
@@ -1051,7 +1051,7 @@ fn rebalance_work() {
 		);
 		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
 
-		CurrentEra::put(1);
+		CurrentEra::<Runtime>::put(1);
 		StakingPoolModule::rebalance(1);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1077,7 +1077,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(6), (0, 0, 0));
 
-		CurrentEra::put(2);
+		CurrentEra::<Runtime>::put(2);
 		StakingPoolModule::rebalance(2);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1103,7 +1103,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(6), (1009, 0, 0));
 
-		CurrentEra::put(3);
+		CurrentEra::<Runtime>::put(3);
 		StakingPoolModule::rebalance(3);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1134,7 +1134,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(7), (1017, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(8), (0, 0, 0));
 
-		CurrentEra::put(4);
+		CurrentEra::<Runtime>::put(4);
 		StakingPoolModule::rebalance(4);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1167,7 +1167,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(8), (1026, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(9), (0, 0, 0));
 
-		CurrentEra::put(5);
+		CurrentEra::<Runtime>::put(5);
 		StakingPoolModule::rebalance(5);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1202,7 +1202,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(9), (55, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(10), (0, 0, 0));
 
-		CurrentEra::put(6);
+		CurrentEra::<Runtime>::put(6);
 		StakingPoolModule::rebalance(6);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1237,7 +1237,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(10), (1036, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(11), (0, 0, 0));
 
-		CurrentEra::put(7);
+		CurrentEra::<Runtime>::put(7);
 		StakingPoolModule::rebalance(7);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1272,7 +1272,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(11), (1045, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(12), (0, 0, 0));
 
-		CurrentEra::put(8);
+		CurrentEra::<Runtime>::put(8);
 		StakingPoolModule::rebalance(8);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),
@@ -1321,7 +1321,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&ALICE), 212);
 		assert_eq!(StakingPoolModule::unbondings(&ALICE, 11), 85);
 		assert_eq!(StakingPoolModule::unbondings(&ALICE, 13), 0);
-		CurrentEra::put(9);
+		CurrentEra::<Runtime>::put(9);
 		StakingPoolModule::rebalance(9);
 		assert_eq!(
 			StakingPoolModule::staking_ledger(),

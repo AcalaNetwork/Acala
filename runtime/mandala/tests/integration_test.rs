@@ -3,7 +3,7 @@
 use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{schedule::DispatchTime, Currency, OnFinalize, OnInitialize, OriginTrait},
+	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait},
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
@@ -396,7 +396,7 @@ fn liquidate_cdp() {
 			));
 
 			let liquidate_alice_xbtc_cdp_event =
-				Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
+				Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 					CurrencyId::Token(TokenSymbol::XBTC),
 					AccountId::from(ALICE),
 					amount(10),
@@ -423,14 +423,13 @@ fn liquidate_cdp() {
 				CurrencyId::Token(TokenSymbol::XBTC)
 			));
 
-			let liquidate_bob_xbtc_cdp_event =
-				Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					AccountId::from(BOB),
-					amount(1),
-					amount(5_000),
-					LiquidationStrategy::Exchange,
-				));
+			let liquidate_bob_xbtc_cdp_event = Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
+				CurrencyId::Token(TokenSymbol::XBTC),
+				AccountId::from(BOB),
+				amount(1),
+				amount(5_000),
+				LiquidationStrategy::Exchange,
+			));
 			assert!(SystemModule::events()
 				.iter()
 				.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
@@ -515,7 +514,7 @@ fn test_dex_module() {
 				false,
 			));
 
-			let add_liquidity_event = Event::module_dex(module_dex::RawEvent::AddLiquidity(
+			let add_liquidity_event = Event::module_dex(module_dex::Event::AddLiquidity(
 				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				10000000,
@@ -848,7 +847,7 @@ fn test_cdp_engine_module() {
 				CurrencyId::Token(TokenSymbol::XBTC)
 			));
 
-			let settle_cdp_in_debit_event = Event::module_cdp_engine(module_cdp_engine::RawEvent::SettleCDPInDebit(
+			let settle_cdp_in_debit_event = Event::module_cdp_engine(module_cdp_engine::Event::SettleCDPInDebit(
 				CurrencyId::Token(TokenSymbol::XBTC),
 				AccountId::from(ALICE),
 			));

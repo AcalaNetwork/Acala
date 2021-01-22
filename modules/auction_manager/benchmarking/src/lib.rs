@@ -11,11 +11,11 @@ use sp_std::vec;
 use auction_manager::Module as AuctionManager;
 use auction_manager::*;
 use frame_benchmarking::{account, benchmarks};
-use frame_support::traits::Get;
+use frame_support::{dispatch::DispatchResultWithPostInfo, traits::Get};
 use frame_system::RawOrigin;
 use orml_traits::{DataFeeder, MultiCurrency};
 use primitives::{AuctionId, Balance, CurrencyId, TokenSymbol};
-use sp_runtime::{DispatchError, FixedPointNumber};
+use sp_runtime::FixedPointNumber;
 use support::{AuctionManager as AuctionManagerTrait, CDPTreasury, Price};
 
 pub struct Module<T: Config>(auction_manager::Module<T>);
@@ -40,7 +40,7 @@ fn feed_price<T: Config>(currency_id: CurrencyId, price: Price) -> Result<(), &'
 	Ok(())
 }
 
-fn emergency_shutdown<T: Config>() -> Result<(), DispatchError> {
+fn emergency_shutdown<T: Config>() -> DispatchResultWithPostInfo {
 	emergency_shutdown::Module::<T>::emergency_shutdown(RawOrigin::Root.into())
 }
 

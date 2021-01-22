@@ -135,7 +135,8 @@ impl<T: Config> Runner<T> {
 
 impl<T: Config> Runner<T> {
 	pub fn call(
-		source: H160,
+		sender: H160,
+		origin: H160,
 		target: H160,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
@@ -145,8 +146,9 @@ impl<T: Config> Runner<T> {
 	) -> Result<CallInfo, DispatchError> {
 		debug::debug!(
 			target: "evm",
-			"call: source {:?}, target: {:?}, input: {:?}, gas_limit: {:?}, storage_limit: {:?}",
-			source,
+			"call: sender:{:?}, origin: {:?}, target: {:?}, input: {:?}, gas_limit: {:?}, storage_limit: {:?}",
+			sender,
+			origin,
 			target,
 			input,
 			gas_limit,
@@ -155,9 +157,11 @@ impl<T: Config> Runner<T> {
 
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
-			origin: source,
+			origin,
 		};
 
+		// if the contract not deployed, the caller must be developer or contract.
+		// if the contract not exists, let evm try to execute it and handle the error.
 		if Handler::<T>::is_undeployed_contract(&target) && !Handler::<T>::has_permission_to_call(&source) {
 			return Err(Error::<T>::NoPermission.into());
 		}

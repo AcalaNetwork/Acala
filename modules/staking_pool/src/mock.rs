@@ -3,19 +3,24 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use codec::{Decode, Encode};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types, RuntimeDebug};
 use frame_system::EnsureSignedBy;
-use orml_traits::parameter_type_with_key;
+use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol};
+use primitives::{Balance, CurrencyId, EraIndex};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{CheckedAdd, CheckedMul, CheckedSub, IdentityLookup},
-	FixedPointOperand,
+	traits::{CheckedAdd, CheckedMul, CheckedSub, IdentityLookup, Saturating},
+	DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
 };
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
-use support::PolkadotStakingLedger;
+use support::{
+	ExchangeRate, NomineesProvider, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType,
+	PolkadotStakingLedger, PolkadotUnlockChunk, Rate, Ratio,
+};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -398,7 +403,7 @@ impl ExtBuilder {
 				base_fee_rate: Rate::saturating_from_rational(20, 100),
 			},
 		}
-		.assimilate_storage(&mut t)
+		.assimilate_storage::<Runtime>(&mut t)
 		.unwrap();
 
 		t.into()

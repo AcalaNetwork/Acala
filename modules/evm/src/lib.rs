@@ -34,11 +34,12 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::{
-	traits::{Convert, One, Saturating, UniqueSaturatedInto},
-	Either,
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto},
+	transaction_validity::TransactionValidityError,
+	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{EVMStateRentTrait, EVM as EVMTrait};
+use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, EVM as EVMTrait};
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -204,6 +205,9 @@ decl_storage! {
 
 		/// Next available system contract address.
 		NetworkContractIndex get(fn network_contract_index) config(): u64;
+
+		/// Extrinsics origin for the current tx.
+		ExtrinsicOrigin get(fn extrinsic_origin): Option<T::AccountId>;
 	}
 
 	add_extra_genesis {
@@ -336,7 +340,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
-			let info = Runner::<T>::call(source, target, input, value, gas_limit, storage_limit, T::config())?;
+			let info = Runner::<T>::call(source, source, target, input, value, gas_limit, storage_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Executed(target));
@@ -824,39 +828,63 @@ impl<T: Config> Module<T> {
 	}
 }
 
-impl<T: Config> EVMTrait for Module<T> {
+impl<T: Config> EVMTrait<T::AccountId> for Module<T> {
 	type Balance = BalanceOf<T>;
-
 	fn execute(
-		source: EvmAddress,
-		target: EvmAddress,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
 		gas_limit: u32,
 		storage_limit: u32,
-		config: Option<evm::Config>,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
-		let info = Runner::<T>::call(
-			source,
-			target,
-			input,
-			value,
-			gas_limit,
-			storage_limit,
-			config.as_ref().unwrap_or(T::config()),
-		)?;
-
-		if info.exit_reason.is_succeed() {
-			Module::<T>::deposit_event(Event::<T>::Executed(target));
-		} else {
-			Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
-				target,
-				info.exit_reason.clone(),
-				info.output.clone(),
-			));
+		let mut config = T::config().clone();
+		if let ExecutionMode::EstimateGas = mode {
+			config.estimate = true;
 		}
 
-		Ok(info)
+		frame_support::storage::with_transaction(|| {
+			let result = Runner::<T>::call(
+				context.sender,
+				context.origin,
+				context.contract,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				&config,
+			);
+
+			match result {
+				Ok(info) => match mode {
+					ExecutionMode::Execute => {
+						if info.exit_reason.is_succeed() {
+							Module::<T>::deposit_event(Event::<T>::Executed(context.contract));
+							TransactionOutcome::Commit(Ok(info))
+						} else {
+							Module::<T>::deposit_event(Event::<T>::ExecutedFailed(
+								context.contract,
+								info.exit_reason.clone(),
+								info.output.clone(),
+							));
+							TransactionOutcome::Rollback(Ok(info))
+						}
+					}
+					ExecutionMode::View | ExecutionMode::EstimateGas => TransactionOutcome::Rollback(Ok(info)),
+				},
+				Err(e) => TransactionOutcome::Rollback(Err(e)),
+			}
+		})
+	}
+
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<T::AccountId> {
+		ExtrinsicOrigin::<T>::get()
+	}
+
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: T::AccountId) {
+		ExtrinsicOrigin::<T>::set(Some(origin));
 	}
 }
 
@@ -903,4 +931,65 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 
 pub fn code_hash(code: &[u8]) -> H256 {
 	H256::from_slice(Keccak256::digest(code).as_slice())
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
+
+impl<T: Config + Send + Sync> sp_std::fmt::Debug for SetEvmOrigin<T> {
+	#[cfg(feature = "std")]
+	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		write!(f, "SetEvmOrigin")
+	}
+
+	#[cfg(not(feature = "std"))]
+	fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		Ok(())
+	}
+}
+
+impl<T: Config + Send + Sync> SetEvmOrigin<T> {
+	pub fn new() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
+
+impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
+	const IDENTIFIER: &'static str = "SetEvmOrigin";
+	type AccountId = T::AccountId;
+	type Call = T::Call;
+	type AdditionalSigned = ();
+	type Pre = ();
+
+	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn pre_dispatch(
+		self,
+		who: &Self::AccountId,
+		_call: &Self::Call,
+		_info: &DispatchInfoOf<Self::Call>,
+		_len: usize,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		Ok(())
+	}
+
+	fn post_dispatch(
+		_pre: Self::Pre,
+		_info: &DispatchInfoOf<Self::Call>,
+		_post_info: &PostDispatchInfoOf<Self::Call>,
+		_len: usize,
+		_result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::kill();
+		Ok(())
+	}
 }

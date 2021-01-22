@@ -5,7 +5,7 @@
 use super::*;
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
-use primitives::TokenSymbol;
+use primitives::{Balance, CurrencyId, TokenSymbol};
 use sp_std::prelude::*;
 
 pub fn dollar(d: u32) -> Balance {

@@ -10,16 +10,17 @@ use module_evm::{ExitReason, ExitSucceed};
 use primitive_types::H256;
 use sp_core::{H160, U256};
 use sp_runtime::SaturatedConversion;
-use support::{EVMBridge as EVMBridgeTrait, InvokeContext, EVM};
+use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
 mod mock;
 mod tests;
 
-pub type BalanceOf<T> = <<T as Config>::EVM as EVM>::Balance;
+pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+pub type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
 
 /// EvmBridge module trait
 pub trait Config: frame_system::Config {
-	type EVM: EVM;
+	type EVM: EVM<AccountIdOf<Self>>;
 }
 
 decl_error! {
@@ -37,20 +38,12 @@ decl_module! {
 	}
 }
 
-impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
+impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Module<T> {
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
 
-		let info = T::EVM::execute(
-			H160::default(),
-			context.contract,
-			input,
-			Default::default(),
-			2_100_000,
-			0,
-			None,
-		)?;
+		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
@@ -64,15 +57,7 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 		// append address
 		input.extend_from_slice(H256::from(address).as_bytes());
 
-		let info = T::EVM::execute(
-			H160::default(),
-			context.contract,
-			input,
-			Default::default(),
-			2_100_000,
-			0,
-			None,
-		)?;
+		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
@@ -89,17 +74,26 @@ impl<T: Config> EVMBridgeTrait<BalanceOf<T>> for Module<T> {
 		// append amount to be transferred
 		input.extend_from_slice(H256::from_uint(&U256::from(value.saturated_into::<u128>())).as_bytes());
 
+		let storage_limit = if context.origin == Default::default() { 0 } else { 1_000 };
+
 		let info = T::EVM::execute(
-			context.source,
-			context.contract,
+			context,
 			input,
 			Default::default(),
 			2_100_000,
-			1_000,
-			None,
+			storage_limit,
+			ExecutionMode::Execute,
 		)?;
 
 		Self::handle_exit_reason(info.exit_reason)
+	}
+
+	fn get_origin() -> Option<AccountIdOf<T>> {
+		T::EVM::get_origin()
+	}
+
+	fn set_origin(origin: AccountIdOf<T>) {
+		T::EVM::set_origin(origin);
 	}
 }
 

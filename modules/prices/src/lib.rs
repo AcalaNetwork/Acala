@@ -9,92 +9,95 @@
 //!   - lock/unlock the price data get from oracle
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
-use frame_support::{
-	decl_event, decl_module, decl_storage,
-	traits::{EnsureOrigin, Get},
-	transactional,
-	weights::{DispatchClass, Weight},
-};
-use frame_system::{self as system};
-use orml_traits::{DataFeeder, DataProvider};
-use primitives::CurrencyId;
-use sp_runtime::traits::{CheckedDiv, CheckedMul};
-use support::{ExchangeRateProvider, Price, PriceProvider};
+#![allow(clippy::unused_unit)]
 
 mod default_weight;
 mod mock;
 mod tests;
 
-pub trait WeightInfo {
-	fn lock_price() -> Weight;
-	fn unlock_price() -> Weight;
-}
+pub use module::*;
 
-pub trait Config: system::Config {
-	type Event: From<Event> + Into<<Self as system::Config>::Event>;
+#[frame_support::pallet]
+pub mod module {
+	use frame_support::{pallet_prelude::*, transactional};
+	use frame_system::pallet_prelude::*;
+	use orml_traits::{DataFeeder, DataProvider};
+	use primitives::CurrencyId;
+	use sp_runtime::traits::{CheckedDiv, CheckedMul};
+	use support::{ExchangeRateProvider, Price, PriceProvider};
 
-	/// The data source, such as Oracle.
-	type Source: DataProvider<CurrencyId, Price> + DataFeeder<CurrencyId, Price, Self::AccountId>;
+	pub trait WeightInfo {
+		fn lock_price() -> Weight;
+		fn unlock_price() -> Weight;
+	}
 
-	/// The stable currency id, it should be AUSD in Acala.
-	type GetStableCurrencyId: Get<CurrencyId>;
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-	/// The fixed prices of stable currency, it should be 1 USD in Acala.
-	type StableCurrencyFixedPrice: Get<Price>;
+		/// The data source, such as Oracle.
+		type Source: DataProvider<CurrencyId, Price> + DataFeeder<CurrencyId, Price, Self::AccountId>;
 
-	/// The staking currency id, it should be DOT in Acala.
-	type GetStakingCurrencyId: Get<CurrencyId>;
+		#[pallet::constant]
+		/// The stable currency id, it should be AUSD in Acala.
+		type GetStableCurrencyId: Get<CurrencyId>;
 
-	/// The liquid currency id, it should be LDOT in Acala.
-	type GetLiquidCurrencyId: Get<CurrencyId>;
+		#[pallet::constant]
+		/// The fixed prices of stable currency, it should be 1 USD in Acala.
+		type StableCurrencyFixedPrice: Get<Price>;
 
-	/// The origin which may lock and unlock prices feed to system.
-	type LockOrigin: EnsureOrigin<Self::Origin>;
+		#[pallet::constant]
+		/// The staking currency id, it should be DOT in Acala.
+		type GetStakingCurrencyId: Get<CurrencyId>;
 
-	/// The provider of the exchange rate between liquid currency and staking
-	/// currency.
-	type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
+		#[pallet::constant]
+		/// The liquid currency id, it should be LDOT in Acala.
+		type GetLiquidCurrencyId: Get<CurrencyId>;
 
-	/// Weight information for the extrinsics in this module.
-	type WeightInfo: WeightInfo;
-}
+		/// The origin which may lock and unlock prices feed to system.
+		type LockOrigin: EnsureOrigin<Self::Origin>;
 
-decl_event!(
-	pub enum Event {
+		/// The provider of the exchange rate between liquid currency and
+		/// staking currency.
+		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(fn deposit_event)]
+	pub enum Event<T: Config> {
 		/// Lock price. \[currency_id, locked_price\]
 		LockPrice(CurrencyId, Price),
 		/// Unlock price. \[currency_id\]
 		UnlockPrice(CurrencyId),
 	}
-);
 
-decl_storage! {
-	trait Store for Module<T: Config> as Prices {
-		/// Mapping from currency id to it's locked price
-		LockedPrice get(fn locked_price): map hasher(twox_64_concat) CurrencyId => Option<Price>;
-	}
-}
+	#[pallet::storage]
+	#[pallet::getter(fn locked_price)]
+	/// Mapping from currency id to it's locked price
+	pub type LockedPrice<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Price, OptionQuery>;
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		fn deposit_event() = default;
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
 
-		const GetStableCurrencyId: CurrencyId = T::GetStableCurrencyId::get();
-		const StableCurrencyFixedPrice: Price = T::StableCurrencyFixedPrice::get();
-		const GetStakingCurrencyId: CurrencyId = T::GetStakingCurrencyId::get();
-		const GetLiquidCurrencyId: CurrencyId = T::GetLiquidCurrencyId::get();
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
 		/// Lock the price and feed it to system.
 		///
 		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
-		#[weight = (T::WeightInfo::lock_price(), DispatchClass::Operational)]
+		#[pallet::weight((T::WeightInfo::lock_price(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn lock_price(origin, currency_id: CurrencyId) {
+		pub fn lock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResultWithPostInfo {
 			T::LockOrigin::ensure_origin(origin)?;
-			<Module<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
+			<Pallet<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
+			Ok(().into())
 		}
 
 		/// Unlock the price and get the price from `PriceProvider` again
@@ -102,55 +105,54 @@ decl_module! {
 		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
-		#[weight = (T::WeightInfo::unlock_price(), DispatchClass::Operational)]
+		#[pallet::weight((T::WeightInfo::unlock_price(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn unlock_price(origin, currency_id: CurrencyId) {
+		pub fn unlock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResultWithPostInfo {
 			T::LockOrigin::ensure_origin(origin)?;
-			<Module<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
-		}
-	}
-}
-
-impl<T: Config> Module<T> {}
-
-impl<T: Config> PriceProvider<CurrencyId> for Module<T> {
-	/// get relative price between two currency types
-	fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
-		if let (Some(base_price), Some(quote_price)) =
-			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
-		{
-			base_price.checked_div(&quote_price)
-		} else {
-			None
+			<Pallet<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
+			Ok(().into())
 		}
 	}
 
-	/// get price in USD
-	fn get_price(currency_id: CurrencyId) -> Option<Price> {
-		if currency_id == T::GetStableCurrencyId::get() {
-			// if is stable currency, return fixed price
-			Some(T::StableCurrencyFixedPrice::get())
-		} else if currency_id == T::GetLiquidCurrencyId::get() {
-			// if is homa liquid currency, return the product of staking currency price and
-			// liquid/staking exchange rate.
-			Self::get_price(T::GetStakingCurrencyId::get())
-				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()))
-		} else {
-			// if locked price exists, return it, otherwise return latest price from oracle.
-			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
+	impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
+		/// get relative price between two currency types
+		fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
+			if let (Some(base_price), Some(quote_price)) =
+				(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
+			{
+				base_price.checked_div(&quote_price)
+			} else {
+				None
+			}
 		}
-	}
 
-	fn lock_price(currency_id: CurrencyId) {
-		// lock price when get valid price from source
-		if let Some(val) = T::Source::get(&currency_id) {
-			LockedPrice::insert(currency_id, val);
-			<Module<T>>::deposit_event(Event::LockPrice(currency_id, val));
+		/// get price in USD
+		fn get_price(currency_id: CurrencyId) -> Option<Price> {
+			if currency_id == T::GetStableCurrencyId::get() {
+				// if is stable currency, return fixed price
+				Some(T::StableCurrencyFixedPrice::get())
+			} else if currency_id == T::GetLiquidCurrencyId::get() {
+				// if is homa liquid currency, return the product of staking currency price and
+				// liquid/staking exchange rate.
+				Self::get_price(T::GetStakingCurrencyId::get())
+					.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()))
+			} else {
+				// if locked price exists, return it, otherwise return latest price from oracle.
+				Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
+			}
 		}
-	}
 
-	fn unlock_price(currency_id: CurrencyId) {
-		LockedPrice::remove(currency_id);
-		<Module<T>>::deposit_event(Event::UnlockPrice(currency_id));
+		fn lock_price(currency_id: CurrencyId) {
+			// lock price when get valid price from source
+			if let Some(val) = T::Source::get(&currency_id) {
+				LockedPrice::<T>::insert(currency_id, val);
+				<Pallet<T>>::deposit_event(Event::LockPrice(currency_id, val));
+			}
+		}
+
+		fn unlock_price(currency_id: CurrencyId) {
+			LockedPrice::<T>::remove(currency_id);
+			<Pallet<T>>::deposit_event(Event::UnlockPrice(currency_id));
+		}
 	}
 }

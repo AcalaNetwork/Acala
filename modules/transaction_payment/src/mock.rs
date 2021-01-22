@@ -5,10 +5,11 @@
 use super::*;
 use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
-	weights::WeightToFeeCoefficients,
+	traits::{GenesisBuild, Get},
+	weights::{DispatchClass, WeightToFeeCoefficients, WeightToFeePolynomial},
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, Balance, CurrencyId, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
@@ -131,8 +132,9 @@ pub type PalletBalances = pallet_balances::Module<Runtime>;
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
 pub struct MockEVMBridge;
-impl<Balance> EVMBridge<Balance> for MockEVMBridge
+impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
 where
+	AccountId: Default,
 	Balance: Default,
 {
 	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
@@ -146,6 +148,12 @@ where
 	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
 		Ok(())
 	}
+
+	fn get_origin() -> Option<AccountId> {
+		None
+	}
+
+	fn set_origin(_origin: AccountId) {}
 }
 
 parameter_types! {
@@ -221,7 +229,7 @@ impl WeightToFeePolynomial for WeightToFee {
 	type Balance = u128;
 
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-		smallvec![WeightToFeeCoefficient {
+		smallvec![frame_support::weights::WeightToFeeCoefficient {
 			degree: 1,
 			coeff_frac: Perbill::zero(),
 			coeff_integer: WEIGHT_TO_FEE.with(|v| *v.borrow()),

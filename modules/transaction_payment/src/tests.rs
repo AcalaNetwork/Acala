@@ -3,20 +3,30 @@
 #![cfg(test)]
 
 use super::*;
+use codec::Encode;
 use frame_support::{
 	assert_ok,
-	weights::{DispatchClass, DispatchInfo, Pays},
+	dispatch::GetDispatchInfo,
+	traits::Get,
+	weights::{DispatchClass, DispatchInfo, Pays, PostDispatchInfo, Weight},
 };
 use mock::{
 	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, TransactionPayment, ACA, ALICE,
 	AUSD, BOB,
 };
 use orml_traits::MultiCurrency;
-use sp_runtime::testing::TestXt;
+use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
+use sp_runtime::{
+	testing::TestXt,
+	traits::{SignedExtension, UniqueSaturatedInto},
+	FixedPointNumber,
+};
+use support::DEXManager;
 
-const CALL: &<Runtime as system::Config>::Call = &Call::Currencies(module_currencies::Call::transfer(BOB, AUSD, 12));
+const CALL: &<Runtime as frame_system::Config>::Call =
+	&Call::Currencies(module_currencies::Call::transfer(BOB, AUSD, 12));
 
-const CALL2: &<Runtime as system::Config>::Call =
+const CALL2: &<Runtime as frame_system::Config>::Call =
 	&Call::Currencies(module_currencies::Call::transfer_native_currency(BOB, 12));
 
 const INFO: DispatchInfo = DispatchInfo {
@@ -134,7 +144,7 @@ fn query_info_works() {
 			let len = ext.len() as u32;
 
 			// all fees should be x1.5
-			NextFeeMultiplier::put(Multiplier::saturating_from_rational(3, 2));
+			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
 
 			assert_eq!(
 				TransactionPayment::query_info(xt, len),
@@ -157,7 +167,7 @@ fn compute_fee_works_without_multiplier() {
 		.build()
 		.execute_with(|| {
 			// Next fee multiplier is zero
-			assert_eq!(NextFeeMultiplier::get(), Multiplier::one());
+			assert_eq!(NextFeeMultiplier::<Runtime>::get(), Multiplier::one());
 
 			// Tip only, no fees works
 			let dispatch_info = DispatchInfo {
@@ -195,7 +205,7 @@ fn compute_fee_works_with_multiplier() {
 		.build()
 		.execute_with(|| {
 			// Add a next fee multiplier. Fees will be x3/2.
-			NextFeeMultiplier::put(Multiplier::saturating_from_rational(3, 2));
+			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
 			// Base fee is unaffected by multiplier
 			let dispatch_info = DispatchInfo {
 				weight: 0,
@@ -226,7 +236,7 @@ fn compute_fee_works_with_negative_multiplier() {
 		.build()
 		.execute_with(|| {
 			// Add a next fee multiplier. All fees will be x1/2.
-			NextFeeMultiplier::put(Multiplier::saturating_from_rational(1, 2));
+			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(1, 2));
 
 			// Base fee is unaffected by multiplier.
 			let dispatch_info = DispatchInfo {

@@ -7,8 +7,13 @@ use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, pa
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
+use primitives::{Amount, Balance, CurrencyId};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId};
+use sp_runtime::{
+	testing::Header,
+	traits::{Convert, IdentityLookup},
+	DispatchResult, ModuleId,
+};
 use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;
@@ -36,7 +41,7 @@ impl_outer_event! {
 		orml_tokens<T>,
 		pallet_balances<T>,
 		orml_currencies<T>,
-		cdp_treasury,
+		cdp_treasury<T>,
 	}
 }
 

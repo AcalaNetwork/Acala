@@ -139,6 +139,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -281,6 +282,7 @@ dependencies = [
  "acala-primitives",
  "acala-rpc",
  "acala-runtime",
+ "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
@@ -4348,6 +4350,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-example"
+version = "0.7.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "module-homa"
 version = "0.7.0"
 dependencies = [
@@ -4468,6 +4483,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-proxy",
+ "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
  "serde",
@@ -4619,19 +4635,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-template"
-version = "0.7.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "serde",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "module-transaction-payment"
 version = "0.7.0"
 dependencies = [
@@ -4640,6 +4643,7 @@ dependencies = [
  "frame-system",
  "module-currencies",
  "module-dex",
+ "module-staking-pool",
  "module-support",
  "orml-tokens",
  "orml-traits",

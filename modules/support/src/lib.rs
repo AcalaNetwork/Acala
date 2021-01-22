@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use primitives::evm::{CallInfo, Config, EvmAddress};
+use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -255,27 +255,44 @@ pub trait PrecompileCallerFilter {
 }
 
 /// An abstraction of EVM for EVMBridge
-pub trait EVM {
+pub trait EVM<AccountId> {
 	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
+
 	fn execute(
-		source: H160,
-		target: H160,
+		context: InvokeContext,
 		input: Vec<u8>,
 		value: Self::Balance,
 		gas_limit: u32,
 		storage_limit: u32,
-		config: Option<Config>,
+		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;
+
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<AccountId>;
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: AccountId);
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
+pub enum ExecutionMode {
+	Execute,
+	/// Discard any state changes
+	View,
+	/// Also discard any state changes and use estimate gas mode for evm config
+	EstimateGas,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
 pub struct InvokeContext {
 	pub contract: EvmAddress,
-	pub source: EvmAddress,
+	/// similar to msg.sender
+	pub sender: EvmAddress,
+	/// similar to tx.origin
+	pub origin: EvmAddress,
 }
 
 /// An abstraction of EVMBridge
-pub trait EVMBridge<Balance> {
+pub trait EVMBridge<AccountId, Balance> {
 	/// Execute ERC20.totalSupply() to read total supply from ERC20 contract
 	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20
@@ -283,6 +300,10 @@ pub trait EVMBridge<Balance> {
 	fn balance_of(context: InvokeContext, address: EvmAddress) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.transfer(address, uint256) to transfer value to `to`
 	fn transfer(context: InvokeContext, to: EvmAddress, value: Balance) -> DispatchResult;
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<AccountId>;
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: AccountId);
 }
 
 /// An abstraction of EVMStateRentTrait

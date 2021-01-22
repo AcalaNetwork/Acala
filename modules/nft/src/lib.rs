@@ -1,103 +1,111 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unnecessary_cast)]
-
-use codec::{Decode, Encode};
-use enumflags2::BitFlags;
-use frame_support::{
-	decl_error, decl_event, decl_module, ensure,
-	traits::{Currency, ExistenceRequirement::KeepAlive, Get},
-	transactional,
-	weights::Weight,
-	IterableStorageDoubleMap,
-};
-use frame_system::ensure_signed;
-use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
-use primitives::{Balance, NFTBalance};
-use sp_runtime::{
-	traits::{AccountIdConversion, StaticLookup, Zero},
-	DispatchResult, ModuleId, RuntimeDebug,
-};
+#![allow(clippy::unused_unit)]
 
 mod default_weight;
 mod mock;
 mod tests;
 
-pub trait WeightInfo {
-	fn create_class() -> Weight;
-	fn mint(i: u32) -> Weight;
-	fn transfer() -> Weight;
-	fn burn() -> Weight;
-	fn destroy_class() -> Weight;
-}
+pub use module::*;
 
-pub type CID = sp_std::vec::Vec<u8>;
+#[frame_support::pallet]
+pub mod module {
+	use enumflags2::BitFlags;
+	use frame_support::{
+		pallet_prelude::*,
+		traits::{Currency, ExistenceRequirement::KeepAlive},
+		transactional, IterableStorageDoubleMap,
+	};
+	use frame_system::pallet_prelude::*;
+	use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
+	use primitives::{Balance, NFTBalance};
+	use sp_runtime::{
+		traits::{AccountIdConversion, StaticLookup, Zero},
+		DispatchResult, ModuleId, RuntimeDebug,
+	};
 
-#[repr(u8)]
-#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
-pub enum ClassProperty {
-	/// Token can be transferred
-	Transferable = 0b00000001,
-	/// Token can be burned
-	Burnable = 0b00000010,
-}
-
-#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
-pub struct Properties(pub BitFlags<ClassProperty>);
-
-impl Eq for Properties {}
-impl Encode for Properties {
-	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-		self.0.bits().using_encoded(f)
+	pub trait WeightInfo {
+		fn create_class() -> Weight;
+		fn mint(i: u32) -> Weight;
+		fn transfer() -> Weight;
+		fn burn() -> Weight;
+		fn destroy_class() -> Weight;
 	}
-}
-impl Decode for Properties {
-	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
-		let field = u8::decode(input)?;
-		Ok(Self(
-			<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,
-		))
+
+	pub type CID = sp_std::vec::Vec<u8>;
+
+	#[repr(u8)]
+	#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
+	pub enum ClassProperty {
+		/// Token can be transferred
+		Transferable = 0b00000001,
+		/// Token can be burned
+		Burnable = 0b00000010,
 	}
-}
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub struct ClassData {
-	/// The minimum balance to create class
-	pub deposit: Balance,
-	/// Property of token
-	pub properties: Properties,
-}
+	#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
+	pub struct Properties(pub BitFlags<ClassProperty>);
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub struct TokenData {
-	/// The minimum balance to create token
-	pub deposit: Balance,
-}
+	impl Eq for Properties {}
+	impl Encode for Properties {
+		fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+			self.0.bits().using_encoded(f)
+		}
+	}
+	impl Decode for Properties {
+		fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
+			let field = u8::decode(input)?;
+			Ok(Self(
+				<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,
+			))
+		}
+	}
 
-pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
-pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	pub struct ClassData {
+		/// The minimum balance to create class
+		pub deposit: Balance,
+		/// Property of token
+		pub properties: Properties,
+	}
 
-decl_event!(
-	 pub enum Event<T> where
-		<T as frame_system::Config>::AccountId,
-		ClassId = ClassIdOf<T>,
-		TokenId = TokenIdOf<T>,
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	pub struct TokenData {
+		/// The minimum balance to create token
+		pub deposit: Balance,
+	}
+
+	pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
+	pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
+
+	#[pallet::config]
+	pub trait Config:
+		frame_system::Config + orml_nft::Config<ClassData = ClassData, TokenData = TokenData> + pallet_proxy::Config
 	{
-		 /// Created NFT class. \[owner, class_id\]
-		 CreatedClass(AccountId, ClassId),
-		 /// Minted NFT token. \[from, to, class_id, quantity\]
-		 MintedToken(AccountId, AccountId, ClassId, u32),
-		 /// Transferred NFT token. \[from, to, class_id, token_id\]
-		 TransferredToken(AccountId, AccountId, ClassId, TokenId),
-		 /// Burned NFT token. \[owner, class_id, token_id\]
-		 BurnedToken(AccountId, ClassId, TokenId),
-		 /// Destroyed NFT class. \[owner, class_id, dest\]
-		 DestroyedClass(AccountId, ClassId, AccountId),
-	}
-);
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-decl_error! {
-	/// Error for module-nft module.
-	pub enum Error for Module<T: Config> {
+		#[pallet::constant]
+		/// The minimum balance to create class
+		type CreateClassDeposit: Get<Balance>;
+
+		#[pallet::constant]
+		/// The minimum balance to create token
+		type CreateTokenDeposit: Get<Balance>;
+
+		#[pallet::constant]
+		/// The NFT's module id
+		type ModuleId: Get<ModuleId>;
+
+		///  Currency type for reserve/unreserve balance to
+		/// create_class/mint/burn/destroy_class
+		type Currency: BasicReservableCurrency<Self::AccountId, Balance = Balance>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
+	}
+
+	#[pallet::error]
+	pub enum Error<T> {
 		/// ClassId not found
 		ClassIdNotFound,
 		/// TokenId not found
@@ -114,58 +122,37 @@ decl_error! {
 		/// Total issuance is not 0
 		CannotDestroyClass,
 	}
-}
 
-pub trait Config:
-	frame_system::Config + orml_nft::Config<ClassData = ClassData, TokenData = TokenData> + pallet_proxy::Config
-{
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
-	/// The minimum balance to create class
-	type CreateClassDeposit: Get<Balance>;
-	/// The minimum balance to create token
-	type CreateTokenDeposit: Get<Balance>;
-	/// The NFT's module id
-	type ModuleId: Get<ModuleId>;
-	///  Currency type for reserve/unreserve balance to
-	/// create_class/mint/burn/destroy_class
-	type Currency: BasicReservableCurrency<Self::AccountId, Balance = Balance>;
-	/// Weight information for the extrinsics in this module.
-	type WeightInfo: WeightInfo;
-}
+	#[pallet::event]
+	#[pallet::generate_deposit(fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// Created NFT class. \[owner, class_id\]
+		CreatedClass(T::AccountId, ClassIdOf<T>),
+		/// Minted NFT token. \[from, to, class_id, quantity\]
+		MintedToken(T::AccountId, T::AccountId, ClassIdOf<T>, u32),
+		/// Transferred NFT token. \[from, to, class_id, token_id\]
+		TransferredToken(T::AccountId, T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
+		/// Burned NFT token. \[owner, class_id, token_id\]
+		BurnedToken(T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
+		/// Destroyed NFT class. \[owner, class_id, dest\]
+		DestroyedClass(T::AccountId, ClassIdOf<T>, T::AccountId),
+	}
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
-		fn deposit_event() = default;
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
 
-		/// The minimum balance to create class
-		const CreateClassDeposit: Balance = T::CreateClassDeposit::get();
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
-		/// The minimum balance to create token
-		const CreateTokenDeposit: Balance = T::CreateTokenDeposit::get();
-
-		/// The NFT's module id
-		const ModuleId: ModuleId = T::ModuleId::get();
-
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
 		/// Create NFT class, tokens belong to the class.
 		///
 		/// - `metadata`: external metadata
 		/// - `properties`: class property, include `Transferable` `Burnable`
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::Currency is orml_currencies
-		/// - Complexity: `O(1)`
-		/// - Db reads: 3
-		/// - Db writes: 4
-		/// -------------------
-		/// Base Weight:
-		///		- best case: 231.1 µs
-		///		- worst case: 233.7 µs
-		/// # </weight>
-		#[weight = <T as Config>::WeightInfo::create_class()]
+		#[pallet::weight(<T as Config>::WeightInfo::create_class())]
 		#[transactional]
-		pub fn create_class(origin, metadata: CID, properties: Properties) {
+		pub fn create_class(origin: OriginFor<T>, metadata: CID, properties: Properties) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let next_id = orml_nft::Module::<T>::next_class_id();
 			let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
@@ -184,7 +171,8 @@ decl_module! {
 			let data = ClassData { deposit, properties };
 			orml_nft::Module::<T>::create_class(&owner, metadata, data)?;
 
-			Self::deposit_event(RawEvent::CreatedClass(owner, next_id));
+			Self::deposit_event(Event::CreatedClass(owner, next_id));
+			Ok(().into())
 		}
 
 		/// Mint NFT token
@@ -193,21 +181,15 @@ decl_module! {
 		/// - `class_id`: token belong to the class id
 		/// - `metadata`: external metadata
 		/// - `quantity`: token quantity
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::Currency is orml_currencies
-		/// - Complexity: `O(1)`
-		/// - Db reads: 4
-		/// - Db writes: 4
-		/// -------------------
-		/// Base Weight:
-		///		- best case: 202 µs
-		///		- worst case: 208 µs
-		/// # </weight>
-		#[weight = <T as Config>::WeightInfo::mint(*quantity)]
+		#[pallet::weight(<T as Config>::WeightInfo::mint(*quantity))]
 		#[transactional]
-		pub fn mint(origin, to: <T::Lookup as StaticLookup>::Source, class_id: ClassIdOf<T>, metadata: CID, quantity: u32) {
+		pub fn mint(
+			origin: OriginFor<T>,
+			to: <T::Lookup as StaticLookup>::Source,
+			class_id: ClassIdOf<T>,
+			metadata: CID,
+			quantity: u32,
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
@@ -222,54 +204,40 @@ decl_module! {
 				orml_nft::Module::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
 			}
 
-			Self::deposit_event(RawEvent::MintedToken(who, to, class_id, quantity));
+			Self::deposit_event(Event::MintedToken(who, to, class_id, quantity));
+			Ok(().into())
 		}
 
 		/// Transfer NFT token to another account
 		///
 		/// - `to`: the token owner's account
 		/// - `token`: (class_id, token_id)
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::Currency is orml_currencies
-		/// - Complexity: `O(1)`
-		/// - Db reads: 3
-		/// - Db writes: 3
-		/// -------------------
-		/// Base Weight:
-		///		- best case: 97.81 µs
-		///		- worst case: 99.99 µs
-		/// # </weight>
-		#[weight = <T as Config>::WeightInfo::transfer()]
-		pub fn transfer(origin, to: <T::Lookup as StaticLookup>::Source, token: (ClassIdOf<T>, TokenIdOf<T>)) {
+		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
+		#[transactional]
+		pub fn transfer(
+			origin: OriginFor<T>,
+			to: <T::Lookup as StaticLookup>::Source,
+			token: (ClassIdOf<T>, TokenIdOf<T>),
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			Self::do_transfer(&who, &to, token)?;
+			Ok(().into())
 		}
 
 		/// Burn NFT token
 		///
 		/// - `token`: (class_id, token_id)
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::Currency is orml_currencies
-		/// - Complexity: `O(1)`
-		/// - Db reads: 5
-		/// - Db writes: 5
-		/// -------------------
-		/// Base Weight:
-		///		- best case: 261.2 µs
-		///		- worst case: 261.4 µs
-		/// # </weight>
-		#[weight = <T as Config>::WeightInfo::burn()]
+		#[pallet::weight(<T as Config>::WeightInfo::burn())]
 		#[transactional]
-		pub fn burn(origin, token: (ClassIdOf<T>, TokenIdOf<T>)) {
+		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 			let data = class_info.data;
-			ensure!(data.properties.0.contains(ClassProperty::Burnable), Error::<T>::NonBurnable);
+			ensure!(
+				data.properties.0.contains(ClassProperty::Burnable),
+				Error::<T>::NonBurnable
+			);
 
 			let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
 			ensure!(who == token_info.owner, Error::<T>::NoPermission);
@@ -282,33 +250,29 @@ decl_module! {
 			<T as Config>::Currency::unreserve(&owner, data.deposit);
 			<T as Config>::Currency::transfer(&owner, &who, data.deposit)?;
 
-			Self::deposit_event(RawEvent::BurnedToken(who, token.0, token.1));
+			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
+			Ok(().into())
 		}
 
 		/// Destroy NFT class
 		///
 		/// - `class_id`: destroy class id
 		/// - `dest`: transfer reserve balance from sub_account to dest
-		///
-		/// # <weight>
-		/// - Preconditions:
-		/// 	- T::Currency is orml_currencies
-		/// - Complexity: `O(1)`
-		/// - Db reads: 3
-		/// - Db writes: 3
-		/// -------------------
-		/// Base Weight:
-		///		- best case: 224.3 µs
-		///		- worst case: 224.7 µs
-		/// # </weight>
-		#[weight = <T as Config>::WeightInfo::destroy_class()]
+		#[pallet::weight(<T as Config>::WeightInfo::destroy_class())]
 		#[transactional]
-		pub fn destroy_class(origin, class_id: ClassIdOf<T>, dest: <T::Lookup as StaticLookup>::Source) {
+		pub fn destroy_class(
+			origin: OriginFor<T>,
+			class_id: ClassIdOf<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
 			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
-			ensure!(class_info.total_issuance == Zero::zero(), Error::<T>::CannotDestroyClass);
+			ensure!(
+				class_info.total_issuance == Zero::zero(),
+				Error::<T>::CannotDestroyClass
+			);
 
 			let owner: T::AccountId = T::ModuleId::get().into_sub_account(class_id);
 			let data = class_info.data;
@@ -320,47 +284,47 @@ decl_module! {
 			// transfer all free from origin to dest
 			orml_nft::Module::<T>::destroy_class(&who, class_id)?;
 
-			Self::deposit_event(RawEvent::DestroyedClass(who, class_id, dest));
+			Self::deposit_event(Event::DestroyedClass(who, class_id, dest));
+			Ok(().into())
 		}
 	}
-}
 
-impl<T: Config> Module<T> {
-	/// Ensured atomic.
-	#[transactional]
-	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
-		let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-		let data = class_info.data;
-		ensure!(
-			data.properties.0.contains(ClassProperty::Transferable),
-			Error::<T>::NonTransferable
-		);
+	impl<T: Config> Pallet<T> {
+		/// Ensured atomic.
+		#[transactional]
+		fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
+			let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+			let data = class_info.data;
+			ensure!(
+				data.properties.0.contains(ClassProperty::Transferable),
+				Error::<T>::NonTransferable
+			);
 
-		let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
-		ensure!(*from == token_info.owner, Error::<T>::NoPermission);
+			let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+			ensure!(*from == token_info.owner, Error::<T>::NoPermission);
 
-		orml_nft::Module::<T>::transfer(from, to, token)?;
+			orml_nft::Module::<T>::transfer(from, to, token)?;
 
-		Self::deposit_event(RawEvent::TransferredToken(from.clone(), to.clone(), token.0, token.1));
-
-		Ok(())
-	}
-}
-
-impl<T: Config> NFT<T::AccountId> for Module<T> {
-	type ClassId = ClassIdOf<T>;
-	type TokenId = TokenIdOf<T>;
-	type Balance = NFTBalance;
-
-	fn balance(who: &T::AccountId) -> Self::Balance {
-		orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u128
+			Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
+			Ok(())
+		}
 	}
 
-	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
-		orml_nft::Module::<T>::tokens(token.0, token.1).map(|t| t.owner)
-	}
+	impl<T: Config> NFT<T::AccountId> for Pallet<T> {
+		type ClassId = ClassIdOf<T>;
+		type TokenId = TokenIdOf<T>;
+		type Balance = NFTBalance;
 
-	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
-		Self::do_transfer(from, to, token)
+		fn balance(who: &T::AccountId) -> Self::Balance {
+			orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u128
+		}
+
+		fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
+			orml_nft::Module::<T>::tokens(token.0, token.1).map(|t| t.owner)
+		}
+
+		fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
+			Self::do_transfer(from, to, token)
+		}
 	}
 }

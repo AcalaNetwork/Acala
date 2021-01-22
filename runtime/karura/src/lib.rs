@@ -926,6 +926,7 @@ where
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			module_evm::SetEvmOrigin::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1195,14 +1196,12 @@ impl pallet_proxy::Config for Runtime {
 
 parameter_types! {
 	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
-	pub const RenVmPublickKey: [u8; 20] = hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"];
 	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
 impl ecosystem_renvm_bridge::Config for Runtime {
 	type Event = Event;
 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
-	type PublicKey = RenVmPublickKey;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
 }
@@ -1352,7 +1351,7 @@ construct_runtime!(
 		OrmlNFT: orml_nft::{Module, Storage},
 
 		// Acala Core
-		Prices: module_prices::{Module, Storage, Call, Event},
+		Prices: module_prices::{Module, Storage, Call, Event<T>},
 
 		// DEX
 		Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
@@ -1361,7 +1360,7 @@ construct_runtime!(
 		AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Loans: module_loans::{Module, Storage, Call, Event<T>},
 		Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event},
+		CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event<T>},
 		CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
 		EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 
@@ -1376,7 +1375,7 @@ construct_runtime!(
 		NFT: module_nft::{Module, Call, Event<T>},
 
 		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
 
 		// Smart contracts
 		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
@@ -1407,6 +1406,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
+	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
@@ -1668,6 +1668,7 @@ impl_runtime_apis! {
 			};
 
 			module_evm::Runner::<Runtime>::call(
+				from,
 				from,
 				to,
 				data,
