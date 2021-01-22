@@ -2,11 +2,11 @@ pub mod handler;
 pub mod storage_meter;
 
 use crate::{AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Module, Vicinity};
-use evm::CreateScheme;
+use evm::{CreateScheme, ExitError, ExitReason};
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
 	debug,
-	traits::{Currency, ExistenceRequirement},
+	traits::{Currency, ExistenceRequirement, Get},
 };
 use handler::Handler;
 use sha3::{Digest, Keccak256};
@@ -112,7 +112,15 @@ impl<T: Config> Runner<T> {
 
 				Handler::<T>::inc_nonce(address);
 
-				if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out, None) {
+				if let Err(_) = substate
+					.storage_meter
+					.charge((out.len() as u32).saturating_add(T::NewContractExtraBytes::get()))
+				{
+					create_info.exit_reason = ExitReason::Error(ExitError::OutOfGas);
+					return TransactionOutcome::Rollback(Ok(create_info));
+				}
+
+				if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out) {
 					create_info.exit_reason = e.into();
 					return TransactionOutcome::Rollback(Ok(create_info));
 				}

@@ -3,7 +3,7 @@
 use crate::{
 	precompiles::Precompiles,
 	runner::storage_meter::{StorageMeter, StorageMeterHandler},
-	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, ContractInfo, Error, Event, Log,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
 	MergeAccount, Module, Vicinity,
 };
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, ExternalOpcode, Opcode, Runtime, Stack, Transfer};
@@ -21,6 +21,9 @@ use sp_runtime::{
 	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
 };
 use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, rc::Rc, vec::Vec};
+
+/// Storage key size and storage value size.
+pub const STORAGE_SIZE: u32 = 64;
 
 pub struct Handler<'vicinity, 'config, 'meter, T: Config> {
 	pub vicinity: &'vicinity Vicinity,
@@ -168,16 +171,6 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 			ExistenceRequirement::AllowDeath,
 		)
 		.map_err(|_| ExitError::OutOfGas)
-	}
-
-	fn unreserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
-		let account_id = T::AddressMapping::get_account_id(&address);
-
-		if T::Currency::unreserve(&account_id, value).is_zero() {
-			Ok(())
-		} else {
-			Err(ExitError::Other("Unreserve failed".into()))
-		}
 	}
 
 	pub fn nonce(address: H160) -> U256 {
@@ -369,8 +362,37 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		if self.is_static {
 			return Err(ExitError::OutOfGas);
 		}
+		enum StorageChange {
+			None,
+			Added,
+			Removed,
+		}
 
-		<Module<T>>::set_storage(address, index, value)
+		let mut storage_change = StorageChange::None;
+
+		let default_value = H256::default();
+		let is_prev_value_default = Module::<T>::account_storages(address, index) == default_value;
+
+		if value == default_value {
+			if !is_prev_value_default {
+				storage_change = StorageChange::Removed;
+			}
+
+			AccountStorages::remove(address, index);
+		} else {
+			if is_prev_value_default {
+				storage_change = StorageChange::Added;
+			}
+
+			AccountStorages::insert(address, index, value);
+		}
+
+		match storage_change {
+			StorageChange::Added => self.storage_meter.charge(STORAGE_SIZE),
+			StorageChange::Removed => self.storage_meter.refund(STORAGE_SIZE),
+			_ => Ok(()),
+		}
+		.map_err(|_| ExitError::OutOfGas)
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) -> Result<(), ExitError> {
@@ -387,17 +409,13 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		let source = T::AddressMapping::get_account_id(&address);
 		let dest = T::AddressMapping::get_account_id(&target);
 
-		// unreserve deposit
-		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
-			if let Some(AccountInfo { .. }) = maybe_account_info.as_mut() {
-				self.unreserve(address, T::Currency::reserved_balance(&source))?;
-			}
+		let size = Module::<T>::remove_account(&address)?;
 
-			Ok(())
-		})?;
+		self.storage_meter
+			.refund(size.saturating_add(T::NewContractExtraBytes::get()))
+			.map_err(|_| ExitError::Other("RefundStorageError".into()))?;
 
-		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
-		Module::<T>::remove_account(&address)
+		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("MergeAccountError".into()))
 	}
 
 	fn create(
@@ -455,7 +473,11 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 							try_or_rollback!(gasometer.record_refund(substate.gasometer.refunded_gas()));
 
 							Handler::<T>::inc_nonce(address);
-							match <Module<T>>::on_contract_initialization(&address, origin, out, None) {
+							try_or_rollback!(substate
+								.storage_meter
+								.charge((out.len() as u32).saturating_add(T::NewContractExtraBytes::get()))
+								.map_err(|_| ExitError::OutOfGas));
+							match <Module<T>>::on_contract_initialization(&address, origin, out) {
 								Ok(()) => {
 									TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
 								}

@@ -3,6 +3,7 @@
 use super::*;
 use mock::*;
 
+use crate::runner::handler::Handler;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
 	bytes::{from_hex, to_hex},
@@ -13,13 +14,7 @@ use std::str::FromStr;
 
 /// Get additional storage of the contract.
 fn storage_usage(contract: EvmAddress) -> i32 {
-	Accounts::<Test>::get(contract).map_or(0, |account_info| {
-		account_info
-			.contract_info
-			.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
-				contract_info.total_storage_size()
-			})
-	}) as i32
+	AccountStorages::iter_prefix(contract).count() as i32
 }
 
 #[test]
@@ -35,46 +30,29 @@ fn fail_call_return_ok() {
 	});
 }
 
-// #[test]
-// fn should_calculate_contract_address() {
-// 	new_test_ext().execute_with(|| {
-// 		let addr =
-// H160::from_str("bec02ff0cbf20042a37d964c33e89f1a2be7f068").unwrap();
+#[test]
+fn should_calculate_contract_address() {
+	new_test_ext().execute_with(|| {
+		let addr = H160::from_str("bec02ff0cbf20042a37d964c33e89f1a2be7f068").unwrap();
 
-// 		let vicinity = Vicinity {
-// 			gas_price: U256::one(),
-// 			origin: addr,
-// 		};
+		assert_eq!(
+			Handler::<Test>::create_address(evm::CreateScheme::Legacy { caller: addr }),
+			H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap()
+		);
 
-// 		let config = <Test as Config>::config();
+		Handler::<Test>::inc_nonce(addr);
+		assert_eq!(
+			Handler::<Test>::create_address(evm::CreateScheme::Legacy { caller: addr }),
+			H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap()
+		);
 
-// 		let handler = crate::runner::handler::Handler::<Test>::new_with_precompile(
-// 			&vicinity,
-// 			10000usize,
-// 			10000,
-// 			false,
-// 			config,
-// 			<Test as Config>::Precompiles::execute,
-// 		);
-
-// 		assert_eq!(
-// 			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
-// 			H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap()
-// 		);
-
-// 		handler.inc_nonce(addr);
-// 		assert_eq!(
-// 			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
-// 			H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap()
-// 		);
-
-// 		handler.inc_nonce(addr);
-// 		assert_eq!(
-// 			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
-// 			H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap()
-// 		);
-// 	});
-// }
+		Handler::<Test>::inc_nonce(addr);
+		assert_eq!(
+			Handler::<Test>::create_address(evm::CreateScheme::Legacy { caller: addr }),
+			H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap()
+		);
+	});
+}
 
 #[test]
 fn should_create_and_call_contract() {
