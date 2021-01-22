@@ -1104,7 +1104,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(86665),
-				used_storage: U256::from(128)
+				used_storage: 128
 			}
 		);
 
@@ -1126,7 +1126,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(173096),
-				used_storage: U256::from(192)
+				used_storage: 192
 			}
 		);
 		assert_eq!(balance(alice()), INITIAL_BALANCE);
@@ -1150,7 +1150,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Error(ExitError::Other("OutOfStorageLimit".into())),
 				output: vec![],
 				used_gas: U256::from(86665),
-				used_storage: U256::from(0)
+				used_storage: 0
 			}
 		);
 		assert_eq!(balance(alice()), INITIAL_BALANCE);
@@ -1172,7 +1172,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(86665),
-				used_storage: U256::from(128)
+				used_storage: 128
 			}
 		);
 		assert_eq!(
@@ -1199,7 +1199,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(71665),
-				used_storage: U256::from(64)
+				used_storage: 64
 			}
 		);
 		assert_eq!(
