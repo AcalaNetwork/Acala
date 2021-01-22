@@ -55,7 +55,7 @@ where
 		match action {
 			Action::GetPrice => {
 				let key = input.currency_id_at(1)?;
-				let value = Oracle::get_no_op(&key).ok_or(ExitError::Other("no data".into()))?;
+				let value = Oracle::get_no_op(&key).ok_or_else(|| ExitError::Other("no data".into()))?;
 				Ok((ExitSucceed::Returned, vec_u8_from_timestamped(value), 0))
 			}
 			Action::Unknown => Err(ExitError::Other("unknown action".into())),
