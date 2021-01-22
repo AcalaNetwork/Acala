@@ -6,10 +6,7 @@ use crate::{
 	AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes, Config, ContractInfo, Error, Event, Log,
 	MergeAccount, Module, Vicinity,
 };
-use evm::{
-	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
-	Transfer,
-};
+use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, ExternalOpcode, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
@@ -537,7 +534,6 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 				}
 
 				try_or_rollback!(gasometer.record_cost(target_gas));
-				let pre_storage_usage = Module::<T>::storage_usage(context.caller);
 
 				if let Some(ret) = T::Precompiles::execute(code_address, &input, Some(target_gas), &context) {
 					debug::debug!(

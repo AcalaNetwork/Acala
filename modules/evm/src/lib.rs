@@ -683,17 +683,6 @@ impl<T: Config> Module<T> {
 		})
 	}
 
-	/// Get additional storage of the contract.
-	fn storage_usage(contract: EvmAddress) -> u32 {
-		Accounts::<T>::get(contract).map_or(0, |account_info| {
-			account_info
-				.contract_info
-				.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
-					contract_info.total_storage_size()
-				})
-		})
-	}
-
 	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
 			account_info

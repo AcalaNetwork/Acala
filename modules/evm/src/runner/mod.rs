@@ -1,22 +1,17 @@
 pub mod handler;
 pub mod storage_meter;
 
-use crate::{
-	precompiles::Precompiles, AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Module, Vicinity,
-};
-use evm::{CreateScheme, ExitError, ExitReason};
+use crate::{AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Module, Vicinity};
+use evm::CreateScheme;
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
 	debug,
-	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
+	traits::{Currency, ExistenceRequirement},
 };
 use handler::Handler;
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::{
-	traits::{Saturating, Zero},
-	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
-};
+use sp_runtime::{traits::Zero, DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 #[derive(Default)]
@@ -185,7 +180,7 @@ impl<T: Config> Runner<T> {
 				let (reason, out) =
 					substate.execute(source, target, U256::from(value.saturated_into::<u128>()), code, input);
 
-				let mut call_info = CallInfo {
+				let call_info = CallInfo {
 					exit_reason: reason.clone(),
 					output: out,
 					used_gas: U256::from(substate.used_gas()),

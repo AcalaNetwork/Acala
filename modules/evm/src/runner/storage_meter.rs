@@ -1,5 +1,3 @@
-use evm::ExitError;
-use frame_support::RuntimeDebug;
 use sp_core::H160;
 use sp_runtime::{DispatchError, DispatchResult};
 
@@ -66,7 +64,7 @@ impl<'handler> StorageMeter<'handler> {
 
 	pub fn charge(&mut self, storage: u32) -> DispatchResult {
 		self.handle(|this| {
-			let used = this.used.saturating_add(this.limit);
+			let used = this.used.saturating_add(storage);
 			if this.limit < used.saturating_sub(this.refunded) {
 				this.result = Err(this.out_of_storage_error());
 				return this.result;
@@ -136,48 +134,61 @@ mod tests {
 	use super::*;
 	use frame_support::assert_ok;
 
-	const ALICE: H160 = H160::from_low_u64_be(123);
-	const CONTRACT: H160 = H160::from_low_u64_be(456);
+	const ALICE: H160 = H160::repeat_byte(11);
+	const CONTRACT: H160 = H160::repeat_byte(22);
 
 	#[derive(Default)]
 	struct DummyHandler {
-		pub storage: std::collections::BTreeMap<H160, u32>,
+		pub storages: std::collections::BTreeMap<H160, u32>,
 		pub reserves: std::collections::BTreeMap<H160, u32>,
 	}
 
 	impl StorageMeterHandler for DummyHandler {
 		fn reserve_storage(&mut self, limit: u32) -> DispatchResult {
-			self.storage
-				.get_mut(&ALICE)
-				.checked_sub(limit)
-				.ok_or(|_| "error".into())?;
-			self.reserves.get_mut(&ALICE) += limit;
+			if limit == 0 {
+				return Ok(());
+			}
+			let val = self.storages.get_mut(&ALICE).ok_or("error")?;
+			*val = val.checked_sub(limit).ok_or("error")?;
+			if let Some(v) = self.reserves.get_mut(&ALICE) {
+				*v += limit;
+			} else {
+				self.reserves.insert(ALICE, limit);
+			}
 			Ok(())
 		}
 
 		fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> DispatchResult {
-			if used > refunded {
-				let diff = used - refunded;
-				self.reserves
-					.get_mut(&ALICE)
-					.checked_sub(limit)
-					.ok_or(|_| "error".into())?;
-				self.storage.get_mut(&ALICE) += limit - diff;
+			let diff = limit + refunded - used;
+			if diff == 0 {
+				return Ok(());
+			}
+			let val = self.reserves.get_mut(&ALICE).ok_or("error")?;
+			*val = val.checked_sub(diff).ok_or("error")?;
+			if let Some(v) = self.storages.get_mut(&ALICE) {
+				*v += diff;
 			} else {
-				self.storage.get_mut(&ALICE) += limit + refunded - used;
+				self.storages.insert(ALICE, diff);
 			}
 			Ok(())
 		}
 
 		fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
+			if used == refunded {
+				return Ok(());
+			}
+			let alice = self.reserves.get_mut(&ALICE).ok_or("error")?;
 			if used > refunded {
-				let diff = used - refunded;
-				self.reserves
-					.get_mut(&ALICE)
-					.checked_sub(diff)
-					.ok_or(|_| "error".into())?;
+				*alice = alice.checked_sub(used - refunded).ok_or("error")?;
 			} else {
-				self.reserves.get_mut(&ALICE) += refunded - used;
+				*alice = alice.checked_add(refunded - used).ok_or("error")?;
+			}
+
+			let contract_val = self.reserves.get_mut(&contract).ok_or("error")?;
+			if used > refunded {
+				*contract_val = contract_val.checked_add(used - refunded).ok_or("error")?;
+			} else {
+				*contract_val = contract_val.checked_sub(refunded - used).ok_or("error")?;
 			}
 			Ok(())
 		}
@@ -191,7 +202,7 @@ mod tests {
 	fn test_storage_with_limit_zero() {
 		let mut handler = DummyHandler::default();
 
-		let mut storage_meter = StorageMeter::new(Box::new(handler), CONTRACT, 0).unwrap();
+		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), CONTRACT, 0).unwrap();
 		assert_eq!(storage_meter.available_storage(), 0);
 
 		// refund
@@ -204,9 +215,9 @@ mod tests {
 
 		assert_ok!(storage_meter.finish());
 
-		assert_eq!(handler.storages.get(ALICE).unwrap_or_default(), 0);
-		assert_eq!(handler.reserves.get(ALICE).unwrap_or_default(), 0);
-		assert_eq!(handler.storages.get(CONTRACT).unwrap_or_default(), 0);
-		assert_eq!(handler.reserves.get(CONTRACT).unwrap_or_default(), 0);
+		assert_eq!(handler.storages.get(&ALICE).cloned().unwrap_or_default(), 0);
+		assert_eq!(handler.reserves.get(&ALICE).cloned().unwrap_or_default(), 0);
+		assert_eq!(handler.storages.get(&CONTRACT).cloned().unwrap_or_default(), 0);
+		assert_eq!(handler.reserves.get(&CONTRACT).cloned().unwrap_or_default(), 0);
 	}
 }

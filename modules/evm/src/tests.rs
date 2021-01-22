@@ -11,6 +11,17 @@ use sp_core::{
 use sp_runtime::{traits::BadOrigin, AccountId32};
 use std::str::FromStr;
 
+/// Get additional storage of the contract.
+fn storage_usage(contract: EvmAddress) -> i32 {
+	Accounts::<Test>::get(contract).map_or(0, |account_info| {
+		account_info
+			.contract_info
+			.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
+				contract_info.total_storage_size()
+			})
+	}) as i32
+}
+
 #[test]
 fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
@@ -24,45 +35,46 @@ fn fail_call_return_ok() {
 	});
 }
 
-#[test]
-fn should_calculate_contract_address() {
-	new_test_ext().execute_with(|| {
-		let addr = H160::from_str("bec02ff0cbf20042a37d964c33e89f1a2be7f068").unwrap();
+// #[test]
+// fn should_calculate_contract_address() {
+// 	new_test_ext().execute_with(|| {
+// 		let addr =
+// H160::from_str("bec02ff0cbf20042a37d964c33e89f1a2be7f068").unwrap();
 
-		let vicinity = Vicinity {
-			gas_price: U256::one(),
-			origin: addr,
-		};
+// 		let vicinity = Vicinity {
+// 			gas_price: U256::one(),
+// 			origin: addr,
+// 		};
 
-		let config = <Test as Config>::config();
+// 		let config = <Test as Config>::config();
 
-		let handler = crate::runner::handler::Handler::<Test>::new_with_precompile(
-			&vicinity,
-			10000usize,
-			10000,
-			false,
-			config,
-			<Test as Config>::Precompiles::execute,
-		);
+// 		let handler = crate::runner::handler::Handler::<Test>::new_with_precompile(
+// 			&vicinity,
+// 			10000usize,
+// 			10000,
+// 			false,
+// 			config,
+// 			<Test as Config>::Precompiles::execute,
+// 		);
 
-		assert_eq!(
-			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap()
-		);
+// 		assert_eq!(
+// 			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
+// 			H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap()
+// 		);
 
-		handler.inc_nonce(addr);
-		assert_eq!(
-			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap()
-		);
+// 		handler.inc_nonce(addr);
+// 		assert_eq!(
+// 			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
+// 			H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap()
+// 		);
 
-		handler.inc_nonce(addr);
-		assert_eq!(
-			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap()
-		);
-	});
-}
+// 		handler.inc_nonce(addr);
+// 		assert_eq!(
+// 			handler.create_address(evm::CreateScheme::Legacy { caller: addr }),
+// 			H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap()
+// 		);
+// 	});
+// }
 
 #[test]
 fn should_create_and_call_contract() {
@@ -230,7 +242,7 @@ fn should_deploy_payable_contract() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- amount - (EVM::storage_usage(contract_address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+				- amount - (storage_usage(contract_address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(contract_address), amount);
 
@@ -251,8 +263,7 @@ fn should_deploy_payable_contract() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- 2 * amount - (EVM::storage_usage(contract_address) as u64
-				* <Test as Config>::StorageDepositPerByte::get())
+				- 2 * amount - (storage_usage(contract_address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(contract_address), 2 * amount);
 	});
@@ -405,7 +416,7 @@ fn contract_should_deploy_contracts() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- amount - (EVM::storage_usage(factory_contract_address) as u64
+				- amount - (storage_usage(factory_contract_address) as u64
 				* <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(factory_contract_address), amount);
@@ -462,8 +473,7 @@ fn contract_should_deploy_contracts_without_payable() {
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE
-				- (EVM::storage_usage(factory_contract_address) as u64
-					* <Test as Config>::StorageDepositPerByte::get())
+				- (storage_usage(factory_contract_address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
 	});
@@ -492,12 +502,11 @@ fn deploy_factory() {
 			Runner::<Test>::create(alice(), contract, 0, 12_000_000, 12_000_000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_gas.as_u64(), 95_203u64);
-		assert_eq!(result.used_storage.as_u64(), 64u64);
-		assert_eq!(result.used_storage.as_u64(), EVM::storage_usage(result.address) as u64);
+		assert_eq!(result.used_storage, 64);
+		assert_eq!(result.used_storage, storage_usage(result.address));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+			INITIAL_BALANCE - (storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 	});
 }
@@ -585,8 +594,7 @@ fn should_transfer_maintainer() {
 
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+			INITIAL_BALANCE - (storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Test as Config>::AddressMapping::get_account_id(&bob());
@@ -612,8 +620,7 @@ fn should_transfer_maintainer() {
 		);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE
-				- (EVM::storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+			INITIAL_BALANCE - (storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 	});
 }
@@ -662,7 +669,7 @@ fn should_deploy() {
 		let code_size = Accounts::<Test>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get()+code_size) as u64 * StorageDepositPerByte::get()));
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get() + code_size) as u64 * StorageDepositPerByte::get()));
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), DeploymentFee::get());
 
 		// call method `multiply` will work
@@ -913,11 +920,8 @@ fn storage_limit_should_work() {
 
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(reserved_balance(factory_contract_address), 0);
-		assert_eq!(result.used_storage.as_u64(), 0u64);
-		assert_eq!(
-			result.used_storage.as_u64(),
-			EVM::storage_usage(factory_contract_address) as u64
-		);
+		assert_eq!(result.used_storage, 0);
+		assert_eq!(result.used_storage, storage_usage(factory_contract_address));
 
 		// Factory.createContract(1)
 		let amount = 1000000000;
@@ -937,11 +941,8 @@ fn storage_limit_should_work() {
 			result.exit_reason,
 			ExitReason::Error(ExitError::Other("OutOfStorageLimit".into()))
 		);
-		assert_eq!(result.used_storage.as_u64(), 0u64);
-		assert_eq!(
-			result.used_storage.as_u64(),
-			EVM::storage_usage(factory_contract_address) as u64
-		);
+		assert_eq!(result.used_storage, 0);
+		assert_eq!(result.used_storage, storage_usage(factory_contract_address));
 
 		// Factory.createContract(1)
 		let amount = 1000000000;
@@ -958,11 +959,8 @@ fn storage_limit_should_work() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage.as_u64(), 128u64);
-		assert_eq!(
-			result.used_storage.as_u64(),
-			EVM::storage_usage(factory_contract_address) as u64
-		);
+		assert_eq!(result.used_storage, 128);
+		assert_eq!(result.used_storage, storage_usage(factory_contract_address));
 
 		// Factory.createContract(2)
 		let amount = 1000000000;
@@ -982,8 +980,8 @@ fn storage_limit_should_work() {
 			result.exit_reason,
 			ExitReason::Error(ExitError::Other("OutOfStorageLimit".into()))
 		);
-		assert_eq!(result.used_storage.as_u64(), 0u64);
-		assert_eq!(EVM::storage_usage(factory_contract_address) as u64, 128u64);
+		assert_eq!(result.used_storage, 0);
+		assert_eq!(storage_usage(factory_contract_address), 128);
 
 		// Factory.createContract(2)
 		let amount = 1000000000;
@@ -1000,7 +998,7 @@ fn storage_limit_should_work() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage.as_u64(), 128u64);
-		assert_eq!(EVM::storage_usage(factory_contract_address) as u64, 256u64);
+		assert_eq!(result.used_storage, 128);
+		assert_eq!(storage_usage(factory_contract_address), 256);
 	});
 }
