@@ -5,12 +5,13 @@ pub trait StorageMeterHandler {
 	fn reserve_storage(&mut self, limit: u32) -> DispatchResult;
 	fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> DispatchResult;
 
-	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult;
+	fn charge_storage(&mut self, from: &H160, contract: &H160, used: u32, refunded: u32) -> DispatchResult;
 
 	fn out_of_storage_error(&self) -> DispatchError;
 }
 
 pub struct StorageMeter<'handler> {
+	from: H160,
 	contract: H160,
 	limit: u32,
 	used: u32,
@@ -23,11 +24,13 @@ impl<'handler> StorageMeter<'handler> {
 	/// Create a new storage_meter with given storage limit.
 	pub fn new(
 		handler: Box<&'handler mut dyn StorageMeterHandler>,
+		from: H160,
 		contract: H160,
 		limit: u32,
 	) -> Result<Self, DispatchError> {
 		handler.reserve_storage(limit)?;
 		Ok(Self {
+			from,
 			contract,
 			limit,
 			used: 0,
@@ -40,9 +43,10 @@ impl<'handler> StorageMeter<'handler> {
 	pub fn child_meter<'a>(&'a mut self, contract: H160) -> Result<StorageMeter<'a>, DispatchError> {
 		self.handle(|this| {
 			let storage = this.available_storage();
+			let from = this.contract;
 			// can't make this.result = Err if `new` fails
 			// because some rust lifetime thing never happy
-			StorageMeter::<'a>::new(Box::new(this), contract, storage)
+			StorageMeter::<'a>::new(Box::new(this), from, contract, storage)
 		})
 	}
 
@@ -91,8 +95,9 @@ impl<'handler> StorageMeter<'handler> {
 	pub fn finish(mut self) -> DispatchResult {
 		self.handle(|this| {
 			if let Err(x) = (|| {
-				this.handler.charge_storage(&this.contract, this.used, this.refunded)?;
-				this.handler.unreserve_storage(this.limit, this.used, this.refunded)
+				this.handler.unreserve_storage(this.limit, this.used, this.refunded)?;
+				this.handler
+					.charge_storage(&this.from, &this.contract, this.used, this.refunded)
 			})() {
 				this.result = Err(x);
 				Err(x)
@@ -120,8 +125,8 @@ impl<'handler> StorageMeterHandler for StorageMeter<'handler> {
 		self.uncharge(limit.saturating_add(refunded).saturating_sub(used))
 	}
 
-	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
-		self.handler.charge_storage(contract, used, refunded)
+	fn charge_storage(&mut self, from: &H160, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
+		self.handler.charge_storage(from, contract, used, refunded)
 	}
 
 	fn out_of_storage_error(&self) -> DispatchError {
@@ -173,11 +178,11 @@ mod tests {
 			Ok(())
 		}
 
-		fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
+		fn charge_storage(&mut self, from: &H160, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
 			if used == refunded {
 				return Ok(());
 			}
-			let alice = self.reserves.get_mut(&ALICE).ok_or("error")?;
+			let alice = self.reserves.get_mut(&from).ok_or("error")?;
 			if used > refunded {
 				*alice = alice.checked_sub(used - refunded).ok_or("error")?;
 			} else {
@@ -202,7 +207,7 @@ mod tests {
 	fn test_storage_with_limit_zero() {
 		let mut handler = DummyHandler::default();
 
-		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), CONTRACT, 0).unwrap();
+		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), ALICE, CONTRACT, 0).unwrap();
 		assert_eq!(storage_meter.available_storage(), 0);
 
 		// refund

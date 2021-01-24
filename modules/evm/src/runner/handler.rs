@@ -10,7 +10,7 @@ use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, ExternalOpcode,
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
-	debug, ensure,
+	debug, require_transactional,
 	storage::{StorageDoubleMap, StorageMap},
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
@@ -53,7 +53,12 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				origin: vicinity.origin,
 				_marker: PhantomData,
 			};
-			let storage_meter = match StorageMeter::new(Box::new(&mut storage_meter_handler), contract, storage_limit) {
+			let storage_meter = match StorageMeter::new(
+				Box::new(&mut storage_meter_handler),
+				vicinity.origin,
+				contract,
+				storage_limit,
+			) {
 				Ok(x) => x,
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
 			};
@@ -251,7 +256,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return Capture::Exit($map_err(e)),
-				}
+					}
 			};
 		}
 
@@ -260,7 +265,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return TransactionOutcome::Rollback(Capture::Exit($map_err(e))),
-				}
+					}
 			};
 		}
 	};
@@ -662,26 +667,31 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 		Ok(())
 	}
 
-	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
+	#[require_transactional]
+	fn charge_storage(&mut self, from: &H160, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
 		if used == refunded {
 			return Ok(());
 		}
-		let user = T::AddressMapping::get_account_id(&self.origin);
+		let user = T::AddressMapping::get_account_id(from);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
 
-		let val = if used > refunded {
+		if used > refunded {
 			let storage = used - refunded;
 			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
 
-			T::Currency::repatriate_reserved(&user, &contract_acc, amount, BalanceStatus::Reserved)?
+			// repatriate_reserved requires beneficiary is an existing account but
+			// contract_acc could be a new account so we need to do
+			// unreserve/transfer/reserve
+			T::Currency::unreserve(&user, amount);
+			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
+			T::Currency::reserve(&contract_acc, amount)?;
 		} else {
 			let storage = refunded - used;
 			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
 
-			T::Currency::repatriate_reserved(&contract_acc, &user, amount, BalanceStatus::Reserved)?
+			// user can't be a dead account
+			T::Currency::repatriate_reserved(&contract_acc, &user, amount, BalanceStatus::Reserved)?;
 		};
-
-		ensure!(val.is_zero(), Error::<T>::UnreserveFailed);
 
 		Ok(())
 	}

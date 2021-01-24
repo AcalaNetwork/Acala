@@ -285,8 +285,6 @@ decl_error! {
 		NumOutOfBound,
 		/// Storage exceeds max code size
 		StorageExceedsStorageLimit,
-		/// Unreserve failed
-		UnreserveFailed,
 		/// Contract development is not enabled
 		ContractDevelopmentNotEnabled,
 		/// Contract development is already enabled

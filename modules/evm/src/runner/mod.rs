@@ -120,6 +120,8 @@ impl<T: Config> Runner<T> {
 					return TransactionOutcome::Rollback(Ok(create_info));
 				}
 
+				create_info.used_storage = substate.used_storage();
+
 				if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out) {
 					create_info.exit_reason = e.into();
 					return TransactionOutcome::Rollback(Ok(create_info));
