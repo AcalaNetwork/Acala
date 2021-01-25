@@ -1,7 +1,6 @@
 use frame_support::debug;
 use sp_core::H160;
 use sp_runtime::{DispatchError, DispatchResult};
-use sp_std::prelude::*;
 
 pub trait StorageMeterHandler {
 	fn reserve_storage(&mut self, limit: u32) -> DispatchResult;
@@ -19,14 +18,14 @@ pub struct StorageMeter<'handler> {
 	self_used: u32,
 	total_refunded: u32,
 	self_refunded: u32,
-	handler: Box<&'handler mut dyn StorageMeterHandler>,
+	handler: &'handler mut dyn StorageMeterHandler,
 	result: DispatchResult,
 }
 
 impl<'handler> StorageMeter<'handler> {
 	/// Create a new storage_meter with given storage limit.
 	pub fn new(
-		handler: Box<&'handler mut dyn StorageMeterHandler>,
+		handler: &'handler mut dyn StorageMeterHandler,
 		contract: H160,
 		limit: u32,
 	) -> Result<Self, DispatchError> {
@@ -48,12 +47,12 @@ impl<'handler> StorageMeter<'handler> {
 		})
 	}
 
-	pub fn child_meter<'a>(&'a mut self, contract: H160) -> Result<StorageMeter<'a>, DispatchError> {
+	pub fn child_meter(&mut self, contract: H160) -> Result<StorageMeter<'_>, DispatchError> {
 		self.handle(|this| {
 			let storage = this.available_storage();
 			// can't make this.result = Err if `new` fails
 			// because some rust lifetime thing never happy
-			StorageMeter::<'a>::new(Box::new(this), contract, storage)
+			StorageMeter::new(this, contract, storage)
 		})
 	}
 

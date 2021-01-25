@@ -112,9 +112,10 @@ impl<T: Config> Runner<T> {
 
 				Handler::<T>::inc_nonce(address);
 
-				if let Err(_) = substate
+				if substate
 					.storage_meter
 					.charge((out.len() as u32).saturating_add(T::NewContractExtraBytes::get()))
+					.is_err()
 				{
 					create_info.exit_reason = ExitReason::Error(ExitError::OutOfGas);
 					return TransactionOutcome::Rollback(Ok(create_info));

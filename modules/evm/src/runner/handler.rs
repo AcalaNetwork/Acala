@@ -53,7 +53,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				origin: vicinity.origin,
 				_marker: PhantomData,
 			};
-			let storage_meter = match StorageMeter::new(Box::new(&mut storage_meter_handler), contract, storage_limit) {
+			let storage_meter = match StorageMeter::new(&mut storage_meter_handler, contract, storage_limit) {
 				Ok(x) => x,
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
 			};
