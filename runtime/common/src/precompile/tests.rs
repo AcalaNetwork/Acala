@@ -92,10 +92,10 @@ fn oracle_precompile_should_work() {
 		U256::from_big_endian(&hex!("0300").to_vec()).to_big_endian(&mut input[32..64]);
 
 		// no price yet
-		assert_noop!(
-			OraclePrecompile::execute(&input, None, &context),
-			ExitError::Other("no data".into())
-		);
+		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(output, [0u8; 64]);
+		assert_eq!(used_gas, 0);
 
 		assert_ok!(Oracle::feed_value(ALICE, XBTC, price));
 		assert_eq!(
