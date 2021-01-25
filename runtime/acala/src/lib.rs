@@ -683,7 +683,10 @@ impl orml_authority::Config for Runtime {
 
 parameter_types! {
 	pub const CandidacyBond: Balance = 10 * DOLLARS;
-	pub const VotingBond: Balance = DOLLARS;
+	// 1 storage item created, key size is 32 bytes, value size is 16+16.
+	pub const VotingBondBase: Balance = deposit(1, 64);
+	// additional data per vote is 32 bytes (account id).
+	pub const VotingBondFactor: Balance = deposit(0, 32);
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 7;
@@ -697,13 +700,13 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type ChangeMembers = HomaCouncil;
 	type InitializeMembers = HomaCouncil;
 	type CandidacyBond = CandidacyBond;
-	type VotingBond = VotingBond;
+	type VotingBondBase = VotingBondBase;
+	type VotingBondFactor = VotingBondFactor;
 	type TermDuration = TermDuration;
 	type DesiredMembers = DesiredMembers;
 	type DesiredRunnersUp = DesiredRunnersUp;
 	type LoserCandidate = ();
 	type KickedMember = ();
-	type BadReport = ();
 	type WeightInfo = ();
 }
 
@@ -1068,7 +1071,7 @@ impl module_transaction_payment::Config for Runtime {
 impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type KillAccount = frame_system::CallKillAccount<Runtime>;
+	type KillAccount = frame_system::Consumer<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;

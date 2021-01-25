@@ -3,13 +3,13 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{EnsureOrigin, Get, Happened},
+	traits::{EnsureOrigin, Get},
 	transactional,
 	weights::Weight,
 	IterableStorageMap,
 };
 use frame_system::ensure_signed;
-use orml_traits::{MultiCurrency, RewardHandler};
+use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},

@@ -102,7 +102,7 @@ pub fn new_partial<RuntimeApi, Executor>(
 		(),
 		sp_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
-		(),
+		Option<sc_telemetry::TelemetrySpan>,
 	>,
 	sc_service::Error,
 >
@@ -113,7 +113,7 @@ where
 {
 	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
-	let (client, backend, keystore_container, task_manager) =
+	let (client, backend, keystore_container, task_manager, telemetry_span) =
 		sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
 	let client = Arc::new(client);
 
@@ -144,7 +144,7 @@ where
 		transaction_pool,
 		inherent_data_providers,
 		select_chain: (),
-		other: (),
+		other: telemetry_span,
 	})
 }
 
@@ -153,7 +153,7 @@ where
 ///
 /// This is the actual implementation that is abstract over the executor and the
 /// runtime api.
-#[sc_cli::prefix_logs_with("Parachain")]
+#[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl<RuntimeApi, Executor>(
 	parachain_config: Configuration,
 	collator_key: CollatorPair,
@@ -179,6 +179,7 @@ where
 		})?;
 
 	let params = new_partial(&parachain_config, false)?;
+	let telemetry_span = params.other;
 	params
 		.inherent_data_providers
 		.register_provider(sp_timestamp::InherentDataProvider)
@@ -222,7 +223,6 @@ where
 			acala_rpc::create_full(deps)
 		})
 	};
-	let telemetry_connection_sinks = sc_service::TelemetryConnectionSinks::default();
 
 	if parachain_config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
@@ -241,18 +241,18 @@ where
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
-		telemetry_connection_sinks,
 		config: parachain_config,
 		keystore: params.keystore_container.sync_keystore(),
 		backend: backend.clone(),
 		network: network.clone(),
 		network_status_sinks,
 		system_rpc_tx,
+		telemetry_span,
 	})?;
 
 	let announce_block = {
 		let network = network.clone();
-		Arc::new(move |hash, data| network.announce_block(hash, data))
+		Arc::new(move |hash, data| network.announce_block(hash, Some(data)))
 	};
 
 	if validator {

@@ -8,13 +8,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage,
-	traits::{Get, Happened},
-	transactional,
-};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, traits::Get, transactional};
 use frame_system::{self as system};
-use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
@@ -264,7 +260,7 @@ impl<T: Config> Module<T> {
 
 			// increase account ref if new position
 			if p.collateral.is_zero() && p.debit.is_zero() {
-				system::Module::<T>::inc_ref(who);
+				system::Module::<T>::inc_consumers(who);
 			}
 
 			p.collateral = new_collateral;
@@ -274,7 +270,7 @@ impl<T: Config> Module<T> {
 
 			if p.collateral.is_zero() && p.debit.is_zero() {
 				// decrease account ref if zero position
-				system::Module::<T>::dec_ref(who);
+				system::Module::<T>::dec_consumers(who);
 
 				// remove position storage if zero position
 				*may_be_position = None;

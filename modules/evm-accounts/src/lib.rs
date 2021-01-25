@@ -10,7 +10,7 @@
 use codec::Encode;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, ensure,
-	traits::{Currency, Happened, IsType, OnKilledAccount, ReservableCurrency, StoredMap},
+	traits::{Currency, HandleLifetime, IsType, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::Weight,
 	StorageMap,
@@ -55,7 +55,7 @@ pub trait Config: frame_system::Config {
 	type MergeAccount: MergeAccount<Self::AccountId>;
 
 	/// Handler to kill account in system.
-	type KillAccount: Happened<Self::AccountId>;
+	type KillAccount: HandleLifetime<Self::AccountId>;
 
 	/// Weight information for the extrinsics in this module.
 	type WeightInfo: WeightInfo;
@@ -119,11 +119,11 @@ decl_module! {
 
 			// check if the evm padded address already exists
 			let account_id = T::AddressMapping::get_account_id(&eth_address);
-			if frame_system::Module::<T>::is_explicit(&account_id) {
+			if frame_system::Account::<T>::contains_key(&account_id) {
 				// merge balance from `evm padded address` to `origin`
 				T::MergeAccount::merge_account(&account_id, &who)?;
 				// finally kill the account
-				T::KillAccount::happened(&account_id);
+				T::KillAccount::killed(&account_id);
 			}
 
 			Accounts::<T>::insert(eth_address, &who);
