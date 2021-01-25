@@ -53,12 +53,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				origin: vicinity.origin,
 				_marker: PhantomData,
 			};
-			let storage_meter = match StorageMeter::new(
-				Box::new(&mut storage_meter_handler),
-				vicinity.origin,
-				contract,
-				storage_limit,
-			) {
+			let storage_meter = match StorageMeter::new(Box::new(&mut storage_meter_handler), contract, storage_limit) {
 				Ok(x) => x,
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
 			};
@@ -643,6 +638,12 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			return Ok(());
 		}
 
+		debug::debug!(
+			target: "evm",
+			"reserve_storage: from {:?} limit {:?}",
+			self.origin, limit,
+		);
+
 		let user = T::AddressMapping::get_account_id(&self.origin);
 
 		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
@@ -657,6 +658,12 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			return Ok(());
 		}
 
+		debug::debug!(
+			target: "evm",
+			"unreserve_storage: from {:?} used {:?} refunded {:?} unused {:?}",
+			self.origin, used, refunded, unused
+		);
+
 		let user = T::AddressMapping::get_account_id(&self.origin);
 		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
 
@@ -668,11 +675,18 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 	}
 
 	#[require_transactional]
-	fn charge_storage(&mut self, from: &H160, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
+	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
 		if used == refunded {
 			return Ok(());
 		}
-		let user = T::AddressMapping::get_account_id(from);
+
+		debug::debug!(
+			target: "evm",
+			"charge_storage: from {:?} contract {:?} used {:?} refunded {:?}",
+			&self.origin, contract, used, refunded
+		);
+
+		let user = T::AddressMapping::get_account_id(&self.origin);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
 
 		if used > refunded {

@@ -14,7 +14,14 @@ use std::str::FromStr;
 
 /// Get additional storage of the contract.
 fn storage_usage(contract: EvmAddress) -> i32 {
-	AccountStorages::iter_prefix(contract).count() as i32
+	let storages = AccountStorages::iter_prefix(contract).count() as u32 * crate::runner::handler::STORAGE_SIZE;
+	let code_hash = Accounts::<Test>::get(&contract)
+		.unwrap()
+		.contract_info
+		.unwrap()
+		.code_hash;
+	let code_size = CodeInfos::get(&code_hash).unwrap().code_size;
+	(storages + code_size) as i32
 }
 
 #[test]
@@ -155,7 +162,9 @@ fn call_reverts_with_message() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		assert_eq!(balance(alice()), INITIAL_BALANCE);
+		let alice_balance = INITIAL_BALANCE - 323 * <Test as Config>::StorageDepositPerByte::get();
+
+		assert_eq!(balance(alice()), alice_balance);
 
 		let contract_address = result.address;
 
@@ -175,7 +184,7 @@ fn call_reverts_with_message() {
 			<Test as Config>::config(),
 		).unwrap();
 
-		assert_eq!(balance(alice()), INITIAL_BALANCE);
+		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
 		assert_eq!(
 			to_hex(&result.output, true),
@@ -436,7 +445,10 @@ fn contract_should_deploy_contracts_without_payable() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(balance(alice()), INITIAL_BALANCE);
+
+		let alice_balance = INITIAL_BALANCE - 464 * <Test as Config>::StorageDepositPerByte::get();
+
+		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.address;
 
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -456,10 +468,10 @@ fn contract_should_deploy_contracts_without_payable() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
+		assert_eq!(result.used_storage, 290);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE
-				- (storage_usage(factory_contract_address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+			alice_balance - (result.used_storage as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
 	});
@@ -484,15 +496,13 @@ fn deploy_factory() {
 	// }
 	let contract = from_hex("0x608060405234801561001057600080fd5b5060405161001d90610121565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663c29855786040518163ffffffff1660e01b815260040160206040518083038186803b1580156100e057600080fd5b505afa1580156100f4573d6000803e3d6000fd5b505050506040513d602081101561010a57600080fd5b81019080805190602001909291905050505061012d565b60a58061017983390190565b603e8061013b6000396000f3fe6080604052600080fdfea265627a7a7231582064177030ee644a03aaf8d65027df9e0331c8bc4b161de25bfb8aa3142848e0f864736f6c634300051100326080604052348015600f57600080fd5b5060878061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336049565b6040518082815260200191505060405180910390f35b6000607b90509056fea265627a7a7231582031e5a4abae00962cfe9875df1b5b0d3ce6624e220cb8c714a948794fcddb6b4f64736f6c63430005110032").unwrap();
 	new_test_ext().execute_with(|| {
-		let result =
-			Runner::<Test>::create(alice(), contract, 0, 12_000_000, 12_000_000, <Test as Config>::config()).unwrap();
+		let result = Runner::<Test>::create(alice(), contract, 0, 2_000_000, 5000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_gas.as_u64(), 95_203u64);
-		assert_eq!(result.used_storage, 64);
-		assert_eq!(result.used_storage, storage_usage(result.address));
+		assert_eq!(result.used_storage, 461);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - (storage_usage(result.address) as u64 * <Test as Config>::StorageDepositPerByte::get())
+			INITIAL_BALANCE - (result.used_storage as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 	});
 }

@@ -4269,6 +4269,7 @@ name = "module-evm"
 version = "0.7.0"
 dependencies = [
  "acala-primitives",
+ "env_logger",
  "evm",
  "evm-gasometer",
  "evm-runtime",
