@@ -1,6 +1,7 @@
 use frame_support::debug;
 use sp_core::H160;
 use sp_runtime::{DispatchError, DispatchResult};
+use sp_std::prelude::*;
 
 pub trait StorageMeterHandler {
 	fn reserve_storage(&mut self, limit: u32) -> DispatchResult;
