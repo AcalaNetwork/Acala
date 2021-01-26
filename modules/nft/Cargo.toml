@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.101", optional = true }
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
-enumflags2 = { version = "0.6.3", features = ["serde"] }
+enumflags2 = { version = "0.6.3" }
 sp-std = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
@@ -20,7 +20,7 @@ pallet-timestamp = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
-sp-io = { version = "2.0.0", default-features = false }
+sp-io = { version = "2.0.0" }
 pallet-balances = { version = "2.0.0" }
 pallet-utility = { version = "2.0.0", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
@@ -41,4 +41,5 @@ std = [
 	"orml-traits/std",
 	"orml-nft/std",
 	"pallet-timestamp/std",
+	"enumflags2/serde"
 ]
