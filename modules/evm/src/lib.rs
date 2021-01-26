@@ -34,7 +34,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H256, U256};
 use sp_runtime::{
-	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto},
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
@@ -140,21 +140,11 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type WeightInfo: WeightInfo;
 }
 
-/// Storage key size and storage value size.
-pub const STORAGE_SIZE: u32 = 64;
-
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 pub struct ContractInfo {
-	pub storage_count: u32,
 	pub code_hash: H256,
 	pub maintainer: EvmAddress,
 	pub deployed: bool,
-}
-
-impl ContractInfo {
-	pub fn total_storage_size(&self) -> u32 {
-		self.storage_count.saturating_mul(STORAGE_SIZE)
-	}
 }
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
@@ -225,7 +215,7 @@ decl_storage! {
 				);
 
 				if !account.code.is_empty() { // if code len > 0 then it's a contract
-					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
+					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone()).expect("Genesis contract shouldn't fail");
 
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
@@ -295,8 +285,6 @@ decl_error! {
 		NumOutOfBound,
 		/// Storage exceeds max code size
 		StorageExceedsStorageLimit,
-		/// Unreserve failed
-		UnreserveFailed,
 		/// Contract development is not enabled
 		ContractDevelopmentNotEnabled,
 		/// Contract development is already enabled
@@ -305,6 +293,8 @@ decl_error! {
 		ContractAlreadyDeployed,
 		/// Contract exceeds max code size
 		ContractExceedsMaxCodeSize,
+		/// Storage usage exceeds storage limit
+		OutOfStorage,
 	}
 }
 
@@ -526,7 +516,9 @@ decl_module! {
 
 impl<T: Config> Module<T> {
 	/// Remove an account.
-	pub fn remove_account(address: &EvmAddress) -> Result<(), ExitError> {
+	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
+		let mut size = 0u32;
+
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
@@ -535,6 +527,7 @@ impl<T: Config> Module<T> {
 		{
 			CodeInfos::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
+					size = code_info.code_size;
 					code_info.ref_count = code_info.ref_count.saturating_sub(1);
 					if code_info.ref_count == 0 {
 						Codes::remove(&contract_info.code_hash);
@@ -547,7 +540,7 @@ impl<T: Config> Module<T> {
 		<Accounts<T>>::remove(address);
 		AccountStorages::remove_prefix(address);
 
-		Ok(())
+		Ok(size)
 	}
 
 	/// Get the account basic in EVM format.
@@ -584,22 +577,15 @@ impl<T: Config> Module<T> {
 	/// Handler on new contract initialization.
 	///
 	/// - Create new account for the contract.
-	///   - For contracts initialized in genesis block, `storage_count` param
-	///     needed to be provided.
-	///   - For contracts initialized via dispatch calls, storage count would be
-	///     read from initialized account storages.
 	/// - Update codes info.
 	/// - Save `code` if not saved yet.
 	pub fn on_contract_initialization(
 		address: &EvmAddress,
 		maintainer: &EvmAddress,
 		code: Vec<u8>,
-		storage_count: Option<u32>,
 	) -> Result<(), ExitError> {
 		let code_hash = code_hash(&code.as_slice());
-		let storage_count = storage_count.unwrap_or_else(|| AccountStorages::iter_prefix(address).count() as u32);
 		let contract_info = ContractInfo {
-			storage_count,
 			code_hash,
 			maintainer: *maintainer,
 			#[cfg(feature = "with-ethereum-compatibility")]
@@ -638,64 +624,6 @@ impl<T: Config> Module<T> {
 		Ok(())
 	}
 
-	/// Set account storage.
-	pub fn set_storage(address: EvmAddress, index: H256, value: H256) -> Result<(), ExitError> {
-		enum StorageChange {
-			None,
-			Added,
-			Removed,
-		}
-
-		let mut storage_change = StorageChange::None;
-
-		let default_value = H256::default();
-		let is_prev_value_default = Self::account_storages(address, index) == default_value;
-
-		if value == default_value {
-			if !is_prev_value_default {
-				storage_change = StorageChange::Removed;
-			}
-
-			AccountStorages::remove(address, index);
-		} else {
-			if is_prev_value_default {
-				storage_change = StorageChange::Added;
-			}
-
-			AccountStorages::insert(address, index, value);
-		}
-
-		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
-			if let Some(AccountInfo {
-				contract_info: Some(contract_info),
-				..
-			}) = maybe_account_info.as_mut()
-			{
-				match storage_change {
-					StorageChange::Added => {
-						contract_info.storage_count = contract_info.storage_count.saturating_add(1);
-					}
-					StorageChange::Removed => {
-						contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
-					}
-					_ => (),
-				}
-			}
-			Ok(())
-		})
-	}
-
-	/// Get additional storage of the contract.
-	fn storage_usage(contract: EvmAddress) -> u32 {
-		Accounts::<T>::get(contract).map_or(0, |account_info| {
-			account_info
-				.contract_info
-				.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
-					contract_info.total_storage_size()
-				})
-		})
-	}
-
 	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
 			account_info
@@ -732,14 +660,6 @@ impl<T: Config> Module<T> {
 			{
 				if let Some(maintainer) = maintainer {
 					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
-
-					let from = T::AddressMapping::get_account_id(&maintainer);
-					let to = T::AddressMapping::get_account_id(&contract);
-					let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-					let deposit_amount: BalanceOf<T> = T::StorageDepositPerByte::get()
-						.saturating_mul(T::NewContractExtraBytes::get().saturating_add(code_size).into());
-					T::Currency::transfer(&from, &to, deposit_amount, ExistenceRequirement::AllowDeath)?;
-					T::Currency::reserve(&to, deposit_amount)?;
 				}
 				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 				contract_info.deployed = true;
