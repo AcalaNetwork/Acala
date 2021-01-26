@@ -1282,7 +1282,7 @@ fn test_evm_module() {
 					Origin::signed(alice_account_id()),
 					bytecode,
 					0,
-					u32::MAX,
+					u64::MAX,
 					u32::MAX
 				));
 
