@@ -128,8 +128,12 @@ impl<'handler> StorageMeter<'handler> {
 			if let Err(x) = (|| {
 				this.handler
 					.charge_storage(&this.contract, this.self_used, this.self_refunded)?;
-				let new_limit =
-					this.limit + this.self_used + this.total_refunded - this.total_used - this.self_refunded;
+				let new_limit = this
+					.limit
+					.saturating_add(this.self_used)
+					.saturating_add(this.total_refunded)
+					.saturating_sub(this.total_used)
+					.saturating_sub(this.self_refunded);
 				this.handler
 					.unreserve_storage(new_limit, this.self_used, this.self_refunded)
 			})() {
