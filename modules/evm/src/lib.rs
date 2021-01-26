@@ -26,7 +26,7 @@ use frame_support::{
 	weights::{Pays, PostDispatchInfo, Weight},
 	RuntimeDebug,
 };
-use frame_system::{ensure_signed, EnsureOneOf, EnsureRoot, EnsureSigned};
+use frame_system::{ensure_root, ensure_signed, EnsureOneOf, EnsureRoot, EnsureSigned};
 use orml_traits::account::MergeAccount;
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
@@ -339,6 +339,39 @@ decl_module! {
 			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 
 			let info = Runner::<T>::call(source, source, target, input, value, gas_limit, storage_limit, T::config())?;
+
+			if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Executed(target));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
+			}
+
+			let used_gas: u32 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
+		}
+
+		#[weight = T::GasToWeight::convert(*gas_limit)]
+		pub fn scheduled_call(
+			origin,
+			from: EvmAddress,
+			target: EvmAddress,
+			input: Vec<u8>,
+			value: BalanceOf<T>,
+			gas_limit: u32,
+			storage_limit: u32,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+
+			let from_account = T::AddressMapping::get_account_id(&from);
+			// unreserve the deposit for gas_limit and storage_limit
+			let total_fee = T::StorageDepositPerByte::get().saturating_mul(storage_limit.into()).saturating_add(gas_limit.into());
+			T::Currency::unreserve(&from_account, total_fee);
+
+			let info = Runner::<T>::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Module::<T>::deposit_event(Event::<T>::Executed(target));

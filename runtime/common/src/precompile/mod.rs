@@ -15,10 +15,12 @@ use sp_std::{marker::PhantomData, prelude::*};
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
+pub mod schedule_call;
 pub mod state_rent;
 
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
+pub use schedule_call::ScheduleCallPrecompile;
 pub use state_rent::StateRentPrecompile;
 
 pub type EthereumPrecompiles = (
@@ -28,21 +30,35 @@ pub type EthereumPrecompiles = (
 	module_evm::precompiles::Identity,
 );
 
-pub struct AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile>(
+pub struct AllPrecompiles<
+	PrecompileCallerFilter,
+	MultiCurrencyPrecompile,
+	NFTPrecompile,
+	StateRentPrecompile,
+	ScheduleCallPrecompile,
+>(
 	PhantomData<(
 		PrecompileCallerFilter,
 		MultiCurrencyPrecompile,
 		NFTPrecompile,
 		StateRentPrecompile,
+		ScheduleCallPrecompile,
 	)>,
 );
 
-impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile> Precompiles
-	for AllPrecompiles<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile>
-where
+impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile, ScheduleCallPrecompile>
+	Precompiles
+	for AllPrecompiles<
+		PrecompileCallerFilter,
+		MultiCurrencyPrecompile,
+		NFTPrecompile,
+		StateRentPrecompile,
+		ScheduleCallPrecompile,
+	> where
 	MultiCurrencyPrecompile: Precompile,
 	NFTPrecompile: Precompile,
 	StateRentPrecompile: Precompile,
+	ScheduleCallPrecompile: Precompile,
 	PrecompileCallerFilter: PrecompileCallerFilterT,
 {
 	#[allow(clippy::type_complexity)]
@@ -64,6 +80,8 @@ where
 				Some(NFTPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 2) {
 				Some(StateRentPrecompile::execute(input, target_gas, context))
+			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 3) {
+				Some(ScheduleCallPrecompile::execute(input, target_gas, context))
 			} else {
 				None
 			}
@@ -87,8 +105,13 @@ mod tests {
 		}
 	}
 
-	pub type WithSystemContractFilter =
-		AllPrecompiles<crate::SystemContractsFilter, DummyPrecompile, DummyPrecompile, DummyPrecompile>;
+	pub type WithSystemContractFilter = AllPrecompiles<
+		crate::SystemContractsFilter,
+		DummyPrecompile,
+		DummyPrecompile,
+		DummyPrecompile,
+		DummyPrecompile,
+	>;
 
 	#[test]
 	fn precompile_filter_works_on_acala_precompiles() {

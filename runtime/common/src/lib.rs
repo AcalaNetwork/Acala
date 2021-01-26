@@ -22,7 +22,9 @@ use sp_runtime::{
 use static_assertions::const_assert;
 
 pub mod precompile;
-pub use precompile::{AllPrecompiles, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile};
+pub use precompile::{
+	AllPrecompiles, MultiCurrencyPrecompile, NFTPrecompile, ScheduleCallPrecompile, StateRentPrecompile,
+};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
