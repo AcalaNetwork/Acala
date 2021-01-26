@@ -110,16 +110,9 @@ fn acala_genesis(
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
-	let airdrop_accounts = {
-		let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-accounts.json")[..];
-		let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
-			serde_json::from_slice(airdrop_accounts_json).unwrap();
-		airdrop_accounts
-			.into_iter()
-			.filter(|(_, currency_id, _)| *currency_id == AirDropCurrencyId::ACA)
-			.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
-			.collect::<Vec<_>>()
-	};
+
+	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-ACA.json")[..];
+	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
