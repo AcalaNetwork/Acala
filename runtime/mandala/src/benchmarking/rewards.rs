@@ -1,6 +1,5 @@
 use crate::{AccumulatePeriod, CollateralCurrencyIds, Rewards, Runtime, System};
 
-use frame_support::storage::StorageMap;
 use frame_support::traits::OnInitialize;
 use module_incentives::PoolId;
 use orml_benchmarking::runtime_benchmarks;

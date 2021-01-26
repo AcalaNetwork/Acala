@@ -5,9 +5,9 @@ use super::*;
 use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
+use primitive_types::{H160, H256};
 use primitives::mocks::MockAddressMapping;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
-use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -125,9 +125,9 @@ pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Bala
 
 pub struct GasToWeight;
 
-impl Convert<u32, u64> for GasToWeight {
-	fn convert(a: u32) -> u64 {
-		a as u64
+impl Convert<u64, u64> for GasToWeight {
+	fn convert(a: u64) -> u64 {
+		a
 	}
 }
 

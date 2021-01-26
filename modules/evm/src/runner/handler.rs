@@ -15,8 +15,8 @@ use frame_support::{
 	storage::{StorageDoubleMap, StorageMap},
 	traits::{Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
+use primitive_types::{H160, H256, U256};
 use sha3::{Digest, Keccak256};
-use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{One, UniqueSaturatedInto, Zero},
 	SaturatedConversion, TransactionOutcome,
@@ -28,13 +28,12 @@ pub struct Handler<'vicinity, 'config, T: Config> {
 	pub config: &'config EvmRuntimeConfig,
 	pub gasometer: Gasometer<'config>,
 	pub storagemeter: Storagemeter,
-	pub precompile:
-		fn(H160, &[u8], Option<usize>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
+	pub precompile: fn(H160, &[u8], Option<u64>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, u64), ExitError>>,
 	pub is_static: bool,
 	pub _marker: PhantomData<T>,
 }
 
-fn l64(gas: usize) -> usize {
+fn l64(gas: u64) -> u64 {
 	gas - gas / 64
 }
 
@@ -42,16 +41,11 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	/// Create a new handler with given vicinity.
 	pub fn new_with_precompile(
 		vicinity: &'vicinity Vicinity,
-		gas_limit: usize,
+		gas_limit: u64,
 		storage_limit: u32,
 		is_static: bool,
 		config: &'config EvmRuntimeConfig,
-		precompile: fn(
-			H160,
-			&[u8],
-			Option<usize>,
-			&Context,
-		) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
+		precompile: fn(H160, &[u8], Option<u64>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, u64), ExitError>>,
 	) -> Self {
 		Self {
 			vicinity,
@@ -65,11 +59,11 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	}
 
 	/// Get used gas for the current executor, given the price.
-	pub fn used_gas(&self) -> usize {
+	pub fn used_gas(&self) -> u64 {
 		self.gasometer.total_used_gas()
 			- min(
 				self.gasometer.total_used_gas() / 2,
-				self.gasometer.refunded_gas() as usize,
+				self.gasometer.refunded_gas() as u64,
 			)
 	}
 
@@ -213,7 +207,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return Capture::Exit($map_err(e)),
-					}
+				}
 			};
 		}
 
@@ -222,7 +216,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return TransactionOutcome::Rollback(Capture::Exit($map_err(e))),
-					}
+				}
 			};
 		}
 	};
@@ -361,7 +355,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		scheme: CreateScheme,
 		value: U256,
 		init_code: Vec<u8>,
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
 		debug::debug!(
 			target: "evm",
@@ -441,7 +435,7 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		code_address: H160,
 		transfer: Option<Transfer>,
 		input: Vec<u8>,
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		is_static: bool,
 		context: Context,
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {

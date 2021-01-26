@@ -43,8 +43,6 @@ fn feed_price<T: Config>(currency_id: CurrencyId, price: Price) -> Result<(), &'
 }
 
 benchmarks! {
-	_ { }
-
 	call_emergency_shutdown {
 		let u in 0 .. 1000;
 

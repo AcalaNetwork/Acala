@@ -38,7 +38,7 @@ fn should_calculate_contract_address() {
 
 		let handler = crate::runner::handler::Handler::<Test>::new_with_precompile(
 			&vicinity,
-			10000usize,
+			10000,
 			10000,
 			false,
 			config,

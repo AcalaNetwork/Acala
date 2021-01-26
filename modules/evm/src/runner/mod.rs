@@ -11,8 +11,8 @@ use frame_support::{
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use handler::Handler;
+use primitive_types::{H160, H256, U256};
 use sha3::{Digest, Keccak256};
-use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{Saturating, Zero},
 	DispatchError, SaturatedConversion, TransactionOutcome,
@@ -29,7 +29,7 @@ impl<T: Config> Runner<T> {
 		source: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		assigned_address: Option<H160>,
 		salt: Option<H256>,
@@ -52,7 +52,7 @@ impl<T: Config> Runner<T> {
 
 		let mut substate = Handler::<T>::new_with_precompile(
 			&vicinity,
-			gas_limit as usize,
+			gas_limit,
 			storage_limit,
 			false,
 			config,
@@ -192,7 +192,7 @@ impl<T: Config> Runner<T> {
 		target: H160,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
@@ -214,7 +214,7 @@ impl<T: Config> Runner<T> {
 
 		let mut substate = Handler::<T>::new_with_precompile(
 			&vicinity,
-			gas_limit as usize,
+			gas_limit,
 			storage_limit,
 			false,
 			config,
@@ -293,7 +293,7 @@ impl<T: Config> Runner<T> {
 		source: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
@@ -315,7 +315,7 @@ impl<T: Config> Runner<T> {
 		init: Vec<u8>,
 		salt: H256,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
@@ -337,7 +337,7 @@ impl<T: Config> Runner<T> {
 		init: Vec<u8>,
 		value: BalanceOf<T>,
 		assigned_address: H160,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {

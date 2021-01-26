@@ -28,11 +28,11 @@ use frame_support::{
 };
 use frame_system::{ensure_signed, EnsureOneOf, EnsureRoot, EnsureSigned};
 use orml_traits::account::MergeAccount;
+use primitive_types::{H256, U256};
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
-use sp_core::{H256, U256};
 use sp_runtime::{
 	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto},
 	transaction_validity::TransactionValidityError,
@@ -117,7 +117,7 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type ChainId: Get<u64>;
 
 	/// Convert gas to weight.
-	type GasToWeight: Convert<u32, Weight>;
+	type GasToWeight: Convert<u64, Weight>;
 
 	/// EVM config used in the module.
 	fn config() -> &'static EvmConfig {
@@ -332,7 +332,7 @@ decl_module! {
 			target: EvmAddress,
 			input: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -346,7 +346,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -361,7 +361,7 @@ decl_module! {
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -375,7 +375,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -390,7 +390,7 @@ decl_module! {
 			init: Vec<u8>,
 			salt: H256,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -404,7 +404,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -418,7 +418,7 @@ decl_module! {
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
@@ -435,7 +435,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -843,7 +843,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Module<T> {
 		context: InvokeContext,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {

@@ -14,11 +14,13 @@ pub mod module {
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{Currency, ExistenceRequirement::KeepAlive},
-		transactional, IterableStorageDoubleMap,
+		transactional,
 	};
 	use frame_system::pallet_prelude::*;
 	use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
 	use primitives::{Balance, NFTBalance};
+	#[cfg(feature = "std")]
+	use serde::{Deserialize, Serialize};
 	use sp_runtime::{
 		traits::{AccountIdConversion, StaticLookup, Zero},
 		DispatchResult, ModuleId, RuntimeDebug,
@@ -44,6 +46,7 @@ pub mod module {
 	}
 
 	#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct Properties(pub BitFlags<ClassProperty>);
 
 	impl Eq for Properties {}
@@ -62,6 +65,7 @@ pub mod module {
 	}
 
 	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct ClassData {
 		/// The minimum balance to create class
 		pub deposit: Balance,
@@ -70,6 +74,7 @@ pub mod module {
 	}
 
 	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct TokenData {
 		/// The minimum balance to create token
 		pub deposit: Balance,

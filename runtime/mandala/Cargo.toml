@@ -12,7 +12,7 @@ serde = { version = "1.0.101", optional = true, default-features = false }
 serde_json = "1.0.60"
 hex = "0.4.2"
 hex-literal = { version = "0.3.1" }
-evm = { version = "0.19.0", optional = true, default-features = false }
+evm = { version = "0.21.0", optional = true, default-features = false }
 
 frame-benchmarking = { version = "2.0.0", default-features = false, optional = true }
 pallet-contracts = { version = "2.0.0", default-features = false }
