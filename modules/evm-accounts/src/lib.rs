@@ -131,6 +131,17 @@ decl_module! {
 
 			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
 		}
+
+		pub fn claim_default_account(origin) {
+			let who = ensure_signed(origin)?;
+
+			// ensure account_id has not been mapped
+			ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
+
+			let eth_address = Self::get_or_create_evm_address(&who);
+
+			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
+		}
 	}
 }
 

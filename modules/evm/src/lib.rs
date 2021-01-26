@@ -326,7 +326,7 @@ decl_module! {
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::call(source, source, target, input, value, gas_limit, storage_limit, T::config())?;
 
@@ -355,7 +355,7 @@ decl_module! {
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::create(source, init, value, gas_limit, storage_limit, T::config())?;
 
@@ -384,7 +384,7 @@ decl_module! {
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
 
@@ -446,7 +446,7 @@ decl_module! {
 		#[transactional]
 		pub fn deploy(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_or_create_evm_address(&who);
+			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::DeploymentFee::get(), ExistenceRequirement::AllowDeath)?;
 			Self::mark_deployed(contract, Some(address))?;
 			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
