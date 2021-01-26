@@ -263,7 +263,7 @@ mod tests {
 	fn test_storage_with_limit_zero() {
 		let mut handler = DummyHandler::new();
 
-		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), CONTRACT, 0).unwrap();
+		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 0).unwrap();
 		assert_eq!(storage_meter.available_storage(), 0);
 
 		// refund
@@ -287,7 +287,7 @@ mod tests {
 		let mut handler = DummyHandler::new();
 		handler.storages.insert(ALICE, 1000);
 
-		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), CONTRACT, 1000).unwrap();
+		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
 		assert_eq!(storage_meter.available_storage(), 1000);
 
 		assert_ok!(storage_meter.refund(1));
@@ -316,7 +316,7 @@ mod tests {
 		handler.storages.insert(ALICE, 1000);
 		handler.reserves.insert(CONTRACT, 1000);
 
-		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), CONTRACT, 1000).unwrap();
+		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
 		assert_eq!(storage_meter.available_storage(), 1000);
 
 		assert_ok!(storage_meter.refund(100));
@@ -338,8 +338,8 @@ mod tests {
 		let mut handler = DummyHandler::new();
 		handler.storages.insert(ALICE, 1000);
 
-		assert!(StorageMeter::new(Box::new(&mut handler), CONTRACT, 1001).is_err());
-		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), CONTRACT, 1000).unwrap();
+		assert!(StorageMeter::new(&mut handler, CONTRACT, 1001).is_err());
+		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
 		assert_eq!(storage_meter.available_storage(), 1000);
 
 		assert_ok!(storage_meter.charge(500));
@@ -362,7 +362,7 @@ mod tests {
 		let mut handler = DummyHandler::new();
 		handler.storages.insert(ALICE, 1000);
 
-		let mut storage_meter = StorageMeter::new(Box::new(&mut handler), CONTRACT, 1000).unwrap();
+		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
 
 		assert_ok!(storage_meter.charge(100));
 
