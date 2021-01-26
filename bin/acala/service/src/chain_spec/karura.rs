@@ -6,15 +6,11 @@ use serde_json::map::Map;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::crypto::UncheckedInto;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{FixedPointNumber, FixedU128, Perbill};
+use sp_runtime::{FixedPointNumber, FixedU128};
 
 use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
-
-fn karura_session_keys(grandpa: GrandpaId, babe: BabeId) -> karura_runtime::SessionKeys {
-	karura_runtime::SessionKeys { grandpa, babe }
-}
 
 pub fn karura_config() -> Result<ChainSpec, String> {
 	Err("Not available".into())
@@ -104,13 +100,12 @@ fn karura_genesis(
 	enable_println: bool,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS,
-		DOLLARS,
+		get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig, CdpEngineConfig,
+		CdpTreasuryConfig, CurrencyId, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, ParachainInfoConfig, RenVmBridgeConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, CENTS, DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -148,26 +143,7 @@ fn karura_genesis(
 				.chain(airdrop_accounts)
 				.collect(),
 		}),
-		pallet_session: Some(SessionConfig {
-			keys: initial_authorities
-				.iter()
-				.map(|x| (x.0.clone(), x.0.clone(), karura_session_keys(x.2.clone(), x.3.clone())))
-				.collect::<Vec<_>>(),
-		}),
-		pallet_staking: Some(StakingConfig {
-			validator_count: 5,
-			minimum_validator_count: 1,
-			stakers: initial_authorities
-				.iter()
-				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
-				.collect(),
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
-			slash_reward_fraction: Perbill::from_percent(10),
-			..Default::default()
-		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
-		pallet_babe: Some(BabeConfig { authorities: vec![] }),
-		pallet_grandpa: Some(GrandpaConfig { authorities: vec![] }),
 		pallet_collective_Instance1: Some(Default::default()),
 		pallet_membership_Instance1: Some(GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],

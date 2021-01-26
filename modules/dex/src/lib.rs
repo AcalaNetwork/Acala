@@ -400,7 +400,7 @@ decl_module! {
 						T::Currency::transfer(trading_pair.1, &module_account_id, &who, contribution.1)?;
 
 						// decrease ref count
-						frame_system::Module::<T>::dec_consumers(&who);
+						frame_system::Module::<T>::dec_ref(&who);
 					}
 
 					TradingPairStatuses::<T>::remove(trading_pair);
@@ -452,7 +452,7 @@ impl<T: Config> Module<T> {
 					}
 
 					// decrease ref count
-					frame_system::Module::<T>::dec_consumers(&who);
+					frame_system::Module::<T>::dec_ref(&who);
 				}
 
 				// inject provision to liquidity pool
@@ -512,7 +512,7 @@ impl<T: Config> Module<T> {
 			*maybe_pool = Some(pool);
 
 			if !existed && maybe_pool.is_some() {
-				frame_system::Module::<T>::inc_consumers(&who);
+				frame_system::Module::<T>::inc_ref(&who);
 			}
 
 			provision_parameters.accumulated_provision.0 = provision_parameters

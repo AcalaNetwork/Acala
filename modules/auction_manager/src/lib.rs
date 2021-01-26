@@ -474,7 +474,7 @@ impl<T: Config> Module<T> {
 			T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, bid_price)?;
 
 			// decrease account ref of bidder
-			system::Module::<T>::dec_consumers(&bidder);
+			system::Module::<T>::dec_ref(&bidder);
 		}
 
 		// decrease total surplus in auction
@@ -490,7 +490,7 @@ impl<T: Config> Module<T> {
 			T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
 
 			// decrease account ref of bidder
-			system::Module::<T>::dec_consumers(&bidder);
+			system::Module::<T>::dec_ref(&bidder);
 		}
 
 		// decrease total debit in auction
@@ -540,11 +540,11 @@ impl<T: Config> Module<T> {
 			T::CDPTreasury::issue_debit(&bidder, bid_price, false)?;
 
 			// decrease account ref of bidder
-			system::Module::<T>::dec_consumers(&bidder);
+			system::Module::<T>::dec_ref(&bidder);
 		}
 
 		// decrease account ref of refund recipient
-		system::Module::<T>::dec_consumers(&collateral_auction.refund_recipient);
+		system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
 
 		// decrease total collateral and target in auction
 		TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
@@ -849,7 +849,7 @@ impl<T: Config> Module<T> {
 		}
 
 		// decrement recipient account reference
-		system::Module::<T>::dec_consumers(&collateral_auction.refund_recipient);
+		system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
 
 		// update auction records
 		TotalCollateralInAuction::mutate(collateral_auction.currency_id, |balance| {
@@ -909,10 +909,10 @@ impl<T: Config> Module<T> {
 	/// increment `new_bidder` reference and decrement `last_bidder` reference
 	/// if any
 	fn swap_bidders(new_bidder: &T::AccountId, last_bidder: Option<&T::AccountId>) {
-		system::Module::<T>::inc_consumers(new_bidder);
+		system::Module::<T>::inc_ref(new_bidder);
 
 		if let Some(who) = last_bidder {
-			system::Module::<T>::dec_consumers(who);
+			system::Module::<T>::dec_ref(who);
 		}
 	}
 }
@@ -957,7 +957,7 @@ impl<T: Config> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId>
 
 		if let Some((bidder, _)) = &winner {
 			// decrease account ref of winner
-			system::Module::<T>::dec_consumers(bidder);
+			system::Module::<T>::dec_ref(bidder);
 		}
 	}
 }
@@ -1005,7 +1005,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Module<T> {
 		);
 
 		// increment recipient account reference
-		system::Module::<T>::inc_consumers(&refund_recipient);
+		system::Module::<T>::inc_ref(&refund_recipient);
 
 		<Module<T>>::deposit_event(RawEvent::NewCollateralAuction(auction_id, currency_id, amount, target));
 		Ok(())
