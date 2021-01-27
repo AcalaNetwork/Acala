@@ -1140,15 +1140,12 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
-impl cumulus_parachain_upgrade::Config for Runtime {
+impl cumulus_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = ParachainInfo;
-}
-
-impl cumulus_message_broker::Config for Runtime {
-	type DownwardMessageHandlers = ();
-	type HrmpMessageHandlers = ();
+	type DownwardMessageHandlers = XcmHandler;
+	type HrmpMessageHandlers = XcmHandler;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1210,8 +1207,8 @@ impl Config for XcmConfig {
 impl xcm_handler::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type UpwardMessageSender = MessageBroker;
-	type HrmpMessageSender = MessageBroker;
+	type UpwardMessageSender = ParachainSystem;
+	type HrmpMessageSender = ParachainSystem;
 }
 
 pub struct RelayToNative;
@@ -1336,11 +1333,10 @@ construct_runtime!(
 		EVMBridge: module_evm_bridge::{Module},
 
 		// Parachain
-		ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
-		MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
+		ParachainSystem: cumulus_parachain_system::{Module, Call, Storage, Inherent, Event},
 		ParachainInfo: parachain_info::{Module, Storage, Config},
+		XcmHandler: xcm_handler::{Module, Event<T>, Origin},
 		XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
-		XcmHandler: xcm_handler::{Module, Call, Event<T>, Origin},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},

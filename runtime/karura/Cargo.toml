@@ -57,9 +57,8 @@ sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch 
 sp-version = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
-cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
+cumulus-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
 cumulus-primitives = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
-cumulus-message-broker = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
 parachain-info = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1", default-features = false }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1", default-features = false }
@@ -171,9 +170,8 @@ std = [
 	"pallet-tips/std",
 
 	"cumulus-runtime/std",
-	"cumulus-parachain-upgrade/std",
+	"cumulus-parachain-system/std",
 	"cumulus-primitives/std",
-	"cumulus-message-broker/std",
 	"parachain-info/std",
 	"polkadot-parachain/std",
 	"xcm/std",

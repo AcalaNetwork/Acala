@@ -214,6 +214,7 @@ pallet-tips = { git = "https://github.com/paritytech//substrate", branch = "roco
 sp-npos-elections = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
+sc-finality-grandpa-warp-sync = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 
 # hotfixes
 ethereum = { git = "https://github.com/AcalaNetwork/ethereum.git", branch = "sw/bump-dependencies" }
@@ -328,6 +329,7 @@ pallet-tips = { git = "https://github.com/paritytech//substrate", branch = "roco
 sp-npos-elections = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
+sc-finality-grandpa-warp-sync = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 
 [patch."https://github.com/paritytech/polkadot"]
 xcm = { git = "https://github.com/paritytech//polkadot", branch = "rococo-v1" }
@@ -352,8 +354,7 @@ polkadot-cli = { git = "https://github.com/paritytech//polkadot", branch = "roco
 
 [patch."https://github.com/paritytech/cumulus"]
 cumulus-primitives = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
-cumulus-parachain-upgrade  = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
-cumulus-message-broker  = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
+cumulus-parachain-system  = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
 parachain-info  = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
 cumulus-network = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
 cumulus-service = { git = "https://github.com/paritytech//cumulus", branch = "rococo-v1" }
