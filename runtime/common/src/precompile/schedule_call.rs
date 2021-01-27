@@ -4,7 +4,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		schedule::{DispatchTime, Named as ScheduleNamed},
-		Currency, Get, IsType, OriginTrait, ReservableCurrency,
+		Currency, IsType, OriginTrait,
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
@@ -15,7 +15,6 @@ use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 use super::input::{Input, InputT, PER_PARAM_BYTES};
 use codec::Encode;
 use pallet_scheduler::TaskAddress;
-use sp_runtime::traits::Saturating;
 
 parameter_types! {
 	pub storage EvmSchedulerNextID: u32 = 0u32;
@@ -70,9 +69,9 @@ where
 {
 	fn execute(
 		input: &[u8],
-		_target_gas: Option<usize>,
+		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		debug::debug!(target: "evm", "schedule call: input: {:?}", input);
 
 		let input = Input::<Action, AccountId, AddressMapping>::new(input);
@@ -85,7 +84,7 @@ where
 				let target = input.evm_address_at(2)?;
 
 				let value = input.balance_at(3)?;
-				let gas_limit = input.u32_at(4)?;
+				let gas_limit = input.u64_at(4)?;
 				let storage_limit = input.u32_at(5)?;
 				let min_delay = input.u32_at(6)?;
 				let input_len = input.u32_at(7)?;
@@ -107,7 +106,7 @@ where
 				let call = module_evm::Call::<Runtime>::scheduled_call(
 					from,
 					target,
-					input_data.clone(),
+					input_data,
 					value.into(),
 					gas_limit,
 					storage_limit,
@@ -117,21 +116,22 @@ where
 				let delay = DispatchTime::After(min_delay);
 				let origin = Origin::root().caller().clone();
 
-				let from_account = AddressMapping::get_account_id(&from);
+				//let from_account = AddressMapping::get_account_id(&from);
 
 				// reserve the deposit for gas_limit and storage_limit
-				let total_fee = Runtime::StorageDepositPerByte::get()
-					.saturating_mul(storage_limit.into())
-					.saturating_add(gas_limit.into());
-				Runtime::Currency::reserve(&from_account, total_fee).map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
-				})?;
+				// TODO: https://github.com/AcalaNetwork/Acala/issues/700
+				//let total_fee = Runtime::StorageDepositPerByte::get()
+				//	.saturating_mul(storage_limit.into())
+				//	.saturating_add(gas_limit.into());
+				//Runtime::Currency::reserve(&from_account, total_fee).map_err(|e| {
+				//	let err_msg: &str = e.into();
+				//	ExitError::Other(err_msg.into())
+				//})?;
 
 				let current_id = EvmSchedulerNextID::get();
 				let next_id = current_id
 					.checked_add(1)
-					.ok_or(ExitError::Other("Scheduler next id overflow".into()))?;
+					.ok_or_else(|| ExitError::Other("Scheduler next id overflow".into()))?;
 				EvmSchedulerNextID::set(&next_id);
 
 				let task_address = Scheduler::schedule_named(
@@ -144,7 +144,7 @@ where
 				)
 				.map_err(|_| ExitError::Other("Scheduler failed".into()))?;
 
-				Ok((ExitSucceed::Returned, vec_u8_from_tuple(task_address.into()), 0))
+				Ok((ExitSucceed::Returned, vec_u8_from_tuple(task_address), 0))
 			}
 			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}

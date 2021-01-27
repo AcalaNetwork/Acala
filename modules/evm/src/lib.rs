@@ -34,7 +34,7 @@ use primitives::evm::AddressMapping;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
-	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto},
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
@@ -352,15 +352,16 @@ decl_module! {
 			target: EvmAddress,
 			input: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
-			let from_account = T::AddressMapping::get_account_id(&from);
+			// let from_account = T::AddressMapping::get_account_id(&from);
 			// unreserve the deposit for gas_limit and storage_limit
-			let total_fee = T::StorageDepositPerByte::get().saturating_mul(storage_limit.into()).saturating_add(gas_limit.into());
-			T::Currency::unreserve(&from_account, total_fee);
+			// TODO: https://github.com/AcalaNetwork/Acala/issues/700
+			// let total_fee = T::StorageDepositPerByte::get().saturating_mul(storage_limit.into()).saturating_add(gas_limit.into());
+			// T::Currency::unreserve(&from_account, total_fee);
 
 			let info = Runner::<T>::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
 
@@ -370,7 +371,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
