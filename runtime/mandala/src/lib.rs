@@ -45,13 +45,13 @@ use orml_traits::{create_median_value_data_provider, parameter_type_with_key, Da
 // pallet_session_historical;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
-use cumulus_primitives::relay_chain::Balance as RelayChainBalance;
+use cumulus_primitives::{relay_chain::Balance as RelayChainBalance, ParaId};
 use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction, MultiLocation, NetworkId};
 use xcm_builder::{
-	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
-	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
+	AccountId32Aliases, ChildParachainConvertsVia, LocationInverter, ParentIsDefault, RelayChainAsNative,
+	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
 };
 use xcm_executor::{traits::NativeAsset, Config, XcmExecutor};
 
@@ -1338,6 +1338,7 @@ parameter_types! {
 pub type LocationConverter = (
 	ParentIsDefault<AccountId>,
 	SiblingParachainConvertsVia<Sibling, AccountId>,
+	ChildParachainConvertsVia<ParaId, AccountId>,
 	AccountId32Aliases<AcalaNetwork, AccountId>,
 );
 
