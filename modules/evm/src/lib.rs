@@ -345,6 +345,7 @@ decl_module! {
 		}
 
 		#[weight = T::GasToWeight::convert(*gas_limit)]
+		#[transactional]
 		pub fn scheduled_call(
 			origin,
 			from: EvmAddress,

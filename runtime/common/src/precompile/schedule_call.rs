@@ -1,19 +1,25 @@
-use frame_support::debug;
 use frame_support::{
+	debug,
 	dispatch::Dispatchable,
+	parameter_types,
 	traits::{
 		schedule::{DispatchTime, Named as ScheduleNamed},
 		Currency, Get, IsType, OriginTrait, ReservableCurrency,
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use primitives::{evm::AddressMapping as AddressMappingT, BlockNumber};
+use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
+use sp_core::U256;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, PER_PARAM_BYTES};
 use codec::Encode;
-use primitives::Balance;
+use pallet_scheduler::TaskAddress;
 use sp_runtime::traits::Saturating;
+
+parameter_types! {
+	pub storage EvmSchedulerNextID: u32 = 0u32;
+}
 
 /// The `ScheduleCall` impl precompile.
 ///
@@ -54,7 +60,7 @@ impl<AccountId, AddressMapping, Scheduler, Call, Origin, PalletsOrigin, Runtime>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
-	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin>,
+	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
 	Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
 	Origin: IsType<<Runtime as frame_system::Config>::Origin> + OriginTrait<PalletsOrigin = PalletsOrigin>,
 	PalletsOrigin: Into<<Runtime as frame_system::Config>::Origin> + From<frame_system::RawOrigin<AccountId>> + Clone,
@@ -122,13 +128,14 @@ where
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Scheduler::schedule_named(
-					Encode::encode(&(
-						&"ScheduleCall",
-						from,
-						input_data,
-						<frame_system::Module<Runtime>>::block_number(),
-					)),
+				let current_id = EvmSchedulerNextID::get();
+				let next_id = current_id
+					.checked_add(1)
+					.ok_or(ExitError::Other("Scheduler next id overflow".into()))?;
+				EvmSchedulerNextID::set(&next_id);
+
+				let task_address = Scheduler::schedule_named(
+					Encode::encode(&(&"ScheduleCall", current_id)),
 					delay,
 					None,
 					0,
@@ -137,9 +144,19 @@ where
 				)
 				.map_err(|_| ExitError::Other("Scheduler failed".into()))?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok((ExitSucceed::Returned, vec_u8_from_tuple(task_address.into()), 0))
 			}
 			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
+}
+
+fn vec_u8_from_tuple(task_address: TaskAddress<BlockNumber>) -> Vec<u8> {
+	let mut be_bytes_0 = [0u8; 32];
+	U256::from(task_address.0).to_big_endian(&mut be_bytes_0[..]);
+
+	let mut be_bytes_1 = [0u8; 32];
+	U256::from(task_address.1).to_big_endian(&mut be_bytes_1[..]);
+
+	vec![be_bytes_0.to_vec(), be_bytes_1.to_vec()].concat()
 }
