@@ -39,8 +39,6 @@ fn feed_price<T: Config>(currency_id: CurrencyId, price: Price) -> Result<(), &'
 }
 
 benchmarks! {
-	_ { }
-
 	authorize {
 		let u in 0 .. 1000;
 

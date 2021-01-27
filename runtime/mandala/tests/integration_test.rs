@@ -951,7 +951,7 @@ fn test_authority_module() {
 				Box::new(call.clone())
 			));
 
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1006,7 +1006,7 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				3,
 			));
@@ -1052,7 +1052,7 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1079,7 +1079,7 @@ fn test_authority_module() {
 				pallets_origin,
 				5
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
+			let event = Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1095,7 +1095,7 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			));
@@ -1106,7 +1106,7 @@ fn test_authority_module() {
 				frame_system::RawOrigin::Root.into(),
 				6
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
+			let event = Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			));
@@ -1233,7 +1233,7 @@ fn test_evm_module() {
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(alice_account_id()), 999999896330000000000);
 			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
 			let to = EvmAccounts::eth_address(&alice());
 			assert_ok!(Currencies::transfer(
@@ -1242,7 +1242,7 @@ fn test_evm_module() {
 				CurrencyId::Token(TokenSymbol::ACA),
 				amount(10)
 			));
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000) + amount(10));
+			assert_eq!(Balances::free_balance(alice_account_id()), 1009999896330000000000);
 			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000) - amount(10));
 		});
 }
@@ -1283,7 +1283,7 @@ fn test_evm_module() {
 					Origin::signed(alice_account_id()),
 					bytecode,
 					0,
-					u32::MAX,
+					u64::MAX,
 					u32::MAX
 				));
 

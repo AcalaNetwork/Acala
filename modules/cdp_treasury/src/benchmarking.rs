@@ -14,8 +14,6 @@ pub fn dollar(d: u32) -> Balance {
 }
 
 benchmarks! {
-	_ {}
-
 	set_collateral_auction_maximum_size {
 		let u in 0 .. 1000;
 	}: _(RawOrigin::Root, CurrencyId::Token(TokenSymbol::DOT), dollar(100))

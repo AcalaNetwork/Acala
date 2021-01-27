@@ -131,6 +131,19 @@ decl_module! {
 
 			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
 		}
+
+		// TODO: weights & benchmarking
+		#[weight = 0]
+		pub fn claim_default_account(origin) {
+			let who = ensure_signed(origin)?;
+
+			// ensure account_id has not been mapped
+			ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
+
+			let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
+
+			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
+		}
 	}
 }
 
@@ -219,7 +232,8 @@ where
 			let addr = account_to_default_evm_address(account_id);
 
 			// create reverse mapping
-			Accounts::<T>::insert(&addr, account_id);
+			Accounts::<T>::insert(&addr, &account_id);
+			EvmAddresses::<T>::insert(&account_id, &addr);
 
 			addr
 		})

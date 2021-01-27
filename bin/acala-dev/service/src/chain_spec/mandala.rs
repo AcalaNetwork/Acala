@@ -188,8 +188,9 @@ fn testnet_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EVMConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, TradingPair, VestingConfig, DOLLARS,
+		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, TradingPair, VestingConfig,
+		DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -403,6 +404,7 @@ fn testnet_genesis(
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
+		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
 	}
 }
 
@@ -418,9 +420,9 @@ fn mandala_genesis(
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig,
 		EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
-		OperatorMembershipBandConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS,
-		DOLLARS,
+		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, CENTS, DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -560,11 +562,24 @@ fn mandala_genesis(
 		}),
 		module_airdrop: Some(AirDropConfig {
 			airdrop_accounts: {
-				let airdrop_accounts_json =
-					&include_bytes!("../../../../../resources/mandala-airdrop-accounts.json")[..];
-				let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
-					serde_json::from_slice(airdrop_accounts_json).unwrap();
-				airdrop_accounts
+				let aca_airdrop_accounts_json =
+					&include_bytes!("../../../../../resources/mandala-airdrop-ACA.json")[..];
+				let aca_airdrop_accounts: Vec<(AccountId, Balance)> =
+					serde_json::from_slice(aca_airdrop_accounts_json).unwrap();
+				let kar_airdrop_accounts_json =
+					&include_bytes!("../../../../../resources/mandala-airdrop-KAR.json")[..];
+				let kar_airdrop_accounts: Vec<(AccountId, Balance)> =
+					serde_json::from_slice(kar_airdrop_accounts_json).unwrap();
+
+				aca_airdrop_accounts
+					.iter()
+					.map(|(account_id, aca_amount)| (account_id.clone(), AirDropCurrencyId::ACA, *aca_amount))
+					.chain(
+						kar_airdrop_accounts
+							.iter()
+							.map(|(account_id, kar_amount)| (account_id.clone(), AirDropCurrencyId::KAR, *kar_amount)),
+					)
+					.collect::<Vec<_>>()
 			},
 		}),
 		orml_oracle_Instance1: Some(AcalaOracleConfig {
@@ -596,5 +611,6 @@ fn mandala_genesis(
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
+		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
 	}
 }
