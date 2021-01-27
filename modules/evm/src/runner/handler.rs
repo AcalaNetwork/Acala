@@ -1,67 +1,118 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-	runner::storage_meter::Storagemeter, AccountInfo, AccountStorages, Accounts, AddressMapping, BalanceOf, Codes,
-	Config, ContractInfo, Event, Log, MergeAccount, Module, Vicinity,
+	precompiles::Precompiles,
+	runner::storage_meter::{StorageMeter, StorageMeterHandler},
+	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
+	MergeAccount, Module, Vicinity,
 };
-use evm::{
-	Capture, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, ExternalOpcode, Opcode, Runtime, Stack,
-	Transfer,
-};
+use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, ExternalOpcode, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
-	debug,
+	debug, require_transactional,
 	storage::{StorageDoubleMap, StorageMap},
-	traits::{Currency, ExistenceRequirement, Get, ReservableCurrency},
+	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
-	traits::{One, UniqueSaturatedInto, Zero},
-	SaturatedConversion, TransactionOutcome,
+	traits::{One, Saturating, UniqueSaturatedInto, Zero},
+	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
 };
-use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, rc::Rc, vec::Vec};
+use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, prelude::*, rc::Rc};
 
-pub struct Handler<'vicinity, 'config, T: Config> {
+/// Storage key size and storage value size.
+pub const STORAGE_SIZE: u32 = 64;
+
+pub struct Handler<'vicinity, 'config, 'meter, T: Config> {
 	pub vicinity: &'vicinity Vicinity,
 	pub config: &'config EvmRuntimeConfig,
 	pub gasometer: Gasometer<'config>,
-	pub storagemeter: Storagemeter,
-	pub precompile:
-		fn(H160, &[u8], Option<usize>, &Context) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
+	pub storage_meter: StorageMeter<'meter>,
 	pub is_static: bool,
-	pub _marker: PhantomData<T>,
+	_marker: PhantomData<T>,
 }
 
 fn l64(gas: usize) -> usize {
 	gas - gas / 64
 }
 
-impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
-	/// Create a new handler with given vicinity.
-	pub fn new_with_precompile(
+impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
+	pub fn run_transaction<R, F: FnOnce(&mut Handler<'vicinity, 'config, '_, T>) -> TransactionOutcome<R>>(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: usize,
 		storage_limit: u32,
+		contract: H160,
 		is_static: bool,
 		config: &'config EvmRuntimeConfig,
-		precompile: fn(
-			H160,
-			&[u8],
-			Option<usize>,
-			&Context,
-		) -> Option<Result<(ExitSucceed, Vec<u8>, usize), ExitError>>,
-	) -> Self {
-		Self {
-			vicinity,
-			config,
-			is_static,
-			gasometer: Gasometer::new(gas_limit, config),
-			storagemeter: Storagemeter::new(storage_limit),
-			precompile,
-			_marker: PhantomData,
-		}
+		f: F,
+	) -> Result<R, DispatchError> {
+		frame_support::storage::with_transaction(|| {
+			let mut storage_meter_handler = StorageMeterHandlerImpl::<T> {
+				origin: vicinity.origin,
+				_marker: PhantomData,
+			};
+			let storage_meter = match StorageMeter::new(&mut storage_meter_handler, contract, storage_limit) {
+				Ok(x) => x,
+				Err(e) => return TransactionOutcome::Rollback(Err(e)),
+			};
+
+			let mut substate = Handler::<'vicinity, 'config, '_, T> {
+				vicinity,
+				config,
+				is_static,
+				gasometer: Gasometer::new(gas_limit, config),
+				storage_meter,
+				_marker: PhantomData,
+			};
+
+			match f(&mut substate) {
+				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {
+					Ok(_) => TransactionOutcome::Commit(Ok(r)),
+					Err(e) => TransactionOutcome::Rollback(Err(e)),
+				},
+				TransactionOutcome::Rollback(e) => TransactionOutcome::Rollback(Ok(e)),
+			}
+		})
+	}
+
+	pub fn run_sub_transaction<
+		'a,
+		R,
+		F: FnOnce(&mut Handler<'vicinity, 'config, '_, T>, &mut Gasometer<'_>) -> TransactionOutcome<R>,
+	>(
+		&'a mut self,
+		vicinity: &'vicinity Vicinity,
+		gas_limit: usize,
+		contract: H160,
+		is_static: bool,
+		config: &'config EvmRuntimeConfig,
+		f: F,
+	) -> Result<R, DispatchError> {
+		frame_support::storage::with_transaction(|| {
+			let storage_meter = match self.storage_meter.child_meter(contract) {
+				Ok(x) => x,
+				Err(e) => return TransactionOutcome::Rollback(Err(e)),
+			};
+
+			let mut substate = Handler::<'vicinity, 'config, '_, T> {
+				vicinity,
+				config,
+				is_static,
+				gasometer: Gasometer::new(gas_limit, config),
+				storage_meter,
+				_marker: PhantomData,
+			};
+
+			match f(&mut substate, &mut self.gasometer) {
+				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {
+					Ok(_) => TransactionOutcome::Commit(Ok(r)),
+					Err(e) => TransactionOutcome::Rollback(Err(e)),
+				},
+				TransactionOutcome::Rollback(e) => TransactionOutcome::Rollback(Ok(e)),
+			}
+		})
 	}
 
 	/// Get used gas for the current executor, given the price.
@@ -73,11 +124,8 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 			)
 	}
 
-	pub fn used_storage(&self) -> u32 {
-		self.storagemeter
-			.total_used_storage()
-			.checked_sub(self.storagemeter.refunded_storage())
-			.unwrap_or_default()
+	pub fn used_storage(&self) -> i32 {
+		self.storage_meter.used_storage()
 	}
 
 	pub fn execute(
@@ -112,7 +160,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		}
 	}
 
-	fn transfer(&self, transfer: Transfer) -> Result<(), ExitError> {
+	fn transfer(transfer: Transfer) -> Result<(), ExitError> {
 		let source = T::AddressMapping::get_account_id(&transfer.source);
 		let target = T::AddressMapping::get_account_id(&transfer.target);
 
@@ -125,22 +173,12 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		.map_err(|_| ExitError::OutOfGas)
 	}
 
-	fn unreserve(&self, address: H160, value: BalanceOf<T>) -> Result<(), ExitError> {
-		let account_id = T::AddressMapping::get_account_id(&address);
-
-		if T::Currency::unreserve(&account_id, value).is_zero() {
-			Ok(())
-		} else {
-			Err(ExitError::Other("Unreserve failed".into()))
-		}
-	}
-
-	pub fn nonce(&self, address: H160) -> U256 {
+	pub fn nonce(address: H160) -> U256 {
 		let account = Module::<T>::account_basic(&address);
 		account.nonce
 	}
 
-	pub fn inc_nonce(&self, address: H160) {
+	pub fn inc_nonce(address: H160) {
 		Accounts::<T>::mutate(&address, |maybe_account| {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
@@ -152,7 +190,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		});
 	}
 
-	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
+	pub fn create_address(scheme: CreateScheme) -> H160 {
 		match scheme {
 			CreateScheme::Create2 {
 				caller,
@@ -167,7 +205,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 				H256::from_slice(hasher.result().as_slice()).into()
 			}
 			CreateScheme::Legacy { caller } => {
-				let nonce = self.nonce(caller);
+				let nonce = Self::nonce(caller);
 				let mut stream = rlp::RlpStream::new_list(2);
 				stream.append(&caller);
 				stream.append(&nonce);
@@ -178,7 +216,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 	}
 
 	// is contract && not deployed
-	pub fn is_undeployed_contract(&self, address: &H160) -> bool {
+	pub fn is_undeployed_contract(address: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info: Some(ContractInfo { deployed, .. }),
 			..
@@ -190,7 +228,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, T> {
 		}
 	}
 
-	pub fn has_permission_to_call(&self, address: &H160) -> bool {
+	pub fn has_permission_to_call(address: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info,
 			developer_deposit,
@@ -228,7 +266,7 @@ macro_rules! create_try {
 	};
 }
 
-impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> {
+impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'config, 'meter, T> {
 	type CreateInterrupt = Infallible;
 	type CreateFeedback = Infallible;
 	type CallInterrupt = Infallible;
@@ -324,8 +362,37 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		if self.is_static {
 			return Err(ExitError::OutOfGas);
 		}
+		enum StorageChange {
+			None,
+			Added,
+			Removed,
+		}
 
-		<Module<T>>::set_storage(address, index, value)
+		let mut storage_change = StorageChange::None;
+
+		let default_value = H256::default();
+		let is_prev_value_default = Module::<T>::account_storages(address, index) == default_value;
+
+		if value == default_value {
+			if !is_prev_value_default {
+				storage_change = StorageChange::Removed;
+			}
+
+			AccountStorages::remove(address, index);
+		} else {
+			if is_prev_value_default {
+				storage_change = StorageChange::Added;
+			}
+
+			AccountStorages::insert(address, index, value);
+		}
+
+		match storage_change {
+			StorageChange::Added => self.storage_meter.charge(STORAGE_SIZE),
+			StorageChange::Removed => self.storage_meter.refund(STORAGE_SIZE),
+			_ => Ok(()),
+		}
+		.map_err(|_| ExitError::OutOfGas)
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) -> Result<(), ExitError> {
@@ -342,17 +409,13 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		let source = T::AddressMapping::get_account_id(&address);
 		let dest = T::AddressMapping::get_account_id(&target);
 
-		// unreserve deposit
-		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
-			if let Some(AccountInfo { .. }) = maybe_account_info.as_mut() {
-				self.unreserve(address, T::Currency::reserved_balance(&source))?;
-			}
+		let size = Module::<T>::remove_account(&address)?;
 
-			Ok(())
-		})?;
+		self.storage_meter
+			.refund(size.saturating_add(T::NewContractExtraBytes::get()))
+			.map_err(|_| ExitError::Other("RefundStorageError".into()))?;
 
-		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("Remove account failed".into()))?;
-		Module::<T>::remove_account(&address)
+		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("MergeAccountError".into()))
 	}
 
 	fn create(
@@ -383,56 +446,61 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		target_gas = min(target_gas, after_gas);
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
-		let target_storage = self.storagemeter.storage();
-		try_or_fail!(self.storagemeter.record_cost(target_storage));
+		let address = Self::create_address(scheme);
+		Self::inc_nonce(caller);
 
-		let mut substate = Self::new_with_precompile(
+		let origin = &self.vicinity.origin;
+
+		self.run_sub_transaction(
 			self.vicinity,
 			target_gas,
-			target_storage,
+			address,
 			self.is_static,
 			self.config,
-			self.precompile,
-		);
+			|substate, gasometer| {
+				try_or_rollback!(Self::transfer(Transfer {
+					source: caller,
+					target: address,
+					value,
+				}));
 
-		let address = self.create_address(scheme);
-		substate.inc_nonce(caller);
+				let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
 
-		frame_support::storage::with_transaction(|| {
-			try_or_rollback!(self.transfer(Transfer {
-				source: caller,
-				target: address,
-				value,
-			}));
+				match reason {
+					ExitReason::Succeed(s) => match gasometer.record_deposit(out.len()) {
+						Ok(()) => {
+							try_or_rollback!(gasometer.record_stipend(substate.gasometer.gas()));
+							try_or_rollback!(gasometer.record_refund(substate.gasometer.refunded_gas()));
 
-			let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
-
-			match reason {
-				ExitReason::Succeed(s) => match self.gasometer.record_deposit(out.len()) {
-					Ok(()) => {
-						try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
-						try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
-
-						substate.inc_nonce(address);
-						match <Module<T>>::on_contract_initialization(&address, &self.vicinity.origin, out, None) {
-							Ok(()) => {
-								let storage_usage = Module::<T>::storage_usage(address);
-								try_or_rollback!(substate.storagemeter.record_cost(storage_usage));
-								try_or_rollback!(self.storagemeter.record_stipend(substate.storagemeter.storage()));
-								TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
+							Handler::<T>::inc_nonce(address);
+							try_or_rollback!(substate
+								.storage_meter
+								.charge((out.len() as u32).saturating_add(T::NewContractExtraBytes::get()))
+								.map_err(|_| ExitError::OutOfGas));
+							match <Module<T>>::on_contract_initialization(&address, origin, out) {
+								Ok(()) => {
+									TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
+								}
+								Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
 							}
-							Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
 						}
+						Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
+					},
+					ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), None, out))),
+					ExitReason::Error(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
+					ExitReason::Fatal(e) => {
+						gasometer.fail();
+						TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new())))
 					}
-					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
-				},
-				ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), None, out))),
-				ExitReason::Error(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new()))),
-				ExitReason::Fatal(e) => {
-					self.gasometer.fail();
-					TransactionOutcome::Rollback(Capture::Exit((e.into(), None, Vec::new())))
 				}
-			}
+			},
+		)
+		.unwrap_or_else(|x| {
+			Capture::Exit((
+				ExitReason::Error(ExitError::Other(Into::<&'static str>::into(x).into())),
+				None,
+				Vec::new(),
+			))
 		})
 	}
 
@@ -468,9 +536,6 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		let mut target_gas = target_gas.unwrap_or(after_gas);
 		target_gas = min(target_gas, after_gas);
 
-		let target_storage = self.storagemeter.storage();
-		try_or_fail!(self.storagemeter.record_cost(target_storage));
-
 		if let Some(transfer) = transfer.as_ref() {
 			if !transfer.value.is_zero() {
 				target_gas = target_gas.saturating_add(self.config.call_stipend);
@@ -479,79 +544,71 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 
 		let code = self.code(code_address);
 
-		frame_support::storage::with_transaction(|| {
-			let mut substate = Self::new_with_precompile(
-				self.vicinity,
-				target_gas,
-				target_storage,
-				self.is_static || is_static,
-				self.config,
-				self.precompile,
-			);
+		self.run_sub_transaction(
+			self.vicinity,
+			target_gas,
+			context.address,
+			self.is_static || is_static,
+			self.config,
+			|substate, gasometer| {
+				if let Some(transfer) = transfer {
+					try_or_rollback!(Self::transfer(transfer));
+				}
 
-			if let Some(transfer) = transfer {
-				try_or_rollback!(self.transfer(transfer));
-			}
+				try_or_rollback!(gasometer.record_cost(target_gas));
 
-			try_or_rollback!(self.gasometer.record_cost(target_gas));
-			let pre_storage_usage = Module::<T>::storage_usage(context.caller);
+				if let Some(ret) = T::Precompiles::execute(code_address, &input, Some(target_gas), &context) {
+					debug::debug!(
+						target: "evm",
+						"handler: call-result: precompile result {:?}",
+						ret
+					);
 
-			if let Some(ret) = (substate.precompile)(code_address, &input, Some(target_gas), &context) {
-				debug::debug!(
-					target: "evm",
-					"handler: call-result: precompile result {:?}",
-					ret
+					return match ret {
+						Ok((s, out, cost)) => {
+							try_or_rollback!(gasometer.record_cost(cost));
+							// precompile contract cost 0
+							// try_or_rollback!(self.storage_meter.record_cost(0));
+							TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
+						}
+						Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
+					};
+				}
+
+				let (reason, out) = substate.execute(
+					context.caller,
+					context.address,
+					context.apparent_value,
+					code.clone(),
+					input,
 				);
 
-				return match ret {
-					Ok((s, out, cost)) => {
-						try_or_rollback!(self.gasometer.record_cost(cost));
-						// precompile contract cost 0
-						// try_or_rollback!(self.storagemeter.record_cost(0));
+				debug::debug!(
+					target: "evm",
+					"handler: call-result: reason {:?} out {:?} gas_left {:?}",
+					reason, out, substate.gas_left()
+				);
+
+				match reason {
+					ExitReason::Succeed(s) => {
+						try_or_rollback!(gasometer.record_stipend(substate.gasometer.gas()));
+						try_or_rollback!(gasometer.record_refund(substate.gasometer.refunded_gas()));
 						TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 					}
-					Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
-				};
-			}
-
-			let (reason, out) = substate.execute(
-				context.caller,
-				context.address,
-				context.apparent_value,
-				code.clone(),
-				input,
-			);
-
-			debug::debug!(
-				target: "evm",
-				"handler: call-result: reason {:?} out {:?} gas_left {:?}",
-				reason, out, substate.gas_left()
-			);
-
-			match reason {
-				ExitReason::Succeed(s) => {
-					try_or_rollback!(self.gasometer.record_stipend(substate.gasometer.gas()));
-					try_or_rollback!(self.gasometer.record_refund(substate.gasometer.refunded_gas()));
-
-					// update storagemeter
-					let storage_usage = Module::<T>::storage_usage(context.caller);
-					if storage_usage != pre_storage_usage {
-						if let Some(delta) = storage_usage.checked_sub(pre_storage_usage) {
-							try_or_rollback!(substate.storagemeter.record_cost(delta));
-						} else if let Some(delta) = pre_storage_usage.checked_sub(storage_usage) {
-							try_or_rollback!(substate.storagemeter.record_refund(delta));
-						}
+					ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), out))),
+					ExitReason::Error(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
+					ExitReason::Fatal(e) => {
+						gasometer.fail();
+						TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new())))
 					}
-					try_or_rollback!(self.storagemeter.record_stipend(substate.storagemeter.storage()));
-					TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 				}
-				ExitReason::Revert(r) => TransactionOutcome::Rollback(Capture::Exit((r.into(), out))),
-				ExitReason::Error(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
-				ExitReason::Fatal(e) => {
-					self.gasometer.fail();
-					TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new())))
-				}
-			}
+			},
+		)
+		.unwrap_or_else(|x| {
+			Capture::Exit((
+				ExitReason::Error(ExitError::Other(Into::<&'static str>::into(x).into())),
+				Vec::new(),
+			))
 		})
 	}
 
@@ -567,5 +624,93 @@ impl<'vicinity, 'config, T: Config> HandlerT for Handler<'vicinity, 'config, T> 
 		self.gasometer.record_opcode(gas_cost, memory_cost)?;
 
 		Ok(())
+	}
+}
+
+struct StorageMeterHandlerImpl<T: Config> {
+	origin: H160,
+	_marker: PhantomData<T>,
+}
+
+impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
+	fn reserve_storage(&mut self, limit: u32) -> DispatchResult {
+		if limit.is_zero() {
+			return Ok(());
+		}
+
+		debug::debug!(
+			target: "evm",
+			"reserve_storage: from {:?} limit {:?}",
+			self.origin, limit,
+		);
+
+		let user = T::AddressMapping::get_account_id(&self.origin);
+
+		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
+
+		T::Currency::reserve(&user, amount)
+	}
+
+	fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> DispatchResult {
+		let total = limit.saturating_add(refunded);
+		let unused = total.saturating_sub(used);
+		if unused.is_zero() {
+			return Ok(());
+		}
+
+		debug::debug!(
+			target: "evm",
+			"unreserve_storage: from {:?} used {:?} refunded {:?} unused {:?}",
+			self.origin, used, refunded, unused
+		);
+
+		let user = T::AddressMapping::get_account_id(&self.origin);
+		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
+
+		// should always be able to unreserve the amount
+		// but otherwise we will just ignore the issue here
+		let _ = T::Currency::unreserve(&user, amount);
+
+		Ok(())
+	}
+
+	#[require_transactional]
+	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
+		if used == refunded {
+			return Ok(());
+		}
+
+		debug::debug!(
+			target: "evm",
+			"charge_storage: from {:?} contract {:?} used {:?} refunded {:?}",
+			&self.origin, contract, used, refunded
+		);
+
+		let user = T::AddressMapping::get_account_id(&self.origin);
+		let contract_acc = T::AddressMapping::get_account_id(contract);
+
+		if used > refunded {
+			let storage = used - refunded;
+			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
+
+			// repatriate_reserved requires beneficiary is an existing account but
+			// contract_acc could be a new account so we need to do
+			// unreserve/transfer/reserve
+			T::Currency::unreserve(&user, amount);
+			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
+			T::Currency::reserve(&contract_acc, amount)?;
+		} else {
+			let storage = refunded - used;
+			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
+
+			// user can't be a dead account
+			T::Currency::repatriate_reserved(&contract_acc, &user, amount, BalanceStatus::Reserved)?;
+		};
+
+		Ok(())
+	}
+
+	fn out_of_storage_error(&self) -> DispatchError {
+		Error::<T>::OutOfStorage.into()
 	}
 }

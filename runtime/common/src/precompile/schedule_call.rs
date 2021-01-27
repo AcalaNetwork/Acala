@@ -2,19 +2,17 @@ use frame_support::debug;
 use frame_support::{
 	dispatch::Dispatchable,
 	traits::{
-		schedule::{DispatchTime, Named as ScheduleNamed, Priority},
+		schedule::{DispatchTime, Named as ScheduleNamed},
 		Currency, Get, IsType, OriginTrait, ReservableCurrency,
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use primitives::{evm::AddressMapping as AddressMappingT, BlockNumber};
-use sp_core::U256;
-use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, PER_PARAM_BYTES};
-use codec::{Codec, Encode};
-use frame_system::RawOrigin;
-use primitives::{Balance, CurrencyId};
+use codec::Encode;
+use primitives::Balance;
 use sp_runtime::traits::Saturating;
 
 /// The `ScheduleCall` impl precompile.
