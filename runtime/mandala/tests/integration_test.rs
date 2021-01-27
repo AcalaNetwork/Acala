@@ -84,6 +84,7 @@ impl ExtBuilder {
 		module_dex::GenesisConfig::<Runtime> {
 			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
 			initial_listing_trading_pairs: Default::default(),
+			initial_added_liquidity_pools: vec![],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

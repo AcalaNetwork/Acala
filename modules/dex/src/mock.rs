@@ -128,6 +128,7 @@ pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
 	initial_listing_trading_pairs: Vec<(TradingPair, (Balance, Balance), (Balance, Balance), BlockNumber)>,
 	initial_enabled_trading_pairs: Vec<TradingPair>,
+	initial_added_liquidity_pools: Vec<(AccountId, Vec<(TradingPair, (Balance, Balance))>)>,
 }
 
 impl Default for ExtBuilder {
@@ -143,6 +144,7 @@ impl Default for ExtBuilder {
 			],
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: vec![],
+			initial_added_liquidity_pools: vec![],
 		}
 	}
 }
@@ -177,6 +179,18 @@ impl ExtBuilder {
 		self
 	}
 
+	pub fn initialize_added_liquidity_pools(mut self, who: AccountId) -> Self {
+		self.initial_added_liquidity_pools = vec![(
+			who,
+			vec![
+				(AUSD_DOT_PAIR, (1_000_000u128, 2_000_000u128)),
+				(AUSD_XBTC_PAIR, (1_000_000u128, 2_000_000u128)),
+				(DOT_XBTC_PAIR, (1_000_000u128, 2_000_000u128)),
+			],
+		)];
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
@@ -191,6 +205,7 @@ impl ExtBuilder {
 		GenesisConfig::<Runtime> {
 			initial_listing_trading_pairs: self.initial_listing_trading_pairs,
 			initial_enabled_trading_pairs: self.initial_enabled_trading_pairs,
+			initial_added_liquidity_pools: self.initial_added_liquidity_pools,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
