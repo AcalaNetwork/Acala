@@ -569,6 +569,35 @@ fn mandala_genesis(
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
-		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
+		orml_nft: Some(OrmlNFTConfig {
+			tokens: {
+				let nft_airdrop_json = &include_bytes!("../../../../../resources/mandala-airdrop-NFT.json")[..];
+				let nft_airdrop: Vec<(
+					AccountId,
+					Vec<u8>,
+					module_nft::ClassData,
+					Vec<(Vec<u8>, module_nft::TokenData, Vec<AccountId>)>,
+				)> = serde_json::from_slice(nft_airdrop_json).unwrap();
+
+				let mut tokens = vec![];
+				for (class_owner, class_meta, class_data, nfts) in nft_airdrop {
+					let mut tokens_of_class = vec![];
+					for (token_meta, token_data, token_owners) in nfts {
+						token_owners.iter().for_each(|account_id| {
+							tokens_of_class.push((account_id.clone(), token_meta.clone(), token_data.clone()));
+						});
+					}
+
+					tokens.push((
+						class_owner.clone(),
+						class_meta.clone(),
+						class_data.clone(),
+						tokens_of_class,
+					));
+				}
+
+				tokens
+			},
+		}),
 	}
 }
