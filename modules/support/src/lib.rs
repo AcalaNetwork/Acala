@@ -262,7 +262,7 @@ pub trait EVM<AccountId> {
 		context: InvokeContext,
 		input: Vec<u8>,
 		value: Self::Balance,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError>;

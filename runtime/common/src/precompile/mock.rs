@@ -4,7 +4,8 @@ use crate::{AllPrecompiles, SystemContractsFilter};
 use codec::{Decode, Encode};
 use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
-	traits::InstanceFilter, RuntimeDebug,
+	traits::{GenesisBuild, InstanceFilter},
+	RuntimeDebug,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;

@@ -43,9 +43,9 @@ where
 {
 	fn execute(
 		input: &[u8],
-		_target_gas: Option<usize>,
+		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping>::new(input);
 
 		let action = input.action()?;

@@ -2,8 +2,9 @@
 
 use evm::{Context, ExitError, ExitSucceed};
 use impl_trait_for_tuples::impl_for_tuples;
+use primitive_types::H160;
 use ripemd160::Digest;
-use sp_core::H160;
+use sp_runtime::SaturatedConversion;
 use sp_std::{cmp::min, vec::Vec};
 
 /// Custom precompiles to be used by EVM engine.
@@ -17,9 +18,9 @@ pub trait Precompiles {
 	fn execute(
 		address: H160,
 		input: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		context: &Context,
-	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>>;
+	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>>;
 }
 
 /// One single precompile used by EVM engine.
@@ -29,9 +30,9 @@ pub trait Precompile {
 	/// the execution is successful. Otherwise return `Err(_)`.
 	fn execute(
 		input: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		context: &Context,
-	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>;
+	) -> core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>;
 }
 
 #[impl_for_tuples(16)]
@@ -42,9 +43,9 @@ impl Precompiles for Tuple {
 	fn execute(
 		address: H160,
 		input: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		context: &Context,
-	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
+	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>> {
 		let mut index = 0;
 
 		for_tuples!( #(
@@ -59,13 +60,14 @@ impl Precompiles for Tuple {
 }
 
 /// Linear gas cost
-fn ensure_linear_cost(target_gas: Option<usize>, len: usize, base: usize, word: usize) -> Result<usize, ExitError> {
-	let cost = base
+fn ensure_linear_cost(target_gas: Option<u64>, len: usize, base: usize, word: usize) -> Result<u64, ExitError> {
+	let cost: u64 = base
 		.checked_add(
 			word.checked_mul(len.saturating_add(31) / 32)
 				.ok_or(ExitError::OutOfGas)?,
 		)
-		.ok_or(ExitError::OutOfGas)?;
+		.ok_or(ExitError::OutOfGas)?
+		.saturated_into();
 
 	if let Some(target_gas) = target_gas {
 		if cost > target_gas {
@@ -73,7 +75,7 @@ fn ensure_linear_cost(target_gas: Option<usize>, len: usize, base: usize, word: 
 		}
 	}
 
-	Ok(cost)
+	Ok(cost.saturated_into())
 }
 
 /// The identity precompile.
@@ -82,9 +84,9 @@ pub struct Identity;
 impl Precompile for Identity {
 	fn execute(
 		input: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		_context: &Context,
-	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	) -> core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		let cost = ensure_linear_cost(target_gas, input.len(), 15, 3)?;
 
 		Ok((ExitSucceed::Returned, input.to_vec(), cost))
@@ -97,9 +99,9 @@ pub struct ECRecover;
 impl Precompile for ECRecover {
 	fn execute(
 		i: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		_context: &Context,
-	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	) -> core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		let cost = ensure_linear_cost(target_gas, i.len(), 3000, 0)?;
 
 		let mut input = [0u8; 128];
@@ -128,9 +130,9 @@ pub struct Ripemd160;
 impl Precompile for Ripemd160 {
 	fn execute(
 		input: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		_context: &Context,
-	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	) -> core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		let cost = ensure_linear_cost(target_gas, input.len(), 600, 120)?;
 
 		let mut ret = [0u8; 32];
@@ -145,9 +147,9 @@ pub struct Sha256;
 impl Precompile for Sha256 {
 	fn execute(
 		input: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		_context: &Context,
-	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	) -> core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		let cost = ensure_linear_cost(target_gas, input.len(), 60, 12)?;
 
 		let ret = sp_io::hashing::sha2_256(input);

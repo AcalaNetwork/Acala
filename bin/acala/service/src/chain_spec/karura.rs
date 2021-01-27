@@ -105,21 +105,13 @@ fn karura_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
-	let airdrop_accounts = {
-		let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-accounts.json")[..];
-		let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
-			serde_json::from_slice(airdrop_accounts_json).unwrap();
-		airdrop_accounts
-			.into_iter()
-			.filter(|(_, currency_id, _)| *currency_id == AirDropCurrencyId::KAR)
-			.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
-			.collect::<Vec<_>>()
-	};
+	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-KAR.json")[..];
+	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
@@ -275,5 +267,6 @@ fn karura_genesis(
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
+		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
 	}
 }
