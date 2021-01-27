@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_origin, parameter_types};
+use frame_support::{impl_outer_origin, parameter_types, traits::GenesisBuild};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, EraIndex, TokenSymbol};
 use sp_core::H256;

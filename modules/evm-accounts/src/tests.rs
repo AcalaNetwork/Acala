@@ -147,7 +147,10 @@ fn account_to_evm_with_create_default() {
 			EvmAddressMapping::<Runtime>::get_or_create_evm_address(&ALICE),
 			default_evm_account
 		);
-		assert_eq!(EvmAddressMapping::<Runtime>::get_evm_address(&ALICE), None);
+		assert_eq!(
+			EvmAddressMapping::<Runtime>::get_evm_address(&ALICE),
+			Some(default_evm_account)
+		);
 
 		assert_eq!(
 			EvmAddressMapping::<Runtime>::get_account_id(&default_evm_account),
@@ -158,29 +161,13 @@ fn account_to_evm_with_create_default() {
 
 		let alice_evm_account = EvmAccountsModule::eth_address(&alice());
 
-		assert_ok!(EvmAccountsModule::claim_account(
-			Origin::signed(ALICE),
-			alice_evm_account,
-			EvmAccountsModule::eth_sign(&alice(), &ALICE.encode(), &[][..])
-		));
-
-		assert_eq!(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_account), ALICE);
-		assert_eq!(
-			EvmAddressMapping::<Runtime>::get_account_id(&default_evm_account),
-			ALICE
+		assert_noop!(
+			EvmAccountsModule::claim_account(
+				Origin::signed(ALICE),
+				alice_evm_account,
+				EvmAccountsModule::eth_sign(&alice(), &ALICE.encode(), &[][..])
+			),
+			Error::<Runtime>::AccountIdHasMapped
 		);
-
-		assert_eq!(
-			EvmAddressMapping::<Runtime>::get_evm_address(&ALICE).unwrap(),
-			alice_evm_account
-		);
-
-		assert_eq!(
-			EvmAddressMapping::<Runtime>::get_or_create_evm_address(&ALICE),
-			alice_evm_account
-		);
-
-		assert!(EvmAddressMapping::<Runtime>::is_linked(&ALICE, &alice_evm_account));
-		assert!(EvmAddressMapping::<Runtime>::is_linked(&ALICE, &default_evm_account));
 	});
 }

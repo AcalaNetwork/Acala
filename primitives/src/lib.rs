@@ -167,10 +167,10 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 
 /// Note the pre-deployed ERC20 contracts depend on `CurrencyId` implementation,
 /// and need to be updated if any change.
-impl Into<[u8; 32]> for CurrencyId {
-	fn into(self) -> [u8; 32] {
+impl From<CurrencyId> for [u8; 32] {
+	fn from(val: CurrencyId) -> Self {
 		let mut bytes = [0u8; 32];
-		match self {
+		match val {
 			CurrencyId::Token(token) => {
 				bytes[30] = token as u8;
 			}

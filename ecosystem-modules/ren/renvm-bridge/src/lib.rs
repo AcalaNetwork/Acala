@@ -131,7 +131,7 @@ decl_module! {
 			sig: EcdsaSignature,
 		) {
 			ensure_none(origin)?;
-			Self::do_rotate_key(new_key, sig)?;
+			Self::do_rotate_key(new_key, sig);
 		}
 	}
 }
@@ -145,12 +145,11 @@ impl<T: Config> Module<T> {
 		Ok(())
 	}
 
-	fn do_rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> DispatchResult {
+	fn do_rotate_key(new_key: PublicKey, sig: EcdsaSignature) {
 		RenVmPublicKey::set(Some(new_key));
 		Signatures::insert(&sig, ());
 
 		Self::deposit_event(RawEvent::RotatedKey(new_key));
-		Ok(())
 	}
 
 	// ABI-encode the values for creating the signature hash.

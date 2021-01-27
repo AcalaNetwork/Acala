@@ -28,11 +28,11 @@ use frame_support::{
 };
 use frame_system::{ensure_root, ensure_signed, EnsureOneOf, EnsureRoot, EnsureSigned};
 use orml_traits::account::MergeAccount;
+use primitive_types::{H256, U256};
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
-use sp_core::{H256, U256};
 use sp_runtime::{
 	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto},
 	transaction_validity::TransactionValidityError,
@@ -117,7 +117,7 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type ChainId: Get<u64>;
 
 	/// Convert gas to weight.
-	type GasToWeight: Convert<u32, Weight>;
+	type GasToWeight: Convert<u64, Weight>;
 
 	/// EVM config used in the module.
 	fn config() -> &'static EvmConfig {
@@ -322,11 +322,11 @@ decl_module! {
 			target: EvmAddress,
 			input: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::call(source, source, target, input, value, gas_limit, storage_limit, T::config())?;
 
@@ -336,7 +336,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -385,11 +385,11 @@ decl_module! {
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::create(source, init, value, gas_limit, storage_limit, T::config())?;
 
@@ -399,7 +399,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -414,11 +414,11 @@ decl_module! {
 			init: Vec<u8>,
 			salt: H256,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
 
@@ -428,7 +428,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -442,7 +442,7 @@ decl_module! {
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
@@ -459,7 +459,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -480,7 +480,7 @@ decl_module! {
 		#[transactional]
 		pub fn deploy(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_or_create_evm_address(&who);
+			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::DeploymentFee::get(), ExistenceRequirement::AllowDeath)?;
 			Self::mark_deployed(contract, Some(address))?;
 			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
@@ -797,7 +797,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Module<T> {
 		context: InvokeContext,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {

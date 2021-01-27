@@ -1,9 +1,7 @@
 [package]
 name = "module-currencies"
-description = "Provide `MultiCurrency` implementation using `pallet-balances` and `orml-tokens` module."
-license = "Apache-2.0"
-version = "0.3.3-dev"
-authors = ["Laminar Developers <hello@laminar.one>"]
+version = "0.7.0"
+authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
@@ -20,8 +18,8 @@ frame-system = { version = "2.0.0", default-features = false }
 module-evm = { path = "../evm", default-features = false }
 module-evm-bridge = { path = "../evm-bridge", default-features = false }
 
-orml-traits = { path = "../../orml/traits", version = "0.3.3-dev", default-features = false }
-orml-utilities = { path = "../../orml/utilities", version = "0.3.3-dev", default-features = false }
+orml-traits = { path = "../../orml/traits", default-features = false }
+orml-utilities = { path = "../../orml/utilities", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }

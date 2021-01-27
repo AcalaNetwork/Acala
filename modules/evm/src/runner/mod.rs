@@ -9,8 +9,8 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, Get},
 };
 use handler::Handler;
+use primitive_types::{H160, H256, U256};
 use sha3::{Digest, Keccak256};
-use sp_core::{H160, H256, U256};
 use sp_runtime::{traits::Zero, DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome};
 use sp_std::{marker::PhantomData, vec::Vec};
 
@@ -24,7 +24,7 @@ impl<T: Config> Runner<T> {
 		source: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		assigned_address: Option<H160>,
 		salt: Option<H256>,
@@ -65,7 +65,7 @@ impl<T: Config> Runner<T> {
 
 		Handler::<T>::run_transaction(
 			&vicinity,
-			gas_limit as usize,
+			gas_limit,
 			storage_limit,
 			address,
 			false,
@@ -151,7 +151,7 @@ impl<T: Config> Runner<T> {
 		target: H160,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
@@ -179,49 +179,41 @@ impl<T: Config> Runner<T> {
 
 		Handler::<T>::inc_nonce(sender);
 
-		Handler::<T>::run_transaction(
-			&vicinity,
-			gas_limit as usize,
-			storage_limit,
-			target,
-			false,
-			config,
-			|substate| {
-				if let Err(e) = Self::transfer(sender, target, value) {
-					return TransactionOutcome::Rollback(Err(e));
-				}
+		Handler::<T>::run_transaction(&vicinity, gas_limit, storage_limit, target, false, config, |substate| {
+			if let Err(e) = Self::transfer(sender, target, value) {
+				return TransactionOutcome::Rollback(Err(e));
+			}
 
-				let code = substate.code(target);
-				let (reason, out) =
-					substate.execute(sender, target, U256::from(value.saturated_into::<u128>()), code, input);
+			let code = substate.code(target);
+			let (reason, out) =
+				substate.execute(sender, target, U256::from(value.saturated_into::<u128>()), code, input);
 
-				let call_info = CallInfo {
-					exit_reason: reason.clone(),
-					output: out,
-					used_gas: U256::from(substate.used_gas()),
-					used_storage: substate.used_storage(),
-				};
+			let call_info = CallInfo {
+				exit_reason: reason.clone(),
+				output: out,
+				used_gas: U256::from(substate.used_gas()),
+				used_storage: substate.used_storage(),
+			};
 
-				debug::debug!(
-					target: "evm",
-					"call-result: call_info {:?}",
-					call_info
-				);
+			debug::debug!(
+				target: "evm",
+				"call-result: call_info {:?}",
+				call_info
+			);
 
-				if !reason.is_succeed() {
-					return TransactionOutcome::Rollback(Ok(call_info));
-				}
+			if !reason.is_succeed() {
+				return TransactionOutcome::Rollback(Ok(call_info));
+			}
 
-				TransactionOutcome::Commit(Ok(call_info))
-			},
-		)?
+			TransactionOutcome::Commit(Ok(call_info))
+		})?
 	}
 
 	pub fn create(
 		source: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
@@ -243,7 +235,7 @@ impl<T: Config> Runner<T> {
 		init: Vec<u8>,
 		salt: H256,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
@@ -265,7 +257,7 @@ impl<T: Config> Runner<T> {
 		init: Vec<u8>,
 		value: BalanceOf<T>,
 		assigned_address: H160,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {

@@ -13,9 +13,9 @@ pub struct DummyPrecompile;
 impl Precompile for DummyPrecompile {
 	fn execute(
 		_input: &[u8],
-		_target_gas: Option<usize>,
+		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError> {
+	) -> core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		Ok((ExitSucceed::Stopped, vec![], 0))
 	}
 }
