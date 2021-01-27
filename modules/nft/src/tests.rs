@@ -3,7 +3,6 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::StorageMap;
 use frame_support::{assert_noop, assert_ok, traits::Currency};
 use mock::{
 	last_event, AccountId, Balances, ExtBuilder, NFTModule, Origin, Proxy, Runtime, TestEvent, ALICE, BOB, CLASS_ID,

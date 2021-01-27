@@ -67,9 +67,9 @@ impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPr
 	fn execute(
 		address: H160,
 		input: &[u8],
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		context: &Context,
-	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, usize), ExitError>> {
+	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>> {
 		EthereumPrecompiles::execute(address, input, target_gas, context).or_else(|| {
 			if is_acala_precompile(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
 				debug::debug!(target: "evm", "Precompile no permission");

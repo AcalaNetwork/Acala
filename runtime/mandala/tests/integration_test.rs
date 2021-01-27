@@ -950,7 +950,7 @@ fn test_authority_module() {
 				Box::new(call.clone())
 			));
 
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1005,7 +1005,7 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				3,
 			));
@@ -1051,7 +1051,7 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1078,7 +1078,7 @@ fn test_authority_module() {
 				pallets_origin,
 				5
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
+			let event = Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1094,7 +1094,7 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			));
@@ -1105,7 +1105,7 @@ fn test_authority_module() {
 				frame_system::RawOrigin::Root.into(),
 				6
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
+			let event = Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			));
@@ -1282,7 +1282,7 @@ fn test_evm_module() {
 					Origin::signed(alice_account_id()),
 					bytecode,
 					0,
-					u32::MAX,
+					u64::MAX,
 					u32::MAX
 				));
 

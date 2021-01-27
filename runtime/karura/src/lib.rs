@@ -44,6 +44,7 @@ use module_evm_accounts::EvmAddressMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
+use pallet_contracts::WeightInfo;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
@@ -1209,6 +1210,10 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 
 parameter_types! {
 	pub const TombstoneDeposit: Balance = 16 * MILLICENTS;
+	pub const DepositPerContract: Balance = TombstoneDeposit::get();
+	pub const DepositPerStorageByte: Balance = 6 * MILLICENTS;
+	pub const DepositPerStorageItem: Balance = 15 * MILLICENTS;
+	pub RentFraction: Perbill = Perbill::from_rational_approximation(1u32, 30 * DAYS);
 	pub const RentByteFee: Balance = 4 * MILLICENTS;
 	pub const RentDepositOffset: Balance = 1000 * MILLICENTS;
 	pub const SurchargeReward: Balance = 150 * MILLICENTS;
@@ -1216,6 +1221,14 @@ parameter_types! {
 	pub const MaxDepth: u32 = 32;
 	pub const StorageSizeOffset: u32 = 8;
 	pub const MaxValueSize: u32 = 16 * 1024;
+	// The lazy deletion runs inside on_initialize.
+	pub DeletionWeightLimit: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+	// The weight needed for decoding the queue should be less or equal than a fifth
+	// of the overall weight dedicated to the lazy deletion.
+	pub DeletionQueueDepth: u32 = ((DeletionWeightLimit::get() / (
+			<Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(1) -
+			<Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(0)
+		)) / 5) as u32;
 }
 
 impl pallet_contracts::Config for Runtime {
@@ -1226,14 +1239,18 @@ impl pallet_contracts::Config for Runtime {
 	type RentPayment = ();
 	type SignedClaimHandicap = SignedClaimHandicap;
 	type TombstoneDeposit = TombstoneDeposit;
-	type StorageSizeOffset = StorageSizeOffset;
-	type RentByteFee = RentByteFee;
-	type RentDepositOffset = RentDepositOffset;
+	type DepositPerContract = DepositPerContract;
+	type DepositPerStorageByte = DepositPerStorageByte;
+	type DepositPerStorageItem = DepositPerStorageItem;
+	type RentFraction = RentFraction;
 	type SurchargeReward = SurchargeReward;
 	type MaxDepth = MaxDepth;
 	type MaxValueSize = MaxValueSize;
 	type WeightPrice = module_transaction_payment::Module<Self>;
 	type WeightInfo = ();
+	type ChainExtension = ();
+	type DeletionQueueDepth = DeletionQueueDepth;
+	type DeletionWeightLimit = DeletionWeightLimit;
 }
 
 parameter_types! {
@@ -1352,7 +1369,7 @@ construct_runtime!(
 		// ORML Core
 		Auction: orml_auction::{Module, Storage, Call, Event<T>},
 		Rewards: orml_rewards::{Module, Storage, Call},
-		OrmlNFT: orml_nft::{Module, Storage},
+		OrmlNFT: orml_nft::{Module, Storage, Config<T>},
 
 		// Acala Core
 		Prices: module_prices::{Module, Storage, Call, Event<T>},
@@ -1502,6 +1519,10 @@ impl_runtime_apis! {
 
 		fn current_epoch() -> sp_consensus_babe::Epoch {
 			Babe::current_epoch()
+		}
+
+		fn next_epoch() -> sp_consensus_babe::Epoch {
+			Babe::next_epoch()
 		}
 
 		fn generate_key_ownership_proof(
@@ -1677,7 +1698,7 @@ impl_runtime_apis! {
 				to,
 				data,
 				value,
-				gas_limit,
+				gas_limit.into(),
 				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
@@ -1703,7 +1724,7 @@ impl_runtime_apis! {
 				from,
 				data,
 				value,
-				gas_limit,
+				gas_limit.into(),
 				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)

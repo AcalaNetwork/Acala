@@ -284,8 +284,8 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 
 /// Convert gas to weight
 pub struct GasToWeight;
-impl Convert<u32, Weight> for GasToWeight {
-	fn convert(a: u32) -> u64 {
+impl Convert<u64, Weight> for GasToWeight {
+	fn convert(a: u64) -> u64 {
 		a as Weight
 	}
 }

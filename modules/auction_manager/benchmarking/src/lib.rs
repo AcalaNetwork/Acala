@@ -45,8 +45,6 @@ fn emergency_shutdown<T: Config>() -> DispatchResultWithPostInfo {
 }
 
 benchmarks! {
-	_ { }
-
 	// `cancel` a surplus auction, worst case:
 	// auction have been already bid
 	cancel_surplus_auction {

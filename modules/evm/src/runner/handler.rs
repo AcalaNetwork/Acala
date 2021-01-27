@@ -14,8 +14,8 @@ use frame_support::{
 	storage::{StorageDoubleMap, StorageMap},
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
+use primitive_types::{H160, H256, U256};
 use sha3::{Digest, Keccak256};
-use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{One, Saturating, UniqueSaturatedInto, Zero},
 	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
@@ -34,14 +34,14 @@ pub struct Handler<'vicinity, 'config, 'meter, T: Config> {
 	_marker: PhantomData<T>,
 }
 
-fn l64(gas: usize) -> usize {
+fn l64(gas: u64) -> u64 {
 	gas - gas / 64
 }
 
 impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 	pub fn run_transaction<R, F: FnOnce(&mut Handler<'vicinity, 'config, '_, T>) -> TransactionOutcome<R>>(
 		vicinity: &'vicinity Vicinity,
-		gas_limit: usize,
+		gas_limit: u64,
 		storage_limit: u32,
 		contract: H160,
 		is_static: bool,
@@ -84,7 +84,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 	>(
 		&'a mut self,
 		vicinity: &'vicinity Vicinity,
-		gas_limit: usize,
+		gas_limit: u64,
 		contract: H160,
 		is_static: bool,
 		config: &'config EvmRuntimeConfig,
@@ -116,11 +116,11 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 	}
 
 	/// Get used gas for the current executor, given the price.
-	pub fn used_gas(&self) -> usize {
+	pub fn used_gas(&self) -> u64 {
 		self.gasometer.total_used_gas()
 			- min(
 				self.gasometer.total_used_gas() / 2,
-				self.gasometer.refunded_gas() as usize,
+				self.gasometer.refunded_gas() as u64,
 			)
 	}
 
@@ -424,7 +424,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		scheme: CreateScheme,
 		value: U256,
 		init_code: Vec<u8>,
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
 		debug::debug!(
 			target: "evm",
@@ -509,7 +509,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		code_address: H160,
 		transfer: Option<Transfer>,
 		input: Vec<u8>,
-		target_gas: Option<usize>,
+		target_gas: Option<u64>,
 		is_static: bool,
 		context: Context,
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {

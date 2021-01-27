@@ -188,8 +188,8 @@ fn testnet_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EVMConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
+		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -363,6 +363,7 @@ fn testnet_genesis(
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
+		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
 	}
 }
 
@@ -378,9 +379,9 @@ fn mandala_genesis(
 		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig,
 		EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
-		OperatorMembershipBandConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS,
-		DOLLARS,
+		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, CENTS, DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -568,5 +569,6 @@ fn mandala_genesis(
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
+		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
 	}
 }

@@ -28,8 +28,6 @@ fn dollar(d: u32) -> Balance {
 }
 
 benchmarks! {
-	_ { }
-
 	// create NFT class
 	create_class {
 		let caller: T::AccountId = account("caller", 0, SEED);

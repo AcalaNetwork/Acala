@@ -20,7 +20,7 @@ pallet-timestamp = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
-sp-io = { version = "2.0.0", default-features = false }
+sp-io = { version = "2.0.0" }
 pallet-balances = { version = "2.0.0" }
 pallet-utility = { version = "2.0.0", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
@@ -41,4 +41,5 @@ std = [
 	"orml-traits/std",
 	"orml-nft/std",
 	"pallet-timestamp/std",
+	"enumflags2/serde"
 ]
