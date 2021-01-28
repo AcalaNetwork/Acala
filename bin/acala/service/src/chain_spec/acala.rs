@@ -1,4 +1,4 @@
-use acala_primitives::{AccountId, AirDropCurrencyId};
+use acala_primitives::AccountId;
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -108,6 +108,8 @@ fn acala_genesis(
 		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
 		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
+	#[cfg(feature = "std")]
+	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -135,7 +137,21 @@ fn acala_genesis(
 						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.chain(airdrop_accounts)
-				.collect(),
+				.fold(
+					BTreeMap::<AccountId, Balance>::new(),
+					|mut acc, (account_id, amount)| {
+						if let Some(balance) = acc.get_mut(&account_id) {
+							*balance = balance
+								.checked_add(amount)
+								.expect("balance cannot overflow when building genesis");
+						} else {
+							acc.insert(account_id.clone(), amount);
+						}
+						acc
+					},
+				)
+				.into_iter()
+				.collect::<Vec<(AccountId, Balance)>>(),
 		}),
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
