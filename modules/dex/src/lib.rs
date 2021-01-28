@@ -191,6 +191,7 @@ pub mod module {
 	pub struct GenesisConfig<T: Config> {
 		pub initial_listing_trading_pairs: Vec<(TradingPair, (Balance, Balance), (Balance, Balance), T::BlockNumber)>,
 		pub initial_enabled_trading_pairs: Vec<TradingPair>,
+		pub initial_added_liquidity_pools: Vec<(T::AccountId, Vec<(TradingPair, (Balance, Balance))>)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -199,6 +200,7 @@ pub mod module {
 			GenesisConfig {
 				initial_listing_trading_pairs: vec![],
 				initial_enabled_trading_pairs: vec![],
+				initial_added_liquidity_pools: vec![],
 			}
 		}
 	}
@@ -231,6 +233,33 @@ pub mod module {
 				);
 				TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::<_, _>::Enabled);
 			});
+
+			self.initial_added_liquidity_pools
+				.iter()
+				.for_each(|(who, trading_pairs_data)| {
+					trading_pairs_data
+						.iter()
+						.for_each(|(trading_pair, (deposit_amount_0, deposit_amount_1))| {
+							assert!(
+								trading_pair.get_dex_share_currency_id().is_some(),
+								"the trading pair is invalid!",
+							);
+
+							let result = match <Module<T>>::trading_pair_statuses(trading_pair) {
+								TradingPairStatus::<_, _>::Enabled => <Module<T>>::do_add_liquidity(
+									&who,
+									trading_pair.0,
+									trading_pair.1,
+									*deposit_amount_0,
+									*deposit_amount_1,
+									false,
+								),
+								_ => Err(Error::<T>::NotEnabledTradingPair.into()),
+							};
+
+							assert!(result.is_ok(), "genesis add lidquidity pool failed.");
+						});
+				});
 		}
 	}
 

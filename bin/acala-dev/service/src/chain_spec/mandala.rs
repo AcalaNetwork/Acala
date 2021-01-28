@@ -189,7 +189,8 @@ fn testnet_genesis(
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
 		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, TradingPair, VestingConfig,
+		DOLLARS,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -359,6 +360,46 @@ fn testnet_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			initial_added_liquidity_pools: vec![(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(
+						TradingPair::new(
+							CurrencyId::Token(TokenSymbol::AUSD),
+							CurrencyId::Token(TokenSymbol::DOT),
+						),
+						(1_000_000u128, 2_000_000u128),
+					),
+					(
+						TradingPair::new(
+							CurrencyId::Token(TokenSymbol::AUSD),
+							CurrencyId::Token(TokenSymbol::XBTC),
+						),
+						(1_000_000u128, 2_000_000u128),
+					),
+					(
+						TradingPair::new(
+							CurrencyId::Token(TokenSymbol::AUSD),
+							CurrencyId::Token(TokenSymbol::LDOT),
+						),
+						(1_000_000u128, 2_000_000u128),
+					),
+					(
+						TradingPair::new(
+							CurrencyId::Token(TokenSymbol::AUSD),
+							CurrencyId::Token(TokenSymbol::ACA),
+						),
+						(1_000_000u128, 2_000_000u128),
+					),
+					(
+						TradingPair::new(
+							CurrencyId::Token(TokenSymbol::AUSD),
+							CurrencyId::Token(TokenSymbol::RENBTC),
+						),
+						(1_000_000u128, 2_000_000u128),
+					),
+				],
+			)],
 		}),
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
@@ -565,6 +606,7 @@ fn mandala_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			initial_added_liquidity_pools: vec![],
 		}),
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],

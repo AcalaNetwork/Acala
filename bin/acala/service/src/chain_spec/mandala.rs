@@ -359,6 +359,7 @@ fn testnet_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			initial_added_liquidity_pools: vec![],
 		}),
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
@@ -565,6 +566,7 @@ fn mandala_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			initial_added_liquidity_pools: vec![],
 		}),
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
