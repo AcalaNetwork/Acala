@@ -108,7 +108,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Mandala runtime wasm binary not available")?;
 
 	Ok(ChainSpec::from_genesis(
-		"Acala Mandala TC5",
+		"Acala Mandala TC6",
 		"mandala5",
 		ChainType::Live,
 		// SECRET="..."
@@ -161,12 +161,12 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![
-			"/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz"
-				.parse()
-				.unwrap(),
+			// "/dns/testnet-bootnode-1.acala.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz"
+			// 	.parse()
+			// 	.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala5"),
+		Some("mandala6"),
 		Some(properties),
 		Default::default(),
 	))
