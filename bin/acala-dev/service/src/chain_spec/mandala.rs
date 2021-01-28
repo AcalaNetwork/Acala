@@ -282,6 +282,7 @@ fn testnet_genesis(
 				.iter()
 				.flat_map(|x| {
 					vec![
+						(x.clone(), CurrencyId::Token(TokenSymbol::AUSD), INITIAL_BALANCE),
 						(x.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
 						(x.clone(), CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
 					]
@@ -380,21 +381,7 @@ fn testnet_genesis(
 					(
 						TradingPair::new(
 							CurrencyId::Token(TokenSymbol::AUSD),
-							CurrencyId::Token(TokenSymbol::LDOT),
-						),
-						(1_000_000u128, 2_000_000u128),
-					),
-					(
-						TradingPair::new(
-							CurrencyId::Token(TokenSymbol::AUSD),
 							CurrencyId::Token(TokenSymbol::ACA),
-						),
-						(1_000_000u128, 2_000_000u128),
-					),
-					(
-						TradingPair::new(
-							CurrencyId::Token(TokenSymbol::AUSD),
-							CurrencyId::Token(TokenSymbol::RENBTC),
 						),
 						(1_000_000u128, 2_000_000u128),
 					),
