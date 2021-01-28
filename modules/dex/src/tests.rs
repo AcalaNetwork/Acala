@@ -1147,3 +1147,22 @@ fn do_swap_with_exact_target_work() {
 			assert_eq!(Tokens::free_balance(XBTC, &BOB), 1_000_000_005_000_000_000);
 		});
 }
+
+#[test]
+fn initialize_added_liquidity_pools_genesis_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.initialize_added_liquidity_pools(ALICE)
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (1000000, 2000000));
+			assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 2000000);
+			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 3000000);
+			assert_eq!(
+				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
+				2000000
+			);
+		});
+}

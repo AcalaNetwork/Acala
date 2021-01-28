@@ -49,6 +49,7 @@ ecosystem-renvm-bridge = { path = "../../../ecosystem-modules/ren/renvm-bridge" 
 module-evm = { path = "../../../modules/evm" }
 module-staking-pool = { path = "../../../modules/staking_pool" }
 module-staking-pool-rpc = { path = "../../../modules/staking_pool/rpc" }
+module-nft = { path = "../../../modules/nft" }
 orml-oracle-rpc = { path = "../../../orml/oracle/rpc" }
 acala-primitives = { path = "../../../primitives" }
 acala-rpc = { path = "../../../rpc" }
