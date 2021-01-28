@@ -1,20 +1,19 @@
 #![cfg(test)]
 
-use crate::{AllPrecompiles, SystemContractsFilter};
+use crate::{AllPrecompiles, BlockWeights, SystemContractsFilter, Weight};
 use codec::{Decode, Encode};
 use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 	traits::{GenesisBuild, InstanceFilter},
 	RuntimeDebug,
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-pub use primitives::{mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, TokenSymbol};
+pub use primitives::{mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, Header, TokenSymbol};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	FixedU128, ModuleId,
+	FixedU128, ModuleId, Perbill,
 };
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -29,6 +28,7 @@ impl_outer_event! {
 		module_nft<T>,
 		pallet_proxy<T>,
 		pallet_utility,
+		pallet_scheduler<T>,
 	}
 }
 
@@ -42,6 +42,7 @@ impl_outer_dispatch! {
 		pallet_balances::Balances,
 		pallet_proxy::Proxy,
 		pallet_utility::Utility,
+		module_evm::ModuleEVM,
 	}
 }
 
@@ -56,7 +57,7 @@ type Balance = u128;
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Test;
 parameter_types! {
-	pub const BlockHashCount: u64 = 250;
+	pub const BlockHashCount: u32 = 250;
 }
 impl frame_system::Config for Test {
 	type BaseCallFilter = ();
@@ -65,7 +66,7 @@ impl frame_system::Config for Test {
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;
-	type BlockNumber = u64;
+	type BlockNumber = BlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
@@ -241,6 +242,24 @@ impl pallet_utility::Config for Test {
 }
 pub type Utility = pallet_utility::Module<Test>;
 
+parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+	pub const MaxScheduledPerBlock: u32 = 50;
+}
+
+impl pallet_scheduler::Config for Test {
+	type Event = TestEvent;
+	type Origin = Origin;
+	type PalletsOrigin = OriginCaller;
+	type Call = Call;
+	type MaximumWeight = MaximumSchedulerWeight;
+	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type WeightInfo = ();
+}
+
+pub type Scheduler = pallet_scheduler::Module<Test>;
+
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, Currencies>;
@@ -248,6 +267,8 @@ pub type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<AccountId, Moc
 pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, NFTModule>;
 pub type StateRentPrecompile = crate::StateRentPrecompile<AccountId, MockAddressMapping, ModuleEVM>;
 pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, Oracle>;
+pub type ScheduleCallPrecompile =
+	crate::ScheduleCallPrecompile<AccountId, MockAddressMapping, Scheduler, Call, Origin, OriginCaller, Test>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice();
@@ -279,6 +300,7 @@ impl module_evm::Config for Test {
 		NFTPrecompile,
 		StateRentPrecompile,
 		OraclePrecompile,
+		ScheduleCallPrecompile,
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = ();

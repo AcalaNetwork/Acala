@@ -13,6 +13,7 @@ sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
+pallet-scheduler = { version = "2.0.0", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -43,6 +44,7 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-scheduler/std",
 	"module-evm/std",
 	"orml-oracle/std",
 	"orml-traits/std",

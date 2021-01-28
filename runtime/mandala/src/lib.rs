@@ -1288,6 +1288,15 @@ pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapp
 pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
 pub type OraclePrecompile =
 	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, AggregatedDataProvider>;
+pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	Scheduler,
+	Call,
+	Origin,
+	OriginCaller,
+	Runtime,
+>;
 
 #[cfg(feature = "with-ethereum-compatibility")]
 static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
@@ -1307,6 +1316,7 @@ impl module_evm::Config for Runtime {
 		NFTPrecompile,
 		StateRentPrecompile,
 		OraclePrecompile,
+		ScheduleCallPrecompile,
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;

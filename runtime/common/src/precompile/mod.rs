@@ -19,11 +19,13 @@ pub mod input;
 pub mod multicurrency;
 pub mod nft;
 pub mod oracle;
+pub mod schedule_call;
 pub mod state_rent;
 
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
+pub use schedule_call::ScheduleCallPrecompile;
 pub use state_rent::StateRentPrecompile;
 
 pub type EthereumPrecompiles = (
@@ -39,6 +41,7 @@ pub struct AllPrecompiles<
 	NFTPrecompile,
 	StateRentPrecompile,
 	OraclePrecompile,
+	ScheduleCallPrecompile,
 >(
 	PhantomData<(
 		PrecompileCallerFilter,
@@ -46,21 +49,31 @@ pub struct AllPrecompiles<
 		NFTPrecompile,
 		StateRentPrecompile,
 		OraclePrecompile,
+		ScheduleCallPrecompile,
 	)>,
 );
 
-impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile, OraclePrecompile> Precompiles
+impl<
+		PrecompileCallerFilter,
+		MultiCurrencyPrecompile,
+		NFTPrecompile,
+		StateRentPrecompile,
+		OraclePrecompile,
+		ScheduleCallPrecompile,
+	> Precompiles
 	for AllPrecompiles<
 		PrecompileCallerFilter,
 		MultiCurrencyPrecompile,
 		NFTPrecompile,
 		StateRentPrecompile,
 		OraclePrecompile,
+		ScheduleCallPrecompile,
 	> where
 	MultiCurrencyPrecompile: Precompile,
 	NFTPrecompile: Precompile,
 	StateRentPrecompile: Precompile,
 	OraclePrecompile: Precompile,
+	ScheduleCallPrecompile: Precompile,
 	PrecompileCallerFilter: PrecompileCallerFilterT,
 {
 	#[allow(clippy::type_complexity)]
@@ -84,6 +97,8 @@ impl<PrecompileCallerFilter, MultiCurrencyPrecompile, NFTPrecompile, StateRentPr
 				Some(StateRentPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 3) {
 				Some(OraclePrecompile::execute(input, target_gas, context))
+			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 4) {
+				Some(ScheduleCallPrecompile::execute(input, target_gas, context))
 			} else {
 				None
 			}

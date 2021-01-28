@@ -20,8 +20,14 @@ impl Precompile for DummyPrecompile {
 	}
 }
 
-pub type WithSystemContractFilter =
-	AllPrecompiles<crate::SystemContractsFilter, DummyPrecompile, DummyPrecompile, DummyPrecompile, DummyPrecompile>;
+pub type WithSystemContractFilter = AllPrecompiles<
+	crate::SystemContractsFilter,
+	DummyPrecompile,
+	DummyPrecompile,
+	DummyPrecompile,
+	DummyPrecompile,
+	DummyPrecompile,
+>;
 
 #[test]
 fn precompile_filter_works_on_acala_precompiles() {
