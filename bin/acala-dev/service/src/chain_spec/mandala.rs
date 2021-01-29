@@ -109,7 +109,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 
 	Ok(ChainSpec::from_genesis(
 		"Acala Mandala TC6",
-		"mandala5",
+		"mandala6",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
