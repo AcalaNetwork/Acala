@@ -184,13 +184,16 @@ fn testnet_genesis(
 	enable_println: bool,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EVMConfig, EnabledTradingPairs,
-		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
-		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, DOLLARS,
+		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, Balance, BalancesConfig,
+		BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EVMConfig,
+		EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
+		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
+		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
+		VestingConfig, DOLLARS,
 	};
+	#[cfg(feature = "std")]
+	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -199,7 +202,7 @@ fn testnet_genesis(
 
 	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
 
-	let mut balances = initial_authorities
+	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
 		.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
@@ -208,10 +211,21 @@ fn testnet_genesis(
 				.iter()
 				.map(|x| (x.clone(), existential_deposit)),
 		)
-		.collect::<Vec<_>>();
-
-	balances.sort_by_key(|x| x.0.clone());
-	balances.dedup_by_key(|x| x.0.clone());
+		.fold(
+			BTreeMap::<AccountId, Balance>::new(),
+			|mut acc, (account_id, amount)| {
+				if let Some(balance) = acc.get_mut(&account_id) {
+					*balance = balance
+						.checked_add(amount)
+						.expect("balance cannot overflow when building genesis");
+				} else {
+					acc.insert(account_id.clone(), amount);
+				}
+				acc
+			},
+		)
+		.into_iter()
+		.collect::<Vec<(AccountId, Balance)>>();
 
 	mandala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
@@ -384,6 +398,8 @@ fn mandala_genesis(
 		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
 		VestingConfig, CENTS, DOLLARS,
 	};
+	#[cfg(feature = "std")]
+	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -392,7 +408,7 @@ fn mandala_genesis(
 
 	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
 
-	let mut balances = initial_authorities
+	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
 		.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
@@ -401,10 +417,21 @@ fn mandala_genesis(
 				.iter()
 				.map(|x| (x.clone(), existential_deposit)),
 		)
-		.collect::<Vec<_>>();
-
-	balances.sort_by_key(|x| x.0.clone());
-	balances.dedup_by_key(|x| x.0.clone());
+		.fold(
+			BTreeMap::<AccountId, Balance>::new(),
+			|mut acc, (account_id, amount)| {
+				if let Some(balance) = acc.get_mut(&account_id) {
+					*balance = balance
+						.checked_add(amount)
+						.expect("balance cannot overflow when building genesis");
+				} else {
+					acc.insert(account_id.clone(), amount);
+				}
+				acc
+			},
+		)
+		.into_iter()
+		.collect::<Vec<(AccountId, Balance)>>();
 
 	mandala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
