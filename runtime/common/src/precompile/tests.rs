@@ -27,6 +27,7 @@ pub type WithSystemContractFilter = AllPrecompiles<
 	DummyPrecompile,
 	DummyPrecompile,
 	DummyPrecompile,
+	DummyPrecompile,
 >;
 
 #[test]
@@ -163,7 +164,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 					apparent_value: Default::default()
 				}
 			),
-			ExitError::Other("unknown action".into())
+			ExitError::Other("invalid action".into())
 		);
 	});
 }

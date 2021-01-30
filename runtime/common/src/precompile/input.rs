@@ -1,5 +1,11 @@
 use frame_support::ensure;
-use sp_std::{convert::TryInto, marker::PhantomData, mem, result::Result, vec::Vec};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	marker::PhantomData,
+	mem,
+	result::Result,
+	vec::Vec,
+};
 
 use module_evm::ExitError;
 use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
@@ -49,7 +55,7 @@ impl<'a, Action, AccountId, AddressMapping> Input<'a, Action, AccountId, Address
 
 impl<Action, AccountId, AddressMapping> InputT for Input<'_, Action, AccountId, AddressMapping>
 where
-	Action: From<u8>,
+	Action: TryFrom<u8>,
 	AddressMapping: AddressMappingT<AccountId>,
 {
 	type Error = ExitError;
@@ -69,7 +75,9 @@ where
 		let param = self.nth_param(ACTION_INDEX)?;
 		let action_u8: &u8 = param.last().expect("Action bytes is 32 bytes");
 
-		Ok((*action_u8).into())
+		(*action_u8)
+			.try_into()
+			.map_err(|_| ExitError::Other("invalid action".into()))
 	}
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error> {
