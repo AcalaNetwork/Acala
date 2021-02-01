@@ -19,7 +19,7 @@ pub mod module {
 	use frame_support::{
 		dispatch::{DispatchResult, Dispatchable},
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement, Imbalance, IsSubType, OnUnbalanced, WithdrawReasons},
+		traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 		weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeePolynomial},
 	};
 	use orml_traits::MultiCurrency;
@@ -195,7 +195,7 @@ pub mod module {
 	}
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + module_currencies::Config {
+	pub trait Config: frame_system::Config {
 		#[pallet::constant]
 		/// All non-native currency ids in Acala.
 		type AllNonNativeCurrencyIds: Get<Vec<CurrencyId>>;
@@ -483,8 +483,7 @@ pub mod module {
 
 	impl<T: Config + Send + Sync> ChargeTransactionPayment<T>
 	where
-		<T as frame_system::Config>::Call:
-			Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<module_currencies::Call<T>>,
+		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 		PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 	{
 		/// utility constructor. Used only in client/factory code.
@@ -590,8 +589,7 @@ pub mod module {
 	impl<T: Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 	where
 		PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
-		<T as frame_system::Config>::Call:
-			Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<module_currencies::Call<T>>,
+		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
 		const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 		type AccountId = T::AccountId;
