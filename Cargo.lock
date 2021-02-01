@@ -4668,7 +4668,6 @@ dependencies = [
  "frame-system",
  "module-currencies",
  "module-dex",
- "module-staking-pool",
  "module-support",
  "orml-tokens",
  "orml-traits",

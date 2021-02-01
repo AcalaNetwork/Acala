@@ -22,6 +22,7 @@ pub mod module {
 		traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 		weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeePolynomial},
 	};
+	use frame_system::pallet_prelude::*;
 	use orml_traits::MultiCurrency;
 	use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 	use primitives::{Balance, CurrencyId};
@@ -40,6 +41,7 @@ pub mod module {
 
 	pub trait WeightInfo {
 		fn on_finalize() -> Weight;
+		fn set_default_fee_token() -> Weight;
 	}
 
 	/// Fee multiplier.
@@ -252,6 +254,10 @@ pub mod module {
 	#[pallet::getter(fn next_fee_multiplier)]
 	pub type NextFeeMultiplier<T: Config> = StorageValue<_, Multiplier, ValueQuery, DefaultFeeMultiplier>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn default_fee_currency_id)]
+	pub type DefaultFeeCurrencyId<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, CurrencyId, OptionQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
 
@@ -312,7 +318,23 @@ pub mod module {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {}
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(<T as Config>::WeightInfo::set_default_fee_token())]
+		/// Set default fee token
+		pub fn set_default_fee_token(
+			origin: OriginFor<T>,
+			fee_token: Option<CurrencyId>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			if let Some(currency_id) = fee_token {
+				DefaultFeeCurrencyId::<T>::insert(&who, currency_id);
+			} else {
+				DefaultFeeCurrencyId::<T>::remove(&who);
+			}
+			Ok(().into())
+		}
+	}
 
 	impl<T: Config> Pallet<T>
 	where
@@ -501,6 +523,11 @@ pub mod module {
 			// pay any fees.
 			let tip = self.0;
 			let fee = Module::<T>::compute_fee(len as u32, info, tip);
+
+			// TODO
+			let native_currency_id = T::NativeCurrencyId::get();
+			let stable_currency_id = T::StableCurrencyId::get();
+			let default_fee_currency_id = DefaultFeeCurrencyId::<T>::get(who);
 
 			let reason = if tip.is_zero() {
 				WithdrawReasons::TRANSACTION_PAYMENT
