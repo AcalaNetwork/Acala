@@ -25,7 +25,6 @@ sc-keystore = { version = "2.0.0" }
 sp-keystore = { git = "https://github.com/paritytech/substrate.git", rev = "8b3e4c86bc5a86570a3091e470011604fb46d324" }
 sc-rpc = { version = "2.0.0" }
 substrate-frame-rpc-system = { version = "2.0.0" }
-pallet-contracts-rpc = { version = "0.8.0" }
 pallet-transaction-payment-rpc = { version = "2.0.0" }
 
 module-staking-pool-rpc = { path = "../modules/staking_pool/rpc" }
