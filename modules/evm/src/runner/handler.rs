@@ -566,7 +566,10 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 
 					return match ret {
 						Ok((s, out, cost)) => {
-							try_or_rollback!(gasometer.record_cost(cost));
+							// TODO: write some test to make sure following 3 lines is correct
+							try_or_rollback!(substate.gasometer.record_cost(cost));
+							try_or_rollback!(gasometer.record_stipend(substate.gasometer.gas()));
+							try_or_rollback!(gasometer.record_refund(substate.gasometer.refunded_gas()));
 							// precompile contract cost 0
 							// try_or_rollback!(self.storage_meter.record_cost(0));
 							TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
