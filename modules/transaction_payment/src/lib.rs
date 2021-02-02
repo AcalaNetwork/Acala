@@ -524,38 +524,40 @@ pub mod module {
 			let tip = self.0;
 			let fee = Module::<T>::compute_fee(len as u32, info, tip);
 
-			// TODO
 			let native_currency_id = T::NativeCurrencyId::get();
 			let stable_currency_id = T::StableCurrencyId::get();
-			let default_fee_currency_id = DefaultFeeCurrencyId::<T>::get(who);
+			let other_currency_ids = T::AllNonNativeCurrencyIds::get();
+			let mut charge_fee_order: Vec<CurrencyId> =
+				if let Some(default_fee_currency_id) = DefaultFeeCurrencyId::<T>::get(who) {
+					vec![vec![default_fee_currency_id, native_currency_id], other_currency_ids].concat()
+				} else {
+					vec![vec![native_currency_id], other_currency_ids].concat()
+				};
+			charge_fee_order.dedup();
 
 			let reason = if tip.is_zero() {
 				WithdrawReasons::TRANSACTION_PAYMENT
 			} else {
 				WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 			};
+			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
 
-			// check native balance if is enough
-			let native_is_enough =
-				<T as Config>::Currency::free_balance(who)
-					.checked_sub(&fee)
-					.map_or(false, |new_free_balance| {
-						<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
-					});
-
-			// try to use non-native currency to swap native currency by exchange with DEX
-			if !native_is_enough {
-				let native_currency_id = T::NativeCurrencyId::get();
-				let stable_currency_id = T::StableCurrencyId::get();
-				let other_currency_ids = T::AllNonNativeCurrencyIds::get();
-				let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
-				// Note: in fact, just obtain the gap between of fee and usable native currency
-				// amount, but `Currency` does not expose interface to get usable balance by
-				// specific reason. Here try to swap the whole fee by non-native currency.
-				let balance_fee: Balance = fee.unique_saturated_into();
-
-				// iterator non-native currencies to get enough fee
-				for currency_id in other_currency_ids {
+			// iterator charge fee order to get enough fee
+			for currency_id in charge_fee_order {
+				if currency_id == native_currency_id {
+					// check native balance if is enough
+					let native_is_enough = <T as Config>::Currency::free_balance(who).checked_sub(&fee).map_or(
+						false,
+						|new_free_balance| {
+							<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
+						},
+					);
+					if native_is_enough {
+						// native balance is enough, break iteration
+						break;
+					}
+				} else {
+					// try to use non-native currency to swap native currency by exchange with DEX
 					let trading_path = if currency_id == stable_currency_id {
 						vec![stable_currency_id, native_currency_id]
 					} else {
@@ -565,7 +567,7 @@ pub mod module {
 					if T::DEX::swap_with_exact_target(
 						who,
 						&trading_path,
-						balance_fee,
+						fee.unique_saturated_into(),
 						<T as Config>::MultiCurrency::free_balance(currency_id, who),
 						price_impact_limit,
 					)

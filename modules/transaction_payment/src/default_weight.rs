@@ -14,6 +14,6 @@ impl crate::WeightInfo for () {
 	}
 
 	fn set_default_fee_token() -> Weight {
-		(10_000 as Weight).saturating_add(DbWeight::get().writes(1 as Weight))
+		(1_000_000 as Weight).saturating_add(DbWeight::get().writes(1 as Weight))
 	}
 }
