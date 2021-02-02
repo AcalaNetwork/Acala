@@ -101,9 +101,9 @@ fn acala_genesis(
 		get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig, CdpEngineConfig,
 		CdpTreasuryConfig, CurrencyId, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, ParachainInfoConfig, RenVmBridgeConfig,
-		SessionConfig, StakerStatus, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
+		RenVmBridgeConfig, StakerStatus, StakingPoolConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
