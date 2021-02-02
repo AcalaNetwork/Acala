@@ -1,6 +1,6 @@
 [package]
 name = "module-honzon-benchmarking"
-version = "0.7.1"
+version = "0.7.2"
 authors = ["Acala Developers"]
 edition = "2018"
 
