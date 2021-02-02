@@ -25,5 +25,5 @@ if [ -d $WASM_BUILDER_RUNNER ]; then
   cargo run --release --manifest-path="$WASM_BUILDER_RUNNER/Cargo.toml" \
     | grep -vE "cargo:rerun-if-|Executing build command"
 else
-  cargo build --release -p $1 --features with-$1
+  cargo build --manifest-path bin/acala-dev/Cargo.toml --release -p $1 --features with-$1
 fi
