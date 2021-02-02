@@ -4740,7 +4740,6 @@ dependencies = [
  "frame-system 2.0.1 (git+https://github.com/paritytech/substrate.git?rev=8b3e4c86bc5a86570a3091e470011604fb46d324)",
  "module-currencies",
  "module-dex",
- "module-staking-pool",
  "module-support",
  "orml-tokens",
  "orml-traits",

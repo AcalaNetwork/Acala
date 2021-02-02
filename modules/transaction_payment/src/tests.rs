@@ -12,7 +12,7 @@ use frame_support::{
 };
 use mock::{
 	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, TransactionPayment, ACA, ALICE,
-	AUSD, BOB,
+	AUSD, BOB, DOT,
 };
 use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
@@ -124,6 +124,69 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		assert_eq!(Currencies::free_balance(ACA, &BOB), 0);
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 749);
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000, 1251));
+	});
+}
+
+#[test]
+fn set_default_fee_token_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(TransactionPayment::default_fee_currency_id(&ALICE), None);
+		assert_ok!(TransactionPayment::set_default_fee_token(
+			Origin::signed(ALICE),
+			Some(AUSD)
+		));
+		assert_eq!(TransactionPayment::default_fee_currency_id(&ALICE), Some(AUSD));
+		assert_ok!(TransactionPayment::set_default_fee_token(Origin::signed(ALICE), None));
+		assert_eq!(TransactionPayment::default_fee_currency_id(&ALICE), None);
+	});
+}
+
+#[test]
+fn charge_fee_by_default_fee_token() {
+	ExtBuilder::default().build().execute_with(|| {
+		// add liquidity to DEX
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			ACA,
+			AUSD,
+			10000,
+			1000,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			DOT,
+			AUSD,
+			100,
+			1000,
+			false
+		));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
+		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
+		assert_ok!(TransactionPayment::set_default_fee_token(
+			Origin::signed(BOB),
+			Some(DOT)
+		));
+		assert_eq!(TransactionPayment::default_fee_currency_id(&BOB), Some(DOT));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 100));
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(DOT, &BOB), 100);
+
+		let fee = 500 * 2 + 1000; // len * byte + weight
+		assert_eq!(
+			ChargeTransactionPayment::<Runtime>::from(0)
+				.validate(&BOB, CALL2, &INFO, 500)
+				.unwrap()
+				.priority,
+			fee
+		);
+
+		assert_eq!(Currencies::free_balance(ACA, &BOB), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
+		assert_eq!(Currencies::free_balance(DOT, &BOB), 100 - 34);
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000, 1251));
+		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100 + 34, 1000 - 251));
 	});
 }
 
