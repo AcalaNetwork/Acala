@@ -12,9 +12,6 @@ serde = { version = "1.0.101", optional = true }
 hex-literal = { version = "0.3.1" }
 
 frame-benchmarking = { version = "2.0.0", default-features = false, optional = true }
-pallet-contracts = { version = "2.0.0", default-features = false }
-pallet-contracts-primitives = { version = "2.0.0", default-features = false }
-pallet-contracts-rpc-runtime-api = { version = "0.8.0", default-features = false }
 frame-executive = { version = "2.0.0", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
@@ -126,9 +123,6 @@ std = [
 	"pallet-balances/std",
 	"pallet-bounties/std",
 	"pallet-collective/std",
-	"pallet-contracts-primitives/std",
-	"pallet-contracts-rpc-runtime-api/std",
-	"pallet-contracts/std",
 	"pallet-elections-phragmen/std",
 	"module-evm/std",
 	"pallet-grandpa/std",
