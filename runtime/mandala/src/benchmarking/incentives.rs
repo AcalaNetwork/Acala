@@ -5,7 +5,6 @@ use crate::{
 
 use super::utils::set_balance;
 use frame_benchmarking::account;
-use frame_support::storage::StorageMap;
 use frame_system::RawOrigin;
 use module_incentives::PoolId;
 use orml_benchmarking::runtime_benchmarks;

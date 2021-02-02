@@ -26,15 +26,16 @@ use frame_support::{
 	weights::{Pays, PostDispatchInfo, Weight},
 	RuntimeDebug,
 };
-use frame_system::{ensure_signed, EnsureOneOf, EnsureRoot, EnsureSigned};
+use frame_system::{ensure_root, ensure_signed, EnsureOneOf, EnsureRoot, EnsureSigned};
 use orml_traits::account::MergeAccount;
+use primitive_types::{H256, U256};
 use primitives::evm::AddressMapping;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
-use sp_core::{H256, U256};
 use sp_runtime::{
-	traits::{Convert, One, Saturating, UniqueSaturatedInto},
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto},
+	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -116,7 +117,7 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type ChainId: Get<u64>;
 
 	/// Convert gas to weight.
-	type GasToWeight: Convert<u32, Weight>;
+	type GasToWeight: Convert<u64, Weight>;
 
 	/// EVM config used in the module.
 	fn config() -> &'static EvmConfig {
@@ -139,21 +140,11 @@ pub trait Config: frame_system::Config + pallet_timestamp::Config {
 	type WeightInfo: WeightInfo;
 }
 
-/// Storage key size and storage value size.
-pub const STORAGE_SIZE: u32 = 64;
-
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 pub struct ContractInfo {
-	pub storage_count: u32,
 	pub code_hash: H256,
 	pub maintainer: EvmAddress,
 	pub deployed: bool,
-}
-
-impl ContractInfo {
-	pub fn total_storage_size(&self) -> u32 {
-		self.storage_count.saturating_mul(STORAGE_SIZE)
-	}
 }
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
@@ -204,6 +195,9 @@ decl_storage! {
 
 		/// Next available system contract address.
 		NetworkContractIndex get(fn network_contract_index) config(): u64;
+
+		/// Extrinsics origin for the current tx.
+		ExtrinsicOrigin get(fn extrinsic_origin): Option<T::AccountId>;
 	}
 
 	add_extra_genesis {
@@ -221,7 +215,7 @@ decl_storage! {
 				);
 
 				if !account.code.is_empty() { // if code len > 0 then it's a contract
-					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone(), Some(account.storage.len() as u32)).expect("Genesis contract shouldn't fail");
+					<Module<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone()).expect("Genesis contract shouldn't fail");
 
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Module<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
@@ -291,8 +285,6 @@ decl_error! {
 		NumOutOfBound,
 		/// Storage exceeds max code size
 		StorageExceedsStorageLimit,
-		/// Unreserve failed
-		UnreserveFailed,
 		/// Contract development is not enabled
 		ContractDevelopmentNotEnabled,
 		/// Contract development is already enabled
@@ -301,6 +293,8 @@ decl_error! {
 		ContractAlreadyDeployed,
 		/// Contract exceeds max code size
 		ContractExceedsMaxCodeSize,
+		/// Storage usage exceeds storage limit
+		OutOfStorage,
 	}
 }
 
@@ -328,11 +322,11 @@ decl_module! {
 			target: EvmAddress,
 			input: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::call(source, source, target, input, value, gas_limit, storage_limit, T::config())?;
 
@@ -342,7 +336,42 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes
+			})
+		}
+
+		#[weight = T::GasToWeight::convert(*gas_limit)]
+		#[transactional]
+		pub fn scheduled_call(
+			origin,
+			from: EvmAddress,
+			target: EvmAddress,
+			input: Vec<u8>,
+			value: BalanceOf<T>,
+			gas_limit: u64,
+			storage_limit: u32,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+
+			// let from_account = T::AddressMapping::get_account_id(&from);
+			// unreserve the deposit for gas_limit and storage_limit
+			// TODO: https://github.com/AcalaNetwork/Acala/issues/700
+			// let total_fee = T::StorageDepositPerByte::get().saturating_mul(storage_limit.into()).saturating_add(gas_limit.into());
+			// T::Currency::unreserve(&from_account, total_fee);
+
+			let info = Runner::<T>::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
+
+			if info.exit_reason.is_succeed() {
+				Module::<T>::deposit_event(Event::<T>::Executed(target));
+			} else {
+				Module::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.output));
+			}
+
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -357,11 +386,11 @@ decl_module! {
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::create(source, init, value, gas_limit, storage_limit, T::config())?;
 
@@ -371,7 +400,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -386,11 +415,11 @@ decl_module! {
 			init: Vec<u8>,
 			salt: H256,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let source = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = Runner::<T>::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
 
@@ -400,7 +429,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -414,7 +443,7 @@ decl_module! {
 			origin,
 			init: Vec<u8>,
 			value: BalanceOf<T>,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
@@ -431,7 +460,7 @@ decl_module! {
 				Module::<T>::deposit_event(Event::<T>::CreatedFailed(info.address, info.exit_reason, info.output));
 			}
 
-			let used_gas: u32 = info.used_gas.unique_saturated_into();
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),
@@ -452,7 +481,7 @@ decl_module! {
 		#[transactional]
 		pub fn deploy(origin, contract: EvmAddress) {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_or_create_evm_address(&who);
+			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::DeploymentFee::get(), ExistenceRequirement::AllowDeath)?;
 			Self::mark_deployed(contract, Some(address))?;
 			Module::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
@@ -522,7 +551,9 @@ decl_module! {
 
 impl<T: Config> Module<T> {
 	/// Remove an account.
-	pub fn remove_account(address: &EvmAddress) -> Result<(), ExitError> {
+	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
+		let mut size = 0u32;
+
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
@@ -531,6 +562,7 @@ impl<T: Config> Module<T> {
 		{
 			CodeInfos::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
+					size = code_info.code_size;
 					code_info.ref_count = code_info.ref_count.saturating_sub(1);
 					if code_info.ref_count == 0 {
 						Codes::remove(&contract_info.code_hash);
@@ -543,7 +575,7 @@ impl<T: Config> Module<T> {
 		<Accounts<T>>::remove(address);
 		AccountStorages::remove_prefix(address);
 
-		Ok(())
+		Ok(size)
 	}
 
 	/// Get the account basic in EVM format.
@@ -580,22 +612,15 @@ impl<T: Config> Module<T> {
 	/// Handler on new contract initialization.
 	///
 	/// - Create new account for the contract.
-	///   - For contracts initialized in genesis block, `storage_count` param
-	///     needed to be provided.
-	///   - For contracts initialized via dispatch calls, storage count would be
-	///     read from initialized account storages.
 	/// - Update codes info.
 	/// - Save `code` if not saved yet.
 	pub fn on_contract_initialization(
 		address: &EvmAddress,
 		maintainer: &EvmAddress,
 		code: Vec<u8>,
-		storage_count: Option<u32>,
 	) -> Result<(), ExitError> {
 		let code_hash = code_hash(&code.as_slice());
-		let storage_count = storage_count.unwrap_or_else(|| AccountStorages::iter_prefix(address).count() as u32);
 		let contract_info = ContractInfo {
-			storage_count,
 			code_hash,
 			maintainer: *maintainer,
 			#[cfg(feature = "with-ethereum-compatibility")]
@@ -634,64 +659,6 @@ impl<T: Config> Module<T> {
 		Ok(())
 	}
 
-	/// Set account storage.
-	pub fn set_storage(address: EvmAddress, index: H256, value: H256) -> Result<(), ExitError> {
-		enum StorageChange {
-			None,
-			Added,
-			Removed,
-		}
-
-		let mut storage_change = StorageChange::None;
-
-		let default_value = H256::default();
-		let is_prev_value_default = Self::account_storages(address, index) == default_value;
-
-		if value == default_value {
-			if !is_prev_value_default {
-				storage_change = StorageChange::Removed;
-			}
-
-			AccountStorages::remove(address, index);
-		} else {
-			if is_prev_value_default {
-				storage_change = StorageChange::Added;
-			}
-
-			AccountStorages::insert(address, index, value);
-		}
-
-		<Accounts<T>>::mutate(&address, |maybe_account_info| -> Result<(), ExitError> {
-			if let Some(AccountInfo {
-				contract_info: Some(contract_info),
-				..
-			}) = maybe_account_info.as_mut()
-			{
-				match storage_change {
-					StorageChange::Added => {
-						contract_info.storage_count = contract_info.storage_count.saturating_add(1);
-					}
-					StorageChange::Removed => {
-						contract_info.storage_count = contract_info.storage_count.saturating_sub(1);
-					}
-					_ => (),
-				}
-			}
-			Ok(())
-		})
-	}
-
-	/// Get additional storage of the contract.
-	fn storage_usage(contract: EvmAddress) -> u32 {
-		Accounts::<T>::get(contract).map_or(0, |account_info| {
-			account_info
-				.contract_info
-				.map_or(AccountStorages::iter_prefix(contract).count() as u32, |contract_info| {
-					contract_info.total_storage_size()
-				})
-		})
-	}
-
 	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
 			account_info
@@ -728,14 +695,6 @@ impl<T: Config> Module<T> {
 			{
 				if let Some(maintainer) = maintainer {
 					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
-
-					let from = T::AddressMapping::get_account_id(&maintainer);
-					let to = T::AddressMapping::get_account_id(&contract);
-					let code_size = CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size);
-					let deposit_amount: BalanceOf<T> = T::StorageDepositPerByte::get()
-						.saturating_mul(T::NewContractExtraBytes::get().saturating_add(code_size).into());
-					T::Currency::transfer(&from, &to, deposit_amount, ExistenceRequirement::AllowDeath)?;
-					T::Currency::reserve(&to, deposit_amount)?;
 				}
 				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 				contract_info.deployed = true;
@@ -833,14 +792,13 @@ impl<T: Config> Module<T> {
 	}
 }
 
-impl<T: Config> EVMTrait for Module<T> {
+impl<T: Config> EVMTrait<T::AccountId> for Module<T> {
 	type Balance = BalanceOf<T>;
-
 	fn execute(
 		context: InvokeContext,
 		input: Vec<u8>,
 		value: BalanceOf<T>,
-		gas_limit: u32,
+		gas_limit: u64,
 		storage_limit: u32,
 		mode: ExecutionMode,
 	) -> Result<CallInfo, sp_runtime::DispatchError> {
@@ -881,6 +839,16 @@ impl<T: Config> EVMTrait for Module<T> {
 				Err(e) => TransactionOutcome::Rollback(Err(e)),
 			}
 		})
+	}
+
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<T::AccountId> {
+		ExtrinsicOrigin::<T>::get()
+	}
+
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: T::AccountId) {
+		ExtrinsicOrigin::<T>::set(Some(origin));
 	}
 }
 
@@ -927,4 +895,65 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 
 pub fn code_hash(code: &[u8]) -> H256 {
 	H256::from_slice(Keccak256::digest(code).as_slice())
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
+
+impl<T: Config + Send + Sync> sp_std::fmt::Debug for SetEvmOrigin<T> {
+	#[cfg(feature = "std")]
+	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		write!(f, "SetEvmOrigin")
+	}
+
+	#[cfg(not(feature = "std"))]
+	fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		Ok(())
+	}
+}
+
+impl<T: Config + Send + Sync> SetEvmOrigin<T> {
+	pub fn new() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
+
+impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
+	const IDENTIFIER: &'static str = "SetEvmOrigin";
+	type AccountId = T::AccountId;
+	type Call = T::Call;
+	type AdditionalSigned = ();
+	type Pre = ();
+
+	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn pre_dispatch(
+		self,
+		who: &Self::AccountId,
+		_call: &Self::Call,
+		_info: &DispatchInfoOf<Self::Call>,
+		_len: usize,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		Ok(())
+	}
+
+	fn post_dispatch(
+		_pre: Self::Pre,
+		_info: &DispatchInfoOf<Self::Call>,
+		_post_info: &PostDispatchInfoOf<Self::Call>,
+		_len: usize,
+		_result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::kill();
+		Ok(())
+	}
 }

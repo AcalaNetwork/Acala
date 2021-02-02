@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Acala Developers"]
 edition = "2018"
 build = "build.rs"
@@ -124,6 +124,7 @@ substrate-wasm-builder = { version = "3.0.0" }
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 libsecp256k1 = { version = "0.3.4" }
+hex = "0.4.0"
 
 [features]
 default = ["std"]

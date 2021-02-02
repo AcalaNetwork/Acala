@@ -1,6 +1,6 @@
 [package]
 name = "acala-primitives"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -11,7 +11,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1",
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-evm = { version = "0.20.0", default-features = false, features = ["with-codec"] }
+evm = { version = "0.21.0", default-features = false, features = ["with-codec"] }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }

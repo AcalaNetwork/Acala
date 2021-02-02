@@ -1,4 +1,4 @@
-use acala_primitives::{AccountId, AirDropCurrencyId};
+use acala_primitives::AccountId;
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -73,7 +73,6 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 					// 5Fe3jZRbKes6aeuQ6HkcTvQeNhkkRPTXBwmNkuAPoimGEv45
 					hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].into(),
 				],
-				false,
 			)
 		},
 		vec![
@@ -97,7 +96,6 @@ fn acala_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	enable_println: bool,
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig, CdpEngineConfig,
@@ -107,18 +105,13 @@ fn acala_genesis(
 		SessionConfig, StakerStatus, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
 		TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
+	#[cfg(feature = "std")]
+	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
-	let airdrop_accounts = {
-		let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-accounts.json")[..];
-		let airdrop_accounts: Vec<(AccountId, AirDropCurrencyId, Balance)> =
-			serde_json::from_slice(airdrop_accounts_json).unwrap();
-		airdrop_accounts
-			.into_iter()
-			.filter(|(_, currency_id, _)| *currency_id == AirDropCurrencyId::ACA)
-			.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
-			.collect::<Vec<_>>()
-	};
+
+	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-ACA.json")[..];
+	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
@@ -141,7 +134,21 @@ fn acala_genesis(
 						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.chain(airdrop_accounts)
-				.collect(),
+				.fold(
+					BTreeMap::<AccountId, Balance>::new(),
+					|mut acc, (account_id, amount)| {
+						if let Some(balance) = acc.get_mut(&account_id) {
+							*balance = balance
+								.checked_add(amount)
+								.expect("balance cannot overflow when building genesis");
+						} else {
+							acc.insert(account_id.clone(), amount);
+						}
+						acc
+					},
+				)
+				.into_iter()
+				.collect::<Vec<(AccountId, Balance)>>(),
 		}),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
 		pallet_collective_Instance1: Some(Default::default()),
@@ -245,6 +252,7 @@ fn acala_genesis(
 		module_dex: Some(DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			initial_added_liquidity_pools: vec![],
 		}),
 		parachain_info: Some(ParachainInfoConfig {
 			parachain_id: 666.into(),
@@ -252,5 +260,6 @@ fn acala_genesis(
 		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}),
+		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
 	}
 }

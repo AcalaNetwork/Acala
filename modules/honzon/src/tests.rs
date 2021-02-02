@@ -15,7 +15,7 @@ fn authorize_should_work() {
 		System::set_block_number(1);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 
-		let authorization_event = TestEvent::honzon(RawEvent::Authorization(ALICE, BOB, BTC));
+		let authorization_event = TestEvent::honzon(Event::Authorization(ALICE, BOB, BTC));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == authorization_event));
@@ -32,7 +32,7 @@ fn unauthorize_should_work() {
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
 
-		let unauthorization_event = TestEvent::honzon(RawEvent::UnAuthorization(ALICE, BOB, BTC));
+		let unauthorization_event = TestEvent::honzon(Event::UnAuthorization(ALICE, BOB, BTC));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == unauthorization_event));
@@ -52,7 +52,7 @@ fn unauthorize_all_should_work() {
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, CAROL));
 		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
 
-		let unauthorization_all_event = TestEvent::honzon(RawEvent::UnAuthorizationAll(ALICE));
+		let unauthorization_all_event = TestEvent::honzon(Event::UnAuthorizationAll(ALICE));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == unauthorization_all_event));

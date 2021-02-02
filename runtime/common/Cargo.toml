@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -13,6 +13,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -21,6 +22,18 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
+
+[dev-dependencies]
+hex-literal = { version = "0.3.1" }
+sp-io = { version = "2.0.0" }
+pallet-timestamp = { version = "2.0.0" }
+pallet-balances = { version = "2.0.0" }
+pallet-proxy = { version = "2.0.0" }
+pallet-utility = { version = "2.0.0" }
+orml-tokens = { path = "../../orml/tokens" }
+orml-nft = { path = "../../orml/nft" }
+orml-currencies = { path = "../../orml/currencies" }
+module-nft = { path = "../../modules/nft" }
 
 [features]
 default = ["std"]
@@ -31,6 +44,7 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-scheduler/std",
 	"module-evm/std",
 	"orml-oracle/std",
 	"orml-traits/std",

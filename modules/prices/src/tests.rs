@@ -4,8 +4,9 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{ExtBuilder, Origin, PricesModule, System, TestEvent, ACA, AUSD, BTC, DOT, LDOT};
+use mock::{ExtBuilder, Origin, PricesModule, Runtime, System, TestEvent, ACA, AUSD, BTC, DOT, LDOT};
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+use support::{Price, PriceProvider};
 
 #[test]
 fn get_price_from_oracle() {
@@ -57,7 +58,7 @@ fn get_relative_price_work() {
 fn lock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(PricesModule::get_price(BTC), Some(Price::saturating_from_integer(5000)));
-		LockedPrice::insert(BTC, Price::saturating_from_integer(8000));
+		LockedPrice::<Runtime>::insert(BTC, Price::saturating_from_integer(8000));
 		assert_eq!(PricesModule::get_price(BTC), Some(Price::saturating_from_integer(8000)));
 	});
 }
@@ -82,7 +83,7 @@ fn lock_price_call_work() {
 fn unlock_price_call_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		LockedPrice::insert(BTC, Price::saturating_from_integer(8000));
+		LockedPrice::<Runtime>::insert(BTC, Price::saturating_from_integer(8000));
 		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
 

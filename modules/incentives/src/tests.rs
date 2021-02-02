@@ -3,11 +3,12 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::Happened};
 use mock::*;
 use orml_rewards::PoolInfo;
-use orml_traits::MultiCurrency;
+use orml_traits::{MultiCurrency, RewardHandler};
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+use support::Rate;
 
 #[test]
 fn deposit_dex_share_works() {
@@ -49,7 +50,7 @@ fn deposit_dex_share_works() {
 			BTC_AUSD_LP,
 			10000
 		));
-		let deposit_dex_share_event = TestEvent::incentives(RawEvent::DepositDEXShare(ALICE, BTC_AUSD_LP, 10000));
+		let deposit_dex_share_event = TestEvent::incentives(Event::DepositDEXShare(ALICE, BTC_AUSD_LP, 10000));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == deposit_dex_share_event));
@@ -137,7 +138,7 @@ fn withdraw_dex_share_works() {
 			BTC_AUSD_LP,
 			8000
 		));
-		let withdraw_dex_share_event = TestEvent::incentives(RawEvent::WithdrawDEXShare(ALICE, BTC_AUSD_LP, 8000));
+		let withdraw_dex_share_event = TestEvent::incentives(Event::WithdrawDEXShare(ALICE, BTC_AUSD_LP, 8000));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == withdraw_dex_share_event));

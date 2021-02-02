@@ -3,7 +3,7 @@
 use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{schedule::DispatchTime, Currency, OnFinalize, OnInitialize, OriginTrait},
+	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait},
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
@@ -84,6 +84,7 @@ impl ExtBuilder {
 		module_dex::GenesisConfig::<Runtime> {
 			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
 			initial_listing_trading_pairs: Default::default(),
+			initial_added_liquidity_pools: vec![],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
@@ -396,7 +397,7 @@ fn liquidate_cdp() {
 			));
 
 			let liquidate_alice_xbtc_cdp_event =
-				Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
+				Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 					CurrencyId::Token(TokenSymbol::XBTC),
 					AccountId::from(ALICE),
 					amount(10),
@@ -423,14 +424,13 @@ fn liquidate_cdp() {
 				CurrencyId::Token(TokenSymbol::XBTC)
 			));
 
-			let liquidate_bob_xbtc_cdp_event =
-				Event::module_cdp_engine(module_cdp_engine::RawEvent::LiquidateUnsafeCDP(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					AccountId::from(BOB),
-					amount(1),
-					amount(5_000),
-					LiquidationStrategy::Exchange,
-				));
+			let liquidate_bob_xbtc_cdp_event = Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
+				CurrencyId::Token(TokenSymbol::XBTC),
+				AccountId::from(BOB),
+				amount(1),
+				amount(5_000),
+				LiquidationStrategy::Exchange,
+			));
 			assert!(SystemModule::events()
 				.iter()
 				.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
@@ -515,7 +515,7 @@ fn test_dex_module() {
 				false,
 			));
 
-			let add_liquidity_event = Event::module_dex(module_dex::RawEvent::AddLiquidity(
+			let add_liquidity_event = Event::module_dex(module_dex::Event::AddLiquidity(
 				AccountId::from(ALICE),
 				CurrencyId::Token(TokenSymbol::AUSD),
 				10000000,
@@ -848,7 +848,7 @@ fn test_cdp_engine_module() {
 				CurrencyId::Token(TokenSymbol::XBTC)
 			));
 
-			let settle_cdp_in_debit_event = Event::module_cdp_engine(module_cdp_engine::RawEvent::SettleCDPInDebit(
+			let settle_cdp_in_debit_event = Event::module_cdp_engine(module_cdp_engine::Event::SettleCDPInDebit(
 				CurrencyId::Token(TokenSymbol::XBTC),
 				AccountId::from(ALICE),
 			));
@@ -951,7 +951,7 @@ fn test_authority_module() {
 				Box::new(call.clone())
 			));
 
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1006,7 +1006,7 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				3,
 			));
@@ -1052,7 +1052,7 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1079,7 +1079,7 @@ fn test_authority_module() {
 				pallets_origin,
 				5
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
+			let event = Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
@@ -1095,7 +1095,7 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Scheduled(
+			let event = Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			));
@@ -1106,7 +1106,7 @@ fn test_authority_module() {
 				frame_system::RawOrigin::Root.into(),
 				6
 			));
-			let event = Event::orml_authority(orml_authority::RawEvent::Cancelled(
+			let event = Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			));
@@ -1233,7 +1233,7 @@ fn test_evm_module() {
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(alice_account_id()), 999999896330000000000);
 			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
 			let to = EvmAccounts::eth_address(&alice());
 			assert_ok!(Currencies::transfer(
@@ -1242,7 +1242,7 @@ fn test_evm_module() {
 				CurrencyId::Token(TokenSymbol::ACA),
 				amount(10)
 			));
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000) + amount(10));
+			assert_eq!(Balances::free_balance(alice_account_id()), 1009999896330000000000);
 			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000) - amount(10));
 		});
 }
@@ -1283,7 +1283,7 @@ fn test_evm_module() {
 					Origin::signed(alice_account_id()),
 					bytecode,
 					0,
-					u32::MAX,
+					u64::MAX,
 					u32::MAX
 				));
 

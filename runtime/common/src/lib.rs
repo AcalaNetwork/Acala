@@ -22,7 +22,10 @@ use sp_runtime::{
 use static_assertions::const_assert;
 
 pub mod precompile;
-pub use precompile::{AllPrecompiles, MultiCurrencyPrecompile, NFTPrecompile, StateRentPrecompile};
+pub use precompile::{
+	AllPrecompiles, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
+	StateRentPrecompile,
+};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
@@ -284,8 +287,8 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 
 /// Convert gas to weight
 pub struct GasToWeight;
-impl Convert<u32, Weight> for GasToWeight {
-	fn convert(a: u32) -> u64 {
+impl Convert<u64, Weight> for GasToWeight {
+	fn convert(a: u64) -> u64 {
 		a as Weight
 	}
 }

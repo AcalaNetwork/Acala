@@ -7,6 +7,7 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
+#![allow(clippy::from_over_into)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -94,7 +95,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 701,
+	spec_version: 705,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -944,6 +945,7 @@ where
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			module_evm::SetEvmOrigin::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1255,6 +1257,17 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
+pub type OraclePrecompile =
+	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, AggregatedDataProvider>;
+pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	Scheduler,
+	Call,
+	Origin,
+	OriginCaller,
+	Runtime,
+>;
 
 #[cfg(feature = "with-ethereum-compatibility")]
 static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
@@ -1273,6 +1286,8 @@ impl module_evm::Config for Runtime {
 		MultiCurrencyPrecompile,
 		NFTPrecompile,
 		StateRentPrecompile,
+		OraclePrecompile,
+		ScheduleCallPrecompile,
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
@@ -1481,10 +1496,10 @@ macro_rules! construct_mandala_runtime {
 				// ORML Core
 				Auction: orml_auction::{Module, Storage, Call, Event<T>},
 				Rewards: orml_rewards::{Module, Storage, Call},
-				OrmlNFT: orml_nft::{Module, Storage},
+				OrmlNFT: orml_nft::{Module, Storage, Config<T>},
 
 				// Acala Core
-				Prices: module_prices::{Module, Storage, Call, Event},
+				Prices: module_prices::{Module, Storage, Call, Event<T>},
 
 				// DEX
 				Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
@@ -1493,7 +1508,7 @@ macro_rules! construct_mandala_runtime {
 				AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 				Loans: module_loans::{Module, Storage, Call, Event<T>},
 				Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-				CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event},
+				CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event<T>},
 				CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
 				EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
 
@@ -1554,6 +1569,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
+	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
@@ -1800,7 +1816,7 @@ impl_runtime_apis! {
 				to,
 				data,
 				value,
-				gas_limit,
+				gas_limit.into(),
 				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
@@ -1826,7 +1842,7 @@ impl_runtime_apis! {
 				from,
 				data,
 				value,
-				gas_limit,
+				gas_limit.into(),
 				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)

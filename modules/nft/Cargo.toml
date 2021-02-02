@@ -1,6 +1,6 @@
 [package]
 name = "module-nft"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -16,10 +16,11 @@ pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "roco
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-nft = { path = "../../orml/nft", default-features = false }
+pallet-timestamp = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
@@ -40,4 +41,6 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"orml-nft/std",
+	"pallet-timestamp/std",
+	"enumflags2/serde"
 ]

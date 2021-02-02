@@ -1,11 +1,11 @@
 use frame_support::ensure;
-use sp_std::{convert::TryInto, marker::PhantomData, mem, result::Result};
+use sp_std::{convert::TryInto, marker::PhantomData, mem, result::Result, vec::Vec};
 
 use module_evm::ExitError;
 use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
 use sp_core::H160;
 
-const PER_PARAM_BYTES: usize = 32;
+pub const PER_PARAM_BYTES: usize = 32;
 const ACTION_INDEX: usize = 0;
 
 const BALANCE_BYTES: usize = mem::size_of::<Balance>();
@@ -30,6 +30,8 @@ pub trait InputT {
 
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error>;
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
+
+	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
 }
 
 pub struct Input<'a, Action, AccountId, AddressMapping> {
@@ -138,6 +140,16 @@ where
 		num[..].copy_from_slice(&param[start..]);
 
 		Ok(u32::from_be_bytes(num))
+	}
+
+	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error> {
+		let end = start + len;
+
+		ensure!(end <= self.content.len(), ExitError::Other("invalid input".into()));
+
+		let bytes = &self.content[start..end];
+
+		Ok(bytes.to_vec())
 	}
 }
 
