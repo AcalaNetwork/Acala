@@ -236,7 +236,9 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
+		//TODO: use `T::Index` once `Deserialize` bound available https://github.com/paritytech/substrate/pull/8035
+		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, u32>>,
+		pub network_contract_index: u64,
 	}
 
 	#[cfg(feature = "std")]
@@ -244,6 +246,7 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
+				network_contract_index: Default::default(),
 			}
 		}
 	}
@@ -254,7 +257,7 @@ pub mod module {
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
-				let account_info = <AccountInfo<T>>::new(account.nonce, None);
+				let account_info = <AccountInfo<T>>::new(account.nonce.into(), None);
 				<Accounts<T>>::insert(address, account_info);
 
 				T::Currency::deposit_creating(&account_id, account.balance);
@@ -272,6 +275,7 @@ pub mod module {
 					}
 				}
 			});
+			NetworkContractIndex::<T>::put(self.network_contract_index);
 		}
 	}
 
