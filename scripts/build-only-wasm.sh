@@ -11,19 +11,10 @@ if [ "$#" -lt 1 ]; then
   exit 1
 fi
 
-WASM_BUILDER_RUNNER="$PROJECT_ROOT/target/release/wbuild-runner/$1"
-
 if [ -z "$2" ]; then
   export WASM_TARGET_DIRECTORY=$(pwd)
 else
   export WASM_TARGET_DIRECTORY=$2
 fi
 
-if [ -d $WASM_BUILDER_RUNNER ]; then
-  export DEBUG=false
-  export OUT_DIR="$PROJECT_ROOT/target/release/build"
-  cargo run --release --manifest-path="$WASM_BUILDER_RUNNER/Cargo.toml" \
-    | grep -vE "cargo:rerun-if-|Executing build command"
-else
-  cargo build --manifest-path bin/acala-dev/Cargo.toml --release -p $1 --features with-$1
-fi
+cargo build --manifest-path bin/acala-dev/Cargo.toml --release -p $1 --features with-$1 --features with-ethereum-compatibility
