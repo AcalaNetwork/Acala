@@ -38,6 +38,7 @@ mod tests;
 
 pub trait WeightInfo {
 	fn claim_account() -> Weight;
+	fn claim_default_account() -> Weight;
 }
 
 pub type EcdsaSignature = ecdsa::Signature;
@@ -132,8 +133,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
 		}
 
-		// TODO: weights & benchmarking
-		#[weight = 0]
+		#[weight = T::WeightInfo::claim_default_account()]
 		pub fn claim_default_account(origin) {
 			let who = ensure_signed(origin)?;
 

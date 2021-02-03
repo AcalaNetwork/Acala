@@ -2,7 +2,7 @@ use crate::{AccountId, Balance, EvmAccounts, Runtime, DOLLARS};
 
 use super::utils::set_aca_balance;
 use codec::Encode;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_io::hashing::keccak_256;
@@ -41,6 +41,10 @@ runtime_benchmarks! {
 		let eth: AccountId = account("eth", 0, SEED);
 		set_aca_balance(&bob_account_id(), dollar(1000));
 	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
+
+	claim_default_account {
+		let caller = whitelisted_caller();
+  }: _(RawOrigin::Signed(caller))
 }
 
 #[cfg(test)]
@@ -57,6 +61,13 @@ mod tests {
 
 	#[test]
 	fn test_claim_account() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_claim_account());
+		});
+	}
+
+	#[test]
+	fn test_claim_default_account() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_claim_account());
 		});
