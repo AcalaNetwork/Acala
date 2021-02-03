@@ -1,6 +1,6 @@
 [package]
 name = "module-evm"
-version = "0.7.2"
+version = "0.7.3"
 authors = ["Acala Developers"]
 edition = "2018"
 
