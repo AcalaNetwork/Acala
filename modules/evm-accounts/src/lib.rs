@@ -149,7 +149,6 @@ pub mod module {
 			Ok(().into())
 		}
 
-		// TODO: weights & benchmarking
 		#[pallet::weight(T::WeightInfo::claim_default_account())]
 		pub fn claim_default_account(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
