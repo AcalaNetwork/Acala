@@ -1178,7 +1178,7 @@ fn test_evm_accounts_module() {
 				EvmAccounts::eth_address(&alice()),
 				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			let event = Event::module_evm_accounts(module_evm_accounts::RawEvent::ClaimAccount(
+			let event = Event::module_evm_accounts(module_evm_accounts::Event::ClaimAccount(
 				AccountId::from(ALICE),
 				EvmAccounts::eth_address(&alice()),
 			));
