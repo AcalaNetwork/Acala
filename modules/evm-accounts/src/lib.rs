@@ -43,6 +43,7 @@ pub mod module {
 
 	pub trait WeightInfo {
 		fn claim_account() -> Weight;
+		fn claim_default_account() -> Weight;
 	}
 
 	pub type EcdsaSignature = ecdsa::Signature;
@@ -149,7 +150,7 @@ pub mod module {
 		}
 
 		// TODO: weights & benchmarking
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::claim_default_account())]
 		pub fn claim_default_account(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
