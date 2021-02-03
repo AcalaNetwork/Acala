@@ -466,7 +466,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 				let (reason, out) = substate.execute(caller, address, value, init_code, Vec::new());
 
 				match reason {
-					ExitReason::Succeed(s) => match gasometer.record_deposit(out.len()) {
+					ExitReason::Succeed(s) => match substate.gasometer.record_deposit(out.len()) {
 						Ok(()) => {
 							try_or_rollback!(gasometer.record_stipend(substate.gasometer.gas()));
 							try_or_rollback!(gasometer.record_refund(substate.gasometer.refunded_gas()));
