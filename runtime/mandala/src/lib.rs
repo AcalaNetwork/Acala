@@ -999,7 +999,7 @@ impl module_emergency_shutdown::Config for Runtime {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
-	pub const TradingPathLimit: usize = 3;
+	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::DOT)),
 		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::XBTC)),
@@ -1139,8 +1139,8 @@ impl module_homa::Config for Runtime {
 
 parameter_types! {
 	pub const MinCouncilBondThreshold: Balance = DOLLARS;
-	pub const NominateesCount: usize = 7;
-	pub const MaxUnlockingChunks: usize = 7;
+	pub const NominateesCount: u32 = 7;
+	pub const MaxUnlockingChunks: u32 = 7;
 	pub const NomineesElectionBondingDuration: EraIndex = 7;
 }
 

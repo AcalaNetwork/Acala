@@ -29,7 +29,7 @@ pub mod module {
 	use sp_core::U256;
 	use sp_runtime::{
 		traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
-		DispatchError, DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug,
+		DispatchError, DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug, SaturatedConversion,
 	};
 	use sp_std::{convert::TryInto, prelude::*, vec};
 	use support::{DEXIncentives, DEXManager, Price, Ratio};
@@ -92,8 +92,9 @@ pub mod module {
 		/// operation.
 		type GetExchangeFee: Get<(u32, u32)>;
 
+		#[pallet::constant]
 		/// The limit for length of trading path
-		type TradingPathLimit: Get<usize>;
+		type TradingPathLimit: Get<u32>;
 
 		#[pallet::constant]
 		/// The DEX's module id, keep all assets in DEX.
@@ -820,7 +821,7 @@ pub mod module {
 		) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
 			let path_length = path.len();
 			ensure!(
-				path_length >= 2 && path_length <= T::TradingPathLimit::get(),
+				path_length >= 2 && path_length <= T::TradingPathLimit::get().saturated_into(),
 				Error::<T>::InvalidTradingPathLength
 			);
 			let mut target_amounts: Vec<Balance> = vec![Zero::zero(); path_length];
@@ -864,7 +865,7 @@ pub mod module {
 		) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
 			let path_length = path.len();
 			ensure!(
-				path_length >= 2 && path_length <= T::TradingPathLimit::get(),
+				path_length >= 2 && path_length <= T::TradingPathLimit::get().saturated_into(),
 				Error::<T>::InvalidTradingPathLength
 			);
 			let mut supply_amounts: Vec<Balance> = vec![Zero::zero(); path_length];

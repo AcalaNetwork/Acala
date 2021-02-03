@@ -105,8 +105,8 @@ impl orml_currencies::Config for Runtime {
 parameter_types! {
 	pub const MinBondThreshold: Balance = 5;
 	pub const BondingDuration: EraIndex = 4;
-	pub const NominateesCount: usize = 5;
-	pub const MaxUnlockingChunks: usize = 3;
+	pub const NominateesCount: u32 = 5;
+	pub const MaxUnlockingChunks: u32 = 3;
 }
 
 impl Config for Runtime {

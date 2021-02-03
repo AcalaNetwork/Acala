@@ -15,7 +15,7 @@ pub mod module {
 	use primitives::{Balance, EraIndex};
 	use sp_runtime::{
 		traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
-		RuntimeDebug,
+		RuntimeDebug, SaturatedConversion,
 	};
 	use sp_std::{fmt::Debug, prelude::*};
 	use support::{NomineesProvider, OnNewEra};
@@ -106,8 +106,10 @@ pub mod module {
 		type MinBondThreshold: Get<Balance>;
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
-		type NominateesCount: Get<usize>;
-		type MaxUnlockingChunks: Get<usize>;
+		#[pallet::constant]
+		type NominateesCount: Get<u32>;
+		#[pallet::constant]
+		type MaxUnlockingChunks: Get<u32>;
 	}
 
 	#[pallet::error]
@@ -178,7 +180,7 @@ pub mod module {
 
 			let mut ledger = Self::ledger(&who);
 			ensure!(
-				ledger.unlocking.len() < T::MaxUnlockingChunks::get(),
+				ledger.unlocking.len() < T::MaxUnlockingChunks::get().saturated_into(),
 				Error::<T>::TooManyChunks,
 			);
 
@@ -240,7 +242,7 @@ pub mod module {
 		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::PolkadotAccountId>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				!targets.is_empty() && targets.len() <= T::NominateesCount::get(),
+				!targets.is_empty() && targets.len() <= T::NominateesCount::get().saturated_into(),
 				Error::<T>::InvalidTargetsLength,
 			);
 
@@ -311,7 +313,7 @@ pub mod module {
 
 			let new_nominees = voters
 				.into_iter()
-				.take(T::NominateesCount::get())
+				.take(T::NominateesCount::get().saturated_into())
 				.map(|(nominee, _)| nominee)
 				.collect::<Vec<_>>();
 
