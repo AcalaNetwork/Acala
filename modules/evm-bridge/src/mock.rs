@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types, traits::GenesisBuild};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
 use primitives::{evm::EvmAddress, mocks::MockAddressMapping};

@@ -2,7 +2,10 @@
 
 use super::*;
 
-use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{
+	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
+	traits::GenesisBuild,
+};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitive_types::{H160, H256};
@@ -10,7 +13,7 @@ use primitives::mocks::MockAddressMapping;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, Convert, IdentityLookup},
 	AccountId32,
 };
 use std::{collections::BTreeMap, str::FromStr};
@@ -155,7 +158,7 @@ impl Config for Test {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 
-	type Event = Event<Test>;
+	type Event = TestEvent;
 	type Precompiles = ();
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;

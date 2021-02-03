@@ -4,14 +4,13 @@ use crate::{
 	precompiles::Precompiles,
 	runner::storage_meter::{StorageMeter, StorageMeterHandler},
 	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
-	MergeAccount, Module, Vicinity,
+	MergeAccount, Pallet, Vicinity,
 };
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, ExternalOpcode, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
 	debug, require_transactional,
-	storage::{StorageDoubleMap, StorageMap},
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
@@ -174,7 +173,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 	}
 
 	pub fn nonce(address: H160) -> U256 {
-		let account = Module::<T>::account_basic(&address);
+		let account = Pallet::<T>::account_basic(&address);
 		account.nonce
 	}
 
@@ -273,25 +272,25 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	type CallFeedback = Infallible;
 
 	fn balance(&self, address: H160) -> U256 {
-		let account = Module::<T>::account_basic(&address);
+		let account = Pallet::<T>::account_basic(&address);
 		account.balance
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
 		let code_hash = self.code_hash(address);
-		U256::from(Codes::decode_len(&code_hash).unwrap_or(0))
+		U256::from(Codes::<T>::decode_len(&code_hash).unwrap_or(0))
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
-		Module::<T>::code_hash_at_address(&address)
+		Pallet::<T>::code_hash_at_address(&address)
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		Module::<T>::code_at_address(&address)
+		Pallet::<T>::code_at_address(&address)
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
-		AccountStorages::get(address, index)
+		AccountStorages::<T>::get(address, index)
 	}
 
 	fn original_storage(&self, _address: H160, _index: H256) -> H256 {
@@ -371,20 +370,20 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		let mut storage_change = StorageChange::None;
 
 		let default_value = H256::default();
-		let is_prev_value_default = Module::<T>::account_storages(address, index) == default_value;
+		let is_prev_value_default = Pallet::<T>::account_storages(address, index) == default_value;
 
 		if value == default_value {
 			if !is_prev_value_default {
 				storage_change = StorageChange::Removed;
 			}
 
-			AccountStorages::remove(address, index);
+			AccountStorages::<T>::remove(address, index);
 		} else {
 			if is_prev_value_default {
 				storage_change = StorageChange::Added;
 			}
 
-			AccountStorages::insert(address, index, value);
+			AccountStorages::<T>::insert(address, index, value);
 		}
 
 		match storage_change {
@@ -396,7 +395,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) -> Result<(), ExitError> {
-		Module::<T>::deposit_event(Event::<T>::Log(Log { address, topics, data }));
+		Pallet::<T>::deposit_event(Event::<T>::Log(Log { address, topics, data }));
 
 		Ok(())
 	}
@@ -409,7 +408,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		let source = T::AddressMapping::get_account_id(&address);
 		let dest = T::AddressMapping::get_account_id(&target);
 
-		let size = Module::<T>::remove_account(&address)?;
+		let size = Pallet::<T>::remove_account(&address)?;
 
 		self.storage_meter
 			.refund(size.saturating_add(T::NewContractExtraBytes::get()))
@@ -477,7 +476,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 								.storage_meter
 								.charge((out.len() as u32).saturating_add(T::NewContractExtraBytes::get()))
 								.map_err(|_| ExitError::OutOfGas));
-							match <Module<T>>::on_contract_initialization(&address, origin, out) {
+							match <Pallet<T>>::on_contract_initialization(&address, origin, out) {
 								Ok(()) => {
 									TransactionOutcome::Commit(Capture::Exit((s.into(), Some(address), Vec::new())))
 								}
