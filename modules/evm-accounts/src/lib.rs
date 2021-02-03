@@ -1,4 +1,4 @@
-//! # Evm Accounts Pallet
+//! # Evm Accounts Module
 //!
 //! ## Overview
 //!
