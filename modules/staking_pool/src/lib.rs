@@ -533,10 +533,10 @@ pub mod module {
 		}
 
 		pub fn update_ledger_with_bridge(current_era: EraIndex) {
-			// require polkdaot bridge to withdraw unbonded.
+			// require polkadot bridge to withdraw unbonded.
 			Self::withdraw_unbonded();
 
-			// require polkdaot bridge to payout nominator.
+			// require polkadot bridge to payout nominator.
 			// TODO: record the balances of bridge before and after payout_nominator,
 			// and oncommision to homa treasury according to `RewardFeeRatio`.
 			Self::payout_nominator();
@@ -563,14 +563,14 @@ pub mod module {
 		}
 
 		pub fn rebalance(current_era: EraIndex) {
-			// require polkdaot bridge to update nominees.
+			// require polkadot bridge to update nominees.
 			Self::nominate(T::Nominees::nominees());
 
-			// require polkdaot bridge to withdraw unbonded and withdraw payout and update
+			// require polkadot bridge to withdraw unbonded and withdraw payout and update
 			// staking pool ledger.
 			Self::update_ledger_with_bridge(current_era);
 
-			// staking pool require polkdaot bridge to bond and unbond according to ledger,
+			// staking pool require polkadot bridge to bond and unbond according to ledger,
 			// and update related records.
 			StakingPoolLedger::<T>::mutate(|ledger| {
 				let (mut total_unbond, claimed_unbond) = ledger.to_unbond_next_era;
