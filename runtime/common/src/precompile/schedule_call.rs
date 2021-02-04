@@ -1,3 +1,6 @@
+// Disable the following lints
+#![allow(clippy::type_complexity)]
+
 use frame_support::{
 	debug,
 	dispatch::Dispatchable,

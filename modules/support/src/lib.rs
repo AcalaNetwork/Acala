@@ -336,3 +336,25 @@ pub trait EnsureCanChargeFee<AccountId, Balance, NegativeImbalance> {
 		imbalance: Option<NegativeImbalance>,
 	) -> Result<(), TransactionValidityError>;
 }
+
+#[cfg(feature = "std")]
+impl<AccountId, Balance: Default, NegativeImbalance> EnsureCanChargeFee<AccountId, Balance, NegativeImbalance> for () {
+	fn reserve_fee(_who: &AccountId, _weight: Weight) -> DispatchResult {
+		Ok(())
+	}
+
+	fn unreserve_and_charge_fee(
+		_who: &AccountId,
+		_weight: Weight,
+	) -> Result<(Balance, Option<NegativeImbalance>), TransactionValidityError> {
+		Ok((Default::default(), None))
+	}
+
+	fn refund_fee(
+		_who: &AccountId,
+		_weight: Weight,
+		_imbalance: Option<NegativeImbalance>,
+	) -> Result<(), TransactionValidityError> {
+		Ok(())
+	}
+}

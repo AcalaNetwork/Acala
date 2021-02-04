@@ -228,7 +228,7 @@ fn schedule_call_precompile_should_work() {
 		assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
 
 		run_to_block(4);
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999701685);
+		assert_eq!(Balances::free_balance(from_account.clone()), 999999995255);
 		assert_eq!(Balances::reserved_balance(from_account), 0);
 		assert_eq!(Balances::free_balance(to_account), 1000000001000);
 	});

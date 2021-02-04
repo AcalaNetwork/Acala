@@ -1255,6 +1255,7 @@ impl module_evm::Config for Runtime {
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
