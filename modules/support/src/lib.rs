@@ -1,10 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
+use frame_support::pallet_prelude::Weight;
 use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
+	transaction_validity::TransactionValidityError,
 	DispatchError, DispatchResult, FixedU128, RuntimeDebug,
 };
 use sp_std::{
@@ -320,4 +322,17 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_deployment_fee() -> Balance;
 	/// Transfer the maintainer of the contract address.
 	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
+}
+
+pub trait EnsureCanChargeFee<AccountId, Balance, NegativeImbalance> {
+	fn reserve_fee(who: &AccountId, weight: Weight) -> DispatchResult;
+	fn unreserve_and_charge_fee(
+		who: &AccountId,
+		weight: Weight,
+	) -> Result<(Balance, Option<NegativeImbalance>), TransactionValidityError>;
+	fn refund_fee(
+		who: &AccountId,
+		weight: Weight,
+		imbalance: Option<NegativeImbalance>,
+	) -> Result<(), TransactionValidityError>;
 }

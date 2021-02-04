@@ -19,7 +19,9 @@ pub mod module {
 	use frame_support::{
 		dispatch::{DispatchResult, Dispatchable},
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement, Imbalance, IsSubType, OnUnbalanced, WithdrawReasons},
+		traits::{
+			Currency, ExistenceRequirement, Imbalance, IsSubType, OnUnbalanced, ReservableCurrency, WithdrawReasons,
+		},
 		weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeePolynomial},
 	};
 	use orml_traits::MultiCurrency;
@@ -36,7 +38,7 @@ pub mod module {
 		FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 	};
 	use sp_std::{prelude::*, vec};
-	use support::{DEXManager, Ratio};
+	use support::{DEXManager, EnsureCanChargeFee, Ratio};
 
 	pub trait WeightInfo {
 		fn on_finalize() -> Weight;
@@ -210,7 +212,7 @@ pub mod module {
 		type StableCurrencyId: Get<CurrencyId>;
 
 		/// The currency type in which fees will be paid.
-		type Currency: Currency<Self::AccountId> + Send + Sync;
+		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId> + Send + Sync;
 
 		/// Currency to transfer, reserve/unreserve, lock/unlock assets
 		type MultiCurrency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -447,6 +449,59 @@ pub mod module {
 			let capped_weight = weight.min(T::BlockWeights::get().max_block);
 			T::WeightToFee::calc(&capped_weight)
 		}
+
+		fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
+			let native_currency_id = T::NativeCurrencyId::get();
+			let stable_currency_id = T::StableCurrencyId::get();
+			let other_currency_ids = T::AllNonNativeCurrencyIds::get();
+			let mut charge_fee_order: Vec<CurrencyId> = vec![];
+			//if let Some(default_fee_currency_id) = DefaultFeeCurrencyId::<T>::get(who) {
+			//	vec![vec![default_fee_currency_id, native_currency_id],
+			// other_currency_ids].concat()
+			//} else {
+			//	vec![vec![native_currency_id], other_currency_ids].concat()
+			//};
+			charge_fee_order.dedup();
+
+			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
+
+			// iterator charge fee order to get enough fee
+			for currency_id in charge_fee_order {
+				if currency_id == native_currency_id {
+					// check native balance if is enough
+					let native_is_enough = <T as Config>::Currency::free_balance(who).checked_sub(&fee).map_or(
+						false,
+						|new_free_balance| {
+							<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
+						},
+					);
+					if native_is_enough {
+						// native balance is enough, break iteration
+						break;
+					}
+				} else {
+					// try to use non-native currency to swap native currency by exchange with DEX
+					let trading_path = if currency_id == stable_currency_id {
+						vec![stable_currency_id, native_currency_id]
+					} else {
+						vec![currency_id, stable_currency_id, native_currency_id]
+					};
+
+					if T::DEX::swap_with_exact_target(
+						who,
+						&trading_path,
+						fee.unique_saturated_into(),
+						<T as Config>::MultiCurrency::free_balance(currency_id, who),
+						price_impact_limit,
+					)
+					.is_ok()
+					{
+						// successfully swap, break iteration
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	impl<T> Convert<Weight, PalletBalanceOf<T>> for Pallet<T>
@@ -499,7 +554,6 @@ pub mod module {
 			info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
 			len: usize,
 		) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
-			// pay any fees.
 			let tip = self.0;
 			let fee = Module::<T>::compute_fee(len as u32, info, tip);
 
@@ -509,47 +563,7 @@ pub mod module {
 				WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 			};
 
-			// check native balance if is enough
-			let native_is_enough =
-				<T as Config>::Currency::free_balance(who)
-					.checked_sub(&fee)
-					.map_or(false, |new_free_balance| {
-						<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
-					});
-
-			// try to use non-native currency to swap native currency by exchange with DEX
-			if !native_is_enough {
-				let native_currency_id = T::NativeCurrencyId::get();
-				let stable_currency_id = T::StableCurrencyId::get();
-				let other_currency_ids = T::AllNonNativeCurrencyIds::get();
-				let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
-				// Note: in fact, just obtain the gap between of fee and usable native currency
-				// amount, but `Currency` does not expose interface to get usable balance by
-				// specific reason. Here try to swap the whole fee by non-native currency.
-				let balance_fee: Balance = fee.unique_saturated_into();
-
-				// iterator non-native currencies to get enough fee
-				for currency_id in other_currency_ids {
-					let trading_path = if currency_id == stable_currency_id {
-						vec![stable_currency_id, native_currency_id]
-					} else {
-						vec![currency_id, stable_currency_id, native_currency_id]
-					};
-
-					if T::DEX::swap_with_exact_target(
-						who,
-						&trading_path,
-						balance_fee,
-						<T as Config>::MultiCurrency::free_balance(currency_id, who),
-						price_impact_limit,
-					)
-					.is_ok()
-					{
-						// successfully swap, break iteration
-						break;
-					}
-				}
-			}
+			Module::<T>::ensure_can_charge_fee(who, fee, reason);
 
 			// withdraw native currency as fee
 			match <T as Config>::Currency::withdraw(who, fee, reason, ExistenceRequirement::KeepAlive) {
@@ -658,6 +672,67 @@ pub mod module {
 					Err(_) => payed,
 				};
 				let imbalances = actual_payment.split(tip);
+
+				// distribute fee
+				<T as Config>::OnTransactionPayment::on_unbalanceds(
+					Some(imbalances.0).into_iter().chain(Some(imbalances.1)),
+				);
+			}
+			Ok(())
+		}
+	}
+
+	impl<T: Config + Send + Sync> EnsureCanChargeFee<T::AccountId, PalletBalanceOf<T>, NegativeImbalanceOf<T>>
+		for ChargeTransactionPayment<T>
+	where
+		PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
+	{
+		fn reserve_fee(who: &T::AccountId, weight: Weight) -> DispatchResult {
+			let fee = Module::<T>::weight_to_fee(weight);
+			Module::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
+			<T as Config>::Currency::reserve(&who, fee)
+		}
+
+		fn unreserve_and_charge_fee(
+			who: &T::AccountId,
+			weight: Weight,
+		) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
+			let fee = Module::<T>::weight_to_fee(weight);
+			<T as Config>::Currency::unreserve(&who, fee);
+			Module::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
+
+			match <T as Config>::Currency::withdraw(
+				who,
+				fee,
+				WithdrawReasons::TRANSACTION_PAYMENT,
+				ExistenceRequirement::KeepAlive,
+			) {
+				Ok(imbalance) => Ok((fee, Some(imbalance))),
+				Err(_) => Err(InvalidTransaction::Payment.into()),
+			}
+		}
+
+		fn refund_fee(
+			who: &T::AccountId,
+			refund_weight: Weight,
+			imbalance: Option<NegativeImbalanceOf<T>>,
+		) -> Result<(), TransactionValidityError> {
+			if let Some(payed) = imbalance {
+				let refund = Module::<T>::weight_to_fee(refund_weight);
+				let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
+					Ok(refund_imbalance) => {
+						// The refund cannot be larger than the up front payed max weight.
+						// `PostDispatchInfo::calc_unspent` guards against such a case.
+						match payed.offset(refund_imbalance) {
+							Ok(actual_payment) => actual_payment,
+							Err(_) => return Err(InvalidTransaction::Payment.into()),
+						}
+					}
+					// We do not recreate the account using the refund. The up front payment
+					// is gone in that case.
+					Err(_) => payed,
+				};
+				let imbalances = actual_payment.split(Zero::zero());
 
 				// distribute fee
 				<T as Config>::OnTransactionPayment::on_unbalanceds(
