@@ -26,7 +26,7 @@ jobs:
         target: wasm32-unknown-unknown
         default: true
     - name: Checkout submodules
-      run: make init
+      run: make submodule
     - name: Check format
       run: cargo fmt --all -- --check
     - name: Install clippy
