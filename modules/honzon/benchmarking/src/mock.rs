@@ -60,7 +60,7 @@ impl frame_system::Config for Runtime {
 	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
-	type OnKilledAccount = (PalletBalances,);
+	type OnKilledAccount = ();
 	type DbWeight = ();
 	type BlockExecutionWeight = ();
 	type ExtrinsicBaseWeight = ();

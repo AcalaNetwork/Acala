@@ -153,14 +153,15 @@ pub fn run() -> sc_cli::Result<()> {
 				return Err("Instant sealing can be turned on only in `--dev` mode".into());
 			}
 
-			runner.run_node_until_exit(|config| async move {
-				match config.role {
-					Role::Light => service::build_light(config),
-					_ => {
-						service::build_full(config, cli.instant_sealing, false).map(|(_, _, task_manager)| task_manager)
+			runner
+				.run_node_until_exit(|config| async move {
+					match config.role {
+						Role::Light => service::build_light(config),
+						_ => service::build_full(config, cli.instant_sealing, false)
+							.map(|(_, _, task_manager)| task_manager),
 					}
-				}
-			})
+				})
+				.map_err(sc_cli::Error::Service)
 		}
 
 		Some(Subcommand::Inspect(cmd)) => {

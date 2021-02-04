@@ -117,7 +117,6 @@ impl Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
-	type KillAccount = ();
 	type WeightInfo = ();
 }
 pub type EvmAccountsModule = Module<Runtime>;

@@ -16,8 +16,8 @@ pub use module::*;
 #[frame_support::pallet]
 pub mod module {
 	use frame_support::pallet_prelude::*;
-	use frame_support::{traits::Happened, transactional};
-	use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+	use frame_support::transactional;
+	use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 	use primitives::{Amount, Balance, CurrencyId};
 	use sp_runtime::{
 		traits::{AccountIdConversion, Convert, Zero},
@@ -267,7 +267,15 @@ pub mod module {
 
 				// increase account ref if new position
 				if p.collateral.is_zero() && p.debit.is_zero() {
-					frame_system::Module::<T>::inc_ref(who);
+					if frame_system::Module::<T>::inc_consumers(who).is_err() {
+						// No providers for the locks. This is impossible under normal circumstances
+						// since the funds that are under the lock will themselves be stored in the
+						// account and therefore will need a reference.
+						frame_support::debug::warn!(
+							"Warning: Attempt to introduce lock consumer reference, yet no providers. \
+							This is unexpected but should be safe."
+						);
+					}
 				}
 
 				p.collateral = new_collateral;
@@ -277,7 +285,7 @@ pub mod module {
 
 				if p.collateral.is_zero() && p.debit.is_zero() {
 					// decrease account ref if zero position
-					frame_system::Module::<T>::dec_ref(who);
+					frame_system::Module::<T>::dec_consumers(who);
 
 					// remove position storage if zero position
 					*may_be_position = None;

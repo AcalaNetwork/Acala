@@ -491,7 +491,7 @@ pub mod module {
 						T::Currency::transfer(trading_pair.1, &module_account_id, &who, contribution.1)?;
 
 						// decrease ref count
-						frame_system::Module::<T>::dec_ref(&who);
+						frame_system::Module::<T>::dec_consumers(&who);
 					}
 
 					TradingPairStatuses::<T>::remove(trading_pair);
@@ -544,7 +544,7 @@ pub mod module {
 						}
 
 						// decrease ref count
-						frame_system::Module::<T>::dec_ref(&who);
+						frame_system::Module::<T>::dec_consumers(&who);
 					}
 
 					// inject provision to liquidity pool
@@ -604,7 +604,15 @@ pub mod module {
 				*maybe_pool = Some(pool);
 
 				if !existed && maybe_pool.is_some() {
-					frame_system::Module::<T>::inc_ref(&who);
+					if frame_system::Module::<T>::inc_consumers(&who).is_err() {
+						// No providers for the locks. This is impossible under normal circumstances
+						// since the funds that are under the lock will themselves be stored in the
+						// account and therefore will need a reference.
+						frame_support::debug::warn!(
+							"Warning: Attempt to introduce lock consumer reference, yet no providers. \
+							This is unexpected but should be safe."
+						);
+					}
 				}
 
 				provision_parameters.accumulated_provision.0 = provision_parameters

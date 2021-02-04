@@ -160,6 +160,7 @@ pub fn run() -> sc_cli::Result<()> {
 						service::build_full(config, cli.instant_sealing, false).map(|(_, _, task_manager)| task_manager)
 					}
 				}
+				.map_err(sc_cli::Error::Service)
 			})
 		}
 

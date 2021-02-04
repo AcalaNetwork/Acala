@@ -673,7 +673,8 @@ impl orml_authority::Config for Runtime {
 
 parameter_types! {
 	pub const CandidacyBond: Balance = 10 * DOLLARS;
-	pub const VotingBond: Balance = DOLLARS;
+	pub const VotingBondBase: Balance = 2 * DOLLARS;
+	pub const VotingBondFactor: Balance = DOLLARS;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 7;
@@ -687,13 +688,13 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type ChangeMembers = HomaCouncil;
 	type InitializeMembers = HomaCouncil;
 	type CandidacyBond = CandidacyBond;
-	type VotingBond = VotingBond;
+	type VotingBondBase = VotingBondBase;
+	type VotingBondFactor = VotingBondFactor;
 	type TermDuration = TermDuration;
 	type DesiredMembers = DesiredMembers;
 	type DesiredRunnersUp = DesiredRunnersUp;
 	type LoserCandidate = ();
 	type KickedMember = ();
-	type BadReport = ();
 	type WeightInfo = ();
 }
 
@@ -1058,7 +1059,6 @@ impl module_transaction_payment::Config for Runtime {
 impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type KillAccount = frame_system::CallKillAccount<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
@@ -1476,7 +1476,7 @@ impl_runtime_apis! {
 			}
 		}
 
-		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
+		fn current_epoch_start() -> sp_consensus_babe::Slot {
 			Babe::current_epoch_start()
 		}
 
@@ -1489,7 +1489,7 @@ impl_runtime_apis! {
 		}
 
 		fn generate_key_ownership_proof(
-			_slot_number: sp_consensus_babe::SlotNumber,
+			_slot_number: sp_consensus_babe::Slot,
 			authority_id: sp_consensus_babe::AuthorityId,
 			) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
 			use codec::Encode;
@@ -1568,6 +1568,10 @@ impl_runtime_apis! {
 	> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
+		}
+
+		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment::FeeDetails<Balance> {
+			TransactionPayment::query_fee_details(uxt, len)
 		}
 	}
 

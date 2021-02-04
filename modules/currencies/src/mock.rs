@@ -9,7 +9,7 @@ use primitives::{evm::AddressMapping, mocks::MockAddressMapping, CurrencyId, Tok
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, Block as BlockT, IdentityLookup},
+	traits::{AccountIdConversion, IdentityLookup},
 	AccountId32, ModuleId, Perbill,
 };
 
