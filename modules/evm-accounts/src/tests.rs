@@ -3,8 +3,11 @@
 #![cfg(test)]
 
 use super::*;
+use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use mock::{alice, bob, EvmAccountsModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE, BOB};
+use primitives::evm::{AddressMapping, EvmAddress};
+use sp_core::crypto::AccountId32;
 use std::str::FromStr;
 
 #[test]
@@ -15,7 +18,7 @@ fn claim_account_work() {
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE.encode(), &[][..])
 		));
-		let event = TestEvent::evm_accounts(RawEvent::ClaimAccount(ALICE, EvmAccountsModule::eth_address(&alice())));
+		let event = TestEvent::evm_accounts(Event::ClaimAccount(ALICE, EvmAccountsModule::eth_address(&alice())));
 		assert!(System::events().iter().any(|record| record.event == event));
 		assert!(
 			Accounts::<Runtime>::contains_key(EvmAccountsModule::eth_address(&alice()))

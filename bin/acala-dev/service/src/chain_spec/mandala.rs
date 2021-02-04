@@ -44,7 +44,6 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 				],
-				true,
 			)
 		},
 		vec![],
@@ -89,7 +88,6 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				false,
 			)
 		},
 		vec![],
@@ -157,7 +155,6 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 					// 5Fe3jZRbKes6aeuQ6HkcTvQeNhkkRPTXBwmNkuAPoimGEv45
 					hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].into(),
 				],
-				false,
 			)
 		},
 		vec![
@@ -181,16 +178,15 @@ fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	enable_println: bool,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, Balance, BalancesConfig,
-		BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EVMConfig,
-		EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
-		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
-		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
-		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
-		TradingPair, VestingConfig, DOLLARS,
+		BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EVMConfig, EnabledTradingPairs,
+		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
+		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
+		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, TradingPair, VestingConfig,
+		DOLLARS,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -285,12 +281,6 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),
-		pallet_contracts: Some(ContractsConfig {
-			current_schedule: pallet_contracts::Schedule {
-				enable_println, // this should only be enabled on development chains
-				..Default::default()
-			},
-		}),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()
@@ -414,12 +404,11 @@ fn mandala_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	enable_println: bool,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
-		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig,
-		EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
+		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EVMConfig,
+		EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
 		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
 		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
@@ -517,12 +506,6 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),
-		pallet_contracts: Some(ContractsConfig {
-			current_schedule: pallet_contracts::Schedule {
-				enable_println, // this should only be enabled on development chains
-				..Default::default()
-			},
-		}),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: vec![
 				(root_key.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),

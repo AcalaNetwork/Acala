@@ -1,7 +1,7 @@
 pub mod handler;
 pub mod storage_meter;
 
-use crate::{AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Module, Vicinity};
+use crate::{AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Pallet, Vicinity};
 use evm::{CreateScheme, ExitError, ExitReason};
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
@@ -123,7 +123,7 @@ impl<T: Config> Runner<T> {
 
 				create_info.used_storage = substate.used_storage();
 
-				if let Err(e) = <Module<T>>::on_contract_initialization(&address, &source, out) {
+				if let Err(e) = <Pallet<T>>::on_contract_initialization(&address, &source, out) {
 					create_info.exit_reason = e.into();
 					return TransactionOutcome::Rollback(Ok(create_info));
 				}

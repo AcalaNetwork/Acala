@@ -5,12 +5,14 @@ use mock::*;
 
 use crate::runner::handler::Handler;
 use frame_support::{assert_noop, assert_ok};
+use primitive_types::{H256, U256};
 use sp_core::{
 	bytes::{from_hex, to_hex},
 	H160,
 };
 use sp_runtime::{traits::BadOrigin, AccountId32};
 use std::str::FromStr;
+use support::{ExecutionMode, InvokeContext, EVM as EVMTrait};
 
 #[test]
 fn fail_call_return_ok() {
@@ -530,7 +532,7 @@ fn create_network_contract_works() {
 			U256::from_str("02").unwrap()
 		);
 
-		let created_event = TestEvent::evm_mod(RawEvent::Created(H160::from_low_u64_be(NETWORK_CONTRACT_INDEX)));
+		let created_event = TestEvent::evm_mod(Event::Created(H160::from_low_u64_be(NETWORK_CONTRACT_INDEX)));
 		assert!(System::events().iter().any(|record| record.event == created_event));
 
 		assert_eq!(EVM::network_contract_index(), NETWORK_CONTRACT_INDEX + 1);
@@ -598,7 +600,7 @@ fn should_transfer_maintainer() {
 			result.address,
 			bob()
 		));
-		let event = TestEvent::evm_mod(RawEvent::TransferredMaintainer(result.address, bob()));
+		let event = TestEvent::evm_mod(Event::TransferredMaintainer(result.address, bob()));
 		assert!(System::events().iter().any(|record| record.event == event));
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 
@@ -689,7 +691,7 @@ fn should_deploy() {
 
 		assert_ok!(EVM::deploy(Origin::signed(alice_account_id.clone()), contract_address));
 		let code_size = Accounts::<Test>::get(contract_address).map_or(0, |account_info| -> u32 {
-			account_info.contract_info.map_or(0, |contract_info| CodeInfos::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
+			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Test>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
 		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get() + code_size) as u64 * StorageDepositPerByte::get()));
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), DeploymentFee::get());

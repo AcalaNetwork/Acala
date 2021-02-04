@@ -6,6 +6,7 @@ use super::*;
 use frame_support::{assert_err, assert_ok};
 use mock::{alice, bob, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
 use primitives::evm::AddressMapping;
+use support::{EVMBridge as EVMBridgeTrait, InvokeContext};
 
 #[test]
 fn should_read_total_supply() {

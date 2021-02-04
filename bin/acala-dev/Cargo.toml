@@ -1,6 +1,6 @@
 [package]
 name = "acala-dev"
-version = "0.7.1"
+version = "0.7.3"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -21,3 +21,4 @@ runtime-benchmarks = [
 with-ethereum-compatibility = [
 	"acala-dev-service/with-ethereum-compatibility"
 ]
+with-mandala-runtime = []

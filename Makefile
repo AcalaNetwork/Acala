@@ -117,11 +117,3 @@ update: update-orml
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
 	./scripts/build-only-wasm.sh mandala-runtime
-
-.PHONY: build-wasm-karura
-build-wasm-karura:
-	./scripts/build-only-wasm.sh karura-runtime
-
-.PHONY: build-wasm-acala
-build-wasm-acala:
-	./scripts/build-only-wasm.sh acala-runtime

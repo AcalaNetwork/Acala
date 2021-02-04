@@ -87,7 +87,7 @@ pub mod module {
 		/// ERC20 invalid operation
 		ERC20InvalidOperation,
 		/// EVM account not found
-		AccountNotFound,
+		EvmAccountNotFound,
 	}
 
 	#[pallet::event]
@@ -236,7 +236,7 @@ pub mod module {
 		) -> DispatchResult {
 			match currency_id {
 				CurrencyId::ERC20(contract) => {
-					let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
+					let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
 					let balance = T::EVMBridge::balance_of(
 						InvokeContext {
 							contract,
@@ -266,7 +266,7 @@ pub mod module {
 
 			match currency_id {
 				CurrencyId::ERC20(contract) => {
-					let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::AccountNotFound)?;
+					let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::EvmAccountNotFound)?;
 					let origin = T::EVMBridge::get_origin().unwrap_or_default();
 					let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
 					let address = T::AddressMapping::get_or_create_evm_address(&to);
@@ -431,7 +431,7 @@ pub mod module {
 					if value.is_zero() {
 						return Ok(());
 					}
-					let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AccountNotFound)?;
+					let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
 					T::EVMBridge::transfer(
 						InvokeContext {
 							contract,
@@ -507,7 +507,7 @@ pub mod module {
 					}
 
 					let slashed_address =
-						T::AddressMapping::get_evm_address(&slashed).ok_or(Error::<T>::AccountNotFound)?;
+						T::AddressMapping::get_evm_address(&slashed).ok_or(Error::<T>::EvmAccountNotFound)?;
 					let beneficiary_address = T::AddressMapping::get_or_create_evm_address(&beneficiary);
 
 					let slashed_reserve_address = reserve_address(slashed_address);
