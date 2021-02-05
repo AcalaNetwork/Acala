@@ -3,16 +3,11 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, traits::Currency};
+use frame_support::{assert_noop, assert_ok};
 use mock::{
 	alice, bob, AccountId, AdaptedBasicCurrency, Currencies, Event, ExtBuilder, NativeCurrency, Origin, PalletBalances,
 	Runtime, System, Tokens, ALICE, BOB, ERC20, EVA, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
 };
-use orml_traits::{
-	BalanceStatus, BasicCurrency, BasicCurrencyExtended, BasicLockableCurrency, BasicReservableCurrency, MultiCurrency,
-	MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
-};
-use primitives::CurrencyId;
 use sp_core::H160;
 use sp_runtime::traits::BadOrigin;
 use support::EVM as EVMTrait;
