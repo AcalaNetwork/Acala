@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use frame_support::{pallet_prelude::Weight, traits::Imbalance};
+use frame_support::pallet_prelude::Weight;
 use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
@@ -333,6 +333,8 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 	fn refund_fee(who: &AccountId, weight: Weight, payed: NegativeImbalance) -> Result<(), TransactionValidityError>;
 }
 
+#[cfg(feature = "std")]
+use frame_support::traits::Imbalance;
 #[cfg(feature = "std")]
 impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 	TransactionPayment<AccountId, Balance, NegativeImbalance> for ()
