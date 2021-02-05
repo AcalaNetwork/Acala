@@ -3,11 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use mock::{alice, bob, EvmAccountsModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE, BOB};
-use primitives::evm::{AddressMapping, EvmAddress};
-use sp_core::crypto::AccountId32;
 use std::str::FromStr;
 
 #[test]

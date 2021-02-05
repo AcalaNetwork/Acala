@@ -3,6 +3,37 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
 
+use codec::{Decode, Encode};
+use evm::Config as EvmConfig;
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
+	ensure,
+	error::BadOrigin,
+	pallet_prelude::*,
+	traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
+	transactional,
+	weights::{Pays, PostDispatchInfo, Weight},
+	RuntimeDebug,
+};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
+use primitive_types::{H256, U256};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
+use sp_runtime::{
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto},
+	transaction_validity::TransactionValidityError,
+	Either, TransactionOutcome,
+};
+use sp_std::{marker::PhantomData, vec::Vec};
+use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, EVM as EVMTrait};
+
+pub use crate::precompiles::{Precompile, Precompiles};
+pub use crate::runner::Runner;
+pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
+pub use orml_traits::account::MergeAccount;
+pub use primitives::evm::{Account, AddressMapping, CallInfo, CreateInfo, EvmAddress, Log, Vicinity};
+
 pub mod precompiles;
 pub mod runner;
 
@@ -12,90 +43,61 @@ mod tests;
 
 pub use module::*;
 
+/// Type alias for currency balance.
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+pub trait WeightInfo {
+	fn transfer_maintainer() -> Weight;
+	fn deploy() -> Weight;
+	fn deploy_free() -> Weight;
+	fn enable_contract_development() -> Weight;
+	fn disable_contract_development() -> Weight;
+	fn set_code() -> Weight;
+	fn selfdestruct() -> Weight;
+}
+
+// Initially based on Istanbul hard fork configuration.
+static ACALA_CONFIG: EvmConfig = EvmConfig {
+	gas_ext_code: 700,
+	gas_ext_code_hash: 700,
+	gas_balance: 700,
+	gas_sload: 800,
+	gas_sstore_set: 20000,
+	gas_sstore_reset: 5000,
+	refund_sstore_clears: 0, // no gas refund
+	gas_suicide: 5000,
+	gas_suicide_new_account: 25000,
+	gas_call: 700,
+	gas_expbyte: 50,
+	gas_transaction_create: 53000,
+	gas_transaction_call: 21000,
+	gas_transaction_zero_data: 4,
+	gas_transaction_non_zero_data: 16,
+	sstore_gas_metering: false,         // no gas refund
+	sstore_revert_under_stipend: false, // ignored
+	err_on_call_with_more_gas: false,
+	empty_considered_exists: false,
+	create_increase_nonce: true,
+	call_l64_after_gas: true,
+	stack_limit: 1024,
+	memory_limit: usize::max_value(),
+	call_stack_limit: 1024,
+	create_contract_limit: None, // ignored
+	call_stipend: 2300,
+	has_delegate_call: true,
+	has_create2: true,
+	has_revert: true,
+	has_return_data: true,
+	has_bitwise_shifting: true,
+	has_chain_id: true,
+	has_self_balance: true,
+	has_ext_code_hash: true,
+	estimate: false,
+};
+
 #[frame_support::pallet]
 pub mod module {
-	pub use crate::precompiles::{Precompile, Precompiles};
-	pub use crate::runner::Runner;
-	pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-	pub use orml_traits::account::MergeAccount;
-	pub use primitives::evm::{Account, AddressMapping, CallInfo, CreateInfo, EvmAddress, Log, Vicinity};
-
-	use codec::{Decode, Encode};
-	use evm::Config as EvmConfig;
-	use frame_support::{
-		dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
-		ensure,
-		error::BadOrigin,
-		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
-		transactional,
-		weights::{Pays, PostDispatchInfo, Weight},
-		RuntimeDebug,
-	};
-	use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
-	use primitive_types::{H256, U256};
-	#[cfg(feature = "std")]
-	use serde::{Deserialize, Serialize};
-	use sha3::{Digest, Keccak256};
-	use sp_runtime::{
-		traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto},
-		transaction_validity::TransactionValidityError,
-		Either, TransactionOutcome,
-	};
-	use sp_std::{marker::PhantomData, vec::Vec};
-	use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, EVM as EVMTrait};
-
-	/// Type alias for currency balance.
-	pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-	pub trait WeightInfo {
-		fn transfer_maintainer() -> Weight;
-		fn deploy() -> Weight;
-		fn deploy_free() -> Weight;
-		fn enable_contract_development() -> Weight;
-		fn disable_contract_development() -> Weight;
-		fn set_code() -> Weight;
-		fn selfdestruct() -> Weight;
-	}
-
-	// Initially based on Istanbul hard fork configuration.
-	static ACALA_CONFIG: EvmConfig = EvmConfig {
-		gas_ext_code: 700,
-		gas_ext_code_hash: 700,
-		gas_balance: 700,
-		gas_sload: 800,
-		gas_sstore_set: 20000,
-		gas_sstore_reset: 5000,
-		refund_sstore_clears: 0, // no gas refund
-		gas_suicide: 5000,
-		gas_suicide_new_account: 25000,
-		gas_call: 700,
-		gas_expbyte: 50,
-		gas_transaction_create: 53000,
-		gas_transaction_call: 21000,
-		gas_transaction_zero_data: 4,
-		gas_transaction_non_zero_data: 16,
-		sstore_gas_metering: false,         // no gas refund
-		sstore_revert_under_stipend: false, // ignored
-		err_on_call_with_more_gas: false,
-		empty_considered_exists: false,
-		create_increase_nonce: true,
-		call_l64_after_gas: true,
-		stack_limit: 1024,
-		memory_limit: usize::max_value(),
-		call_stack_limit: 1024,
-		create_contract_limit: None, // ignored
-		call_stipend: 2300,
-		has_delegate_call: true,
-		has_create2: true,
-		has_revert: true,
-		has_return_data: true,
-		has_bitwise_shifting: true,
-		has_chain_id: true,
-		has_self_balance: true,
-		has_ext_code_hash: true,
-		estimate: false,
-	};
+	use super::*;
 
 	/// EVM module trait
 	#[pallet::config]
@@ -630,91 +632,189 @@ pub mod module {
 			Ok(().into())
 		}
 	}
+}
 
-	impl<T: Config> Pallet<T> {
-		/// Remove an account.
-		pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
-			let mut size = 0u32;
+impl<T: Config> Pallet<T> {
+	/// Remove an account.
+	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
+		let mut size = 0u32;
 
-			// Deref code, and remove it if ref count is zero.
-			if let Some(AccountInfo {
-				contract_info: Some(contract_info),
-				..
-			}) = Self::accounts(address)
-			{
-				CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
-					if let Some(code_info) = maybe_code_info.as_mut() {
-						size = code_info.code_size;
-						code_info.ref_count = code_info.ref_count.saturating_sub(1);
-						if code_info.ref_count == 0 {
-							Codes::<T>::remove(&contract_info.code_hash);
-							*maybe_code_info = None;
-						}
+		// Deref code, and remove it if ref count is zero.
+		if let Some(AccountInfo {
+			contract_info: Some(contract_info),
+			..
+		}) = Self::accounts(address)
+		{
+			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					size = code_info.code_size;
+					code_info.ref_count = code_info.ref_count.saturating_sub(1);
+					if code_info.ref_count == 0 {
+						Codes::<T>::remove(&contract_info.code_hash);
+						*maybe_code_info = None;
 					}
-				});
-			}
-
-			Accounts::<T>::remove(address);
-			AccountStorages::<T>::remove_prefix(address);
-
-			Ok(size)
+				}
+			});
 		}
 
-		/// Get the account basic in EVM format.
-		pub fn account_basic(address: &EvmAddress) -> Account {
-			let account_id = T::AddressMapping::get_account_id(address);
+		Accounts::<T>::remove(address);
+		AccountStorages::<T>::remove_prefix(address);
 
-			let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
-			let balance = T::Currency::free_balance(&account_id);
+		Ok(size)
+	}
 
-			Account {
-				nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
-				balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
-			}
+	/// Get the account basic in EVM format.
+	pub fn account_basic(address: &EvmAddress) -> Account {
+		let account_id = T::AddressMapping::get_account_id(address);
+
+		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
+		let balance = T::Currency::free_balance(&account_id);
+
+		Account {
+			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
+			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
 		}
+	}
 
-		/// Get code hash at given address.
-		pub fn code_hash_at_address(address: &EvmAddress) -> H256 {
+	/// Get code hash at given address.
+	pub fn code_hash_at_address(address: &EvmAddress) -> H256 {
+		if let Some(AccountInfo {
+			contract_info: Some(contract_info),
+			..
+		}) = Self::accounts(address)
+		{
+			contract_info.code_hash
+		} else {
+			code_hash(&[])
+		}
+	}
+
+	/// Get code at given address.
+	pub fn code_at_address(address: &EvmAddress) -> Vec<u8> {
+		Self::codes(&Self::code_hash_at_address(address))
+	}
+
+	/// Handler on new contract initialization.
+	///
+	/// - Create new account for the contract.
+	/// - Update codes info.
+	/// - Save `code` if not saved yet.
+	pub fn on_contract_initialization(
+		address: &EvmAddress,
+		maintainer: &EvmAddress,
+		code: Vec<u8>,
+	) -> Result<(), ExitError> {
+		let code_hash = code_hash(&code.as_slice());
+		let contract_info = ContractInfo {
+			code_hash,
+			maintainer: *maintainer,
+			#[cfg(feature = "with-ethereum-compatibility")]
+			deployed: true,
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			deployed: false,
+		};
+
+		let code_size = code.len() as u32;
+		if code_size > T::MaxCodeSize::get() {
+			return Err(ExitError::OutOfGas);
+		}
+		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+			if let Some(code_info) = maybe_code_info.as_mut() {
+				code_info.ref_count = code_info.ref_count.saturating_add(1);
+			} else {
+				let new = CodeInfo {
+					code_size,
+					ref_count: 1,
+				};
+				*maybe_code_info = Some(new);
+
+				Codes::<T>::insert(&code_hash, code);
+			}
+		});
+
+		Accounts::<T>::mutate(address, |maybe_account_info| {
+			if let Some(account_info) = maybe_account_info.as_mut() {
+				account_info.contract_info = Some(contract_info.clone());
+			} else {
+				let account_info = AccountInfo::<T>::new(Default::default(), Some(contract_info.clone()));
+				*maybe_account_info = Some(account_info);
+			}
+		});
+
+		Ok(())
+	}
+
+	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
+		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
+			account_info
+				.contract_info
+				.map_or(Err(Error::<T>::ContractNotFound), |_| Ok(()))
+		})?;
+
+		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
+			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info
+				.contract_info
+				.as_mut()
+				.ok_or(Error::<T>::ContractNotFound)?;
+
+			let maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+
+			contract_info.maintainer = new_maintainer;
+			Ok(())
+		})?;
+
+		Ok(())
+	}
+
+	/// Mark contract as deployed
+	///
+	/// If maintainer is provider then it will check maintainer
+	fn mark_deployed(contract: EvmAddress, maintainer: Option<EvmAddress>) -> DispatchResult {
+		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
 				..
-			}) = Self::accounts(address)
+			}) = maybe_account_info.as_mut()
 			{
-				contract_info.code_hash
+				if let Some(maintainer) = maintainer {
+					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+				}
+				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+				contract_info.deployed = true;
+				Ok(())
 			} else {
-				code_hash(&[])
+				Err(Error::<T>::ContractNotFound.into())
 			}
-		}
+		})
+	}
 
-		/// Get code at given address.
-		pub fn code_at_address(address: &EvmAddress) -> Vec<u8> {
-			Self::codes(&Self::code_hash_at_address(address))
-		}
+	fn do_set_code(root_or_signed: Either<(), T::AccountId>, contract: EvmAddress, code: Vec<u8>) -> DispatchResult {
+		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
+			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info
+				.contract_info
+				.as_ref()
+				.ok_or(Error::<T>::ContractNotFound)?;
 
-		/// Handler on new contract initialization.
-		///
-		/// - Create new account for the contract.
-		/// - Update codes info.
-		/// - Save `code` if not saved yet.
-		pub fn on_contract_initialization(
-			address: &EvmAddress,
-			maintainer: &EvmAddress,
-			code: Vec<u8>,
-		) -> Result<(), ExitError> {
-			let code_hash = code_hash(&code.as_slice());
-			let contract_info = ContractInfo {
-				code_hash,
-				maintainer: *maintainer,
-				#[cfg(feature = "with-ethereum-compatibility")]
-				deployed: true,
-				#[cfg(not(feature = "with-ethereum-compatibility"))]
-				deployed: false,
-			};
+			if let Either::Right(signer) = root_or_signed {
+				let maintainer = T::AddressMapping::get_evm_address(&signer).ok_or(Error::<T>::AddressNotMapped)?;
+				ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
+				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+			}
 
 			let code_size = code.len() as u32;
-			if code_size > T::MaxCodeSize::get() {
-				return Err(ExitError::OutOfGas);
+			let code_hash = code_hash(&code.as_slice());
+			if code_hash == contract_info.code_hash {
+				return Ok(());
 			}
+
+			ensure!(
+				code_size <= T::MaxCodeSize::get(),
+				Error::<T>::ContractExceedsMaxCodeSize
+			);
+
 			CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
 					code_info.ref_count = code_info.ref_count.saturating_add(1);
@@ -729,322 +829,216 @@ pub mod module {
 				}
 			});
 
-			Accounts::<T>::mutate(address, |maybe_account_info| {
-				if let Some(account_info) = maybe_account_info.as_mut() {
-					account_info.contract_info = Some(contract_info.clone());
-				} else {
-					let account_info = AccountInfo::<T>::new(Default::default(), Some(contract_info.clone()));
-					*maybe_account_info = Some(account_info);
+			Ok(())
+		})?;
+
+		Ok(())
+	}
+
+	fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
+		Accounts::<T>::mutate_exists(contract, |maybe_account_info| -> DispatchResult {
+			let account_info = maybe_account_info.take().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info
+				.contract_info
+				.as_ref()
+				.ok_or(Error::<T>::ContractNotFound)?;
+
+			ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
+			ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+
+			AccountStorages::<T>::remove_prefix(contract);
+
+			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_sub(1);
+					if code_info.ref_count == 0 {
+						Codes::<T>::remove(&contract_info.code_hash);
+						*maybe_code_info = None;
+					}
 				}
 			});
 
-			Ok(())
-		}
-
-		fn do_transfer_maintainer(
-			who: T::AccountId,
-			contract: EvmAddress,
-			new_maintainer: EvmAddress,
-		) -> DispatchResult {
-			Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
-				account_info
-					.contract_info
-					.map_or(Err(Error::<T>::ContractNotFound), |_| Ok(()))
-			})?;
-
-			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-				let contract_info = account_info
-					.contract_info
-					.as_mut()
-					.ok_or(Error::<T>::ContractNotFound)?;
-
-				let maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-				ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
-
-				contract_info.maintainer = new_maintainer;
-				Ok(())
-			})?;
+			let contract_account_id = T::AddressMapping::get_account_id(&contract);
+			T::Currency::unreserve(
+				&contract_account_id,
+				T::Currency::reserved_balance(&contract_account_id),
+			);
+			T::MergeAccount::merge_account(&contract_account_id, &who)?;
 
 			Ok(())
+		})?;
+
+		Ok(())
+	}
+
+	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
+		EnsureOneOf::<T::AccountId, EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
+			.map_or(Err(BadOrigin), Ok)
+	}
+}
+
+impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
+	type Balance = BalanceOf<T>;
+	fn execute(
+		context: InvokeContext,
+		input: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u64,
+		storage_limit: u32,
+		mode: ExecutionMode,
+	) -> Result<CallInfo, sp_runtime::DispatchError> {
+		let mut config = T::config().clone();
+		if let ExecutionMode::EstimateGas = mode {
+			config.estimate = true;
 		}
 
-		/// Mark contract as deployed
-		///
-		/// If maintainer is provider then it will check maintainer
-		fn mark_deployed(contract: EvmAddress, maintainer: Option<EvmAddress>) -> DispatchResult {
-			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				if let Some(AccountInfo {
-					contract_info: Some(contract_info),
-					..
-				}) = maybe_account_info.as_mut()
-				{
-					if let Some(maintainer) = maintainer {
-						ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
-					}
-					ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
-					contract_info.deployed = true;
-					Ok(())
-				} else {
-					Err(Error::<T>::ContractNotFound.into())
-				}
-			})
-		}
+		frame_support::storage::with_transaction(|| {
+			let result = Runner::<T>::call(
+				context.sender,
+				context.origin,
+				context.contract,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				&config,
+			);
 
-		fn do_set_code(
-			root_or_signed: Either<(), T::AccountId>,
-			contract: EvmAddress,
-			code: Vec<u8>,
-		) -> DispatchResult {
-			Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-				let contract_info = account_info
-					.contract_info
-					.as_ref()
-					.ok_or(Error::<T>::ContractNotFound)?;
-
-				if let Either::Right(signer) = root_or_signed {
-					let maintainer = T::AddressMapping::get_evm_address(&signer).ok_or(Error::<T>::AddressNotMapped)?;
-					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
-					ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
-				}
-
-				let code_size = code.len() as u32;
-				let code_hash = code_hash(&code.as_slice());
-				if code_hash == contract_info.code_hash {
-					return Ok(());
-				}
-
-				ensure!(
-					code_size <= T::MaxCodeSize::get(),
-					Error::<T>::ContractExceedsMaxCodeSize
-				);
-
-				CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
-					if let Some(code_info) = maybe_code_info.as_mut() {
-						code_info.ref_count = code_info.ref_count.saturating_add(1);
-					} else {
-						let new = CodeInfo {
-							code_size,
-							ref_count: 1,
-						};
-						*maybe_code_info = Some(new);
-
-						Codes::<T>::insert(&code_hash, code);
-					}
-				});
-
-				Ok(())
-			})?;
-
-			Ok(())
-		}
-
-		fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
-			Accounts::<T>::mutate_exists(contract, |maybe_account_info| -> DispatchResult {
-				let account_info = maybe_account_info.take().ok_or(Error::<T>::ContractNotFound)?;
-				let contract_info = account_info
-					.contract_info
-					.as_ref()
-					.ok_or(Error::<T>::ContractNotFound)?;
-
-				ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
-				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
-
-				AccountStorages::<T>::remove_prefix(contract);
-
-				CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
-					if let Some(code_info) = maybe_code_info.as_mut() {
-						code_info.ref_count = code_info.ref_count.saturating_sub(1);
-						if code_info.ref_count == 0 {
-							Codes::<T>::remove(&contract_info.code_hash);
-							*maybe_code_info = None;
+			match result {
+				Ok(info) => match mode {
+					ExecutionMode::Execute => {
+						if info.exit_reason.is_succeed() {
+							Pallet::<T>::deposit_event(Event::<T>::Executed(context.contract));
+							TransactionOutcome::Commit(Ok(info))
+						} else {
+							Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
+								context.contract,
+								info.exit_reason.clone(),
+								info.output.clone(),
+							));
+							TransactionOutcome::Rollback(Ok(info))
 						}
 					}
-				});
-
-				let contract_account_id = T::AddressMapping::get_account_id(&contract);
-				T::Currency::unreserve(
-					&contract_account_id,
-					T::Currency::reserved_balance(&contract_account_id),
-				);
-				T::MergeAccount::merge_account(&contract_account_id, &who)?;
-
-				Ok(())
-			})?;
-
-			Ok(())
-		}
-
-		fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
-			EnsureOneOf::<T::AccountId, EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
-				.map_or(Err(BadOrigin), Ok)
-		}
-	}
-
-	impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
-		type Balance = BalanceOf<T>;
-		fn execute(
-			context: InvokeContext,
-			input: Vec<u8>,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
-			mode: ExecutionMode,
-		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			let mut config = T::config().clone();
-			if let ExecutionMode::EstimateGas = mode {
-				config.estimate = true;
+					ExecutionMode::View | ExecutionMode::EstimateGas => TransactionOutcome::Rollback(Ok(info)),
+				},
+				Err(e) => TransactionOutcome::Rollback(Err(e)),
 			}
-
-			frame_support::storage::with_transaction(|| {
-				let result = Runner::<T>::call(
-					context.sender,
-					context.origin,
-					context.contract,
-					input,
-					value,
-					gas_limit,
-					storage_limit,
-					&config,
-				);
-
-				match result {
-					Ok(info) => match mode {
-						ExecutionMode::Execute => {
-							if info.exit_reason.is_succeed() {
-								Pallet::<T>::deposit_event(Event::<T>::Executed(context.contract));
-								TransactionOutcome::Commit(Ok(info))
-							} else {
-								Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
-									context.contract,
-									info.exit_reason.clone(),
-									info.output.clone(),
-								));
-								TransactionOutcome::Rollback(Ok(info))
-							}
-						}
-						ExecutionMode::View | ExecutionMode::EstimateGas => TransactionOutcome::Rollback(Ok(info)),
-					},
-					Err(e) => TransactionOutcome::Rollback(Err(e)),
-				}
-			})
-		}
-
-		/// Get the real origin account and charge storage rent from the origin.
-		fn get_origin() -> Option<T::AccountId> {
-			ExtrinsicOrigin::<T>::get()
-		}
-
-		/// Provide a method to set origin for `on_initialize`
-		fn set_origin(origin: T::AccountId) {
-			ExtrinsicOrigin::<T>::set(Some(origin));
-		}
+		})
 	}
 
-	impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
-		fn query_new_contract_extra_bytes() -> u32 {
-			T::NewContractExtraBytes::get()
-		}
-
-		fn query_storage_deposit_per_byte() -> BalanceOf<T> {
-			T::StorageDepositPerByte::get()
-		}
-
-		fn query_maintainer(contract: EvmAddress) -> Result<EvmAddress, DispatchError> {
-			Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound.into()), |account_info| {
-				account_info
-					.contract_info
-					.map_or(Err(Error::<T>::ContractNotFound.into()), |v| Ok(v.maintainer))
-			})
-		}
-
-		fn query_developer_deposit() -> BalanceOf<T> {
-			T::DeveloperDeposit::get()
-		}
-
-		fn query_deployment_fee() -> BalanceOf<T> {
-			T::DeploymentFee::get()
-		}
-
-		fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
-			Pallet::<T>::do_transfer_maintainer(from, contract, new_maintainer)
-		}
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<T::AccountId> {
+		ExtrinsicOrigin::<T>::get()
 	}
 
-	pub struct CallKillAccount<T>(PhantomData<T>);
-	impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
-		fn on_killed_account(who: &T::AccountId) {
-			if let Some(address) = T::AddressMapping::get_evm_address(who) {
-				let _ = Pallet::<T>::remove_account(&address);
-			}
-			let address = T::AddressMapping::get_default_evm_address(who);
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: T::AccountId) {
+		ExtrinsicOrigin::<T>::set(Some(origin));
+	}
+}
+
+impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
+	fn query_new_contract_extra_bytes() -> u32 {
+		T::NewContractExtraBytes::get()
+	}
+
+	fn query_storage_deposit_per_byte() -> BalanceOf<T> {
+		T::StorageDepositPerByte::get()
+	}
+
+	fn query_maintainer(contract: EvmAddress) -> Result<EvmAddress, DispatchError> {
+		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound.into()), |account_info| {
+			account_info
+				.contract_info
+				.map_or(Err(Error::<T>::ContractNotFound.into()), |v| Ok(v.maintainer))
+		})
+	}
+
+	fn query_developer_deposit() -> BalanceOf<T> {
+		T::DeveloperDeposit::get()
+	}
+
+	fn query_deployment_fee() -> BalanceOf<T> {
+		T::DeploymentFee::get()
+	}
+
+	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
+		Pallet::<T>::do_transfer_maintainer(from, contract, new_maintainer)
+	}
+}
+
+pub struct CallKillAccount<T>(PhantomData<T>);
+impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
+	fn on_killed_account(who: &T::AccountId) {
+		if let Some(address) = T::AddressMapping::get_evm_address(who) {
 			let _ = Pallet::<T>::remove_account(&address);
 		}
+		let address = T::AddressMapping::get_default_evm_address(who);
+		let _ = Pallet::<T>::remove_account(&address);
+	}
+}
+
+pub fn code_hash(code: &[u8]) -> H256 {
+	H256::from_slice(Keccak256::digest(code).as_slice())
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
+
+impl<T: Config + Send + Sync> sp_std::fmt::Debug for SetEvmOrigin<T> {
+	#[cfg(feature = "std")]
+	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		write!(f, "SetEvmOrigin")
 	}
 
-	pub fn code_hash(code: &[u8]) -> H256 {
-		H256::from_slice(Keccak256::digest(code).as_slice())
+	#[cfg(not(feature = "std"))]
+	fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+		Ok(())
+	}
+}
+
+impl<T: Config + Send + Sync> SetEvmOrigin<T> {
+	pub fn new() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
+
+impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
+	const IDENTIFIER: &'static str = "SetEvmOrigin";
+	type AccountId = T::AccountId;
+	type Call = T::Call;
+	type AdditionalSigned = ();
+	type Pre = ();
+
+	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
+		Ok(())
 	}
 
-	#[derive(Encode, Decode, Clone, Eq, PartialEq)]
-	pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
-
-	impl<T: Config + Send + Sync> sp_std::fmt::Debug for SetEvmOrigin<T> {
-		#[cfg(feature = "std")]
-		fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-			write!(f, "SetEvmOrigin")
-		}
-
-		#[cfg(not(feature = "std"))]
-		fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-			Ok(())
-		}
+	fn pre_dispatch(
+		self,
+		who: &Self::AccountId,
+		_call: &Self::Call,
+		_info: &DispatchInfoOf<Self::Call>,
+		_len: usize,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		Ok(())
 	}
 
-	impl<T: Config + Send + Sync> SetEvmOrigin<T> {
-		pub fn new() -> Self {
-			Self(sp_std::marker::PhantomData)
-		}
-	}
-
-	impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
-		fn default() -> Self {
-			Self::new()
-		}
-	}
-
-	impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
-		const IDENTIFIER: &'static str = "SetEvmOrigin";
-		type AccountId = T::AccountId;
-		type Call = T::Call;
-		type AdditionalSigned = ();
-		type Pre = ();
-
-		fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
-			Ok(())
-		}
-
-		fn pre_dispatch(
-			self,
-			who: &Self::AccountId,
-			_call: &Self::Call,
-			_info: &DispatchInfoOf<Self::Call>,
-			_len: usize,
-		) -> Result<(), TransactionValidityError> {
-			ExtrinsicOrigin::<T>::set(Some(who.clone()));
-			Ok(())
-		}
-
-		fn post_dispatch(
-			_pre: Self::Pre,
-			_info: &DispatchInfoOf<Self::Call>,
-			_post_info: &PostDispatchInfoOf<Self::Call>,
-			_len: usize,
-			_result: &DispatchResult,
-		) -> Result<(), TransactionValidityError> {
-			ExtrinsicOrigin::<T>::kill();
-			Ok(())
-		}
+	fn post_dispatch(
+		_pre: Self::Pre,
+		_info: &DispatchInfoOf<Self::Call>,
+		_post_info: &PostDispatchInfoOf<Self::Call>,
+		_len: usize,
+		_result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		ExtrinsicOrigin::<T>::kill();
+		Ok(())
 	}
 }
