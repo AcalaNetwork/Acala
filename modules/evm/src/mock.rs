@@ -159,6 +159,7 @@ impl Config for Test {
 	type Precompiles = ();
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
+	type ChargeTransactionPayment = ();
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;

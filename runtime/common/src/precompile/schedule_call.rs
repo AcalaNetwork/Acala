@@ -1,3 +1,6 @@
+// Disable the following lints
+#![allow(clippy::type_complexity)]
+
 use frame_support::{
 	debug,
 	dispatch::Dispatchable,
@@ -8,6 +11,7 @@ use frame_support::{
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_support::TransactionPayment;
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
 use sp_core::U256;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -28,11 +32,21 @@ parameter_types! {
 /// Actions:
 /// - ScheduleCall. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`,
 ///   `storage_limit`, `min_delay`, `input_len`, `input_data`.
-pub struct ScheduleCallPrecompile<AccountId, AddressMapping, Scheduler, Call, Origin, PalletsOrigin, Runtime>(
+pub struct ScheduleCallPrecompile<
+	AccountId,
+	AddressMapping,
+	Scheduler,
+	ChargeTransactionPayment,
+	Call,
+	Origin,
+	PalletsOrigin,
+	Runtime,
+>(
 	PhantomData<(
 		AccountId,
 		AddressMapping,
 		Scheduler,
+		ChargeTransactionPayment,
 		Call,
 		Origin,
 		PalletsOrigin,
@@ -54,18 +68,31 @@ impl From<u8> for Action {
 	}
 }
 
-impl<AccountId, AddressMapping, Scheduler, Call, Origin, PalletsOrigin, Runtime> Precompile
-	for ScheduleCallPrecompile<AccountId, AddressMapping, Scheduler, Call, Origin, PalletsOrigin, Runtime>
-where
+type PalletBalanceOf<T> =
+	<<T as module_evm::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type NegativeImbalanceOf<T> =
+	<<T as module_evm::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+
+impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origin, PalletsOrigin, Runtime> Precompile
+	for ScheduleCallPrecompile<
+		AccountId,
+		AddressMapping,
+		Scheduler,
+		ChargeTransactionPayment,
+		Call,
+		Origin,
+		PalletsOrigin,
+		Runtime,
+	> where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
 	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
+	ChargeTransactionPayment: TransactionPayment<AccountId, Balance, NegativeImbalanceOf<Runtime>>,
 	Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
 	Origin: IsType<<Runtime as frame_system::Config>::Origin> + OriginTrait<PalletsOrigin = PalletsOrigin>,
 	PalletsOrigin: Into<<Runtime as frame_system::Config>::Origin> + From<frame_system::RawOrigin<AccountId>> + Clone,
 	Runtime: module_evm::Config + frame_system::Config<AccountId = AccountId>,
-	<<Runtime as module_evm::Config>::Currency as Currency<<Runtime as frame_system::Config>::AccountId>>::Balance:
-		IsType<Balance>,
+	PalletBalanceOf<Runtime>: IsType<Balance>,
 {
 	fn execute(
 		input: &[u8],
@@ -103,6 +130,18 @@ where
 					input_data,
 				);
 
+				#[cfg(not(feature = "with-ethereum-compatibility"))]
+				{
+					//// reserve the transaction fee for gas_limit
+					use sp_runtime::traits::Convert;
+					let from_account = AddressMapping::get_account_id(&from);
+					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
+					ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
+						let err_msg: &str = e.into();
+						ExitError::Other(err_msg.into())
+					})?;
+				}
+
 				let call = module_evm::Call::<Runtime>::scheduled_call(
 					from,
 					target,
@@ -115,18 +154,6 @@ where
 
 				let delay = DispatchTime::After(min_delay);
 				let origin = Origin::root().caller().clone();
-
-				//let from_account = AddressMapping::get_account_id(&from);
-
-				// reserve the deposit for gas_limit and storage_limit
-				// TODO: https://github.com/AcalaNetwork/Acala/issues/700
-				//let total_fee = Runtime::StorageDepositPerByte::get()
-				//	.saturating_mul(storage_limit.into())
-				//	.saturating_add(gas_limit.into());
-				//Runtime::Currency::reserve(&from_account, total_fee).map_err(|e| {
-				//	let err_msg: &str = e.into();
-				//	ExitError::Other(err_msg.into())
-				//})?;
 
 				let current_id = EvmSchedulerNextID::get();
 				let next_id = current_id
