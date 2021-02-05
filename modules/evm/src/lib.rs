@@ -26,7 +26,7 @@ use sp_runtime::{
 	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, EVM as EVMTrait};
+use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait};
 
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
@@ -45,6 +45,8 @@ pub use module::*;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type NegativeImbalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
 pub trait WeightInfo {
 	fn transfer_maintainer() -> Weight;
@@ -135,6 +137,9 @@ pub mod module {
 
 		/// Convert gas to weight.
 		type GasToWeight: Convert<u64, Weight>;
+
+		/// ChargeTransactionPayment convert weight to fee.
+		type ChargeTransactionPayment: TransactionPayment<Self::AccountId, BalanceOf<Self>, NegativeImbalanceOf<Self>>;
 
 		/// EVM config used in the module.
 		fn config() -> &'static EvmConfig {
@@ -349,6 +354,8 @@ pub mod module {
 		ContractExceedsMaxCodeSize,
 		/// Storage usage exceeds storage limit
 		OutOfStorage,
+		/// Charge fee failed
+		ChargeFeeFailed,
 	}
 
 	#[pallet::pallet]
@@ -411,13 +418,16 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
-			// let from_account = T::AddressMapping::get_account_id(&from);
-			// unreserve the deposit for gas_limit and storage_limit
-			// TODO: https://github.com/AcalaNetwork/Acala/issues/700
-			// let total_fee =
-			// T::StorageDepositPerByte::get().saturating_mul(storage_limit.into()).
-			// saturating_add(gas_limit.into()); T::Currency::unreserve(&from_account,
-			// total_fee);
+			let _from_account = T::AddressMapping::get_account_id(&from);
+			let _payed: NegativeImbalanceOf<T>;
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			{
+				// unreserve the transaction fee for gas_limit
+				let weight = T::GasToWeight::convert(gas_limit);
+				let (_, imbalance) = T::ChargeTransactionPayment::unreserve_and_charge_fee(&_from_account, weight)
+					.map_err(|_| Error::<T>::ChargeFeeFailed)?;
+				_payed = imbalance;
+			}
 
 			let info = Runner::<T>::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
 
@@ -428,6 +438,21 @@ pub mod module {
 			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			{
+				use sp_runtime::traits::Zero;
+				let refund_gas = gas_limit.saturating_sub(used_gas);
+				if !refund_gas.is_zero() {
+					// ignore the result to continue. if it fails, just the user will not
+					// be refunded, there will not increase user balance.
+					let _ = T::ChargeTransactionPayment::refund_fee(
+						&_from_account,
+						T::GasToWeight::convert(refund_gas),
+						_payed,
+					);
+				}
+			}
 
 			Ok(PostDispatchInfo {
 				actual_weight: Some(T::GasToWeight::convert(used_gas)),

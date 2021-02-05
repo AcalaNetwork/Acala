@@ -16,7 +16,6 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
-use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
@@ -179,6 +178,9 @@ pub fn bob_account_id() -> AccountId {
 	AccountId::from(Into::<[u8; 32]>::into(data))
 }
 
+#[cfg(not(feature = "with-ethereum-compatibility"))]
+use sp_core::H160;
+#[cfg(not(feature = "with-ethereum-compatibility"))]
 fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 	// pragma solidity ^0.5.0;
 	//

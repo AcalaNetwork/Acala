@@ -136,6 +136,7 @@ impl module_evm::Config for Runtime {
 	type Precompiles = ();
 	type ChainId = ();
 	type GasToWeight = ();
+	type ChargeTransactionPayment = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 
