@@ -37,7 +37,7 @@ pub mod module {
 		FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 	};
 	use sp_std::{prelude::*, vec};
-	use support::{DEXManager, EnsureCanChargeFee, Ratio};
+	use support::{DEXManager, Ratio, TransactionPayment};
 
 	pub trait WeightInfo {
 		fn on_finalize() -> Weight;
@@ -699,7 +699,7 @@ pub mod module {
 		}
 	}
 
-	impl<T: Config + Send + Sync> EnsureCanChargeFee<T::AccountId, PalletBalanceOf<T>, NegativeImbalanceOf<T>>
+	impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T>, NegativeImbalanceOf<T>>
 		for ChargeTransactionPayment<T>
 	where
 		PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
@@ -713,10 +713,9 @@ pub mod module {
 		fn unreserve_and_charge_fee(
 			who: &T::AccountId,
 			weight: Weight,
-		) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
+		) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
 			let fee = Module::<T>::weight_to_fee(weight);
 			<T as Config>::Currency::unreserve(&who, fee);
-			Module::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
 
 			match <T as Config>::Currency::withdraw(
 				who,
@@ -724,7 +723,7 @@ pub mod module {
 				WithdrawReasons::TRANSACTION_PAYMENT,
 				ExistenceRequirement::KeepAlive,
 			) {
-				Ok(imbalance) => Ok((fee, Some(imbalance))),
+				Ok(imbalance) => Ok((fee, imbalance)),
 				Err(_) => Err(InvalidTransaction::Payment.into()),
 			}
 		}
@@ -732,30 +731,28 @@ pub mod module {
 		fn refund_fee(
 			who: &T::AccountId,
 			refund_weight: Weight,
-			imbalance: Option<NegativeImbalanceOf<T>>,
+			payed: NegativeImbalanceOf<T>,
 		) -> Result<(), TransactionValidityError> {
-			if let Some(payed) = imbalance {
-				let refund = Module::<T>::weight_to_fee(refund_weight);
-				let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
-					Ok(refund_imbalance) => {
-						// The refund cannot be larger than the up front payed max weight.
-						// `PostDispatchInfo::calc_unspent` guards against such a case.
-						match payed.offset(refund_imbalance) {
-							Ok(actual_payment) => actual_payment,
-							Err(_) => return Err(InvalidTransaction::Payment.into()),
-						}
+			let refund = Module::<T>::weight_to_fee(refund_weight);
+			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
+				Ok(refund_imbalance) => {
+					// The refund cannot be larger than the up front payed max weight.
+					match payed.offset(refund_imbalance) {
+						Ok(actual_payment) => actual_payment,
+						Err(_) => return Err(InvalidTransaction::Payment.into()),
 					}
-					// We do not recreate the account using the refund. The up front payment
-					// is gone in that case.
-					Err(_) => payed,
-				};
-				let imbalances = actual_payment.split(Zero::zero());
+				}
+				// We do not recreate the account using the refund. The up front payment
+				// is gone in that case.
+				Err(_) => payed,
+			};
+			let imbalances = actual_payment.split(Zero::zero());
 
-				// distribute fee
-				<T as Config>::OnTransactionPayment::on_unbalanceds(
-					Some(imbalances.0).into_iter().chain(Some(imbalances.1)),
-				);
-			}
+			// distribute fee
+			<T as Config>::OnTransactionPayment::on_unbalanceds(
+				Some(imbalances.0).into_iter().chain(Some(imbalances.1)),
+			);
+
 			Ok(())
 		}
 	}

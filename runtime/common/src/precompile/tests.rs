@@ -223,14 +223,32 @@ fn schedule_call_precompile_should_work() {
 
 		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice());
 		let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob());
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
-		assert_eq!(Balances::reserved_balance(from_account.clone()), 300000);
-		assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		{
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
+			assert_eq!(Balances::reserved_balance(from_account.clone()), 300000);
+			assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+		}
+		#[cfg(feature = "with-ethereum-compatibility")]
+		{
+			assert_eq!(Balances::free_balance(from_account.clone()), 1000000000000);
+			assert_eq!(Balances::reserved_balance(from_account.clone()), 0);
+			assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+		}
 
 		run_to_block(4);
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999995255);
-		assert_eq!(Balances::reserved_balance(from_account), 0);
-		assert_eq!(Balances::free_balance(to_account), 1000000001000);
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		{
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999995255);
+			assert_eq!(Balances::reserved_balance(from_account), 0);
+			assert_eq!(Balances::free_balance(to_account), 1000000001000);
+		}
+		#[cfg(feature = "with-ethereum-compatibility")]
+		{
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999995255);
+			assert_eq!(Balances::reserved_balance(from_account), 0);
+			assert_eq!(Balances::free_balance(to_account), 1000000001000);
+		}
 	});
 }
 
@@ -276,9 +294,18 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 
 		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice());
 		let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob());
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
-		assert_eq!(Balances::reserved_balance(from_account.clone()), 300000);
-		assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		{
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
+			assert_eq!(Balances::reserved_balance(from_account.clone()), 300000);
+			assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+		}
+		#[cfg(feature = "with-ethereum-compatibility")]
+		{
+			assert_eq!(Balances::free_balance(from_account.clone()), 1000000000000);
+			assert_eq!(Balances::reserved_balance(from_account.clone()), 0);
+			assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+		}
 
 		run_to_block(4);
 		assert_eq!(Balances::free_balance(from_account.clone()), 999999999954);

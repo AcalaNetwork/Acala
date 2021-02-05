@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use frame_support::pallet_prelude::Weight;
+use frame_support::{pallet_prelude::Weight, traits::Imbalance};
 use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
@@ -324,21 +324,19 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
 }
 
-pub trait EnsureCanChargeFee<AccountId, Balance, NegativeImbalance> {
+pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 	fn reserve_fee(who: &AccountId, weight: Weight) -> DispatchResult;
 	fn unreserve_and_charge_fee(
 		who: &AccountId,
 		weight: Weight,
-	) -> Result<(Balance, Option<NegativeImbalance>), TransactionValidityError>;
-	fn refund_fee(
-		who: &AccountId,
-		weight: Weight,
-		imbalance: Option<NegativeImbalance>,
-	) -> Result<(), TransactionValidityError>;
+	) -> Result<(Balance, NegativeImbalance), TransactionValidityError>;
+	fn refund_fee(who: &AccountId, weight: Weight, payed: NegativeImbalance) -> Result<(), TransactionValidityError>;
 }
 
 #[cfg(feature = "std")]
-impl<AccountId, Balance: Default, NegativeImbalance> EnsureCanChargeFee<AccountId, Balance, NegativeImbalance> for () {
+impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
+	TransactionPayment<AccountId, Balance, NegativeImbalance> for ()
+{
 	fn reserve_fee(_who: &AccountId, _weight: Weight) -> DispatchResult {
 		Ok(())
 	}
@@ -346,14 +344,14 @@ impl<AccountId, Balance: Default, NegativeImbalance> EnsureCanChargeFee<AccountI
 	fn unreserve_and_charge_fee(
 		_who: &AccountId,
 		_weight: Weight,
-	) -> Result<(Balance, Option<NegativeImbalance>), TransactionValidityError> {
-		Ok((Default::default(), None))
+	) -> Result<(Balance, NegativeImbalance), TransactionValidityError> {
+		Ok((Default::default(), Imbalance::zero()))
 	}
 
 	fn refund_fee(
 		_who: &AccountId,
 		_weight: Weight,
-		_imbalance: Option<NegativeImbalance>,
+		_payed: NegativeImbalance,
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}

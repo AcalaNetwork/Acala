@@ -57,3 +57,4 @@ std = [
 	"module-staking-pool/std",
 	"module-transaction-payment/std",
 ]
+with-ethereum-compatibility = []

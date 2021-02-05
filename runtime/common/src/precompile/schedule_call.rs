@@ -11,10 +11,9 @@ use frame_support::{
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::EnsureCanChargeFee;
+use module_support::TransactionPayment;
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
 use sp_core::U256;
-use sp_runtime::traits::Convert;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, PER_PARAM_BYTES};
@@ -88,7 +87,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
 	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
-	ChargeTransactionPayment: EnsureCanChargeFee<AccountId, Balance, NegativeImbalanceOf<Runtime>>,
+	ChargeTransactionPayment: TransactionPayment<AccountId, Balance, NegativeImbalanceOf<Runtime>>,
 	Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
 	Origin: IsType<<Runtime as frame_system::Config>::Origin> + OriginTrait<PalletsOrigin = PalletsOrigin>,
 	PalletsOrigin: Into<<Runtime as frame_system::Config>::Origin> + From<frame_system::RawOrigin<AccountId>> + Clone,
@@ -131,13 +130,17 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 					input_data,
 				);
 
-				//// reserve the transaction fee for gas_limit
-				let from_account = AddressMapping::get_account_id(&from);
-				let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
-				ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
-				})?;
+				#[cfg(not(feature = "with-ethereum-compatibility"))]
+				{
+					//// reserve the transaction fee for gas_limit
+					use sp_runtime::traits::Convert;
+					let from_account = AddressMapping::get_account_id(&from);
+					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
+					ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
+						let err_msg: &str = e.into();
+						ExitError::Other(err_msg.into())
+					})?;
+				}
 
 				let call = module_evm::Call::<Runtime>::scheduled_call(
 					from,
