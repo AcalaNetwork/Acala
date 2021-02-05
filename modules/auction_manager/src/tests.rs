@@ -5,10 +5,6 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
-use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency};
-use primitives::Balance;
-use sp_runtime::FixedPointNumber;
-use support::{AuctionManager, CDPTreasury, DEXManager, Price};
 
 #[test]
 fn get_auction_time_to_close_work() {

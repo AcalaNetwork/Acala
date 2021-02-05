@@ -14,33 +14,35 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+use frame_support::{pallet_prelude::*, transactional};
+use frame_system::{ensure_signed, pallet_prelude::*};
+use primitives::{Balance, CurrencyId};
+use sp_runtime::{traits::Zero, FixedPointNumber};
+use sp_std::prelude::*;
+use support::{AuctionManager, CDPTreasury, EmergencyShutdown, PriceProvider, Ratio};
+
 mod default_weight;
 mod mock;
 mod tests;
 
 pub use module::*;
 
+pub trait WeightInfo {
+	fn emergency_shutdown(c: u32) -> Weight;
+	fn open_collateral_refund() -> Weight;
+	fn refund_collaterals(c: u32) -> Weight;
+}
+
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::{pallet_prelude::*, transactional};
-	use frame_system::{ensure_signed, pallet_prelude::*};
-	use primitives::{Balance, CurrencyId};
-	use sp_runtime::{traits::Zero, FixedPointNumber};
-	use sp_std::prelude::*;
-	use support::{AuctionManager, CDPTreasury, EmergencyShutdown, PriceProvider, Ratio};
-
-	pub trait WeightInfo {
-		fn emergency_shutdown(c: u32) -> Weight;
-		fn open_collateral_refund() -> Weight;
-		fn refund_collaterals(c: u32) -> Weight;
-	}
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + loans::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		#[pallet::constant]
 		/// The list of valid collateral currency types
+		#[pallet::constant]
 		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
 
 		/// Price source to freeze currencies' price
@@ -86,14 +88,14 @@ pub mod module {
 		Refund(T::AccountId, Balance, Vec<(CurrencyId, Balance)>),
 	}
 
+	/// Emergency shutdown flag
 	#[pallet::storage]
 	#[pallet::getter(fn is_shutdown)]
-	/// Emergency shutdown flag
 	pub type IsShutdown<T: Config> = StorageValue<_, bool, ValueQuery>;
 
+	/// Open final redemption flag
 	#[pallet::storage]
 	#[pallet::getter(fn can_refund)]
-	/// Open final redemption flag
 	pub type CanRefund<T: Config> = StorageValue<_, bool, ValueQuery>;
 
 	#[pallet::pallet]
@@ -202,10 +204,10 @@ pub mod module {
 			Ok(().into())
 		}
 	}
+}
 
-	impl<T: Config> EmergencyShutdown for Pallet<T> {
-		fn is_shutdown() -> bool {
-			Self::is_shutdown()
-		}
+impl<T: Config> EmergencyShutdown for Pallet<T> {
+	fn is_shutdown() -> bool {
+		Self::is_shutdown()
 	}
 }

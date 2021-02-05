@@ -3,15 +3,13 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types, traits::GenesisBuild};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Balance, CurrencyId};
 use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchResult, ModuleId};
+use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
-use support::AuctionManager;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
