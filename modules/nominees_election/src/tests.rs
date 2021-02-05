@@ -4,9 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{ExtBuilder, LDOTCurrency, NomineesElectionModule, Origin, Runtime, ALICE, BOB};
-use orml_traits::BasicCurrency;
-use support::OnNewEra;
+use mock::*;
 
 #[test]
 fn bond_below_min_bond_threshold() {

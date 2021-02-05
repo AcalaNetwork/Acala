@@ -2,86 +2,88 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::unused_unit)]
 
+use enumflags2::BitFlags;
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Currency, ExistenceRequirement::KeepAlive},
+	transactional,
+};
+use frame_system::pallet_prelude::*;
+use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
+use primitives::{Balance, NFTBalance};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_runtime::{
+	traits::{AccountIdConversion, StaticLookup, Zero},
+	DispatchResult, ModuleId, RuntimeDebug,
+};
+
 mod default_weight;
 mod mock;
 mod tests;
 
 pub use module::*;
 
+pub trait WeightInfo {
+	fn create_class() -> Weight;
+	fn mint(i: u32) -> Weight;
+	fn transfer() -> Weight;
+	fn burn() -> Weight;
+	fn destroy_class() -> Weight;
+}
+
+pub type CID = sp_std::vec::Vec<u8>;
+
+#[repr(u8)]
+#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
+pub enum ClassProperty {
+	/// Token can be transferred
+	Transferable = 0b00000001,
+	/// Token can be burned
+	Burnable = 0b00000010,
+}
+
+#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct Properties(pub BitFlags<ClassProperty>);
+
+impl Eq for Properties {}
+impl Encode for Properties {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.bits().using_encoded(f)
+	}
+}
+impl Decode for Properties {
+	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
+		let field = u8::decode(input)?;
+		Ok(Self(
+			<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,
+		))
+	}
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct ClassData {
+	/// The minimum balance to create class
+	pub deposit: Balance,
+	/// Property of token
+	pub properties: Properties,
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TokenData {
+	/// The minimum balance to create token
+	pub deposit: Balance,
+}
+
+pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
+pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
+
 #[frame_support::pallet]
 pub mod module {
-	use enumflags2::BitFlags;
-	use frame_support::{
-		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement::KeepAlive},
-		transactional,
-	};
-	use frame_system::pallet_prelude::*;
-	use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
-	use primitives::{Balance, NFTBalance};
-	#[cfg(feature = "std")]
-	use serde::{Deserialize, Serialize};
-	use sp_runtime::{
-		traits::{AccountIdConversion, StaticLookup, Zero},
-		DispatchResult, ModuleId, RuntimeDebug,
-	};
-
-	pub trait WeightInfo {
-		fn create_class() -> Weight;
-		fn mint(i: u32) -> Weight;
-		fn transfer() -> Weight;
-		fn burn() -> Weight;
-		fn destroy_class() -> Weight;
-	}
-
-	pub type CID = sp_std::vec::Vec<u8>;
-
-	#[repr(u8)]
-	#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
-	pub enum ClassProperty {
-		/// Token can be transferred
-		Transferable = 0b00000001,
-		/// Token can be burned
-		Burnable = 0b00000010,
-	}
-
-	#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub struct Properties(pub BitFlags<ClassProperty>);
-
-	impl Eq for Properties {}
-	impl Encode for Properties {
-		fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-			self.0.bits().using_encoded(f)
-		}
-	}
-	impl Decode for Properties {
-		fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
-			let field = u8::decode(input)?;
-			Ok(Self(
-				<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,
-			))
-		}
-	}
-
-	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub struct ClassData {
-		/// The minimum balance to create class
-		pub deposit: Balance,
-		/// Property of token
-		pub properties: Properties,
-	}
-
-	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub struct TokenData {
-		/// The minimum balance to create token
-		pub deposit: Balance,
-	}
-
-	pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
-	pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config:
@@ -89,16 +91,16 @@ pub mod module {
 	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		#[pallet::constant]
 		/// The minimum balance to create class
+		#[pallet::constant]
 		type CreateClassDeposit: Get<Balance>;
 
-		#[pallet::constant]
 		/// The minimum balance to create token
+		#[pallet::constant]
 		type CreateTokenDeposit: Get<Balance>;
 
-		#[pallet::constant]
 		/// The NFT's module id
+		#[pallet::constant]
 		type ModuleId: Get<ModuleId>;
 
 		///  Currency type for reserve/unreserve balance to
@@ -129,7 +131,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Created NFT class. \[owner, class_id\]
 		CreatedClass(T::AccountId, ClassIdOf<T>),
@@ -293,43 +295,43 @@ pub mod module {
 			Ok(().into())
 		}
 	}
+}
 
-	impl<T: Config> Pallet<T> {
-		/// Ensured atomic.
-		#[transactional]
-		fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
-			let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-			let data = class_info.data;
-			ensure!(
-				data.properties.0.contains(ClassProperty::Transferable),
-				Error::<T>::NonTransferable
-			);
+impl<T: Config> Pallet<T> {
+	/// Ensured atomic.
+	#[transactional]
+	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
+		let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+		let data = class_info.data;
+		ensure!(
+			data.properties.0.contains(ClassProperty::Transferable),
+			Error::<T>::NonTransferable
+		);
 
-			let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
-			ensure!(*from == token_info.owner, Error::<T>::NoPermission);
+		let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+		ensure!(*from == token_info.owner, Error::<T>::NoPermission);
 
-			orml_nft::Module::<T>::transfer(from, to, token)?;
+		orml_nft::Module::<T>::transfer(from, to, token)?;
 
-			Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
-			Ok(())
-		}
+		Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
+		Ok(())
+	}
+}
+
+impl<T: Config> NFT<T::AccountId> for Pallet<T> {
+	type ClassId = ClassIdOf<T>;
+	type TokenId = TokenIdOf<T>;
+	type Balance = NFTBalance;
+
+	fn balance(who: &T::AccountId) -> Self::Balance {
+		orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u128
 	}
 
-	impl<T: Config> NFT<T::AccountId> for Pallet<T> {
-		type ClassId = ClassIdOf<T>;
-		type TokenId = TokenIdOf<T>;
-		type Balance = NFTBalance;
+	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
+		orml_nft::Module::<T>::tokens(token.0, token.1).map(|t| t.owner)
+	}
 
-		fn balance(who: &T::AccountId) -> Self::Balance {
-			orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u128
-		}
-
-		fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
-			orml_nft::Module::<T>::tokens(token.0, token.1).map(|t| t.owner)
-		}
-
-		fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
-			Self::do_transfer(from, to, token)
-		}
+	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
+		Self::do_transfer(from, to, token)
 	}
 }

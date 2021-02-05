@@ -8,12 +8,12 @@ use frame_support::{
 	impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 };
 use frame_system::EnsureSignedBy;
-use orml_traits::{parameter_type_with_key, MultiCurrency};
-use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+use orml_traits::parameter_type_with_key;
+use primitives::TokenSymbol;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId};
+use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
-use support::{CDPTreasury, DEXManager, EmergencyShutdown, Ratio};
+pub use support::{CDPTreasury, DEXManager, Price, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;

@@ -11,30 +11,32 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+use frame_support::{pallet_prelude::*, transactional};
+use frame_system::pallet_prelude::*;
+use primitives::{Amount, CurrencyId};
+use sp_runtime::{
+	traits::{StaticLookup, Zero},
+	DispatchResult,
+};
+use support::EmergencyShutdown;
+
 mod default_weight;
 mod mock;
 mod tests;
 
 pub use module::*;
 
+pub trait WeightInfo {
+	fn authorize() -> Weight;
+	fn unauthorize() -> Weight;
+	fn unauthorize_all(c: u32) -> Weight;
+	fn adjust_loan() -> Weight;
+	fn transfer_loan_from() -> Weight;
+}
+
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::{pallet_prelude::*, transactional};
-	use frame_system::pallet_prelude::*;
-	use primitives::{Amount, CurrencyId};
-	use sp_runtime::{
-		traits::{StaticLookup, Zero},
-		DispatchResult,
-	};
-	use support::EmergencyShutdown;
-
-	pub trait WeightInfo {
-		fn authorize() -> Weight;
-		fn unauthorize() -> Weight;
-		fn unauthorize_all(c: u32) -> Weight;
-		fn adjust_loan() -> Weight;
-		fn transfer_loan_from() -> Weight;
-	}
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + cdp_engine::Config {
@@ -65,10 +67,10 @@ pub mod module {
 		UnAuthorizationAll(T::AccountId),
 	}
 
-	#[pallet::storage]
-	#[pallet::getter(fn authorization)]
 	/// The authorization relationship map from
 	/// Authorizer -> (CollateralType, Authorizee) -> Authorized
+	#[pallet::storage]
+	#[pallet::getter(fn authorization)]
 	pub type Authorization<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, (CurrencyId, T::AccountId), bool, ValueQuery>;
 
@@ -176,19 +178,15 @@ pub mod module {
 			Ok(().into())
 		}
 	}
+}
 
-	impl<T: Config> Pallet<T> {
-		/// Check if `from` has the authorization of `to` under `currency_id`
-		pub(crate) fn check_authorization(
-			from: &T::AccountId,
-			to: &T::AccountId,
-			currency_id: CurrencyId,
-		) -> DispatchResult {
-			ensure!(
-				from == to || Self::authorization(from, (currency_id, to)),
-				Error::<T>::NoAuthorization
-			);
-			Ok(())
-		}
+impl<T: Config> Pallet<T> {
+	/// Check if `from` has the authorization of `to` under `currency_id`
+	fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
+		ensure!(
+			from == to || Self::authorization(from, (currency_id, to)),
+			Error::<T>::NoAuthorization
+		);
+		Ok(())
 	}
 }

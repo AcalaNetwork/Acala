@@ -4,9 +4,8 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{ExtBuilder, Origin, PricesModule, Runtime, System, TestEvent, ACA, AUSD, BTC, DOT, LDOT};
+use mock::*;
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
-use support::{Price, PriceProvider};
 
 #[test]
 fn get_price_from_oracle() {
