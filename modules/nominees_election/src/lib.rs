@@ -25,7 +25,7 @@ pub const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct UnlockChunk {
 	/// Amount of funds to be unlocked.
-	pub(crate) value: Balance,
+	value: Balance,
 	/// Era number at which point it'll be unlocked.
 	era: EraIndex,
 }
@@ -290,7 +290,7 @@ impl<T: Config> Pallet<T> {
 		Nominations::<T>::remove(who);
 	}
 
-	pub(crate) fn update_votes(
+	fn update_votes(
 		old_active: Balance,
 		old_nominations: &[T::PolkadotAccountId],
 		new_active: Balance,
@@ -309,7 +309,7 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	pub(crate) fn rebalance() {
+	fn rebalance() {
 		let mut voters = Votes::<T>::iter().collect::<Vec<(T::PolkadotAccountId, Balance)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));

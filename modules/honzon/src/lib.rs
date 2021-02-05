@@ -182,11 +182,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	/// Check if `from` has the authorization of `to` under `currency_id`
-	pub(crate) fn check_authorization(
-		from: &T::AccountId,
-		to: &T::AccountId,
-		currency_id: CurrencyId,
-	) -> DispatchResult {
+	fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		ensure!(
 			from == to || Self::authorization(from, (currency_id, to)),
 			Error::<T>::NoAuthorization

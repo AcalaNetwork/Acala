@@ -242,7 +242,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// mutate records of collaterals and debits
-	pub(crate) fn update_loan(
+	fn update_loan(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_adjustment: Amount,
