@@ -3,17 +3,12 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types, traits::GenesisBuild};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
-use primitives::{Amount, Balance, CurrencyId};
 use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{Convert, IdentityLookup},
-	DispatchResult, ModuleId,
-};
+use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId};
 use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;

@@ -5,11 +5,10 @@
 use super::*;
 use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
-	traits::{GenesisBuild, Get},
-	weights::{DispatchClass, WeightToFeeCoefficients, WeightToFeePolynomial},
+	weights::WeightToFeeCoefficients,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, Balance, CurrencyId, TokenSymbol, TradingPair};
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{

@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 
-use crate::mock::{new_test_ext, Event, Example, Origin, System};
+use crate::mock::*;
 use frame_support::assert_ok;
 
 #[test]
