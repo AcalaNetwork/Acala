@@ -5,14 +5,12 @@ use mock::*;
 
 use crate::runner::handler::Handler;
 use frame_support::{assert_noop, assert_ok};
-use primitive_types::{H256, U256};
 use sp_core::{
 	bytes::{from_hex, to_hex},
 	H160,
 };
 use sp_runtime::{traits::BadOrigin, AccountId32};
 use std::str::FromStr;
-use support::{ExecutionMode, InvokeContext, EVM as EVMTrait};
 
 #[test]
 fn fail_call_return_ok() {
