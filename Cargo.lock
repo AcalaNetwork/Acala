@@ -1612,7 +1612,7 @@ dependencies = [
 [[package]]
 name = "ethereum"
 version = "0.6.0"
-source = "git+https://github.com/wangjj9219/ethereum.git?branch=master#774fbbf534bf523f8dfe731aa24f2254caf31656"
+source = "git+https://github.com/wangjj9219/ethereum.git#774fbbf534bf523f8dfe731aa24f2254caf31656"
 dependencies = [
  "ethereum-types",
  "hash-db",
@@ -1648,8 +1648,8 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "evm"
-version = "0.22.1"
-source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#157afc56b098a69eeb750a0f51f8227579e33237"
+version = "0.23.0"
+source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#8fc1a8809be9692f3e1ef999fb414865d315cc43"
 dependencies = [
  "ethereum",
  "evm-core",
@@ -1665,8 +1665,8 @@ dependencies = [
 
 [[package]]
 name = "evm-core"
-version = "0.22.0"
-source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#157afc56b098a69eeb750a0f51f8227579e33237"
+version = "0.23.0"
+source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#8fc1a8809be9692f3e1ef999fb414865d315cc43"
 dependencies = [
  "parity-scale-codec",
  "primitive-types",
@@ -1675,8 +1675,8 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.22.0"
-source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#157afc56b098a69eeb750a0f51f8227579e33237"
+version = "0.23.0"
+source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#8fc1a8809be9692f3e1ef999fb414865d315cc43"
 dependencies = [
  "evm-core",
  "evm-runtime",
@@ -1711,8 +1711,8 @@ dependencies = [
 
 [[package]]
 name = "evm-runtime"
-version = "0.22.0"
-source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#157afc56b098a69eeb750a0f51f8227579e33237"
+version = "0.23.0"
+source = "git+https://github.com/wangjj9219/evm.git?branch=update-dependencies#8fc1a8809be9692f3e1ef999fb414865d315cc43"
 dependencies = [
  "evm-core",
  "primitive-types",
