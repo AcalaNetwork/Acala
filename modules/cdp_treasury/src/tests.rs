@@ -3,12 +3,9 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
+use frame_support::{assert_noop, assert_ok};
 use mock::*;
-use orml_traits::MultiCurrency;
-use primitives::Balance;
-use sp_runtime::{traits::BadOrigin, FixedPointNumber};
-use support::{CDPTreasury, CDPTreasuryExtended, Ratio};
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn surplus_pool_work() {

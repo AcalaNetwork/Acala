@@ -3,25 +3,16 @@
 #![cfg(test)]
 
 use super::*;
-use codec::Encode;
 use frame_support::{
 	assert_ok,
-	dispatch::GetDispatchInfo,
-	traits::Get,
-	weights::{DispatchClass, DispatchInfo, Pays, PostDispatchInfo, Weight},
+	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
 	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, TransactionPayment, ACA, ALICE,
 	AUSD, BOB, DOT,
 };
 use orml_traits::MultiCurrency;
-use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
-use sp_runtime::{
-	testing::TestXt,
-	traits::{SignedExtension, UniqueSaturatedInto},
-	FixedPointNumber,
-};
-use support::DEXManager;
+use sp_runtime::testing::TestXt;
 
 const CALL: &<Runtime as frame_system::Config>::Call =
 	&Call::Currencies(module_currencies::Call::transfer(BOB, AUSD, 12));

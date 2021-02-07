@@ -4,11 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{
-	CDPTreasuryModule, Currencies, ExtBuilder, LoansModule, Runtime, System, TestEvent, ALICE, AUSD, BOB, BTC, DOT,
-};
-use orml_traits::MultiCurrency;
-use support::CDPTreasury;
+use mock::*;
 
 #[test]
 fn debits_key() {

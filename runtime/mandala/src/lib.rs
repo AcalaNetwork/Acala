@@ -1246,6 +1246,7 @@ pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
 	Scheduler,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	Call,
 	Origin,
 	OriginCaller,
@@ -1274,6 +1275,7 @@ impl module_evm::Config for Runtime {
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
@@ -1596,7 +1598,7 @@ impl_runtime_apis! {
 			TransactionPayment::query_info(uxt, len)
 		}
 
-		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment::FeeDetails<Balance> {
+		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
 		}
 	}

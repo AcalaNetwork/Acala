@@ -10,6 +10,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+use frame_support::{pallet_prelude::*, transactional};
+use frame_system::pallet_prelude::*;
+use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use primitives::{Balance, CurrencyId};
+use sp_runtime::{
+	traits::{AccountIdConversion, One, Zero},
+	DispatchError, DispatchResult, FixedPointNumber, ModuleId,
+};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
+
 mod benchmarking;
 mod default_weight;
 mod mock;
@@ -17,24 +27,16 @@ mod tests;
 
 pub use module::*;
 
+pub trait WeightInfo {
+	fn auction_surplus() -> Weight;
+	fn auction_debit() -> Weight;
+	fn auction_collateral() -> Weight;
+	fn set_collateral_auction_maximum_size() -> Weight;
+}
+
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::{pallet_prelude::*, transactional};
-	use frame_system::pallet_prelude::*;
-	use orml_traits::{MultiCurrency, MultiCurrencyExtended};
-	use primitives::{Balance, CurrencyId};
-	use sp_runtime::{
-		traits::{AccountIdConversion, One, Zero},
-		DispatchError, DispatchResult, FixedPointNumber, ModuleId,
-	};
-	use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
-
-	pub trait WeightInfo {
-		fn auction_surplus() -> Weight;
-		fn auction_debit() -> Weight;
-		fn auction_collateral() -> Weight;
-		fn set_collateral_auction_maximum_size() -> Weight;
-	}
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -94,15 +96,15 @@ pub mod module {
 		CollateralAuctionMaximumSizeUpdated(CurrencyId, Balance),
 	}
 
+	/// The maximum amount of collateral amount for sale per collateral auction
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_auction_maximum_size)]
-	/// The maximum amount of collateral amount for sale per collateral auction
 	pub type CollateralAuctionMaximumSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn debit_pool)]
 	/// Current total debit value of system. It's not same as debit in CDP
 	/// engine, it is the bad debt of the system.
+	#[pallet::storage]
+	#[pallet::getter(fn debit_pool)]
 	pub type DebitPool<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::genesis_config]
@@ -212,217 +214,209 @@ pub mod module {
 			Ok(().into())
 		}
 	}
+}
 
-	impl<T: Config> Pallet<T> {
-		/// Get account of cdp treasury module.
-		pub fn account_id() -> T::AccountId {
-			T::ModuleId::get().into_account()
-		}
-
-		/// Get current total surplus of system.
-		pub fn surplus_pool() -> Balance {
-			T::Currency::free_balance(T::GetStableCurrencyId::get(), &Self::account_id())
-		}
-
-		/// Get total collateral amount of cdp treasury module.
-		pub fn total_collaterals(currency_id: CurrencyId) -> Balance {
-			T::Currency::free_balance(currency_id, &Self::account_id())
-		}
-
-		/// Get collateral amount not in auction
-		pub fn total_collaterals_not_in_auction(currency_id: CurrencyId) -> Balance {
-			T::Currency::free_balance(currency_id, &Self::account_id())
-				.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
-		}
-
-		fn offset_surplus_and_debit() {
-			let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
-
-			// Burn the amount that is equal to offset amount of stable currency.
-			if !offset_amount.is_zero()
-				&& T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount).is_ok()
-			{
-				DebitPool::<T>::mutate(|debit| {
-					*debit = debit
-						.checked_sub(offset_amount)
-						.expect("offset = min(debit, surplus); qed")
-				});
-			}
-		}
+impl<T: Config> Pallet<T> {
+	/// Get account of cdp treasury module.
+	pub fn account_id() -> T::AccountId {
+		T::ModuleId::get().into_account()
 	}
 
-	impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
-		type Balance = Balance;
-		type CurrencyId = CurrencyId;
+	/// Get current total surplus of system.
+	pub fn surplus_pool() -> Balance {
+		T::Currency::free_balance(T::GetStableCurrencyId::get(), &Self::account_id())
+	}
 
-		fn get_surplus_pool() -> Self::Balance {
-			Self::surplus_pool()
+	/// Get total collateral amount of cdp treasury module.
+	pub fn total_collaterals(currency_id: CurrencyId) -> Balance {
+		T::Currency::free_balance(currency_id, &Self::account_id())
+	}
+
+	/// Get collateral amount not in auction
+	pub fn total_collaterals_not_in_auction(currency_id: CurrencyId) -> Balance {
+		T::Currency::free_balance(currency_id, &Self::account_id())
+			.saturating_sub(T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id))
+	}
+
+	fn offset_surplus_and_debit() {
+		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
+
+		// Burn the amount that is equal to offset amount of stable currency.
+		if !offset_amount.is_zero()
+			&& T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount).is_ok()
+		{
+			DebitPool::<T>::mutate(|debit| {
+				*debit = debit
+					.checked_sub(offset_amount)
+					.expect("offset = min(debit, surplus); qed")
+			});
 		}
+	}
+}
 
-		fn get_debit_pool() -> Self::Balance {
-			Self::debit_pool()
-		}
+impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
 
-		fn get_total_collaterals(id: Self::CurrencyId) -> Self::Balance {
-			Self::total_collaterals(id)
-		}
+	fn get_surplus_pool() -> Self::Balance {
+		Self::surplus_pool()
+	}
 
-		fn get_debit_proportion(amount: Self::Balance) -> Ratio {
-			let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
-			Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
-		}
+	fn get_debit_pool() -> Self::Balance {
+		Self::debit_pool()
+	}
 
-		fn on_system_debit(amount: Self::Balance) -> DispatchResult {
-			DebitPool::<T>::try_mutate(|debit_pool| -> DispatchResult {
-				*debit_pool = debit_pool.checked_add(amount).ok_or(Error::<T>::DebitPoolOverflow)?;
-				Ok(())
-			})
-		}
+	fn get_total_collaterals(id: Self::CurrencyId) -> Self::Balance {
+		Self::total_collaterals(id)
+	}
 
-		fn on_system_surplus(amount: Self::Balance) -> DispatchResult {
-			Self::issue_debit(&Self::account_id(), amount, true)
-		}
+	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
+		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
+		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
+	}
 
-		fn issue_debit(who: &T::AccountId, debit: Self::Balance, backed: bool) -> DispatchResult {
-			// increase system debit if the debit is unbacked
-			if !backed {
-				Self::on_system_debit(debit)?;
-			}
-			T::Currency::deposit(T::GetStableCurrencyId::get(), who, debit)?;
-
+	fn on_system_debit(amount: Self::Balance) -> DispatchResult {
+		DebitPool::<T>::try_mutate(|debit_pool| -> DispatchResult {
+			*debit_pool = debit_pool.checked_add(amount).ok_or(Error::<T>::DebitPoolOverflow)?;
 			Ok(())
-		}
-
-		fn burn_debit(who: &T::AccountId, debit: Self::Balance) -> DispatchResult {
-			T::Currency::withdraw(T::GetStableCurrencyId::get(), who, debit)
-		}
-
-		fn deposit_surplus(from: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
-			T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), surplus)
-		}
-
-		fn deposit_collateral(
-			from: &T::AccountId,
-			currency_id: Self::CurrencyId,
-			amount: Self::Balance,
-		) -> DispatchResult {
-			T::Currency::transfer(currency_id, from, &Self::account_id(), amount)
-		}
-
-		fn withdraw_collateral(
-			to: &T::AccountId,
-			currency_id: Self::CurrencyId,
-			amount: Self::Balance,
-		) -> DispatchResult {
-			T::Currency::transfer(currency_id, &Self::account_id(), to, amount)
-		}
+		})
 	}
 
-	impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
-		/// Swap exact amount of collateral in auction to stable,
-		/// return actual target stable amount
-		fn swap_exact_collateral_in_auction_to_stable(
-			currency_id: CurrencyId,
-			supply_amount: Balance,
-			min_target_amount: Balance,
-			price_impact_limit: Option<Ratio>,
-		) -> sp_std::result::Result<Balance, DispatchError> {
-			ensure!(
-				Self::total_collaterals(currency_id) >= supply_amount
-					&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_amount,
-				Error::<T>::CollateralNotEnough,
-			);
+	fn on_system_surplus(amount: Self::Balance) -> DispatchResult {
+		Self::issue_debit(&Self::account_id(), amount, true)
+	}
 
-			T::DEX::swap_with_exact_supply(
-				&Self::account_id(),
-				&[currency_id, T::GetStableCurrencyId::get()],
-				supply_amount,
-				min_target_amount,
-				price_impact_limit,
-			)
+	fn issue_debit(who: &T::AccountId, debit: Self::Balance, backed: bool) -> DispatchResult {
+		// increase system debit if the debit is unbacked
+		if !backed {
+			Self::on_system_debit(debit)?;
 		}
+		T::Currency::deposit(T::GetStableCurrencyId::get(), who, debit)?;
 
-		/// swap collateral which not in auction to get exact stable,
-		/// return actual supply collateral amount
-		fn swap_collateral_not_in_auction_with_exact_stable(
-			currency_id: CurrencyId,
-			target_amount: Balance,
-			max_supply_amount: Balance,
-			price_impact_limit: Option<Ratio>,
-		) -> sp_std::result::Result<Balance, DispatchError> {
-			ensure!(
-				Self::total_collaterals_not_in_auction(currency_id) >= max_supply_amount,
-				Error::<T>::CollateralNotEnough,
-			);
+		Ok(())
+	}
 
-			T::DEX::swap_with_exact_target(
-				&Self::account_id(),
-				&[currency_id, T::GetStableCurrencyId::get()],
-				target_amount,
-				max_supply_amount,
-				price_impact_limit,
-			)
-		}
+	fn burn_debit(who: &T::AccountId, debit: Self::Balance) -> DispatchResult {
+		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, debit)
+	}
 
-		fn create_collateral_auctions(
-			currency_id: CurrencyId,
-			amount: Balance,
-			target: Balance,
-			refund_receiver: T::AccountId,
-			splited: bool,
-		) -> DispatchResult {
-			ensure!(
-				Self::total_collaterals_not_in_auction(currency_id) >= amount,
-				Error::<T>::CollateralNotEnough,
-			);
+	fn deposit_surplus(from: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
+		T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), surplus)
+	}
 
-			let mut unhandled_collateral_amount = amount;
-			let mut unhandled_target = target;
-			let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
-			let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
-			let lots_count = if !splited
-				|| max_auctions_count.is_zero()
-				|| collateral_auction_maximum_size.is_zero()
-				|| amount <= collateral_auction_maximum_size
-			{
-				One::one()
+	fn deposit_collateral(from: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
+		T::Currency::transfer(currency_id, from, &Self::account_id(), amount)
+	}
+
+	fn withdraw_collateral(to: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
+		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)
+	}
+}
+
+impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
+	/// Swap exact amount of collateral in auction to stable,
+	/// return actual target stable amount
+	fn swap_exact_collateral_in_auction_to_stable(
+		currency_id: CurrencyId,
+		supply_amount: Balance,
+		min_target_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		ensure!(
+			Self::total_collaterals(currency_id) >= supply_amount
+				&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_amount,
+			Error::<T>::CollateralNotEnough,
+		);
+
+		T::DEX::swap_with_exact_supply(
+			&Self::account_id(),
+			&[currency_id, T::GetStableCurrencyId::get()],
+			supply_amount,
+			min_target_amount,
+			price_impact_limit,
+		)
+	}
+
+	/// swap collateral which not in auction to get exact stable,
+	/// return actual supply collateral amount
+	fn swap_collateral_not_in_auction_with_exact_stable(
+		currency_id: CurrencyId,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+		price_impact_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		ensure!(
+			Self::total_collaterals_not_in_auction(currency_id) >= max_supply_amount,
+			Error::<T>::CollateralNotEnough,
+		);
+
+		T::DEX::swap_with_exact_target(
+			&Self::account_id(),
+			&[currency_id, T::GetStableCurrencyId::get()],
+			target_amount,
+			max_supply_amount,
+			price_impact_limit,
+		)
+	}
+
+	fn create_collateral_auctions(
+		currency_id: CurrencyId,
+		amount: Balance,
+		target: Balance,
+		refund_receiver: T::AccountId,
+		splited: bool,
+	) -> DispatchResult {
+		ensure!(
+			Self::total_collaterals_not_in_auction(currency_id) >= amount,
+			Error::<T>::CollateralNotEnough,
+		);
+
+		let mut unhandled_collateral_amount = amount;
+		let mut unhandled_target = target;
+		let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
+		let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
+		let lots_count = if !splited
+			|| max_auctions_count.is_zero()
+			|| collateral_auction_maximum_size.is_zero()
+			|| amount <= collateral_auction_maximum_size
+		{
+			One::one()
+		} else {
+			let mut count = amount
+				.checked_div(collateral_auction_maximum_size)
+				.expect("collateral auction maximum size is not zero; qed");
+
+			let remainder = amount
+				.checked_rem(collateral_auction_maximum_size)
+				.expect("collateral auction maximum size is not zero; qed");
+			if !remainder.is_zero() {
+				count = count.saturating_add(One::one());
+			}
+			sp_std::cmp::min(count, max_auctions_count)
+		};
+		let average_amount_per_lot = amount.checked_div(lots_count).expect("lots count is at least 1; qed");
+		let average_target_per_lot = target.checked_div(lots_count).expect("lots count is at least 1; qed");
+		let mut created_lots: Balance = Zero::zero();
+
+		while !unhandled_collateral_amount.is_zero() {
+			created_lots = created_lots.saturating_add(One::one());
+			let (lot_collateral_amount, lot_target) = if created_lots == lots_count {
+				// the last lot may be have some remnant than average
+				(unhandled_collateral_amount, unhandled_target)
 			} else {
-				let mut count = amount
-					.checked_div(collateral_auction_maximum_size)
-					.expect("collateral auction maximum size is not zero; qed");
-
-				let remainder = amount
-					.checked_rem(collateral_auction_maximum_size)
-					.expect("collateral auction maximum size is not zero; qed");
-				if !remainder.is_zero() {
-					count = count.saturating_add(One::one());
-				}
-				sp_std::cmp::min(count, max_auctions_count)
+				(average_amount_per_lot, average_target_per_lot)
 			};
-			let average_amount_per_lot = amount.checked_div(lots_count).expect("lots count is at least 1; qed");
-			let average_target_per_lot = target.checked_div(lots_count).expect("lots count is at least 1; qed");
-			let mut created_lots: Balance = Zero::zero();
 
-			while !unhandled_collateral_amount.is_zero() {
-				created_lots = created_lots.saturating_add(One::one());
-				let (lot_collateral_amount, lot_target) = if created_lots == lots_count {
-					// the last lot may be have some remnant than average
-					(unhandled_collateral_amount, unhandled_target)
-				} else {
-					(average_amount_per_lot, average_target_per_lot)
-				};
+			T::AuctionManagerHandler::new_collateral_auction(
+				&refund_receiver,
+				currency_id,
+				lot_collateral_amount,
+				lot_target,
+			)?;
 
-				T::AuctionManagerHandler::new_collateral_auction(
-					&refund_receiver,
-					currency_id,
-					lot_collateral_amount,
-					lot_target,
-				)?;
-
-				unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
-				unhandled_target = unhandled_target.saturating_sub(lot_target);
-			}
-			Ok(())
+			unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
+			unhandled_target = unhandled_target.saturating_sub(lot_target);
 		}
+		Ok(())
 	}
 }

@@ -3,8 +3,7 @@
 #![cfg(test)]
 
 use frame_support::{ord_parameter_types, parameter_types, traits::GenesisBuild};
-use orml_traits::{parameter_type_with_key, LockIdentifier};
-use pallet_balances;
+use orml_traits::parameter_type_with_key;
 use primitives::{evm::AddressMapping, mocks::MockAddressMapping, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
@@ -12,8 +11,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup},
 	AccountId32, ModuleId, Perbill,
 };
-
-use tokens;
 
 use super::*;
 use frame_system::EnsureSignedBy;
@@ -139,6 +136,7 @@ impl module_evm::Config for Runtime {
 	type Precompiles = ();
 	type ChainId = ();
 	type GasToWeight = ();
+	type ChargeTransactionPayment = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 

@@ -39,7 +39,6 @@ pallet-staking-reward-curve = { version = "2.0.0", default-features = false }
 pallet-sudo = { version = "2.0.0", default-features = false }
 pallet-timestamp = { version = "2.0.0", default-features = false }
 pallet-tips = { version = "2.0.0", default-features = false }
-pallet-transaction-payment = { version = "2.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0", default-features = false }
 pallet-treasury = { version = "2.0.0", default-features = false }
 pallet-utility = { version = "2.0.0", default-features = false }
@@ -144,7 +143,6 @@ std = [
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
 	"pallet-tips/std",
-	"pallet-transaction-payment/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-treasury/std",
 	"pallet-utility/std",
@@ -228,4 +226,5 @@ disable-runtime-api = []
 with-ethereum-compatibility = [
 	"evm/std",
 	"module-evm/with-ethereum-compatibility",
+	"runtime-common/with-ethereum-compatibility",
 ]

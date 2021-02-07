@@ -11,25 +11,27 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+use frame_support::{pallet_prelude::*, transactional};
+use frame_system::pallet_prelude::*;
+use orml_traits::{DataFeeder, DataProvider};
+use primitives::CurrencyId;
+use sp_runtime::traits::{CheckedDiv, CheckedMul};
+use support::{ExchangeRateProvider, Price, PriceProvider};
+
 mod default_weight;
 mod mock;
 mod tests;
 
 pub use module::*;
 
+pub trait WeightInfo {
+	fn lock_price() -> Weight;
+	fn unlock_price() -> Weight;
+}
+
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::{pallet_prelude::*, transactional};
-	use frame_system::pallet_prelude::*;
-	use orml_traits::{DataFeeder, DataProvider};
-	use primitives::CurrencyId;
-	use sp_runtime::traits::{CheckedDiv, CheckedMul};
-	use support::{ExchangeRateProvider, Price, PriceProvider};
-
-	pub trait WeightInfo {
-		fn lock_price() -> Weight;
-		fn unlock_price() -> Weight;
-	}
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -66,7 +68,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Lock price. \[currency_id, locked_price\]
 		LockPrice(CurrencyId, Price),
@@ -74,9 +76,9 @@ pub mod module {
 		UnlockPrice(CurrencyId),
 	}
 
+	/// Mapping from currency id to it's locked price
 	#[pallet::storage]
 	#[pallet::getter(fn locked_price)]
-	/// Mapping from currency id to it's locked price
 	pub type LockedPrice<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Price, OptionQuery>;
 
 	#[pallet::pallet]
@@ -113,46 +115,46 @@ pub mod module {
 			Ok(().into())
 		}
 	}
+}
 
-	impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
-		/// get relative price between two currency types
-		fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
-			if let (Some(base_price), Some(quote_price)) =
-				(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
-			{
-				base_price.checked_div(&quote_price)
-			} else {
-				None
-			}
+impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
+	/// get relative price between two currency types
+	fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
+		if let (Some(base_price), Some(quote_price)) =
+			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
+		{
+			base_price.checked_div(&quote_price)
+		} else {
+			None
 		}
+	}
 
-		/// get price in USD
-		fn get_price(currency_id: CurrencyId) -> Option<Price> {
-			if currency_id == T::GetStableCurrencyId::get() {
-				// if is stable currency, return fixed price
-				Some(T::StableCurrencyFixedPrice::get())
-			} else if currency_id == T::GetLiquidCurrencyId::get() {
-				// if is homa liquid currency, return the product of staking currency price and
-				// liquid/staking exchange rate.
-				Self::get_price(T::GetStakingCurrencyId::get())
-					.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()))
-			} else {
-				// if locked price exists, return it, otherwise return latest price from oracle.
-				Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
-			}
+	/// get price in USD
+	fn get_price(currency_id: CurrencyId) -> Option<Price> {
+		if currency_id == T::GetStableCurrencyId::get() {
+			// if is stable currency, return fixed price
+			Some(T::StableCurrencyFixedPrice::get())
+		} else if currency_id == T::GetLiquidCurrencyId::get() {
+			// if is homa liquid currency, return the product of staking currency price and
+			// liquid/staking exchange rate.
+			Self::get_price(T::GetStakingCurrencyId::get())
+				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()))
+		} else {
+			// if locked price exists, return it, otherwise return latest price from oracle.
+			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
 		}
+	}
 
-		fn lock_price(currency_id: CurrencyId) {
-			// lock price when get valid price from source
-			if let Some(val) = T::Source::get(&currency_id) {
-				LockedPrice::<T>::insert(currency_id, val);
-				<Pallet<T>>::deposit_event(Event::LockPrice(currency_id, val));
-			}
+	fn lock_price(currency_id: CurrencyId) {
+		// lock price when get valid price from source
+		if let Some(val) = T::Source::get(&currency_id) {
+			LockedPrice::<T>::insert(currency_id, val);
+			<Pallet<T>>::deposit_event(Event::LockPrice(currency_id, val));
 		}
+	}
 
-		fn unlock_price(currency_id: CurrencyId) {
-			LockedPrice::<T>::remove(currency_id);
-			<Pallet<T>>::deposit_event(Event::UnlockPrice(currency_id));
-		}
+	fn unlock_price(currency_id: CurrencyId) {
+		LockedPrice::<T>::remove(currency_id);
+		<Pallet<T>>::deposit_event(Event::UnlockPrice(currency_id));
 	}
 }

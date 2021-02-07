@@ -6,6 +6,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+use frame_support::pallet_prelude::*;
+use frame_system::pallet_prelude::*;
+
 mod mock;
 mod tests;
 
@@ -13,8 +16,7 @@ pub use module::*;
 
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -43,14 +45,14 @@ pub mod module {
 		3.into()
 	}
 
+	/// Some documentation
 	#[pallet::storage]
 	#[pallet::getter(fn dummy)]
-	/// Some documentation
 	type Dummy<T: Config> = StorageValue<_, T::Balance, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn bar)]
-	type Bar<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
+	pub(crate) type Bar<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
 	#[pallet::storage]
 	type Foo<T: Config> = StorageValue<_, T::Balance, ValueQuery, OnFooEmpty<T>>;
@@ -115,10 +117,10 @@ pub mod module {
 			Ok(().into())
 		}
 	}
+}
 
-	impl<T: Config> Pallet<T> {
-		pub fn do_set_bar(who: &T::AccountId, amount: T::Balance) {
-			Bar::<T>::insert(who, amount);
-		}
+impl<T: Config> Pallet<T> {
+	pub fn do_set_bar(who: &T::AccountId, amount: T::Balance) {
+		Bar::<T>::insert(who, amount);
 	}
 }

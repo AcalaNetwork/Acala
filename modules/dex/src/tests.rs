@@ -8,9 +8,8 @@ use mock::{
 	DexModule, ExtBuilder, ListingOrigin, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR,
 	AUSD_XBTC_PAIR, BOB, DOT, XBTC,
 };
-use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use sp_runtime::{traits::BadOrigin, FixedPointNumber};
-use support::Ratio;
+use orml_traits::MultiReservableCurrency;
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn enable_new_trading_pair_work() {

@@ -138,7 +138,6 @@ pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate.g
 pallet-sudo = { git = "https://github.com/paritytech/substrate.git", rev = "5a94966e91fcd20d5a7981ae8186090221d8f096" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", rev = "5a94966e91fcd20d5a7981ae8186090221d8f096" }
 pallet-tips = { git = "https://github.com/paritytech/substrate.git", rev = "5a94966e91fcd20d5a7981ae8186090221d8f096" }
-pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", rev = "5a94966e91fcd20d5a7981ae8186090221d8f096" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate.git", rev = "5a94966e91fcd20d5a7981ae8186090221d8f096" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", rev = "5a94966e91fcd20d5a7981ae8186090221d8f096" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate.git", rev = "5a94966e91fcd20d5a7981ae8186090221d8f096" }
