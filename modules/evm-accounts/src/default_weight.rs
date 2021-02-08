@@ -12,4 +12,10 @@ impl crate::WeightInfo for () {
 			.saturating_add(DbWeight::get().reads(3 as Weight))
 			.saturating_add(DbWeight::get().writes(4 as Weight))
 	}
+
+	fn claim_default_account() -> Weight {
+		(304_000_000 as Weight)
+			.saturating_add(DbWeight::get().reads(1 as Weight))
+			.saturating_add(DbWeight::get().writes(2 as Weight))
+	}
 }

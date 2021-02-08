@@ -10,12 +10,12 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, Balance, BlockNumber, CurrencyId};
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, DispatchResult, ModuleId,
+	DispatchError, DispatchResult,
 };
 use support::{EVMBridge, InvokeContext};
 

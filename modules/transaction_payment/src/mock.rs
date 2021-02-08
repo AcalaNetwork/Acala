@@ -5,11 +5,10 @@
 use super::*;
 use frame_support::{
 	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
-	traits::{GenesisBuild, Get},
-	weights::{DispatchClass, WeightToFeeCoefficients, WeightToFeePolynomial},
+	weights::WeightToFeeCoefficients,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, Balance, CurrencyId, TokenSymbol, TradingPair};
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
@@ -25,6 +24,7 @@ pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Runtime;
@@ -181,8 +181,8 @@ ord_parameter_types! {
 parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
-	pub const TradingPathLimit: usize = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, ACA)];
+	pub const TradingPathLimit: u32 = 3;
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, ACA), TradingPair::new(AUSD, DOT)];
 }
 
 impl module_dex::Config for Runtime {
@@ -198,7 +198,7 @@ impl module_dex::Config for Runtime {
 pub type DEXModule = module_dex::Module<Runtime>;
 
 parameter_types! {
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, DOT];
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
 	pub const StableCurrencyId: CurrencyId = AUSD;
 	pub static TransactionByteFee: u128 = 1;
@@ -248,7 +248,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, AUSD, 10000)],
+			endowed_accounts: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000)],
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,

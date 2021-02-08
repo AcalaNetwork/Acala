@@ -3,12 +3,11 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, traits::Happened};
+use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use orml_rewards::PoolInfo;
-use orml_traits::{MultiCurrency, RewardHandler};
+use orml_traits::MultiCurrency;
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
-use support::Rate;
 
 #[test]
 fn deposit_dex_share_works() {

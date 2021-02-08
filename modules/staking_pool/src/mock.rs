@@ -3,26 +3,19 @@
 #![cfg(test)]
 
 use super::*;
-use codec::{Decode, Encode};
-use frame_support::{
-	impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types, traits::GenesisBuild, RuntimeDebug,
-};
+use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use orml_traits::{parameter_type_with_key, MultiCurrency};
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
-use primitives::{Balance, CurrencyId, EraIndex};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{CheckedAdd, CheckedMul, CheckedSub, IdentityLookup, Saturating},
-	DispatchResult, FixedPointNumber, FixedPointOperand, ModuleId,
+	traits::{CheckedAdd, CheckedMul, CheckedSub, IdentityLookup},
+	FixedPointOperand,
 };
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
-use support::{
-	ExchangeRate, NomineesProvider, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType,
-	PolkadotStakingLedger, PolkadotUnlockChunk, Rate, Ratio,
-};
+use support::PolkadotStakingLedger;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;

@@ -6,7 +6,7 @@ use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::H256;
+use sp_core::{crypto::AccountId32, H256};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 

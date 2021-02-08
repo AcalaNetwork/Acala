@@ -95,7 +95,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 705,
+	spec_version: 708,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1016,7 +1016,7 @@ impl module_emergency_shutdown::Config for Runtime {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
-	pub const TradingPathLimit: usize = 3;
+	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::DOT)),
 		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::XBTC)),
@@ -1156,8 +1156,8 @@ impl module_homa::Config for Runtime {
 
 parameter_types! {
 	pub const MinCouncilBondThreshold: Balance = DOLLARS;
-	pub const NominateesCount: usize = 7;
-	pub const MaxUnlockingChunks: usize = 7;
+	pub const NominateesCount: u32 = 7;
+	pub const MaxUnlockingChunks: u32 = 7;
 	pub const NomineesElectionBondingDuration: EraIndex = 7;
 }
 
@@ -1263,6 +1263,7 @@ pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
 	Scheduler,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	Call,
 	Origin,
 	OriginCaller,
@@ -1291,6 +1292,7 @@ impl module_evm::Config for Runtime {
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;

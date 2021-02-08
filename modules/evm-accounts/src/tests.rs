@@ -15,7 +15,7 @@ fn claim_account_work() {
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE.encode(), &[][..])
 		));
-		let event = TestEvent::evm_accounts(RawEvent::ClaimAccount(ALICE, EvmAccountsModule::eth_address(&alice())));
+		let event = TestEvent::evm_accounts(Event::ClaimAccount(ALICE, EvmAccountsModule::eth_address(&alice())));
 		assert!(System::events().iter().any(|record| record.event == event));
 		assert!(
 			Accounts::<Runtime>::contains_key(EvmAccountsModule::eth_address(&alice()))

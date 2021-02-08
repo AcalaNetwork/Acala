@@ -16,7 +16,6 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
-use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
@@ -179,6 +178,9 @@ pub fn bob_account_id() -> AccountId {
 	AccountId::from(Into::<[u8; 32]>::into(data))
 }
 
+#[cfg(not(feature = "with-ethereum-compatibility"))]
+use sp_core::H160;
+#[cfg(not(feature = "with-ethereum-compatibility"))]
 fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 	// pragma solidity ^0.5.0;
 	//
@@ -197,7 +199,7 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 	EVM::create(Origin::signed(account), contract, 0, 1000000000, 1000000000)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	if let Event::module_evm(module_evm::RawEvent::Created(address)) = System::events().iter().last().unwrap().event {
+	if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
 		Ok(address)
 	} else {
 		Err("deploy_contract failed".into())
@@ -1178,7 +1180,7 @@ fn test_evm_accounts_module() {
 				EvmAccounts::eth_address(&alice()),
 				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			let event = Event::module_evm_accounts(module_evm_accounts::RawEvent::ClaimAccount(
+			let event = Event::module_evm_accounts(module_evm_accounts::Event::ClaimAccount(
 				AccountId::from(ALICE),
 				EvmAccounts::eth_address(&alice()),
 			));
@@ -1221,7 +1223,7 @@ fn test_evm_module() {
 			let bob_address = EvmAccounts::eth_address(&bob());
 
 			let contract = deploy_contract(alice_account_id()).unwrap();
-			let event = Event::module_evm(module_evm::RawEvent::Created(contract));
+			let event = Event::module_evm(module_evm::Event::Created(contract));
 			assert_eq!(last_event(), event);
 
 			assert_ok!(EVM::transfer_maintainer(
@@ -1229,7 +1231,7 @@ fn test_evm_module() {
 				contract,
 				bob_address
 			));
-			let event = Event::module_evm(module_evm::RawEvent::TransferredMaintainer(contract, bob_address));
+			let event = Event::module_evm(module_evm::Event::TransferredMaintainer(contract, bob_address));
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
@@ -1288,7 +1290,7 @@ fn test_evm_module() {
 				));
 
 				match System::events().iter().last().unwrap().event {
-					Event::module_evm(module_evm::RawEvent::Created(_)) => {}
+					Event::module_evm(module_evm::Event::Created(_)) => {}
 					_ => {
 						println!(
 							"contract {:?} create failed, event: {:?}",

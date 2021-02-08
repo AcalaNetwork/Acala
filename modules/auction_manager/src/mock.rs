@@ -3,21 +3,18 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{
-	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
-	traits::GenesisBuild,
-};
+use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Balance, CurrencyId, TokenSymbol, TradingPair};
+use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
-	FixedPointNumber, ModuleId,
+	ModuleId,
 };
 use sp_std::cell::RefCell;
-use support::{EmergencyShutdown, Price, PriceProvider, Rate};
+pub use support::Price;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -165,7 +162,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 parameter_types! {
 	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
-	pub const TradingPathLimit: usize = 3;
+	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
 }
 
