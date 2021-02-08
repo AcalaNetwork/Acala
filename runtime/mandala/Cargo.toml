@@ -106,7 +106,7 @@ ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", de
 
 # We enable it only for web-wasm check
 # See https://docs.rs/getrandom/0.2.1/getrandom/#webassembly-support
-getrandom = { version = "0.2.2", features = ["js"] }
+getrandom = { version = "0.2.2", features = ["js"], optional = true }
 
 [build-dependencies]
 substrate-wasm-builder = { version = "3.0.0" }
@@ -227,6 +227,7 @@ runtime-benchmarks = [
 disable-runtime-api = []
 with-ethereum-compatibility = [
 	"evm",
+	"getrandom",
 	"module-evm/with-ethereum-compatibility",
 	"runtime-common/with-ethereum-compatibility",
 ]
