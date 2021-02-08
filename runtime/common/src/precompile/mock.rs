@@ -303,6 +303,7 @@ pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMappin
 pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	AccountId,
 	MockAddressMapping,
+	ModuleEVM,
 	Scheduler,
 	ChargeTransactionPayment,
 	Call,

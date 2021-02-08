@@ -11,7 +11,7 @@ use frame_support::{
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::TransactionPayment;
+use module_support::{EVMSchedulerManager, TransactionPayment};
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
 use sp_core::U256;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -35,6 +35,7 @@ parameter_types! {
 pub struct ScheduleCallPrecompile<
 	AccountId,
 	AddressMapping,
+	EVM,
 	Scheduler,
 	ChargeTransactionPayment,
 	Call,
@@ -45,6 +46,7 @@ pub struct ScheduleCallPrecompile<
 	PhantomData<(
 		AccountId,
 		AddressMapping,
+		EVM,
 		Scheduler,
 		ChargeTransactionPayment,
 		Call,
@@ -56,6 +58,8 @@ pub struct ScheduleCallPrecompile<
 
 enum Action {
 	ScheduleCall,
+	CancelCall,
+	RescheduleCall,
 	Unknown,
 }
 
@@ -63,6 +67,8 @@ impl From<u8> for Action {
 	fn from(a: u8) -> Self {
 		match a {
 			0 => Action::ScheduleCall,
+			1 => Action::CancelCall,
+			2 => Action::RescheduleCall,
 			_ => Action::Unknown,
 		}
 	}
@@ -73,10 +79,12 @@ type PalletBalanceOf<T> =
 type NegativeImbalanceOf<T> =
 	<<T as module_evm::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
-impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origin, PalletsOrigin, Runtime> Precompile
+impl<AccountId, AddressMapping, EVM, Scheduler, ChargeTransactionPayment, Call, Origin, PalletsOrigin, Runtime>
+	Precompile
 	for ScheduleCallPrecompile<
 		AccountId,
 		AddressMapping,
+		EVM,
 		Scheduler,
 		ChargeTransactionPayment,
 		Call,
@@ -86,8 +94,9 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 	> where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
+	EVM: EVMSchedulerManager<BlockNumber, AccountId, PalletBalanceOf<Runtime>>,
 	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
-	ChargeTransactionPayment: TransactionPayment<AccountId, Balance, NegativeImbalanceOf<Runtime>>,
+	ChargeTransactionPayment: TransactionPayment<AccountId, PalletBalanceOf<Runtime>, NegativeImbalanceOf<Runtime>>,
 	Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
 	Origin: IsType<<Runtime as frame_system::Config>::Origin> + OriginTrait<PalletsOrigin = PalletsOrigin>,
 	PalletsOrigin: Into<<Runtime as frame_system::Config>::Origin> + From<frame_system::RawOrigin<AccountId>> + Clone,
@@ -130,13 +139,14 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 					input_data,
 				);
 
+				let from_account = AddressMapping::get_account_id(&from);
+				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
 					//// reserve the transaction fee for gas_limit
 					use sp_runtime::traits::Convert;
-					let from_account = AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
-					ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
+					_fee = ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
 						let err_msg: &str = e.into();
 						ExitError::Other(err_msg.into())
 					})?;
@@ -161,29 +171,78 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 					.ok_or_else(|| ExitError::Other("Scheduler next id overflow".into()))?;
 				EvmSchedulerNextID::set(&next_id);
 
-				let task_address = Scheduler::schedule_named(
-					Encode::encode(&(&"ScheduleCall", current_id)),
-					delay,
-					None,
-					0,
-					origin,
-					call,
-				)
-				.map_err(|_| ExitError::Other("Scheduler failed".into()))?;
+				let task_id = u256_from_vec_u8(Encode::encode(&(&"ScheduleCall", current_id)));
+				let task_address = Scheduler::schedule_named(task_id.clone(), delay, None, 0, origin, call)
+					.map_err(|_| ExitError::Other("Schedule failed".into()))?;
 
-				Ok((ExitSucceed::Returned, vec_u8_from_tuple(task_address), 0))
+				EVM::schedule(&from_account, &task_id, task_address.0, _fee).map_err(|e| {
+					let err_msg: &str = e.into();
+					ExitError::Other(err_msg.into())
+				})?;
+
+				Ok((ExitSucceed::Returned, task_id, 0))
+			}
+			Action::CancelCall => {
+				let from = input.evm_address_at(1)?;
+				let task_id = input.bytes_at(2 * PER_PARAM_BYTES, 32)?;
+
+				debug::debug!(
+					target: "evm",
+					"cancel call: from: {:?}, task_id: {:?}",
+					from,
+					task_id,
+				);
+
+				let from_account = AddressMapping::get_account_id(&from);
+				let fee = EVM::cancel(&from_account, &task_id).map_err(|e| {
+					let err_msg: &str = e.into();
+					ExitError::Other(err_msg.into())
+				})?;
+
+				#[cfg(not(feature = "with-ethereum-compatibility"))]
+				{
+					//// unreserve the transaction fee for gas_limit
+					ChargeTransactionPayment::unreserve_fee(&from_account, fee);
+				}
+
+				Scheduler::cancel_named(task_id).map_err(|_| ExitError::Other("Cancel schedule failed".into()))?;
+
+				Ok((ExitSucceed::Returned, vec![], 0))
+			}
+			Action::RescheduleCall => {
+				let from = input.evm_address_at(1)?;
+				let task_id = input.bytes_at(2 * PER_PARAM_BYTES, PER_PARAM_BYTES)?;
+				let min_delay = input.u32_at(3)?;
+
+				debug::debug!(
+					target: "evm",
+					"reschedule call: from: {:?}, task_id: {:?}, min_delay: {:?}",
+					from,
+					task_id,
+					min_delay,
+				);
+
+				let delay = DispatchTime::After(min_delay);
+				let task_address = Scheduler::reschedule_named(task_id.clone(), delay).map_err(|e| {
+					let err_msg: &str = e.into();
+					ExitError::Other(err_msg.into())
+				})?;
+
+				let from_account = AddressMapping::get_account_id(&from);
+				EVM::reschedule(&from_account, &task_id, task_address.0).map_err(|e| {
+					let err_msg: &str = e.into();
+					ExitError::Other(err_msg.into())
+				})?;
+
+				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }
 
-fn vec_u8_from_tuple(task_address: TaskAddress<BlockNumber>) -> Vec<u8> {
-	let mut be_bytes_0 = [0u8; 32];
-	U256::from(task_address.0).to_big_endian(&mut be_bytes_0[..]);
-
-	let mut be_bytes_1 = [0u8; 32];
-	U256::from(task_address.1).to_big_endian(&mut be_bytes_1[..]);
-
-	vec![be_bytes_0.to_vec(), be_bytes_1.to_vec()].concat()
+fn u256_from_vec_u8(v: Vec<u8>) -> Vec<u8> {
+	let mut be_bytes = [0u8; 32];
+	U256::from(&v[..]).to_big_endian(&mut be_bytes[..]);
+	be_bytes.to_vec()
 }
