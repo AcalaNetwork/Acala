@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-inspect",
  "acala-service",
@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "acala-dev"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-dev-cli",
  "acala-dev-service",
@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "acala-dev-cli"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-dev-service",
  "acala-inspect",
@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "acala-dev-service"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -77,8 +77,6 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
- "pallet-contracts",
- "pallet-contracts-rpc-runtime-api",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
@@ -117,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "derive_more",
  "log",
@@ -133,7 +131,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "evm",
  "frame-support",
@@ -147,14 +145,13 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "evm-rpc",
  "jsonrpc-core",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
- "pallet-contracts-rpc",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "runtime-common",
@@ -179,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
@@ -233,9 +230,6 @@ dependencies = [
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
- "pallet-contracts",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
  "pallet-grandpa",
  "pallet-indices",
@@ -278,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -295,8 +289,6 @@ dependencies = [
  "module-staking-pool",
  "module-staking-pool-rpc",
  "orml-oracle-rpc",
- "pallet-contracts",
- "pallet-contracts-rpc-runtime-api",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "runtime-common",
@@ -1478,7 +1470,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "ecosystem-renvm-bridge"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3019,7 +3011,7 @@ dependencies = [
 
 [[package]]
 name = "karura-runtime"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
@@ -3073,9 +3065,6 @@ dependencies = [
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
- "pallet-contracts",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
  "pallet-grandpa",
  "pallet-indices",
@@ -3745,7 +3734,7 @@ dependencies = [
 
 [[package]]
 name = "mandala-runtime"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "ecosystem-renvm-bridge",
@@ -3802,9 +3791,6 @@ dependencies = [
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
- "pallet-contracts",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
  "pallet-elections-phragmen",
  "pallet-grandpa",
  "pallet-indices",
@@ -4053,7 +4039,7 @@ dependencies = [
 
 [[package]]
 name = "module-airdrop"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4067,7 +4053,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4090,7 +4076,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager-benchmarking"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4119,7 +4105,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4144,7 +4130,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine-benchmarking"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4173,7 +4159,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4196,7 +4182,7 @@ dependencies = [
 
 [[package]]
 name = "module-currencies"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "clear_on_drop",
@@ -4220,7 +4206,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4240,7 +4226,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4262,7 +4248,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown-benchmarking"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4290,7 +4276,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "env_logger",
@@ -4320,7 +4306,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-accounts"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4340,7 +4326,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-bridge"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -4376,7 +4362,7 @@ dependencies = [
 
 [[package]]
 name = "module-example"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4389,7 +4375,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4403,7 +4389,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4426,7 +4412,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon-benchmarking"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4454,7 +4440,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4474,7 +4460,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4495,7 +4481,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "enumflags2",
@@ -4520,7 +4506,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft-benchmarking"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -4545,7 +4531,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4565,7 +4551,7 @@ dependencies = [
 
 [[package]]
 name = "module-polkadot-bridge"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4582,7 +4568,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4599,7 +4585,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4619,7 +4605,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4635,7 +4621,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc-runtime-api"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "module-support",
  "parity-scale-codec",
@@ -4647,7 +4633,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -4661,7 +4647,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-payment"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5218,79 +5204,6 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-contracts"
-version = "2.0.1"
-source = "git+https://github.com/paritytech/substrate.git?rev=8b3e4c86bc5a86570a3091e470011604fb46d324#8b3e4c86bc5a86570a3091e470011604fb46d324"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-contracts-primitives",
- "pallet-contracts-proc-macro",
- "parity-scale-codec",
- "parity-wasm 0.41.0",
- "pwasm-utils 0.16.0",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-sandbox",
- "sp-std",
- "wasmi-validation",
-]
-
-[[package]]
-name = "pallet-contracts-primitives"
-version = "2.0.1"
-source = "git+https://github.com/paritytech/substrate.git?rev=8b3e4c86bc5a86570a3091e470011604fb46d324#8b3e4c86bc5a86570a3091e470011604fb46d324"
-dependencies = [
- "bitflags",
- "parity-scale-codec",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-contracts-proc-macro"
-version = "0.1.0"
-source = "git+https://github.com/paritytech/substrate.git?rev=8b3e4c86bc5a86570a3091e470011604fb46d324#8b3e4c86bc5a86570a3091e470011604fb46d324"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "pallet-contracts-rpc"
-version = "0.8.1"
-source = "git+https://github.com/paritytech/substrate.git?rev=8b3e4c86bc5a86570a3091e470011604fb46d324#8b3e4c86bc5a86570a3091e470011604fb46d324"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
-]
-
-[[package]]
-name = "pallet-contracts-rpc-runtime-api"
-version = "0.8.1"
-source = "git+https://github.com/paritytech/substrate.git?rev=8b3e4c86bc5a86570a3091e470011604fb46d324#8b3e4c86bc5a86570a3091e470011604fb46d324"
-dependencies = [
- "pallet-contracts-primitives",
- "parity-scale-codec",
- "sp-api",
  "sp-runtime",
  "sp-std",
 ]
@@ -6197,17 +6110,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pwasm-utils"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c8ac87af529432d3a4f0e2b3bbf08af49f28f09cc73ed7e551161bdaef5f78d"
-dependencies = [
- "byteorder",
- "log",
- "parity-wasm 0.41.0",
-]
-
-[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6605,18 +6507,20 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.1",
+ "module-currencies",
  "module-dex",
  "module-evm",
+ "module-evm-bridge",
  "module-nft",
  "module-staking-pool",
  "module-support",
- "orml-currencies",
+ "module-transaction-payment",
  "orml-nft",
  "orml-oracle",
  "orml-tokens",
@@ -6627,6 +6531,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
+ "serde_json",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -7179,7 +7084,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "parity-wasm 0.41.0",
- "pwasm-utils 0.14.0",
+ "pwasm-utils",
  "sc-executor-common",
  "scoped-tls",
  "sp-allocator",
@@ -8522,19 +8427,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "sp-sandbox"
-version = "0.8.1"
-source = "git+https://github.com/paritytech/substrate.git?rev=8b3e4c86bc5a86570a3091e470011604fb46d324#8b3e4c86bc5a86570a3091e470011604fb46d324"
-dependencies = [
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-std",
- "sp-wasm-interface",
- "wasmi",
 ]
 
 [[package]]

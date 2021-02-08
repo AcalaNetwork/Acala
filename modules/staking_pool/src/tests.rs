@@ -8,9 +8,7 @@ use mock::{
 	BondingDuration, CurrenciesModule, ExtBuilder, One, Origin, Runtime, StakingPoolModule, Status, System, TestEvent,
 	ALICE, BOB, BRIDGE_STATUS, DOT, LDOT,
 };
-use orml_traits::MultiCurrency;
-use sp_runtime::{traits::BadOrigin, FixedPointNumber};
-use support::{ExchangeRate, HomaProtocol, PolkadotStakingLedger, PolkadotUnlockChunk, Ratio};
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn distribute_increment_work() {

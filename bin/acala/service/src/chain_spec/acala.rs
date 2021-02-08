@@ -1,4 +1,4 @@
-use acala_primitives::{AccountId, AirDropCurrencyId};
+use acala_primitives::AccountId;
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -77,7 +77,6 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 					// 5Fe3jZRbKes6aeuQ6HkcTvQeNhkkRPTXBwmNkuAPoimGEv45
 					hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].into(),
 				],
-				false,
 			)
 		},
 		vec![
@@ -98,16 +97,17 @@ fn acala_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	enable_println: bool,
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
 		get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, ContractsConfig, CurrencyId, DexConfig, EnabledTradingPairs,
-		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
-		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
+		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
+		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
+		RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
 	};
+	#[cfg(feature = "std")]
+	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -135,7 +135,21 @@ fn acala_genesis(
 						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.chain(airdrop_accounts)
-				.collect(),
+				.fold(
+					BTreeMap::<AccountId, Balance>::new(),
+					|mut acc, (account_id, amount)| {
+						if let Some(balance) = acc.get_mut(&account_id) {
+							*balance = balance
+								.checked_add(amount)
+								.expect("balance cannot overflow when building genesis");
+						} else {
+							acc.insert(account_id.clone(), amount);
+						}
+						acc
+					},
+				)
+				.into_iter()
+				.collect::<Vec<(AccountId, Balance)>>(),
 		}),
 		pallet_session: Some(SessionConfig {
 			keys: initial_authorities
@@ -186,12 +200,6 @@ fn acala_genesis(
 			phantom: Default::default(),
 		}),
 		pallet_treasury: Some(Default::default()),
-		pallet_contracts: Some(ContractsConfig {
-			current_schedule: pallet_contracts::Schedule {
-				enable_println, // this should only be enabled on development chains
-				..Default::default()
-			},
-		}),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: vec![
 				(root_key.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),

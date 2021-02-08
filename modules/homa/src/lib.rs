@@ -10,38 +10,40 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+use frame_support::{pallet_prelude::*, transactional};
+use frame_system::pallet_prelude::*;
+use primitives::{Balance, EraIndex};
+use sp_runtime::RuntimeDebug;
+use support::HomaProtocol;
+
 mod default_weight;
 
 pub use module::*;
 
+pub trait WeightInfo {
+	fn mint() -> Weight;
+	fn redeem(strategy: &RedeemStrategy) -> Weight;
+	fn withdraw_redemption() -> Weight;
+}
+
+/// Redemption modes:
+/// 1. Immediately: User will immediately get back DOT from the free pool,
+/// which is a liquid pool operated by staking pool, but they have to pay
+/// extra fee. 2. Target: User can claim the unclaimed unbonding DOT of
+/// specific era, after the remaining unbinding period has passed, users can
+/// get back the DOT. 3. WaitForUnbonding: User request unbond, the staking
+/// pool will process unbonding in the next era, and user needs to wait for
+/// the complete unbonding era which determined by Polkadot.
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+pub enum RedeemStrategy {
+	Immediately,
+	Target(EraIndex),
+	WaitForUnbonding,
+}
+
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::{pallet_prelude::*, transactional};
-	use frame_system::pallet_prelude::*;
-	use primitives::{Balance, EraIndex};
-	use sp_runtime::RuntimeDebug;
-	use support::HomaProtocol;
-
-	pub trait WeightInfo {
-		fn mint() -> Weight;
-		fn redeem(strategy: &RedeemStrategy) -> Weight;
-		fn withdraw_redemption() -> Weight;
-	}
-
-	/// Redemption modes:
-	/// 1. Immediately: User will immediately get back DOT from the free pool,
-	/// which is a liquid pool operated by staking pool, but they have to pay
-	/// extra fee. 2. Target: User can claim the unclaimed unbonding DOT of
-	/// specific era, after the remaining unbinding period has passed, users can
-	/// get back the DOT. 3. WaitForUnbonding: User request unbond, the staking
-	/// pool will process unbonding in the next era, and user needs to wait for
-	/// the complete unbonding era which determined by Polkadot.
-	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-	pub enum RedeemStrategy {
-		Immediately,
-		Target(EraIndex),
-		WaitForUnbonding,
-	}
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {

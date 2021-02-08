@@ -3,13 +3,10 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
-use loans::Position;
+use frame_support::{assert_noop, assert_ok};
 use mock::*;
-use orml_traits::{Change, MultiCurrency};
-use primitives::CurrencyId;
-use sp_runtime::{traits::BadOrigin, FixedPointNumber};
-use support::{EmergencyShutdown, ExchangeRate, Price, Rate, Ratio, RiskManager};
+use orml_traits::MultiCurrency;
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn is_cdp_unsafe_work() {

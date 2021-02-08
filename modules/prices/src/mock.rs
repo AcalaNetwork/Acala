@@ -5,12 +5,11 @@
 use super::*;
 use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use orml_traits::{DataFeeder, DataProvider};
-use primitives::CurrencyId;
+use orml_traits::DataFeeder;
 use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber};
-use support::{ExchangeRate, ExchangeRateProvider, Price};
+use support::ExchangeRate;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;

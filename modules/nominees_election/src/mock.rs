@@ -3,9 +3,9 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_origin, parameter_types, traits::GenesisBuild};
+use frame_support::{impl_outer_origin, parameter_types};
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, Balance, CurrencyId, EraIndex, TokenSymbol};
+use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 
@@ -105,8 +105,8 @@ impl orml_currencies::Config for Runtime {
 parameter_types! {
 	pub const MinBondThreshold: Balance = 5;
 	pub const BondingDuration: EraIndex = 4;
-	pub const NominateesCount: usize = 5;
-	pub const MaxUnlockingChunks: usize = 3;
+	pub const NominateesCount: u32 = 5;
+	pub const MaxUnlockingChunks: u32 = 3;
 }
 
 impl Config for Runtime {

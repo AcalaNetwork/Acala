@@ -6,16 +6,17 @@
 //! EVM accounts so user only have deal with one account / private key.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unused_unit)]
 
 use codec::Encode;
 use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, ensure,
+	ensure,
+	pallet_prelude::*,
 	traits::{Currency, Happened, IsType, OnKilledAccount, ReservableCurrency, StoredMap},
 	transactional,
 	weights::Weight,
-	StorageMap,
 };
-use frame_system::ensure_signed;
+use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::account::MergeAccount;
 use primitives::{
 	evm::{AddressMapping, EvmAddress},
@@ -36,45 +37,50 @@ mod default_weight;
 mod mock;
 mod tests;
 
+pub use module::*;
+
 pub trait WeightInfo {
 	fn claim_account() -> Weight;
+	fn claim_default_account() -> Weight;
 }
 
 pub type EcdsaSignature = ecdsa::Signature;
 
-pub trait Config: frame_system::Config {
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+#[frame_support::pallet]
+pub mod module {
+	use super::*;
 
-	/// The Currency for managing Evm account assets.
-	type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-	/// Mapping from address to account id.
-	type AddressMapping: AddressMapping<Self::AccountId>;
+		/// The Currency for managing Evm account assets.
+		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
-	/// Merge free balance from source to dest.
-	type MergeAccount: MergeAccount<Self::AccountId>;
+		/// Mapping from address to account id.
+		type AddressMapping: AddressMapping<Self::AccountId>;
 
-	/// Handler to kill account in system.
-	type KillAccount: Happened<Self::AccountId>;
+		/// Merge free balance from source to dest.
+		type MergeAccount: MergeAccount<Self::AccountId>;
 
-	/// Weight information for the extrinsics in this module.
-	type WeightInfo: WeightInfo;
-}
+		/// Handler to kill account in system.
+		type KillAccount: Happened<Self::AccountId>;
 
-decl_event!(
-	pub enum Event<T> where
-		<T as frame_system::Config>::AccountId,
-		EvmAddress = EvmAddress,
-	{
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(fn deposit_event)]
+	pub enum Event<T: Config> {
 		/// Mapping between Substrate accounts and EVM accounts
 		/// claim account. \[account_id, evm_address\]
-		ClaimAccount(AccountId, EvmAddress),
+		ClaimAccount(T::AccountId, EvmAddress),
 	}
-);
 
-decl_error! {
 	/// Error for evm accounts module.
-	pub enum Error for Module<T: Config> {
+	#[pallet::error]
+	pub enum Error<T> {
 		/// AccountId has mapped
 		AccountIdHasMapped,
 		/// Eth address has mapped
@@ -88,33 +94,44 @@ decl_error! {
 		/// Account still has active reserved
 		StillHasActiveReserved,
 	}
-}
 
-decl_storage! {
-	trait Store for Module<T: Config> as EvmAccounts {
-		pub Accounts get(fn accounts): map hasher(twox_64_concat) EvmAddress => Option<T::AccountId>;
-		pub EvmAddresses get(fn evm_addresses): map hasher(twox_64_concat) T::AccountId => Option<EvmAddress>;
-	}
-}
+	#[pallet::storage]
+	#[pallet::getter(fn accounts)]
+	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, T::AccountId>;
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
-		fn deposit_event() = default;
+	#[pallet::storage]
+	#[pallet::getter(fn evm_addresses)]
+	pub type EvmAddresses<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, EvmAddress>;
 
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
 		/// Claim account mapping between Substrate accounts and EVM accounts.
 		/// Ensure eth_address has not been mapped.
-		#[weight = T::WeightInfo::claim_account()]
+		#[pallet::weight(T::WeightInfo::claim_account())]
 		#[transactional]
-		pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
+		pub fn claim_account(
+			origin: OriginFor<T>,
+			eth_address: EvmAddress,
+			eth_signature: EcdsaSignature,
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			// ensure account_id and eth_address has not been mapped
 			ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
-			ensure!(!Accounts::<T>::contains_key(eth_address), Error::<T>::EthAddressHasMapped);
+			ensure!(
+				!Accounts::<T>::contains_key(eth_address),
+				Error::<T>::EthAddressHasMapped
+			);
 
 			// recover evm address from signature
-			let address = Self::eth_recover(&eth_signature, &who.using_encoded(to_ascii_hex), &[][..]).ok_or(Error::<T>::BadSignature)?;
+			let address = Self::eth_recover(&eth_signature, &who.using_encoded(to_ascii_hex), &[][..])
+				.ok_or(Error::<T>::BadSignature)?;
 			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
 			// check if the evm padded address already exists
@@ -129,12 +146,13 @@ decl_module! {
 			Accounts::<T>::insert(eth_address, &who);
 			EvmAddresses::<T>::insert(&who, eth_address);
 
-			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
+			Self::deposit_event(Event::ClaimAccount(who, eth_address));
+
+			Ok(().into())
 		}
 
-		// TODO: weights & benchmarking
-		#[weight = 0]
-		pub fn claim_default_account(origin) {
+		#[pallet::weight(T::WeightInfo::claim_default_account())]
+		pub fn claim_default_account(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			// ensure account_id has not been mapped
@@ -142,12 +160,14 @@ decl_module! {
 
 			let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
 
-			Self::deposit_event(RawEvent::ClaimAccount(who, eth_address));
+			Self::deposit_event(Event::ClaimAccount(who, eth_address));
+
+			Ok(().into())
 		}
 	}
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
 	// Constructs the message that Ethereum RPC's `personal_sign` and `eth_sign`
 	// would sign.
 	pub fn ethereum_signable_message(what: &[u8], extra: &[u8]) -> Vec<u8> {
@@ -257,14 +277,14 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 		Accounts::<T>::remove(account_to_default_evm_address(who.into_ref()));
 
 		// remove mapping created by `claim_account`
-		if let Some(evm_addr) = Module::<T>::evm_addresses(who) {
+		if let Some(evm_addr) = Pallet::<T>::evm_addresses(who) {
 			Accounts::<T>::remove(evm_addr);
 			EvmAddresses::<T>::remove(who);
 		}
 	}
 }
 
-impl<T: Config> StaticLookup for Module<T> {
+impl<T: Config> StaticLookup for Pallet<T> {
 	type Source = MultiAddress<T::AccountId, AccountIndex>;
 	type Target = T::AccountId;
 
@@ -280,8 +300,8 @@ impl<T: Config> StaticLookup for Module<T> {
 	}
 }
 
-/// Converts the given binary data into ASCII-encoded hex. It will be twice the
-/// length.
+/// Converts the given binary data into ASCII-encoded hex. It will be twice
+/// the length.
 pub fn to_ascii_hex(data: &[u8]) -> Vec<u8> {
 	let mut r = Vec::with_capacity(data.len() * 2);
 	let mut push_nibble = |n| r.push(if n < 10 { b'0' + n } else { b'a' - 10 + n });

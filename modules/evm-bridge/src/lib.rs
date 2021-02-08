@@ -1,9 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unused_unit)]
 
 use ethereum_types::BigEndianHash;
 use frame_support::{
-	decl_error, decl_module,
 	dispatch::{DispatchError, DispatchResult},
+	pallet_prelude::*,
 };
 use hex_literal::hex;
 use module_evm::{ExitReason, ExitSucceed};
@@ -12,33 +13,43 @@ use sp_core::{H160, U256};
 use sp_runtime::SaturatedConversion;
 use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
+
 mod mock;
 mod tests;
 
-pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-pub type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
+pub use module::*;
 
-/// EvmBridge module trait
-pub trait Config: frame_system::Config {
-	type EVM: EVM<AccountIdOf<Self>>;
-}
+#[frame_support::pallet]
+pub mod module {
+	use super::*;
 
-decl_error! {
-	pub enum Error for Module<T: Config> {
+	/// EvmBridge module trait
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type EVM: EVM<AccountIdOf<Self>>;
+	}
+
+	#[pallet::error]
+	pub enum Error<T> {
 		ExecutionFail,
 		ExecutionRevert,
 		ExecutionFatal,
-		ExecutionError
+		ExecutionError,
 	}
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(PhantomData<T>);
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {}
 }
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
-	}
-}
-
-impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Module<T> {
+impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
@@ -97,7 +108,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Module<T> {
 	}
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
 	fn handle_exit_reason(exit_reason: ExitReason) -> Result<(), DispatchError> {
 		match exit_reason {
 			ExitReason::Succeed(ExitSucceed::Returned) => Ok(()),
