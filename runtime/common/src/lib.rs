@@ -23,7 +23,7 @@ use static_assertions::const_assert;
 
 pub mod precompile;
 pub use precompile::{
-	AllPrecompiles, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
+	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
 	StateRentPrecompile,
 };
 

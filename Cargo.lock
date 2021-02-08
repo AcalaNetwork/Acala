@@ -6611,6 +6611,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal 0.3.1",
+ "module-dex",
  "module-evm",
  "module-nft",
  "module-staking-pool",

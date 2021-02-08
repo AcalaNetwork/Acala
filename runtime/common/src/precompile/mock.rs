@@ -3,17 +3,21 @@
 use crate::{AllPrecompiles, BlockWeights, SystemContractsFilter, Weight};
 use codec::{Decode, Encode};
 use frame_support::{
-	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
+	assert_ok, impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
 	traits::{GenesisBuild, InstanceFilter},
 	RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
+use module_support::DEXIncentives;
 use orml_traits::parameter_type_with_key;
-pub use primitives::{mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, Header, TokenSymbol};
+use orml_traits::MultiReservableCurrency;
+pub use primitives::{
+	evm::AddressMapping, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, Header, TokenSymbol,
+};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	FixedU128, ModuleId, Perbill,
+	DispatchResult, FixedU128, ModuleId, Perbill,
 };
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -29,6 +33,7 @@ impl_outer_event! {
 		pallet_proxy<T>,
 		pallet_utility,
 		pallet_scheduler<T>,
+		module_dex<T>,
 	}
 }
 
@@ -149,6 +154,7 @@ pub type Balances = pallet_balances::Module<Test>;
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
@@ -260,6 +266,41 @@ impl pallet_scheduler::Config for Test {
 
 pub type Scheduler = pallet_scheduler::Module<Test>;
 
+pub struct MockDEXIncentives;
+impl DEXIncentives<AccountId, CurrencyId, Balance> for MockDEXIncentives {
+	fn do_deposit_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		Tokens::reserve(lp_currency_id, who, amount)
+	}
+
+	fn do_withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		let _ = Tokens::unreserve(lp_currency_id, who, amount);
+		Ok(())
+	}
+}
+
+ord_parameter_types! {
+	pub const ListingOrigin: AccountId = ALICE;
+}
+
+parameter_types! {
+	pub const GetExchangeFee: (u32, u32) = (1, 100);
+	pub const TradingPathLimit: usize = 3;
+	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+}
+
+impl module_dex::Config for Test {
+	type Event = TestEvent;
+	type Currency = Tokens;
+	type GetExchangeFee = GetExchangeFee;
+	type TradingPathLimit = TradingPathLimit;
+	type ModuleId = DEXModuleId;
+	type WeightInfo = ();
+	type DEXIncentives = MockDEXIncentives;
+	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+}
+
+pub type DexModule = module_dex::Module<Test>;
+
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, Currencies>;
@@ -269,6 +310,7 @@ pub type StateRentPrecompile = crate::StateRentPrecompile<AccountId, MockAddress
 pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, Oracle>;
 pub type ScheduleCallPrecompile =
 	crate::ScheduleCallPrecompile<AccountId, MockAddressMapping, Scheduler, Call, Origin, OriginCaller, Test>;
+pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, DexModule>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice();
@@ -301,6 +343,7 @@ impl module_evm::Config for Test {
 		StateRentPrecompile,
 		OraclePrecompile,
 		ScheduleCallPrecompile,
+		DexPrecompile,
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = ();
@@ -376,6 +419,21 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	ext.execute_with(|| {
 		System::set_block_number(1);
 		Timestamp::set_timestamp(1);
+
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			XBTC,
+			1_000_000_000_000
+		));
+		assert_ok!(Currencies::update_balance(Origin::root(), ALICE, AUSD, 1_000_000_000));
+
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			MockAddressMapping::get_account_id(&alice()),
+			XBTC,
+			1_000
+		));
 	});
 	ext
 }

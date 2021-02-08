@@ -34,6 +34,7 @@ orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 orml-currencies = { path = "../../orml/currencies" }
 module-nft = { path = "../../modules/nft" }
+module-dex = { path = "../../modules/dex" }
 
 [features]
 default = ["std"]
