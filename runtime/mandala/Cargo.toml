@@ -104,9 +104,9 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 
-# We enable it only for web-wasm check
-# See https://docs.rs/getrandom/0.2.1/getrandom/#webassembly-support
-getrandom = { version = "0.2.2", features = ["js"], optional = true }
+# # We enable it only for web-wasm check
+# # See https://docs.rs/getrandom/0.2.1/getrandom/#webassembly-support
+getrandom = { version = "0.2.2", features = ["js"] }
 
 [build-dependencies]
 substrate-wasm-builder = { version = "3.0.0" }
@@ -227,7 +227,6 @@ runtime-benchmarks = [
 disable-runtime-api = []
 with-ethereum-compatibility = [
 	"evm",
-	"getrandom",
 	"module-evm/with-ethereum-compatibility",
 	"runtime-common/with-ethereum-compatibility",
 ]
