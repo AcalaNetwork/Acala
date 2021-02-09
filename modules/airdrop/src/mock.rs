@@ -21,20 +21,6 @@ mod airdrop {
 	pub use super::super::*;
 }
 
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
-
-construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		AirDrop: airdrop::{Module, Call, Storage, Event<T>, Config<T>},
-	}
-);
-
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
@@ -67,6 +53,20 @@ impl frame_system::Config for Runtime {
 impl Config for Runtime {
 	type Event = Event;
 }
+
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		AirDrop: airdrop::{Module, Call, Storage, Event<T>, Config<T>},
+	}
+);
 
 pub type Airdrop = Module<Runtime>;
 
