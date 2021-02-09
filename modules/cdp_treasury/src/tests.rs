@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::*;
+use mock::{Event, *};
 use sp_runtime::traits::BadOrigin;
 
 #[test]
@@ -324,7 +324,7 @@ fn set_collateral_auction_maximum_size_work() {
 		));
 
 		let update_collateral_auction_maximum_size_event =
-			TestEvent::cdp_treasury(Event::CollateralAuctionMaximumSizeUpdated(BTC, 200));
+			Event::cdp_treasury(crate::Event::CollateralAuctionMaximumSizeUpdated(BTC, 200));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_collateral_auction_maximum_size_event));

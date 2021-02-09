@@ -10,7 +10,6 @@ use orml_traits::parameter_type_with_key;
 use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
-	generic,
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
 	ModuleId,
