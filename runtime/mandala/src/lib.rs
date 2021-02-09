@@ -28,7 +28,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
-use sp_std::prelude::*;
+use sp_std::{collections::btree_set::BTreeSet, prelude::*};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -47,14 +47,14 @@ use orml_traits::{create_median_value_data_provider, parameter_type_with_key, Da
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
 use cumulus_primitives::{relay_chain::Balance as RelayChainBalance, ParaId};
-use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
+use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, NativePalletAssetOr};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction, MultiLocation, NetworkId};
 use xcm_builder::{
 	AccountId32Aliases, ChildParachainConvertsVia, LocationInverter, ParentIsDefault, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
 };
-use xcm_executor::{traits::NativeAsset, Config, XcmExecutor};
+use xcm_executor::{Config, XcmExecutor};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -1374,6 +1374,20 @@ pub type LocalOriginConverter = (
 );
 
 #[cfg(not(feature = "standalone"))]
+parameter_types! {
+	pub NativeOrmlTokens: BTreeSet<(Vec<u8>, MultiLocation)> = {
+		let mut t = BTreeSet::new();
+		//TODO: might need to add other assets based on orml-tokens
+
+		// Plasm
+		t.insert(("SDN".into(), MultiLocation::X1(Junction::Parachain { id: 5000 })));
+		// Plasm
+		t.insert(("PLM".into(), MultiLocation::X1(Junction::Parachain { id: 5000 })));
+		t
+	};
+}
+
+#[cfg(not(feature = "standalone"))]
 pub struct XcmConfig;
 #[cfg(not(feature = "standalone"))]
 impl Config for XcmConfig {
@@ -1382,7 +1396,7 @@ impl Config for XcmConfig {
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = LocalOriginConverter;
 	//TODO: might need to add other assets based on orml-tokens
-	type IsReserve = NativeAsset;
+	type IsReserve = NativePalletAssetOr<NativeOrmlTokens>;
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 }
