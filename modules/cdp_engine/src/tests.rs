@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::*;
+use mock::{Event, *};
 use orml_traits::MultiCurrency;
 use sp_runtime::traits::BadOrigin;
 
@@ -110,7 +110,7 @@ fn set_global_params_work() {
 			Rate::saturating_from_rational(1, 10000),
 		));
 
-		let update_global_stability_fee_event = TestEvent::cdp_engine(Event::GlobalStabilityFeeUpdated(
+		let update_global_stability_fee_event = Event::cdp_engine(crate::Event::GlobalStabilityFeeUpdated(
 			Rate::saturating_from_rational(1, 10000),
 		));
 		assert!(System::events()
@@ -163,28 +163,28 @@ fn set_collateral_params_work() {
 			Change::NewValue(10000),
 		));
 
-		let update_stability_fee_event = TestEvent::cdp_engine(Event::StabilityFeeUpdated(
+		let update_stability_fee_event = Event::cdp_engine(crate::Event::StabilityFeeUpdated(
 			BTC,
 			Some(Rate::saturating_from_rational(1, 100000)),
 		));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_stability_fee_event));
-		let update_liquidation_ratio_event = TestEvent::cdp_engine(Event::LiquidationRatioUpdated(
+		let update_liquidation_ratio_event = Event::cdp_engine(crate::Event::LiquidationRatioUpdated(
 			BTC,
 			Some(Ratio::saturating_from_rational(3, 2)),
 		));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_liquidation_ratio_event));
-		let update_liquidation_penalty_event = TestEvent::cdp_engine(Event::LiquidationPenaltyUpdated(
+		let update_liquidation_penalty_event = Event::cdp_engine(crate::Event::LiquidationPenaltyUpdated(
 			BTC,
 			Some(Rate::saturating_from_rational(2, 10)),
 		));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_liquidation_penalty_event));
-		let update_required_collateral_ratio_event = TestEvent::cdp_engine(Event::RequiredCollateralRatioUpdated(
+		let update_required_collateral_ratio_event = Event::cdp_engine(crate::Event::RequiredCollateralRatioUpdated(
 			BTC,
 			Some(Ratio::saturating_from_rational(9, 5)),
 		));
@@ -192,7 +192,7 @@ fn set_collateral_params_work() {
 			.iter()
 			.any(|record| record.event == update_required_collateral_ratio_event));
 		let update_maximum_total_debit_value_event =
-			TestEvent::cdp_engine(Event::MaximumTotalDebitValueUpdated(BTC, 10000));
+			Event::cdp_engine(crate::Event::MaximumTotalDebitValueUpdated(BTC, 10000));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_maximum_total_debit_value_event));
@@ -434,7 +434,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		));
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
 
-		let liquidate_unsafe_cdp_event = TestEvent::cdp_engine(Event::LiquidateUnsafeCDP(
+		let liquidate_unsafe_cdp_event = Event::cdp_engine(crate::Event::LiquidateUnsafeCDP(
 			BTC,
 			ALICE,
 			100,
@@ -565,7 +565,7 @@ fn settle_cdp_has_debit_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_ok!(CDPEngineModule::settle_cdp_has_debit(ALICE, BTC));
 
-		let settle_cdp_in_debit_event = TestEvent::cdp_engine(Event::SettleCDPInDebit(BTC, ALICE));
+		let settle_cdp_in_debit_event = Event::cdp_engine(crate::Event::SettleCDPInDebit(BTC, ALICE));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == settle_cdp_in_debit_event));
