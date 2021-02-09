@@ -1,6 +1,6 @@
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use sp_core::{H160, U256};
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, convert::TryFrom, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
 
@@ -21,16 +21,17 @@ enum Action {
 	QueryBalance,
 	QueryOwner,
 	Transfer,
-	Unknown,
 }
 
-impl From<u8> for Action {
-	fn from(a: u8) -> Self {
-		match a {
-			0 => Action::QueryBalance,
-			1 => Action::QueryOwner,
-			2 => Action::Transfer,
-			_ => Action::Unknown,
+impl TryFrom<u8> for Action {
+	type Error = ();
+
+	fn try_from(value: u8) -> Result<Self, Self::Error> {
+		match value {
+			0 => Ok(Action::QueryBalance),
+			1 => Ok(Action::QueryOwner),
+			2 => Ok(Action::Transfer),
+			_ => Err(()),
 		}
 	}
 }
@@ -84,7 +85,6 @@ where
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }

@@ -3,14 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, traits::Currency};
-use mock::{
-	last_event, AccountId, Balances, ExtBuilder, NFTModule, Origin, Proxy, Runtime, TestEvent, ALICE, BOB, CLASS_ID,
-	CLASS_ID_NOT_EXIST, TOKEN_ID, TOKEN_ID_NOT_EXIST,
-};
-use orml_traits::{BasicCurrency, BasicReservableCurrency};
-use primitives::Balance;
-use sp_runtime::traits::AccountIdConversion;
+use frame_support::{assert_noop, assert_ok};
+use mock::*;
 
 fn free_balance(who: &AccountId) -> Balance {
 	<Runtime as Config>::Currency::free_balance(who)

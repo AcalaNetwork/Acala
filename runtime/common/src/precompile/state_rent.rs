@@ -1,7 +1,7 @@
 use frame_support::debug;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use sp_core::U256;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, convert::TryFrom, marker::PhantomData, prelude::*, result};
 
 use module_support::EVMStateRentTrait;
 
@@ -29,20 +29,21 @@ enum Action {
 	QueryDeveloperDeposit,
 	QueryDeploymentFee,
 	TransferMaintainer,
-	Unknown,
 }
 
-impl From<u8> for Action {
-	fn from(a: u8) -> Self {
+impl TryFrom<u8> for Action {
+	type Error = ();
+
+	fn try_from(value: u8) -> Result<Self, Self::Error> {
 		// reserve 0 - 127 for query, 128 - 255 for action
-		match a {
-			0 => Action::QueryNewContractExtraBytes,
-			1 => Action::QueryStorageDepositPerByte,
-			2 => Action::QueryMaintainer,
-			3 => Action::QueryDeveloperDeposit,
-			4 => Action::QueryDeploymentFee,
-			128 => Action::TransferMaintainer,
-			_ => Action::Unknown,
+		match value {
+			0 => Ok(Action::QueryNewContractExtraBytes),
+			1 => Ok(Action::QueryStorageDepositPerByte),
+			2 => Ok(Action::QueryMaintainer),
+			3 => Ok(Action::QueryDeveloperDeposit),
+			4 => Ok(Action::QueryDeploymentFee),
+			128 => Ok(Action::TransferMaintainer),
+			_ => Err(()),
 		}
 	}
 }
@@ -101,7 +102,6 @@ where
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }
