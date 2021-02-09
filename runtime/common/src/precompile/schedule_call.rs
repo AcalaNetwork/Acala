@@ -102,7 +102,9 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		debug::debug!(target: "evm", "schedule call: input: {:?}", input);
 
-		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+		// Solidity dynamic arrays will add the array size to the front of the array,
+		// pre-compile needs to deal with the `size`.
+		let input = Input::<Action, AccountId, AddressMapping>::new(&input[32..]);
 
 		let action = input.action()?;
 

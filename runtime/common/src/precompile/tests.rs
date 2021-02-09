@@ -181,23 +181,25 @@ fn schedule_call_precompile_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		let mut input = [0u8; 10 * 32 + 4];
-		// action
+		let mut input = [0u8; 11 * 32 + 4];
+		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action
+		U256::default().to_big_endian(&mut input[1 * 32..2 * 32]);
 		// from
-		U256::from(alice().as_bytes()).to_big_endian(&mut input[1 * 32..2 * 32]);
+		U256::from(alice().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		// target
-		U256::from(ACA_ERC20_ADDRESS).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(ACA_ERC20_ADDRESS).to_big_endian(&mut input[3 * 32..4 * 32]);
 		// value
-		U256::from(0).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from(0).to_big_endian(&mut input[4 * 32..5 * 32]);
 		// gas_limit
-		U256::from(300000).to_big_endian(&mut input[4 * 32..5 * 32]);
+		U256::from(300000).to_big_endian(&mut input[5 * 32..6 * 32]);
 		// storage_limit
-		U256::from(100).to_big_endian(&mut input[5 * 32..6 * 32]);
+		U256::from(100).to_big_endian(&mut input[6 * 32..7 * 32]);
 		// min_delay
-		U256::from(1).to_big_endian(&mut input[6 * 32..7 * 32]);
+		U256::from(1).to_big_endian(&mut input[7 * 32..8 * 32]);
 		// input_len
-		U256::from(4 + 32 + 32).to_big_endian(&mut input[7 * 32..8 * 32]);
+		U256::from(4 + 32 + 32).to_big_endian(&mut input[8 * 32..9 * 32]);
 
 		// input_data
 		let mut transfer_to_bob = [0u8; 68];
@@ -208,9 +210,9 @@ fn schedule_call_precompile_should_work() {
 		// amount
 		U256::from(1000).to_big_endian(&mut transfer_to_bob[36..68]);
 
-		U256::from(&transfer_to_bob[0..32]).to_big_endian(&mut input[8 * 32..9 * 32]);
-		U256::from(&transfer_to_bob[32..64]).to_big_endian(&mut input[9 * 32..10 * 32]);
-		input[10 * 32..10 * 32 + 4].copy_from_slice(&transfer_to_bob[64..68]);
+		U256::from(&transfer_to_bob[0..32]).to_big_endian(&mut input[9 * 32..10 * 32]);
+		U256::from(&transfer_to_bob[32..64]).to_big_endian(&mut input[10 * 32..11 * 32]);
+		input[11 * 32..11 * 32 + 4].copy_from_slice(&transfer_to_bob[64..68]);
 
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
 
@@ -262,26 +264,28 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 			apparent_value: Default::default(),
 		};
 
-		let mut input = [0u8; 8 * 32 + 1];
-		// action
+		let mut input = [0u8; 9 * 32 + 1];
+		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action
+		U256::default().to_big_endian(&mut input[1 * 32..2 * 32]);
 		// from
-		U256::from(alice().as_bytes()).to_big_endian(&mut input[1 * 32..2 * 32]);
+		U256::from(alice().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		// target
-		U256::from(ACA_ERC20_ADDRESS).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(ACA_ERC20_ADDRESS).to_big_endian(&mut input[3 * 32..4 * 32]);
 		// value
-		U256::from(0).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from(0).to_big_endian(&mut input[4 * 32..5 * 32]);
 		// gas_limit
-		U256::from(300000).to_big_endian(&mut input[4 * 32..5 * 32]);
+		U256::from(300000).to_big_endian(&mut input[5 * 32..6 * 32]);
 		// storage_limit
-		U256::from(100).to_big_endian(&mut input[5 * 32..6 * 32]);
+		U256::from(100).to_big_endian(&mut input[6 * 32..7 * 32]);
 		// min_delay
-		U256::from(1).to_big_endian(&mut input[6 * 32..7 * 32]);
-		// input_len
 		U256::from(1).to_big_endian(&mut input[7 * 32..8 * 32]);
+		// input_len
+		U256::from(1).to_big_endian(&mut input[8 * 32..9 * 32]);
 
 		// input_data = 0x12
-		input[8 * 32] = hex!("12")[0];
+		input[9 * 32] = hex!("12")[0];
 
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
 
