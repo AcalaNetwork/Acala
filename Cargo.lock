@@ -64,7 +64,7 @@ dependencies = [
 name = "acala-primitives"
 version = "0.7.3"
 dependencies = [
- "evm 0.21.0",
+ "evm",
  "frame-support",
  "parity-scale-codec",
  "serde",
@@ -1758,20 +1758,6 @@ dependencies = [
 
 [[package]]
 name = "ethereum"
-version = "0.5.1"
-source = "git+https://github.com/AcalaNetwork/ethereum.git?branch=sw/bump-dependencies#5582e7dad7d5f22df65c833df643bbd47b07d972"
-dependencies = [
- "ethereum-types",
- "hash-db",
- "hash256-std-hasher",
- "rlp",
- "rlp-derive",
- "sha3 0.9.1",
- "triehash",
-]
-
-[[package]]
-name = "ethereum"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8603f637f22e3ab9aff8466b37850cd7ea2ae52034b07e41fdc82f1f68dfa2c"
@@ -1810,43 +1796,20 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "evm"
-version = "0.20.0"
-source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
-dependencies = [
- "ethereum 0.5.1",
- "evm-core 0.20.0",
- "evm-gasometer 0.20.0",
- "evm-runtime 0.20.0",
- "log",
- "primitive-types",
- "rlp",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b38d664e59bf9ae0114a275cdf785d4112c32b3df0e522f16585a77599e7c614"
 dependencies = [
- "ethereum 0.6.0",
- "evm-core 0.21.0",
- "evm-gasometer 0.21.0",
- "evm-runtime 0.21.0",
+ "ethereum",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
  "log",
  "parity-scale-codec",
  "primitive-types",
  "rlp",
  "serde",
  "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-core"
-version = "0.20.0"
-source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
-dependencies = [
- "primitive-types",
 ]
 
 [[package]]
@@ -1862,22 +1825,12 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.20.0"
-source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
-dependencies = [
- "evm-core 0.20.0",
- "evm-runtime 0.20.0",
- "primitive-types",
-]
-
-[[package]]
-name = "evm-gasometer"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f566265c4b49fab36e74db39f8c5499a7d4bbfb54c83896ef56f3f517b945eca"
 dependencies = [
- "evm-core 0.21.0",
- "evm-runtime 0.21.0",
+ "evm-core",
+ "evm-runtime",
  "primitive-types",
 ]
 
@@ -1909,21 +1862,11 @@ dependencies = [
 
 [[package]]
 name = "evm-runtime"
-version = "0.20.0"
-source = "git+https://github.com/AcalaNetwork/evm.git?branch=sw/bump-dependencies#98899c7ad5fd38e35afbd79e755bb09153d9ae39"
-dependencies = [
- "evm-core 0.20.0",
- "primitive-types",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-runtime"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d22e83135ff4870046706c7bd8dd70bb321df98b42218812e99444332222250"
 dependencies = [
- "evm-core 0.21.0",
+ "evm-core",
  "primitive-types",
  "sha3 0.8.2",
 ]
@@ -4017,7 +3960,7 @@ dependencies = [
  "cumulus-primitives",
  "cumulus-runtime",
  "ecosystem-renvm-bridge",
- "evm 0.20.0",
+ "evm",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -4606,9 +4549,9 @@ version = "0.7.3"
 dependencies = [
  "acala-primitives",
  "env_logger",
- "evm 0.21.0",
- "evm-gasometer 0.21.0",
- "evm-runtime 0.21.0",
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
