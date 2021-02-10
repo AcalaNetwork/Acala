@@ -6,7 +6,7 @@ use crate::{
 	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
 	MergeAccount, Pallet, Vicinity,
 };
-use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, ExternalOpcode, Opcode, Runtime, Stack, Transfer};
+use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
@@ -614,17 +614,15 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		})
 	}
 
-	fn pre_validate(
-		&mut self,
-		context: &Context,
-		opcode: Result<Opcode, ExternalOpcode>,
-		stack: &Stack,
-	) -> Result<(), ExitError> {
-		let (gas_cost, memory_cost) =
-			gasometer::opcode_cost(context.address, opcode, stack, self.is_static, &self.config, self)?;
+	fn pre_validate(&mut self, context: &Context, opcode: Opcode, stack: &Stack) -> Result<(), ExitError> {
+		if let Some(cost) = gasometer::static_opcode_cost(opcode) {
+			self.gasometer.record_cost(cost)?;
+		} else {
+			let (gas_cost, memory_cost) =
+				gasometer::dynamic_opcode_cost(context.address, opcode, stack, self.is_static, &self.config, self)?;
 
-		self.gasometer.record_opcode(gas_cost, memory_cost)?;
-
+			self.gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
+		}
 		Ok(())
 	}
 }
