@@ -3,7 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, parameter_types};
+use frame_support::{construct_runtime, parameter_types};
+use sp_api_hidden_includes_decl_storage::hidden_include::inherent::BlockT;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 
@@ -16,22 +17,8 @@ pub const CHARLIE: AccountId = 2;
 pub const ACA: AirDropCurrencyId = AirDropCurrencyId::ACA;
 pub const KAR: AirDropCurrencyId = AirDropCurrencyId::KAR;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
-
 mod airdrop {
 	pub use super::super::*;
-}
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		airdrop<T>,
-	}
 }
 
 parameter_types! {
@@ -42,18 +29,18 @@ impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = ();
+	type Call = Call;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -62,11 +49,25 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 impl Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 }
+
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		AirDrop: airdrop::{Module, Call, Storage, Event<T>, Config<T>},
+	}
+);
+
 pub type Airdrop = Module<Runtime>;
 
 pub struct ExtBuilder();
@@ -83,7 +84,7 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		GenesisConfig::<Runtime> {
+		airdrop::GenesisConfig::<Runtime> {
 			airdrop_accounts: vec![(CHARLIE, KAR, 100), (CHARLIE, KAR, 50), (CHARLIE, ACA, 80)],
 		}
 		.assimilate_storage(&mut t)

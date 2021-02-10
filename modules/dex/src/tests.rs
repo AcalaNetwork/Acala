@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	DexModule, ExtBuilder, ListingOrigin, Origin, Runtime, System, TestEvent, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR,
+	DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR,
 	AUSD_XBTC_PAIR, BOB, DOT, XBTC,
 };
 use orml_traits::MultiReservableCurrency;
@@ -35,7 +35,7 @@ fn enable_new_trading_pair_work() {
 			TradingPairStatus::<_, _>::Enabled
 		);
 
-		let enable_trading_pair_event = TestEvent::dex(Event::EnableTradingPair(AUSD_DOT_PAIR));
+		let enable_trading_pair_event = Event::dex(crate::Event::EnableTradingPair(AUSD_DOT_PAIR));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == enable_trading_pair_event));
@@ -90,7 +90,7 @@ fn list_new_trading_pair_work() {
 			})
 		);
 
-		let list_trading_pair_event = TestEvent::dex(Event::ListTradingPair(AUSD_DOT_PAIR));
+		let list_trading_pair_event = Event::dex(crate::Event::ListTradingPair(AUSD_DOT_PAIR));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == list_trading_pair_event));
@@ -141,7 +141,7 @@ fn disable_enabled_trading_pair_work() {
 			TradingPairStatus::<_, _>::NotEnabled
 		);
 
-		let disable_trading_pair_event = TestEvent::dex(Event::DisableTradingPair(AUSD_DOT_PAIR));
+		let disable_trading_pair_event = Event::dex(crate::Event::DisableTradingPair(AUSD_DOT_PAIR));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == disable_trading_pair_event));
@@ -300,7 +300,8 @@ fn add_provision_work() {
 			let alice_ref_count_1 = System::refs(&ALICE);
 			assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
 
-			let add_provision_event_0 = TestEvent::dex(Event::AddProvision(ALICE, AUSD, 5_000_000_000_000u128, DOT, 0));
+			let add_provision_event_0 =
+				Event::dex(crate::Event::AddProvision(ALICE, AUSD, 5_000_000_000_000u128, DOT, 0));
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == add_provision_event_0));
@@ -346,7 +347,7 @@ fn add_provision_work() {
 			assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
 
 			let add_provision_event_1 =
-				TestEvent::dex(Event::AddProvision(BOB, AUSD, 0, DOT, 1_000_000_000_000_000u128));
+				Event::dex(crate::Event::AddProvision(BOB, AUSD, 0, DOT, 1_000_000_000_000_000u128));
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == add_provision_event_1));
@@ -410,7 +411,7 @@ fn add_provision_work() {
 			let bob_ref_count_2 = System::refs(&BOB);
 			assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1 + 1); // deposit dex share currency will add extra 1 ref count
 
-			let provisioning_to_enabled_event = TestEvent::dex(Event::ProvisioningToEnabled(
+			let provisioning_to_enabled_event = Event::dex(crate::Event::ProvisioningToEnabled(
 				AUSD_DOT_PAIR,
 				1_000_000_000_000_000u128,
 				2_000_000_000_000_000u128,
@@ -648,7 +649,7 @@ fn add_liquidity_work() {
 				1_000_000_000_000,
 				false,
 			));
-			let add_liquidity_event_1 = TestEvent::dex(Event::AddLiquidity(
+			let add_liquidity_event_1 = Event::dex(crate::Event::AddLiquidity(
 				ALICE,
 				AUSD,
 				5_000_000_000_000,
@@ -695,7 +696,7 @@ fn add_liquidity_work() {
 				8_000_000_000_000,
 				true,
 			));
-			let add_liquidity_event_2 = TestEvent::dex(Event::AddLiquidity(
+			let add_liquidity_event_2 = Event::dex(crate::Event::AddLiquidity(
 				BOB,
 				AUSD,
 				40_000_000_000_000,
@@ -773,7 +774,7 @@ fn remove_liquidity_work() {
 				4_000_000_000_000,
 				false,
 			));
-			let remove_liquidity_event_1 = TestEvent::dex(Event::RemoveLiquidity(
+			let remove_liquidity_event_1 = Event::dex(crate::Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				4_000_000_000_000,
@@ -805,7 +806,7 @@ fn remove_liquidity_work() {
 				1_000_000_000_000,
 				false,
 			));
-			let remove_liquidity_event_2 = TestEvent::dex(Event::RemoveLiquidity(
+			let remove_liquidity_event_2 = Event::dex(crate::Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				1_000_000_000_000,
@@ -940,7 +941,7 @@ fn do_swap_with_exact_supply_work() {
 				200_000_000_000_000,
 				None
 			));
-			let swap_event_1 = TestEvent::dex(Event::Swap(
+			let swap_event_1 = Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				100_000_000_000_000,
@@ -973,7 +974,7 @@ fn do_swap_with_exact_supply_work() {
 				1,
 				None
 			));
-			let swap_event_2 = TestEvent::dex(Event::Swap(
+			let swap_event_2 = Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, XBTC],
 				200_000_000_000_000,
@@ -1086,7 +1087,7 @@ fn do_swap_with_exact_target_work() {
 				200_000_000_000_000,
 				None
 			));
-			let swap_event_1 = TestEvent::dex(Event::Swap(
+			let swap_event_1 = Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				101_010_101_010_102,
@@ -1119,7 +1120,7 @@ fn do_swap_with_exact_target_work() {
 				2_000_000_000_000_000,
 				None
 			));
-			let swap_event_2 = TestEvent::dex(Event::Swap(
+			let swap_event_2 = Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, XBTC],
 				137_654_580_386_993,

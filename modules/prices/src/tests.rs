@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::*;
+use mock::{Event, *};
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 
 #[test]
@@ -69,7 +69,7 @@ fn lock_price_call_work() {
 		assert_noop!(PricesModule::lock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
 
-		let lock_price_event = TestEvent::prices(Event::LockPrice(BTC, Price::saturating_from_integer(5000)));
+		let lock_price_event = Event::prices(crate::Event::LockPrice(BTC, Price::saturating_from_integer(5000)));
 		assert!(System::events().iter().any(|record| record.event == lock_price_event));
 		assert_eq!(
 			PricesModule::locked_price(BTC),
@@ -86,7 +86,7 @@ fn unlock_price_call_work() {
 		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
 
-		let unlock_price_event = TestEvent::prices(Event::UnlockPrice(BTC));
+		let unlock_price_event = Event::prices(crate::Event::UnlockPrice(BTC));
 		assert!(System::events().iter().any(|record| record.event == unlock_price_event));
 
 		assert_eq!(PricesModule::locked_price(BTC), None);
