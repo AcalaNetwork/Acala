@@ -3,9 +3,11 @@
 #![cfg(test)]
 
 use super::*;
+use crate::mock::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::BlockT;
 use frame_support::{
+	construct_runtime,
 	dispatch::{DispatchError, DispatchResult},
-	impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
+	ord_parameter_types, parameter_types,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
@@ -27,23 +29,8 @@ pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
 pub const DOT_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::DOT, TokenSymbol::AUSD);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
-
 mod incentives {
 	pub use super::super::*;
-}
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		incentives<T>,
-		orml_tokens<T>,
-	}
 }
 
 parameter_types! {
@@ -54,18 +41,18 @@ impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = ();
+	type Call = Call;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -74,7 +61,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
@@ -83,7 +69,7 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -91,7 +77,6 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 }
-pub type TokensModule = orml_tokens::Module<Runtime>;
 
 pub struct MockCDPTreasury;
 impl CDPTreasury<AccountId> for MockCDPTreasury {
@@ -206,7 +191,6 @@ impl orml_rewards::Config for Runtime {
 	type Handler = IncentivesModule;
 	type WeightInfo = ();
 }
-pub type RewardsModule = orml_rewards::Module<Runtime>;
 
 parameter_types! {
 	pub const LoansIncentivePool: AccountId = 10;
@@ -223,7 +207,7 @@ ord_parameter_types! {
 }
 
 impl Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type LoansIncentivePool = LoansIncentivePool;
 	type DexIncentivePool = DexIncentivePool;
 	type HomaIncentivePool = HomaIncentivePool;
@@ -239,7 +223,21 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub type IncentivesModule = Module<Runtime>;
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		IncentivesModule: incentives::{Module, Storage, Call, Event<T>},
+		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		RewardsModule: orml_rewards::{Module, Storage, Call},
+	}
+);
 
 #[derive(Default)]
 pub struct ExtBuilder;
