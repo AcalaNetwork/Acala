@@ -6,7 +6,7 @@ use crate::{
 	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
 	MergeAccount, Pallet, Vicinity,
 };
-use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
+use evm::{Capture, Context, CreateScheme, ExitError, ExitFatal, ExitReason, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
@@ -573,7 +573,11 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 							// try_or_rollback!(self.storage_meter.record_cost(0));
 							TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 						}
-						Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
+						// TODO: Treating precompile error as fatal. Temporary workaround until evm is updated.
+						Err(e) => TransactionOutcome::Rollback(Capture::Exit((
+							ExitFatal::CallErrorAsFatal(e).into(),
+							Vec::new(),
+						))),
 					};
 				}
 
