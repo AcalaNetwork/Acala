@@ -215,12 +215,6 @@ sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", branch = 
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 sc-finality-grandpa-warp-sync = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 
-# hotfixes
-ethereum = { git = "https://github.com/AcalaNetwork/ethereum.git", branch = "sw/bump-dependencies" }
-evm = { git = "https://github.com/AcalaNetwork/evm.git", branch = "sw/bump-dependencies" }
-evm-runtime= { git = "https://github.com/AcalaNetwork/evm.git", branch = "sw/bump-dependencies" }
-evm-gasometer= { git = "https://github.com/AcalaNetwork/evm.git", branch = "sw/bump-dependencies" }
-
 [patch."https://github.com/paritytech/substrate"]
 frame-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
