@@ -1559,7 +1559,7 @@ construct_mandala_runtime! {
 	// Parachain
 	ParachainSystem: cumulus_parachain_system::{Module, Call, Storage, Inherent, Event},
 	ParachainInfo: parachain_info::{Module, Storage, Config},
-	XcmHandler: xcm_handler::{Module, Event<T>, Origin},
+	XcmHandler: xcm_handler::{Module, Call, Event<T>, Origin},
 	XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
 }
 
