@@ -26,9 +26,7 @@ use sp_runtime::{
 	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{
-	EVMSchedulerManager, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
-};
+use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait};
 
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
@@ -201,13 +199,6 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-	pub struct Scheduler<T: Config> {
-		pub caller: T::AccountId,
-		pub reserve_amount: BalanceOf<T>,
-		pub block_number: T::BlockNumber,
-	}
-
 	#[cfg(feature = "std")]
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, Serialize, Deserialize)]
 	/// Account definition used for genesis block construction.
@@ -249,15 +240,6 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn extrinsic_origin)]
 	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn scheduler_info)]
-	pub type SchedulerInfo<T: Config> = StorageMap<_, Identity, Vec<u8>, Option<Scheduler<T>>, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn scheduler_task)]
-	pub type SchedulerTask<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, T::BlockNumber, Blake2_128Concat, Vec<u8>, bool, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -382,13 +364,7 @@ pub mod module {
 	pub struct Pallet<T>(PhantomData<T>);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_finalize(block_number: T::BlockNumber) {
-			for (task_id, _) in SchedulerTask::<T>::drain_prefix(block_number) {
-				SchedulerInfo::<T>::remove(task_id);
-			}
-		}
-	}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -1031,53 +1007,6 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 
 pub fn code_hash(code: &[u8]) -> H256 {
 	H256::from_slice(Keccak256::digest(code).as_slice())
-}
-
-impl<T: Config> EVMSchedulerManager<T::BlockNumber, T::AccountId, BalanceOf<T>> for Pallet<T> {
-	fn schedule(
-		caller: &T::AccountId,
-		task_id: &[u8],
-		block_number: T::BlockNumber,
-		fee: BalanceOf<T>,
-	) -> DispatchResult {
-		SchedulerInfo::<T>::insert(
-			task_id,
-			Some(Scheduler {
-				caller: caller.clone(),
-				reserve_amount: fee,
-				block_number,
-			}),
-		);
-		SchedulerTask::<T>::insert(block_number, task_id, true);
-
-		Ok(())
-	}
-
-	fn cancel(caller: &T::AccountId, task_id: &[u8]) -> Result<BalanceOf<T>, DispatchError> {
-		SchedulerInfo::<T>::mutate_exists(task_id, |maybe_scheduler_info| -> Result<BalanceOf<T>, DispatchError> {
-			let scheduler_info = maybe_scheduler_info.take().ok_or(Error::<T>::SchedulerNotFound)?;
-			let scheduler_info = scheduler_info.expect("scheduler_info must not be None");
-			ensure!(scheduler_info.caller == *caller, Error::<T>::NoPermission);
-
-			SchedulerTask::<T>::remove(scheduler_info.block_number, task_id);
-			*maybe_scheduler_info = None;
-
-			Ok(scheduler_info.reserve_amount)
-		})
-	}
-
-	fn reschedule(caller: &T::AccountId, task_id: &[u8], new_block_number: T::BlockNumber) -> DispatchResult {
-		SchedulerInfo::<T>::mutate(task_id, |maybe_scheduler_info| -> DispatchResult {
-			let mut scheduler_info = maybe_scheduler_info.as_mut().ok_or(Error::<T>::SchedulerNotFound)?;
-			ensure!(scheduler_info.caller == *caller, Error::<T>::NoPermission);
-			SchedulerTask::<T>::remove(scheduler_info.block_number, task_id);
-
-			scheduler_info.block_number = new_block_number;
-			SchedulerTask::<T>::insert(new_block_number, task_id, true);
-
-			Ok(())
-		})
-	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]

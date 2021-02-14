@@ -220,13 +220,15 @@ fn schedule_call_precompile_should_work() {
 		let task_id = output;
 
 		// cancel schedule
-		let mut cancel_input = [0u8; 3 * 32];
+		let mut cancel_input = [0u8; 5 * 32];
 		// action
 		U256::from(1).to_big_endian(&mut cancel_input[0 * 32..1 * 32]);
 		// from
 		U256::from(alice().as_bytes()).to_big_endian(&mut cancel_input[1 * 32..2 * 32]);
 		// task_id
-		U256::from(&task_id[..]).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		U256::from(&task_id[0..32]).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		U256::from(&task_id[32..64]).to_big_endian(&mut cancel_input[3 * 32..4 * 32]);
+		U256::from(&task_id[64..96]).to_big_endian(&mut cancel_input[4 * 32..5 * 32]);
 
 		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&cancel_input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
@@ -241,20 +243,22 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(2);
 
 		// reschedule call
-		let mut reschedule_input = [0u8; 4 * 32];
+		let mut reschedule_input = [0u8; 6 * 32];
 		// action
 		U256::from(2).to_big_endian(&mut reschedule_input[0 * 32..1 * 32]);
 		// from
 		U256::from(alice().as_bytes()).to_big_endian(&mut reschedule_input[1 * 32..2 * 32]);
 		// task_id
-		U256::from(&task_id[..]).to_big_endian(&mut reschedule_input[2 * 32..3 * 32]);
+		U256::from(&task_id[0..32]).to_big_endian(&mut reschedule_input[2 * 32..3 * 32]);
+		U256::from(&task_id[32..64]).to_big_endian(&mut reschedule_input[3 * 32..4 * 32]);
+		U256::from(&task_id[64..96]).to_big_endian(&mut reschedule_input[4 * 32..5 * 32]);
 		// min_delay
-		U256::from(2).to_big_endian(&mut reschedule_input[3 * 32..4 * 32]);
+		U256::from(2).to_big_endian(&mut reschedule_input[5 * 32..6 * 32]);
 
 		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&reschedule_input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
-		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(5, 0));
+		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(4, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
 		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice());
@@ -339,13 +343,15 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 
 		// cancel schedule
 		let task_id = output;
-		let mut cancel_input = [0u8; 3 * 32];
+		let mut cancel_input = [0u8; 5 * 32];
 		// action
 		U256::from(1).to_big_endian(&mut cancel_input[0 * 32..1 * 32]);
 		// from
 		U256::from(bob().as_bytes()).to_big_endian(&mut cancel_input[1 * 32..2 * 32]);
 		// task_id
-		U256::from(&task_id[..]).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		U256::from(&task_id[0..32]).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		U256::from(&task_id[32..64]).to_big_endian(&mut cancel_input[3 * 32..4 * 32]);
+		U256::from(&task_id[64..96]).to_big_endian(&mut cancel_input[4 * 32..5 * 32]);
 
 		assert_eq!(
 			ScheduleCallPrecompile::execute(&cancel_input, None, &context),

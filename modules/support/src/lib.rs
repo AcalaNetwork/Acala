@@ -361,9 +361,3 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		Ok(())
 	}
 }
-
-pub trait EVMSchedulerManager<BlockNumber, AccountId, Balance> {
-	fn schedule(caller: &AccountId, task_id: &[u8], block_number: BlockNumber, fee: Balance) -> DispatchResult;
-	fn cancel(caller: &AccountId, task_id: &[u8]) -> Result<Balance, DispatchError>;
-	fn reschedule(caller: &AccountId, task_id: &[u8], new_block_number: BlockNumber) -> DispatchResult;
-}
