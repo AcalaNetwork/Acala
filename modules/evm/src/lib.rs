@@ -356,8 +356,6 @@ pub mod module {
 		OutOfStorage,
 		/// Charge fee failed
 		ChargeFeeFailed,
-		/// Scheduler not found
-		SchedulerNotFound,
 	}
 
 	#[pallet::pallet]
