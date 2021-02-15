@@ -3,10 +3,9 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{
-	impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
-	weights::WeightToFeeCoefficients,
-};
+use crate as transaction_payment;
+use crate::mock::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::BlockT;
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types, weights::WeightToFeeCoefficients};
 use orml_traits::parameter_type_with_key;
 use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
@@ -25,31 +24,6 @@ pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
-impl_outer_dispatch! {
-	pub enum Call for Runtime where origin: Origin {
-		module_currencies::Currencies,
-		pallet_balances::PalletBalances,
-		frame_system::System,
-	}
-}
-
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		orml_tokens<T>,
-		pallet_balances<T>,
-		module_currencies<T>,
-		module_dex<T>,
-	}
-}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -81,12 +55,12 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = BlockWeights;
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -95,7 +69,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
@@ -104,7 +77,7 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -112,7 +85,6 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 }
-pub type Tokens = orml_tokens::Module<Runtime>;
 
 parameter_types! {
 	pub const NativeTokenExistentialDeposit: Balance = 0;
@@ -121,13 +93,12 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = TestEvent;
+	type Event = Event;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = System;
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
-pub type PalletBalances = pallet_balances::Module<Runtime>;
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
@@ -161,14 +132,13 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = MockEVMBridge;
 }
-pub type Currencies = module_currencies::Module<Runtime>;
 
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
@@ -186,7 +156,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -195,7 +165,6 @@ impl module_dex::Config for Runtime {
 	type WeightInfo = ();
 	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
 }
-pub type DEXModule = module_dex::Module<Runtime>;
 
 parameter_types! {
 	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, DOT];
@@ -218,7 +187,6 @@ impl Config for Runtime {
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type WeightInfo = ();
 }
-pub type TransactionPayment = Module<Runtime>;
 
 thread_local! {
 	static WEIGHT_TO_FEE: RefCell<u128> = RefCell::new(1);
@@ -237,6 +205,24 @@ impl WeightToFeePolynomial for WeightToFee {
 		}]
 	}
 }
+
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+		TransactionPayment: transaction_payment::{Module, Call, Storage},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Currencies: module_currencies::{Module, Call, Event<T>},
+		DEXModule: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
+	}
+);
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

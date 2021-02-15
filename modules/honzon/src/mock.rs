@@ -3,7 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use crate::mock::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::BlockT;
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use primitives::{Balance, TokenSymbol};
@@ -20,29 +21,6 @@ mod honzon {
 	pub use super::super::*;
 }
 
-impl_outer_dispatch! {
-	pub enum Call for Runtime where origin: Origin {
-		cdp_engine::CDPEngineModule,
-	}
-}
-
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		honzon<T>,
-		cdp_engine<T>,
-		orml_tokens<T>,
-		loans<T>,
-		pallet_balances<T>,
-		orml_currencies<T>,
-		cdp_treasury<T>,
-	}
-}
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type AuctionId = u32;
@@ -54,9 +32,6 @@ pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -72,12 +47,12 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -86,7 +61,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
@@ -95,7 +69,7 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -103,7 +77,6 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 }
-pub type Tokens = orml_tokens::Module<Runtime>;
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
@@ -112,13 +85,12 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = TestEvent;
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
-pub type PalletBalances = pallet_balances::Module<Runtime>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
 parameter_types! {
@@ -126,20 +98,19 @@ parameter_types! {
 }
 
 impl orml_currencies::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
-pub type Currencies = orml_currencies::Module<Runtime>;
 
 parameter_types! {
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
 }
 
 impl loans::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
 	type RiskManager = CDPEngineModule;
@@ -147,7 +118,6 @@ impl loans::Config for Runtime {
 	type ModuleId = LoansModuleId;
 	type OnUpdateLoan = ();
 }
-pub type LoansModule = loans::Module<Runtime>;
 
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId> for MockPriceSource {
@@ -234,7 +204,7 @@ parameter_types! {
 }
 
 impl cdp_treasury::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
@@ -244,7 +214,6 @@ impl cdp_treasury::Config for Runtime {
 	type ModuleId = CDPTreasuryModuleId;
 	type WeightInfo = ();
 }
-pub type CDPTreasuryModule = cdp_treasury::Module<Runtime>;
 
 parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
@@ -257,7 +226,7 @@ parameter_types! {
 }
 
 impl cdp_engine::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type PriceSource = MockPriceSource;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
@@ -273,7 +242,26 @@ impl cdp_engine::Config for Runtime {
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type WeightInfo = ();
 }
-pub type CDPEngineModule = cdp_engine::Module<Runtime>;
+
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		Honzon: honzon::{Module, Storage, Call, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		Currencies: orml_currencies::{Module, Call, Event<T>},
+		LoansModule: loans::{Module, Storage, Call, Event<T>},
+		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Config, Event<T>},
+		CDPEngineModule: cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
+	}
+);
 
 /// An extrinsic type used for tests.
 pub type Extrinsic = TestXt<Call, ()>;
@@ -287,7 +275,7 @@ where
 }
 
 impl Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type WeightInfo = ();
 }
 pub type HonzonModule = Module<Runtime>;

@@ -14,7 +14,7 @@ use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::TransactionPayment;
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
 use sp_core::{H160, U256};
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, BALANCE_BYTES, PER_PARAM_BYTES};
 use codec::Encode;
@@ -55,19 +55,20 @@ pub struct ScheduleCallPrecompile<
 );
 
 enum Action {
-	ScheduleCall,
-	CancelCall,
-	RescheduleCall,
-	Unknown,
+	Schedule,
+	Cancel,
+	Reschedule,
 }
 
-impl From<u8> for Action {
-	fn from(a: u8) -> Self {
-		match a {
-			0 => Action::ScheduleCall,
-			1 => Action::CancelCall,
-			2 => Action::RescheduleCall,
-			_ => Action::Unknown,
+impl TryFrom<u8> for Action {
+	type Error = ();
+
+	fn try_from(value: u8) -> Result<Self, Self::Error> {
+		match value {
+			0 => Ok(Action::Schedule),
+			1 => Ok(Action::Cancel),
+			2 => Ok(Action::Reschedule),
+			_ => Err(()),
 		}
 	}
 }
@@ -106,12 +107,14 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		debug::debug!(target: "evm", "schedule call: input: {:?}", input);
 
-		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+		// Solidity dynamic arrays will add the array size to the front of the array,
+		// pre-compile needs to deal with the `size`.
+		let input = Input::<Action, AccountId, AddressMapping>::new(&input[32..]);
 
 		let action = input.action()?;
 
 		match action {
-			Action::ScheduleCall => {
+			Action::Schedule => {
 				let from = input.evm_address_at(1)?;
 				let target = input.evm_address_at(2)?;
 
@@ -178,7 +181,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 
 				Ok((ExitSucceed::Returned, task_id, 0))
 			}
-			Action::CancelCall => {
+			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
 				let task_id = input.bytes_at(2 * PER_PARAM_BYTES, 96)?;
 
@@ -204,7 +207,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
-			Action::RescheduleCall => {
+			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
 				let task_id = input.bytes_at(2 * PER_PARAM_BYTES, 96)?;
 				let min_delay = input.u32_at(3)?;
@@ -229,7 +232,6 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }

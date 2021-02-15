@@ -11,7 +11,7 @@ sp-core = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
-evm = { version = "0.21.0", default-features = false, features = ["with-codec"] }
+evm = { version = "0.23.0", default-features = false, features = ["with-codec"] }
 
 [dev-dependencies]
 frame-support = { version = "2.0.0" }

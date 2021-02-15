@@ -3,7 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use crate::mock::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::BlockT;
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
@@ -27,25 +28,8 @@ pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
-
 mod staking_pool {
 	pub use super::super::*;
-}
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		staking_pool<T>,
-		orml_tokens<T>,
-		pallet_balances<T>,
-		orml_currencies<T>,
-	}
 }
 
 parameter_types! {
@@ -56,18 +40,18 @@ impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = ();
+	type Call = Call;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -76,7 +60,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
@@ -84,7 +67,7 @@ parameter_type_with_key! {
 	};
 }
 impl orml_tokens::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -92,7 +75,6 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 }
-pub type TokensModule = orml_tokens::Module<Runtime>;
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
@@ -101,13 +83,12 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = TestEvent;
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
-type PalletBalances = pallet_balances::Module<Runtime>;
 pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
 parameter_types! {
@@ -115,13 +96,12 @@ parameter_types! {
 }
 
 impl orml_currencies::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
-pub type CurrenciesModule = orml_currencies::Module<Runtime>;
 
 pub struct MockNomineesProvider;
 impl NomineesProvider<PolkadotAccountId> for MockNomineesProvider {
@@ -351,7 +331,7 @@ ord_parameter_types! {
 }
 
 impl Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type DefaultExchangeRate = DefaultExchangeRate;
@@ -363,7 +343,23 @@ impl Config for Runtime {
 	type Bridge = MockBridge;
 	type Currency = CurrenciesModule;
 }
-pub type StakingPoolModule = Module<Runtime>;
+
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+		StakingPoolModule: staking_pool::{Module, Call, Storage, Event<T>, Config},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		CurrenciesModule: orml_currencies::{Module, Call, Event<T>},
+	}
+);
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
@@ -389,7 +385,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		GenesisConfig {
+		staking_pool::GenesisConfig {
 			staking_pool_params: Params {
 				target_max_free_unbonded_ratio: Ratio::saturating_from_rational(10, 100),
 				target_min_free_unbonded_ratio: Ratio::saturating_from_rational(5, 100),

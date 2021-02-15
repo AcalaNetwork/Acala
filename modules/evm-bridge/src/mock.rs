@@ -3,7 +3,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_origin, ord_parameter_types, parameter_types};
+use crate::mock::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::BlockT;
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
 use primitives::{evm::EvmAddress, mocks::MockAddressMapping};
@@ -15,11 +16,8 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Balance = u128;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
+mod evm_bridge {
+	pub use super::super::*;
 }
 
 parameter_types! {
@@ -29,7 +27,7 @@ parameter_types! {
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type Origin = Origin;
-	type Call = ();
+	type Call = Call;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
@@ -37,20 +35,19 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
@@ -59,14 +56,12 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = ();
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
 }
-
-pub type Balances = pallet_balances::Module<Runtime>;
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
@@ -101,7 +96,7 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 
-	type Event = ();
+	type Event = Event;
 	type Precompiles = ();
 	type ChainId = ();
 	type GasToWeight = ();
@@ -117,12 +112,26 @@ impl module_evm::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub type EVM = module_evm::Module<Runtime>;
-
 impl Config for Runtime {
 	type EVM = EVM;
 }
 pub type EvmBridgeModule = Module<Runtime>;
+
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		EVMBridge: evm_bridge::{Module},
+		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+	}
+);
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, Balance)>,
