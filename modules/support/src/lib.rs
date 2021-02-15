@@ -326,7 +326,7 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 	fn reserve_fee(who: &AccountId, weight: Weight) -> Result<Balance, DispatchError>;
-	fn unreserve_fee(_who: &AccountId, _fee: Balance);
+	fn unreserve_fee(who: &AccountId, fee: Balance);
 	fn unreserve_and_charge_fee(
 		who: &AccountId,
 		weight: Weight,
