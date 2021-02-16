@@ -3,7 +3,8 @@
 
 use crate::cli::{Cli, RelayChainCli, Subcommand};
 use codec::Encode;
-use cumulus_primitives::{genesis::generate_genesis_block, ParaId};
+use cumulus_client_service::genesis::generate_genesis_block;
+use cumulus_primitives_core::ParaId;
 use service::{chain_spec, IdentifyVariant};
 
 pub use service::mandala_runtime::Block;
@@ -311,7 +312,7 @@ pub fn run() -> sc_cli::Result<()> {
 		}
 
 		Some(Subcommand::ExportGenesisState(params)) => {
-			let mut builder = sc_cli::GlobalLoggerBuilder::new("");
+			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 
@@ -333,7 +334,7 @@ pub fn run() -> sc_cli::Result<()> {
 		}
 
 		Some(Subcommand::ExportGenesisWasm(params)) => {
-			let mut builder = sc_cli::GlobalLoggerBuilder::new("");
+			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 

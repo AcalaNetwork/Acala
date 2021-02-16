@@ -42,7 +42,7 @@ use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
-use cumulus_primitives::relay_chain::Balance as RelayChainBalance;
+use cumulus_primitives_core::relay_chain::Balance as RelayChainBalance;
 use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction, MultiLocation, NetworkId};
@@ -1162,7 +1162,7 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
-impl cumulus_parachain_system::Config for Runtime {
+impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = ParachainInfo;
@@ -1185,7 +1185,7 @@ impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
 
 parameter_types! {
 	pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
-	pub RelayChainOrigin: Origin = xcm_handler::Origin::Relay.into();
+	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
 	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
 		id: ParachainInfo::get().into(),
 	});
@@ -1210,7 +1210,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 pub type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
 	RelayChainAsNative<RelayChainOrigin, Origin>,
-	SiblingParachainAsNative<xcm_handler::Origin, Origin>,
+	SiblingParachainAsNative<cumulus_pallet_xcm_handler::Origin, Origin>,
 	SignedAccountId32AsNative<AcalaNetwork, Origin>,
 );
 
@@ -1226,7 +1226,7 @@ impl Config for XcmConfig {
 	type LocationInverter = LocationInverter<Ancestry>;
 }
 
-impl xcm_handler::Config for Runtime {
+impl cumulus_pallet_xcm_handler::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type UpwardMessageSender = ParachainSystem;
@@ -1355,9 +1355,9 @@ construct_runtime!(
 		EVMBridge: module_evm_bridge::{Module},
 
 		// Parachain
-		ParachainSystem: cumulus_parachain_system::{Module, Call, Storage, Inherent, Event},
+		ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
 		ParachainInfo: parachain_info::{Module, Storage, Config},
-		XcmHandler: xcm_handler::{Module, Event<T>, Origin},
+		XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
 		XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
 
 		// Dev
@@ -1644,7 +1644,7 @@ impl_runtime_apis! {
 	}
 }
 
-cumulus_runtime::register_validate_block!(Block, Executive);
+cumulus_pallet_parachain_system::register_validate_block!(Block, Executive);
 
 #[cfg(test)]
 mod tests {

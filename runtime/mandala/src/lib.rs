@@ -46,7 +46,7 @@ use orml_traits::{create_median_value_data_provider, parameter_type_with_key, Da
 // pallet_session_historical;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
-use cumulus_primitives::{relay_chain::Balance as RelayChainBalance, ParaId};
+use cumulus_primitives_core::{relay_chain::Balance as RelayChainBalance, ParaId};
 use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, NativePalletAssetOr};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction, MultiLocation, NetworkId};
@@ -1312,7 +1312,7 @@ impl module_evm_bridge::Config for Runtime {
 }
 
 #[cfg(not(feature = "standalone"))]
-impl cumulus_parachain_system::Config for Runtime {
+impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = parachain_info::Module<Runtime>;
@@ -1340,7 +1340,7 @@ impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
 #[cfg(not(feature = "standalone"))]
 parameter_types! {
 	pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
-	pub RelayChainOrigin: Origin = xcm_handler::Origin::Relay.into();
+	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
 	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
 		id: ParachainInfo::get().into(),
 	});
@@ -1369,7 +1369,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 pub type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
 	RelayChainAsNative<RelayChainOrigin, Origin>,
-	SiblingParachainAsNative<xcm_handler::Origin, Origin>,
+	SiblingParachainAsNative<cumulus_pallet_xcm_handler::Origin, Origin>,
 	SignedAccountId32AsNative<AcalaNetwork, Origin>,
 );
 
@@ -1402,7 +1402,7 @@ impl Config for XcmConfig {
 }
 
 #[cfg(not(feature = "standalone"))]
-impl xcm_handler::Config for Runtime {
+impl cumulus_pallet_xcm_handler::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type UpwardMessageSender = ParachainSystem;
@@ -1557,9 +1557,9 @@ macro_rules! construct_mandala_runtime {
 #[cfg(not(feature = "standalone"))]
 construct_mandala_runtime! {
 	// Parachain
-	ParachainSystem: cumulus_parachain_system::{Module, Call, Storage, Inherent, Event},
+	ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
 	ParachainInfo: parachain_info::{Module, Storage, Config},
-	XcmHandler: xcm_handler::{Module, Call, Event<T>, Origin},
+	XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
 	XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
 }
 
@@ -1928,7 +1928,7 @@ impl_runtime_apis! {
 }
 
 #[cfg(not(feature = "standalone"))]
-cumulus_runtime::register_validate_block!(Block, Executive);
+cumulus_pallet_parachain_system::register_validate_block!(Block, Executive);
 
 #[cfg(test)]
 mod tests {

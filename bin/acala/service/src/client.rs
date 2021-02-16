@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// A set of APIs that polkadot-like runtimes must implement.
 pub trait RuntimeApiCollection:
 	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-	+ sp_api::ApiExt<Block, Error = sp_blockchain::Error>
+	+ sp_api::ApiExt<Block>
 	+ sp_block_builder::BlockBuilder<Block>
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
@@ -35,7 +35,7 @@ where
 impl<Api> RuntimeApiCollection for Api
 where
 	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::ApiExt<Block, Error = sp_blockchain::Error>
+		+ sp_api::ApiExt<Block>
 		+ sp_block_builder::BlockBuilder<Block>
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
@@ -59,7 +59,7 @@ pub trait AbstractClient<Block, Backend>:
 	+ Sync
 	+ ProvideRuntimeApi<Block>
 	+ HeaderBackend<Block>
-	+ CallApiAt<Block, Error = sp_blockchain::Error, StateBackend = Backend::State>
+	+ CallApiAt<Block, StateBackend = Backend::State>
 where
 	Block: BlockT,
 	Backend: BackendT<Block>,
@@ -79,7 +79,7 @@ where
 		+ Sized
 		+ Send
 		+ Sync
-		+ CallApiAt<Block, Error = sp_blockchain::Error, StateBackend = Backend::State>,
+		+ CallApiAt<Block, StateBackend = Backend::State>,
 	Client::Api: RuntimeApiCollection<StateBackend = Backend::State>,
 {
 }
@@ -213,6 +213,17 @@ impl sc_client_api::BlockBackend<Block> for Client {
 			Self::Karura(client) => client.block_hash(number),
 			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.block_hash(number),
+		}
+	}
+
+	fn extrinsic(&self, id: &<Block as BlockT>::Hash) -> sp_blockchain::Result<Option<<Block as BlockT>::Extrinsic>> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.extrinsic(id),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.extrinsic(id),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.extrinsic(id),
 		}
 	}
 }
