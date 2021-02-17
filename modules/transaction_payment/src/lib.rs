@@ -707,10 +707,15 @@ impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
-	fn reserve_fee(who: &T::AccountId, weight: Weight) -> DispatchResult {
+	fn reserve_fee(who: &T::AccountId, weight: Weight) -> Result<PalletBalanceOf<T>, DispatchError> {
 		let fee = Module::<T>::weight_to_fee(weight);
 		Module::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
-		<T as Config>::Currency::reserve(&who, fee)
+		<T as Config>::Currency::reserve(&who, fee)?;
+		Ok(fee)
+	}
+
+	fn unreserve_fee(who: &T::AccountId, fee: PalletBalanceOf<T>) {
+		<T as Config>::Currency::unreserve(&who, fee);
 	}
 
 	fn unreserve_and_charge_fee(

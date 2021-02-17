@@ -4,7 +4,7 @@
 use frame_support::{
 	debug,
 	dispatch::Dispatchable,
-	parameter_types,
+	ensure, parameter_types,
 	traits::{
 		schedule::{DispatchTime, Named as ScheduleNamed},
 		Currency, IsType, OriginTrait,
@@ -13,15 +13,25 @@ use frame_support::{
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::TransactionPayment;
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
-use sp_core::U256;
+use sp_core::{H160, U256};
+use sp_runtime::RuntimeDebug;
 use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, PER_PARAM_BYTES};
-use codec::Encode;
+use codec::{Decode, Encode};
 use pallet_scheduler::TaskAddress;
 
 parameter_types! {
 	pub storage EvmSchedulerNextID: u32 = 0u32;
+}
+
+#[derive(RuntimeDebug, PartialEq, Encode, Decode)]
+pub struct TaskInfo {
+	pub prefix: Vec<u8>,
+	pub id: u32,
+	pub sender: H160,
+	#[codec(compact)]
+	pub fee: Balance,
 }
 
 /// The `ScheduleCall` impl precompile.
@@ -55,7 +65,9 @@ pub struct ScheduleCallPrecompile<
 );
 
 enum Action {
-	ScheduleCall,
+	Schedule,
+	Cancel,
+	Reschedule,
 }
 
 impl TryFrom<u8> for Action {
@@ -63,7 +75,9 @@ impl TryFrom<u8> for Action {
 
 	fn try_from(value: u8) -> Result<Self, Self::Error> {
 		match value {
-			0 => Ok(Action::ScheduleCall),
+			0 => Ok(Action::Schedule),
+			1 => Ok(Action::Cancel),
+			2 => Ok(Action::Reschedule),
 			_ => Err(()),
 		}
 	}
@@ -88,9 +102,10 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
 	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
-	ChargeTransactionPayment: TransactionPayment<AccountId, Balance, NegativeImbalanceOf<Runtime>>,
-	Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
-	Origin: IsType<<Runtime as frame_system::Config>::Origin> + OriginTrait<PalletsOrigin = PalletsOrigin>,
+	ChargeTransactionPayment: TransactionPayment<AccountId, PalletBalanceOf<Runtime>, NegativeImbalanceOf<Runtime>>,
+	Call: Dispatchable<Origin = Origin> + Debug + From<module_evm::Call<Runtime>>,
+	Origin: IsType<<Runtime as frame_system::Config>::Origin>
+		+ OriginTrait<AccountId = AccountId, PalletsOrigin = PalletsOrigin>,
 	PalletsOrigin: Into<<Runtime as frame_system::Config>::Origin> + From<frame_system::RawOrigin<AccountId>> + Clone,
 	Runtime: module_evm::Config + frame_system::Config<AccountId = AccountId>,
 	PalletBalanceOf<Runtime>: IsType<Balance>,
@@ -109,7 +124,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 		let action = input.action()?;
 
 		match action {
-			Action::ScheduleCall => {
+			Action::Schedule => {
 				let from = input.evm_address_at(1)?;
 				let target = input.evm_address_at(2)?;
 
@@ -133,13 +148,14 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 					input_data,
 				);
 
+				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
 					//// reserve the transaction fee for gas_limit
 					use sp_runtime::traits::Convert;
 					let from_account = AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
-					ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
+					_fee = ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
 						let err_msg: &str = e.into();
 						ExitError::Other(err_msg.into())
 					})?;
@@ -155,37 +171,95 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 				)
 				.into();
 
-				let delay = DispatchTime::After(min_delay);
-				let origin = Origin::root().caller().clone();
-
 				let current_id = EvmSchedulerNextID::get();
 				let next_id = current_id
 					.checked_add(1)
 					.ok_or_else(|| ExitError::Other("Scheduler next id overflow".into()))?;
 				EvmSchedulerNextID::set(&next_id);
 
-				let task_address = Scheduler::schedule_named(
-					Encode::encode(&(&"ScheduleCall", current_id)),
-					delay,
+				let task_id = TaskInfo {
+					prefix: b"ScheduleCall".to_vec(),
+					id: current_id,
+					sender: from,
+					fee: _fee.into(),
+				}
+				.encode();
+
+				debug::debug!(
+					target: "evm",
+					"schedule call: task_id: {:?}",
+					task_id,
+				);
+
+				Scheduler::schedule_named(
+					task_id.clone(),
+					DispatchTime::After(min_delay),
 					None,
 					0,
-					origin,
+					Origin::root().caller().clone(),
 					call,
 				)
-				.map_err(|_| ExitError::Other("Scheduler failed".into()))?;
+				.map_err(|_| ExitError::Other("Schedule failed".into()))?;
 
-				Ok((ExitSucceed::Returned, vec_u8_from_tuple(task_address), 0))
+				// add task_id len prefix
+				let mut task_id_with_len = [0u8; 96];
+				U256::from(task_id.len()).to_big_endian(&mut task_id_with_len[0..32]);
+				task_id_with_len[32..32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+				Ok((ExitSucceed::Returned, task_id_with_len.to_vec(), 0))
+			}
+			Action::Cancel => {
+				let from = input.evm_address_at(1)?;
+				let task_id_len = input.u32_at(2)?;
+				let task_id = input.bytes_at(3 * PER_PARAM_BYTES, task_id_len as usize)?;
+
+				debug::debug!(
+					target: "evm",
+					"cancel call: from: {:?}, task_id: {:?}",
+					from,
+					task_id,
+				);
+
+				let task_info = TaskInfo::decode(&mut &task_id[..])
+					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
+				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
+
+				Scheduler::cancel_named(task_id).map_err(|_| ExitError::Other("Cancel schedule failed".into()))?;
+
+				#[cfg(not(feature = "with-ethereum-compatibility"))]
+				{
+					// unreserve the transaction fee for gas_limit
+					let from_account = AddressMapping::get_account_id(&from);
+					ChargeTransactionPayment::unreserve_fee(&from_account, task_info.fee.into());
+				}
+
+				Ok((ExitSucceed::Returned, vec![], 0))
+			}
+			Action::Reschedule => {
+				let from = input.evm_address_at(1)?;
+				let min_delay = input.u32_at(2)?;
+				let task_id_len = input.u32_at(3)?;
+				let task_id = input.bytes_at(4 * PER_PARAM_BYTES, task_id_len as usize)?;
+
+				debug::debug!(
+					target: "evm",
+					"reschedule call: from: {:?}, task_id: {:?}, min_delay: {:?}",
+					from,
+					task_id,
+					min_delay,
+				);
+
+				let task_info = TaskInfo::decode(&mut &task_id[..])
+					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
+				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
+
+				Scheduler::reschedule_named(task_id, DispatchTime::After(min_delay)).map_err(|e| {
+					let err_msg: &str = e.into();
+					ExitError::Other(err_msg.into())
+				})?;
+
+				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 		}
 	}
-}
-
-fn vec_u8_from_tuple(task_address: TaskAddress<BlockNumber>) -> Vec<u8> {
-	let mut be_bytes_0 = [0u8; 32];
-	U256::from(task_address.0).to_big_endian(&mut be_bytes_0[..]);
-
-	let mut be_bytes_1 = [0u8; 32];
-	U256::from(task_address.1).to_big_endian(&mut be_bytes_1[..]);
-
-	vec![be_bytes_0.to_vec(), be_bytes_1.to_vec()].concat()
 }
