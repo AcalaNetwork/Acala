@@ -1,14 +1,18 @@
 #![cfg(test)]
 use super::*;
-use crate::precompile::mock::{
-	alice, bob, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Oracle, OraclePrecompile, Origin,
-	Price, ScheduleCallPrecompile, System, Test, TestEvent, ACA_ERC20_ADDRESS, ALICE, AUSD, XBTC,
+use crate::precompile::{
+	mock::{
+		alice, bob, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Oracle, OraclePrecompile, Origin,
+		Price, ScheduleCallPrecompile, System, Test, TestEvent, ACA_ERC20_ADDRESS, ALICE, AUSD, XBTC,
+	},
+	schedule_call::TaskInfo,
 };
+use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use module_evm::ExitError;
 use orml_traits::DataFeeder;
-use primitives::{evm::AddressMapping, PREDEPLOY_ADDRESS_START};
+use primitives::{evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, H256, U256};
 use sp_runtime::FixedPointNumber;
 
@@ -453,4 +457,27 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		assert_eq!(output, expected_output);
 		assert_eq!(used_gas, 0);
 	});
+}
+
+#[test]
+fn task_id_max_and_min() {
+	let task_id = TaskInfo {
+		prefix: b"ScheduleCall".to_vec(),
+		id: u32::MAX,
+		sender: H160::default(),
+		fee: Balance::MAX,
+	}
+	.encode();
+
+	assert_eq!(54, task_id.len());
+
+	let task_id = TaskInfo {
+		prefix: b"ScheduleCall".to_vec(),
+		id: u32::MIN,
+		sender: H160::default(),
+		fee: Balance::MIN,
+	}
+	.encode();
+
+	assert_eq!(38, task_id.len());
 }

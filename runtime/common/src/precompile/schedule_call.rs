@@ -13,7 +13,8 @@ use frame_support::{
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::TransactionPayment;
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
-use sp_core::H160;
+use sp_core::{H160, U256};
+use sp_runtime::RuntimeDebug;
 use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, PER_PARAM_BYTES};
@@ -24,12 +25,13 @@ parameter_types! {
 	pub storage EvmSchedulerNextID: u32 = 0u32;
 }
 
-#[derive(Debug, PartialEq, Encode, Decode)]
-struct TaskInfo {
-	id: Vec<u8>,
-	sender: H160,
+#[derive(RuntimeDebug, PartialEq, Encode, Decode)]
+pub struct TaskInfo {
+	pub prefix: Vec<u8>,
+	pub id: u32,
+	pub sender: H160,
 	#[codec(compact)]
-	fee: Balance,
+	pub fee: Balance,
 }
 
 /// The `ScheduleCall` impl precompile.
@@ -146,12 +148,12 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 					input_data,
 				);
 
-				let from_account = AddressMapping::get_account_id(&from);
 				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
 					//// reserve the transaction fee for gas_limit
 					use sp_runtime::traits::Convert;
+					let from_account = AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
 					_fee = ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
 						let err_msg: &str = e.into();
@@ -176,11 +178,18 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 				EvmSchedulerNextID::set(&next_id);
 
 				let task_id = TaskInfo {
-					id: Encode::encode(&(&"ScheduleCall", current_id)),
+					prefix: b"ScheduleCall".to_vec(),
+					id: current_id,
 					sender: from,
 					fee: _fee.into(),
 				}
 				.encode();
+
+				debug::debug!(
+					target: "evm",
+					"schedule call: task_id: {:?}",
+					task_id,
+				);
 
 				Scheduler::schedule_named(
 					task_id.clone(),
@@ -192,7 +201,12 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 				)
 				.map_err(|_| ExitError::Other("Schedule failed".into()))?;
 
-				Ok((ExitSucceed::Returned, task_id, 0))
+				// add task_id len prefix
+				let mut task_id_with_len = [0u8; 96];
+				U256::from(task_id.len()).to_big_endian(&mut task_id_with_len[0..32]);
+				task_id_with_len[32..32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+				Ok((ExitSucceed::Returned, task_id_with_len.to_vec(), 0))
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
