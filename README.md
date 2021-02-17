@@ -143,3 +143,4 @@ make update
 ```
 
 __Note:__ All build command from Makefile are designed for local development purposes and hence have `SKIP_WASM_BUILD` enabled to speed up build time and use `--execution native` to only run use native execution mode.
+
