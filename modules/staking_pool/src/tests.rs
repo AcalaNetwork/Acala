@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	BondingDuration, CurrenciesModule, ExtBuilder, One, Origin, Runtime, StakingPoolModule, Status, System, TestEvent,
+	BondingDuration, CurrenciesModule, Event, ExtBuilder, One, Origin, Runtime, StakingPoolModule, Status, System,
 	ALICE, BOB, BRIDGE_STATUS, DOT, LDOT,
 };
 use sp_runtime::traits::BadOrigin;
@@ -763,7 +763,7 @@ fn mint_work() {
 			}
 		);
 
-		let mint_liquid_event = TestEvent::staking_pool(Event::MintLiquid(ALICE, 500, 5000));
+		let mint_liquid_event = Event::staking_pool(crate::Event::MintLiquid(ALICE, 500, 5000));
 		assert!(System::events().iter().any(|record| record.event == mint_liquid_event));
 	});
 }
@@ -828,7 +828,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&ALICE), 0);
 
 		assert_ok!(StakingPoolModule::redeem_by_unbond(&ALICE, 1000));
-		let redeem_by_unbond_event_1 = TestEvent::staking_pool(Event::RedeemByUnbond(ALICE, 1000, 100));
+		let redeem_by_unbond_event_1 = Event::staking_pool(crate::Event::RedeemByUnbond(ALICE, 1000, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_unbond_event_1));
@@ -851,7 +851,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&BOB), 0);
 
 		assert_ok!(StakingPoolModule::redeem_by_unbond(&BOB, 9000));
-		let redeem_by_unbond_event_2 = TestEvent::staking_pool(Event::RedeemByUnbond(BOB, 4000, 400));
+		let redeem_by_unbond_event_2 = Event::staking_pool(crate::Event::RedeemByUnbond(BOB, 4000, 400));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_unbond_event_2));
@@ -902,7 +902,8 @@ fn redeem_by_free_unbonded_work() {
 		assert_eq!(CurrenciesModule::total_issuance(LDOT), 10000);
 
 		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&ALICE, 1000));
-		let redeem_by_free_unbonded_event_1 = TestEvent::staking_pool(Event::RedeemByFreeUnbonded(ALICE, 1000, 80, 20));
+		let redeem_by_free_unbonded_event_1 =
+			Event::staking_pool(crate::Event::RedeemByFreeUnbonded(ALICE, 1000, 80, 20));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_free_unbonded_event_1));
@@ -920,7 +921,8 @@ fn redeem_by_free_unbonded_work() {
 
 		// when overflow available
 		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&BOB, 9000));
-		let redeem_by_free_unbonded_event_2 = TestEvent::staking_pool(Event::RedeemByFreeUnbonded(BOB, 3662, 300, 74));
+		let redeem_by_free_unbonded_event_2 =
+			Event::staking_pool(crate::Event::RedeemByFreeUnbonded(BOB, 3662, 300, 74));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_free_unbonded_event_2));
@@ -977,7 +979,7 @@ fn redeem_by_claim_unbonding_work() {
 
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 1000, 4));
 		let redeem_by_claimed_unbonding_event_1 =
-			TestEvent::staking_pool(Event::RedeemByClaimUnbonding(ALICE, 4, 1000, 80, 20));
+			Event::staking_pool(crate::Event::RedeemByClaimUnbonding(ALICE, 4, 1000, 80, 20));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_claimed_unbonding_event_1));
@@ -999,7 +1001,7 @@ fn redeem_by_claim_unbonding_work() {
 		// when overflow available
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&BOB, 10000, 4));
 		let redeem_by_claimed_unbonding_event_2 =
-			TestEvent::staking_pool(Event::RedeemByClaimUnbonding(BOB, 4, 3910, 316, 79));
+			Event::staking_pool(crate::Event::RedeemByClaimUnbonding(BOB, 4, 3910, 316, 79));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == redeem_by_claimed_unbonding_event_2));

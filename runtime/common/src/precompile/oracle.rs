@@ -2,7 +2,7 @@ use frame_support::{debug, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use primitives::{evm::AddressMapping as AddressMappingT, CurrencyId, Moment};
 use sp_core::U256;
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::DataProviderExtended as OracleT;
 
@@ -21,14 +21,15 @@ pub struct OraclePrecompile<AccountId, AddressMapping, Oracle>(PhantomData<(Acco
 
 enum Action {
 	GetPrice,
-	Unknown,
 }
 
-impl From<u8> for Action {
-	fn from(a: u8) -> Self {
-		match a {
-			0 => Action::GetPrice,
-			_ => Action::Unknown,
+impl TryFrom<u8> for Action {
+	type Error = ();
+
+	fn try_from(value: u8) -> Result<Self, Self::Error> {
+		match value {
+			0 => Ok(Action::GetPrice),
+			_ => Err(()),
 		}
 	}
 }
@@ -61,7 +62,6 @@ where
 				});
 				Ok((ExitSucceed::Returned, vec_u8_from_timestamped(value), 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }

@@ -615,11 +615,14 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	}
 
 	fn pre_validate(&mut self, context: &Context, opcode: Opcode, stack: &Stack) -> Result<(), ExitError> {
-		let (gas_cost, memory_cost) =
-			gasometer::dynamic_opcode_cost(context.address, opcode, stack, self.is_static, &self.config, self)?;
+		if let Some(cost) = gasometer::static_opcode_cost(opcode) {
+			self.gasometer.record_cost(cost)?;
+		} else {
+			let (gas_cost, memory_cost) =
+				gasometer::dynamic_opcode_cost(context.address, opcode, stack, self.is_static, &self.config, self)?;
 
-		self.gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
-
+			self.gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
+		}
 		Ok(())
 	}
 }

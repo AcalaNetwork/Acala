@@ -10,7 +10,7 @@ use cumulus_client_service::{
 
 #[cfg(feature = "with-acala-runtime")]
 pub use acala_runtime;
-#[cfg(feature = "with-karurua-runtime")]
+#[cfg(feature = "with-karura-runtime")]
 pub use karura_runtime;
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;

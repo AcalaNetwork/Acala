@@ -1129,6 +1129,7 @@ pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	OriginCaller,
 	Runtime,
 >;
+pub type DexPrecompile = runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, Dex>;
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1145,6 +1146,7 @@ impl module_evm::Config for Runtime {
 		StateRentPrecompile,
 		OraclePrecompile,
 		ScheduleCallPrecompile,
+		DexPrecompile,
 	>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;

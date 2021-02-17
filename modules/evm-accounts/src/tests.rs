@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{alice, bob, EvmAccountsModule, ExtBuilder, Origin, Runtime, System, TestEvent, ALICE, BOB};
+use mock::{alice, bob, Event, EvmAccountsModule, ExtBuilder, Origin, Runtime, System, ALICE, BOB};
 use std::str::FromStr;
 
 #[test]
@@ -15,7 +15,10 @@ fn claim_account_work() {
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE.encode(), &[][..])
 		));
-		let event = TestEvent::evm_accounts(Event::ClaimAccount(ALICE, EvmAccountsModule::eth_address(&alice())));
+		let event = Event::evm_accounts(crate::Event::ClaimAccount(
+			ALICE,
+			EvmAccountsModule::eth_address(&alice()),
+		));
 		assert!(System::events().iter().any(|record| record.event == event));
 		assert!(
 			Accounts::<Runtime>::contains_key(EvmAccountsModule::eth_address(&alice()))

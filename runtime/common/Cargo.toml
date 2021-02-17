@@ -35,9 +35,9 @@ pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "ro
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }
-module-dex = { path = "../../modules/dex" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
 module-nft = { path = "../../modules/nft" }
+module-dex = { path = "../../modules/dex" }
 
 [features]
 default = ["std"]
