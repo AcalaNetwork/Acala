@@ -14,7 +14,7 @@ use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::TransactionPayment;
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
 use sp_core::U256;
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, PER_PARAM_BYTES};
 use codec::Encode;
@@ -56,14 +56,15 @@ pub struct ScheduleCallPrecompile<
 
 enum Action {
 	ScheduleCall,
-	Unknown,
 }
 
-impl From<u8> for Action {
-	fn from(a: u8) -> Self {
-		match a {
-			0 => Action::ScheduleCall,
-			_ => Action::Unknown,
+impl TryFrom<u8> for Action {
+	type Error = ();
+
+	fn try_from(value: u8) -> Result<Self, Self::Error> {
+		match value {
+			0 => Ok(Action::ScheduleCall),
+			_ => Err(()),
 		}
 	}
 }
@@ -101,7 +102,9 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		debug::debug!(target: "evm", "schedule call: input: {:?}", input);
 
-		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+		// Solidity dynamic arrays will add the array size to the front of the array,
+		// pre-compile needs to deal with the `size`.
+		let input = Input::<Action, AccountId, AddressMapping>::new(&input[32..]);
 
 		let action = input.action()?;
 
@@ -173,7 +176,6 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 
 				Ok((ExitSucceed::Returned, vec_u8_from_tuple(task_address), 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }
