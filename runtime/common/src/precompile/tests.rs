@@ -2,8 +2,9 @@
 use super::*;
 use crate::precompile::{
 	mock::{
-		alice, bob, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Oracle, OraclePrecompile, Origin,
-		Price, ScheduleCallPrecompile, System, Test, TestEvent, ACA_ERC20_ADDRESS, ALICE, AUSD, XBTC,
+		alice, bob, get_task_id, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Oracle,
+		OraclePrecompile, Origin, Price, ScheduleCallPrecompile, System, Test, TestEvent, ACA_ERC20_ADDRESS, ALICE,
+		AUSD, XBTC,
 	},
 	schedule_call::TaskInfo,
 };
@@ -224,12 +225,8 @@ fn schedule_call_precompile_should_work() {
 		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(3, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
-		let mut num = [0u8; 8];
-		num[..].copy_from_slice(&output[32 - 8..32]);
-		let task_id_len: usize = usize::from_be_bytes(num);
-		let task_id = &output[32..32 + task_id_len].to_vec();
-
 		// cancel schedule
+		let task_id = get_task_id(output);
 		let mut cancel_input = [0u8; 6 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
@@ -252,13 +249,10 @@ fn schedule_call_precompile_should_work() {
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
 
-		let mut num = [0u8; 8];
-		num[..].copy_from_slice(&output[32 - 8..32]);
-		let task_id_len: usize = usize::from_be_bytes(num);
-		let task_id = &output[32..32 + task_id_len].to_vec();
 		run_to_block(2);
 
 		// reschedule call
+		let task_id = get_task_id(output);
 		let mut reschedule_input = [0u8; 8 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
@@ -362,11 +356,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		}
 
 		// cancel schedule
-		let mut num = [0u8; 8];
-		num[..].copy_from_slice(&output[32 - 8..32]);
-		let task_id_len: usize = usize::from_be_bytes(num);
-		let task_id = &output[32..32 + task_id_len].to_vec();
-
+		let task_id = get_task_id(output);
 		let mut cancel_input = [0u8; 6 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
