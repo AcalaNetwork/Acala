@@ -133,6 +133,7 @@ dependencies = [
 name = "acala-primitives"
 version = "0.7.3"
 dependencies = [
+ "bstringify",
  "evm",
  "frame-support",
  "parity-scale-codec",
@@ -856,6 +857,12 @@ checksum = "473fc6b38233f9af7baa94fb5852dca389e3d95b8e21c8e3719301462c5d9faf"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "bstringify"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd769563b4ea2953e2825c9e6b7470a5f55f67e0be00030bf3e390a2a6071f64"
 
 [[package]]
 name = "build-helper"
