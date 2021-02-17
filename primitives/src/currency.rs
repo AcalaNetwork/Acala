@@ -20,7 +20,7 @@ macro_rules! create_currency_id {
             $($(#[$vmeta])* $vname = $val,)*
         }
 
-        impl std::convert::TryFrom<u8> for TokenSymbol {
+        impl TryFrom<u8> for TokenSymbol {
             type Error = ();
 
             fn try_from(v: u8) -> Result<Self, Self::Error> {
