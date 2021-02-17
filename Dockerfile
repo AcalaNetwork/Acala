@@ -19,7 +19,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \
 	rustup default nightly-2020-11-16 && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly-2020-11-16 && \
-	cargo build "--$PROFILE" --manifest-path bin/acala/Cargo.toml --features with-ethereum-compatibility
+	cargo build "--$PROFILE" --manifest-path bin/acala/Cargo.toml
 
 # ===== SECOND STAGE ======
 
