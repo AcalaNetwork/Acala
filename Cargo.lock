@@ -3849,6 +3849,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "hex",
  "hex-literal 0.3.1",
  "libsecp256k1",
  "module-airdrop",
