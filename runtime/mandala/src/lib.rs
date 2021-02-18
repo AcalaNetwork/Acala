@@ -1382,9 +1382,9 @@ parameter_types! {
 		//TODO: might need to add other assets based on orml-tokens
 
 		// Plasm
-		t.insert(("SDN".into(), MultiLocation::X1(Junction::Parachain { id: 5000 })));
+		t.insert(("SDN".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
 		// Plasm
-		t.insert(("PLM".into(), MultiLocation::X1(Junction::Parachain { id: 5000 })));
+		t.insert(("PLM".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
 		t
 	};
 }
@@ -1947,4 +1947,10 @@ mod tests {
 
 		is_submit_signed_transaction::<Runtime>();
 	}
+}
+
+#[test]
+fn transfer() {
+	let t = Call::System(frame_system::Call::remark(vec![1, 2, 3])).encode();
+	println!("t: {:?}", t);
 }
