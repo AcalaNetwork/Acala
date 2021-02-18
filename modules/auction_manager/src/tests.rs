@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::*;
+use mock::{Event, *};
 
 #[test]
 fn get_auction_time_to_close_work() {
@@ -62,7 +62,7 @@ fn new_collateral_auction_work() {
 		);
 
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
-		let new_collateral_auction_event = TestEvent::auction_manager(Event::NewCollateralAuction(0, BTC, 10, 100));
+		let new_collateral_auction_event = Event::auction_manager(crate::Event::NewCollateralAuction(0, BTC, 10, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == new_collateral_auction_event));
@@ -93,7 +93,7 @@ fn new_debit_auction_work() {
 		);
 
 		assert_ok!(AuctionManagerModule::new_debit_auction(200, 100));
-		let new_debit_auction_event = TestEvent::auction_manager(Event::NewDebitAuction(0, 200, 100));
+		let new_debit_auction_event = Event::auction_manager(crate::Event::NewDebitAuction(0, 200, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == new_debit_auction_event));
@@ -118,7 +118,7 @@ fn new_surplus_auction_work() {
 		);
 
 		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
-		let new_surplus_auction_event = TestEvent::auction_manager(Event::NewSurplusAuction(0, 100));
+		let new_surplus_auction_event = Event::auction_manager(crate::Event::NewSurplusAuction(0, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == new_surplus_auction_event));
@@ -351,7 +351,7 @@ fn collateral_auction_end_handler_without_bid() {
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, None);
-		let auction_passed_event = TestEvent::auction_manager(Event::CancelAuction(0));
+		let auction_passed_event = Event::auction_manager(crate::Event::CancelAuction(0));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == auction_passed_event));
@@ -387,7 +387,7 @@ fn collateral_auction_end_handler_in_reverse_stage() {
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 400)));
-		let auction_dealt_event = TestEvent::auction_manager(Event::CollateralAuctionDealt(0, BTC, 50, BOB, 200));
+		let auction_dealt_event = Event::auction_manager(crate::Event::CollateralAuctionDealt(0, BTC, 50, BOB, 200));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == auction_dealt_event));
@@ -429,7 +429,7 @@ fn collateral_auction_end_handler_by_dealing_which_target_not_zero() {
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 100)));
-		let auction_dealt_event = TestEvent::auction_manager(Event::CollateralAuctionDealt(0, BTC, 100, BOB, 100));
+		let auction_dealt_event = Event::auction_manager(crate::Event::CollateralAuctionDealt(0, BTC, 100, BOB, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == auction_dealt_event));
@@ -482,7 +482,8 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 20)));
-		let dex_take_collateral_auction = TestEvent::auction_manager(Event::DEXTakeCollateralAuction(0, BTC, 100, 500));
+		let dex_take_collateral_auction =
+			Event::auction_manager(crate::Event::DEXTakeCollateralAuction(0, BTC, 100, 500));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == dex_take_collateral_auction));
@@ -513,7 +514,7 @@ fn debit_auction_end_handler_without_bid() {
 
 		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, None);
-		let auction_passed_event = TestEvent::auction_manager(Event::CancelAuction(0));
+		let auction_passed_event = Event::auction_manager(crate::Event::CancelAuction(0));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == auction_passed_event));
@@ -540,7 +541,7 @@ fn debit_auction_end_handler_with_bid() {
 
 		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 100)));
-		let debit_auction_deal_event = TestEvent::auction_manager(Event::DebitAuctionDealt(0, 300, BOB, 100));
+		let debit_auction_deal_event = Event::auction_manager(crate::Event::DebitAuctionDealt(0, 300, BOB, 100));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == debit_auction_deal_event));
@@ -564,7 +565,7 @@ fn surplus_auction_end_handler_without_bid() {
 
 		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, None);
-		let auction_passed_event = TestEvent::auction_manager(Event::CancelAuction(0));
+		let auction_passed_event = Event::auction_manager(crate::Event::CancelAuction(0));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == auction_passed_event));
@@ -594,7 +595,7 @@ fn surplus_auction_end_handler_with_bid() {
 
 		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 500)));
-		let surplus_auction_deal_event = TestEvent::auction_manager(Event::SurplusAuctionDealt(0, 100, BOB, 500));
+		let surplus_auction_deal_event = Event::auction_manager(crate::Event::SurplusAuctionDealt(0, 100, BOB, 500));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == surplus_auction_deal_event));
@@ -658,7 +659,7 @@ fn cancel_surplus_auction_work() {
 
 		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
-		let cancel_auction_event = TestEvent::auction_manager(Event::CancelAuction(0));
+		let cancel_auction_event = Event::auction_manager(crate::Event::CancelAuction(0));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == cancel_auction_event));
@@ -693,7 +694,7 @@ fn cancel_debit_auction_work() {
 
 		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
-		let cancel_auction_event = TestEvent::auction_manager(Event::CancelAuction(0));
+		let cancel_auction_event = Event::auction_manager(crate::Event::CancelAuction(0));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == cancel_auction_event));
@@ -755,7 +756,7 @@ fn cancel_collateral_auction_work() {
 
 		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
-		let cancel_auction_event = TestEvent::auction_manager(Event::CancelAuction(0));
+		let cancel_auction_event = Event::auction_manager(crate::Event::CancelAuction(0));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == cancel_auction_event));

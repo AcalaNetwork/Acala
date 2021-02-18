@@ -6,7 +6,7 @@ use super::*;
 
 use codec::{Decode, Encode};
 use frame_support::{
-	impl_outer_dispatch, impl_outer_origin, parameter_types,
+	parameter_types,
 	traits::{Filter, InstanceFilter},
 	weights::Weight,
 	RuntimeDebug,
@@ -21,22 +21,6 @@ use sp_runtime::{
 };
 use support::{EVMBridge, InvokeContext};
 
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-
-impl_outer_dispatch! {
-	pub enum Call for Runtime where origin: Origin {
-		frame_system::System,
-		pallet_balances::Balances,
-		pallet_proxy::Proxy,
-		pallet_utility::Utility,
-	}
-}
-
-// Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Runtime;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const MaximumBlockWeight: Weight = 1024;
@@ -63,7 +47,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type DbWeight = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -144,11 +128,6 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-type System = frame_system::Module<Runtime>;
-type Balances = pallet_balances::Module<Runtime>;
-type Utility = pallet_utility::Module<Runtime>;
-type Proxy = pallet_proxy::Module<Runtime>;
-
 pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_type_with_key! {
@@ -166,7 +145,6 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 }
-pub type Tokens = orml_tokens::Module<Runtime>;
 
 pub struct MockEVMBridge;
 impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
@@ -222,6 +200,26 @@ impl orml_nft::Config for Runtime {
 	type ClassData = ClassData;
 	type TokenData = TokenData;
 }
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
+
+frame_support::construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+		Utility: pallet_utility::{Module, Call, Event},
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		Currencies: module_currencies::{Module, Call, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+		OrmlNFT: orml_nft::{Module, Storage, Config<T>},
+		NFT: module_nft::{Module, Call, Event<T>},
+	}
+);
 
 use frame_system::Call as SystemCall;
 

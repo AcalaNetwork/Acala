@@ -2,7 +2,7 @@
 
 use super::*;
 
-use frame_support::{impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::mocks::MockAddressMapping;
@@ -15,31 +15,10 @@ use sp_runtime::{
 };
 use std::{collections::BTreeMap, str::FromStr};
 
-impl_outer_origin! {
-	pub enum Origin for Test where system = frame_system {}
-}
-
-impl_outer_dispatch! {
-	pub enum OuterCall for Test where origin: Origin {
-		self::EVM,
-	}
-}
-
 mod evm_mod {
-	pub use crate::Event;
-}
-impl_outer_event! {
-	pub enum TestEvent for Test {
-		frame_system<T>,
-		pallet_balances<T>,
-		orml_tokens<T>,
-		orml_currencies<T>,
-		evm_mod<T>,
-	}
+	pub use super::super::*;
 }
 
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
@@ -49,7 +28,7 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
-	type Call = OuterCall;
+	type Call = Call;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
@@ -57,11 +36,11 @@ impl frame_system::Config for Test {
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -75,7 +54,7 @@ parameter_types! {
 impl pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
-	type Event = TestEvent;
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
@@ -99,7 +78,7 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = u64;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -107,20 +86,18 @@ impl orml_tokens::Config for Test {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 }
-pub type Tokens = orml_tokens::Module<Test>;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
 impl orml_currencies::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
-pub type Currencies = orml_currencies::Module<Test>;
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub struct GasToWeight;
@@ -155,7 +132,7 @@ impl Config for Test {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
 
-	type Event = TestEvent;
+	type Event = Event;
 	type Precompiles = ();
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
@@ -171,9 +148,22 @@ impl Config for Test {
 	type WeightInfo = ();
 }
 
-pub type System = frame_system::Module<Test>;
-pub type Balances = pallet_balances::Module<Test>;
-pub type EVM = Module<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type Block = frame_system::mocking::MockBlock<Test>;
+
+construct_runtime!(
+	pub enum Test where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		EVM: evm_mod::{Module, Config<T>, Call, Storage, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>},
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		Currencies: orml_currencies::{Module, Call, Event<T>},
+	}
+);
 
 pub const INITIAL_BALANCE: u64 = 1_000_000_000_000;
 
@@ -249,7 +239,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut t)
 		.unwrap();
-	GenesisConfig::<Test> {
+	evm_mod::GenesisConfig::<Test> {
 		accounts,
 		network_contract_index: NETWORK_CONTRACT_INDEX,
 	}

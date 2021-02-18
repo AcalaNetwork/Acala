@@ -5,7 +5,7 @@ use super::*;
 use crate as nft;
 use codec::{Decode, Encode};
 use frame_support::{
-	impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
+	construct_runtime, parameter_types,
 	traits::{Filter, InstanceFilter},
 	RuntimeDebug,
 };
@@ -19,32 +19,6 @@ use sp_runtime::{
 };
 use support::{EVMBridge, InvokeContext};
 
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
-}
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		pallet_balances<T>,
-		pallet_proxy<T>,
-		pallet_utility,
-		orml_tokens<T>,
-		module_currencies<T>,
-		nft<T>,
-	}
-}
-impl_outer_dispatch! {
-	pub enum Call for Runtime where origin: Origin {
-		frame_system::System,
-		pallet_balances::Balances,
-		pallet_proxy::Proxy,
-		pallet_utility::Utility,
-	}
-}
-
-// Workaround for https://github.com/rust-lang/rust/issues/26925 . Remove when sorted.
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Runtime;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
@@ -62,13 +36,13 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -80,7 +54,7 @@ parameter_types! {
 }
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
-	type Event = TestEvent;
+	type Event = Event;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Module<Runtime>;
@@ -88,7 +62,7 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 impl pallet_utility::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Call = Call;
 	type WeightInfo = ();
 }
@@ -135,7 +109,7 @@ impl Filter<Call> for BaseFilter {
 	}
 }
 impl pallet_proxy::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
 	type ProxyType = ProxyType;
@@ -149,11 +123,6 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-type System = frame_system::Module<Runtime>;
-pub type Balances = pallet_balances::Module<Runtime>;
-type Utility = pallet_utility::Module<Runtime>;
-pub type Proxy = pallet_proxy::Module<Runtime>;
-
 pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_type_with_key! {
@@ -163,7 +132,7 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -171,7 +140,6 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 }
-pub type Tokens = orml_tokens::Module<Runtime>;
 
 pub struct MockEVMBridge;
 impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
@@ -199,7 +167,7 @@ where
 }
 
 impl module_currencies::Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
 	type WeightInfo = ();
@@ -213,14 +181,13 @@ parameter_types! {
 	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
 }
 impl Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
 	type Currency = NativeCurrency;
 	type WeightInfo = ();
 }
-pub type NFTModule = Module<Runtime>;
 
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
@@ -230,6 +197,26 @@ impl orml_nft::Config for Runtime {
 }
 
 use frame_system::Call as SystemCall;
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+		NFTModule: nft::{Module, Call, Event<T>},
+		OrmlNFT: orml_nft::{Module, Storage, Config<T>},
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+		Utility: pallet_utility::{Module, Call, Event},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Currency: module_currencies::{Module, Call, Event<T>},
+	}
+);
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
@@ -263,7 +250,7 @@ impl ExtBuilder {
 	}
 }
 
-pub fn last_event() -> TestEvent {
+pub fn last_event() -> Event {
 	frame_system::Module::<Runtime>::events()
 		.pop()
 		.expect("Event expected")

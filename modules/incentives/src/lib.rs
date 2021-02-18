@@ -115,6 +115,8 @@ pub mod module {
 		DepositDEXShare(T::AccountId, CurrencyId, Balance),
 		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
 		WithdrawDEXShare(T::AccountId, CurrencyId, Balance),
+		/// Claim rewards. \[who, pool_id\]
+		ClaimRewards(T::AccountId, T::PoolId),
 	}
 
 	/// Mapping from collateral currency type to its loans incentive reward
@@ -176,6 +178,7 @@ pub mod module {
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			<orml_rewards::Module<T>>::claim_rewards(&who, pool_id);
+			Self::deposit_event(Event::ClaimRewards(who, pool_id));
 			Ok(().into())
 		}
 

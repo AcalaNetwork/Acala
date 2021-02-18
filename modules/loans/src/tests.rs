@@ -4,7 +4,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::*;
+use mock::{Event, *};
 
 #[test]
 fn debits_key() {
@@ -67,7 +67,7 @@ fn adjust_position_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
 
-		let update_position_event = TestEvent::loans(Event::PositionUpdated(ALICE, BTC, 500, 300));
+		let update_position_event = Event::loans(crate::Event::PositionUpdated(ALICE, BTC, 500, 300));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == update_position_event));
@@ -133,7 +133,7 @@ fn transfer_loan_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &BOB).debit, 1100);
 		assert_eq!(LoansModule::positions(BTC, &BOB).collateral, 500);
 
-		let transfer_loan_event = TestEvent::loans(Event::TransferLoan(ALICE, BOB, BTC));
+		let transfer_loan_event = Event::loans(crate::Event::TransferLoan(ALICE, BOB, BTC));
 		assert!(System::events()
 			.iter()
 			.any(|record| record.event == transfer_loan_event));
@@ -165,7 +165,7 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 200);
 
-		let confiscate_event = TestEvent::loans(Event::ConfiscateCollateralAndDebit(ALICE, BTC, 300, 200));
+		let confiscate_event = Event::loans(crate::Event::ConfiscateCollateralAndDebit(ALICE, BTC, 300, 200));
 		assert!(System::events().iter().any(|record| record.event == confiscate_event));
 	});
 }

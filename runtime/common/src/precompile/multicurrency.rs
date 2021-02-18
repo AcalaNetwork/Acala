@@ -2,7 +2,7 @@ use frame_support::debug;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use primitives::evm::AddressMapping as AddressMappingT;
 use sp_core::U256;
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
@@ -26,16 +26,17 @@ enum Action {
 	QueryTotalIssuance,
 	QueryBalance,
 	Transfer,
-	Unknown,
 }
 
-impl From<u8> for Action {
-	fn from(a: u8) -> Self {
-		match a {
-			0 => Action::QueryTotalIssuance,
-			1 => Action::QueryBalance,
-			2 => Action::Transfer,
-			_ => Action::Unknown,
+impl TryFrom<u8> for Action {
+	type Error = ();
+
+	fn try_from(value: u8) -> Result<Self, Self::Error> {
+		match value {
+			0 => Ok(Action::QueryTotalIssuance),
+			1 => Ok(Action::QueryBalance),
+			2 => Ok(Action::Transfer),
+			_ => Err(()),
 		}
 	}
 }
@@ -97,7 +98,6 @@ where
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
-			Action::Unknown => Err(ExitError::Other("unknown action".into())),
 		}
 	}
 }

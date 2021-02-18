@@ -18,7 +18,7 @@ pub use client::*;
 
 #[cfg(feature = "with-acala-runtime")]
 pub use acala_runtime;
-#[cfg(feature = "with-karurua-runtime")]
+#[cfg(feature = "with-karura-runtime")]
 pub use karura_runtime;
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;
@@ -151,6 +151,7 @@ where
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
+		config.role.is_authority().into(),
 		config.prometheus_registry(),
 		task_manager.spawn_handle(),
 		client.clone(),
@@ -398,7 +399,7 @@ where
 			name: Some(name),
 			observer_enabled: false,
 			keystore,
-			is_authority: role.is_network_authority(),
+			is_authority: role.is_authority(),
 		};
 
 		if enable_grandpa {

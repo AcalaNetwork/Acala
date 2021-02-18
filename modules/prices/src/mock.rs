@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::DataFeeder;
 use primitives::TokenSymbol;
@@ -20,22 +20,8 @@ pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Runtime;
-
 mod prices {
 	pub use super::super::*;
-}
-
-impl_outer_event! {
-	pub enum TestEvent for Runtime {
-		frame_system<T>,
-		prices<T>,
-	}
-}
-
-impl_outer_origin! {
-	pub enum Origin for Runtime {}
 }
 
 parameter_types! {
@@ -46,18 +32,18 @@ impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = ();
+	type Call = Call;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -66,7 +52,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Runtime>;
 
 pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
@@ -106,7 +91,7 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type Event = TestEvent;
+	type Event = Event;
 	type Source = MockDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
@@ -116,7 +101,20 @@ impl Config for Runtime {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type WeightInfo = ();
 }
-pub type PricesModule = Module<Runtime>;
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
+
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+		PricesModule: prices::{Module, Storage, Call, Event<T>},
+	}
+);
 
 pub struct ExtBuilder;
 

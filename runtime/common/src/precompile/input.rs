@@ -1,17 +1,23 @@
 use frame_support::ensure;
-use sp_std::{convert::TryInto, marker::PhantomData, mem, result::Result, vec::Vec};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	marker::PhantomData,
+	mem,
+	result::Result,
+	vec::Vec,
+};
 
 use module_evm::ExitError;
 use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
 use sp_core::H160;
 
 pub const PER_PARAM_BYTES: usize = 32;
-const ACTION_INDEX: usize = 0;
+pub const ACTION_INDEX: usize = 0;
 
-const BALANCE_BYTES: usize = mem::size_of::<Balance>();
-const AMOUNT_BYTES: usize = mem::size_of::<Amount>();
-const U64_BYTES: usize = mem::size_of::<u64>();
-const U32_BYTES: usize = mem::size_of::<u32>();
+pub const BALANCE_BYTES: usize = mem::size_of::<Balance>();
+pub const AMOUNT_BYTES: usize = mem::size_of::<Amount>();
+pub const U64_BYTES: usize = mem::size_of::<u64>();
+pub const U32_BYTES: usize = mem::size_of::<u32>();
 
 pub trait InputT {
 	type Error;
@@ -49,7 +55,7 @@ impl<'a, Action, AccountId, AddressMapping> Input<'a, Action, AccountId, Address
 
 impl<Action, AccountId, AddressMapping> InputT for Input<'_, Action, AccountId, AddressMapping>
 where
-	Action: From<u8>,
+	Action: TryFrom<u8>,
 	AddressMapping: AddressMappingT<AccountId>,
 {
 	type Error = ExitError;
@@ -69,7 +75,9 @@ where
 		let param = self.nth_param(ACTION_INDEX)?;
 		let action_u8: &u8 = param.last().expect("Action bytes is 32 bytes");
 
-		Ok((*action_u8).into())
+		(*action_u8)
+			.try_into()
+			.map_err(|_| ExitError::Other("invalid action".into()))
 	}
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error> {
@@ -145,7 +153,10 @@ where
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error> {
 		let end = start + len;
 
-		ensure!(end <= self.content.len(), ExitError::Other("invalid input".into()));
+		ensure!(
+			end <= self.content.len(),
+			ExitError::Other("invalid bytes input".into())
+		);
 
 		let bytes = &self.content[start..end];
 

@@ -250,7 +250,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return Capture::Exit($map_err(e)),
-					}
+				}
 			};
 		}
 
@@ -259,7 +259,7 @@ macro_rules! create_try {
 				match $e {
 					Ok(v) => v,
 					Err(e) => return TransactionOutcome::Rollback(Capture::Exit($map_err(e))),
-					}
+				}
 			};
 		}
 	};
@@ -616,17 +616,13 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 
 	fn pre_validate(&mut self, context: &Context, opcode: Opcode, stack: &Stack) -> Result<(), ExitError> {
 		if let Some(cost) = gasometer::static_opcode_cost(opcode) {
-			let gasometer = &mut self.gasometer;
-			gasometer.record_cost(cost)?;
+			self.gasometer.record_cost(cost)?;
 		} else {
-			let is_static = self.is_static;
 			let (gas_cost, memory_cost) =
-				gasometer::dynamic_opcode_cost(context.address, opcode, stack, is_static, &self.config, self)?;
+				gasometer::dynamic_opcode_cost(context.address, opcode, stack, self.is_static, &self.config, self)?;
 
-			let gasometer = &mut self.gasometer;
-			gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
+			self.gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
 		}
-
 		Ok(())
 	}
 }
