@@ -27,3 +27,6 @@ module-evm = { path = ".." }
 
 [dev-dependencies]
 serde_json = "1.0.41"
+
+[features]
+rpc_binary_search_estimate = []
