@@ -17,6 +17,7 @@ evm = { version = "0.23.0", default-features = false, features = ["with-codec"] 
 
 [dev-dependencies]
 frame-support = { version = "2.0.0" }
+serde_json = { version = "1.0.61" }
 
 [features]
 default = ["std"]

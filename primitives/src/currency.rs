@@ -40,6 +40,28 @@ macro_rules! create_currency_id {
 				}
 			}
 		}
+
+		#[test]
+		fn generate_token_resources() {
+			#[allow(non_snake_case)]
+			#[derive(Serialize, Deserialize)]
+			struct Token {
+				name: String,
+				symbol: String,
+				currencyId: String,
+			}
+
+			let tokens = vec![
+				$(
+					Token {
+						name: stringify!($vname).to_string(),
+						symbol: stringify!($vname).to_string(),
+						currencyId: $val.to_string(),
+					},
+				)*
+			];
+			frame_support::assert_ok!(std::fs::write("tokens.json", serde_json::to_string_pretty(&tokens).unwrap()));
+		}
     }
 }
 
