@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unnecessary_cast)]
+#![allow(clippy::upper_case_acronyms)]
 
 pub mod evm;
 pub mod mocks;

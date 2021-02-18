@@ -7,6 +7,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::collapsible_if)]
 
 use frame_support::pallet_prelude::*;
 use frame_support::transactional;

@@ -13,6 +13,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::collapsible_if)]
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
