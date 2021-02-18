@@ -160,7 +160,7 @@ construct_runtime!(
 	{
 		System: frame_system::{Module, Call, Storage, Config, Event<T>},
 		EVM: evm_mod::{Module, Config<T>, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 	}

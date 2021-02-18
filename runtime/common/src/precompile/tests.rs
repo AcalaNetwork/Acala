@@ -1,14 +1,19 @@
 #![cfg(test)]
 use super::*;
-use crate::precompile::mock::{
-	alice, bob, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Oracle, OraclePrecompile, Origin,
-	Price, ScheduleCallPrecompile, Test, ACA_ERC20_ADDRESS, ALICE, AUSD, XBTC,
+use crate::precompile::{
+	mock::{
+		alice, bob, get_task_id, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Oracle,
+		OraclePrecompile, Origin, Price, ScheduleCallPrecompile, System, Test, TestEvent, ACA_ERC20_ADDRESS, ALICE,
+		AUSD, XBTC,
+	},
+	schedule_call::TaskInfo,
 };
+use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use module_evm::ExitError;
 use orml_traits::DataFeeder;
-use primitives::{evm::AddressMapping, PREDEPLOY_ADDRESS_START};
+use primitives::{evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, H256, U256};
 use sp_runtime::FixedPointNumber;
 
@@ -215,14 +220,58 @@ fn schedule_call_precompile_should_work() {
 		input[11 * 32..11 * 32 + 4].copy_from_slice(&transfer_to_bob[64..68]);
 
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
-
-		// returned block + index
-		let mut expected_output = [0u8; 64];
-		U256::from(3).to_big_endian(&mut expected_output[..32]);
-		U256::from(0).to_big_endian(&mut expected_output[32..64]);
 		assert_eq!(reason, ExitSucceed::Returned);
-		assert_eq!(output, expected_output);
 		assert_eq!(used_gas, 0);
+		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(3, 0));
+		assert!(System::events().iter().any(|record| record.event == event));
+
+		// cancel schedule
+		let task_id = get_task_id(output);
+		let mut cancel_input = [0u8; 6 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action
+		U256::from(1).to_big_endian(&mut cancel_input[1 * 32..2 * 32]);
+		// from
+		U256::from(alice().as_bytes()).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		// task_id_len
+		U256::from(task_id.len()).to_big_endian(&mut cancel_input[3 * 32..4 * 32]);
+		// task_id
+		cancel_input[4 * 32..4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&cancel_input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(used_gas, 0);
+		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Canceled(3, 0));
+		assert!(System::events().iter().any(|record| record.event == event));
+
+		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(used_gas, 0);
+
+		run_to_block(2);
+
+		// reschedule call
+		let task_id = get_task_id(output);
+		let mut reschedule_input = [0u8; 8 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action
+		U256::from(2).to_big_endian(&mut reschedule_input[1 * 32..2 * 32]);
+		// from
+		U256::from(alice().as_bytes()).to_big_endian(&mut reschedule_input[2 * 32..3 * 32]);
+		// min_delay
+		U256::from(2).to_big_endian(&mut reschedule_input[3 * 32..4 * 32]);
+		// task_id_len
+		U256::from(task_id.len()).to_big_endian(&mut reschedule_input[4 * 32..5 * 32]);
+		// task_id
+		reschedule_input[5 * 32..5 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&reschedule_input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(used_gas, 0);
+		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(5, 0));
+		assert!(System::events().iter().any(|record| record.event == event));
 
 		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice());
 		let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob());
@@ -239,7 +288,7 @@ fn schedule_call_precompile_should_work() {
 			assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
 		}
 
-		run_to_block(4);
+		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
 			assert_eq!(Balances::free_balance(from_account.clone()), 999999995255);
@@ -288,13 +337,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		input[9 * 32] = hex!("12")[0];
 
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
-
-		// returned block + index
-		let mut expected_output = [0u8; 64];
-		U256::from(3).to_big_endian(&mut expected_output[..32]);
-		U256::from(0).to_big_endian(&mut expected_output[32..64]);
 		assert_eq!(reason, ExitSucceed::Returned);
-		assert_eq!(output, expected_output);
 		assert_eq!(used_gas, 0);
 
 		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice());
@@ -311,6 +354,25 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 			assert_eq!(Balances::reserved_balance(from_account.clone()), 0);
 			assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
 		}
+
+		// cancel schedule
+		let task_id = get_task_id(output);
+		let mut cancel_input = [0u8; 6 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action
+		U256::from(1).to_big_endian(&mut cancel_input[1 * 32..2 * 32]);
+		// from
+		U256::from(bob().as_bytes()).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		// task_id_len
+		U256::from(task_id.len()).to_big_endian(&mut cancel_input[3 * 32..4 * 32]);
+		// task_id
+		cancel_input[4 * 32..4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+		assert_eq!(
+			ScheduleCallPrecompile::execute(&cancel_input, None, &context),
+			Err(ExitError::Other("NoPermission".into()))
+		);
 
 		run_to_block(4);
 		assert_eq!(Balances::free_balance(from_account.clone()), 999999999954);
@@ -396,4 +458,27 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		assert_eq!(output, expected_output);
 		assert_eq!(used_gas, 0);
 	});
+}
+
+#[test]
+fn task_id_max_and_min() {
+	let task_id = TaskInfo {
+		prefix: b"ScheduleCall".to_vec(),
+		id: u32::MAX,
+		sender: H160::default(),
+		fee: Balance::MAX,
+	}
+	.encode();
+
+	assert_eq!(54, task_id.len());
+
+	let task_id = TaskInfo {
+		prefix: b"ScheduleCall".to_vec(),
+		id: u32::MIN,
+		sender: H160::default(),
+		fee: Balance::MIN,
+	}
+	.encode();
+
+	assert_eq!(38, task_id.len());
 }

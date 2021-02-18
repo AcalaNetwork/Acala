@@ -142,7 +142,7 @@ where
 						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
+					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
 				error_on_execution_failure(&info.exit_reason, &info.output)?;
 
@@ -160,7 +160,7 @@ where
 						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
+					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
 				error_on_execution_failure(&info.exit_reason, &info.output)?;
 
@@ -170,76 +170,120 @@ where
 	}
 
 	fn estimate_gas(&self, request: CallRequest, _: Option<B>) -> Result<U256> {
-		let hash = self.client.info().best_hash;
+		let calculate_gas_used = |request| {
+			let hash = self.client.info().best_hash;
 
-		let CallRequest {
-			from,
-			to,
-			gas_limit,
-			storage_limit,
-			value,
-			data,
-		} = request;
+			let CallRequest {
+				from,
+				to,
+				gas_limit,
+				storage_limit,
+				value,
+				data,
+			} = request;
 
-		let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
-		let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
-		let data = data.map(|d| d.0).unwrap_or_default();
+			let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+			let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+			let data = data.map(|d| d.0).unwrap_or_default();
 
-		let api = self.client.runtime_api();
+			let balance_value = if let Some(value) = value {
+				to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
+			} else {
+				Ok(Default::default())
+			};
 
-		let balance_value = if let Some(value) = value {
-			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
+			let balance_value = balance_value.map_err(|_| Error {
+				code: ErrorCode::InvalidParams,
+				message: format!("Invalid parameter value: {:?}", value),
+				data: None,
+			})?;
+
+			let used_gas = match to {
+				Some(to) => {
+					let info = self
+						.client
+						.runtime_api()
+						.call(
+							&BlockId::Hash(hash),
+							from.unwrap_or_default(),
+							to,
+							data,
+							balance_value,
+							gas_limit,
+							storage_limit,
+							true,
+						)
+						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+
+					error_on_execution_failure(&info.exit_reason, &info.output)?;
+
+					info.used_gas
+				}
+				None => {
+					let info = self
+						.client
+						.runtime_api()
+						.create(
+							&BlockId::Hash(hash),
+							from.unwrap_or_default(),
+							data,
+							balance_value,
+							gas_limit,
+							storage_limit,
+							true,
+						)
+						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+
+					error_on_execution_failure(&info.exit_reason, &[])?;
+
+					info.used_gas
+				}
+			};
+
+			Ok(used_gas)
+		};
+
+		if cfg!(feature = "rpc_binary_search_estimate") {
+			let mut lower = U256::from(21_000);
+			// TODO: get a good upper limit, but below U64::max to operation overflow
+			let mut upper = U256::from(1_000_000_000);
+			let mut mid = upper;
+			let mut best = mid;
+			let mut old_best: U256;
+
+			// if the gas estimation depends on the gas limit, then we want to binary
+			// search until the change is under some threshold. but if not dependent,
+			// we want to stop immediately.
+			let mut change_pct = U256::from(100);
+			let threshold_pct = U256::from(10);
+
+			// invariant: lower <= mid <= upper
+			while change_pct > threshold_pct {
+				let mut test_request = request.clone();
+				test_request.gas_limit = Some(mid.as_u32());
+				match calculate_gas_used(test_request) {
+					// if Ok -- try to reduce the gas used
+					Ok(used_gas) => {
+						old_best = best;
+						best = used_gas;
+						change_pct = (U256::from(100) * (old_best - best)) / old_best;
+						upper = mid;
+						mid = (lower + upper + 1) / 2;
+					}
+
+					// if Err -- we need more gas
+					Err(_) => {
+						lower = mid;
+						mid = (lower + upper + 1) / 2;
+					}
+				}
+			}
+			Ok(best)
 		} else {
-			Ok(Default::default())
-		};
-
-		let balance_value = balance_value.map_err(|_| Error {
-			code: ErrorCode::InvalidParams,
-			message: format!("Invalid parameter value: {:?}", value),
-			data: None,
-		})?;
-
-		let used_gas = match to {
-			Some(to) => {
-				let info = api
-					.call(
-						&BlockId::Hash(hash),
-						from.unwrap_or_default(),
-						to,
-						data,
-						balance_value,
-						gas_limit,
-						storage_limit,
-						true,
-					)
-					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
-
-				error_on_execution_failure(&info.exit_reason, &info.output)?;
-
-				info.used_gas
-			}
-			None => {
-				let info = api
-					.create(
-						&BlockId::Hash(hash),
-						from.unwrap_or_default(),
-						data,
-						balance_value,
-						gas_limit,
-						storage_limit,
-						true,
-					)
-					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {}", Into::<&str>::into(err))))?;
-
-				error_on_execution_failure(&info.exit_reason, &info.output)?;
-
-				info.used_gas
-			}
-		};
-
-		Ok(used_gas)
+			calculate_gas_used(request)
+		}
 	}
 }
 

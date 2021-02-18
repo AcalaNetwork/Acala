@@ -181,8 +181,16 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			// TODO: support Karura & Acala
-			runner.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config))
+			#[cfg(feature = "with-mandala-runtime")]
+			return runner
+				.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config));
+
+			#[cfg(feature = "with-karura-runtime")]
+			return runner
+				.sync_run(|config| cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config));
+
+			#[cfg(feature = "with-acala-runtime")]
+			return runner.sync_run(|config| cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config));
 		}
 
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
