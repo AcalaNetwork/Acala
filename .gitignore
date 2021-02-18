@@ -9,3 +9,5 @@
 *.wasm
 
 .vscode/launch.json
+
+primitives/tokens.json
