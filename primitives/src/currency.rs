@@ -60,7 +60,7 @@ create_currency_id! {
 		XBTC = 4,
 		RENBTC = 5,
 		POLKABTC = 6,
-		SDN = 7,
+		PLM = 7,
 		PHA = 8,
 
 		// Kusama Ecosystem
@@ -71,7 +71,7 @@ create_currency_id! {
 		// Reserve for XBTC = 132
 		// Reserve for RENBTC = 133
 		// Reserve for POLKABTC = 134
-		PLM = 135,
+		SDN = 135,
 		// Reserve for PHA = 136
 	}
 }
