@@ -8,6 +8,7 @@
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
+#![allow(clippy::upper_case_acronyms)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
