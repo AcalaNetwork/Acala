@@ -42,6 +42,7 @@ macro_rules! create_currency_id {
 		}
 
 		#[test]
+		#[ignore]
 		fn generate_token_resources() {
 			#[allow(non_snake_case)]
 			#[derive(Serialize, Deserialize)]
