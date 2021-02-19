@@ -6,14 +6,14 @@ edition = "2018"
 
 [dependencies]
 static_assertions = "1.1.0"
-
-codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false }
-sp-std = { version = "2.0.0", default-features = false }
-sp-core = { version = "2.0.0", default-features = false }
-sp-runtime = { version = "2.0.0", default-features = false }
-frame-support = { version = "2.0.0", default-features = false }
-frame-system = { version = "2.0.0", default-features = false }
-pallet-scheduler = { version = "2.0.0", default-features = false }
+serde = { version = "1.0.101", optional = true, default-features = false }
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
+sp-std = { version = "3.0.0", default-features = false }
+sp-core = { version = "3.0.0", default-features = false }
+sp-runtime = { version = "3.0.0", default-features = false }
+frame-support = { version = "3.0.0", default-features = false }
+frame-system = { version = "3.0.0", default-features = false }
+pallet-scheduler = { version = "3.0.0", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -26,12 +26,12 @@ module-staking-pool = { path = "../../modules/staking_pool", default-features = 
 
 [dev-dependencies]
 serde_json = "1.0.41"
-hex-literal = { version = "0.3.1" }
-sp-io = { version = "2.0.0" }
-pallet-timestamp = { version = "2.0.0" }
-pallet-balances = { version = "2.0.0" }
-pallet-proxy = { version = "2.0.0" }
-pallet-utility = { version = "2.0.0" }
+hex-literal = "0.3.1"
+sp-io = "3.0.0"
+pallet-timestamp = "3.0.0"
+pallet-balances = "3.0.0"
+pallet-proxy = "3.0.0"
+pallet-utility = "3.0.0"
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }
@@ -42,6 +42,7 @@ module-dex = { path = "../../modules/dex" }
 [features]
 default = ["std"]
 std = [
+	"serde",
 	"codec/std",
 	"sp-core/std",
 	"sp-std/std",

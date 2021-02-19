@@ -13,6 +13,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::upper_case_acronyms)]
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{
@@ -490,7 +491,7 @@ impl<T: Config> Pallet<T> {
 			T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, bid_price)?;
 
 			// decrease account ref of bidder
-			frame_system::Module::<T>::dec_ref(&bidder);
+			frame_system::Module::<T>::dec_consumers(&bidder);
 		}
 
 		// decrease total surplus in auction
@@ -506,7 +507,7 @@ impl<T: Config> Pallet<T> {
 			T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
 
 			// decrease account ref of bidder
-			frame_system::Module::<T>::dec_ref(&bidder);
+			frame_system::Module::<T>::dec_consumers(&bidder);
 		}
 
 		// decrease total debit in auction
@@ -556,11 +557,11 @@ impl<T: Config> Pallet<T> {
 			T::CDPTreasury::issue_debit(&bidder, bid_price, false)?;
 
 			// decrease account ref of bidder
-			frame_system::Module::<T>::dec_ref(&bidder);
+			frame_system::Module::<T>::dec_consumers(&bidder);
 		}
 
 		// decrease account ref of refund recipient
-		frame_system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
+		frame_system::Module::<T>::dec_consumers(&collateral_auction.refund_recipient);
 
 		// decrease total collateral and target in auction
 		TotalCollateralInAuction::<T>::mutate(collateral_auction.currency_id, |balance| {
@@ -865,7 +866,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// decrement recipient account reference
-		frame_system::Module::<T>::dec_ref(&collateral_auction.refund_recipient);
+		frame_system::Module::<T>::dec_consumers(&collateral_auction.refund_recipient);
 
 		// update auction records
 		TotalCollateralInAuction::<T>::mutate(collateral_auction.currency_id, |balance| {
@@ -925,10 +926,18 @@ impl<T: Config> Pallet<T> {
 	/// increment `new_bidder` reference and decrement `last_bidder`
 	/// reference if any
 	fn swap_bidders(new_bidder: &T::AccountId, last_bidder: Option<&T::AccountId>) {
-		frame_system::Module::<T>::inc_ref(new_bidder);
+		if frame_system::Module::<T>::inc_consumers(new_bidder).is_err() {
+			// No providers for the locks. This is impossible under normal circumstances
+			// since the funds that are under the lock will themselves be stored in the
+			// account and therefore will need a reference.
+			frame_support::debug::warn!(
+				"Warning: Attempt to introduce lock consumer reference, yet no providers. \
+				This is unexpected but should be safe."
+			);
+		}
 
 		if let Some(who) = last_bidder {
-			frame_system::Module::<T>::dec_ref(who);
+			frame_system::Module::<T>::dec_consumers(who);
 		}
 	}
 }
@@ -973,7 +982,7 @@ impl<T: Config> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId>
 
 		if let Some((bidder, _)) = &winner {
 			// decrease account ref of winner
-			frame_system::Module::<T>::dec_ref(bidder);
+			frame_system::Module::<T>::dec_consumers(bidder);
 		}
 	}
 }
@@ -1021,7 +1030,15 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 		);
 
 		// increment recipient account reference
-		frame_system::Module::<T>::inc_ref(&refund_recipient);
+		if frame_system::Module::<T>::inc_consumers(refund_recipient).is_err() {
+			// No providers for the locks. This is impossible under normal circumstances
+			// since the funds that are under the lock will themselves be stored in the
+			// account and therefore will need a reference.
+			frame_support::debug::warn!(
+				"Warning: Attempt to introduce lock consumer reference, yet no providers. \
+				This is unexpected but should be safe."
+			);
+		}
 
 		Self::deposit_event(Event::NewCollateralAuction(auction_id, currency_id, amount, target));
 		Ok(())

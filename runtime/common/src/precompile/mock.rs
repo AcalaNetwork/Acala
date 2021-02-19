@@ -3,7 +3,7 @@
 use crate::{AllPrecompiles, BlockWeights, Ratio, SystemContractsFilter, Weight};
 use codec::{Decode, Encode};
 use frame_support::{
-	assert_ok, impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
+	assert_ok, ord_parameter_types, parameter_types,
 	traits::{GenesisBuild, InstanceFilter, OnFinalize, OnInitialize},
 	weights::IdentityFee,
 	RuntimeDebug,
@@ -22,47 +22,11 @@ use sp_runtime::{
 };
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
-impl_outer_event! {
-	pub enum TestEvent for Test {
-		frame_system<T>,
-		orml_oracle<T>,
-		orml_tokens<T>,
-		module_evm<T>,
-		pallet_balances<T>,
-		module_currencies<T>,
-		module_nft<T>,
-		pallet_proxy<T>,
-		pallet_utility,
-		pallet_scheduler<T>,
-		module_dex<T>,
-	}
-}
-
-impl_outer_origin! {
-	pub enum Origin for Test {}
-}
-
-impl_outer_dispatch! {
-	pub enum Call for Test where origin: Origin {
-		frame_system::System,
-		pallet_balances::Balances,
-		pallet_proxy::Proxy,
-		pallet_utility::Utility,
-		module_evm::ModuleEVM,
-		pallet_scheduler::Scheduler,
-	}
-}
-
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
 pub type Price = FixedU128;
 type Balance = u128;
 
-// For testing the module, we construct most of a mock runtime. This means
-// first constructing a configuration type (`Test`) which `impl`s each of the
-// configuration traits of modules we want to use.
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Test;
 parameter_types! {
 	pub const BlockHashCount: u32 = 250;
 }
@@ -79,18 +43,17 @@ impl frame_system::Config for Test {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
-pub type System = frame_system::Module<Test>;
 
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
@@ -99,7 +62,7 @@ parameter_types! {
 }
 
 impl orml_oracle::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Self, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
@@ -109,16 +72,12 @@ impl orml_oracle::Config for Test {
 	type WeightInfo = ();
 }
 
-pub type Oracle = orml_oracle::Module<Test>;
-
 impl pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ();
 	type WeightInfo = ();
 }
-
-pub type Timestamp = pallet_timestamp::Module<Test>;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
@@ -127,7 +86,7 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -136,8 +95,6 @@ impl orml_tokens::Config for Test {
 	type OnDust = ();
 }
 
-pub type Tokens = orml_tokens::Module<Test>;
-
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
 }
@@ -145,14 +102,12 @@ parameter_types! {
 impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = TestEvent;
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
 }
-
-pub type Balances = pallet_balances::Module<Test>;
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
@@ -163,19 +118,17 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = EVMBridge;
 }
-pub type Currencies = module_currencies::Module<Test>;
 
 impl module_evm_bridge::Config for Test {
 	type EVM = ModuleEVM;
 }
-pub type EVMBridge = module_evm_bridge::Module<Test>;
 
 parameter_types! {
 	pub const CreateClassDeposit: Balance = 200;
@@ -183,14 +136,13 @@ parameter_types! {
 	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
 }
 impl module_nft::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
 	type Currency = AdaptedBasicCurrency;
 	type WeightInfo = ();
 }
-pub type NFTModule = module_nft::Module<Test>;
 
 impl orml_nft::Config for Test {
 	type ClassId = u32;
@@ -256,7 +208,7 @@ impl InstanceFilter<Call> for ProxyType {
 }
 
 impl pallet_proxy::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
 	type ProxyType = ProxyType;
@@ -270,14 +222,11 @@ impl pallet_proxy::Config for Test {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-pub type Proxy = pallet_proxy::Module<Test>;
-
 impl pallet_utility::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type Call = Call;
 	type WeightInfo = ();
 }
-pub type Utility = pallet_utility::Module<Test>;
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
@@ -285,7 +234,7 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type Origin = Origin;
 	type PalletsOrigin = OriginCaller;
 	type Call = Call;
@@ -294,8 +243,6 @@ impl pallet_scheduler::Config for Test {
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
 }
-
-pub type Scheduler = pallet_scheduler::Module<Test>;
 
 pub struct MockDEXIncentives;
 impl DEXIncentives<AccountId, CurrencyId, Balance> for MockDEXIncentives {
@@ -320,7 +267,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Test {
-	type Event = TestEvent;
+	type Event = Event;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -329,8 +276,6 @@ impl module_dex::Config for Test {
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
-
-pub type DexModule = module_dex::Module<Test>;
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
@@ -381,7 +326,7 @@ impl module_evm::Config for Test {
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
-	type Event = TestEvent;
+	type Event = Event;
 	type Precompiles = AllPrecompiles<
 		SystemContractsFilter,
 		MultiCurrencyPrecompile,
@@ -402,8 +347,6 @@ impl module_evm::Config for Test {
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
 }
-
-pub type ModuleEVM = module_evm::Module<Test>;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
@@ -438,6 +381,32 @@ pub fn evm_genesis() -> (BTreeMap<H160, module_evm::GenesisAccount<Balance, Nonc
 
 pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
 pub const ACA_ERC20_ADDRESS: &str = "0x0000000000000000000000000000000000000800";
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type Block = frame_system::mocking::MockBlock<Test>;
+
+frame_support::construct_runtime!(
+	pub enum Test where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Module, Call, Storage, Config, Event<T>},
+		Oracle: orml_oracle::{Module, Storage, Call, Config<T>, Event<T>},
+		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		Currencies: module_currencies::{Module, Call, Event<T>},
+		EVMBridge: module_evm_bridge::{Module},
+		NFTModule: module_nft::{Module, Call, Event<T>},
+		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
+		Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+		Utility: pallet_utility::{Module, Call, Event},
+		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+		DexModule: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
+		ModuleEVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
+	}
+);
 
 // This function basically just builds a genesis storage key/value store
 // according to our desired mockup.

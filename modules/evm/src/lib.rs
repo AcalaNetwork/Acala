@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::upper_case_acronyms)]
 
 use codec::{Decode, Encode};
 use evm::Config as EvmConfig;

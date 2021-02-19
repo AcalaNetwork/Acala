@@ -1,9 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, traits::Happened, transactional};
+use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{MultiCurrency, RewardHandler};
+use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},

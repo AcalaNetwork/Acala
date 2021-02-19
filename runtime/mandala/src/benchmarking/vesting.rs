@@ -1,7 +1,7 @@
 use super::utils::{dollars, lookup_of_account, set_aca_balance};
 use crate::{
-	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Currencies, CurrencyId, MinVestedTransfer, Runtime, System,
-	TokenSymbol, Vesting,
+	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, CurrencyId,
+	MinVestedTransfer, Runtime, System, TokenSymbol, Vesting,
 };
 
 use sp_std::prelude::*;
@@ -11,9 +11,9 @@ use frame_system::RawOrigin;
 
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-use orml_vesting::VestingScheduleOf;
+use orml_vesting::VestingSchedule;
 
-type Schedule = VestingScheduleOf<Runtime>;
+pub type Schedule = VestingSchedule<BlockNumber, Balance>;
 
 const SEED: u32 = 0;
 
