@@ -2,9 +2,9 @@
 use super::*;
 use crate::precompile::{
 	mock::{
-		alice, bob, get_task_id, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Oracle,
-		OraclePrecompile, Origin, Price, ScheduleCallPrecompile, System, Test, TestEvent, ACA_ERC20_ADDRESS, ALICE,
-		AUSD, XBTC,
+		alice, bob, get_task_id, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Event as TestEvent,
+		Oracle, OraclePrecompile, Origin, Price, ScheduleCallPrecompile, System, Test, ACA_ERC20_ADDRESS, ALICE, AUSD,
+		XBTC,
 	},
 	schedule_call::TaskInfo,
 };

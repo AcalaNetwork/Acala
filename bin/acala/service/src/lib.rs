@@ -151,6 +151,7 @@ where
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
+		config.role.is_authority().into(),
 		config.prometheus_registry(),
 		task_manager.spawn_handle(),
 		client.clone(),
@@ -200,7 +201,8 @@ where
 	let import_setup = (block_import, grandpa_link, babe_link.clone());
 	let rpc_setup = shared_voter_state.clone();
 
-	let finality_proof_provider = GrandpaFinalityProofProvider::new_for_service(backend.clone(), client.clone());
+	let finality_proof_provider =
+		GrandpaFinalityProofProvider::new_for_service(backend.clone(), Some(shared_authority_set.clone()));
 
 	let babe_config = babe_link.config().clone();
 	let shared_epoch_changes = babe_link.epoch_changes().clone();
@@ -310,9 +312,8 @@ where
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
-	let telemetry_connection_sinks = sc_service::TelemetryConnectionSinks::default();
 
-	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+	let (_rpc_handlers, telemetry_connection_notifier) = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
 		backend,
 		client: client.clone(),
@@ -323,7 +324,6 @@ where
 		task_manager: &mut task_manager,
 		on_demand: None,
 		remote_blockchain: None,
-		telemetry_connection_sinks: telemetry_connection_sinks.clone(),
 		network_status_sinks: network_status_sinks.clone(),
 		system_rpc_tx,
 	})?;
@@ -399,7 +399,7 @@ where
 			name: Some(name),
 			observer_enabled: false,
 			keystore,
-			is_authority: role.is_network_authority(),
+			is_authority: role.is_authority(),
 		};
 
 		if enable_grandpa {
@@ -413,7 +413,7 @@ where
 				config,
 				link: grandpa_link,
 				network: network.clone(),
-				telemetry_on_connect: Some(telemetry_connection_sinks.on_connect_stream()),
+				telemetry_on_connect: telemetry_connection_notifier.map(|x| x.on_connect_stream()),
 				voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
 				prometheus_registry,
 				shared_voter_state,
@@ -440,7 +440,7 @@ where
 
 /// Creates a light service from the configuration.
 pub fn new_light<RuntimeApi, Executor>(
-	config: Configuration,
+	mut config: Configuration,
 ) -> Result<
 	(
 		TaskManager,
@@ -465,6 +465,11 @@ where
 {
 	let (client, backend, keystore_container, mut task_manager, on_demand) =
 		sc_service::new_light_parts::<Block, RuntimeApi, Executor>(&config)?;
+
+	config
+		.network
+		.extra_sets
+		.push(sc_finality_grandpa::grandpa_peers_set_config());
 
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
@@ -531,7 +536,7 @@ where
 
 	let rpc_extensions = acala_rpc::create_light(light_deps);
 
-	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+	let (rpc_handlers, _telemetry_connection_notifier) = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: Some(on_demand),
 		remote_blockchain: Some(backend.remote_blockchain()),
 		rpc_extensions_builder: Box::new(sc_service::NoopRpcExtensionBuilder(rpc_extensions)),
@@ -543,7 +548,6 @@ where
 		network_status_sinks,
 		system_rpc_tx,
 		network: network.clone(),
-		telemetry_connection_sinks: sc_service::TelemetryConnectionSinks::default(),
 		task_manager: &mut task_manager,
 	})?;
 

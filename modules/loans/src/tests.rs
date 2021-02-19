@@ -85,7 +85,7 @@ fn update_loan_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
 		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
 
-		let alice_ref_count_0 = System::refs(&ALICE);
+		let alice_ref_count_0 = System::consumers(&ALICE);
 
 		assert_ok!(LoansModule::update_loan(&ALICE, BTC, 3000, 2000));
 
@@ -96,7 +96,7 @@ fn update_loan_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 3000);
 
 		// increase ref count when open new position
-		let alice_ref_count_1 = System::refs(&ALICE);
+		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
 
 		// dot not manipulate balance
@@ -111,7 +111,7 @@ fn update_loan_should_work() {
 		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
 
 		// decrease ref count after remove position
-		let alice_ref_count_2 = System::refs(&ALICE);
+		let alice_ref_count_2 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_2, alice_ref_count_1 - 1);
 	});
 }

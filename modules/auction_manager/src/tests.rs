@@ -55,7 +55,7 @@ fn debit_auction_methods() {
 fn new_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		let ref_count_0 = System::refs(&ALICE);
+		let ref_count_0 = System::consumers(&ALICE);
 		assert_noop!(
 			AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 0, 100),
 			Error::<Runtime>::InvalidAmount,
@@ -70,7 +70,7 @@ fn new_collateral_auction_work() {
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 100);
 		assert_eq!(AuctionModule::auctions_index(), 1);
-		assert_eq!(System::refs(&ALICE), ref_count_0 + 1);
+		assert_eq!(System::consumers(&ALICE), ref_count_0 + 1);
 
 		assert_noop!(
 			AuctionManagerModule::new_collateral_auction(&ALICE, BTC, Balance::max_value(), Balance::max_value()),
@@ -146,7 +146,7 @@ fn collateral_auction_bid_handler_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
 
-		let bob_ref_count_0 = System::refs(&BOB);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_noop!(
 			AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 4), None),
@@ -159,9 +159,9 @@ fn collateral_auction_bid_handler_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 5);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 995);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
-		let carol_ref_count_0 = System::refs(&CAROL);
+		let carol_ref_count_0 = System::consumers(&CAROL);
 
 		assert_eq!(
 			AuctionManagerModule::collateral_auction_bid_handler(2, 0, (CAROL, 10), Some((BOB, 5))).is_ok(),
@@ -172,9 +172,9 @@ fn collateral_auction_bid_handler_work() {
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 990);
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).unwrap().amount, 10);
 
-		let bob_ref_count_2 = System::refs(&BOB);
+		let bob_ref_count_2 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1);
-		let carol_ref_count_1 = System::refs(&CAROL);
+		let carol_ref_count_1 = System::consumers(&CAROL);
 		assert_eq!(carol_ref_count_1, carol_ref_count_0 + 1);
 
 		assert_eq!(
@@ -186,9 +186,9 @@ fn collateral_auction_bid_handler_work() {
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 1000);
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).unwrap().amount, 5);
 
-		let bob_ref_count_3 = System::refs(&BOB);
+		let bob_ref_count_3 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_3, bob_ref_count_2 + 1);
-		let carol_ref_count_2 = System::refs(&CAROL);
+		let carol_ref_count_2 = System::consumers(&CAROL);
 		assert_eq!(carol_ref_count_2, carol_ref_count_1 - 1);
 	});
 }
@@ -207,7 +207,7 @@ fn debit_auction_bid_handler_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
 
-		let bob_ref_count_0 = System::refs(&BOB);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_noop!(
 			AuctionManagerModule::debit_auction_bid_handler(1, 0, (BOB, 99), None),
@@ -221,9 +221,9 @@ fn debit_auction_bid_handler_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
-		let carol_ref_count_0 = System::refs(&CAROL);
+		let carol_ref_count_0 = System::consumers(&CAROL);
 
 		assert_eq!(
 			AuctionManagerModule::debit_auction_bid_handler(2, 0, (CAROL, 200), Some((BOB, 100))).is_ok(),
@@ -233,9 +233,9 @@ fn debit_auction_bid_handler_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 900);
-		let bob_ref_count_2 = System::refs(&BOB);
+		let bob_ref_count_2 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1);
-		let carol_ref_count_1 = System::refs(&CAROL);
+		let carol_ref_count_1 = System::consumers(&CAROL);
 		assert_eq!(carol_ref_count_1, carol_ref_count_0 + 1);
 	});
 }
@@ -251,7 +251,7 @@ fn surplus_auction_bid_handler_work() {
 		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
 
-		let bob_ref_count_0 = System::refs(&BOB);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_eq!(
 			AuctionManagerModule::surplus_auction_bid_handler(1, 0, (BOB, 50), None).is_ok(),
@@ -260,9 +260,9 @@ fn surplus_auction_bid_handler_work() {
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 950);
 		assert_eq!(Tokens::free_balance(ACA, &CAROL), 1000);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
-		let carol_ref_count_0 = System::refs(&CAROL);
+		let carol_ref_count_0 = System::consumers(&CAROL);
 
 		assert_noop!(
 			AuctionManagerModule::surplus_auction_bid_handler(2, 0, (CAROL, 51), Some((BOB, 50))),
@@ -274,9 +274,9 @@ fn surplus_auction_bid_handler_work() {
 		);
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
 		assert_eq!(Tokens::free_balance(ACA, &CAROL), 945);
-		let bob_ref_count_2 = System::refs(&BOB);
+		let bob_ref_count_2 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1);
-		let carol_ref_count_1 = System::refs(&CAROL);
+		let carol_ref_count_1 = System::consumers(&CAROL);
 		assert_eq!(carol_ref_count_1, carol_ref_count_0 + 1);
 	});
 }
@@ -347,7 +347,7 @@ fn collateral_auction_end_handler_without_bid() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 200);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 100);
-		let alice_ref_count_0 = System::refs(&ALICE);
+		let alice_ref_count_0 = System::consumers(&ALICE);
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, None);
@@ -360,7 +360,7 @@ fn collateral_auction_end_handler_without_bid() {
 		assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 0);
-		let alice_ref_count_1 = System::refs(&ALICE);
+		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
 	});
 }
@@ -382,8 +382,8 @@ fn collateral_auction_end_handler_in_reverse_stage() {
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 800);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 200);
 
-		let alice_ref_count_0 = System::refs(&ALICE);
-		let bob_ref_count_0 = System::refs(&BOB);
+		let alice_ref_count_0 = System::consumers(&ALICE);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 400)));
@@ -400,9 +400,9 @@ fn collateral_auction_end_handler_in_reverse_stage() {
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 800);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 200);
 
-		let alice_ref_count_1 = System::refs(&ALICE);
+		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
@@ -424,8 +424,8 @@ fn collateral_auction_end_handler_by_dealing_which_target_not_zero() {
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
 
-		let alice_ref_count_0 = System::refs(&ALICE);
-		let bob_ref_count_0 = System::refs(&BOB);
+		let alice_ref_count_0 = System::consumers(&ALICE);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 100)));
@@ -441,9 +441,9 @@ fn collateral_auction_end_handler_by_dealing_which_target_not_zero() {
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
 		assert_eq!(Tokens::free_balance(BTC, &BOB), 1100);
 
-		let alice_ref_count_1 = System::refs(&ALICE);
+		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
@@ -477,8 +477,8 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 20);
 
-		let alice_ref_count_0 = System::refs(&ALICE);
-		let bob_ref_count_0 = System::refs(&BOB);
+		let alice_ref_count_0 = System::consumers(&ALICE);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 20)));
@@ -498,9 +498,9 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 320);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 520);
 
-		let alice_ref_count_1 = System::refs(&ALICE);
+		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
@@ -537,7 +537,7 @@ fn debit_auction_end_handler_with_bid() {
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
 
-		let bob_ref_count_0 = System::refs(&BOB);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 100)));
@@ -551,7 +551,7 @@ fn debit_auction_end_handler_with_bid() {
 		assert_eq!(AuctionManagerModule::debit_auctions(0), None);
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
@@ -591,7 +591,7 @@ fn surplus_auction_end_handler_with_bid() {
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 500);
 		assert_eq!(Tokens::total_issuance(ACA), 2500);
 
-		let bob_ref_count_0 = System::refs(&BOB);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
 		AuctionManagerModule::on_auction_ended(0, Some((BOB, 500)));
@@ -606,7 +606,7 @@ fn surplus_auction_end_handler_with_bid() {
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1100);
 		assert_eq!(Tokens::total_issuance(ACA), 2500);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
@@ -614,26 +614,26 @@ fn surplus_auction_end_handler_with_bid() {
 #[test]
 fn swap_bidders_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let alice_ref_count_0 = System::refs(&ALICE);
-		let bob_ref_count_0 = System::refs(&BOB);
+		let alice_ref_count_0 = System::consumers(&ALICE);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		AuctionManagerModule::swap_bidders(&BOB, None);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
 
 		AuctionManagerModule::swap_bidders(&ALICE, Some(&BOB));
 
-		let alice_ref_count_1 = System::refs(&ALICE);
+		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
-		let bob_ref_count_2 = System::refs(&BOB);
+		let bob_ref_count_2 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1);
 
 		AuctionManagerModule::swap_bidders(&BOB, Some(&ALICE));
 
-		let alice_ref_count_2 = System::refs(&ALICE);
+		let alice_ref_count_2 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_2, alice_ref_count_1 - 1);
-		let bob_ref_count_3 = System::refs(&BOB);
+		let bob_ref_count_3 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_3, bob_ref_count_2 + 1);
 	});
 }
@@ -650,7 +650,7 @@ fn cancel_surplus_auction_work() {
 		assert_eq!(AuctionModule::auction_info(0).is_some(), true);
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 500);
 
-		let bob_ref_count_0 = System::refs(&BOB);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_noop!(
 			AuctionManagerModule::cancel(Origin::none(), 0),
@@ -669,7 +669,7 @@ fn cancel_surplus_auction_work() {
 		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
 		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
@@ -685,7 +685,7 @@ fn cancel_debit_auction_work() {
 		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 
-		let bob_ref_count_0 = System::refs(&BOB);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		assert_noop!(
 			AuctionManagerModule::cancel(Origin::none(), 0),
@@ -704,7 +704,7 @@ fn cancel_debit_auction_work() {
 		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
 
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
@@ -751,8 +751,8 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 920);
 
-		let alice_ref_count_0 = System::refs(&ALICE);
-		let bob_ref_count_0 = System::refs(&BOB);
+		let alice_ref_count_0 = System::consumers(&ALICE);
+		let bob_ref_count_0 = System::consumers(&BOB);
 
 		mock_shutdown();
 		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
@@ -770,9 +770,9 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), false);
 		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
 
-		let alice_ref_count_1 = System::refs(&ALICE);
+		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
-		let bob_ref_count_1 = System::refs(&BOB);
+		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }

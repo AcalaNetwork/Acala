@@ -8,7 +8,7 @@ use primitives::{evm::AddressMapping, mocks::MockAddressMapping, CurrencyId, Tok
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, Block as BlockT, IdentityLookup},
+	traits::{AccountIdConversion, IdentityLookup},
 	AccountId32, ModuleId, Perbill,
 };
 
@@ -44,7 +44,7 @@ impl frame_system::Config for Runtime {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();

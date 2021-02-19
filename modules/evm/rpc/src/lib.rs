@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::Arc};
+#![allow(clippy::upper_case_acronyms)]
 
 use ethereum_types::U256;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
@@ -14,6 +14,7 @@ use sp_runtime::{
 	SaturatedConversion,
 };
 use std::convert::{TryFrom, TryInto};
+use std::{marker::PhantomData, sync::Arc};
 
 use call_request::CallRequest;
 pub use module_evm::ExitReason;
