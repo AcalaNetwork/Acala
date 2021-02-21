@@ -117,3 +117,7 @@ update: update-orml
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
 	./scripts/build-only-wasm.sh mandala-runtime
+
+.PHONY: generate-tokens
+generate-tokens:
+	./scripts/generate-tokens-and-predeploy-contracts.sh

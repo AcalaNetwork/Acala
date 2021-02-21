@@ -1,4 +1,5 @@
 use super::*;
+use std::convert::TryInto;
 
 use frame_support::{assert_err, assert_ok};
 
@@ -29,7 +30,7 @@ fn currency_id_try_from_bytes_works() {
 	assert_ok!(bytes.try_into(), CurrencyId::Token(TokenSymbol::AUSD));
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, 6, 0][..]);
+	bytes[29..].copy_from_slice(&[0, u8::MAX, 0][..]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 
 	let mut bytes = [0u8; 32];
@@ -40,11 +41,11 @@ fn currency_id_try_from_bytes_works() {
 	);
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 6, 0][..]);
+	bytes[29..].copy_from_slice(&[1, u8::MAX, 0][..]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 0, 6][..]);
+	bytes[29..].copy_from_slice(&[1, 0, u8::MAX][..]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 }
 

@@ -256,9 +256,9 @@ fn karura_genesis(
 		parachain_info: Some(ParachainInfoConfig {
 			parachain_id: 666.into(),
 		}),
-		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
-			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-		}),
+		// ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
+		// 	ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
+		// }),
 		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
 	}
 }
