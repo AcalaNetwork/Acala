@@ -15,7 +15,6 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::Encode;
-use hex_literal::hex;
 use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
@@ -789,9 +788,9 @@ impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider 
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KAR);
+	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KUSD);
+	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 }
 
 impl module_currencies::Config for Runtime {
@@ -959,7 +958,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::RENBTC)];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::KSM), CurrencyId::Token(TokenSymbol::LKSM), CurrencyId::Token(TokenSymbol::PLM)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1004,11 +1003,10 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
 	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::DOT)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::XBTC)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::RENBTC)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::KAR)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::KSM)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::LKSM)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::PLM)),
 	];
 }
 
@@ -1041,7 +1039,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::LKSM), CurrencyId::Token(TokenSymbol::KSM), CurrencyId::Token(TokenSymbol::PLM)];
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1110,8 +1108,8 @@ impl module_polkadot_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
 	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
 }
@@ -1198,17 +1196,18 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-parameter_types! {
-	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
-	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
-}
-
-impl ecosystem_renvm_bridge::Config for Runtime {
-	type Event = Event;
-	type Currency = Currency<Runtime, RENBTCCurrencyId>;
-	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
-}
+// TODO: need RENBTC for Kusama Ecosystem
+// parameter_types! {
+// 	pub const RENBTCCurrencyId: CurrencyId =
+// CurrencyId::Token(TokenSymbol::RENBTC); 	pub const RENBTCIdentifier: [u8; 32]
+// = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"]; }
+//
+// impl ecosystem_renvm_bridge::Config for Runtime {
+// 	type Event = Event;
+// 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
+// 	type CurrencyIdentifier = RENBTCIdentifier;
+// 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
+// }
 
 parameter_types! {
 	// TODO: update
@@ -1367,7 +1366,8 @@ construct_runtime!(
 		NFT: module_nft::{Module, Call, Event<T>},
 
 		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
+		// TODO: need RENBTC for Kusama Ecosystem
+		// RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
 
 		// Smart contracts
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},

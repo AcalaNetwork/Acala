@@ -104,7 +104,7 @@ fn oracle_precompile_should_work() {
 		// action + currency_id
 		let mut input = [0u8; 64];
 		U256::default().to_big_endian(&mut input[..32]);
-		U256::from_big_endian(&hex!("0300").to_vec()).to_big_endian(&mut input[32..64]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[32..64]);
 
 		// no price yet
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
@@ -405,7 +405,7 @@ fn dex_precompile_get_liquidity_should_work() {
 		// action + currency_id_a + currency_id_b
 		let mut input = [0u8; 96];
 		U256::from(0).to_big_endian(&mut input[..32]);
-		U256::from_big_endian(&hex!("0300").to_vec()).to_big_endian(&mut input[32..64]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[32..64]);
 		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[64..96]);
 
 		let mut expected_output = [0u8; 64];
@@ -445,7 +445,7 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		let mut input = [0u8; 192];
 		U256::from(1).to_big_endian(&mut input[..32]);
 		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[32..64]);
-		U256::from_big_endian(&hex!("0300").to_vec()).to_big_endian(&mut input[64..96]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[64..96]);
 		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[96..128]);
 		U256::from(1).to_big_endian(&mut input[128..160]);
 		U256::from(0).to_big_endian(&mut input[160..192]);

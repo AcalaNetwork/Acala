@@ -361,7 +361,7 @@ pub fn bob() -> H160 {
 }
 
 pub fn evm_genesis() -> (BTreeMap<H160, module_evm::GenesisAccount<Balance, Nonce>>, u64) {
-	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts_json = &include_bytes!("../../../../resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
 	let mut network_contract_index = PREDEPLOY_ADDRESS_START;
