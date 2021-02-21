@@ -133,6 +133,7 @@ impl TradingPair {
 pub const PRECOMPILE_ADDRESS_START: u64 = 1024;
 
 /// The start address for pre-deployed smart contracts.
-pub const PREDEPLOY_ADDRESS_START: u64 = 2048;
+/// Represent 8 bit for ERC20 token.
+pub const PREDEPLOY_ADDRESS_START: u64 = 2048 + 256;
 
 pub type NFTBalance = u128;

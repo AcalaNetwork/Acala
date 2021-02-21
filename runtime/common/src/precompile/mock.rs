@@ -15,7 +15,7 @@ pub use primitives::{
 	evm::AddressMapping, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, Header, Nonce, TokenSymbol,
 	TradingPair, PREDEPLOY_ADDRESS_START,
 };
-use sp_core::{crypto::AccountId32, Bytes, H160, H256};
+use sp_core::{bytes::from_hex, crypto::AccountId32, Bytes, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup},
 	DispatchResult, FixedPointNumber, FixedU128, ModuleId, Perbill,
@@ -362,19 +362,25 @@ pub fn bob() -> H160 {
 
 pub fn evm_genesis() -> (BTreeMap<H160, module_evm::GenesisAccount<Balance, Nonce>>, u64) {
 	let contracts_json = &include_bytes!("../../../../resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
+	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
 	let mut network_contract_index = PREDEPLOY_ADDRESS_START;
-	for (_, code_string) in contracts {
+	for (_, address, code_string) in contracts {
 		let account = module_evm::GenesisAccount {
 			nonce: 0,
 			balance: 0u128,
 			storage: Default::default(),
 			code: Bytes::from_str(&code_string).unwrap().0,
 		};
-		let addr = H160::from_low_u64_be(network_contract_index);
-		accounts.insert(addr, account);
-		network_contract_index += 1;
+
+		if !address.is_empty() {
+			let addr = H160::from_slice(from_hex(address.as_str()).unwrap().as_slice());
+			accounts.insert(addr, account);
+		} else {
+			let addr = H160::from_low_u64_be(network_contract_index);
+			accounts.insert(addr, account);
+			network_contract_index += 1;
+		}
 	}
 	(accounts, network_contract_index)
 }
