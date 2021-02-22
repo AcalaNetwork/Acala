@@ -248,7 +248,7 @@ pub mod module {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		//TODO: use `T::Index` once `Deserialize` bound available https://github.com/paritytech/substrate/pull/8035
-		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, u32>>,
+		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
 	}
 
 	#[cfg(feature = "std")]
