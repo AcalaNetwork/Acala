@@ -1,6 +1,6 @@
 //! Acala chain configurations.
 
-use acala_primitives::{AccountId, AccountPublic, Balance, Nonce, PREDEPLOY_ADDRESS_START};
+use acala_primitives::{AccountId, AccountPublic, Balance, Nonce};
 use module_evm::GenesisAccount;
 use sc_chain_spec::ChainSpecExtension;
 use serde::{Deserialize, Serialize};
@@ -58,12 +58,11 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 	)
 }
 
-/// Returns `(evm_genesis_accounts, network_contract_index)`
-pub fn evm_genesis() -> (BTreeMap<H160, GenesisAccount<Balance, Nonce>>, u64) {
+/// Returns `evm_genesis_accounts`
+pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 	let contracts_json = &include_bytes!("../../../../../resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
-	let mut network_contract_index = PREDEPLOY_ADDRESS_START;
 	for (_, address, code_string) in contracts {
 		let account = GenesisAccount {
 			nonce: 0u32,
@@ -72,14 +71,12 @@ pub fn evm_genesis() -> (BTreeMap<H160, GenesisAccount<Balance, Nonce>>, u64) {
 			code: Bytes::from_str(&code_string).unwrap().0,
 		};
 
-		if !address.is_empty() {
-			let addr = H160::from_slice(from_hex(address.as_str()).unwrap().as_slice());
-			accounts.insert(addr, account);
-		} else {
-			let addr = H160::from_low_u64_be(network_contract_index);
-			accounts.insert(addr, account);
-			network_contract_index += 1;
-		}
+		let addr = H160::from_slice(
+			from_hex(address.as_str())
+				.expect("predeploy-contracts must specify address")
+				.as_slice(),
+		);
+		accounts.insert(addr, account);
 	}
-	(accounts, network_contract_index)
+	accounts
 }

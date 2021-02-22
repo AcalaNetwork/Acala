@@ -33,7 +33,10 @@ pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 pub use orml_traits::account::MergeAccount;
-pub use primitives::evm::{Account, AddressMapping, CallInfo, CreateInfo, EvmAddress, Log, Vicinity};
+pub use primitives::{
+	evm::{Account, AddressMapping, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
+	MIRRORED_NFT_ADDRESS_START,
+};
 
 pub mod precompiles;
 pub mod runner;
@@ -246,7 +249,6 @@ pub mod module {
 	pub struct GenesisConfig<T: Config> {
 		//TODO: use `T::Index` once `Deserialize` bound available https://github.com/paritytech/substrate/pull/8035
 		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, u32>>,
-		pub network_contract_index: u64,
 	}
 
 	#[cfg(feature = "std")]
@@ -254,7 +256,6 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
-				network_contract_index: Default::default(),
 			}
 		}
 	}
@@ -283,7 +284,7 @@ pub mod module {
 					}
 				}
 			});
-			NetworkContractIndex::<T>::put(self.network_contract_index);
+			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
 		}
 	}
 
