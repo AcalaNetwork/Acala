@@ -247,7 +247,6 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		//TODO: use `T::Index` once `Deserialize` bound available https://github.com/paritytech/substrate/pull/8035
 		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
 	}
 
@@ -266,7 +265,7 @@ pub mod module {
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
-				let account_info = <AccountInfo<T>>::new(account.nonce.into(), None);
+				let account_info = <AccountInfo<T>>::new(account.nonce, None);
 				<Accounts<T>>::insert(address, account_info);
 
 				T::Currency::deposit_creating(&account_id, account.balance);
