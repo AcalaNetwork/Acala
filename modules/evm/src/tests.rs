@@ -530,10 +530,10 @@ fn create_network_contract_works() {
 			U256::from_str("02").unwrap()
 		);
 
-		let created_event = Event::evm_mod(crate::Event::Created(H160::from_low_u64_be(NETWORK_CONTRACT_INDEX)));
+		let created_event = Event::evm_mod(crate::Event::Created(H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START)));
 		assert!(System::events().iter().any(|record| record.event == created_event));
 
-		assert_eq!(EVM::network_contract_index(), NETWORK_CONTRACT_INDEX + 1);
+		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);
 	});
 }
 

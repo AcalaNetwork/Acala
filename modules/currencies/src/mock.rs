@@ -278,12 +278,9 @@ impl ExtBuilder {
 				code: from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap(),
 			},
 		);
-		module_evm::GenesisConfig::<Runtime> {
-			accounts,
-			network_contract_index: 2048,
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
+		module_evm::GenesisConfig::<Runtime> { accounts }
+			.assimilate_storage(&mut t)
+			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));

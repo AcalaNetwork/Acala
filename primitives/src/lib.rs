@@ -129,10 +129,19 @@ impl TradingPair {
 	}
 }
 
-/// The start address for pre-compiles.
-pub const PRECOMPILE_ADDRESS_START: u64 = 1024;
-
-/// The start address for pre-deployed smart contracts.
-pub const PREDEPLOY_ADDRESS_START: u64 = 2048;
+/// Ethereum precompiles
+/// 0 - 0x400
+/// Acala precompiles
+/// 0x400 - 0x800
+pub const PRECOMPILE_ADDRESS_START: u64 = 0x400;
+/// Predeployed system contracts (except Mirrored ERC20)
+/// 0x800 - 0x1000
+pub const PREDEPLOY_ADDRESS_START: u64 = 0x800;
+/// Mirrored Tokens
+/// 0x01000000
+pub const MIRRORED_TOKENS_ADDRESS_START: u64 = 0x01000000;
+/// Mirrored NFT
+/// 0x02000000
+pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x02000000;
 
 pub type NFTBalance = u128;
