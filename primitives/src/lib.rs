@@ -90,6 +90,7 @@ pub enum TokenSymbol {
 	RENBTC = 5,
 	SDN = 6,
 	PLM = 7,
+	POLKABTC = 8,
 }
 
 impl TryFrom<u8> for TokenSymbol {
@@ -105,6 +106,7 @@ impl TryFrom<u8> for TokenSymbol {
 			5 => Ok(TokenSymbol::RENBTC),
 			6 => Ok(TokenSymbol::SDN),
 			7 => Ok(TokenSymbol::PLM),
+			8 => Ok(TokenSymbol::POLKABTC),
 			_ => Err(()),
 		}
 	}
@@ -158,6 +160,7 @@ impl TryFrom<Vec<u8>> for CurrencyId {
 			b"RENBTC" => Ok(CurrencyId::Token(TokenSymbol::RENBTC)),
 			b"SDN" => Ok(CurrencyId::Token(TokenSymbol::SDN)),
 			b"PLM" => Ok(CurrencyId::Token(TokenSymbol::PLM)),
+			b"POLKABTC" => Ok(CurrencyId::Token(TokenSymbol::POLKABTC)),
 			_ => Err(()),
 		}
 	}
