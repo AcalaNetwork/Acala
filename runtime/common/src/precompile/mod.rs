@@ -1,6 +1,8 @@
 //! The precompiles for EVM, includes standard Ethereum precompiles, and more:
 //! - MultiCurrency at address `H160::from_low_u64_be(1024)`.
 
+#![allow(clippy::upper_case_acronyms)]
+
 mod mock;
 mod tests;
 

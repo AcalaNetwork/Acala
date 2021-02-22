@@ -195,7 +195,7 @@ fn testnet_genesis(
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
-	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
+	let evm_genesis_accounts = evm_genesis();
 
 	let balances = initial_authorities
 		.iter()
@@ -348,7 +348,6 @@ fn testnet_genesis(
 		}),
 		module_evm: Some(EVMConfig {
 			accounts: evm_genesis_accounts,
-			network_contract_index,
 		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -394,7 +393,7 @@ fn mandala_genesis(
 	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
 	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
 
-	let (evm_genesis_accounts, network_contract_index) = evm_genesis();
+	let evm_genesis_accounts = evm_genesis();
 
 	let balances = initial_authorities
 		.iter()
@@ -561,7 +560,6 @@ fn mandala_genesis(
 		}),
 		module_evm: Some(EVMConfig {
 			accounts: evm_genesis_accounts,
-			network_contract_index,
 		}),
 		module_staking_pool: Some(StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {

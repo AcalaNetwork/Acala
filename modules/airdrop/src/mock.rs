@@ -4,7 +4,6 @@
 
 use super::*;
 use frame_support::{construct_runtime, parameter_types};
-use sp_api_hidden_includes_decl_storage::hidden_include::inherent::BlockT;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 

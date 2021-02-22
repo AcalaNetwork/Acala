@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::upper_case_acronyms)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::Weight;

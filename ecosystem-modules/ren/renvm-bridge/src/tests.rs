@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok, unsigned::ValidateUnsigned};
 use hex_literal::hex;
-use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, RenvmBridgeCall, System};
+use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, System};
 use sp_core::H256;
 use sp_runtime::transaction_validity::TransactionValidityError;
 
@@ -18,7 +18,7 @@ fn mint_ren_btc(
 ) -> Result<DispatchResult, TransactionValidityError> {
 	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
 		TransactionSource::External,
-		&RenvmBridgeCall::mint(who.clone(), p_hash, amount, n_hash, sig.clone()),
+		&Call::mint(who.clone(), p_hash, amount, n_hash, sig.clone()),
 	)?;
 
 	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
@@ -27,7 +27,7 @@ fn mint_ren_btc(
 fn rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> Result<DispatchResult, TransactionValidityError> {
 	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
 		TransactionSource::External,
-		&RenvmBridgeCall::rotate_key(new_key, sig.clone()),
+		&Call::rotate_key(new_key, sig.clone()),
 	)?;
 
 	Ok(RenVmBridge::rotate_key(Origin::none(), new_key, sig))

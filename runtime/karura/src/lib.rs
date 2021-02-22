@@ -8,13 +8,13 @@
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
+#![allow(clippy::upper_case_acronyms)]
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::Encode;
-use hex_literal::hex;
 use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
@@ -177,6 +177,8 @@ impl frame_system::Config for Runtime {
 parameter_types! {
 	pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
 	pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
+	pub const ReportLongevity: u64 =
+		BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
 }
 
 impl pallet_babe::Config for Runtime {
@@ -188,7 +190,7 @@ impl pallet_babe::Config for Runtime {
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
 	type KeyOwnerIdentification =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::IdentificationTuple;
-	type HandleEquivocation = pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
+	type HandleEquivocation = pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, (), ReportLongevity>; // Offences
 	type WeightInfo = ();
 }
 
@@ -203,7 +205,7 @@ impl pallet_grandpa::Config for Runtime {
 	type KeyOwnerIdentification =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::IdentificationTuple;
 
-	type HandleEquivocation = pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
+	type HandleEquivocation = pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, (), ReportLongevity>; // Offences
 
 	type WeightInfo = ();
 }
@@ -673,7 +675,8 @@ impl orml_authority::Config for Runtime {
 
 parameter_types! {
 	pub const CandidacyBond: Balance = 10 * DOLLARS;
-	pub const VotingBond: Balance = DOLLARS;
+	pub const VotingBondBase: Balance = 2 * DOLLARS;
+	pub const VotingBondFactor: Balance = DOLLARS;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 7;
@@ -687,13 +690,13 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type ChangeMembers = HomaCouncil;
 	type InitializeMembers = HomaCouncil;
 	type CandidacyBond = CandidacyBond;
-	type VotingBond = VotingBond;
+	type VotingBondBase = VotingBondBase;
+	type VotingBondFactor = VotingBondFactor;
 	type TermDuration = TermDuration;
 	type DesiredMembers = DesiredMembers;
 	type DesiredRunnersUp = DesiredRunnersUp;
 	type LoserCandidate = ();
 	type KickedMember = ();
-	type BadReport = ();
 	type WeightInfo = ();
 }
 
@@ -785,9 +788,9 @@ impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider 
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KAR);
+	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KUSD);
+	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 }
 
 impl module_currencies::Config for Runtime {
@@ -955,7 +958,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::RENBTC)];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::KSM), CurrencyId::Token(TokenSymbol::LKSM), CurrencyId::Token(TokenSymbol::PLM)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1000,11 +1003,10 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
 	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::DOT)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::XBTC)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::RENBTC)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::KAR)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::KSM)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::LKSM)),
+		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::PLM)),
 	];
 }
 
@@ -1037,7 +1039,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::LDOT), CurrencyId::Token(TokenSymbol::DOT), CurrencyId::Token(TokenSymbol::XBTC), CurrencyId::Token(TokenSymbol::RENBTC)];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::LKSM), CurrencyId::Token(TokenSymbol::KSM), CurrencyId::Token(TokenSymbol::PLM)];
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1058,7 +1060,6 @@ impl module_transaction_payment::Config for Runtime {
 impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type KillAccount = frame_system::CallKillAccount<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
@@ -1107,8 +1108,8 @@ impl module_polkadot_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
 	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
 }
@@ -1195,17 +1196,18 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-parameter_types! {
-	pub const RENBTCCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
-	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
-}
-
-impl ecosystem_renvm_bridge::Config for Runtime {
-	type Event = Event;
-	type Currency = Currency<Runtime, RENBTCCurrencyId>;
-	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
-}
+// TODO: need RENBTC for Kusama Ecosystem
+// parameter_types! {
+// 	pub const RENBTCCurrencyId: CurrencyId =
+// CurrencyId::Token(TokenSymbol::RENBTC); 	pub const RENBTCIdentifier: [u8; 32]
+// = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"]; }
+//
+// impl ecosystem_renvm_bridge::Config for Runtime {
+// 	type Event = Event;
+// 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
+// 	type CurrencyIdentifier = RENBTCIdentifier;
+// 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
+// }
 
 parameter_types! {
 	// TODO: update
@@ -1364,7 +1366,8 @@ construct_runtime!(
 		NFT: module_nft::{Module, Call, Event<T>},
 
 		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
+		// TODO: need RENBTC for Kusama Ecosystem
+		// RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
 
 		// Smart contracts
 		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
@@ -1480,7 +1483,7 @@ impl_runtime_apis! {
 			}
 		}
 
-		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
+		fn current_epoch_start() -> sp_consensus_babe::Slot {
 			Babe::current_epoch_start()
 		}
 
@@ -1493,7 +1496,7 @@ impl_runtime_apis! {
 		}
 
 		fn generate_key_ownership_proof(
-			_slot_number: sp_consensus_babe::SlotNumber,
+			_slot_number: sp_consensus_babe::Slot,
 			authority_id: sp_consensus_babe::AuthorityId,
 			) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
 			use codec::Encode;
@@ -1572,6 +1575,10 @@ impl_runtime_apis! {
 	> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
+		}
+
+		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
+			TransactionPayment::query_fee_details(uxt, len)
 		}
 	}
 

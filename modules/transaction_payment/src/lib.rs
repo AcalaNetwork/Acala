@@ -17,6 +17,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
+use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{
@@ -379,6 +380,30 @@ where
 		}
 	}
 
+	/// Query the detailed fee of a given `call`.
+	pub fn query_fee_details<Extrinsic: GetDispatchInfo>(
+		unchecked_extrinsic: Extrinsic,
+		len: u32,
+	) -> FeeDetails<PalletBalanceOf<T>>
+	where
+		T::Call: Dispatchable<Info = DispatchInfo>,
+	{
+		let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(&unchecked_extrinsic);
+		Self::compute_fee_details(len, &dispatch_info, 0u32.into())
+	}
+
+	/// Compute the fee details for a particular transaction.
+	pub fn compute_fee_details(
+		len: u32,
+		info: &DispatchInfoOf<T::Call>,
+		tip: PalletBalanceOf<T>,
+	) -> FeeDetails<PalletBalanceOf<T>>
+	where
+		T::Call: Dispatchable<Info = DispatchInfo>,
+	{
+		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee, info.class)
+	}
+
 	/// Compute the final fee value for a particular transaction.
 	///
 	/// The final fee is composed of:
@@ -411,7 +436,27 @@ where
 	where
 		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
 	{
-		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee, info.class)
+		Self::compute_fee_details(len, info, tip).final_fee()
+	}
+
+	/// Compute the actual post dispatch fee details for a particular
+	/// transaction.
+	pub fn compute_actual_fee_details(
+		len: u32,
+		info: &DispatchInfoOf<T::Call>,
+		post_info: &PostDispatchInfoOf<T::Call>,
+		tip: PalletBalanceOf<T>,
+	) -> FeeDetails<PalletBalanceOf<T>>
+	where
+		T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+	{
+		Self::compute_fee_raw(
+			len,
+			post_info.calc_actual_weight(info),
+			tip,
+			post_info.pays_fee(info),
+			info.class,
+		)
 	}
 
 	/// Compute the actual post dispatch fee for a particular transaction.
@@ -427,13 +472,7 @@ where
 	where
 		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
-		Self::compute_fee_raw(
-			len,
-			post_info.calc_actual_weight(info),
-			tip,
-			post_info.pays_fee(info),
-			info.class,
-		)
+		Self::compute_actual_fee_details(len, info, post_info, tip).final_fee()
 	}
 
 	fn compute_fee_raw(
@@ -442,7 +481,7 @@ where
 		tip: PalletBalanceOf<T>,
 		pays_fee: Pays,
 		class: DispatchClass,
-	) -> PalletBalanceOf<T> {
+	) -> FeeDetails<PalletBalanceOf<T>> {
 		if pays_fee == Pays::Yes {
 			let len = <PalletBalanceOf<T>>::from(len);
 			let per_byte = T::TransactionByteFee::get();
@@ -457,12 +496,19 @@ where
 			let adjusted_weight_fee = multiplier.saturating_mul_int(unadjusted_weight_fee);
 
 			let base_fee = Self::weight_to_fee(T::BlockWeights::get().get(class).base_extrinsic);
-			base_fee
-				.saturating_add(fixed_len_fee)
-				.saturating_add(adjusted_weight_fee)
-				.saturating_add(tip)
+			FeeDetails {
+				inclusion_fee: Some(InclusionFee {
+					base_fee,
+					len_fee: fixed_len_fee,
+					adjusted_weight_fee,
+				}),
+				tip,
+			}
 		} else {
-			tip
+			FeeDetails {
+				inclusion_fee: None,
+				tip,
+			}
 		}
 	}
 

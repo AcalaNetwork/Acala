@@ -12,7 +12,7 @@ use codec::Encode;
 use frame_support::{
 	ensure,
 	pallet_prelude::*,
-	traits::{Currency, Happened, IsType, OnKilledAccount, ReservableCurrency, StoredMap},
+	traits::{Currency, IsType, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::Weight,
 };
@@ -62,9 +62,6 @@ pub mod module {
 
 		/// Merge free balance from source to dest.
 		type MergeAccount: MergeAccount<Self::AccountId>;
-
-		/// Handler to kill account in system.
-		type KillAccount: Happened<Self::AccountId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -136,11 +133,9 @@ pub mod module {
 
 			// check if the evm padded address already exists
 			let account_id = T::AddressMapping::get_account_id(&eth_address);
-			if frame_system::Module::<T>::is_explicit(&account_id) {
+			if frame_system::Module::<T>::account_exists(&account_id) {
 				// merge balance from `evm padded address` to `origin`
 				T::MergeAccount::merge_account(&account_id, &who)?;
-				// finally kill the account
-				T::KillAccount::happened(&account_id);
 			}
 
 			Accounts::<T>::insert(eth_address, &who);
