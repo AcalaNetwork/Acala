@@ -1,6 +1,7 @@
 //! A list of the different weight modules for our runtime.
 #![allow(clippy::unnecessary_cast)]
 
+// TODO: add new generated files from bot
 pub mod auction_manager;
 pub mod cdp_engine;
 pub mod cdp_treasury;
