@@ -1739,24 +1739,24 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
-			orml_add_benchmark!(params, batches, dex, benchmarking::dex);
-			orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
-			orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
-			orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
-			orml_add_benchmark!(params, batches, evm, benchmarking::evm);
-			orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
-			orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
-			orml_add_benchmark!(params, batches, transaction_payment, benchmarking::transaction_payment);
-			orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
-			orml_add_benchmark!(params, batches, prices, benchmarking::prices);
-			orml_add_benchmark!(params, batches, evm_accounts, benchmarking::evm_accounts);
-			orml_add_benchmark!(params, batches, homa, benchmarking::homa);
+			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
+			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
+			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
+			orml_add_benchmark!(params, batches, module_emergency_shutdown, benchmarking::emergency_shutdown);
+			orml_add_benchmark!(params, batches, module_evm, benchmarking::evm);
+			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
+			orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
+			orml_add_benchmark!(params, batches, module_transaction_payment, benchmarking::transaction_payment);
+			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
+			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
+			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
+			orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
+			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
 			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
 			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
