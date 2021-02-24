@@ -11,7 +11,7 @@ use sp_runtime::{
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{fmt::Debug, prelude::*};
-use support::{NomineesProvider, OnNewEra};
+use support::{Contains, NomineesProvider, OnNewEra};
 
 mod mock;
 mod tests;
@@ -112,6 +112,7 @@ pub mod module {
 		type NominateesCount: Get<u32>;
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
+		type RelaychainValidatorFilter: Contains<Self::PolkadotAccountId>;
 	}
 
 	#[pallet::error]
@@ -121,6 +122,7 @@ pub mod module {
 		TooManyChunks,
 		NoBonded,
 		NoUnlockChunk,
+		InvalidRelaychainValidator,
 	}
 
 	#[pallet::storage]
@@ -254,6 +256,12 @@ pub mod module {
 			let mut targets = targets;
 			targets.sort();
 			targets.dedup();
+			for validator in &targets {
+				ensure!(
+					T::RelaychainValidatorFilter::contains(&validator),
+					Error::<T>::InvalidRelaychainValidator
+				);
+			}
 
 			let old_nominations = Self::nominations(&who);
 			let old_active = Self::ledger(&who).active;

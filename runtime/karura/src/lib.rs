@@ -1147,6 +1147,7 @@ impl module_nominees_election::Config for Runtime {
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
 }
 
 parameter_types! {

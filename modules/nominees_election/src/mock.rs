@@ -101,6 +101,16 @@ parameter_types! {
 	pub const MaxUnlockingChunks: u32 = 3;
 }
 
+pub struct MockRelaychainValidatorFilter;
+impl Contains<AccountId> for MockRelaychainValidatorFilter {
+	fn contains(a: &AccountId) -> bool {
+		match a {
+			0..=6 => true,
+			_ => false,
+		}
+	}
+}
+
 impl Config for Runtime {
 	type Currency = LDOTCurrency;
 	type PolkadotAccountId = AccountId;
@@ -108,6 +118,7 @@ impl Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type RelaychainValidatorFilter = MockRelaychainValidatorFilter;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

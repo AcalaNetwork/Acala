@@ -362,3 +362,7 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		Ok(())
 	}
 }
+
+pub trait Contains<T> {
+	fn contains(t: &T) -> bool;
+}

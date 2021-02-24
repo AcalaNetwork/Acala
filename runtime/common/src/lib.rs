@@ -339,6 +339,13 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
+pub struct RelaychainValidatorFilter;
+impl<AccountId> module_support::Contains<AccountId> for RelaychainValidatorFilter {
+	fn contains(_: &AccountId) -> bool {
+		true
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

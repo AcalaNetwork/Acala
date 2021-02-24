@@ -3,7 +3,7 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{Change, MultiCurrency};
+use orml_traits::{Change, Happened, MultiCurrency};
 use primitives::{Balance, CurrencyId, EraIndex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -871,5 +871,13 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 
 		T::Currency::transfer(T::StakingCurrencyId::get(), &Self::account_id(), who, withdrawn_amount)?;
 		Ok(withdrawn_amount)
+	}
+}
+
+pub struct OnSlash<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Happened<Balance> for OnSlash<T> {
+	fn happened(_amount: &Balance) {
+		// TODO: should reduce debit when homa_validator_list module burn
+		// insurance to compensate LDOT holders.
 	}
 }
