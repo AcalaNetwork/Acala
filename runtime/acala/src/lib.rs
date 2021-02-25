@@ -1023,7 +1023,7 @@ impl module_dex::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type DEXIncentives = Incentives;
-	type WeightInfo = weights::dex::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
