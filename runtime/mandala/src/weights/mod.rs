@@ -12,6 +12,6 @@ pub mod evm_accounts;
 pub mod homa;
 pub mod honzon;
 pub mod incentives;
-pub mod nft;
+pub mod module_nft;
 pub mod prices;
 pub mod transaction_payment;
