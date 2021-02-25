@@ -278,6 +278,11 @@ where
 					Err(_) => {
 						lower = mid;
 						mid = (lower + upper + 1) / 2;
+
+						// exit the loop
+						if mid == lower {
+							break;
+						}
 					}
 				}
 			}
