@@ -1290,7 +1290,7 @@ impl module_evm::Config for Runtime {
 	type DeploymentFee = DeploymentFee;
 	type TreasuryAccount = TreasuryModuleAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
-	type WeightInfo = weights::evm::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
 	fn config() -> &'static evm::Config {
