@@ -1140,7 +1140,7 @@ impl module_staking_pool::Config for Runtime {
 
 impl module_homa::Config for Runtime {
 	type Homa = StakingPool;
-	type WeightInfo = weights::homa::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
 parameter_types! {
