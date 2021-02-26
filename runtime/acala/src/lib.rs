@@ -887,7 +887,7 @@ impl module_auction_manager::Config for Runtime {
 	type PriceSource = Prices;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
-	type WeightInfo = weights::auction_manager::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
 }
 
 impl module_loans::Config for Runtime {
@@ -1166,7 +1166,7 @@ impl module_nft::Config for Runtime {
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
 	type Currency = Currency<Runtime, GetNativeCurrencyId>;
-	type WeightInfo = weights::nft::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
 impl orml_nft::Config for Runtime {
