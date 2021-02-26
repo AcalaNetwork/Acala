@@ -20,19 +20,12 @@ use sp_runtime::{
 };
 use support::EmergencyShutdown;
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn authorize() -> Weight;
-	fn unauthorize() -> Weight;
-	fn unauthorize_all(c: u32) -> Weight;
-	fn adjust_loan() -> Weight;
-	fn transfer_loan_from() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {

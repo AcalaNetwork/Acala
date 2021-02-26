@@ -986,7 +986,7 @@ impl module_cdp_engine::Config for Runtime {
 
 impl module_honzon::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::honzon::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
 }
 
 impl module_emergency_shutdown::Config for Runtime {
