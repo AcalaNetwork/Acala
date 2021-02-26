@@ -2,7 +2,6 @@
 #![allow(clippy::unnecessary_cast)]
 
 // TODO: add new generated files from bot
-pub mod cdp_engine;
 pub mod cdp_treasury;
 pub mod emergency_shutdown;
 pub mod evm;
@@ -11,6 +10,7 @@ pub mod homa;
 pub mod honzon;
 pub mod incentives;
 pub mod module_auction_manager;
+pub mod module_cdp_engine;
 pub mod module_dex;
 pub mod module_nft;
 pub mod prices;
