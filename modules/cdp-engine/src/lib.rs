@@ -38,20 +38,13 @@ use support::{
 };
 
 mod debit_exchange_rate_convertor;
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use debit_exchange_rate_convertor::DebitExchangeRateConvertor;
 pub use module::*;
-
-pub trait WeightInfo {
-	fn set_collateral_params() -> Weight;
-	fn set_global_params() -> Weight;
-	fn liquidate_by_auction() -> Weight;
-	fn liquidate_by_dex() -> Weight;
-	fn settle() -> Weight;
-}
+pub use weights::WeightInfo;
 
 pub const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/cdp-engine/data/";
 pub const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
