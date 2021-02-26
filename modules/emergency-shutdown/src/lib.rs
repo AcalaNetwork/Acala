@@ -21,17 +21,12 @@ use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
 use support::{AuctionManager, CDPTreasury, EmergencyShutdown, PriceProvider, Ratio};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn emergency_shutdown(c: u32) -> Weight;
-	fn open_collateral_refund() -> Weight;
-	fn refund_collaterals(c: u32) -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {

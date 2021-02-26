@@ -74,7 +74,7 @@ module-cdp-engine = { path = "../../modules/cdp-engine", default-features = fals
 module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
-module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
+module-emergency-shutdown = { path = "../../modules/emergency-shutdown", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
