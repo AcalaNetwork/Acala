@@ -19,7 +19,7 @@
 // --output=./modules/nft/src/weights.rs
 // --template=../../module-weight-template.hbs
 
-
+#![rustfmt::skip]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 

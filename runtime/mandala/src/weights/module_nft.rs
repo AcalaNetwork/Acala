@@ -19,6 +19,7 @@
 // --output=./runtime/mandala/src/weights/
 
 
+#![rustfmt::skip]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
