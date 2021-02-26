@@ -33,16 +33,12 @@ use sp_runtime::{
 };
 use sp_std::{marker::PhantomData, vec::Vec};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn claim_account() -> Weight;
-	fn claim_default_account() -> Weight;
-}
+pub use weights::WeightInfo;
 
 pub type EcdsaSignature = ecdsa::Signature;
 

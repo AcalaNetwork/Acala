@@ -1062,7 +1062,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
-	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Config for Runtime {
