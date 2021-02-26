@@ -1040,7 +1040,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
-	type WeightInfo = weights::cdp_treasury::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
 
 parameter_types! {

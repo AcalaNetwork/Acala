@@ -21,18 +21,12 @@ use sp_runtime::{
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
 mod benchmarking;
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn auction_surplus() -> Weight;
-	fn auction_debit() -> Weight;
-	fn auction_collateral() -> Weight;
-	fn set_collateral_auction_maximum_size() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
