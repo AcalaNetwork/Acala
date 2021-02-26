@@ -72,7 +72,7 @@ orml-nft= { path = "../../orml/nft", default-features = false }
 
 module-transaction-payment = { path = "../../modules/transaction_payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
-module-auction-manager = { path = "../../modules/auction_manager", default-features = false }
+module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp_engine", default-features = false }
 module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }

@@ -38,17 +38,12 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, PriceProvider, Rate};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn cancel_surplus_auction() -> Weight;
-	fn cancel_debit_auction() -> Weight;
-	fn cancel_collateral_auction() -> Weight;
-}
+pub use weights::WeightInfo;
 
 pub const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/auction-manager/data/";
 pub const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/auction-manager/lock/";
