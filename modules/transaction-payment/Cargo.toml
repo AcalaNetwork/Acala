@@ -24,7 +24,7 @@ module-dex = { path = "../dex", default-features = false }
 
 [dev-dependencies]
 sp-core = "3.0.0"
-module-staking-pool = { path = "../staking_pool" }
+module-staking-pool = { path = "../staking-pool" }
 smallvec = "1.4.1"
 
 [features]

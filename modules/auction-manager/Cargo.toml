@@ -22,7 +22,7 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 sp-core = "3.0.0"
 pallet-balances = "3.0.0"
 orml-auction = { path = "../../orml/auction" }
-cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury" }
+cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
 module-dex = { path = "../dex" }
 
 [features]

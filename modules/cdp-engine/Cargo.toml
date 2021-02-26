@@ -25,7 +25,7 @@ sp-core = "3.0.0"
 pallet-balances = "3.0.0"
 orml-currencies = { path = "../../orml/currencies" }
 module-dex = { path = "../dex" }
-cdp-treasury = { package = "module-cdp-treasury", path = "../cdp_treasury" }
+cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
 
 [features]
 default = ["std"]
