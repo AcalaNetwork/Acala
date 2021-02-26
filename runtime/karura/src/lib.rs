@@ -996,7 +996,7 @@ impl module_emergency_shutdown::Config for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
 	type ShutdownOrigin = EnsureRootOrHalfGeneralCouncil;
-	type WeightInfo = weights::emergency_shutdown::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_emergency_shutdown::WeightInfo<Runtime>;
 }
 
 parameter_types! {
