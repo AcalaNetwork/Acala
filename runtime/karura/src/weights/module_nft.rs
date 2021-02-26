@@ -19,7 +19,7 @@
 // --output=./runtime/karura/src/weights/
 
 
-#![rustfmt::skip]
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
