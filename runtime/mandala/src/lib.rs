@@ -1097,7 +1097,7 @@ impl module_incentives::Config for Runtime {
 	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
 	type ModuleId = IncentivesModuleId;
-	type WeightInfo = weights::incentives::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
 }
 
 impl module_airdrop::Config for Runtime {
