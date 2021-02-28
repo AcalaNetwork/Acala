@@ -28,14 +28,14 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_oracle::WeightInfo for WeightInfo<T> {
 	fn feed_values(c: u32) -> Weight {
-		(18_050_000 as Weight)
-			// Standard Error: 22_000
-			.saturating_add((3_907_000 as Weight).saturating_mul(c as Weight))
+		(33_758_000 as Weight)
+			// Standard Error: 23_000
+			.saturating_add((7_919_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
 	}
 	fn on_finalize() -> Weight {
-		(3_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(7_465_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
