@@ -779,7 +779,7 @@ impl module_prices::Config for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
-	type WeightInfo = weights::prices::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
 pub struct LiquidStakingExchangeRateProvider;

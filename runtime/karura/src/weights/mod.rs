@@ -13,5 +13,5 @@ pub mod module_homa;
 pub mod module_honzon;
 pub mod module_incentives;
 pub mod module_nft;
-pub mod prices;
+pub mod module_prices;
 pub mod transaction_payment;
