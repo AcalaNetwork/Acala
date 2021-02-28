@@ -1,7 +1,6 @@
 //! A list of the different weight modules for our runtime.
 #![allow(clippy::unnecessary_cast)]
 
-// TODO: add new generated files from bot
 pub mod module_auction_manager;
 pub mod module_cdp_engine;
 pub mod module_cdp_treasury;
@@ -14,4 +13,4 @@ pub mod module_honzon;
 pub mod module_incentives;
 pub mod module_nft;
 pub mod module_prices;
-pub mod transaction_payment;
+pub mod module_transaction_payment;

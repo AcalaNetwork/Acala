@@ -32,16 +32,12 @@ use sp_runtime::{
 use sp_std::{prelude::*, vec};
 use support::{DEXManager, Ratio, TransactionPayment};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn on_finalize() -> Weight;
-	fn set_default_fee_token() -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// Fee multiplier.
 pub type Multiplier = FixedU128;
