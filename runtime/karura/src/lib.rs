@@ -659,7 +659,7 @@ impl orml_auction::Config for Runtime {
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManager;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_auction::WeightInfo<Runtime>;
 }
 
 impl orml_authority::Config for Runtime {
@@ -670,7 +670,7 @@ impl orml_authority::Config for Runtime {
 	type Scheduler = Scheduler;
 	type AsOriginId = AuthoritysOriginId;
 	type AuthorityConfig = AuthorityConfigImpl;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -727,7 +727,7 @@ impl orml_oracle::Config<BandDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
 create_median_value_data_provider!(
@@ -759,7 +759,7 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryModuleAccount>;
 }
@@ -835,7 +835,7 @@ impl orml_vesting::Config for Runtime {
 	type Currency = pallet_balances::Module<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureRootOrAcalaTreasury;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -862,7 +862,7 @@ impl orml_gradually_update::Config for Runtime {
 	type Event = Event;
 	type UpdateFrequency = UpdateFrequency;
 	type DispatchOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1070,7 +1070,7 @@ impl orml_rewards::Config for Runtime {
 	type Balance = Balance;
 	type PoolId = module_incentives::PoolId;
 	type Handler = Incentives;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_rewards::WeightInfo<Runtime>;
 }
 
 parameter_types! {

@@ -14,3 +14,11 @@ pub mod module_incentives;
 pub mod module_nft;
 pub mod module_prices;
 pub mod module_transaction_payment;
+
+pub mod orml_auction;
+pub mod orml_authority;
+pub mod orml_gradually_update;
+pub mod orml_oracle;
+pub mod orml_rewards;
+pub mod orml_tokens;
+pub mod orml_vesting;
