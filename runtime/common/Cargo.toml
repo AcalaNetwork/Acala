@@ -20,9 +20,9 @@ orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 
 module-support = { path = "../../modules/support", default-features = false }
-module-transaction-payment = { path = "../../modules/transaction_payment", default-features = false }
+module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
+module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 
 [dev-dependencies]
 serde_json = "1.0.41"

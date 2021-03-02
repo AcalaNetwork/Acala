@@ -582,7 +582,7 @@ pub fn new_chain_ops(
 		#[cfg(not(feature = "with-mandala-runtime"))]
 		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
+		#[cfg(feature = "with-karura-runtime")]
 		{
 			let PartialComponents {
 				client,
@@ -593,7 +593,7 @@ pub fn new_chain_ops(
 			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
-		#[cfg(not(feature = "with-kaura-runtime"))]
+		#[cfg(not(feature = "with-karura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-acala-runtime")]
@@ -620,9 +620,9 @@ pub fn build_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 		#[cfg(not(feature = "with-acala-runtime"))]
 		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
+		#[cfg(feature = "with-karura-runtime")]
 		return new_light::<karura_runtime::RuntimeApi, KaruraExecutor>(config).map(|r| r.0);
-		#[cfg(not(feature = "with-kaura-runtime"))]
+		#[cfg(not(feature = "with-karura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-mandala-runtime")]
@@ -647,13 +647,13 @@ pub fn build_full(
 		#[cfg(not(feature = "with-acala-runtime"))]
 		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
+		#[cfg(feature = "with-karura-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
 				new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
 		}
-		#[cfg(not(feature = "with-kaura-runtime"))]
+		#[cfg(not(feature = "with-karura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-mandala-runtime")]

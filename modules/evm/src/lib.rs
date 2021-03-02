@@ -41,26 +41,17 @@ pub use primitives::{
 pub mod precompiles;
 pub mod runner;
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
-
-pub trait WeightInfo {
-	fn transfer_maintainer() -> Weight;
-	fn deploy() -> Weight;
-	fn deploy_free() -> Weight;
-	fn enable_contract_development() -> Weight;
-	fn disable_contract_development() -> Weight;
-	fn set_code() -> Weight;
-	fn selfdestruct() -> Weight;
-}
 
 // Initially based on Istanbul hard fork configuration.
 static ACALA_CONFIG: EvmConfig = EvmConfig {

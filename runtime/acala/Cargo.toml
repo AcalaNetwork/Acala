@@ -67,14 +67,14 @@ orml-vesting = { path = "../../orml/vesting", default-features = false }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
 orml-nft= { path = "../../orml/nft", default-features = false }
 
-module-transaction-payment = { path = "../../modules/transaction_payment", default-features = false }
+module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
-module-auction-manager = { path = "../../modules/auction_manager", default-features = false }
-module-cdp-engine = { path = "../../modules/cdp_engine", default-features = false }
-module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
+module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
+module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
+module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
-module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
+module-emergency-shutdown = { path = "../../modules/emergency-shutdown", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
@@ -85,10 +85,10 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
-module-nominees-election = { path = "../../modules/nominees_election", default-features = false }
-module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
-module-staking-pool-rpc-runtime-api = { path = "../../modules/staking_pool/rpc/runtime-api", default-features = false }
-module-polkadot-bridge = { path = "../../modules/polkadot_bridge", default-features = false }
+module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
+module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
+module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
+module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
 module-nft-benchmarking = { path = "../../modules/nft/benchmarking", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
