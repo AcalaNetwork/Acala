@@ -1387,6 +1387,10 @@ parameter_types! {
 		t.insert(("SDN".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
 		// Plasm
 		t.insert(("PLM".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
+
+		// Hydrate
+		t.insert(("HDT".into(), (Junction::Parent, Junction::Parachain { id: 82406 }).into()));
+
 		t
 	};
 }

@@ -85,6 +85,7 @@ create_currency_id! {
 		POLKABTC = 6,
 		PLM = 7,
 		PHA = 8,
+		HDT = 9,
 
 		// Kusama Ecosystem
 		KAR = 128,
@@ -96,6 +97,7 @@ create_currency_id! {
 		// Reserve for POLKABTC = 134
 		SDN = 135,
 		// Reserve for PHA = 136
+		// Reserve for HDT = 137,
 	}
 }
 
