@@ -1,5 +1,4 @@
 # This is a basic workflow to help you get started with Actions
-
 name: publish solidity package
 
 # Controls when the action will run.
@@ -49,6 +48,7 @@ jobs:
           fi
           cd ..
           cd predeploy-contracts/contracts
+          yarn run prepare
           yarn publish --patch --access public
           git config --unset-all http.https://github.com/.extraheader
           git push "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/predeploy-contracts.git" HEAD:master

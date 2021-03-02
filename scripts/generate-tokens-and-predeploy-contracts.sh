@@ -10,4 +10,4 @@ cargo test -p acala-primitives -- --ignored
 # generate-predeploy-contracts
 cd predeploy-contracts
 yarn
-yarn run generate-bytecode $PROJECT_ROOT/resources/tokens.json $PROJECT_ROOT/resources/bytecodes.json
+yarn run generate-bytecode $PROJECT_ROOT/resources/tokens.json $PROJECT_ROOT/resources/bytecodes.json $PROJECT_ROOT/predeploy-contracts/contracts/utils
