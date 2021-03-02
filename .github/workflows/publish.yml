@@ -26,13 +26,15 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: publish solidity package
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -x
           echo running on branch ${GITHUB_REF##*/}
           git config --global user.name "Github Actions"
           git config --global user.email "Github Actions"
+          branch="update-predeploy-contracts-$(date "+%Y%m%d%H%M%y")"
+          git checkout -b "$branch"
           cd predeploy-contracts
           git checkout master
           git pull
@@ -49,7 +51,8 @@ jobs:
           cd predeploy-contracts/contracts
           yarn publish --patch --access public
           git config --unset-all http.https://github.com/.extraheader
-          git push "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/predeploy-contracts.git" HEAD:${GITHUB_REF##*/}
+          git push "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/predeploy-contracts.git" HEAD:master
           cd ../..
           git commit -am "${{ github.event.inputs.commitMessage }}"
-          git push "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/Acala.git" HEAD:${GITHUB_REF##*/}
+          git push -u "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/Acala.git" "$branch"
+          hub pull-request -m "${{ github.event.inputs.commitMessage }}"
