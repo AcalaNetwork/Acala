@@ -659,7 +659,7 @@ impl orml_auction::Config for Runtime {
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManager;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_auction::WeightInfo<Runtime>;
 }
 
 impl orml_authority::Config for Runtime {
@@ -670,7 +670,7 @@ impl orml_authority::Config for Runtime {
 	type Scheduler = Scheduler;
 	type AsOriginId = AuthoritysOriginId;
 	type AuthorityConfig = AuthorityConfigImpl;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -727,7 +727,7 @@ impl orml_oracle::Config<BandDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
 create_median_value_data_provider!(
@@ -759,7 +759,7 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryModuleAccount>;
 }
@@ -778,7 +778,7 @@ impl module_prices::Config for Runtime {
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
 	type TokenDecimals = runtime_common::TokenDecimals;
-	type WeightInfo = weights::prices::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
 pub struct LiquidStakingExchangeRateProvider;
@@ -798,7 +798,7 @@ impl module_currencies::Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = EVMBridge;
 }
@@ -836,7 +836,7 @@ impl orml_vesting::Config for Runtime {
 	type Currency = pallet_balances::Module<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureRootOrAcalaTreasury;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -863,7 +863,7 @@ impl orml_gradually_update::Config for Runtime {
 	type Event = Event;
 	type UpdateFrequency = UpdateFrequency;
 	type DispatchOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -886,7 +886,7 @@ impl module_auction_manager::Config for Runtime {
 	type PriceSource = Prices;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
-	type WeightInfo = weights::auction_manager::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
 }
 
 impl module_loans::Config for Runtime {
@@ -982,12 +982,12 @@ impl module_cdp_engine::Config for Runtime {
 	type DEX = Dex;
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
-	type WeightInfo = weights::cdp_engine::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
 impl module_honzon::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::honzon::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
 }
 
 impl module_emergency_shutdown::Config for Runtime {
@@ -997,7 +997,7 @@ impl module_emergency_shutdown::Config for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
 	type ShutdownOrigin = EnsureRootOrHalfGeneralCouncil;
-	type WeightInfo = weights::emergency_shutdown::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_emergency_shutdown::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1018,7 +1018,7 @@ impl module_dex::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
 	type DEXIncentives = Incentives;
-	type WeightInfo = weights::dex::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
@@ -1035,7 +1035,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
-	type WeightInfo = weights::cdp_treasury::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1055,7 +1055,7 @@ impl module_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type WeightInfo = weights::transaction_payment::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1063,7 +1063,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
-	type WeightInfo = weights::evm_accounts::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Config for Runtime {
@@ -1071,7 +1071,7 @@ impl orml_rewards::Config for Runtime {
 	type Balance = Balance;
 	type PoolId = module_incentives::PoolId;
 	type Handler = Incentives;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_rewards::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1092,7 +1092,7 @@ impl module_incentives::Config for Runtime {
 	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
 	type ModuleId = IncentivesModuleId;
-	type WeightInfo = weights::incentives::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1131,7 +1131,7 @@ impl module_staking_pool::Config for Runtime {
 
 impl module_homa::Config for Runtime {
 	type Homa = StakingPool;
-	type WeightInfo = weights::homa::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1161,7 +1161,7 @@ impl module_nft::Config for Runtime {
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
 	type Currency = Currency<Runtime, GetNativeCurrencyId>;
-	type WeightInfo = weights::nft::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
 impl orml_nft::Config for Runtime {
@@ -1267,7 +1267,7 @@ impl module_evm::Config for Runtime {
 	type DeploymentFee = DeploymentFee;
 	type TreasuryAccount = TreasuryModuleAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
-	type WeightInfo = weights::evm::WeightInfo<Runtime>;
+	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 }
 
 impl module_evm_bridge::Config for Runtime {

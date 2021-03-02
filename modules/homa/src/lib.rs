@@ -16,15 +16,10 @@ use primitives::{Balance, EraIndex};
 use sp_runtime::RuntimeDebug;
 use support::HomaProtocol;
 
-mod default_weight;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn mint() -> Weight;
-	fn redeem(strategy: &RedeemStrategy) -> Weight;
-	fn withdraw_redemption() -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// Redemption modes:
 /// 1. Immediately: User will immediately get back DOT from the free pool,
@@ -78,7 +73,11 @@ pub mod module {
 		///
 		/// - `amount`: the LDOT amount to redeem.
 		/// - `strategy`: redemption mode.
-		#[pallet::weight(<T as Config>::WeightInfo::redeem(strategy))]
+		#[pallet::weight(match *strategy {
+			RedeemStrategy::Immediately => <T as Config>::WeightInfo::redeem_immediately(),
+			RedeemStrategy::Target(_) => <T as Config>::WeightInfo::redeem_by_claim_unbonding(),
+			RedeemStrategy::WaitForUnbonding => <T as Config>::WeightInfo::redeem_wait_for_unbonding(),
+		})]
 		#[transactional]
 		pub fn redeem(
 			origin: OriginFor<T>,

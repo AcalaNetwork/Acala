@@ -13,21 +13,12 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn deposit_dex_share() -> Weight;
-	fn withdraw_dex_share() -> Weight;
-	fn claim_rewards() -> Weight;
-	fn update_loans_incentive_rewards(c: u32) -> Weight;
-	fn update_dex_incentive_rewards(c: u32) -> Weight;
-	fn update_homa_incentive_reward() -> Weight;
-	fn update_dex_saving_rates(c: u32) -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// PoolId for various rewards pools
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug)]

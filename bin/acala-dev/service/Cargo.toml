@@ -44,8 +44,8 @@ sp-blockchain = { version = "3.0.0" }
 sp-std = { version = "3.0.0" }
 
 module-evm = { path = "../../../modules/evm" }
-module-staking-pool = { path = "../../../modules/staking_pool" }
-module-staking-pool-rpc = { path = "../../../modules/staking_pool/rpc" }
+module-staking-pool = { path = "../../../modules/staking-pool" }
+module-staking-pool-rpc = { path = "../../../modules/staking-pool/rpc" }
 module-nft = { path = "../../../modules/nft" }
 orml-oracle-rpc = { path = "../../../orml/oracle/rpc" }
 acala-primitives = { path = "../../../primitives" }

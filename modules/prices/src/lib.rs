@@ -21,16 +21,12 @@ use sp_runtime::{
 };
 use support::{ExchangeRateProvider, Price, PriceProvider};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn lock_price() -> Weight;
-	fn unlock_price() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
