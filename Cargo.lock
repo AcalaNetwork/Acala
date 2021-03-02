@@ -8783,7 +8783,8 @@ dependencies = [
 [[package]]
 name = "substrate-prometheus-endpoint"
 version = "0.9.0"
-source = "git+https://github.com/paritytech/substrate.git?rev=e03ca38d45f438932ec92bf69a40b6b16b6ec643#e03ca38d45f438932ec92bf69a40b6b16b6ec643"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2eb561c19a121e1c89daa79dbfa67a55080f813caa47fd231833a0669696d508"
 dependencies = [
  "async-std",
  "derive_more",
@@ -8797,8 +8798,7 @@ dependencies = [
 [[package]]
 name = "substrate-prometheus-endpoint"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2eb561c19a121e1c89daa79dbfa67a55080f813caa47fd231833a0669696d508"
+source = "git+https://github.com/paritytech/substrate.git?rev=e03ca38d45f438932ec92bf69a40b6b16b6ec643#e03ca38d45f438932ec92bf69a40b6b16b6ec643"
 dependencies = [
  "async-std",
  "derive_more",
