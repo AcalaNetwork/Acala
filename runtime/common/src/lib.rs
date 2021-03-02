@@ -11,7 +11,7 @@ use frame_support::{
 };
 use frame_system::limits;
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
+use primitives::{CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{Convert, Saturating},
@@ -337,6 +337,13 @@ parameter_types! {
 		.max_extrinsic
 		.expect("Normal extrinsics have weight limit configured by default; qed")
 		.saturating_sub(BlockExecutionWeight::get());
+}
+
+orml_traits::parameter_type_with_key! {
+	pub TokenDecimals: |currency_id: CurrencyId| -> u32 {
+		// TODO: config
+		18
+	};
 }
 
 #[cfg(test)]

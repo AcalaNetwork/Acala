@@ -126,6 +126,7 @@ pub mod module {
 
 impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 	/// get exchange rate between two currency types
+	/// Note: this returns the price for 1 basic unit
 	fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
 		if let (Some(base_price), Some(quote_price)) =
 			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
@@ -137,6 +138,7 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 	}
 
 	/// get the exchange rate of specific currency to USD
+	/// Note: this returns the price for 1 basic unit
 	fn get_price(currency_id: CurrencyId) -> Option<Price> {
 		let maybe_feed_price = if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, return fixed price

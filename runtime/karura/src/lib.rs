@@ -768,13 +768,6 @@ parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 }
 
-parameter_type_with_key! {
-	pub TokenDecimals: |currency_id: CurrencyId| -> u32 {
-		// TODO: config
-		18
-	};
-}
-
 impl module_prices::Config for Runtime {
 	type Event = Event;
 	type Source = AggregatedDataProvider;
@@ -784,7 +777,7 @@ impl module_prices::Config for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
-	type TokenDecimals = TokenDecimals;
+	type TokenDecimals = runtime_common::TokenDecimals;
 	type WeightInfo = weights::prices::WeightInfo<Runtime>;
 }
 
