@@ -13,9 +13,12 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{DataFeeder, DataProvider};
+use orml_traits::{DataFeeder, DataProvider, GetByKey};
 use primitives::CurrencyId;
-use sp_runtime::traits::{CheckedDiv, CheckedMul};
+use sp_runtime::{
+	traits::{CheckedDiv, CheckedMul},
+	FixedPointNumber,
+};
 use support::{ExchangeRateProvider, Price, PriceProvider};
 
 mod mock;
@@ -58,6 +61,10 @@ pub mod module {
 		/// The provider of the exchange rate between liquid currency and
 		/// staking currency.
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
+
+		/// Almost all oracles feed prices based on the natural `1` of tokens,
+		/// it's necessary to handle prices with decimals.
+		type TokenDecimals: GetByKey<CurrencyId, u32>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -114,7 +121,8 @@ pub mod module {
 }
 
 impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
-	/// get relative price between two currency types
+	/// get exchange rate between two currency types
+	/// Note: this returns the price for 1 basic unit
 	fn get_relative_price(base_currency_id: CurrencyId, quote_currency_id: CurrencyId) -> Option<Price> {
 		if let (Some(base_price), Some(quote_price)) =
 			(Self::get_price(base_currency_id), Self::get_price(quote_currency_id))
@@ -125,19 +133,27 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 		}
 	}
 
-	/// get price in USD
+	/// get the exchange rate of specific currency to USD
+	/// Note: this returns the price for 1 basic unit
 	fn get_price(currency_id: CurrencyId) -> Option<Price> {
-		if currency_id == T::GetStableCurrencyId::get() {
+		let maybe_feed_price = if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, return fixed price
 			Some(T::StableCurrencyFixedPrice::get())
 		} else if currency_id == T::GetLiquidCurrencyId::get() {
 			// if is homa liquid currency, return the product of staking currency price and
 			// liquid/staking exchange rate.
-			Self::get_price(T::GetStakingCurrencyId::get())
-				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()))
+			return Self::get_price(T::GetStakingCurrencyId::get())
+				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
 		} else {
 			// if locked price exists, return it, otherwise return latest price from oracle.
 			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
+		};
+		let maybe_adjustment_multiplier = 10u128.checked_pow(T::TokenDecimals::get(&currency_id));
+
+		if let (Some(feed_price), Some(adjustment_multiplier)) = (maybe_feed_price, maybe_adjustment_multiplier) {
+			Price::checked_from_rational(feed_price.into_inner(), adjustment_multiplier)
+		} else {
+			None
 		}
 	}
 
