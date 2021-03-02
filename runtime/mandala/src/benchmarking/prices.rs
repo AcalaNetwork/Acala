@@ -1,4 +1,4 @@
-use crate::{AcalaOracle, CollateralCurrencyIds, CurrencyId, Origin, Price, Prices, Runtime, TokenSymbol};
+use crate::{AcalaOracle, CollateralCurrencyIds, CurrencyId, Origin, Price, Prices, Runtime, DOT};
 
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -15,15 +15,15 @@ runtime_benchmarks! {
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
-	}: _(RawOrigin::Root, CurrencyId::Token(TokenSymbol::DOT))
+	}: _(RawOrigin::Root, DOT)
 
 	unlock_price {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
-		Prices::lock_price(Origin::root(), CurrencyId::Token(TokenSymbol::DOT))?;
-	}: _(RawOrigin::Root, CurrencyId::Token(TokenSymbol::DOT))
+		Prices::lock_price(Origin::root(), DOT)?;
+	}: _(RawOrigin::Root, DOT)
 }
 
 #[cfg(test)]

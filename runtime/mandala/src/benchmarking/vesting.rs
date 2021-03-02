@@ -1,7 +1,7 @@
-use super::utils::{dollars, lookup_of_account, set_aca_balance};
+use super::utils::{lookup_of_account, set_aca_balance};
 use crate::{
-	AcalaTreasuryModuleId, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, CurrencyId,
-	MinVestedTransfer, Runtime, System, TokenSymbol, Vesting,
+	dollar, AcalaTreasuryModuleId, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, MinVestedTransfer,
+	Runtime, System, Vesting, ACA,
 };
 
 use sp_std::prelude::*;
@@ -32,14 +32,14 @@ runtime_benchmarks! {
 
 		// extra 1 dollar to pay fees
 		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
-		set_aca_balance(&from, schedule.total_amount().unwrap() + dollars(1u32));
+		set_aca_balance(&from, schedule.total_amount().unwrap() + dollar(ACA));
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 	}: _(RawOrigin::Signed(from), to_lookup, schedule.clone())
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::total_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
+			<Currencies as MultiCurrency<_>>::total_balance(ACA, &to),
 			schedule.total_amount().unwrap()
 		);
 	}
@@ -56,7 +56,7 @@ runtime_benchmarks! {
 
 		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
 		// extra 1 dollar to pay fees
-		set_aca_balance(&from, schedule.total_amount().unwrap() * i as u128 + dollars(1u32));
+		set_aca_balance(&from, schedule.total_amount().unwrap() * i as u128 + dollar(ACA));
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
@@ -69,7 +69,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(to.clone()))
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &to),
 			schedule.total_amount().unwrap() * i as u128,
 		);
 	}
@@ -96,7 +96,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, to_lookup, schedules)
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(CurrencyId::Token(TokenSymbol::ACA), &to),
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &to),
 			schedule.total_amount().unwrap() * i as u128
 		);
 	}

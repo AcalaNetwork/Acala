@@ -11,14 +11,14 @@ use frame_support::{
 };
 use frame_system::limits;
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
+use orml_traits::{parameter_type_with_key, GetByKey};
+use primitives::{Balance, CurrencyId, TokenSymbol, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{Convert, Saturating},
 	transaction_validity::TransactionPriority,
 	FixedPointNumber, FixedPointOperand, Perbill,
 };
-
 use static_assertions::const_assert;
 
 pub mod precompile;
@@ -339,11 +339,62 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
-orml_traits::parameter_type_with_key! {
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const KAR: CurrencyId = CurrencyId::Token(TokenSymbol::KAR);
+pub const KUSD: CurrencyId = CurrencyId::Token(TokenSymbol::KUSD);
+pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const POLKABTC: CurrencyId = CurrencyId::Token(TokenSymbol::POLKABTC);
+pub const PLM: CurrencyId = CurrencyId::Token(TokenSymbol::PLM);
+pub const PHA: CurrencyId = CurrencyId::Token(TokenSymbol::PHA);
+pub const SDN: CurrencyId = CurrencyId::Token(TokenSymbol::SDN);
+
+parameter_type_with_key! {
 	pub TokenDecimals: |currency_id: CurrencyId| -> u32 {
-		// TODO: config
-		18
+		match *currency_id {
+			ACA => 13,
+			AUSD => 12,
+			DOT => 10,
+			LDOT => 10,
+
+			KAR => 12,
+			KUSD => 12,
+			KSM => 12,
+			LKSM => 12,
+
+			XBTC => 8,
+			RENBTC => 8,
+			POLKABTC => 8,
+
+			_ => 18,
+		}
 	};
+}
+
+pub fn dollar(currency_id: CurrencyId) -> Balance {
+	let xixi = TokenDecimals::get(&currency_id);
+	10u128.saturating_pow(xixi)
+}
+
+pub fn cent(currency_id: CurrencyId) -> Balance {
+	dollar(currency_id) / 100
+}
+
+pub fn millicent(currency_id: CurrencyId) -> Balance {
+	cent(currency_id) / 1000
+}
+
+pub fn microcent(currency_id: CurrencyId) -> Balance {
+	millicent(currency_id) / 1000
+}
+
+pub fn deposit(items: u32, bytes: u32, currency_id: CurrencyId) -> Balance {
+	items as Balance * 15 * cent(currency_id) + (bytes as Balance) * 6 * cent(currency_id)
 }
 
 #[cfg(test)]

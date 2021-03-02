@@ -1,6 +1,6 @@
 use crate::{
-	AcalaOracle, AccountId, AuctionId, AuctionManager, Balance, CdpTreasury, Currencies, CurrencyId, EmergencyShutdown,
-	GetNativeCurrencyId, GetStableCurrencyId, Price, Runtime, TokenSymbol, DOLLARS,
+	dollar, AcalaOracle, AccountId, AuctionId, AuctionManager, CdpTreasury, Currencies, EmergencyShutdown,
+	GetNativeCurrencyId, GetStableCurrencyId, Price, Runtime, DOT,
 };
 
 use super::utils::set_balance;
@@ -15,11 +15,6 @@ use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
-fn dollar(d: u32) -> Balance {
-	let d: Balance = d.into();
-	DOLLARS.saturating_mul(d)
-}
-
 runtime_benchmarks! {
 	{ Runtime, module_auction_manager }
 
@@ -30,16 +25,17 @@ runtime_benchmarks! {
 	cancel_surplus_auction {
 		let bidder: AccountId = account("bidder", 0, SEED);
 		let native_currency_id = GetNativeCurrencyId::get();
+		let stable_currency_id = GetStableCurrencyId::get();
 
 		// set balance
-		set_balance(native_currency_id, &bidder, dollar(10));
+		set_balance(native_currency_id, &bidder, 10 * dollar(native_currency_id));
 
 		// create surplus auction
-		<AuctionManager as AuctionManagerTrait<AccountId>>::new_surplus_auction(dollar(1))?;
+		<AuctionManager as AuctionManagerTrait<AccountId>>::new_surplus_auction(dollar(stable_currency_id))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid surplus auction
-		let _ = AuctionManager::surplus_auction_bid_handler(1, auction_id, (bidder, dollar(1)), None);
+		let _ = AuctionManager::surplus_auction_bid_handler(1, auction_id, (bidder, dollar(native_currency_id)), None);
 
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;
@@ -49,17 +45,18 @@ runtime_benchmarks! {
 	// auction have been already bid
 	cancel_debit_auction {
 		let bidder: AccountId = account("bidder", 0, SEED);
+		let native_currency_id = GetNativeCurrencyId::get();
 		let stable_currency_id = GetStableCurrencyId::get();
 
 		// set balance
-		set_balance(stable_currency_id, &bidder, dollar(10));
+		set_balance(stable_currency_id, &bidder, 10 * dollar(stable_currency_id));
 
 		// create debit auction
-		<AuctionManager as AuctionManagerTrait<AccountId>>::new_debit_auction(dollar(1), dollar(10))?;
+		<AuctionManager as AuctionManagerTrait<AccountId>>::new_debit_auction(dollar(native_currency_id), 10 * dollar(stable_currency_id))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid debit auction
-		let _ = AuctionManager::debit_auction_bid_handler(1, auction_id, (bidder, dollar(20)), None);
+		let _ = AuctionManager::debit_auction_bid_handler(1, auction_id, (bidder, 20 * dollar(stable_currency_id)), None);
 
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;
@@ -73,19 +70,19 @@ runtime_benchmarks! {
 		let stable_currency_id = GetStableCurrencyId::get();
 
 		// set balance
-		Currencies::deposit(stable_currency_id, &bidder, dollar(80))?;
-		Currencies::deposit(CurrencyId::Token(TokenSymbol::DOT), &funder, dollar(1))?;
-		CdpTreasury::deposit_collateral(&funder, CurrencyId::Token(TokenSymbol::DOT), dollar(1))?;
+		Currencies::deposit(stable_currency_id, &bidder, 80 * dollar(stable_currency_id))?;
+		Currencies::deposit(DOT, &funder, dollar(DOT))?;
+		CdpTreasury::deposit_collateral(&funder, DOT, dollar(DOT))?;
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(CurrencyId::Token(TokenSymbol::DOT), Price::saturating_from_integer(120))])?;
+		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(DOT, Price::saturating_from_integer(120))])?;
 
 		// create collateral auction
-		AuctionManager::new_collateral_auction(&funder, CurrencyId::Token(TokenSymbol::DOT), dollar(1), dollar(100))?;
+		AuctionManager::new_collateral_auction(&funder, DOT, dollar(DOT), 100 * dollar(stable_currency_id))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction
-		let _ = AuctionManager::collateral_auction_bid_handler(1, auction_id, (bidder, dollar(80)), None);
+		let _ = AuctionManager::collateral_auction_bid_handler(1, auction_id, (bidder, 80 * dollar(stable_currency_id)), None);
 
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;

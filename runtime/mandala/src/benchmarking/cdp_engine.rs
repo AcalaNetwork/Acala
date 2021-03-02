@@ -1,7 +1,6 @@
 use crate::{
-	AcalaOracle, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId, Dex, EmergencyShutdown,
-	GetStableCurrencyId, Indices, MaxSlippageSwapWithDEX, MinimumDebitValue, Price, Rate, Ratio, Runtime, TokenSymbol,
-	DOLLARS,
+	dollar, AcalaOracle, AccountId, Amount, Balance, CdpEngine, CurrencyId, Dex, EmergencyShutdown,
+	GetStableCurrencyId, Indices, MaxSlippageSwapWithDEX, MinimumDebitValue, Price, Rate, Ratio, Runtime, AUSD, DOT,
 };
 
 use super::utils::set_balance;
@@ -45,11 +44,6 @@ fn inject_liquidity(
 	Ok(())
 }
 
-fn dollar(d: u32) -> Balance {
-	let d: Balance = d.into();
-	DOLLARS.saturating_mul(d)
-}
-
 runtime_benchmarks! {
 	{ Runtime, module_cdp_engine }
 
@@ -58,12 +52,12 @@ runtime_benchmarks! {
 	set_collateral_params {
 	}: _(
 		RawOrigin::Root,
-		CurrencyId::Token(TokenSymbol::DOT),
+		DOT,
 		Change::NewValue(Some(Rate::saturating_from_rational(1, 1000000))),
 		Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 		Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
 		Change::NewValue(Some(Ratio::saturating_from_rational(180, 100))),
-		Change::NewValue(dollar(100000))
+		Change::NewValue(100_000 * dollar(AUSD))
 	)
 
 	set_global_params {
@@ -73,13 +67,14 @@ runtime_benchmarks! {
 	liquidate_by_auction {
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = Indices::unlookup(owner.clone());
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = DOT;
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
 		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
-		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
+		let collateral_value = 2 * min_debit_value;
+		let collateral_amount = Price::saturating_from_rational(dollar(DOT), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(currency_id, &owner, collateral_amount);
@@ -118,53 +113,53 @@ runtime_benchmarks! {
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = Indices::unlookup(owner.clone());
 		let funder: AccountId = account("funder", 0, SEED);
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-		let min_debit_value = MinimumDebitValue::get();
-		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
-		let collateral_price = Price::one();		// 1 USD
-		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
-		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
-		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
-		let base_currency_id = GetStableCurrencyId::get();
-		let max_slippage_swap_with_dex = MaxSlippageSwapWithDEX::get();
-		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(min_debit_value * 10);
-		let base_amount_in_dex = collateral_amount_in_dex * 2;
 
-		inject_liquidity(funder.clone(), currency_id, base_amount_in_dex, collateral_amount_in_dex)?;
+		let debit_value = 100 * dollar(AUSD);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(DOT);
+		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
+		let debit_amount: Amount = debit_amount.unique_saturated_into();
+		let collateral_value = 2 * debit_value;
+		let collateral_amount = Price::saturating_from_rational(dollar(DOT), dollar(AUSD)).saturating_mul_int(collateral_value);
+		let collateral_price = Price::one();		// 1 USD
+		let max_slippage_swap_with_dex = MaxSlippageSwapWithDEX::get();
+		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(collateral_amount);
+		let base_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(debit_value * 2);
+
+		inject_liquidity(funder.clone(), DOT, base_amount_in_dex, collateral_amount_in_dex)?;
 
 		// set balance
-		set_balance(currency_id, &owner, collateral_amount);
+		set_balance(DOT, &owner, collateral_amount);
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, collateral_price)])?;
+		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(DOT, collateral_price)])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
 			RawOrigin::Root.into(),
-			currency_id,
+			DOT,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
-			Change::NewValue(min_debit_value * 100),
+			Change::NewValue(debit_value * 100),
 		)?;
 
 		// adjust position
-		CdpEngine::adjust_position(&owner, currency_id, collateral_amount.try_into().unwrap(), min_debit_amount)?;
+		CdpEngine::adjust_position(&owner, DOT, collateral_amount.try_into().unwrap(), debit_amount)?;
 
 		// modify liquidation rate to make the cdp unsafe
 		CdpEngine::set_collateral_params(
 			RawOrigin::Root.into(),
-			currency_id,
+			DOT,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(1000, 100))),
 			Change::NoChange,
 			Change::NoChange,
 			Change::NoChange,
 		)?;
-	}: liquidate(RawOrigin::None, currency_id, owner_lookup)
+	}: liquidate(RawOrigin::None, DOT, owner_lookup)
 	verify {
-		let (other_currency_amount, base_currency_amount) = Dex::get_liquidity_pool(currency_id, base_currency_id);
+		let (other_currency_amount, base_currency_amount) = Dex::get_liquidity_pool(DOT, AUSD);
 		assert!(other_currency_amount > collateral_amount_in_dex);
 		assert!(base_currency_amount < base_amount_in_dex);
 	}
@@ -172,13 +167,14 @@ runtime_benchmarks! {
 	settle {
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = Indices::unlookup(owner.clone());
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = DOT;
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
 		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
-		let collateral_amount = (min_debit_value * 2).unique_saturated_into();
+		let collateral_value = 2 * min_debit_value;
+		let collateral_amount = Price::saturating_from_rational(dollar(DOT), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(currency_id, &owner, collateral_amount);
