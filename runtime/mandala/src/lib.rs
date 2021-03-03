@@ -95,7 +95,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 711,
+	spec_version: 720,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1387,6 +1387,10 @@ parameter_types! {
 		t.insert(("SDN".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
 		// Plasm
 		t.insert(("PLM".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
+
+		// Hydrate
+		t.insert(("HDT".into(), (Junction::Parent, Junction::Parachain { id: 82406 }).into()));
+
 		t
 	};
 }
