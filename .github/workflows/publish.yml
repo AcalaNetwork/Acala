@@ -32,8 +32,6 @@ jobs:
           echo running on branch ${GITHUB_REF##*/}
           git config --global user.name "Github Actions"
           git config --global user.email "Github Actions"
-          branch="update-predeploy-contracts-$(date "+%Y%m%d%H%M%y")"
-          git checkout -b "$branch"
           cd predeploy-contracts
           git checkout master
           git pull
@@ -54,5 +52,12 @@ jobs:
           git push "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/predeploy-contracts.git" HEAD:master
           cd ../..
           git commit -am "${{ github.event.inputs.commitMessage }}"
-          git push -u "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/Acala.git" "$branch"
-          hub pull-request -m "${{ github.event.inputs.commitMessage }}"
+          if [ ${GITHUB_REF##*/} -eq "master" ]
+          then
+              branch="update-predeploy-contracts-$(date "+%Y%m%d%H%M%y")"
+              git checkout -b "$branch"
+              git push -u "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/Acala.git" "$branch"
+              hub pull-request -m "${{ github.event.inputs.commitMessage }}"
+          else
+              git push "https://${{ secrets.GH_PAT }}@github.com/AcalaNetwork/Acala.git" HEAD:${GITHUB_REF##*/}
+          fi
