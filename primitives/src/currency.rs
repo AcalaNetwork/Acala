@@ -35,7 +35,7 @@ macro_rules! create_currency_id {
 			type Error = ();
 			fn try_from(v: Vec<u8>) -> Result<CurrencyId, ()> {
 				match v.as_slice() {
-					$(bstringify!(vname) => Ok(CurrencyId::Token(TokenSymbol::$vname)),)*
+					$(bstringify!($vname) => Ok(CurrencyId::Token(TokenSymbol::$vname)),)*
 					_ => Err(()),
 				}
 			}

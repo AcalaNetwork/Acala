@@ -55,3 +55,11 @@ fn currency_id_encode_decode_bytes_works() {
 	let bytes: [u8; 32] = currency_id.into();
 	assert_ok!(bytes.try_into(), currency_id)
 }
+
+#[test]
+fn currency_id_try_from_vec_u8_works() {
+	assert_ok!(
+		"ACA".as_bytes().to_vec().try_into(),
+		CurrencyId::Token(TokenSymbol::ACA)
+	);
+}
