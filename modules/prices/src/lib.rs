@@ -13,8 +13,8 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{DataFeeder, DataProvider, GetByKey};
-use primitives::CurrencyId;
+use orml_traits::{DataFeeder, DataProvider};
+use primitives::{currency::GetDecimals, CurrencyId};
 use sp_runtime::{
 	traits::{CheckedDiv, CheckedMul},
 	FixedPointNumber,
@@ -61,10 +61,6 @@ pub mod module {
 		/// The provider of the exchange rate between liquid currency and
 		/// staking currency.
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
-
-		/// Almost all oracles feed prices based on the natural `1` of tokens,
-		/// it's necessary to handle prices with decimals.
-		type TokenDecimals: GetByKey<CurrencyId, u32>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -148,7 +144,7 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			// if locked price exists, return it, otherwise return latest price from oracle.
 			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
 		};
-		let maybe_adjustment_multiplier = 10u128.checked_pow(T::TokenDecimals::get(&currency_id));
+		let maybe_adjustment_multiplier = 10u128.checked_pow(currency_id.decimals());
 
 		if let (Some(feed_price), Some(adjustment_multiplier)) = (maybe_feed_price, maybe_adjustment_multiplier) {
 			Price::checked_from_rational(feed_price.into_inner(), adjustment_multiplier)

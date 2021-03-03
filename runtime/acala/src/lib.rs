@@ -76,8 +76,8 @@ pub use primitives::{
 };
 pub use runtime_common::{
 	cent, deposit, dollar, microcent, millicent, BlockLength, BlockWeights, CurveFeeModel, ExchangeRate, GasToWeight,
-	OffchainSolutionWeightLimit, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice, TokenDecimals, ACA, AUSD,
-	DOT, LDOT, PHA, POLKABTC, RENBTC, SDN, XBTC,
+	OffchainSolutionWeightLimit, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice, ACA, AUSD, DOT, LDOT,
+	PHA, POLKABTC, RENBTC, SDN, XBTC,
 };
 
 mod authority;
@@ -779,7 +779,6 @@ impl module_prices::Config for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
-	type TokenDecimals = TokenDecimals;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
