@@ -46,7 +46,7 @@ use orml_traits::{create_median_value_data_provider, parameter_type_with_key, Da
 // pallet_session_historical;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
-use cumulus_primitives_core::{relay_chain::Balance as RelayChainBalance, ParaId};
+use cumulus_primitives_core::relay_chain::Balance as RelayChainBalance;
 use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, NativePalletAssetOr};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction, MultiLocation, NetworkId};
@@ -95,7 +95,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 720,
+	spec_version: 721,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
