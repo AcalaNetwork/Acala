@@ -291,13 +291,13 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999995255);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999995421);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
 		#[cfg(feature = "with-ethereum-compatibility")]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999995255);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999995421);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -375,7 +375,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		);
 
 		run_to_block(4);
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999999954);
+		assert_eq!(Balances::free_balance(from_account.clone()), 999999999930);
 		assert_eq!(Balances::reserved_balance(from_account), 0);
 		assert_eq!(Balances::free_balance(to_account), 1000000000000);
 	});
