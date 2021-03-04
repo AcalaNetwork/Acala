@@ -156,15 +156,16 @@ pub mod module {
 		#[transactional]
 		pub fn auction_debit(
 			origin: OriginFor<T>,
-			amount: Balance,
+			debit_amount: Balance,
 			initial_price: Balance,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ensure!(
-				Self::debit_pool().saturating_sub(T::AuctionManagerHandler::get_total_debit_in_auction()) >= amount,
+				Self::debit_pool().saturating_sub(T::AuctionManagerHandler::get_total_debit_in_auction())
+					>= debit_amount,
 				Error::<T>::DebitPoolNotEnough,
 			);
-			T::AuctionManagerHandler::new_debit_auction(amount, initial_price)?;
+			T::AuctionManagerHandler::new_debit_auction(initial_price, debit_amount)?;
 			Ok(().into())
 		}
 

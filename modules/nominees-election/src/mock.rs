@@ -80,11 +80,11 @@ impl pallet_balances::Config for Runtime {
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
-	pub const GetLDOTCurrencyId: CurrencyId = LDOT;
+	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 }
 
 pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
-pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLDOTCurrencyId>;
+pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 
 impl orml_currencies::Config for Runtime {
 	type Event = Event;

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 macro_rules! create_currency_id {
     ($(#[$meta:meta])*
 	$vis:vis enum TokenSymbol {
-        $($(#[$vmeta:meta])* $vname:ident = $val:literal,)*
+        $($(#[$vmeta:meta])* $vname:ident($deci:literal) = $val:literal,)*
     }) => {
         $(#[$meta])*
         $vis enum TokenSymbol {
@@ -40,6 +40,18 @@ macro_rules! create_currency_id {
 				}
 			}
 		}
+
+		impl GetDecimals for CurrencyId {
+			fn decimals(&self) -> u32 {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$vname) => $deci,)*
+					// default decimals is 18
+					_ => 18,
+				}
+			}
+		}
+
+		$(pub const $vname: CurrencyId = CurrencyId::Token(TokenSymbol::$vname);)*
 
 		#[test]
 		#[ignore]
@@ -76,27 +88,31 @@ create_currency_id! {
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// Polkadot Ecosystem
-		ACA = 0,
-		AUSD = 1,
-		DOT = 2,
-		LDOT = 3,
-		XBTC = 4,
-		RENBTC = 5,
-		POLKABTC = 6,
-		PLM = 7,
-		PHA = 8,
+		ACA(13) = 0,
+		AUSD(12) = 1,
+		DOT(10) = 2,
+		LDOT(10) = 3,
+		XBTC(8) = 4,
+		RENBTC(8) = 5,
+		POLKABTC(8) = 6,
+		PLM(18) = 7,
+		PHA(18) = 8,
 
 		// Kusama Ecosystem
-		KAR = 128,
-		KUSD = 129,
-		KSM = 130,
-		LKSM = 131,
+		KAR(12) = 128,
+		KUSD(12) = 129,
+		KSM(12) = 130,
+		LKSM(12) = 131,
 		// Reserve for XBTC = 132
 		// Reserve for RENBTC = 133
 		// Reserve for POLKABTC = 134
-		SDN = 135,
+		SDN(18) = 135,
 		// Reserve for PHA = 136
 	}
+}
+
+pub trait GetDecimals {
+	fn decimals(&self) -> u32;
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

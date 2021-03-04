@@ -68,14 +68,15 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{currency::*, fee::*, time::*};
+pub use constants::{fee::*, time::*};
 pub use primitives::{
 	AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
 	EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	BlockLength, BlockWeights, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit, Price, Rate,
-	Ratio, SystemContractsFilter, TimeStampedPrice,
+	cent, deposit, dollar, microcent, millicent, BlockLength, BlockWeights, CurveFeeModel, ExchangeRate, GasToWeight,
+	OffchainSolutionWeightLimit, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice, KAR, KSM, KUSD, LKSM,
+	PLM, RENBTC,
 };
 
 mod authority;
@@ -211,7 +212,7 @@ impl pallet_grandpa::Config for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = DOLLARS;
+	pub IndexDeposit: Balance = dollar(KAR);
 }
 
 impl pallet_indices::Config for Runtime {
@@ -263,7 +264,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
+	pub TransactionByteFee: Balance = 10 * millicent(KAR);
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
@@ -467,8 +468,8 @@ impl pallet_utility::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MultisigDepositBase: Balance = 500 * MILLICENTS;
-	pub const MultisigDepositFactor: Balance = 100 * MILLICENTS;
+	pub MultisigDepositBase: Balance = 500 * millicent(KAR);
+	pub MultisigDepositFactor: Balance = 100 * millicent(KAR);
 	pub const MaxSignatories: u16 = 100;
 }
 
@@ -509,21 +510,21 @@ impl ContainsLengthBound for GeneralCouncilProvider {
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = DOLLARS;
+	pub ProposalBondMinimum: Balance = dollar(KAR);
 	pub const SpendPeriod: BlockNumber = DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(10);
-	pub const TipReportDepositBase: Balance = DOLLARS;
+	pub TipReportDepositBase: Balance = dollar(KAR);
 	pub const SevenDays: BlockNumber = 7 * DAYS;
 	pub const ZeroDay: BlockNumber = 0;
 	pub const OneDay: BlockNumber = DAYS;
-	pub const BountyDepositBase: Balance = DOLLARS;
+	pub BountyDepositBase: Balance = dollar(KAR);
 	pub const BountyDepositPayoutDelay: BlockNumber = DAYS;
 	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
 	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
-	pub const BountyValueMinimum: Balance = 5 * DOLLARS;
-	pub const DataDepositPerByte: Balance = CENTS;
+	pub BountyValueMinimum: Balance = 5 * dollar(KAR);
+	pub DataDepositPerByte: Balance = cent(KAR);
 	pub const MaximumReasonLength: u32 = 16384;
 }
 
@@ -638,10 +639,10 @@ impl pallet_staking::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ConfigDepositBase: Balance = 10 * CENTS;
-	pub const FriendDepositFactor: Balance = CENTS;
+	pub ConfigDepositBase: Balance = 10 * cent(KAR);
+	pub FriendDepositFactor: Balance = cent(KAR);
 	pub const MaxFriends: u16 = 9;
-	pub const RecoveryDeposit: Balance = 10 * CENTS;
+	pub RecoveryDeposit: Balance = 10 * cent(KAR);
 }
 
 impl pallet_recovery::Config for Runtime {
@@ -674,9 +675,9 @@ impl orml_authority::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 10 * DOLLARS;
-	pub const VotingBondBase: Balance = 2 * DOLLARS;
-	pub const VotingBondFactor: Balance = DOLLARS;
+	pub CandidacyBond: Balance = 10 * dollar(LKSM);
+	pub VotingBondBase: Balance = 2 * dollar(LKSM);
+	pub VotingBondFactor: Balance = dollar(LKSM);
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 7;
@@ -685,7 +686,7 @@ parameter_types! {
 impl pallet_elections_phragmen::Config for Runtime {
 	type ModuleId = ElectionsPhragmenModuleId;
 	type Event = Event;
-	type Currency = CurrencyAdapter<Runtime, GetLDOTCurrencyId>;
+	type Currency = CurrencyAdapter<Runtime, GetLiquidCurrencyId>;
 	type CurrencyToVote = U128CurrencyToVote;
 	type ChangeMembers = HomaCouncil;
 	type InitializeMembers = HomaCouncil;
@@ -777,7 +778,6 @@ impl module_prices::Config for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
-	type TokenDecimals = runtime_common::TokenDecimals;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -789,9 +789,8 @@ impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider 
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KAR);
-	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KUSD);
-	pub const GetLDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const GetNativeCurrencyId: CurrencyId = KAR;
+	pub const GetStableCurrencyId: CurrencyId = KUSD;
 }
 
 impl module_currencies::Config for Runtime {
@@ -828,7 +827,7 @@ impl EnsureOrigin<Origin> for EnsureRootOrAcalaTreasury {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 100 * DOLLARS;
+	pub MinVestedTransfer: Balance = 100 * dollar(KAR);
 }
 
 impl orml_vesting::Config for Runtime {
@@ -959,11 +958,11 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::KSM), CurrencyId::Token(TokenSymbol::LKSM), CurrencyId::Token(TokenSymbol::PLM)];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, PLM];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
-	pub const MinimumDebitValue: Balance = DOLLARS;
+	pub MinimumDebitValue: Balance = dollar(KUSD);
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(5, 100);
 }
 
@@ -1004,10 +1003,10 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
 	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
-		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::KAR)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::KSM)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::LKSM)),
-		TradingPair::new(CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::PLM)),
+		TradingPair::new(KUSD, KAR),
+		TradingPair::new(KUSD, KSM),
+		TradingPair::new(KUSD, LKSM),
+		TradingPair::new(KUSD, PLM),
 	];
 }
 
@@ -1040,7 +1039,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::KUSD), CurrencyId::Token(TokenSymbol::LKSM), CurrencyId::Token(TokenSymbol::KSM), CurrencyId::Token(TokenSymbol::PLM)];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![KUSD, LKSM, KSM, PLM];
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1109,8 +1108,8 @@ impl module_polkadot_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub const GetLiquidCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
-	pub const GetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+	pub const GetLiquidCurrencyId: CurrencyId = LKSM;
+	pub const GetStakingCurrencyId: CurrencyId = KSM;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
 	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
 }
@@ -1135,7 +1134,7 @@ impl module_homa::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinCouncilBondThreshold: Balance = DOLLARS;
+	pub MinCouncilBondThreshold: Balance = dollar(LKSM);
 	pub const NominateesCount: u32 = 7;
 	pub const MaxUnlockingChunks: u32 = 7;
 	pub const NomineesElectionBondingDuration: EraIndex = 7;
@@ -1151,8 +1150,8 @@ impl module_nominees_election::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CreateClassDeposit: Balance = 500 * MILLICENTS;
-	pub const CreateTokenDeposit: Balance = 100 * MILLICENTS;
+	pub CreateClassDeposit: Balance = 500 * millicent(KAR);
+	pub CreateTokenDeposit: Balance = 100 * millicent(KAR);
 }
 
 impl module_nft::Config for Runtime {
@@ -1173,12 +1172,12 @@ impl orml_nft::Config for Runtime {
 
 parameter_types! {
 	// One storage item; key size 32, value size 8; .
-	pub const ProxyDepositBase: Balance = deposit(1, 8);
+	pub ProxyDepositBase: Balance = deposit(1, 8, KAR);
 	// Additional storage item size of 33 bytes.
-	pub const ProxyDepositFactor: Balance = deposit(0, 33);
+	pub ProxyDepositFactor: Balance = deposit(0, 33, KAR);
 	pub const MaxProxies: u16 = 32;
-	pub const AnnouncementDepositBase: Balance = deposit(1, 8);
-	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
+	pub AnnouncementDepositBase: Balance = deposit(1, 8, KAR);
+	pub AnnouncementDepositFactor: Balance = deposit(0, 66, KAR);
 	pub const MaxPending: u16 = 32;
 }
 
@@ -1214,12 +1213,12 @@ parameter_types! {
 	// TODO: update
 	pub const ChainId: u64 = 686;
 	pub const NewContractExtraBytes: u32 = 10_000;
-	pub const StorageDepositPerByte: Balance = MICROCENTS;
+	pub StorageDepositPerByte: Balance = microcent(KAR);
 	// https://eips.ethereum.org/EIPS/eip-170
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub const DeveloperDeposit: Balance = DOLLARS;
-	pub const DeploymentFee: Balance = DOLLARS;
+	pub DeveloperDeposit: Balance = dollar(KAR);
+	pub DeploymentFee: Balance = dollar(KAR);
 }
 
 pub type MultiCurrencyPrecompile =

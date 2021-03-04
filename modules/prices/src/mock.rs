@@ -5,7 +5,7 @@
 use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use orml_traits::{parameter_type_with_key, DataFeeder};
+use orml_traits::DataFeeder;
 use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber};
@@ -90,17 +90,6 @@ parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::one();
 }
 
-parameter_type_with_key! {
-	pub TokenDecimals: |currency_id: CurrencyId| -> u32 {
-		match currency_id {
-			&ACA | &AUSD => 12,
-			&DOT | &LDOT => 10,
-			&BTC => 8,
-			_ => 18,
-		}
-	};
-}
-
 impl Config for Runtime {
 	type Event = Event;
 	type Source = MockDataProvider;
@@ -110,7 +99,6 @@ impl Config for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureSignedBy<One, AccountId>;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
-	type TokenDecimals = TokenDecimals;
 	type WeightInfo = ();
 }
 

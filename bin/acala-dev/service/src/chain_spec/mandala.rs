@@ -22,7 +22,7 @@ fn mandala_session_keys(grandpa: GrandpaId, babe: BabeId) -> mandala_runtime::Se
 pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), 13.into());
 
 	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 
@@ -180,29 +180,29 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, Balance, BalancesConfig,
-		BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EVMConfig, EnabledTradingPairs,
+		dollar, get_all_module_accounts, AcalaOracleConfig, AirDropConfig, BabeConfig, Balance, BalancesConfig,
+		BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, DexConfig, EVMConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
 		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, TradingPair, VestingConfig,
-		DOLLARS,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT,
+		LDOT, RENBTC, XBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
-	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
-	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+	let initial_balance: u128 = 1_000_000 * dollar(ACA);
+	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis();
 
 	// merge duplicated
 	let balances = initial_authorities
 		.iter()
-		.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
-		.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
+		.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
 		.chain(
 			get_all_module_accounts()
 				.iter()
@@ -243,7 +243,7 @@ fn testnet_genesis(
 			minimum_validator_count: initial_authorities.len() as u32,
 			stakers: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
+				.map(|x| (x.0.clone(), x.1.clone(), initial_staking, StakerStatus::Validator))
 				.collect(),
 			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
 			slash_reward_fraction: Perbill::from_percent(10),
@@ -286,9 +286,9 @@ fn testnet_genesis(
 				.iter()
 				.flat_map(|x| {
 					vec![
-						(x.clone(), CurrencyId::Token(TokenSymbol::AUSD), INITIAL_BALANCE),
-						(x.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
-						(x.clone(), CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
+						(x.clone(), AUSD, 1_000_000 * dollar(AUSD)),
+						(x.clone(), DOT, 1_000_000 * dollar(DOT)),
+						(x.clone(), XBTC, 1_000_000 * dollar(XBTC)),
 					]
 				})
 				.collect(),
@@ -296,44 +296,44 @@ fn testnet_genesis(
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::Token(TokenSymbol::XBTC), DOLLARS),
-				(CurrencyId::Token(TokenSymbol::RENBTC), DOLLARS),
+				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
+				(XBTC, dollar(XBTC)),
+				(RENBTC, dollar(RENBTC)),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::Token(TokenSymbol::DOT),
+					DOT,
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(150, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
+					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
 				),
 				(
-					CurrencyId::Token(TokenSymbol::XBTC),
+					XBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(150, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 				(
-					CurrencyId::Token(TokenSymbol::LDOT),
+					LDOT,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(180, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 				(
-					CurrencyId::Token(TokenSymbol::RENBTC),
+					RENBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(150, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(150, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
@@ -367,27 +367,9 @@ fn testnet_genesis(
 			initial_added_liquidity_pools: vec![(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
-					(
-						TradingPair::new(
-							CurrencyId::Token(TokenSymbol::AUSD),
-							CurrencyId::Token(TokenSymbol::DOT),
-						),
-						(1_000_000u128, 2_000_000u128),
-					),
-					(
-						TradingPair::new(
-							CurrencyId::Token(TokenSymbol::AUSD),
-							CurrencyId::Token(TokenSymbol::XBTC),
-						),
-						(1_000_000u128, 2_000_000u128),
-					),
-					(
-						TradingPair::new(
-							CurrencyId::Token(TokenSymbol::AUSD),
-							CurrencyId::Token(TokenSymbol::ACA),
-						),
-						(1_000_000u128, 2_000_000u128),
-					),
+					(TradingPair::new(AUSD, DOT), (1_000_000u128, 2_000_000u128)),
+					(TradingPair::new(AUSD, XBTC), (1_000_000u128, 2_000_000u128)),
+					(TradingPair::new(AUSD, ACA), (1_000_000u128, 2_000_000u128)),
 				],
 			)],
 		}),
@@ -405,28 +387,28 @@ fn mandala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig, Balance,
-		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EVMConfig,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, BabeConfig,
+		Balance, BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, DexConfig, EVMConfig,
 		EnabledTradingPairs, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
 		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
-		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig,
-		VestingConfig, CENTS, DOLLARS,
+		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
+		ACA, AUSD, DOT, LDOT, RENBTC, XBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
-	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
-	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+	let initial_balance: u128 = 1_000_000 * dollar(ACA);
+	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis();
 
 	let balances = initial_authorities
 		.iter()
-		.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
-		.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
+		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
+		.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
 		.chain(
 			get_all_module_accounts()
 				.iter()
@@ -467,7 +449,7 @@ fn mandala_genesis(
 			minimum_validator_count: 1,
 			stakers: initial_authorities
 				.iter()
-				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
+				.map(|x| (x.0.clone(), x.1.clone(), initial_staking, StakerStatus::Validator))
 				.collect(),
 			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
 			slash_reward_fraction: Perbill::from_percent(10),
@@ -507,51 +489,51 @@ fn mandala_genesis(
 		pallet_treasury: Some(Default::default()),
 		orml_tokens: Some(TokensConfig {
 			endowed_accounts: vec![
-				(root_key.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
-				(root_key, CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
+				(root_key.clone(), DOT, 1_000_000 * dollar(DOT)),
+				(root_key, XBTC, 1_000_000 * dollar(XBTC)),
 			],
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::Token(TokenSymbol::XBTC), 5 * CENTS),
-				(CurrencyId::Token(TokenSymbol::RENBTC), 5 * CENTS),
+				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
+				(XBTC, 5 * cent(XBTC)),
+				(RENBTC, 5 * cent(RENBTC)),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::Token(TokenSymbol::DOT),
+					DOT,
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
+					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
 				),
 				(
-					CurrencyId::Token(TokenSymbol::XBTC),
+					XBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
 					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 				(
-					CurrencyId::Token(TokenSymbol::LDOT),
+					LDOT,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(120, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(130, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 				(
-					CurrencyId::Token(TokenSymbol::RENBTC),
+					RENBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
 					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */

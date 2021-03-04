@@ -1,5 +1,5 @@
 use super::utils::{lookup_of_account, set_ausd_balance};
-use crate::{AccountId, Balance, CurrencyId, Runtime, TokenSymbol, Tokens, DOLLARS};
+use crate::{dollar, AccountId, Balance, Runtime, Tokens, AUSD};
 
 use sp_std::prelude::*;
 
@@ -19,29 +19,29 @@ runtime_benchmarks! {
 	}
 
 	transfer {
-		let amount: Balance = DOLLARS.saturating_mul(d);
+		let amount: Balance = d * dollar(AUSD);
 
 		let from = account("from", 0, SEED);
 		set_ausd_balance(&from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
-	}: _(RawOrigin::Signed(from), to_lookup, CurrencyId::Token(TokenSymbol::AUSD), amount)
+	}: _(RawOrigin::Signed(from), to_lookup, AUSD, amount)
 	verify {
-		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(CurrencyId::Token(TokenSymbol::AUSD), &to), amount);
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(AUSD, &to), amount);
 	}
 
 	transfer_all {
-		let amount: Balance = DOLLARS.saturating_mul(d);
+		let amount: Balance = d * dollar(AUSD);
 
 		let from = account("from", 0, SEED);
 		set_ausd_balance(&from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to);
-	}: _(RawOrigin::Signed(from.clone()), to_lookup, CurrencyId::Token(TokenSymbol::AUSD))
+	}: _(RawOrigin::Signed(from.clone()), to_lookup, AUSD)
 	verify {
-		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(CurrencyId::Token(TokenSymbol::AUSD), &from), 0);
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(AUSD, &from), 0);
 	}
 }
 

@@ -7,10 +7,10 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
-	get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CreateClassDeposit,
-	CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts, GetNativeCurrencyId,
-	NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime, SevenDays, System,
-	TokenSymbol, EVM, NFT,
+	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
+	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts,
+	GetNativeCurrencyId, NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime,
+	SevenDays, System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, XBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -150,10 +150,6 @@ fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	Ok(())
 }
 
-fn amount(amount: u128) -> u128 {
-	amount.saturating_mul(Price::accuracy())
-}
-
 fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
@@ -210,61 +206,32 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 fn emergency_shutdown_and_cdp_treasury() {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				2_000_000u128,
-			),
-			(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				8_000_000u128,
-			),
-			(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				1_000_000u128,
-			),
-			(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::DOT),
-				200_000_000u128,
-			),
-			(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::LDOT),
-				40_000_000u128,
-			),
+			(AccountId::from(ALICE), AUSD, 2_000_000u128),
+			(AccountId::from(BOB), AUSD, 8_000_000u128),
+			(AccountId::from(BOB), XBTC, 1_000_000u128),
+			(AccountId::from(BOB), DOT, 200_000_000u128),
+			(AccountId::from(BOB), LDOT, 40_000_000u128),
 		])
 		.build()
 		.execute_with(|| {
 			assert_ok!(CdpTreasuryModule::deposit_collateral(
 				&AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				1_000_000
 			));
 			assert_ok!(CdpTreasuryModule::deposit_collateral(
 				&AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::DOT),
+				DOT,
 				200_000_000
 			));
 			assert_ok!(CdpTreasuryModule::deposit_collateral(
 				&AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::LDOT),
+				LDOT,
 				40_000_000
 			));
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::XBTC)),
-				1_000_000
-			);
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::DOT)),
-				200_000_000
-			);
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::LDOT)),
-				40_000_000
-			);
+			assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 1_000_000);
+			assert_eq!(CdpTreasuryModule::total_collaterals(DOT), 200_000_000);
+			assert_eq!(CdpTreasuryModule::total_collaterals(LDOT), 40_000_000);
 
 			assert_noop!(
 				EmergencyShutdownModule::refund_collaterals(origin_of(AccountId::from(ALICE)), 1_000_000),
@@ -281,34 +248,13 @@ fn emergency_shutdown_and_cdp_treasury() {
 				1_000_000
 			));
 
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::XBTC)),
-				900_000
-			);
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::DOT)),
-				180_000_000
-			);
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::LDOT)),
-				36_000_000
-			);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
-				1_000_000
-			);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::XBTC), &AccountId::from(ALICE)),
-				100_000
-			);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::DOT), &AccountId::from(ALICE)),
-				20_000_000
-			);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::LDOT), &AccountId::from(ALICE)),
-				4_000_000
-			);
+			assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 900_000);
+			assert_eq!(CdpTreasuryModule::total_collaterals(DOT), 180_000_000);
+			assert_eq!(CdpTreasuryModule::total_collaterals(LDOT), 36_000_000);
+			assert_eq!(Currencies::free_balance(AUSD, &AccountId::from(ALICE)), 1_000_000);
+			assert_eq!(Currencies::free_balance(XBTC, &AccountId::from(ALICE)), 100_000);
+			assert_eq!(Currencies::free_balance(DOT, &AccountId::from(ALICE)), 20_000_000);
+			assert_eq!(Currencies::free_balance(LDOT, &AccountId::from(ALICE)), 4_000_000);
 		});
 }
 
@@ -316,76 +262,72 @@ fn emergency_shutdown_and_cdp_treasury() {
 fn liquidate_cdp() {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), CurrencyId::Token(TokenSymbol::XBTC), amount(10)),
-			(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(1_000_000),
-			),
-			(AccountId::from(BOB), CurrencyId::Token(TokenSymbol::XBTC), amount(101)),
+			(AccountId::from(ALICE), XBTC, 10 * dollar(XBTC)),
+			(AccountId::from(BOB), AUSD, 1_000_000 * dollar(AUSD)),
+			(AccountId::from(BOB), XBTC, 101 * dollar(XBTC)),
 		])
 		.build()
 		.execute_with(|| {
 			assert_ok!(set_oracle_price(vec![(
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				Price::saturating_from_rational(10000, 1)
 			)])); // 10000 usd
 
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(100),
-				amount(1_000_000),
+				XBTC,
+				AUSD,
+				100 * dollar(XBTC),
+				1_000_000 * dollar(AUSD),
 				false,
 			));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
 				<Runtime as frame_system::Config>::Origin::root(),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				Change::NewValue(Some(Rate::zero())),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
 				Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
-				Change::NewValue(amount(1000000)),
+				Change::NewValue(1_000_000 * dollar(AUSD)),
 			));
 
 			assert_ok!(CdpEngineModule::adjust_position(
 				&AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(10) as i128,
-				amount(500_000) as i128
+				XBTC,
+				(10 * dollar(XBTC)) as i128,
+				(500_000 * dollar(AUSD)) as i128,
 			));
 
 			assert_ok!(CdpEngineModule::adjust_position(
 				&AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(1) as i128,
-				amount(50_000) as i128
+				XBTC,
+				dollar(XBTC) as i128,
+				(50_000 * dollar(AUSD)) as i128,
 			));
 
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).debit,
-				amount(500_000)
+				LoansModule::positions(XBTC, AccountId::from(ALICE)).debit,
+				500_000 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).collateral,
-				amount(10)
+				LoansModule::positions(XBTC, AccountId::from(ALICE)).collateral,
+				10 * dollar(XBTC)
 			);
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(BOB)).debit,
-				amount(50_000)
+				LoansModule::positions(XBTC, AccountId::from(BOB)).debit,
+				50_000 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(BOB)).collateral,
-				amount(1)
+				LoansModule::positions(XBTC, AccountId::from(BOB)).collateral,
+				dollar(XBTC)
 			);
 			assert_eq!(CdpTreasuryModule::debit_pool(), 0);
 			assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
 				<Runtime as frame_system::Config>::Origin::root(),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
 				Change::NoChange,
@@ -393,60 +335,42 @@ fn liquidate_cdp() {
 				Change::NoChange,
 			));
 
-			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC)
-			));
+			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(ALICE), XBTC));
 
 			let liquidate_alice_xbtc_cdp_event =
 				Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
-					CurrencyId::Token(TokenSymbol::XBTC),
+					XBTC,
 					AccountId::from(ALICE),
-					amount(10),
-					amount(50_000),
+					10 * dollar(XBTC),
+					50_000 * dollar(AUSD),
 					LiquidationStrategy::Auction,
 				));
 			assert!(SystemModule::events()
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
 
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).debit,
-				0
-			);
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).collateral,
-				0
-			);
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(ALICE)).collateral, 0);
 			assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
-			assert_eq!(CdpTreasuryModule::debit_pool(), amount(50_000));
+			assert_eq!(CdpTreasuryModule::debit_pool(), 50_000 * dollar(AUSD));
 
-			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::XBTC)
-			));
+			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(BOB), XBTC));
 
 			let liquidate_bob_xbtc_cdp_event = Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				AccountId::from(BOB),
-				amount(1),
-				amount(5_000),
+				dollar(XBTC),
+				5_000 * dollar(AUSD),
 				LiquidationStrategy::Exchange,
 			));
 			assert!(SystemModule::events()
 				.iter()
 				.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
 
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(BOB)).debit,
-				0
-			);
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(BOB)).collateral,
-				0
-			);
-			assert_eq!(CdpTreasuryModule::debit_pool(), amount(55_000));
-			assert!(CdpTreasuryModule::surplus_pool() >= amount(5_000));
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(BOB)).debit, 0);
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(BOB)).collateral, 0);
+			assert_eq!(CdpTreasuryModule::debit_pool(), 55_000 * dollar(AUSD));
+			assert!(CdpTreasuryModule::surplus_pool() >= 5_000 * dollar(AUSD));
 		});
 }
 
@@ -454,36 +378,14 @@ fn liquidate_cdp() {
 fn test_dex_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				(1_000_000_000_000_000_000u128),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				(1_000_000_000_000_000_000u128),
-			),
-			(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				(1_000_000_000_000_000_000u128),
-			),
-			(
-				AccountId::from(BOB),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				(1_000_000_000_000_000_000u128),
-			),
+			(AccountId::from(ALICE), AUSD, (1_000_000_000_000_000_000u128)),
+			(AccountId::from(ALICE), XBTC, (1_000_000_000_000_000_000u128)),
+			(AccountId::from(BOB), AUSD, (1_000_000_000_000_000_000u128)),
+			(AccountId::from(BOB), XBTC, (1_000_000_000_000_000_000u128)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(
-				DexModule::get_liquidity_pool(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD)
-				),
-				(0, 0)
-			);
+			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (0, 0));
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
 				0
@@ -497,21 +399,14 @@ fn test_dex_module() {
 			);
 
 			assert_noop!(
-				DexModule::add_liquidity(
-					origin_of(AccountId::from(ALICE)),
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD),
-					0,
-					10000000,
-					false,
-				),
+				DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), XBTC, AUSD, 0, 10000000, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(ALICE)),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				CurrencyId::Token(TokenSymbol::AUSD),
+				XBTC,
+				AUSD,
 				10000,
 				10000000,
 				false,
@@ -519,9 +414,9 @@ fn test_dex_module() {
 
 			let add_liquidity_event = Event::module_dex(module_dex::Event::AddLiquidity(
 				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::AUSD),
+				AUSD,
 				10000000,
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				10000,
 				10000000,
 			));
@@ -529,13 +424,7 @@ fn test_dex_module() {
 				.iter()
 				.any(|record| record.event == add_liquidity_event));
 
-			assert_eq!(
-				DexModule::get_liquidity_pool(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD)
-				),
-				(10000, 10000000)
-			);
+			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10000, 10000000));
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
 				10000000
@@ -549,19 +438,13 @@ fn test_dex_module() {
 			);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				CurrencyId::Token(TokenSymbol::AUSD),
+				XBTC,
+				AUSD,
 				1,
 				1000,
 				false,
 			));
-			assert_eq!(
-				DexModule::get_liquidity_pool(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD)
-				),
-				(10001, 10001000)
-			);
+			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
 				10001000
@@ -574,23 +457,10 @@ fn test_dex_module() {
 				1000
 			);
 			assert_noop!(
-				DexModule::add_liquidity(
-					origin_of(AccountId::from(BOB)),
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD),
-					1,
-					999,
-					false,
-				),
+				DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, AUSD, 1, 999, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
-			assert_eq!(
-				DexModule::get_liquidity_pool(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD)
-				),
-				(10001, 10001000)
-			);
+			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
 				10001000
@@ -604,34 +474,22 @@ fn test_dex_module() {
 			);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				CurrencyId::Token(TokenSymbol::AUSD),
+				XBTC,
+				AUSD,
 				2,
 				1000,
 				false,
 			));
-			assert_eq!(
-				DexModule::get_liquidity_pool(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD)
-				),
-				(10002, 10002000)
-			);
+			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10002, 10002000));
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				CurrencyId::Token(TokenSymbol::AUSD),
+				XBTC,
+				AUSD,
 				1,
 				1001,
 				false,
 			));
-			assert_eq!(
-				DexModule::get_liquidity_pool(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					CurrencyId::Token(TokenSymbol::AUSD)
-				),
-				(10003, 10003000)
-			);
+			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10003, 10003000));
 
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
@@ -643,53 +501,46 @@ fn test_dex_module() {
 #[test]
 fn test_honzon_module() {
 	ExtBuilder::default()
-		.balances(vec![(
-			AccountId::from(ALICE),
-			CurrencyId::Token(TokenSymbol::XBTC),
-			amount(1_000),
-		)])
+		.balances(vec![(AccountId::from(ALICE), XBTC, 1_000 * dollar(XBTC))])
 		.build()
 		.execute_with(|| {
-			assert_ok!(set_oracle_price(vec![(
-				CurrencyId::Token(TokenSymbol::XBTC),
-				Price::saturating_from_rational(1, 1)
-			)]));
+			assert_ok!(set_oracle_price(vec![(XBTC, Price::saturating_from_rational(1, 1))]));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
 				<Runtime as frame_system::Config>::Origin::root(),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
 				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
-				Change::NewValue(amount(10000)),
+				Change::NewValue(10_000 * dollar(AUSD)),
 			));
 			assert_ok!(CdpEngineModule::adjust_position(
 				&AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(100) as i128,
-				amount(500) as i128
+				XBTC,
+				(100 * dollar(XBTC)) as i128,
+				(500 * dollar(AUSD)) as i128
 			));
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::XBTC), &AccountId::from(ALICE)),
-				amount(900)
+				Currencies::free_balance(XBTC, &AccountId::from(ALICE)),
+				900 * dollar(XBTC)
 			);
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
-				amount(50)
+				Currencies::free_balance(AUSD, &AccountId::from(ALICE)),
+				50 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).debit,
-				amount(500)
+				LoansModule::positions(XBTC, AccountId::from(ALICE)).debit,
+				500 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).collateral,
-				amount(100)
+				LoansModule::positions(XBTC, AccountId::from(ALICE)).collateral,
+				100 * dollar(XBTC)
 			);
 			assert_eq!(
 				CdpEngineModule::liquidate(
 					<Runtime as frame_system::Config>::Origin::none(),
-					CurrencyId::Token(TokenSymbol::XBTC),
+					XBTC,
 					MultiAddress::Id(AccountId::from(ALICE))
 				)
 				.is_ok(),
@@ -697,7 +548,7 @@ fn test_honzon_module() {
 			);
 			assert_ok!(CdpEngineModule::set_collateral_params(
 				<Runtime as frame_system::Config>::Origin::root(),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
 				Change::NoChange,
@@ -706,26 +557,20 @@ fn test_honzon_module() {
 			));
 			assert_ok!(CdpEngineModule::liquidate(
 				<Runtime as frame_system::Config>::Origin::none(),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				MultiAddress::Id(AccountId::from(ALICE))
 			));
 
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::XBTC), &AccountId::from(ALICE)),
-				amount(900)
+				Currencies::free_balance(XBTC, &AccountId::from(ALICE)),
+				900 * dollar(XBTC)
 			);
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(ALICE)),
-				amount(50)
+				Currencies::free_balance(AUSD, &AccountId::from(ALICE)),
+				50 * dollar(AUSD)
 			);
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).debit,
-				0
-			);
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).collateral,
-				0
-			);
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(ALICE)).collateral, 0);
 		});
 }
 
@@ -733,30 +578,22 @@ fn test_honzon_module() {
 fn test_cdp_engine_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(1000),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(1000),
-			),
+			(AccountId::from(ALICE), AUSD, 1_000 * dollar(AUSD)),
+			(AccountId::from(ALICE), XBTC, 1_000 * dollar(XBTC)),
 		])
 		.build()
 		.execute_with(|| {
 			assert_ok!(CdpEngineModule::set_collateral_params(
 				<Runtime as frame_system::Config>::Origin::root(),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
 				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
-				Change::NewValue(amount(10000)),
+				Change::NewValue(10_000 * dollar(AUSD)),
 			));
 
-			let new_collateral_params = CdpEngineModule::collateral_params(CurrencyId::Token(TokenSymbol::XBTC));
+			let new_collateral_params = CdpEngineModule::collateral_params(XBTC);
 
 			assert_eq!(
 				new_collateral_params.stability_fee,
@@ -774,99 +611,73 @@ fn test_cdp_engine_module() {
 				new_collateral_params.required_collateral_ratio,
 				Some(Ratio::saturating_from_rational(9, 5))
 			);
-			assert_eq!(new_collateral_params.maximum_total_debit_value, amount(10000));
+			assert_eq!(new_collateral_params.maximum_total_debit_value, 10_000 * dollar(AUSD));
 
 			assert_eq!(
 				CdpEngineModule::calculate_collateral_ratio(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					100,
-					50,
-					Price::saturating_from_rational(1, 1)
+					XBTC,
+					100 * dollar(XBTC),
+					50 * dollar(AUSD),
+					Price::saturating_from_rational(1 * dollar(AUSD), dollar(XBTC)),
 				),
 				Ratio::saturating_from_rational(100 * 10, 50)
 			);
 
-			assert_ok!(CdpEngineModule::check_debit_cap(
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(99999)
-			));
+			assert_ok!(CdpEngineModule::check_debit_cap(XBTC, 99_999 * dollar(AUSD)));
 			assert_eq!(
-				CdpEngineModule::check_debit_cap(CurrencyId::Token(TokenSymbol::XBTC), amount(100001)).is_ok(),
+				CdpEngineModule::check_debit_cap(XBTC, 100_001 * dollar(AUSD)).is_ok(),
 				false
 			);
 
 			assert_ok!(CdpEngineModule::adjust_position(
 				&AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(100) as i128,
+				XBTC,
+				(100 * dollar(XBTC)) as i128,
 				0
 			));
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::XBTC), &AccountId::from(ALICE)),
-				amount(900)
+				Currencies::free_balance(XBTC, &AccountId::from(ALICE)),
+				900 * dollar(XBTC)
 			);
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(ALICE)).debit, 0);
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).debit,
-				0
-			);
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).collateral,
-				amount(100)
+				LoansModule::positions(XBTC, AccountId::from(ALICE)).collateral,
+				100 * dollar(XBTC)
 			);
 
 			assert_noop!(
-				CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), CurrencyId::Token(TokenSymbol::XBTC)),
+				CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), XBTC),
 				module_cdp_engine::Error::<Runtime>::NoDebitValue,
 			);
 
 			assert_ok!(set_oracle_price(vec![
-				(
-					CurrencyId::Token(TokenSymbol::AUSD),
-					Price::saturating_from_rational(1, 1)
-				),
-				(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					Price::saturating_from_rational(3, 1)
-				)
+				(AUSD, Price::saturating_from_rational(1, 1)),
+				(XBTC, Price::saturating_from_rational(3, 1))
 			]));
 
 			assert_ok!(CdpEngineModule::adjust_position(
 				&AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
+				XBTC,
 				0,
-				amount(100) as i128
+				(100 * dollar(AUSD)) as i128
 			));
 			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).debit,
-				amount(100)
+				LoansModule::positions(XBTC, AccountId::from(ALICE)).debit,
+				100 * dollar(AUSD)
 			);
 			assert_eq!(CdpTreasuryModule::debit_pool(), 0);
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::XBTC)),
-				0
-			);
-			assert_ok!(CdpEngineModule::settle_cdp_has_debit(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC)
-			));
+			assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 0);
+			assert_ok!(CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), XBTC));
 
-			let settle_cdp_in_debit_event = Event::module_cdp_engine(module_cdp_engine::Event::SettleCDPInDebit(
-				CurrencyId::Token(TokenSymbol::XBTC),
-				AccountId::from(ALICE),
-			));
+			let settle_cdp_in_debit_event =
+				Event::module_cdp_engine(module_cdp_engine::Event::SettleCDPInDebit(XBTC, AccountId::from(ALICE)));
 			assert!(SystemModule::events()
 				.iter()
 				.any(|record| record.event == settle_cdp_in_debit_event));
 
-			assert_eq!(
-				LoansModule::positions(CurrencyId::Token(TokenSymbol::XBTC), AccountId::from(ALICE)).debit,
-				0
-			);
-			assert_eq!(CdpTreasuryModule::debit_pool(), amount(10));
-			assert_eq!(
-				CdpTreasuryModule::total_collaterals(CurrencyId::Token(TokenSymbol::XBTC)),
-				3333333333333333330
-			);
+			assert_eq!(LoansModule::positions(XBTC, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(CdpTreasuryModule::debit_pool(), 10 * dollar(AUSD));
+			assert_eq!(CdpTreasuryModule::total_collaterals(XBTC), 333_333_333);
 		});
 }
 
@@ -876,21 +687,9 @@ fn test_authority_module() {
 
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(1000),
-			),
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Token(TokenSymbol::XBTC),
-				amount(1000),
-			),
-			(
-				DSWFModuleId::get().into_account(),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(1000),
-			),
+			(AccountId::from(ALICE), AUSD, 1_000 * dollar(AUSD)),
+			(AccountId::from(ALICE), XBTC, 1_000 * dollar(XBTC)),
+			(DSWFModuleId::get().into_account(), AUSD, 1000 * dollar(AUSD)),
 		])
 		.build()
 		.execute_with(|| {
@@ -930,8 +729,8 @@ fn test_authority_module() {
 			// DSWF transfer
 			let transfer_call = Call::Currencies(module_currencies::Call::transfer(
 				AccountId::from(BOB).into(),
-				CurrencyId::Token(TokenSymbol::AUSD),
-				amount(500),
+				AUSD,
+				500 * dollar(AUSD),
 			));
 			let dswf_call = Call::Authority(orml_authority::Call::dispatch_as(
 				AuthoritysOriginId::DSWF,
@@ -964,15 +763,12 @@ fn test_authority_module() {
 
 			run_to_block(2);
 			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::Token(TokenSymbol::AUSD),
-					&DSWFModuleId::get().into_account()
-				),
-				amount(500)
+				Currencies::free_balance(AUSD, &DSWFModuleId::get().into_account()),
+				500 * dollar(AUSD)
 			);
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Token(TokenSymbol::AUSD), &AccountId::from(BOB)),
-				amount(500)
+				Currencies::free_balance(AUSD, &AccountId::from(BOB)),
+				500 * dollar(AUSD)
 			);
 
 			// delay < SevenDays
@@ -1119,14 +915,10 @@ fn test_authority_module() {
 #[test]
 fn test_nft_module() {
 	ExtBuilder::default()
-		.balances(vec![(
-			AccountId::from(ALICE),
-			CurrencyId::Token(TokenSymbol::ACA),
-			amount(1000),
-		)])
+		.balances(vec![(AccountId::from(ALICE), ACA, 1_000 * dollar(ACA))])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), amount(1000));
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1_000 * dollar(ACA));
 			assert_ok!(NFT::create_class(
 				origin_of(AccountId::from(ALICE)),
 				vec![1],
@@ -1158,7 +950,7 @@ fn test_nft_module() {
 			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
 			assert_eq!(
 				Balances::free_balance(AccountId::from(ALICE)),
-				amount(1000) - (CreateClassDeposit::get() + Proxy::deposit(1u32))
+				1_000 * dollar(ACA) - (CreateClassDeposit::get() + Proxy::deposit(1u32))
 			);
 		});
 }
@@ -1166,15 +958,11 @@ fn test_nft_module() {
 #[test]
 fn test_evm_accounts_module() {
 	ExtBuilder::default()
-		.balances(vec![(
-			bob_account_id(),
-			CurrencyId::Token(TokenSymbol::ACA),
-			amount(1000),
-		)])
+		.balances(vec![(bob_account_id(), ACA, 1_000 * dollar(ACA))])
 		.build()
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(bob_account_id()), 1000000000000000000000);
+			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice()),
@@ -1211,13 +999,13 @@ fn test_evm_accounts_module() {
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
-			(bob_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
+			(alice_account_id(), ACA, 1_000 * dollar(ACA)),
+			(bob_account_id(), ACA, 1_000 * dollar(ACA)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
-			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(alice_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
 
 			let _alice_address = EvmAccounts::eth_address(&alice());
 			let bob_address = EvmAccounts::eth_address(&bob());
@@ -1235,17 +1023,20 @@ fn test_evm_module() {
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(alice_account_id()), 999999896330000000000);
-			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(alice_account_id()), 9_999_998_963_300_000);
+			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
 			let to = EvmAccounts::eth_address(&alice());
 			assert_ok!(Currencies::transfer(
 				Origin::signed(bob_account_id()),
 				MultiAddress::Address20(to.0),
-				CurrencyId::Token(TokenSymbol::ACA),
-				amount(10)
+				ACA,
+				10 * dollar(ACA)
 			));
-			assert_eq!(Balances::free_balance(alice_account_id()), 1009999896330000000000);
-			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000) - amount(10));
+			assert_eq!(Balances::free_balance(alice_account_id()), 10_099_998_963_300_000);
+			assert_eq!(
+				Balances::free_balance(bob_account_id()),
+				1_000 * dollar(ACA) - 10 * dollar(ACA)
+			);
 		});
 }
 
@@ -1254,13 +1045,13 @@ fn test_evm_module() {
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
-			(bob_account_id(), CurrencyId::Token(TokenSymbol::ACA), amount(1000)),
+			(alice_account_id(), ACA, 1_000 * dollar(ACA)),
+			(bob_account_id(), ACA, 1_000 * dollar(ACA)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(alice_account_id()), amount(1000));
-			assert_eq!(Balances::free_balance(bob_account_id()), amount(1000));
+			assert_eq!(Balances::free_balance(alice_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
 
 			use std::fs::{self, File};
 			use std::io::Read;
