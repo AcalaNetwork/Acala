@@ -4570,6 +4570,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
+ "orml-tokens",
  "orml-traits",
  "parity-scale-codec",
  "serde",

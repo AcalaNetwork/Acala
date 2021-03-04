@@ -43,6 +43,30 @@ fn get_price_of_liquid_currency_id() {
 }
 
 #[test]
+fn get_price_of_lp_token_currency_id() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(MockDEX::get_liquidity_pool(AUSD, DOT), (10000, 200));
+		assert_eq!(
+			PricesModule::get_price(LP_AUSD_DOT),
+			None
+		);
+		assert_ok!(Tokens::deposit(LP_AUSD_DOT, &1, 100));
+		assert_eq!(Tokens::total_issuance(LP_AUSD_DOT), 100);
+		assert_eq!(PricesModule::get_price(AUSD), Some(Price::saturating_from_rational(1000000u128, 1)));
+		assert_eq!(
+			PricesModule::get_price(LP_AUSD_DOT),
+			Some(Price::saturating_from_rational(200000000u128, 1))	// 10000/100 * Price::saturating_from_rational(1000000u128, 1) * 2
+		);
+
+		assert_eq!(MockDEX::get_liquidity_pool(BTC, AUSD), (0, 0));
+		assert_eq!(
+			PricesModule::get_price(LP_BTC_AUSD),
+			None
+		);
+	});
+}
+
+#[test]
 fn get_relative_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(

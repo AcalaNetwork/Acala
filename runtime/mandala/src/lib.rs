@@ -780,6 +780,8 @@ impl module_prices::Config for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type DEX = Dex;
+	type Currency = Currencies;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
