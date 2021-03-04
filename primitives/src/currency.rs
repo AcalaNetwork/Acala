@@ -45,6 +45,7 @@ macro_rules! create_currency_id {
 			fn decimals(&self) -> u32 {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$vname) => $deci,)*
+					CurrencyId::DEXShare(symbol_0, _symbol_1) => CurrencyId::Token(*symbol_0).decimals(),
 					// default decimals is 18
 					_ => 18,
 				}
