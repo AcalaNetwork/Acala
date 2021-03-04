@@ -1,6 +1,6 @@
 .PHONY: run
 run: githooks
-	SKIP_WASM_BUILD= cargo run --manifest-path bin/acala-dev/Cargo.toml -- --dev -lruntime=debug --instant-sealing
+	cargo run --manifest-path bin/acala-dev/Cargo.toml -- --dev -lruntime=debug --instant-sealing
 
 .PHONY: run-eth
 run-eth: githooks
