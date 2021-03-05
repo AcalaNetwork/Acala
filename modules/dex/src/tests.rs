@@ -390,15 +390,15 @@ fn add_provision_work() {
 			);
 			assert_eq!(
 				Tokens::total_issuance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap()),
-				2_000_000_000_000_000u128
+				4_000_000_000_000_000u128
 			);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
-				1_500_000_000_000_000u128
+				3_000_000_000_000_000u128
 			);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
-				500_000_000_000_000,
+				1_000_000_000_000_000,
 			);
 			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, ALICE), (0, 0));
 			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
@@ -411,7 +411,7 @@ fn add_provision_work() {
 				AUSD_DOT_PAIR,
 				1_000_000_000_000_000u128,
 				2_000_000_000_000_000u128,
-				2_000_000_000_000_000u128,
+				4_000_000_000_000_000u128,
 			));
 			assert!(System::events()
 				.iter()
@@ -1158,7 +1158,7 @@ fn initialize_added_liquidity_pools_genesis_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 3000000);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
-				2000000
+				4000000
 			);
 		});
 }

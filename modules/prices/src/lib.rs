@@ -138,13 +138,10 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 	/// get the exchange rate of specific currency to USD
 	/// Note: this returns the price for 1 basic unit
 	fn get_price(currency_id: CurrencyId) -> Option<Price> {
-		let stable_currency_id = T::GetStableCurrencyId::get();
-		let liquid_currency_id = T::GetLiquidCurrencyId::get();
-
-		let maybe_feed_price = if currency_id == stable_currency_id {
+		let maybe_feed_price = if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, return fixed price
 			Some(T::StableCurrencyFixedPrice::get())
-		} else if currency_id == liquid_currency_id {
+		} else if currency_id == T::GetLiquidCurrencyId::get() {
 			// if is homa liquid currency, return the product of staking currency price and
 			// liquid/staking exchange rate.
 			return Self::get_price(T::GetStakingCurrencyId::get())
