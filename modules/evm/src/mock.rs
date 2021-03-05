@@ -72,7 +72,7 @@ impl pallet_timestamp::Config for Test {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> u64 {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 {
 		Default::default()
 	};
 }
