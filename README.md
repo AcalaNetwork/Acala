@@ -143,3 +143,20 @@ make update
 ```
 
 __Note:__ All build command from Makefile are designed for local development purposes and hence have `SKIP_WASM_BUILD` enabled to speed up build time and use `--execution native` to only run use native execution mode.
+
+# 6. Bench Bot
+Bench bot can take care of syncing branch with `master` and generating WeightInfos for module or runtime.
+
+## Generate module weights
+
+Comment on a PR `/bench runtime module <module_name>` i.e.: `module_currencies`
+
+Bench bot will do the benchmarking, generate `weights.rs` file push changes into your branch.
+
+## Generate runtime weights
+
+Comment on a PR `/bench runtime <runtime> <module_name>` i.e.: `/bench runtime mandala module_currencies`.
+
+To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *` 
+
+Bench bot will do the benchmarking, generate weights file push changes into your branch.
