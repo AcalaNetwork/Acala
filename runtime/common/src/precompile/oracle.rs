@@ -1,4 +1,4 @@
-use frame_support::{debug, sp_runtime::FixedPointNumber};
+use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use primitives::{evm::AddressMapping as AddressMappingT, CurrencyId, Moment};
 use sp_core::U256;
@@ -47,7 +47,7 @@ where
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		//TODO: evaluate cost
 
-		debug::debug!(target: "evm", "input: {:?}", input);
+		log::debug!(target: "evm", "input: {:?}", input);
 
 		let input = Input::<Action, AccountId, AddressMapping>::new(input);
 

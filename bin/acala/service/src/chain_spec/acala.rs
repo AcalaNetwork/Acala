@@ -143,58 +143,58 @@ fn acala_genesis(
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	acala_runtime::GenesisConfig {
-		frame_system: Some(SystemConfig {
+		frame_system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
-		}),
-		pallet_indices: Some(IndicesConfig { indices: vec![] }),
-		pallet_balances: Some(BalancesConfig { balances }),
-		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
-		pallet_collective_Instance1: Some(Default::default()),
-		pallet_membership_Instance1: Some(GeneralCouncilMembershipConfig {
+		},
+		pallet_indices: IndicesConfig { indices: vec![] },
+		pallet_balances: BalancesConfig { balances },
+		pallet_sudo: SudoConfig { key: root_key.clone() },
+		pallet_collective_Instance1: Default::default(),
+		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_collective_Instance2: Some(Default::default()),
-		pallet_membership_Instance2: Some(HonzonCouncilMembershipConfig {
+		},
+		pallet_collective_Instance2: Default::default(),
+		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_collective_Instance3: Some(Default::default()),
-		pallet_membership_Instance3: Some(HomaCouncilMembershipConfig {
+		},
+		pallet_collective_Instance3: Default::default(),
+		pallet_membership_Instance3: HomaCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_collective_Instance4: Some(Default::default()),
-		pallet_membership_Instance4: Some(TechnicalCommitteeMembershipConfig {
+		},
+		pallet_collective_Instance4: Default::default(),
+		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_membership_Instance5: Some(OperatorMembershipAcalaConfig {
+		},
+		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
-		}),
-		pallet_membership_Instance6: Some(OperatorMembershipBandConfig {
+		},
+		pallet_membership_Instance6: OperatorMembershipBandConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
-		}),
-		pallet_treasury: Some(Default::default()),
-		orml_tokens: Some(TokensConfig {
+		},
+		pallet_treasury: Default::default(),
+		orml_tokens: TokensConfig {
 			endowed_accounts: vec![
 				(root_key.clone(), DOT, initial_balance),
 				(root_key, XBTC, initial_balance),
 			],
-		}),
-		orml_vesting: Some(VestingConfig { vesting: vec![] }),
-		module_cdp_treasury: Some(CdpTreasuryConfig {
+		},
+		orml_vesting: VestingConfig { vesting: vec![] },
+		module_cdp_treasury: CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
 				(XBTC, 5 * cent(XBTC)),
 				(RENBTC, 5 * cent(RENBTC)),
 			],
-		}),
-		module_cdp_engine: Some(CdpEngineConfig {
+		},
+		module_cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![
 				(
 					DOT,
@@ -230,17 +230,17 @@ fn acala_genesis(
 				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
-		}),
-		orml_oracle_Instance1: Some(AcalaOracleConfig {
+		},
+		orml_oracle_Instance1: AcalaOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
-		}),
-		orml_oracle_Instance2: Some(BandOracleConfig {
+		},
+		orml_oracle_Instance2: BandOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
-		}),
-		module_evm: Some(Default::default()),
-		module_staking_pool: Some(StakingPoolConfig {
+		},
+		module_evm: Default::default(),
+		module_staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
 				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
@@ -248,18 +248,18 @@ fn acala_genesis(
 				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
 				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
 			},
-		}),
-		module_dex: Some(DexConfig {
+		},
+		module_dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 			initial_added_liquidity_pools: vec![],
-		}),
-		parachain_info: Some(ParachainInfoConfig {
+		},
+		parachain_info: ParachainInfoConfig {
 			parachain_id: 666.into(),
-		}),
-		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
+		},
+		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-		}),
-		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
+		},
+		orml_nft: OrmlNFTConfig { tokens: vec![] },
 	}
 }

@@ -1,5 +1,5 @@
 use super::input::{Input, InputT};
-use frame_support::debug;
+use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::DEXManager;
 use primitives::{evm::AddressMapping as AddressMappingT, Balance, CurrencyId};
@@ -47,7 +47,7 @@ where
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		//TODO: evaluate cost
 
-		debug::debug!(target: "evm", "input: {:?}", input);
+		log::debug!(target: "evm", "input: {:?}", input);
 
 		let input = Input::<Action, AccountId, AddressMapping>::new(input);
 

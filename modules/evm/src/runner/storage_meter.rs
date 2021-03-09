@@ -1,4 +1,4 @@
-use frame_support::debug;
+use frame_support::log;
 use sp_core::H160;
 use sp_runtime::{DispatchError, DispatchResult};
 
@@ -29,7 +29,7 @@ impl<'handler> StorageMeter<'handler> {
 		contract: H160,
 		limit: u32,
 	) -> Result<Self, DispatchError> {
-		debug::trace!(
+		log::trace!(
 			target: "evm",
 			"StorageMeter: create: contract {:?} limit {:?}",
 			contract, limit
@@ -75,7 +75,7 @@ impl<'handler> StorageMeter<'handler> {
 	}
 
 	pub fn charge(&mut self, storage: u32) -> DispatchResult {
-		debug::trace!(
+		log::trace!(
 			target: "evm",
 			"StorageMeter: charge: storage {:?}",
 			storage
@@ -93,7 +93,7 @@ impl<'handler> StorageMeter<'handler> {
 	}
 
 	pub fn uncharge(&mut self, storage: u32) -> DispatchResult {
-		debug::trace!(
+		log::trace!(
 			target: "evm",
 			"StorageMeter: uncharge: storage {:?}",
 			storage
@@ -106,7 +106,7 @@ impl<'handler> StorageMeter<'handler> {
 	}
 
 	pub fn refund(&mut self, storage: u32) -> DispatchResult {
-		debug::trace!(
+		log::trace!(
 			target: "evm",
 			"StorageMeter: refund: storage {:?}",
 			storage
@@ -119,7 +119,7 @@ impl<'handler> StorageMeter<'handler> {
 	}
 
 	pub fn finish(mut self) -> DispatchResult {
-		debug::trace!(
+		log::trace!(
 			target: "evm",
 			"StorageMeter: finish: used {:?} refunded {:?}",
 			self.total_used, self.total_refunded
