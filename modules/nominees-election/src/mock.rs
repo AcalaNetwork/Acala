@@ -122,7 +122,7 @@ construct_runtime!(
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		NomineesElectionModule: nominees::{Module, Call, Storage},
 		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
 		OrmlCurrencies: orml_currencies::{Module, Call, Event<T>},
 	}
 );
