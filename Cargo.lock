@@ -573,9 +573,9 @@ checksum = "e91831deabf0d6d7ec49552e489aed63b7456a7a3c46cff62adad428110b0af0"
 
 [[package]]
 name = "async-trait"
-version = "0.1.47"
+version = "0.1.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e098e9c493fdf92832223594d9a164f96bdf17ba81a42aff86f85c76768726a"
+checksum = "36ea56748e10732c49404c153638a15ec3d6211ec5ff35d9bb20e13b93576adf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1944,8 +1944,7 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 [[package]]
 name = "evm"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0467250a12bb144ad7b2f41e03e8675e38b971ab73f6d42ede6b78af07657e7b"
+source = "git+https://github.com/rust-blockchain/evm.git?branch=master#8e9f459674c1f72ff770d7d826bbfd77601619a2"
 dependencies = [
  "ethereum",
  "evm-core",
@@ -1962,8 +1961,7 @@ dependencies = [
 [[package]]
 name = "evm-core"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f0db0394d7b497bf97be3d9ece9c828f8b7670a065fc9f3106c9598cce6556d"
+source = "git+https://github.com/rust-blockchain/evm.git?branch=master#8e9f459674c1f72ff770d7d826bbfd77601619a2"
 dependencies = [
  "funty",
  "parity-scale-codec",
@@ -1974,8 +1972,7 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c617616408f87be6826bda72cee7625aa8cbc09b759f05b1dccd329fb61b2077"
+source = "git+https://github.com/rust-blockchain/evm.git?branch=master#8e9f459674c1f72ff770d7d826bbfd77601619a2"
 dependencies = [
  "evm-core",
  "evm-runtime",
@@ -2011,8 +2008,7 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8447504daa86bc5a7ae982b9b5c53225aa0ebcfba636b785cf0f53406eaa4d87"
+source = "git+https://github.com/rust-blockchain/evm.git?branch=master#8e9f459674c1f72ff770d7d826bbfd77601619a2"
 dependencies = [
  "evm-core",
  "primitive-types",

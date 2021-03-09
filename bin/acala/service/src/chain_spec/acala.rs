@@ -98,13 +98,12 @@ fn acala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance, BalancesConfig,
-		BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs,
-		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
-		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
-		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
-		XBTC,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig,
+		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
+		RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+		TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC, XBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -117,6 +116,32 @@ fn acala_genesis(
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
+	let balances = initial_authorities
+		.iter()
+		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
+		.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
+		.chain(
+			get_all_module_accounts()
+				.iter()
+				.map(|x| (x.clone(), existential_deposit)),
+		)
+		.chain(airdrop_accounts)
+		.fold(
+			BTreeMap::<AccountId, Balance>::new(),
+			|mut acc, (account_id, amount)| {
+				if let Some(balance) = acc.get_mut(&account_id) {
+					*balance = balance
+						.checked_add(amount)
+						.expect("balance cannot overflow when building genesis");
+				} else {
+					acc.insert(account_id.clone(), amount);
+				}
+				acc
+			},
+		)
+		.into_iter()
+		.collect::<Vec<(AccountId, Balance)>>();
+
 	acala_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
@@ -124,33 +149,7 @@ fn acala_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		pallet_indices: Some(IndicesConfig { indices: vec![] }),
-		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts
-				.iter()
-				.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
-				.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), existential_deposit)),
-				)
-				.chain(airdrop_accounts)
-				.fold(
-					BTreeMap::<AccountId, Balance>::new(),
-					|mut acc, (account_id, amount)| {
-						if let Some(balance) = acc.get_mut(&account_id) {
-							*balance = balance
-								.checked_add(amount)
-								.expect("balance cannot overflow when building genesis");
-						} else {
-							acc.insert(account_id.clone(), amount);
-						}
-						acc
-					},
-				)
-				.into_iter()
-				.collect::<Vec<(AccountId, Balance)>>(),
-		}),
+		pallet_balances: Some(BalancesConfig { balances }),
 		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
 		pallet_collective_Instance1: Some(Default::default()),
 		pallet_membership_Instance1: Some(GeneralCouncilMembershipConfig {

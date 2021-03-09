@@ -693,9 +693,9 @@ impl orml_authority::Config for Runtime {
 parameter_types! {
 	pub CandidacyBond: Balance = 10 * dollar(LDOT);
 	// 1 storage item created, key size is 32 bytes, value size is 16+16.
-	pub VotingBondBase: Balance = 1 * 15 * cent(LDOT) + 64 * 6 * cent(LDOT);
+	pub VotingBondBase: Balance = deposit(1, 64, LDOT);
 	// additional data per vote is 32 bytes (account id).
-	pub VotingBondFactor: Balance = 32 * 6 * cent(LDOT);
+	pub VotingBondFactor: Balance = deposit(0, 32, LDOT);
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 7;

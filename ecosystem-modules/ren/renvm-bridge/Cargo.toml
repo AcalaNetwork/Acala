@@ -29,6 +29,8 @@ std = [
 	"frame-system/std",
 	"frame-support/std",
 	"sp-std/std",
+	"sp-core/std",
+	"sp-io/std",
 	"sp-runtime/std",
 	"orml-traits/std",
 	"orml-tokens/std",

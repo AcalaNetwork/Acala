@@ -106,6 +106,12 @@ x25519-dalek = { opt-level = 3 }
 yamux = { opt-level = 3 }
 zeroize = { opt-level = 3 }
 
+[patch.crates-io]
+evm = { git = "https://github.com/rust-blockchain/evm.git", branch = "master" }
+evm-core = { git = "https://github.com/rust-blockchain/evm.git", branch = "master" }
+evm-gasometer = { git = "https://github.com/rust-blockchain/evm.git", branch = "master" }
+evm-runtime = { git = "https://github.com/rust-blockchain/evm.git", branch = "master" }
+
 # # [patch.crates-io]
 # frame-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
 # frame-benchmarking-cli = { git = "https://github.com/paritytech//substrate", branch = "rococo-v1" }
