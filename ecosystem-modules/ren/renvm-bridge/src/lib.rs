@@ -89,9 +89,9 @@ decl_module! {
 		fn mint(
 			origin,
 			who: T::AccountId,
-			p_hash: [u8; 32],
+			_p_hash: [u8; 32],
 			#[compact] amount: Balance,
-			n_hash: [u8; 32],
+			_n_hash: [u8; 32],
 			sig: EcdsaSignature,
 		) {
 			ensure_none(origin)?;

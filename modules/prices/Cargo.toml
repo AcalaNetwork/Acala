@@ -18,6 +18,7 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 [dev-dependencies]
 sp-core = "3.0.0"
 sp-io = "3.0.0"
+orml-tokens = { path = "../../orml/tokens" }
 
 [features]
 default = ["std"]

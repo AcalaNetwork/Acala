@@ -418,7 +418,7 @@ fn test_dex_module() {
 				10000000,
 				XBTC,
 				10000,
-				10000000,
+				20000000,
 			));
 			assert!(SystemModule::events()
 				.iter()
@@ -427,14 +427,14 @@ fn test_dex_module() {
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10000, 10000000));
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				10000000
+				20000000
 			);
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
 					&AccountId::from(ALICE)
 				),
-				10000000
+				20000000
 			);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
@@ -447,14 +447,14 @@ fn test_dex_module() {
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				10001000
+				20002000
 			);
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
 					&AccountId::from(BOB)
 				),
-				1000
+				2000
 			);
 			assert_noop!(
 				DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, AUSD, 1, 999, false,),
@@ -463,14 +463,14 @@ fn test_dex_module() {
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				10001000
+				20002000
 			);
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
 					&AccountId::from(BOB)
 				),
-				1000
+				2000
 			);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
@@ -493,7 +493,7 @@ fn test_dex_module() {
 
 			assert_eq!(
 				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				10002998
+				20005998
 			);
 		});
 }

@@ -62,7 +62,7 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
 }
@@ -202,7 +202,7 @@ construct_runtime!(
 		AuctionManagerModule: auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		AuctionModule: orml_auction::{Module, Storage, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Config, Event<T>},
+		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Event<T>},
 		DEXModule: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
 	}
 );

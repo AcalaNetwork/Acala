@@ -49,7 +49,7 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
 }
@@ -122,7 +122,7 @@ construct_runtime!(
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		NomineesElectionModule: nominees::{Module, Call, Storage},
 		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
 		OrmlCurrencies: orml_currencies::{Module, Call, Event<T>},
 	}
 );

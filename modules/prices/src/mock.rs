@@ -5,11 +5,11 @@
 use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use orml_traits::DataFeeder;
-use primitives::TokenSymbol;
+use orml_traits::{parameter_type_with_key, DataFeeder};
+use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber};
-use support::ExchangeRate;
+use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchError, FixedPointNumber};
+use support::{ExchangeRate, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -19,6 +19,8 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const LP_BTC_AUSD: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
+pub const LP_AUSD_DOT: CurrencyId = CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::DOT);
 
 mod prices {
 	pub use super::super::*;
@@ -56,11 +58,11 @@ impl frame_system::Config for Runtime {
 pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
-		match currency_id {
-			&AUSD => Some(Price::saturating_from_rational(99, 100)),
-			&BTC => Some(Price::saturating_from_integer(50000)),
-			&DOT => Some(Price::saturating_from_integer(100)),
-			&ACA => Some(Price::zero()),
+		match *currency_id {
+			AUSD => Some(Price::saturating_from_rational(99, 100)),
+			BTC => Some(Price::saturating_from_integer(50000)),
+			DOT => Some(Price::saturating_from_integer(100)),
+			ACA => Some(Price::zero()),
 			_ => None,
 		}
 	}
@@ -77,6 +79,68 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
 		ExchangeRate::saturating_from_rational(1, 2)
 	}
+}
+
+pub struct MockDEX;
+impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
+	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
+		match (currency_id_a, currency_id_b) {
+			(AUSD, DOT) => (10000, 200),
+			_ => (0, 0),
+		}
+	}
+
+	fn get_swap_target_amount(
+		_path: &[CurrencyId],
+		_supply_amount: Balance,
+		_price_impact_limit: Option<Ratio>,
+	) -> Option<Balance> {
+		unimplemented!()
+	}
+
+	fn get_swap_supply_amount(
+		_path: &[CurrencyId],
+		_target_amount: Balance,
+		_price_impact_limit: Option<Ratio>,
+	) -> Option<Balance> {
+		unimplemented!()
+	}
+
+	fn swap_with_exact_supply(
+		_who: &AccountId,
+		_path: &[CurrencyId],
+		_supply_amount: Balance,
+		_min_target_amount: Balance,
+		_price_impact_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+
+	fn swap_with_exact_target(
+		_who: &AccountId,
+		_path: &[CurrencyId],
+		_target_amount: Balance,
+		_max_supply_amount: Balance,
+		_price_impact_limit: Option<Ratio>,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		unimplemented!()
+	}
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
 }
 
 ord_parameter_types! {
@@ -99,6 +163,8 @@ impl Config for Runtime {
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureSignedBy<One, AccountId>;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
+	type DEX = MockDEX;
+	type Currency = Tokens;
 	type WeightInfo = ();
 }
 
@@ -113,6 +179,7 @@ construct_runtime!(
 	{
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		PricesModule: prices::{Module, Storage, Call, Event<T>},
+		Tokens: orml_tokens::{Module, Call, Storage, Event<T>},
 	}
 );
 
