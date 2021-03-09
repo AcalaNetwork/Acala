@@ -142,7 +142,7 @@ where
 		client.clone(),
 		inherent_data_providers.clone(),
 		&task_manager.spawn_essential_handle(),
-		registry.clone(),
+		registry,
 	)?;
 
 	Ok(PartialComponents {

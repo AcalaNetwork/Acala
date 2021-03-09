@@ -28,15 +28,15 @@ fn get_exec_name() -> Option<String> {
 }
 
 #[cfg(feature = "with-acala-runtime")]
-const CHAIN_NAME: &'static str = "Acala";
+const CHAIN_NAME: &str = "Acala";
 #[cfg(feature = "with-karura-runtime")]
-const CHAIN_NAME: &'static str = "Karura";
+const CHAIN_NAME: &str = "Karura";
 #[cfg(feature = "with-mandala-runtime")]
-const CHAIN_NAME: &'static str = "Mandala";
+const CHAIN_NAME: &str = "Mandala";
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		format!("{} Node", CHAIN_NAME).into()
+		format!("{} Node", CHAIN_NAME)
 	}
 
 	fn impl_version() -> String {
@@ -147,7 +147,7 @@ impl SubstrateCli for Cli {
 
 impl SubstrateCli for RelayChainCli {
 	fn impl_name() -> String {
-		format!("{} Parachain Collator", CHAIN_NAME).into()
+		format!("{} Parachain Collator", CHAIN_NAME)
 	}
 
 	fn impl_version() -> String {
@@ -162,7 +162,6 @@ impl SubstrateCli for RelayChainCli {
 		rococo-collator [parachain-args] -- [relaychain-args]",
 			CHAIN_NAME
 		)
-		.into()
 	}
 
 	fn author() -> String {
@@ -178,7 +177,7 @@ impl SubstrateCli for RelayChainCli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name().to_string()].iter()).load_spec(id)
+		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
 	}
 
 	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -373,14 +372,14 @@ pub fn run() -> sc_cli::Result<()> {
 				// TODO
 				let key = sp_core::Pair::generate().0;
 
-				let extension = chain_spec::Extensions::try_get(&config.chain_spec);
+				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
 				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
 				let para_id = extension.map(|e| e.para_id);
 
 				let polkadot_cli = RelayChainCli::new(
 					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
 					relay_chain_id,
-					[RelayChainCli::executable_name().to_string()]
+					[RelayChainCli::executable_name()]
 						.iter()
 						.chain(cli.relaychain_args.iter()),
 				);
