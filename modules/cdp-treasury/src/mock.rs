@@ -210,7 +210,7 @@ construct_runtime!(
 		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Config, Event<T>},
 		Currencies: orml_currencies::{Module, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
 		DEXModule: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
 	}
 );

@@ -526,19 +526,30 @@ impl<T: Config> Pallet<T> {
 				&& (provision_parameters.accumulated_provision.0 >= provision_parameters.target_provision.0
 					|| provision_parameters.accumulated_provision.1 >= provision_parameters.target_provision.1)
 			{
-				// calculate initial price
-				let initial_price_0_in_1: Price = Price::checked_from_rational(
-					provision_parameters.accumulated_provision.1,
-					provision_parameters.accumulated_provision.0,
-				)
-				.unwrap_or_default();
-
 				let lp_share_currency_id = trading_pair.get_dex_share_currency_id().expect("shouldn't be invalid!");
 				let mut total_shares_issued: Balance = Default::default();
 				for (who, contribution) in ProvisioningPool::<T>::drain_prefix(trading_pair) {
-					let share_amount = initial_price_0_in_1
-						.saturating_mul_int(contribution.0)
-						.saturating_add(contribution.1);
+					let share_amount = if provision_parameters.accumulated_provision.0
+						> provision_parameters.accumulated_provision.1
+					{
+						let initial_price_1_in_0: Price = Price::checked_from_rational(
+							provision_parameters.accumulated_provision.0,
+							provision_parameters.accumulated_provision.1,
+						)
+						.unwrap_or_default();
+						initial_price_1_in_0
+							.saturating_mul_int(contribution.1)
+							.saturating_add(contribution.0)
+					} else {
+						let initial_price_0_in_1: Price = Price::checked_from_rational(
+							provision_parameters.accumulated_provision.1,
+							provision_parameters.accumulated_provision.0,
+						)
+						.unwrap_or_default();
+						initial_price_0_in_1
+							.saturating_mul_int(contribution.0)
+							.saturating_add(contribution.1)
+					};
 
 					// issue shares to contributor
 					if T::Currency::deposit(lp_share_currency_id, &who, share_amount).is_ok() {
@@ -671,10 +682,21 @@ impl<T: Config> Pallet<T> {
 			};
 			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
 				if total_shares.is_zero() {
-					// initialize this liquidity pool, the initial share is equal to the max value
-					// between base currency amount and other currency amount
-					let initial_share = sp_std::cmp::max(max_amount_0, max_amount_1);
-					(max_amount_0, max_amount_1, initial_share)
+					let share_amount = if max_amount_0 > max_amount_1 {
+						let initial_price_1_in_0: Price =
+							Price::checked_from_rational(max_amount_0, max_amount_1).unwrap_or_default();
+						initial_price_1_in_0
+							.saturating_mul_int(max_amount_1)
+							.saturating_add(max_amount_0)
+					} else {
+						let initial_price_0_in_1: Price =
+							Price::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default();
+						initial_price_0_in_1
+							.saturating_mul_int(max_amount_0)
+							.saturating_add(max_amount_1)
+					};
+
+					(max_amount_0, max_amount_1, share_amount)
 				} else {
 					let price_0_1 = Price::checked_from_rational(*pool_1, *pool_0).unwrap_or_default();
 					let input_price_0_1 = Price::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default();

@@ -398,7 +398,7 @@ fn add_provision_work() {
 			);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
-				1_000_000_000_000_000u128
+				1_000_000_000_000_000,
 			);
 			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, ALICE), (0, 0));
 			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
@@ -651,7 +651,7 @@ fn add_liquidity_work() {
 				5_000_000_000_000,
 				DOT,
 				1_000_000_000_000,
-				5_000_000_000_000,
+				10_000_000_000_000,
 			));
 			assert!(System::events()
 				.iter()
@@ -665,7 +665,7 @@ fn add_liquidity_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 1_000_000_000_000);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
-				5_000_000_000_000
+				10_000_000_000_000
 			);
 			assert_eq!(
 				Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
@@ -698,7 +698,7 @@ fn add_liquidity_work() {
 				40_000_000_000_000,
 				DOT,
 				8_000_000_000_000,
-				40_000_000_000_000,
+				80_000_000_000_000,
 			));
 			assert!(System::events()
 				.iter()
@@ -716,7 +716,7 @@ fn add_liquidity_work() {
 			);
 			assert_eq!(
 				Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
-				40_000_000_000_000
+				80_000_000_000_000
 			);
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 999_960_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 999_992_000_000_000_000);
@@ -758,7 +758,7 @@ fn remove_liquidity_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 1_000_000_000_000);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
-				5_000_000_000_000
+				10_000_000_000_000
 			);
 			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_995_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &ALICE), 999_999_000_000_000_000);
@@ -767,7 +767,7 @@ fn remove_liquidity_work() {
 				Origin::signed(ALICE),
 				AUSD,
 				DOT,
-				4_000_000_000_000,
+				8_000_000_000_000,
 				false,
 			));
 			let remove_liquidity_event_1 = Event::dex(crate::Event::RemoveLiquidity(
@@ -776,7 +776,7 @@ fn remove_liquidity_work() {
 				4_000_000_000_000,
 				DOT,
 				800_000_000_000,
-				4_000_000_000_000,
+				8_000_000_000_000,
 			));
 			assert!(System::events()
 				.iter()
@@ -790,7 +790,7 @@ fn remove_liquidity_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 200_000_000_000);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
-				1_000_000_000_000
+				2_000_000_000_000
 			);
 			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_999_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &ALICE), 999_999_800_000_000_000);
@@ -799,7 +799,7 @@ fn remove_liquidity_work() {
 				Origin::signed(ALICE),
 				AUSD,
 				DOT,
-				1_000_000_000_000,
+				2_000_000_000_000,
 				false,
 			));
 			let remove_liquidity_event_2 = Event::dex(crate::Event::RemoveLiquidity(
@@ -808,7 +808,7 @@ fn remove_liquidity_work() {
 				1_000_000_000_000,
 				DOT,
 				200_000_000_000,
-				1_000_000_000_000,
+				2_000_000_000_000,
 			));
 			assert!(System::events()
 				.iter()
@@ -838,13 +838,13 @@ fn remove_liquidity_work() {
 			);
 			assert_eq!(
 				Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
-				5_000_000_000_000
+				10_000_000_000_000
 			);
 			assert_ok!(DexModule::remove_liquidity(
 				Origin::signed(BOB),
 				AUSD,
 				DOT,
-				1_000_000_000_000,
+				2_000_000_000_000,
 				true,
 			));
 			assert_eq!(
@@ -853,7 +853,7 @@ fn remove_liquidity_work() {
 			);
 			assert_eq!(
 				Tokens::reserved_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &BOB),
-				4_000_000_000_000
+				8_000_000_000_000
 			);
 		});
 }
@@ -1158,7 +1158,7 @@ fn initialize_added_liquidity_pools_genesis_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 3000000);
 			assert_eq!(
 				Tokens::free_balance(AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(), &ALICE),
-				2000000
+				4000000
 			);
 		});
 }

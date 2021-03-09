@@ -233,7 +233,7 @@ construct_runtime!(
 	{
 		System: frame_system::{Module, Call, Storage, Config, Event<T>},
 		IncentivesModule: incentives::{Module, Storage, Call, Event<T>},
-		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		TokensModule: orml_tokens::{Module, Storage, Event<T>},
 		RewardsModule: orml_rewards::{Module, Storage, Call},
 	}
 );

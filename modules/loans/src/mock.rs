@@ -226,9 +226,9 @@ construct_runtime!(
 		System: frame_system::{Module, Call, Storage, Config, Event<T>},
 		LoansModule: loans::{Module, Storage, Call, Event<T>},
 		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
 		Currencies: orml_currencies::{Module, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Config, Event<T>},
+		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Event<T>},
 	}
 );
 
