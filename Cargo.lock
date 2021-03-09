@@ -1621,17 +1621,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecosystem-template"
-version = "0.0.1"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "serde",
- "sp-runtime",
-]
-
-[[package]]
 name = "ed25519"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
