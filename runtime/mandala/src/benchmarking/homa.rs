@@ -1,5 +1,7 @@
-use super::utils::{dollars, set_balance};
-use crate::{AccountId, Currencies, GetStakingCurrencyId, Homa, PolkadotBondingDuration, PolkadotBridge, Runtime};
+use super::utils::set_balance;
+use crate::{
+	dollar, AccountId, Currencies, GetStakingCurrencyId, Homa, PolkadotBondingDuration, PolkadotBridge, Runtime,
+};
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
 use module_homa::RedeemStrategy;
@@ -17,45 +19,50 @@ runtime_benchmarks! {
 	// inject DOT to staking pool and mint LDOT
 	mint {
 		let caller: AccountId = account("caller", 0, SEED);
-		set_balance(GetStakingCurrencyId::get(), &caller, dollars(1_000u128));
-	}: _(RawOrigin::Signed(caller), dollars(1_000u128))
+		let currency_id = GetStakingCurrencyId::get();
+		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
+	}: _(RawOrigin::Signed(caller), 1_000 * dollar(currency_id))
 
 	// redeem DOT from free pool
 	redeem_immediately {
 		let caller: AccountId = account("caller", 0, SEED);
-		set_balance(GetStakingCurrencyId::get(), &caller, dollars(1_000u128));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), dollars(1_000u128))?;
+		let currency_id = GetStakingCurrencyId::get();
+		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
+		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
 		for era_index in 0..=PolkadotBondingDuration::get() {
 			PolkadotBridge::new_era(Default::default());
 		}
-	}: redeem(RawOrigin::Signed(caller.clone()), dollars(1u128), RedeemStrategy::Immediately)
+	}: redeem(RawOrigin::Signed(caller.clone()), dollar(currency_id), RedeemStrategy::Immediately)
 	verify {
-		assert!(<Currencies as MultiCurrency<_>>::total_balance(GetStakingCurrencyId::get(), &caller) > 0);
+		assert!(<Currencies as MultiCurrency<_>>::total_balance(currency_id, &caller) > 0);
 	}
 
 	// redeem DOT by wait for complete unbonding eras
 	redeem_wait_for_unbonding {
 		let caller: AccountId = account("caller", 0, SEED);
-		set_balance(GetStakingCurrencyId::get(), &caller, dollars(1_000u128));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), dollars(1_000u128))?;
+		let currency_id = GetStakingCurrencyId::get();
+		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
+		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
 		PolkadotBridge::new_era(Default::default());
-	}: redeem(RawOrigin::Signed(caller), dollars(1u128), RedeemStrategy::WaitForUnbonding)
+	}: redeem(RawOrigin::Signed(caller), dollar(currency_id), RedeemStrategy::WaitForUnbonding)
 
 	// redeem DOT by claim unbonding
 	redeem_by_claim_unbonding {
 		let caller: AccountId = account("caller", 0, SEED);
-		set_balance(GetStakingCurrencyId::get(), &caller, dollars(1_000u128));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), dollars(1_000u128))?;
+		let currency_id = GetStakingCurrencyId::get();
+		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
+		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
 		PolkadotBridge::new_era(Default::default());
 		PolkadotBridge::new_era(Default::default());
-	}: redeem(RawOrigin::Signed(caller.clone()), dollars(1u128), RedeemStrategy::Target(PolkadotBondingDuration::get() + 2))
+	}: redeem(RawOrigin::Signed(caller.clone()), dollar(currency_id), RedeemStrategy::Target(PolkadotBondingDuration::get() + 2))
 
 	withdraw_redemption {
 		let caller: AccountId = account("caller", 0, SEED);
-		set_balance(GetStakingCurrencyId::get(), &caller, dollars(1_000u128));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), dollars(1_000u128))?;
+		let currency_id = GetStakingCurrencyId::get();
+		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
+		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
 		PolkadotBridge::new_era(Default::default());
-		Homa::redeem(RawOrigin::Signed(caller.clone()).into(), dollars(1u128), RedeemStrategy::WaitForUnbonding)?;
+		Homa::redeem(RawOrigin::Signed(caller.clone()).into(), dollar(currency_id), RedeemStrategy::WaitForUnbonding)?;
 		for era_index in 0..=PolkadotBondingDuration::get() {
 			PolkadotBridge::new_era(Default::default());
 		}

@@ -12,9 +12,8 @@ use codec::Encode;
 use frame_support::{
 	ensure,
 	pallet_prelude::*,
-	traits::{Currency, HandleLifetime, IsType, OnKilledAccount, ReservableCurrency},
+	traits::{Currency, IsType, OnKilledAccount, ReservableCurrency},
 	transactional,
-	weights::Weight,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::account::MergeAccount;
@@ -33,16 +32,12 @@ use sp_runtime::{
 };
 use sp_std::{marker::PhantomData, vec::Vec};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn claim_account() -> Weight;
-	fn claim_default_account() -> Weight;
-}
+pub use weights::WeightInfo;
 
 pub type EcdsaSignature = ecdsa::Signature;
 
@@ -62,9 +57,6 @@ pub mod module {
 
 		/// Merge free balance from source to dest.
 		type MergeAccount: MergeAccount<Self::AccountId>;
-
-		/// Handler to kill account in system.
-		type KillAccount: HandleLifetime<Self::AccountId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -136,11 +128,9 @@ pub mod module {
 
 			// check if the evm padded address already exists
 			let account_id = T::AddressMapping::get_account_id(&eth_address);
-			if frame_system::Account::<T>::contains_key(&account_id) {
+			if frame_system::Module::<T>::account_exists(&account_id) {
 				// merge balance from `evm padded address` to `origin`
 				T::MergeAccount::merge_account(&account_id, &who)?;
-				// finally kill the account
-				T::KillAccount::killed(&account_id);
 			}
 
 			Accounts::<T>::insert(eth_address, &who);

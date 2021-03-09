@@ -207,8 +207,8 @@ fn disable_provisioning_trading_pair_work() {
 					not_before: 10,
 				})
 			);
-			let alice_ref_count_0 = System::refs(&ALICE);
-			let bob_ref_count_0 = System::refs(&BOB);
+			let alice_ref_count_0 = System::consumers(&ALICE);
+			let bob_ref_count_0 = System::consumers(&BOB);
 
 			assert_ok!(DexModule::disable_trading_pair(
 				Origin::signed(ListingOrigin::get()),
@@ -227,8 +227,8 @@ fn disable_provisioning_trading_pair_work() {
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 				TradingPairStatus::<_, _>::NotEnabled
 			);
-			assert_eq!(System::refs(&ALICE), alice_ref_count_0 - 1);
-			assert_eq!(System::refs(&BOB), bob_ref_count_0 - 1);
+			assert_eq!(System::consumers(&ALICE), alice_ref_count_0 - 1);
+			assert_eq!(System::consumers(&BOB), bob_ref_count_0 - 1);
 		});
 }
 
@@ -267,7 +267,7 @@ fn add_provision_work() {
 			assert_eq!(Tokens::free_balance(DOT, &ALICE), 1_000_000_000_000_000_000u128);
 			assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 0);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
-			let alice_ref_count_0 = System::refs(&ALICE);
+			let alice_ref_count_0 = System::consumers(&ALICE);
 
 			assert_ok!(DexModule::add_liquidity(
 				Origin::signed(ALICE),
@@ -297,7 +297,7 @@ fn add_provision_work() {
 				5_000_000_000_000u128
 			);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
-			let alice_ref_count_1 = System::refs(&ALICE);
+			let alice_ref_count_1 = System::consumers(&ALICE);
 			assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
 
 			let add_provision_event_0 =
@@ -310,7 +310,7 @@ fn add_provision_work() {
 			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000u128);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000u128);
-			let bob_ref_count_0 = System::refs(&BOB);
+			let bob_ref_count_0 = System::consumers(&BOB);
 
 			assert_ok!(DexModule::add_liquidity(
 				Origin::signed(BOB),
@@ -343,7 +343,7 @@ fn add_provision_work() {
 				Tokens::free_balance(DOT, &DexModule::account_id()),
 				1_000_000_000_000_000u128
 			);
-			let bob_ref_count_1 = System::refs(&BOB);
+			let bob_ref_count_1 = System::consumers(&BOB);
 			assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
 
 			let add_provision_event_1 =
@@ -406,10 +406,6 @@ fn add_provision_work() {
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 				TradingPairStatus::<_, _>::Enabled
 			);
-			let alice_ref_count_2 = System::refs(&ALICE);
-			assert_eq!(alice_ref_count_2, alice_ref_count_1 - 1 + 1); // deposit dex share currency will add extra 1 ref count
-			let bob_ref_count_2 = System::refs(&BOB);
-			assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1 + 1); // deposit dex share currency will add extra 1 ref count
 
 			let provisioning_to_enabled_event = Event::dex(crate::Event::ProvisioningToEnabled(
 				AUSD_DOT_PAIR,

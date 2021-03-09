@@ -1,4 +1,4 @@
-use crate::{AccountId, Balance, Currencies, CurrencyId, Runtime, TokenSymbol, DOLLARS};
+use crate::{AccountId, Balance, Currencies, CurrencyId, Runtime, TokenSymbol};
 
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_runtime::traits::{SaturatedConversion, StaticLookup};
@@ -21,8 +21,4 @@ pub fn set_ausd_balance(who: &AccountId, balance: Balance) {
 
 pub fn set_aca_balance(who: &AccountId, balance: Balance) {
 	set_balance(CurrencyId::Token(TokenSymbol::ACA), who, balance)
-}
-
-pub fn dollars<T: Into<u128>>(d: T) -> Balance {
-	DOLLARS.saturating_mul(d.into())
 }

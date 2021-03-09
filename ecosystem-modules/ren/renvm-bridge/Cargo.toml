@@ -18,7 +18,7 @@ orml-tokens = { path = "../../../orml/tokens", default-features = false }
 primitives = { package = "acala-primitives", path = "../../../primitives", default-features = false }
 
 [dev-dependencies]
-hex-literal = { version = "0.3.1" }
+hex-literal = "0.3.1"
 orml-currencies = { path = "../../../orml/currencies" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
@@ -29,8 +29,6 @@ std = [
 	"frame-system/std",
 	"frame-support/std",
 	"sp-std/std",
-	"sp-core/std",
-	"sp-io/std",
 	"sp-runtime/std",
 	"orml-traits/std",
 	"orml-tokens/std",

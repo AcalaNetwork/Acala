@@ -1,6 +1,5 @@
 use crate::{
-	Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, CurrencyId, Runtime, System, TokenSymbol,
-	DOLLARS,
+	dollar, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, ACA, AUSD, DOT,
 };
 
 use super::utils::set_balance;
@@ -29,14 +28,14 @@ runtime_benchmarks! {
 	bid_collateral_auction_as_first_bidder {
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
-		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
-		let collateral_amount = DOLLARS.saturating_mul(100);
-		let target_amount = DOLLARS.saturating_mul(10000);
-		let bid_price = DOLLARS.saturating_mul((5000u32 + d).into());
+		let currency_id = DOT;
+		let collateral_amount = 100 * dollar(currency_id);
+		let target_amount = 10_000 * dollar(AUSD);
+		let bid_price = (5_000u128 + d as u128) * dollar(AUSD);
 		let auction_id: AuctionId = 0;
 
 		set_balance(currency_id, &funder, collateral_amount);
-		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &bidder, bid_price);
+		set_balance(AUSD, &bidder, bid_price);
 		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
 		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
@@ -47,16 +46,16 @@ runtime_benchmarks! {
 		let bidder = account("bidder", 0, SEED);
 		let previous_bidder = account("previous_bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
-		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
-		let collateral_amount = DOLLARS.saturating_mul(100);
-		let target_amount = DOLLARS.saturating_mul(10000);
-		let previous_bid_price = DOLLARS.saturating_mul((5000u32 + d).into());
-		let bid_price = DOLLARS.saturating_mul((10000 + d).into());
+		let currency_id = DOT;
+		let collateral_amount = 100 * dollar(currency_id);
+		let target_amount = 10_000 * dollar(AUSD);
+		let previous_bid_price = (5_000u128 + d as u128) * dollar(AUSD);
+		let bid_price = (10_000u128 + d as u128) * dollar(AUSD);
 		let auction_id: AuctionId = 0;
 
 		set_balance(currency_id, &funder, collateral_amount);
-		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &bidder, bid_price);
-		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &previous_bidder, previous_bid_price);
+		set_balance(AUSD, &bidder, bid_price);
+		set_balance(AUSD, &previous_bidder, previous_bid_price);
 		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
 		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
@@ -68,11 +67,11 @@ runtime_benchmarks! {
 	bid_surplus_auction_as_first_bidder {
 		let bidder = account("bidder", 0, SEED);
 
-		let surplus_amount = DOLLARS.saturating_mul(100);
-		let bid_price = DOLLARS.saturating_mul(d);
+		let surplus_amount = 100 * dollar(AUSD);
+		let bid_price = d * dollar(ACA);
 		let auction_id: AuctionId = 0;
 
-		set_balance(CurrencyId::Token(TokenSymbol::ACA), &bidder, bid_price);
+		set_balance(ACA, &bidder, bid_price);
 		AuctionManager::new_surplus_auction(surplus_amount)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
@@ -81,13 +80,13 @@ runtime_benchmarks! {
 	bid_surplus_auction {
 		let bidder = account("bidder", 0, SEED);
 		let previous_bidder = account("previous_bidder", 0, SEED);
-		let surplus_amount = DOLLARS.saturating_mul(100);
-		let bid_price = DOLLARS.saturating_mul((d * 2u32).into());
-		let previous_bid_price = DOLLARS.saturating_mul(d.into());
+		let surplus_amount = 100 * dollar(AUSD);
+		let bid_price = (d as u128 * 2u128) * dollar(ACA);
+		let previous_bid_price = d * dollar(ACA);
 		let auction_id: AuctionId = 0;
 
-		set_balance(CurrencyId::Token(TokenSymbol::ACA), &bidder, bid_price);
-		set_balance(CurrencyId::Token(TokenSymbol::ACA), &previous_bidder, previous_bid_price);
+		set_balance(ACA, &bidder, bid_price);
+		set_balance(ACA, &previous_bidder, previous_bid_price);
 		AuctionManager::new_surplus_auction(surplus_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
@@ -98,11 +97,11 @@ runtime_benchmarks! {
 	bid_debit_auction_as_first_bidder {
 		let bidder = account("bidder", 0, SEED);
 
-		let fix_debit_amount = DOLLARS.saturating_mul(100);
-		let initial_amount = DOLLARS.saturating_mul(10);
+		let fix_debit_amount = 100 * dollar(AUSD);
+		let initial_amount = 10 * dollar(ACA);
 		let auction_id: AuctionId = 0;
 
-		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &bidder, fix_debit_amount);
+		set_balance(AUSD, &bidder, fix_debit_amount);
 		AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, fix_debit_amount)
 
@@ -111,14 +110,14 @@ runtime_benchmarks! {
 	bid_debit_auction {
 		let bidder = account("bidder", 0, SEED);
 		let previous_bidder = account("previous_bidder", 0, SEED);
-		let fix_debit_amount = DOLLARS.saturating_mul(100);
-		let initial_amount = DOLLARS.saturating_mul(10);
+		let fix_debit_amount = 100 * dollar(AUSD);
+		let initial_amount = 10 * dollar(ACA);
 		let previous_bid_price = fix_debit_amount;
 		let bid_price = fix_debit_amount * 2;
 		let auction_id: AuctionId = 0;
 
-		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &bidder, bid_price);
-		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &previous_bidder, previous_bid_price);
+		set_balance(AUSD, &bidder, bid_price);
+		set_balance(AUSD, &previous_bidder, previous_bid_price);
 		AuctionManager::new_debit_auction(initial_amount ,fix_debit_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
@@ -127,10 +126,10 @@ runtime_benchmarks! {
 		let c in ...;
 
 		let bidder = account("bidder", 0, SEED);
-		let fix_debit_amount = DOLLARS.saturating_mul(100);
-		let initial_amount = DOLLARS.saturating_mul(10);
+		let fix_debit_amount = 100 * dollar(AUSD);
+		let initial_amount = 10 * dollar(ACA);
 		let auction_id: AuctionId = 0;
-		set_balance(CurrencyId::Token(TokenSymbol::AUSD), &bidder, fix_debit_amount * c as u128);
+		set_balance(AUSD, &bidder, fix_debit_amount * c as u128);
 
 		System::set_block_number(1);
 		for auction_id in 0 .. c {

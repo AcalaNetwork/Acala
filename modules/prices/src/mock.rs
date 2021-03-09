@@ -3,7 +3,6 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::BlockT;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::DataFeeder;
@@ -59,7 +58,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
 		match currency_id {
 			&AUSD => Some(Price::saturating_from_rational(99, 100)),
-			&BTC => Some(Price::saturating_from_integer(5000)),
+			&BTC => Some(Price::saturating_from_integer(50000)),
 			&DOT => Some(Price::saturating_from_integer(100)),
 			&ACA => Some(Price::zero()),
 			_ => None,
@@ -103,8 +102,8 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, ()>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime where

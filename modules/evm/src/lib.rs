@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::upper_case_acronyms)]
 
 use codec::{Decode, Encode};
 use evm::Config as EvmConfig;
@@ -32,31 +33,25 @@ pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 pub use orml_traits::account::MergeAccount;
-pub use primitives::evm::{Account, AddressMapping, CallInfo, CreateInfo, EvmAddress, Log, Vicinity};
+pub use primitives::{
+	evm::{Account, AddressMapping, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
+	MIRRORED_NFT_ADDRESS_START,
+};
 
 pub mod precompiles;
 pub mod runner;
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
-
-pub trait WeightInfo {
-	fn transfer_maintainer() -> Weight;
-	fn deploy() -> Weight;
-	fn deploy_free() -> Weight;
-	fn enable_contract_development() -> Weight;
-	fn disable_contract_development() -> Weight;
-	fn set_code() -> Weight;
-	fn selfdestruct() -> Weight;
-}
 
 // Initially based on Istanbul hard fork configuration.
 static ACALA_CONFIG: EvmConfig = EvmConfig {
@@ -243,9 +238,7 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		//TODO: use `T::Index` once `Deserialize` bound available https://github.com/paritytech/substrate/pull/8035
-		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, u32>>,
-		pub network_contract_index: u64,
+		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
 	}
 
 	#[cfg(feature = "std")]
@@ -253,7 +246,6 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
-				network_contract_index: Default::default(),
 			}
 		}
 	}
@@ -264,7 +256,7 @@ pub mod module {
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
-				let account_info = <AccountInfo<T>>::new(account.nonce.into(), None);
+				let account_info = <AccountInfo<T>>::new(account.nonce, None);
 				<Accounts<T>>::insert(address, account_info);
 
 				T::Currency::deposit_creating(&account_id, account.balance);
@@ -282,7 +274,7 @@ pub mod module {
 					}
 				}
 			});
-			NetworkContractIndex::<T>::put(self.network_contract_index);
+			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
 		}
 	}
 

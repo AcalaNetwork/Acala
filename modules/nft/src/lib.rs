@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::upper_case_acronyms)]
 
 use enumflags2::BitFlags;
 use frame_support::{
@@ -18,19 +19,12 @@ use sp_runtime::{
 	DispatchResult, ModuleId, RuntimeDebug,
 };
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn create_class() -> Weight;
-	fn mint(i: u32) -> Weight;
-	fn transfer() -> Weight;
-	fn burn() -> Weight;
-	fn destroy_class() -> Weight;
-}
+pub use weights::WeightInfo;
 
 pub type CID = sp_std::vec::Vec<u8>;
 

@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::upper_case_acronyms)]
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
@@ -12,21 +13,12 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn deposit_dex_share() -> Weight;
-	fn withdraw_dex_share() -> Weight;
-	fn claim_rewards() -> Weight;
-	fn update_loans_incentive_rewards(c: u32) -> Weight;
-	fn update_dex_incentive_rewards(c: u32) -> Weight;
-	fn update_homa_incentive_reward() -> Weight;
-	fn update_dex_saving_rates(c: u32) -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// PoolId for various rewards pools
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -115,6 +107,8 @@ pub mod module {
 		DepositDEXShare(T::AccountId, CurrencyId, Balance),
 		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
 		WithdrawDEXShare(T::AccountId, CurrencyId, Balance),
+		/// Claim rewards. \[who, pool_id\]
+		ClaimRewards(T::AccountId, T::PoolId),
 	}
 
 	/// Mapping from collateral currency type to its loans incentive reward
@@ -176,6 +170,7 @@ pub mod module {
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			<orml_rewards::Module<T>>::claim_rewards(&who, pool_id);
+			Self::deposit_event(Event::ClaimRewards(who, pool_id));
 			Ok(().into())
 		}
 

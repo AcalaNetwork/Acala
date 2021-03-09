@@ -216,14 +216,25 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn extrinsic(&self, id: &<Block as BlockT>::Hash) -> sp_blockchain::Result<Option<<Block as BlockT>::Extrinsic>> {
+	fn extrinsic(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<Option<<Block as BlockT>::Extrinsic>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.extrinsic(id),
+			Self::Mandala(client) => client.extrinsic(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.extrinsic(id),
+			Self::Karura(client) => client.extrinsic(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.extrinsic(id),
+			Self::Acala(client) => client.extrinsic(hash),
+		}
+	}
+
+	fn have_extrinsic(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<bool> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.have_extrinsic(hash),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.have_extrinsic(hash),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.have_extrinsic(hash),
 		}
 	}
 }

@@ -13,6 +13,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::collapsible_if)]
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
@@ -26,21 +27,12 @@ use sp_runtime::{
 use sp_std::{convert::TryInto, prelude::*, vec};
 use support::{DEXIncentives, DEXManager, Price, Ratio};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn add_liquidity(deposit: bool) -> Weight;
-	fn remove_liquidity(by_withdraw: bool) -> Weight;
-	fn swap_with_exact_supply() -> Weight;
-	fn swap_with_exact_target() -> Weight;
-	fn list_trading_pair() -> Weight;
-	fn enable_trading_pair() -> Weight;
-	fn disable_trading_pair() -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// Parameters of TradingPair in Provisioning status
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq)]
@@ -279,7 +271,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply())]
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(path.len().try_into().unwrap()))]
 		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
@@ -297,7 +289,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `target_amount`: exact target amount.
 		/// - `max_supply_amount`: acceptable maxmum supply amount.
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target())]
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len().try_into().unwrap()))]
 		#[transactional]
 		pub fn swap_with_exact_target(
 			origin: OriginFor<T>,
@@ -327,7 +319,11 @@ pub mod module {
 		///   liquidity pool.
 		/// - `deposit_increment_share`: this flag indicates whether to deposit
 		///   added lp shares to obtain incentives
-		#[pallet::weight(<T as Config>::WeightInfo::add_liquidity(*deposit_increment_share))]
+		#[pallet::weight(if *deposit_increment_share {
+			<T as Config>::WeightInfo::add_liquidity_and_deposit()
+		} else {
+			<T as Config>::WeightInfo::add_liquidity()
+		})]
 		#[transactional]
 		pub fn add_liquidity(
 			origin: OriginFor<T>,
@@ -368,7 +364,11 @@ pub mod module {
 		/// - `remove_share`: liquidity amount to remove.
 		/// - `by_withdraw`: this flag indicates whether to withdraw share which
 		///   is on incentives.
-		#[pallet::weight(<T as Config>::WeightInfo::remove_liquidity(*by_withdraw))]
+		#[pallet::weight(if *by_withdraw {
+			<T as Config>::WeightInfo::remove_liquidity_by_withdraw()
+		} else {
+			<T as Config>::WeightInfo::remove_liquidity()
+		})]
 		#[transactional]
 		pub fn remove_liquidity(
 			origin: OriginFor<T>,
@@ -493,7 +493,7 @@ pub mod module {
 						T::Currency::transfer(trading_pair.1, &module_account_id, &who, contribution.1)?;
 
 						// decrease ref count
-						frame_system::Module::<T>::dec_ref(&who);
+						frame_system::Module::<T>::dec_consumers(&who);
 					}
 
 					TradingPairStatuses::<T>::remove(trading_pair);
@@ -546,7 +546,7 @@ impl<T: Config> Pallet<T> {
 					}
 
 					// decrease ref count
-					frame_system::Module::<T>::dec_ref(&who);
+					frame_system::Module::<T>::dec_consumers(&who);
 				}
 
 				// inject provision to liquidity pool
@@ -606,7 +606,15 @@ impl<T: Config> Pallet<T> {
 			*maybe_pool = Some(pool);
 
 			if !existed && maybe_pool.is_some() {
-				frame_system::Module::<T>::inc_ref(&who);
+				if frame_system::Module::<T>::inc_consumers(&who).is_err() {
+					// No providers for the locks. This is impossible under normal circumstances
+					// since the funds that are under the lock will themselves be stored in the
+					// account and therefore will need a reference.
+					frame_support::debug::warn!(
+						"Warning: Attempt to introduce lock consumer reference, yet no providers. \
+						This is unexpected but should be safe."
+					);
+				}
 			}
 
 			provision_parameters.accumulated_provision.0 = provision_parameters

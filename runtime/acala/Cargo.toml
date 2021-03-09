@@ -32,8 +32,6 @@ pallet-randomness-collective-flip = { git = "https://github.com/paritytech/subst
 pallet-recovery = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", features = ["historical"], default-features = false }
-pallet-staking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-sudo = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-tips = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
@@ -79,14 +77,14 @@ orml-nft= { path = "../../orml/nft", default-features = false }
 orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 
-module-transaction-payment = { path = "../../modules/transaction_payment", default-features = false }
+module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
-module-auction-manager = { path = "../../modules/auction_manager", default-features = false }
-module-cdp-engine = { path = "../../modules/cdp_engine", default-features = false }
-module-cdp-treasury = { path = "../../modules/cdp_treasury", default-features = false }
+module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
+module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
+module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
-module-emergency-shutdown = { path = "../../modules/emergency_shutdown", default-features = false }
+module-emergency-shutdown = { path = "../../modules/emergency-shutdown", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
@@ -97,14 +95,10 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
-module-nominees-election = { path = "../../modules/nominees_election", default-features = false }
-module-staking-pool = { path = "../../modules/staking_pool", default-features = false }
-module-staking-pool-rpc-runtime-api = { path = "../../modules/staking_pool/rpc/runtime-api", default-features = false }
-module-polkadot-bridge = { path = "../../modules/polkadot_bridge", default-features = false }
-module-honzon-benchmarking = { path = "../../modules/honzon/benchmarking", default-features = false, optional = true }
-module-cdp-engine-benchmarking = { path = "../../modules/cdp_engine/benchmarking", default-features = false, optional = true }
-module-emergency-shutdown-benchmarking = { path = "../../modules/emergency_shutdown/benchmarking", default-features = false, optional = true }
-module-auction-manager-benchmarking = { path = "../../modules/auction_manager/benchmarking", default-features = false, optional = true }
+module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
+module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
+module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
+module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
 module-nft-benchmarking = { path = "../../modules/nft/benchmarking", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
@@ -114,7 +108,7 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 
 [build-dependencies]
-substrate-wasm-builder = { version = "3.0.0" }
+substrate-wasm-builder = "4.0.0"
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -146,7 +140,6 @@ std = [
 	"pallet-recovery/std",
 	"pallet-scheduler/std",
 	"pallet-session/std",
-	"pallet-staking/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
 	"pallet-tips/std",
@@ -229,12 +222,8 @@ runtime-benchmarks = [
 	"sp-runtime/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
 
-	"module-auction-manager-benchmarking",
-	"module-cdp-engine-benchmarking",
 	"module-cdp-treasury/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
-	"module-emergency-shutdown-benchmarking",
-	"module-honzon-benchmarking",
 	"module-nft-benchmarking",
 ]
 # When enabled, the runtime api will not be build.

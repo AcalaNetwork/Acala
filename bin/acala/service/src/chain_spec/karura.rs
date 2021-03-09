@@ -19,7 +19,7 @@ pub fn karura_config() -> Result<ChainSpec, String> {
 pub fn latest_karura_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "KAR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), 12.into());
 
 	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Karura runtime wasm binary not available")?;
 
@@ -98,12 +98,12 @@ fn karura_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig, CdpEngineConfig,
-		CdpTreasuryConfig, CurrencyId, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance, BalancesConfig,
+		BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs,
+		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
+		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
+		OrmlNFTConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -112,8 +112,8 @@ fn karura_genesis(
 	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-KAR.json")[..];
 	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
-	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
-	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+	let initial_balance: u128 = 1_000_000 * dollar(KAR);
+	let initial_staking: u128 = 100_000 * dollar(KAR);
 
 	karura_runtime::GenesisConfig {
 		frame_system: Some(SystemConfig {
@@ -125,8 +125,8 @@ fn karura_genesis(
 		pallet_balances: Some(BalancesConfig {
 			balances: endowed_accounts
 				.iter()
-				.cloned()
-				.map(|k| (k, INITIAL_BALANCE))
+				.map(|x| (x.0.clone(), initial_staking + dollar(KAR))) // bit more for fee
+				.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
 				.chain(
 					get_all_module_accounts()
 						.iter()
@@ -180,52 +180,40 @@ fn karura_genesis(
 		}),
 		pallet_treasury: Some(Default::default()),
 		orml_tokens: Some(TokensConfig {
-			endowed_accounts: vec![
-				(root_key.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
-				(root_key, CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
-			],
+			endowed_accounts: vec![],
 		}),
 		orml_vesting: Some(VestingConfig { vesting: vec![] }),
 		module_cdp_treasury: Some(CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::Token(TokenSymbol::XBTC), 5 * CENTS),
-				(CurrencyId::Token(TokenSymbol::RENBTC), 5 * CENTS),
+				(KSM, dollar(KSM)), // (currency_id, max size of a collateral auction)
+				(RENBTC, 5 * cent(RENBTC)),
 			],
 		}),
 		module_cdp_engine: Some(CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::Token(TokenSymbol::DOT),
+					KSM,
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
+					10_000_000 * dollar(KUSD),                           // maximum debit value in aUSD (cap)
 				),
 				(
-					CurrencyId::Token(TokenSymbol::XBTC),
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(110, 100)),
-					Some(FixedU128::saturating_from_rational(4, 100)),
-					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * DOLLARS,
-				),
-				(
-					CurrencyId::Token(TokenSymbol::LDOT),
+					LKSM,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(120, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(130, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(KUSD),
 				),
 				(
-					CurrencyId::Token(TokenSymbol::RENBTC),
+					RENBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
 					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(KUSD),
 				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
@@ -256,6 +244,7 @@ fn karura_genesis(
 		parachain_info: Some(ParachainInfoConfig {
 			parachain_id: 666.into(),
 		}),
+		// TODO: need RENBTC for Kusama Ecosystem
 		// ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
 		// 	ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		// }),

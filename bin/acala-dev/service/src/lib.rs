@@ -146,6 +146,7 @@ where
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
+		config.role.is_authority().into(),
 		config.prometheus_registry(),
 		task_manager.spawn_handle(),
 		client.clone(),
@@ -190,8 +191,14 @@ where
 
 	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
 
-	let import_setup = (block_import, grandpa_link, babe_link);
-	let rpc_setup = shared_voter_state;
+	let import_setup = (block_import, grandpa_link, babe_link.clone());
+	let rpc_setup = shared_voter_state.clone();
+
+	let finality_proof_provider =
+		GrandpaFinalityProofProvider::new_for_service(backend.clone(), Some(shared_authority_set.clone()));
+
+	let babe_config = babe_link.config().clone();
+	let shared_epoch_changes = babe_link.epoch_changes().clone();
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
@@ -288,9 +295,8 @@ where
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
-	let telemetry_connection_sinks = sc_service::TelemetryConnectionSinks::default();
 
-	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+	let (_rpc_handlers, telemetry_connection_notifier) = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
 		backend,
 		client: client.clone(),
@@ -301,7 +307,6 @@ where
 		task_manager: &mut task_manager,
 		on_demand: None,
 		remote_blockchain: None,
-		telemetry_connection_sinks: telemetry_connection_sinks.clone(),
 		network_status_sinks: network_status_sinks.clone(),
 		system_rpc_tx,
 	})?;
@@ -377,7 +382,7 @@ where
 			name: Some(name),
 			observer_enabled: false,
 			keystore,
-			is_authority: role.is_network_authority(),
+			is_authority: role.is_authority(),
 		};
 
 		if enable_grandpa {
@@ -391,7 +396,7 @@ where
 				config,
 				link: grandpa_link,
 				network: network.clone(),
-				telemetry_on_connect: Some(telemetry_connection_sinks.on_connect_stream()),
+				telemetry_on_connect: telemetry_connection_notifier.map(|x| x.on_connect_stream()),
 				voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
 				prometheus_registry,
 				shared_voter_state,
@@ -514,7 +519,7 @@ where
 
 	let rpc_extensions = acala_rpc::create_light(light_deps);
 
-	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+	let (rpc_handlers, _telemetry_connection_notifier) = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: Some(on_demand),
 		remote_blockchain: Some(backend.remote_blockchain()),
 		rpc_extensions_builder: Box::new(sc_service::NoopRpcExtensionBuilder(rpc_extensions)),
@@ -526,7 +531,6 @@ where
 		network_status_sinks,
 		system_rpc_tx,
 		network: network.clone(),
-		telemetry_connection_sinks: sc_service::TelemetryConnectionSinks::default(),
 		task_manager: &mut task_manager,
 	})?;
 
@@ -561,7 +565,7 @@ pub fn new_chain_ops(
 		#[cfg(not(feature = "with-mandala-runtime"))]
 		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
+		#[cfg(feature = "with-karura-runtime")]
 		{
 			let PartialComponents {
 				client,
@@ -572,7 +576,7 @@ pub fn new_chain_ops(
 			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
-		#[cfg(not(feature = "with-kaura-runtime"))]
+		#[cfg(not(feature = "with-karura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-acala-runtime")]
@@ -599,9 +603,9 @@ pub fn build_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 		#[cfg(not(feature = "with-acala-runtime"))]
 		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
+		#[cfg(feature = "with-karura-runtime")]
 		return new_light::<karura_runtime::RuntimeApi, KaruraExecutor>(config).map(|r| r.0);
-		#[cfg(not(feature = "with-kaura-runtime"))]
+		#[cfg(not(feature = "with-karura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-mandala-runtime")]
@@ -626,13 +630,13 @@ pub fn build_full(
 		#[cfg(not(feature = "with-acala-runtime"))]
 		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
+		#[cfg(feature = "with-karura-runtime")]
 		{
 			let (task_manager, _, client, _, _, network_status_sinks) =
 				new_full::<karura_runtime::RuntimeApi, KaruraExecutor>(config, instant_sealing, test)?;
 			Ok((Arc::new(Client::Karura(client)), network_status_sinks, task_manager))
 		}
-		#[cfg(not(feature = "with-kaura-runtime"))]
+		#[cfg(not(feature = "with-karura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-mandala-runtime")]

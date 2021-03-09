@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// A set of APIs that polkadot-like runtimes must implement.
 pub trait RuntimeApiCollection:
 	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-	+ sp_api::ApiExt<Block, Error = sp_blockchain::Error>
+	+ sp_api::ApiExt<Block>
 	+ sp_consensus_babe::BabeApi<Block>
 	+ sp_finality_grandpa::GrandpaApi<Block>
 	+ sp_block_builder::BlockBuilder<Block>
@@ -37,7 +37,7 @@ where
 impl<Api> RuntimeApiCollection for Api
 where
 	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::ApiExt<Block, Error = sp_blockchain::Error>
+		+ sp_api::ApiExt<Block>
 		+ sp_consensus_babe::BabeApi<Block>
 		+ sp_finality_grandpa::GrandpaApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
@@ -63,7 +63,7 @@ pub trait AbstractClient<Block, Backend>:
 	+ Sync
 	+ ProvideRuntimeApi<Block>
 	+ HeaderBackend<Block>
-	+ CallApiAt<Block, Error = sp_blockchain::Error, StateBackend = Backend::State>
+	+ CallApiAt<Block, StateBackend = Backend::State>
 where
 	Block: BlockT,
 	Backend: BackendT<Block>,
@@ -83,7 +83,7 @@ where
 		+ Sized
 		+ Send
 		+ Sync
-		+ CallApiAt<Block, Error = sp_blockchain::Error, StateBackend = Backend::State>,
+		+ CallApiAt<Block, StateBackend = Backend::State>,
 	Client::Api: RuntimeApiCollection<StateBackend = Backend::State>,
 {
 }
@@ -217,6 +217,28 @@ impl sc_client_api::BlockBackend<Block> for Client {
 			Self::Karura(client) => client.block_hash(number),
 			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.block_hash(number),
+		}
+	}
+
+	fn extrinsic(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<Option<<Block as BlockT>::Extrinsic>> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.extrinsic(hash),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.extrinsic(hash),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.extrinsic(hash),
+		}
+	}
+
+	fn have_extrinsic(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<bool> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.have_extrinsic(hash),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.have_extrinsic(hash),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.have_extrinsic(hash),
 		}
 	}
 }

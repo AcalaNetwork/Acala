@@ -1,6 +1,6 @@
 use crate::{
-	AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, ExchangeRate, Honzon, Indices,
-	MinimumDebitValue, Price, Rate, Ratio, Runtime, TokenSymbol,
+	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, Honzon, Indices, Price, Rate,
+	Ratio, Runtime, AUSD, DOT,
 };
 
 use super::utils::set_balance;
@@ -10,7 +10,7 @@ use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{Saturating, StaticLookup, UniqueSaturatedInto},
+	traits::{StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;
@@ -26,7 +26,7 @@ runtime_benchmarks! {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = Indices::unlookup(to);
-	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to_lookup)
+	}: _(RawOrigin::Signed(caller), DOT, to_lookup)
 
 	unauthorize {
 		let caller: AccountId = account("caller", 0, SEED);
@@ -34,10 +34,10 @@ runtime_benchmarks! {
 		let to_lookup = Indices::unlookup(to);
 		Honzon::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
-			CurrencyId::Token(TokenSymbol::DOT),
+			DOT,
 			to_lookup.clone()
 		)?;
-	}: _(RawOrigin::Signed(caller), CurrencyId::Token(TokenSymbol::DOT), to_lookup)
+	}: _(RawOrigin::Signed(caller), DOT, to_lookup)
 
 	unauthorize_all {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
@@ -61,13 +61,13 @@ runtime_benchmarks! {
 	adjust_loan {
 		let caller: AccountId = account("caller", 0, SEED);
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-		let min_debit_value = MinimumDebitValue::get();
-		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let collateral_price = Price::one();		// 1 USD
-		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
-		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
-		let debit_amount = min_debit_amount * 10;
-		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
+		let debit_value = 100 * dollar(AUSD);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
+		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
+		let debit_amount: Amount = debit_amount.unique_saturated_into();
+		let collateral_value = 10 * debit_value;
+		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(currency_id, &caller, collateral_amount);
@@ -83,7 +83,7 @@ runtime_benchmarks! {
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
-			Change::NewValue(min_debit_value * 100),
+			Change::NewValue(debit_value * 100),
 		)?;
 	}: _(RawOrigin::Signed(caller), currency_id, collateral_amount.try_into().unwrap(), debit_amount)
 
@@ -93,12 +93,14 @@ runtime_benchmarks! {
 		let sender_lookup = Indices::unlookup(sender.clone());
 		let receiver: AccountId = account("receiver", 0, SEED);
 		let receiver_lookup = Indices::unlookup(receiver.clone());
-		let min_debit_value = MinimumDebitValue::get();
+
+
+		let debit_value = 100 * dollar(AUSD);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
-		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_add(ExchangeRate::from_inner(1)).saturating_mul_int(min_debit_value);
-		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
-		let debit_amount = min_debit_amount * 10;
-		let collateral_amount = (min_debit_value * 10 * 2).unique_saturated_into();
+		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
+		let debit_amount: Amount = debit_amount.unique_saturated_into();
+		let collateral_value = 10 * debit_value;
+		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount);
@@ -114,7 +116,7 @@ runtime_benchmarks! {
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
-			Change::NewValue(min_debit_value * 100),
+			Change::NewValue(debit_value * 100),
 		)?;
 
 		// initialize sender's loan

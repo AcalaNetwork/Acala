@@ -6,13 +6,6 @@ use sc_cli::{Role, RuntimeVersion, SubstrateCli};
 use sc_service::ChainType;
 use service::{chain_spec, IdentifyVariant};
 
-fn get_exec_name() -> Option<String> {
-	std::env::current_exe()
-		.ok()
-		.and_then(|pb| pb.file_name().map(|s| s.to_os_string()))
-		.and_then(|s| s.into_string().ok())
-}
-
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
 		"Acala Node".into()
@@ -40,12 +33,9 @@ impl SubstrateCli for Cli {
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		let id = if id.is_empty() {
-			let n = get_exec_name().unwrap_or_default();
-			["acala", "karura", "mandala"]
-				.iter()
-				.cloned()
-				.find(|&chain| n.starts_with(chain))
-				.unwrap_or("acala")
+			// The binary prefix is always acala.
+			// Make Mandala the default chain spec.
+			"mandala"
 		} else {
 			id
 		};
@@ -153,14 +143,15 @@ pub fn run() -> sc_cli::Result<()> {
 				return Err("Instant sealing can be turned on only in `--dev` mode".into());
 			}
 
-			runner.run_node_until_exit(|config| async move {
-				match config.role {
-					Role::Light => service::build_light(config),
-					_ => {
-						service::build_full(config, cli.instant_sealing, false).map(|(_, _, task_manager)| task_manager)
+			runner
+				.run_node_until_exit(|config| async move {
+					match config.role {
+						Role::Light => service::build_light(config),
+						_ => service::build_full(config, cli.instant_sealing, false)
+							.map(|(_, _, task_manager)| task_manager),
 					}
-				}
-			})
+				})
+				.map_err(sc_cli::Error::Service)
 		}
 
 		Some(Subcommand::Inspect(cmd)) => {
@@ -181,8 +172,16 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			// TODO: support Karura & Acala
-			runner.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config))
+			#[cfg(feature = "with-acala-runtime")]
+			return runner.sync_run(|config| cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config));
+
+			#[cfg(feature = "with-karura-runtime")]
+			return runner
+				.sync_run(|config| cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config));
+
+			#[cfg(feature = "with-mandala-runtime")]
+			return runner
+				.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config));
 		}
 
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),

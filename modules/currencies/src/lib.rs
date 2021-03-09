@@ -2,6 +2,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::upper_case_acronyms)]
 
 use codec::Codec;
 use frame_support::{
@@ -35,19 +36,12 @@ use sp_std::{
 };
 use support::{EVMBridge, InvokeContext};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn transfer_non_native_currency() -> Weight;
-	fn transfer_native_currency() -> Weight;
-	fn update_balance_non_native_currency() -> Weight;
-	fn update_balance_native_currency_creating() -> Weight;
-	fn update_balance_native_currency_killing() -> Weight;
-}
+pub use weights::WeightInfo;
 
 type BalanceOf<T> = <<T as Config>::MultiCurrency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
 type CurrencyIdOf<T> =

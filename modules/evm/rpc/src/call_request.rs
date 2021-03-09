@@ -4,7 +4,7 @@ use sp_core::Bytes;
 use sp_rpc::number::NumberOrHex;
 
 /// Call request
-#[derive(Debug, Default, PartialEq, Deserialize)]
+#[derive(Debug, Default, PartialEq, Deserialize, Clone)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct CallRequest {

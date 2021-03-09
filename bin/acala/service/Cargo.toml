@@ -33,6 +33,7 @@ sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch 
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-network = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-trie = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -51,15 +52,16 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1"
 
 cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
-cumulus-client-consensus = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1", features = ["real-overseer"] }
 
 ecosystem-renvm-bridge = { path = "../../../ecosystem-modules/ren/renvm-bridge" }
 module-evm = { path = "../../../modules/evm" }
-module-staking-pool = { path = "../../../modules/staking_pool" }
-module-staking-pool-rpc = { path = "../../../modules/staking_pool/rpc" }
+module-staking-pool = { path = "../../../modules/staking-pool" }
+module-staking-pool-rpc = { path = "../../../modules/staking-pool/rpc" }
 module-nft = { path = "../../../modules/nft" }
 orml-oracle-rpc = { path = "../../../orml/oracle/rpc" }
 acala-primitives = { path = "../../../primitives" }

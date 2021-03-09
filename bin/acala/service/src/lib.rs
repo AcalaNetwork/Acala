@@ -3,22 +3,29 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
+use cumulus_client_consensus_relay_chain::{build_relay_chain_consensus, BuildRelayChainConsensusParams};
 use cumulus_client_network::build_block_announce_validator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
+use cumulus_primitives_core::ParaId;
 
 #[cfg(feature = "with-acala-runtime")]
 pub use acala_runtime;
+
 #[cfg(feature = "with-karura-runtime")]
 pub use karura_runtime;
+
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;
 
 use acala_primitives::Block;
 use polkadot_primitives::v0::CollatorPair;
 use sc_executor::native_executor_instance;
-use sc_service::{error::Error as ServiceError, Configuration, PartialComponents, Role, TFullClient, TaskManager};
+use sc_service::{
+	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
+};
+use sc_telemetry::TelemetrySpan;
 use sp_core::Pair;
 use sp_runtime::traits::BlakeTwo256;
 use sp_trie::PrefixedMemoryDB;
@@ -89,10 +96,10 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 }
 
 /// Acala's full backend.
-type FullBackend = sc_service::TFullBackend<Block>;
+type FullBackend = TFullBackend<Block>;
 
 /// Acala's full client.
-type FullClient<RuntimeApi, Executor> = sc_service::TFullClient<Block, RuntimeApi, Executor>;
+type FullClient<RuntimeApi, Executor> = TFullClient<Block, RuntimeApi, Executor>;
 
 pub fn new_partial<RuntimeApi, Executor>(
 	config: &Configuration,
@@ -130,11 +137,11 @@ where
 		client.clone(),
 	);
 
-	let import_queue = cumulus_client_consensus::import_queue::import_queue(
+	let import_queue = cumulus_client_consensus_relay_chain::import_queue(
 		client.clone(),
 		client.clone(),
 		inherent_data_providers.clone(),
-		&task_manager.spawn_handle(),
+		&task_manager.spawn_essential_handle(),
 		registry.clone(),
 	)?;
 
@@ -157,14 +164,16 @@ where
 /// This is the actual implementation that is abstract over the executor and the
 /// runtime api.
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
-async fn start_node_impl<RuntimeApi, Executor>(
+async fn start_node_impl<RB, RuntimeApi, Executor>(
 	parachain_config: Configuration,
 	collator_key: CollatorPair,
 	polkadot_config: Configuration,
-	id: polkadot_primitives::v0::Id,
+	id: ParaId,
 	validator: bool,
-) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)>
+	rpc_ext_builder: RB,
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
 where
+	RB: Fn(Arc<FullClient<RuntimeApi, Executor>>) -> jsonrpc_core::IoHandler<sc_rpc::Metadata> + Send + 'static,
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
@@ -211,30 +220,11 @@ where
 			block_announce_validator_builder: Some(Box::new(|_| block_announce_validator)),
 		})?;
 
-	let rpc_extensions_builder = {
-		let client = client.clone();
-		let transaction_pool = transaction_pool.clone();
+	let rpc_client = client.clone();
+	let rpc_extensions_builder = Box::new(move |_, _| rpc_ext_builder(rpc_client.clone()));
 
-		Box::new(move |deny_unsafe, _| -> acala_rpc::RpcExtension {
-			let deps = acala_rpc::FullDeps {
-				client: client.clone(),
-				pool: transaction_pool.clone(),
-				deny_unsafe,
-			};
-
-			acala_rpc::create_full(deps)
-		})
-	};
-
-	if parachain_config.offchain_worker.enabled {
-		sc_service::build_offchain_workers(
-			&parachain_config,
-			backend.clone(),
-			task_manager.spawn_handle(),
-			client.clone(),
-			network.clone(),
-		);
-	};
+	let telemetry_span = TelemetrySpan::new();
+	let _telemetry_span_entered = telemetry_span.enter();
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: None,
@@ -249,6 +239,7 @@ where
 		network: network.clone(),
 		network_status_sinks,
 		system_rpc_tx,
+		telemetry_span: Some(telemetry_span.clone()),
 	})?;
 
 	let announce_block = {
@@ -257,7 +248,7 @@ where
 	};
 
 	if validator {
-		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
+		let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
 			task_manager.spawn_handle(),
 			client.clone(),
 			transaction_pool,
@@ -265,22 +256,26 @@ where
 		);
 		let spawner = task_manager.spawn_handle();
 
-		let polkadot_backend = polkadot_full_node.backend.clone();
+		let parachain_consensus = build_relay_chain_consensus(BuildRelayChainConsensusParams {
+			para_id: id,
+			proposer_factory,
+			inherent_data_providers: params.inherent_data_providers,
+			block_import: client.clone(),
+			relay_chain_client: polkadot_full_node.client.clone(),
+			relay_chain_backend: polkadot_full_node.backend.clone(),
+		});
 
 		let params = StartCollatorParams {
 			para_id: id,
-			block_import: client.clone(),
-			proposer_factory,
-			inherent_data_providers: params.inherent_data_providers,
 			block_status: client.clone(),
 			announce_block,
 			client: client.clone(),
 			task_manager: &mut task_manager,
 			collator_key,
-			polkadot_full_node,
+			relay_chain_full_node: polkadot_full_node,
 			spawner,
 			backend,
-			polkadot_backend,
+			parachain_consensus,
 		};
 
 		start_collator(params).await?;
@@ -306,15 +301,18 @@ pub async fn start_node<RuntimeApi, Executor>(
 	parachain_config: Configuration,
 	collator_key: CollatorPair,
 	polkadot_config: Configuration,
-	id: polkadot_primitives::v0::Id,
+	id: ParaId,
 	validator: bool,
-) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
 {
-	start_node_impl(parachain_config, collator_key, polkadot_config, id, validator).await
+	start_node_impl(parachain_config, collator_key, polkadot_config, id, validator, |_| {
+		Default::default()
+	})
+	.await
 }
 
 /// Builds a new object suitable for chain operations.
@@ -339,7 +337,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(config, false)?;
+			} = new_partial(config, false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
