@@ -13,13 +13,13 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{DataFeeder, DataProvider};
-use primitives::{currency::GetDecimals, CurrencyId};
+use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
+use primitives::{currency::GetDecimals, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{CheckedDiv, CheckedMul},
 	FixedPointNumber,
 };
-use support::{ExchangeRateProvider, Price, PriceProvider};
+use support::{DEXManager, ExchangeRateProvider, Price, PriceProvider};
 
 mod mock;
 mod tests;
@@ -61,6 +61,12 @@ pub mod module {
 		/// The provider of the exchange rate between liquid currency and
 		/// staking currency.
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
+
+		/// DEX provide liquidity info.
+		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+
+		/// Currency provide the total insurance of LPToken.
+		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -140,6 +146,24 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			// liquid/staking exchange rate.
 			return Self::get_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
+		} else if let CurrencyId::DEXShare(symbol_0, symbol_1) = currency_id {
+			let token_0 = CurrencyId::Token(symbol_0);
+			let token_1 = CurrencyId::Token(symbol_1);
+			let (pool_0, _) = T::DEX::get_liquidity_pool(token_0, token_1);
+			let total_shares = T::Currency::total_issuance(currency_id);
+
+			return {
+				if let (Some(ratio), Some(price_0)) = (
+					Price::checked_from_rational(pool_0, total_shares),
+					Self::get_price(token_0),
+				) {
+					ratio
+						.checked_mul(&price_0)
+						.and_then(|n| n.checked_mul(&Price::saturating_from_integer(2)))
+				} else {
+					None
+				}
+			};
 		} else {
 			// if locked price exists, return it, otherwise return latest price from oracle.
 			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
