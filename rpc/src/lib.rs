@@ -2,7 +2,7 @@
 
 #![warn(missing_docs)]
 
-use primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Hash, Nonce};
+use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Hash, Nonce};
 use sc_client_api::light::{Fetcher, RemoteBlockchain};
 pub use sc_rpc_api::DenyUnsafe;
 use sp_api::ProvideRuntimeApi;
@@ -11,6 +11,8 @@ use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
+#[cfg(feature = "standalone")]
+use primitives::BlockNumber;
 #[cfg(feature = "standalone")]
 use sc_consensus_babe::{BabeApi, Config, Epoch};
 #[cfg(feature = "standalone")]

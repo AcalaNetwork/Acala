@@ -22,15 +22,13 @@ use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
 	OpaqueMetadata, H160,
 };
-use sp_runtime::traits::{
-	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, SaturatedConversion, StaticLookup,
-};
+use sp_runtime::traits::{BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup};
 use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
-	traits::{AccountIdConversion, OpaqueKeys, Zero},
-	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
+	traits::{AccountIdConversion, Zero},
+	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::{collections::btree_set::BTreeSet, prelude::*};
@@ -58,11 +56,17 @@ use xcm_builder::{
 use xcm_executor::{Config, XcmExecutor};
 
 #[cfg(feature = "standalone")]
+#[cfg(feature = "standalone")]
 use pallet_grandpa::{fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 #[cfg(feature = "standalone")]
 use pallet_session::historical as pallet_session_historical;
 #[cfg(all(any(feature = "std", test), feature = "standalone"))]
 pub use pallet_staking::StakerStatus;
+#[cfg(feature = "standalone")]
+use sp_runtime::{
+	traits::{NumberFor, OpaqueKeys},
+	transaction_validity::TransactionPriority,
+};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -129,6 +133,11 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub grandpa: Grandpa,
 	}
+}
+
+#[cfg(not(feature = "standalone"))]
+impl_opaque_keys! {
+	pub struct SessionKeys {}
 }
 
 // Module accounts of runtime
@@ -1779,7 +1788,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	#[cfg(feature = "standalone")]
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
 			SessionKeys::generate(seed)
