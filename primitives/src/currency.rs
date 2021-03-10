@@ -63,6 +63,7 @@ macro_rules! create_currency_id {
 			fn decimals(&self) -> u32 {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$vname) => $deci,)*
+					CurrencyId::DEXShare(symbol_0, symbol_1) => sp_std::cmp::max(CurrencyId::Token(*symbol_0).decimals(), CurrencyId::Token(*symbol_1).decimals()),
 					// default decimals is 18
 					_ => 18,
 				}
