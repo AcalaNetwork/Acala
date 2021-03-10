@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::{AllPrecompiles, BlockWeights, Ratio, SystemContractsFilter, Weight};
+use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
@@ -32,7 +32,7 @@ parameter_types! {
 }
 impl frame_system::Config for Test {
 	type BaseCallFilter = ();
-	type BlockWeights = BlockWeights;
+	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = ();
 	type Origin = Origin;
 	type Call = Call;
@@ -229,7 +229,7 @@ impl pallet_utility::Config for Test {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
 	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
