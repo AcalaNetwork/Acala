@@ -22,8 +22,11 @@ pub fn acala_config() -> Result<ChainSpec, String> {
 
 pub fn latest_acala_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 13.into());
+	properties.insert(
+		"tokenSymbol".into(),
+		vec!["ACA", "AUSD", "DOT", "LDOT", "POLKABTC", "XBTC", "RENBTC", "PHA", "PLM"].into(),
+	);
+	properties.insert("tokenDecimals".into(), vec![13, 12, 10, 10, 8, 8, 8, 18, 18].into());
 
 	let wasm_binary = acala_runtime::WASM_BINARY.ok_or("Acala runtime wasm binary not available")?;
 

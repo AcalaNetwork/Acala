@@ -76,7 +76,7 @@ pub use primitives::{
 pub use runtime_common::{
 	cent, deposit, dollar, microcent, millicent, BlockLength, BlockWeights, CurveFeeModel, ExchangeRate, GasToWeight,
 	OffchainSolutionWeightLimit, Price, Rate, Ratio, SystemContractsFilter, TimeStampedPrice, KAR, KSM, KUSD, LKSM,
-	PLM, RENBTC,
+	RENBTC, SDN,
 };
 
 mod authority;
@@ -960,7 +960,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, PLM];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, SDN];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1008,7 +1008,7 @@ parameter_types! {
 		TradingPair::new(KUSD, KAR),
 		TradingPair::new(KUSD, KSM),
 		TradingPair::new(KUSD, LKSM),
-		TradingPair::new(KUSD, PLM),
+		TradingPair::new(KUSD, SDN),
 	];
 }
 
@@ -1041,7 +1041,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![KUSD, LKSM, KSM, PLM];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![KUSD, LKSM, KSM, SDN];
 }
 
 impl module_transaction_payment::Config for Runtime {

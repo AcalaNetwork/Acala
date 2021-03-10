@@ -21,8 +21,11 @@ fn mandala_session_keys(grandpa: GrandpaId, babe: BabeId) -> mandala_runtime::Se
 /// Development testnet config (single validator Alice)
 pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 13.into());
+	properties.insert(
+		"tokenSymbol".into(),
+		vec!["ACA", "AUSD", "DOT", "LDOT", "POLKABTC", "XBTC", "RENBTC", "PHA", "PLM"].into(),
+	);
+	properties.insert("tokenDecimals".into(), vec![13, 12, 10, 10, 8, 8, 8, 18, 18].into());
 
 	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 

@@ -22,8 +22,11 @@ pub fn karura_config() -> Result<ChainSpec, String> {
 
 pub fn latest_karura_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "KAR".into());
-	properties.insert("tokenDecimals".into(), 12.into());
+	properties.insert(
+		"tokenSymbol".into(),
+		vec!["KAR", "KUSD", "KSM", "LKSM", "POLKABTC", "XBTC", "RENBTC", "SDN"].into(),
+	);
+	properties.insert("tokenDecimals".into(), vec![12, 12, 12, 12, 8, 8, 8, 18].into());
 
 	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Karura runtime wasm binary not available")?;
 
