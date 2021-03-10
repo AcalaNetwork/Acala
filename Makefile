@@ -54,7 +54,7 @@ test: githooks
 
 .PHONY: test-eth
 test-eth: githooks
-	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala-dev/Cargo.toml test_evm_module --features with-ethereum-compatibility -p mandala-runtime
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml test_evm_module --features with-ethereum-compatibility -p mandala-runtime
 
 .PHONY: test-all
 test-all: test-dev test-acala
