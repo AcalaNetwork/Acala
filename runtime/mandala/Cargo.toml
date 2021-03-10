@@ -24,8 +24,8 @@ pallet-babe = { git = "https://github.com/paritytech/substrate", branch = "rococ
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-bounties = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-election-provider-multi-phase = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-grandpa = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-indices = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-multisig = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
@@ -139,7 +139,7 @@ std = [
 	"pallet-bounties/std",
 	"pallet-collective/std",
 	"pallet-elections-phragmen/std",
-	"pallet-grandpa/std",
+	"pallet-election-provider-multi-phase/std",
 	"pallet-indices/std",
 	"pallet-membership/std",
 	"pallet-multisig/std",
