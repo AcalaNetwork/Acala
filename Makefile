@@ -69,7 +69,7 @@ test-acala:
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala-dev/Cargo.toml --features runtime-benchmarks -p mandala-runtime benchmarking
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --features runtime-benchmarks -p mandala-runtime benchmarking
 
 .PHONY: build
 build: githooks
