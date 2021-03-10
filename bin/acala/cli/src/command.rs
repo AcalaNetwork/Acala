@@ -61,12 +61,9 @@ impl SubstrateCli for Cli {
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		let id = if id.is_empty() {
-			let n = get_exec_name().unwrap_or_default();
-			["acala", "karura", "mandala"]
-				.iter()
-				.cloned()
-				.find(|&chain| n.starts_with(chain))
-				.unwrap_or("acala")
+			// The binary prefix is always acala.
+			// Make Mandala the default chain spec.
+			"mandala"
 		} else {
 			id
 		};
