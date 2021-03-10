@@ -1,6 +1,6 @@
 [package]
 name = "module-nominees-election"
-version = "0.7.3"
+version = "0.7.9"
 authors = ["Acala Developers"]
 edition = "2018"
 
