@@ -269,7 +269,9 @@ where
 					Ok(used_gas) => {
 						old_best = best;
 						best = used_gas;
-						change_pct = (U256::from(100) * (old_best - best)) / old_best;
+						change_pct = (U256::from(100) * (old_best - best))
+							.checked_div(old_best)
+							.unwrap_or_default();
 						upper = mid;
 						mid = (lower + upper + 1) / 2;
 					}
