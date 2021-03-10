@@ -1250,6 +1250,7 @@ impl cumulus_pallet_xcm_handler::Config for Runtime {
 	type UpwardMessageSender = ParachainSystem;
 	type HrmpMessageSender = ParachainSystem;
 	type SendXcmOrigin = EnsureRoot<AccountId>;
+	type AccountIdConverter = LocationConverter;
 }
 
 pub struct RelayToNative;
