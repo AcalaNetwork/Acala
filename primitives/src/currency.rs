@@ -13,11 +13,11 @@ use serde::{Deserialize, Serialize};
 macro_rules! create_currency_id {
     ($(#[$meta:meta])*
 	$vis:vis enum TokenSymbol {
-        $($(#[$vmeta:meta])* $vname:ident($deci:literal) = $val:literal,)*
+        $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
     }) => {
         $(#[$meta])*
         $vis enum TokenSymbol {
-            $($(#[$vmeta])* $vname = $val,)*
+            $($(#[$vmeta])* $symbol = $val,)*
         }
 
         impl TryFrom<u8> for TokenSymbol {
@@ -25,7 +25,7 @@ macro_rules! create_currency_id {
 
             fn try_from(v: u8) -> Result<Self, Self::Error> {
                 match v {
-                    $($val => Ok(TokenSymbol::$vname),)*
+                    $($val => Ok(TokenSymbol::$symbol),)*
                     _ => Err(()),
                 }
             }
@@ -35,7 +35,7 @@ macro_rules! create_currency_id {
 			type Error = ();
 			fn try_from(v: Vec<u8>) -> Result<CurrencyId, ()> {
 				match v.as_slice() {
-					$(bstringify!($vname) => Ok(CurrencyId::Token(TokenSymbol::$vname)),)*
+					$(bstringify!($symbol) => Ok(CurrencyId::Token(TokenSymbol::$symbol)),)*
 					_ => Err(()),
 				}
 			}
@@ -44,14 +44,14 @@ macro_rules! create_currency_id {
 		impl GetDecimals for CurrencyId {
 			fn decimals(&self) -> u32 {
 				match self {
-					$(CurrencyId::Token(TokenSymbol::$vname) => $deci,)*
+					$(CurrencyId::Token(TokenSymbol::$symbol) => $deci,)*
 					// default decimals is 18
 					_ => 18,
 				}
 			}
 		}
 
-		$(pub const $vname: CurrencyId = CurrencyId::Token(TokenSymbol::$vname);)*
+		$(pub const $symbol: CurrencyId = CurrencyId::Token(TokenSymbol::$symbol);)*
 
 		#[test]
 		#[ignore]
@@ -61,15 +61,17 @@ macro_rules! create_currency_id {
 			struct Token {
 				name: String,
 				symbol: String,
-				currencyId: String,
+				decimals: u8,
+				currencyId: u8,
 			}
 
 			let tokens = vec![
 				$(
 					Token {
-						name: stringify!($vname).to_string(),
-						symbol: stringify!($vname).to_string(),
-						currencyId: $val.to_string(),
+						name: $name.to_string(),
+						symbol: stringify!($symbol).to_string(),
+						decimals: $deci,
+						currencyId: $val,
 					},
 				)*
 			];
@@ -88,25 +90,25 @@ create_currency_id! {
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// Polkadot Ecosystem
-		ACA(13) = 0,
-		AUSD(12) = 1,
-		DOT(10) = 2,
-		LDOT(10) = 3,
-		XBTC(8) = 4,
-		RENBTC(8) = 5,
-		POLKABTC(8) = 6,
-		PLM(18) = 7,
-		PHA(18) = 8,
+		ACA("Acala Token", 13) = 0,
+		AUSD("StableCoin On Acala", 12) = 1,
+		DOT("Polkadot Token", 10) = 2,
+		LDOT("Liquid DOT Token", 10) = 3,
+		XBTC("Wrapped BTC", 8) = 4,
+		RENBTC("BTC wrapped by RenVM", 8) = 5,
+		POLKABTC("BTC wrapped by Polkadot", 8) = 6,
+		PLM("Plasm Token", 18) = 7,
+		PHA("Phala Token", 18) = 8,
 
 		// Kusama Ecosystem
-		KAR(12) = 128,
-		KUSD(12) = 129,
-		KSM(12) = 130,
-		LKSM(12) = 131,
+		KAR("Karura Token", 12) = 128,
+		KUSD("StableCoin On Karura", 12) = 129,
+		KSM("Kusama Token", 12) = 130,
+		LKSM("Liquid KSM Token", 12) = 131,
 		// Reserve for XBTC = 132
 		// Reserve for RENBTC = 133
 		// Reserve for POLKABTC = 134
-		SDN(18) = 135,
+		SDN("Shiden Token", 18) = 135,
 		// Reserve for PHA = 136
 	}
 }
