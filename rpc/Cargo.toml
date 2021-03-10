@@ -15,6 +15,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-chain-spec = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-consensus-babe-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -32,3 +33,6 @@ module-staking-pool-rpc = { path = "../modules/staking-pool/rpc" }
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 runtime-common = { path = "../runtime/common" }
 evm-rpc = { path = "../modules/evm/rpc" }
+
+[features]
+standalone = []

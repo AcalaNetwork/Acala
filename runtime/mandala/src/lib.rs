@@ -22,7 +22,9 @@ use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
 	OpaqueMetadata, H160,
 };
-use sp_runtime::traits::{BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup};
+use sp_runtime::traits::{
+	BadOrigin, BlakeTwo256, Block as BlockT, Convert, NumberFor, SaturatedConversion, StaticLookup,
+};
 use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
@@ -56,7 +58,11 @@ use xcm_builder::{
 use xcm_executor::{Config, XcmExecutor};
 
 #[cfg(feature = "standalone")]
+use pallet_grandpa::{fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
+#[cfg(feature = "standalone")]
 use pallet_session::historical as pallet_session_historical;
+#[cfg(all(any(feature = "std", test), feature = "standalone"))]
+pub use pallet_staking::StakerStatus;
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -121,6 +127,7 @@ pub fn native_version() -> NativeVersion {
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub babe: Babe,
+		pub grandpa: Grandpa,
 	}
 }
 
@@ -207,6 +214,23 @@ impl pallet_babe::Config for Runtime {
 	type KeyOwnerIdentification =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::IdentificationTuple;
 	type HandleEquivocation = pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, (), ReportLongevity>;
+	type WeightInfo = ();
+}
+
+#[cfg(feature = "standalone")]
+impl pallet_grandpa::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+
+	type KeyOwnerProofSystem = Historical;
+
+	type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+
+	type KeyOwnerIdentification =
+		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::IdentificationTuple;
+
+	type HandleEquivocation = pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, (), ReportLongevity>; // Offences
+
 	type WeightInfo = ();
 }
 
@@ -1606,6 +1630,7 @@ construct_mandala_runtime! {
 	// Consensus & Staking
 	Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
 	Babe: pallet_babe::{Module, Call, Storage, Config, ValidateUnsigned},
+	Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
 	ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Module, Call, Storage, Event<T>, ValidateUnsigned},
 	Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 	Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
@@ -1754,6 +1779,7 @@ impl_runtime_apis! {
 		}
 	}
 
+	#[cfg(feature = "standalone")]
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
 			SessionKeys::generate(seed)
@@ -1763,6 +1789,39 @@ impl_runtime_apis! {
 			encoded: Vec<u8>,
 		) -> Option<Vec<(Vec<u8>, KeyTypeId)>> {
 			SessionKeys::decode_into_raw_public_keys(&encoded)
+		}
+	}
+
+	#[cfg(feature = "standalone")]
+	impl fg_primitives::GrandpaApi<Block> for Runtime {
+		fn grandpa_authorities() -> GrandpaAuthorityList {
+			Grandpa::grandpa_authorities()
+		}
+
+		fn submit_report_equivocation_unsigned_extrinsic(
+			equivocation_proof: fg_primitives::EquivocationProof<
+				<Block as BlockT>::Hash,
+				NumberFor<Block>,
+			>,
+			key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
+		) -> Option<()> {
+			let key_owner_proof = key_owner_proof.decode()?;
+
+			Grandpa::submit_unsigned_equivocation_report(
+				equivocation_proof,
+				key_owner_proof,
+			)
+		}
+
+		fn generate_key_ownership_proof(
+			_set_id: fg_primitives::SetId,
+			authority_id: GrandpaId,
+		) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
+			use codec::Encode;
+
+			Historical::prove((fg_primitives::KEY_TYPE, authority_id))
+				.map(|p| p.encode())
+				.map(fg_primitives::OpaqueKeyOwnershipProof::new)
 		}
 	}
 

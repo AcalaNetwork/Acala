@@ -9,9 +9,11 @@ use acala_primitives::Block;
 use prometheus_endpoint::Registry;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sc_executor::native_executor_instance;
+use sc_finality_grandpa::FinalityProofProvider as GrandpaFinalityProofProvider;
 use sc_service::{config::Configuration, error::Error as ServiceError, PartialComponents, RpcHandlers, TaskManager};
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
+use sc_telemetry::TelemetrySpan;
 
 pub use client::*;
 
@@ -172,7 +174,7 @@ where
 
 		sc_consensus_manual_seal::import_queue(
 			Box::new(client.clone()),
-			&task_manager.spawn_handle(),
+			&task_manager.spawn_essential_handle(),
 			config.prometheus_registry(),
 		)
 	} else {
@@ -183,36 +185,59 @@ where
 			client.clone(),
 			select_chain.clone(),
 			inherent_data_providers.clone(),
-			&task_manager.spawn_handle(),
+			&task_manager.spawn_essential_handle(),
 			config.prometheus_registry(),
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		)?
 	};
 
-	let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
+	let import_setup = (block_import, grandpa_link, babe_link);
 
-	let import_setup = (block_import, grandpa_link, babe_link.clone());
-	let rpc_setup = shared_voter_state.clone();
+	let (rpc_extensions_builder, rpc_setup) = {
+		let (_, grandpa_link, babe_link) = &import_setup;
 
-	let finality_proof_provider =
-		GrandpaFinalityProofProvider::new_for_service(backend.clone(), Some(shared_authority_set.clone()));
+		let justification_stream = grandpa_link.justification_stream();
+		let shared_authority_set = grandpa_link.shared_authority_set().clone();
+		let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
+		let rpc_setup = shared_voter_state.clone();
 
-	let babe_config = babe_link.config().clone();
-	let shared_epoch_changes = babe_link.epoch_changes().clone();
+		let finality_proof_provider =
+			GrandpaFinalityProofProvider::new_for_service(backend.clone(), Some(shared_authority_set.clone()));
 
-	let rpc_extensions_builder = {
+		let babe_config = babe_link.config().clone();
+		let shared_epoch_changes = babe_link.epoch_changes().clone();
+
 		let client = client.clone();
-		let transaction_pool = transaction_pool.clone();
+		let pool = transaction_pool.clone();
+		let select_chain = select_chain.clone();
+		let keystore = keystore_container.sync_keystore();
+		let chain_spec = config.chain_spec.cloned_box();
 
-		move |deny_unsafe, _| -> acala_rpc::RpcExtension {
+		let rpc_extensions_builder = move |deny_unsafe, subscription_executor| -> acala_rpc::RpcExtension {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
-				pool: transaction_pool.clone(),
+				pool: pool.clone(),
+				select_chain: select_chain.clone(),
+				chain_spec: chain_spec.cloned_box(),
 				deny_unsafe,
+				babe: acala_rpc::BabeDeps {
+					babe_config: babe_config.clone(),
+					shared_epoch_changes: shared_epoch_changes.clone(),
+					keystore: keystore.clone(),
+				},
+				grandpa: acala_rpc::GrandpaDeps {
+					shared_voter_state: shared_voter_state.clone(),
+					shared_authority_set: shared_authority_set.clone(),
+					justification_stream: justification_stream.clone(),
+					subscription_executor,
+					finality_provider: finality_proof_provider.clone(),
+				},
 			};
 
 			acala_rpc::create_full(deps)
-		}
+		};
+
+		(rpc_extensions_builder, rpc_setup)
 	};
 
 	Ok(PartialComponents {
@@ -296,6 +321,9 @@ where
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
 
+	let telemetry_span = TelemetrySpan::new();
+	let _telemetry_span_entered = telemetry_span.enter();
+
 	let (_rpc_handlers, telemetry_connection_notifier) = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
 		backend,
@@ -309,6 +337,7 @@ where
 		remote_blockchain: None,
 		network_status_sinks: network_status_sinks.clone(),
 		system_rpc_tx,
+		telemetry_span: Some(telemetry_span.clone()),
 	})?;
 
 	let (block_import, grandpa_link, babe_link) = import_setup;
@@ -483,7 +512,7 @@ where
 		client.clone(),
 		select_chain,
 		inherent_data_providers,
-		&task_manager.spawn_handle(),
+		&task_manager.spawn_essential_handle(),
 		config.prometheus_registry(),
 		sp_consensus::NeverCanAuthor,
 	)?;
@@ -519,6 +548,9 @@ where
 
 	let rpc_extensions = acala_rpc::create_light(light_deps);
 
+	let telemetry_span = TelemetrySpan::new();
+	let _telemetry_span_entered = telemetry_span.enter();
+
 	let (rpc_handlers, _telemetry_connection_notifier) = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: Some(on_demand),
 		remote_blockchain: Some(backend.remote_blockchain()),
@@ -532,6 +564,7 @@ where
 		system_rpc_tx,
 		network: network.clone(),
 		task_manager: &mut task_manager,
+		telemetry_span: Some(telemetry_span.clone()),
 	})?;
 
 	Ok((task_manager, rpc_handlers, client, network, transaction_pool))
