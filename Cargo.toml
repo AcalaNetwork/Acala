@@ -5,9 +5,6 @@ members = [
 	"bin/acala",
 	"bin/acala/cli",
 	"bin/acala/service",
-	# "bin/acala-dev",
-	# "bin/acala-dev/cli",
-	# "bin/acala-dev/service",
 
 	"modules/*",
 	"inspect",
@@ -35,6 +32,11 @@ members = [
 	"orml/xcm-support",
 
 	"ecosystem-modules/ren/renvm-bridge",
+]
+exclude = [
+	"bin/acala-dev",
+	"bin/acala-dev/cli",
+	"bin/acala-dev/service",
 ]
 
 resolver = "2"
