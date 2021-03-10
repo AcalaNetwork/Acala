@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{currency::GetDecimals, AccountId, CurrencyId, TokenSymbol};
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -40,7 +40,10 @@ fn mandala_session_keys(grandpa: GrandpaId, babe: BabeId) -> mandala_runtime::Se
 pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 13.into());
+	properties.insert(
+		"tokenDecimals".into(),
+		CurrencyId::Token(TokenSymbol::ACA).decimals().into(),
+	);
 
 	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 
@@ -76,7 +79,10 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 pub fn local_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 13.into());
+	properties.insert(
+		"tokenDecimals".into(),
+		CurrencyId::Token(TokenSymbol::ACA).decimals().into(),
+	);
 
 	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
@@ -119,7 +125,10 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert(
+		"tokenDecimals".into(),
+		CurrencyId::Token(TokenSymbol::ACA).decimals().into(),
+	);
 
 	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Mandala runtime wasm binary not available")?;
 
