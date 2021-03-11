@@ -8,18 +8,18 @@ edition = "2018"
 jsonrpc-core = "15.0.0"
 jsonrpc-derive = "14.0.3"
 ethereum-types = "0.11.0"
-sp-api = { version = "3.0.0" }
-sp-blockchain = { version = "3.0.0" }
-sp-core = { version = "3.0.0" }
-sp-io = { version = "3.0.0" }
-sp-rpc = { version = "3.0.0" }
-sp-runtime = { version = "3.0.0" }
-sp-storage = { version = "3.0.0" }
-sp-transaction-pool = { version = "3.0.0" }
-sc-service = { version = "0.9.0" }
-sc-client-api = { version = "3.0.0" }
-sc-rpc = { version = "3.0.0" }
-sc-network = { version = "0.9.0" }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-storage = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-network = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 rustc-hex = "2.1.0"
 serde = { version = "1.0", features = ["derive"] }
 module-evm-rpc-runtime-api = { path = "runtime_api" }

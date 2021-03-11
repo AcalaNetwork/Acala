@@ -6,14 +6,15 @@ edition = "2018"
 
 [dependencies]
 static_assertions = "1.1.0"
+
 serde = { version = "1.0.101", optional = true, default-features = false }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-sp-std = { version = "3.0.0", default-features = false }
-sp-core = { version = "3.0.0", default-features = false }
-sp-runtime = { version = "3.0.0", default-features = false }
-frame-support = { version = "3.0.0", default-features = false }
-frame-system = { version = "3.0.0", default-features = false }
-pallet-scheduler = { version = "3.0.0", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -27,11 +28,11 @@ module-staking-pool = { path = "../../modules/staking-pool", default-features = 
 [dev-dependencies]
 serde_json = "1.0.41"
 hex-literal = "0.3.1"
-sp-io = "3.0.0"
-pallet-timestamp = "3.0.0"
-pallet-balances = "3.0.0"
-pallet-proxy = "3.0.0"
-pallet-utility = "3.0.0"
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }

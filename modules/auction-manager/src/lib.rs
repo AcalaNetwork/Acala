@@ -33,7 +33,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -319,14 +319,14 @@ pub mod module {
 		fn offchain_worker(now: T::BlockNumber) {
 			if T::EmergencyShutdown::is_shutdown() && sp_io::offchain::is_validator() {
 				if let Err(e) = Self::_offchain_worker() {
-					debug::info!(
+					log::info!(
 						target: "auction-manager offchain worker",
 						"cannot run offchain worker at {:?}: {:?}",
 						now,
 						e,
 					);
 				} else {
-					debug::debug!(
+					log::debug!(
 						target: "auction-manager offchain worker",
 						"offchain worker start at block: {:?} already done!",
 						now,
@@ -395,7 +395,7 @@ impl<T: Config> Pallet<T> {
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel(auction_id);
 		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
-			debug::info!(
+			log::info!(
 				target: "auction-manager offchain worker",
 				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed: {:?}",
 				auction_id,
@@ -429,7 +429,7 @@ impl<T: Config> Pallet<T> {
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
 
-		debug::debug!(target: "auction-manager offchain worker", "max iterations is {:?}", max_iterations);
+		log::debug!(target: "auction-manager offchain worker", "max iterations is {:?}", max_iterations);
 
 		// Randomly choose to start iterations to cancel collateral/surplus/debit
 		// auctions
@@ -943,7 +943,7 @@ impl<T: Config> Pallet<T> {
 			// No providers for the locks. This is impossible under normal circumstances
 			// since the funds that are under the lock will themselves be stored in the
 			// account and therefore will need a reference.
-			frame_support::debug::warn!(
+			log::warn!(
 				"Warning: Attempt to introduce lock consumer reference, yet no providers. \
 				This is unexpected but should be safe."
 			);
@@ -1047,7 +1047,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 			// No providers for the locks. This is impossible under normal circumstances
 			// since the funds that are under the lock will themselves be stored in the
 			// account and therefore will need a reference.
-			frame_support::debug::warn!(
+			log::warn!(
 				"Warning: Attempt to introduce lock consumer reference, yet no providers. \
 				This is unexpected but should be safe."
 			);

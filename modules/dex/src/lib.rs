@@ -33,7 +33,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
@@ -639,7 +639,7 @@ impl<T: Config> Pallet<T> {
 					// No providers for the locks. This is impossible under normal circumstances
 					// since the funds that are under the lock will themselves be stored in the
 					// account and therefore will need a reference.
-					frame_support::debug::warn!(
+					log::warn!(
 						"Warning: Attempt to introduce lock consumer reference, yet no providers. \
 						This is unexpected but should be safe."
 					);

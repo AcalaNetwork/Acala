@@ -5,29 +5,28 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
-sp-runtime = { version = "3.0.0", default-features = false }
-sp-std = { version = "3.0.0", default-features = false }
-frame-support = { version = "3.0.0", default-features = false }
-frame-system = { version = "3.0.0", default-features = false }
-frame-benchmarking = { version = "3.0.0", default-features = false }
-pallet-proxy = { version = "3.0.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 orml-nft = { path = "../../../orml/nft", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
 module-currencies = { path = "../../../modules/currencies", default-features = false }
 module-nft = {  path = "../../nft", default-features = false }
 primitives = { package = "acala-primitives", path = "../../../primitives", default-features = false }
 support = { package = "module-support", path = "../../support", default-features = false }
-pallet-balances = { version = "3.0.0", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 [dev-dependencies]
-serde = "1.0.101"
+serde = { version = "1.0.101" }
 codec = { package = "parity-scale-codec", version = "2.0.0", features = ["derive"] }
-sp-core = "3.0.0"
-sp-io = "3.0.0"
-orml-tokens = { path = "../../../orml/tokens" }
-pallet-utility = "3.0.0"
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+orml-tokens = { path = "../../../orml/tokens", default-features = false }
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 support = { package = "module-support", path = "../../../modules/support" }
-pallet-balances = "3.0.0"
 
 [features]
 default = ["std"]

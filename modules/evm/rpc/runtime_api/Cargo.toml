@@ -5,11 +5,11 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
-sp-runtime = { version = "3.0.0", default-features = false }
-sp-api = { version = "3.0.0", default-features = false }
-sp-std = { version = "3.0.0", default-features = false }
-sp-core = { version = "3.0.0", default-features = false }
-ethereum-types = { version = "0.11.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+ethereum-types = { version = "0.11", default-features = false }
 primitives = { package = "acala-primitives", path = "../../../../primitives", default-features = false }
 
 [features]

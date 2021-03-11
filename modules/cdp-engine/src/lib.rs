@@ -28,7 +28,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -335,14 +335,14 @@ pub mod module {
 		/// submit unsigned tx to trigger liquidation or settlement.
 		fn offchain_worker(now: T::BlockNumber) {
 			if let Err(e) = Self::_offchain_worker() {
-				debug::info!(
+				log::info!(
 					target: "cdp-engine offchain worker",
 					"cannot run offchain worker at {:?}: {:?}",
 					now,
 					e,
 				);
 			} else {
-				debug::debug!(
+				log::debug!(
 					target: "cdp-engine offchain worker",
 					"offchain worker start at block: {:?} already done!",
 					now,
@@ -510,7 +510,7 @@ impl<T: Config> Pallet<T> {
 		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::liquidate(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
-			debug::info!(
+			log::info!(
 				target: "cdp-engine offchain worker",
 				"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
 				who, currency_id,
@@ -522,7 +522,7 @@ impl<T: Config> Pallet<T> {
 		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::settle(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
-			debug::info!(
+			log::info!(
 				target: "cdp-engine offchain worker",
 				"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
 				who, currency_id,
@@ -594,7 +594,7 @@ impl<T: Config> Pallet<T> {
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
 		let iteration_end_time = sp_io::offchain::timestamp();
-		debug::debug!(
+		log::debug!(
 			target: "cdp-engine offchain worker",
 			"iteration info:\n max iterations is {:?}\n currency id: {:?}, start key: {:?}, iterate count: {:?}\n iteration start at: {:?}, end at: {:?}, execution time: {:?}\n",
 			max_iterations,
