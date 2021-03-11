@@ -38,14 +38,6 @@ use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
-#[allow(clippy::unused_unit)]
-fn get_exec_name() -> Option<String> {
-	std::env::current_exe()
-		.ok()
-		.and_then(|pb| pb.file_name().map(|s| s.to_os_string()))
-		.and_then(|s| s.into_string().ok())
-}
-
 #[cfg(feature = "with-acala-runtime")]
 const CHAIN_NAME: &str = "Acala";
 #[cfg(feature = "with-karura-runtime")]
