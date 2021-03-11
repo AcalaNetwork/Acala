@@ -1,8 +1,26 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 use crate::{
-	AccountId, Balance, BlockNumber, Currencies, CurrencyId, Dex, EnabledTradingPairs, Runtime, TradingPathLimit,
+	dollar, AccountId, Balance, BlockNumber, Currencies, CurrencyId, Dex, EnabledTradingPairs, Runtime,
+	TradingPathLimit,
 };
 
-use super::utils::dollars;
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -72,10 +90,10 @@ runtime_benchmarks! {
 		let trading_pair = EnabledTradingPairs::get()[0];
 		let currency_id_a = trading_pair.0;
 		let currency_id_b = trading_pair.1;
-		let min_contribution_a = dollars(1u32);
-		let min_contribution_b = dollars(1u32);
-		let target_provision_a = dollars(200u32);
-		let target_provision_b = dollars(1000u32);
+		let min_contribution_a = dollar(currency_id_a);
+		let min_contribution_b = dollar(currency_id_b);
+		let target_provision_a = 200 * dollar(currency_id_a);
+		let target_provision_b = 1_000 * dollar(currency_id_b);
 		let not_before: BlockNumber = Default::default();
 		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
 	}: _(RawOrigin::Root, currency_id_a, currency_id_b, min_contribution_a, min_contribution_b, target_provision_a, target_provision_b, not_before)
@@ -90,8 +108,8 @@ runtime_benchmarks! {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
 		let second_maker: AccountId = account("second_maker", 0, SEED);
 		let trading_pair = EnabledTradingPairs::get()[0];
-		let amount_a = dollars(100u32);
-		let amount_b = dollars(10000u32);
+		let amount_a = 100 * dollar(trading_pair.0);
+		let amount_b = 10_000 * dollar(trading_pair.1);
 
 		// set balance
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.0, &second_maker, amount_a.unique_saturated_into())?;
@@ -106,8 +124,8 @@ runtime_benchmarks! {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
 		let second_maker: AccountId = account("second_maker", 0, SEED);
 		let trading_pair = EnabledTradingPairs::get()[0];
-		let amount_a = dollars(100u32);
-		let amount_b = dollars(10000u32);
+		let amount_a = 100 * dollar(trading_pair.0);
+		let amount_b = 10_000 * dollar(trading_pair.1);
 
 		// set balance
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.0, &second_maker, amount_a.unique_saturated_into())?;
@@ -121,15 +139,15 @@ runtime_benchmarks! {
 	remove_liquidity {
 		let maker: AccountId = account("maker", 0, SEED);
 		let trading_pair = EnabledTradingPairs::get()[0];
-		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, dollars(100u32), dollars(10000u32), false)?;
-	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, dollars(50u32).unique_saturated_into(), false)
+		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
+	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), false)
 
 	// remove liquidity by withdraw staking lp share
 	remove_liquidity_by_withdraw {
 		let maker: AccountId = account("maker", 0, SEED);
 		let trading_pair = EnabledTradingPairs::get()[0];
-		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, dollars(100u32), dollars(10000u32), true)?;
-	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, dollars(50u32).unique_saturated_into(), true)
+		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), true)?;
+	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), true)
 
 	swap_with_exact_supply {
 		let u in 2 .. TradingPathLimit::get() as u32;
@@ -151,10 +169,10 @@ runtime_benchmarks! {
 
 		let maker: AccountId = account("maker", 0, SEED);
 		let taker: AccountId = account("taker", 0, SEED);
-		inject_liquidity(maker, trading_pair.0, trading_pair.1, dollars(10000u32), dollars(10000u32), false)?;
+		inject_liquidity(maker, trading_pair.0, trading_pair.1, 10_000 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 
-		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, dollars(10000u32).unique_saturated_into())?;
-	}: swap_with_exact_supply(RawOrigin::Signed(taker), path, dollars(100u32), 0)
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
+	}: swap_with_exact_supply(RawOrigin::Signed(taker), path.clone(), 100 * dollar(path[0]), 0)
 
 	swap_with_exact_target {
 		let u in 2 .. TradingPathLimit::get() as u32;
@@ -176,10 +194,10 @@ runtime_benchmarks! {
 
 		let maker: AccountId = account("maker", 0, SEED);
 		let taker: AccountId = account("taker", 0, SEED);
-		inject_liquidity(maker, trading_pair.0, trading_pair.1, dollars(10000u32), dollars(10000u32), false)?;
+		inject_liquidity(maker, trading_pair.0, trading_pair.1, 10_000 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 
-		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, dollars(10000u32).unique_saturated_into())?;
-	}: swap_with_exact_target(RawOrigin::Signed(taker), path, dollars(10u32), dollars(100u32))
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
+	}: swap_with_exact_target(RawOrigin::Signed(taker), path.clone(), 10 * dollar(path[path.len() - 1]), 100 * dollar(path[0]))
 }
 
 #[cfg(test)]

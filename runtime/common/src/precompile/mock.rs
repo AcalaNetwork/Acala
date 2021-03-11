@@ -1,6 +1,24 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 #![cfg(test)]
 
-use crate::{AllPrecompiles, BlockWeights, Ratio, SystemContractsFilter, Weight};
+use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
@@ -13,9 +31,9 @@ use module_support::DEXIncentives;
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	evm::AddressMapping, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, Header, Nonce, TokenSymbol,
-	TradingPair, PREDEPLOY_ADDRESS_START,
+	TradingPair,
 };
-use sp_core::{crypto::AccountId32, Bytes, H160, H256};
+use sp_core::{bytes::from_hex, crypto::AccountId32, Bytes, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup},
 	DispatchResult, FixedPointNumber, FixedU128, ModuleId, Perbill,
@@ -32,7 +50,7 @@ parameter_types! {
 }
 impl frame_system::Config for Test {
 	type BaseCallFilter = ();
-	type BlockWeights = BlockWeights;
+	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = ();
 	type Origin = Origin;
 	type Call = Call;
@@ -80,7 +98,7 @@ impl pallet_timestamp::Config for Test {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
 }
@@ -229,7 +247,7 @@ impl pallet_utility::Config for Test {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
 	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
@@ -360,27 +378,30 @@ pub fn bob() -> H160 {
 	H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2])
 }
 
-pub fn evm_genesis() -> (BTreeMap<H160, module_evm::GenesisAccount<Balance, Nonce>>, u64) {
-	let contracts_json = &include_bytes!("../../../../resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String)> = serde_json::from_slice(contracts_json).unwrap();
+pub fn evm_genesis() -> BTreeMap<H160, module_evm::GenesisAccount<Balance, u64>> {
+	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
-	let mut network_contract_index = PREDEPLOY_ADDRESS_START;
-	for (_, code_string) in contracts {
+	for (_, address, code_string) in contracts {
 		let account = module_evm::GenesisAccount {
 			nonce: 0,
 			balance: 0u128,
 			storage: Default::default(),
 			code: Bytes::from_str(&code_string).unwrap().0,
 		};
-		let addr = H160::from_low_u64_be(network_contract_index);
+
+		let addr = H160::from_slice(
+			from_hex(address.as_str())
+				.expect("predeploy-contracts must specify address")
+				.as_slice(),
+		);
 		accounts.insert(addr, account);
-		network_contract_index += 1;
 	}
-	(accounts, network_contract_index)
+	accounts
 }
 
 pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
-pub const ACA_ERC20_ADDRESS: &str = "0x0000000000000000000000000000000000000800";
+pub const ACA_ERC20_ADDRESS: &str = "0x0000000000000000000000000000000001000000";
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -420,7 +441,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut storage);
 
 	let mut accounts = BTreeMap::new();
-	let (mut evm_genesis_accounts, network_contract_index) = evm_genesis();
+	let mut evm_genesis_accounts = evm_genesis();
 	accounts.append(&mut evm_genesis_accounts);
 
 	accounts.insert(
@@ -445,12 +466,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> {
-		accounts,
-		network_contract_index,
-	}
-	.assimilate_storage(&mut storage)
-	.unwrap();
+	module_evm::GenesisConfig::<Test> { accounts }
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {

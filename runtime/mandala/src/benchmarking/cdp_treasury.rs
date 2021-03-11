@@ -1,4 +1,22 @@
-use crate::{Balance, CdpTreasury, CollateralCurrencyIds, Currencies, CurrencyId, Runtime, DOLLARS};
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+use crate::{dollar, CdpTreasury, Currencies, CurrencyId, Runtime, ACA, AUSD, DOT};
 
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
@@ -6,32 +24,27 @@ use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
 
-fn dollar(d: u32) -> Balance {
-	let d: Balance = d.into();
-	DOLLARS.saturating_mul(d)
-}
-
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
 
 	_ {}
 
 	auction_surplus {
-		CdpTreasury::on_system_surplus(dollar(100))?;
-	}: _(RawOrigin::Root, dollar(100))
+		CdpTreasury::on_system_surplus(100 * dollar(AUSD))?;
+	}: _(RawOrigin::Root, 100 * dollar(AUSD))
 
 	auction_debit {
-		CdpTreasury::on_system_debit(dollar(100))?;
-	}: _(RawOrigin::Root,dollar(100), dollar(200))
+		CdpTreasury::on_system_debit(100 * dollar(AUSD))?;
+	}: _(RawOrigin::Root, 100 * dollar(AUSD), 200 * dollar(ACA))
 
 	auction_collateral {
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-		Currencies::deposit(currency_id, &CdpTreasury::account_id(), dollar(10000))?;
-	}: _(RawOrigin::Root, currency_id, dollar(1000), dollar(1000), true)
+		let currency_id: CurrencyId = DOT;
+		Currencies::deposit(currency_id, &CdpTreasury::account_id(), 10_000 * dollar(currency_id))?;
+	}: _(RawOrigin::Root, currency_id, 1_000 * dollar(currency_id), 1_000 * dollar(AUSD), true)
 
 	set_collateral_auction_maximum_size {
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-	}: _(RawOrigin::Root,currency_id, 200)
+		let currency_id: CurrencyId = DOT;
+	}: _(RawOrigin::Root, currency_id, 200 * dollar(currency_id))
 }
 
 #[cfg(test)]

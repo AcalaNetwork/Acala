@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // Disable the following lints
 #![allow(clippy::borrowed_box)]
 
@@ -5,13 +23,6 @@ use crate::cli::{Cli, Subcommand};
 use sc_cli::{Role, RuntimeVersion, SubstrateCli};
 use sc_service::ChainType;
 use service::{chain_spec, IdentifyVariant};
-
-fn get_exec_name() -> Option<String> {
-	std::env::current_exe()
-		.ok()
-		.and_then(|pb| pb.file_name().map(|s| s.to_os_string()))
-		.and_then(|s| s.into_string().ok())
-}
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
@@ -40,12 +51,9 @@ impl SubstrateCli for Cli {
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		let id = if id.is_empty() {
-			let n = get_exec_name().unwrap_or_default();
-			["acala", "karura", "mandala"]
-				.iter()
-				.cloned()
-				.find(|&chain| n.starts_with(chain))
-				.unwrap_or("acala")
+			// The binary prefix is always acala.
+			// Make Mandala the default chain spec.
+			"mandala"
 		} else {
 			id
 		};
@@ -182,16 +190,16 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			#[cfg(feature = "with-mandala-runtime")]
-			return runner
-				.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config));
+			#[cfg(feature = "with-acala-runtime")]
+			return runner.sync_run(|config| cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config));
 
 			#[cfg(feature = "with-karura-runtime")]
 			return runner
 				.sync_run(|config| cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config));
 
-			#[cfg(feature = "with-acala-runtime")]
-			return runner.sync_run(|config| cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config));
+			#[cfg(feature = "with-mandala-runtime")]
+			return runner
+				.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config));
 		}
 
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),

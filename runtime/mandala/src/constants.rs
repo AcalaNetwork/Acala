@@ -1,18 +1,22 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 //! A set of constant values used in dev runtime.
-
-/// Money matters.
-pub mod currency {
-	use primitives::Balance;
-
-	pub const DOLLARS: Balance = 1_000_000_000_000_000_000;
-	pub const CENTS: Balance = DOLLARS / 100; // 10_000_000_000_000_000
-	pub const MILLICENTS: Balance = CENTS / 1000; // 10_000_000_000_000
-	pub const MICROCENTS: Balance = MILLICENTS / 1000; // 10_000_000_000
-
-	pub const fn deposit(items: u32, bytes: u32) -> Balance {
-		items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
-	}
-}
 
 /// Time and blocks.
 pub mod time {
@@ -42,11 +46,11 @@ pub mod time {
 
 /// Fee-related
 pub mod fee {
-	pub use super::currency::CENTS;
 	use frame_support::weights::{
 		constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 	};
 	use primitives::Balance;
+	use runtime_common::{cent, ACA};
 	use smallvec::smallvec;
 	use sp_runtime::Perbill;
 
@@ -71,13 +75,13 @@ pub mod fee {
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
 			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10
 			// CENT:
-			let p = CENTS / 10; // 1_000_000_000_000_000
+			let p = cent(ACA) / 10; // 10_000_000_000;
 			let q = Balance::from(ExtrinsicBaseWeight::get()); // 125_000_000
 			smallvec![WeightToFeeCoefficient {
 				degree: 1,
 				negative: false,
 				coeff_frac: Perbill::from_rational_approximation(p % q, q), // zero
-				coeff_integer: p / q,                                       // 8_000_000
+				coeff_integer: p / q,                                       // 80
 			}]
 		}
 	}

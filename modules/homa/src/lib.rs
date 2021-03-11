@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 //! # Homa Module
 //!
 //! ## Overview
@@ -16,15 +34,10 @@ use primitives::{Balance, EraIndex};
 use sp_runtime::RuntimeDebug;
 use support::HomaProtocol;
 
-mod default_weight;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn mint() -> Weight;
-	fn redeem(strategy: &RedeemStrategy) -> Weight;
-	fn withdraw_redemption() -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// Redemption modes:
 /// 1. Immediately: User will immediately get back DOT from the free pool,
@@ -78,7 +91,11 @@ pub mod module {
 		///
 		/// - `amount`: the LDOT amount to redeem.
 		/// - `strategy`: redemption mode.
-		#[pallet::weight(<T as Config>::WeightInfo::redeem(strategy))]
+		#[pallet::weight(match *strategy {
+			RedeemStrategy::Immediately => <T as Config>::WeightInfo::redeem_immediately(),
+			RedeemStrategy::Target(_) => <T as Config>::WeightInfo::redeem_by_claim_unbonding(),
+			RedeemStrategy::WaitForUnbonding => <T as Config>::WeightInfo::redeem_wait_for_unbonding(),
+		})]
 		#[transactional]
 		pub fn redeem(
 			origin: OriginFor<T>,

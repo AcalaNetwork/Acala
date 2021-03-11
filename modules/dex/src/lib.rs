@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 //! # DEX Module
 //!
 //! ## Overview
@@ -15,7 +33,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
@@ -27,21 +45,12 @@ use sp_runtime::{
 use sp_std::{convert::TryInto, prelude::*, vec};
 use support::{DEXIncentives, DEXManager, Price, Ratio};
 
-mod default_weight;
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub trait WeightInfo {
-	fn add_liquidity(deposit: bool) -> Weight;
-	fn remove_liquidity(by_withdraw: bool) -> Weight;
-	fn swap_with_exact_supply() -> Weight;
-	fn swap_with_exact_target() -> Weight;
-	fn list_trading_pair() -> Weight;
-	fn enable_trading_pair() -> Weight;
-	fn disable_trading_pair() -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// Parameters of TradingPair in Provisioning status
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq)]
@@ -280,7 +289,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply())]
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(path.len().try_into().unwrap()))]
 		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
@@ -298,7 +307,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `target_amount`: exact target amount.
 		/// - `max_supply_amount`: acceptable maxmum supply amount.
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target())]
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len().try_into().unwrap()))]
 		#[transactional]
 		pub fn swap_with_exact_target(
 			origin: OriginFor<T>,
@@ -328,7 +337,11 @@ pub mod module {
 		///   liquidity pool.
 		/// - `deposit_increment_share`: this flag indicates whether to deposit
 		///   added lp shares to obtain incentives
-		#[pallet::weight(<T as Config>::WeightInfo::add_liquidity(*deposit_increment_share))]
+		#[pallet::weight(if *deposit_increment_share {
+			<T as Config>::WeightInfo::add_liquidity_and_deposit()
+		} else {
+			<T as Config>::WeightInfo::add_liquidity()
+		})]
 		#[transactional]
 		pub fn add_liquidity(
 			origin: OriginFor<T>,
@@ -369,7 +382,11 @@ pub mod module {
 		/// - `remove_share`: liquidity amount to remove.
 		/// - `by_withdraw`: this flag indicates whether to withdraw share which
 		///   is on incentives.
-		#[pallet::weight(<T as Config>::WeightInfo::remove_liquidity(*by_withdraw))]
+		#[pallet::weight(if *by_withdraw {
+			<T as Config>::WeightInfo::remove_liquidity_by_withdraw()
+		} else {
+			<T as Config>::WeightInfo::remove_liquidity()
+		})]
 		#[transactional]
 		pub fn remove_liquidity(
 			origin: OriginFor<T>,
@@ -527,19 +544,30 @@ impl<T: Config> Pallet<T> {
 				&& (provision_parameters.accumulated_provision.0 >= provision_parameters.target_provision.0
 					|| provision_parameters.accumulated_provision.1 >= provision_parameters.target_provision.1)
 			{
-				// calculate initial price
-				let initial_price_0_in_1: Price = Price::checked_from_rational(
-					provision_parameters.accumulated_provision.1,
-					provision_parameters.accumulated_provision.0,
-				)
-				.unwrap_or_default();
-
 				let lp_share_currency_id = trading_pair.get_dex_share_currency_id().expect("shouldn't be invalid!");
 				let mut total_shares_issued: Balance = Default::default();
 				for (who, contribution) in ProvisioningPool::<T>::drain_prefix(trading_pair) {
-					let share_amount = initial_price_0_in_1
-						.saturating_mul_int(contribution.0)
-						.saturating_add(contribution.1);
+					let share_amount = if provision_parameters.accumulated_provision.0
+						> provision_parameters.accumulated_provision.1
+					{
+						let initial_price_1_in_0: Price = Price::checked_from_rational(
+							provision_parameters.accumulated_provision.0,
+							provision_parameters.accumulated_provision.1,
+						)
+						.unwrap_or_default();
+						initial_price_1_in_0
+							.saturating_mul_int(contribution.1)
+							.saturating_add(contribution.0)
+					} else {
+						let initial_price_0_in_1: Price = Price::checked_from_rational(
+							provision_parameters.accumulated_provision.1,
+							provision_parameters.accumulated_provision.0,
+						)
+						.unwrap_or_default();
+						initial_price_0_in_1
+							.saturating_mul_int(contribution.0)
+							.saturating_add(contribution.1)
+					};
 
 					// issue shares to contributor
 					if T::Currency::deposit(lp_share_currency_id, &who, share_amount).is_ok() {
@@ -611,7 +639,7 @@ impl<T: Config> Pallet<T> {
 					// No providers for the locks. This is impossible under normal circumstances
 					// since the funds that are under the lock will themselves be stored in the
 					// account and therefore will need a reference.
-					frame_support::debug::warn!(
+					log::warn!(
 						"Warning: Attempt to introduce lock consumer reference, yet no providers. \
 						This is unexpected but should be safe."
 					);
@@ -672,10 +700,21 @@ impl<T: Config> Pallet<T> {
 			};
 			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
 				if total_shares.is_zero() {
-					// initialize this liquidity pool, the initial share is equal to the max value
-					// between base currency amount and other currency amount
-					let initial_share = sp_std::cmp::max(max_amount_0, max_amount_1);
-					(max_amount_0, max_amount_1, initial_share)
+					let share_amount = if max_amount_0 > max_amount_1 {
+						let initial_price_1_in_0: Price =
+							Price::checked_from_rational(max_amount_0, max_amount_1).unwrap_or_default();
+						initial_price_1_in_0
+							.saturating_mul_int(max_amount_1)
+							.saturating_add(max_amount_0)
+					} else {
+						let initial_price_0_in_1: Price =
+							Price::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default();
+						initial_price_0_in_1
+							.saturating_mul_int(max_amount_0)
+							.saturating_add(max_amount_1)
+					};
+
+					(max_amount_0, max_amount_1, share_amount)
 				} else {
 					let price_0_1 = Price::checked_from_rational(*pool_1, *pool_0).unwrap_or_default();
 					let input_price_0_1 = Price::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default();

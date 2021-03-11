@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 use crate::evm::EvmAddress;
 use bstringify::bstringify;
 use codec::{Decode, Encode};
@@ -13,7 +31,7 @@ use serde::{Deserialize, Serialize};
 macro_rules! create_currency_id {
     ($(#[$meta:meta])*
 	$vis:vis enum TokenSymbol {
-        $($(#[$vmeta:meta])* $vname:ident = $val:literal,)*
+        $($(#[$vmeta:meta])* $vname:ident($deci:literal) = $val:literal,)*
     }) => {
         $(#[$meta])*
         $vis enum TokenSymbol {
@@ -35,9 +53,30 @@ macro_rules! create_currency_id {
 			type Error = ();
 			fn try_from(v: Vec<u8>) -> Result<CurrencyId, ()> {
 				match v.as_slice() {
-					$(bstringify!(vname) => Ok(CurrencyId::Token(TokenSymbol::$vname)),)*
+					$(bstringify!($vname) => Ok(CurrencyId::Token(TokenSymbol::$vname)),)*
 					_ => Err(()),
 				}
+			}
+		}
+
+		impl GetDecimals for CurrencyId {
+			fn decimals(&self) -> u32 {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$vname) => $deci,)*
+					CurrencyId::DEXShare(symbol_0, symbol_1) => sp_std::cmp::max(CurrencyId::Token(*symbol_0).decimals(), CurrencyId::Token(*symbol_1).decimals()),
+					// default decimals is 18
+					_ => 18,
+				}
+			}
+		}
+
+		$(pub const $vname: CurrencyId = CurrencyId::Token(TokenSymbol::$vname);)*
+
+		impl TokenSymbol {
+			pub fn get_info() -> Vec<(&'static str, u32)> {
+				vec![
+					$((stringify!($vname), $deci),)*
+				]
 			}
 		}
 
@@ -61,7 +100,7 @@ macro_rules! create_currency_id {
 					},
 				)*
 			];
-			frame_support::assert_ok!(std::fs::write("../resources/tokens.json", serde_json::to_string_pretty(&tokens).unwrap()));
+			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/tokens.json", serde_json::to_string_pretty(&tokens).unwrap()));
 		}
     }
 }
@@ -76,27 +115,31 @@ create_currency_id! {
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// Polkadot Ecosystem
-		ACA = 0,
-		AUSD = 1,
-		DOT = 2,
-		LDOT = 3,
-		XBTC = 4,
-		RENBTC = 5,
-		POLKABTC = 6,
-		PLM = 7,
-		PHA = 8,
+		ACA(13) = 0,
+		AUSD(12) = 1,
+		DOT(10) = 2,
+		LDOT(10) = 3,
+		XBTC(8) = 4,
+		RENBTC(8) = 5,
+		POLKABTC(8) = 6,
+		PLM(18) = 7,
+		PHA(18) = 8,
 
 		// Kusama Ecosystem
-		KAR = 128,
-		KUSD = 129,
-		KSM = 130,
-		LKSM = 131,
+		KAR(12) = 128,
+		KUSD(12) = 129,
+		KSM(12) = 130,
+		LKSM(12) = 131,
 		// Reserve for XBTC = 132
 		// Reserve for RENBTC = 133
 		// Reserve for POLKABTC = 134
-		SDN = 135,
+		SDN(18) = 135,
 		// Reserve for PHA = 136
 	}
+}
+
+pub trait GetDecimals {
+	fn decimals(&self) -> u32;
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

@@ -1,4 +1,22 @@
-use crate::{AccountId, Balance, EvmAccounts, Runtime, DOLLARS};
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+use crate::{dollar, AccountId, EvmAccounts, Runtime, ACA};
 
 use super::utils::set_aca_balance;
 use codec::Encode;
@@ -9,11 +27,6 @@ use sp_io::hashing::keccak_256;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-
-fn dollar(d: u32) -> Balance {
-	let d: Balance = d.into();
-	DOLLARS.saturating_mul(d)
-}
 
 fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
@@ -39,7 +52,7 @@ runtime_benchmarks! {
 	claim_account {
 		let caller: AccountId = account("caller", 0, SEED);
 		let eth: AccountId = account("eth", 0, SEED);
-		set_aca_balance(&bob_account_id(), dollar(1000));
+		set_aca_balance(&bob_account_id(), 1_000 * dollar(ACA));
 	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
 
 	claim_default_account {

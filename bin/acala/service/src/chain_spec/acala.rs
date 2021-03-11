@@ -1,4 +1,22 @@
-use acala_primitives::AccountId;
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+use acala_primitives::{AccountId, TokenSymbol};
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -6,15 +24,11 @@ use serde_json::map::Map;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::crypto::UncheckedInto;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{FixedPointNumber, FixedU128, Perbill};
+use sp_runtime::{FixedPointNumber, FixedU128};
 
 use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
-
-fn acala_session_keys(grandpa: GrandpaId, babe: BabeId) -> acala_runtime::SessionKeys {
-	acala_runtime::SessionKeys { grandpa, babe }
-}
 
 pub fn acala_config() -> Result<ChainSpec, String> {
 	Err("Not available".into())
@@ -22,8 +36,14 @@ pub fn acala_config() -> Result<ChainSpec, String> {
 
 pub fn latest_acala_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	let mut token_symbol: Vec<String> = vec![];
+	let mut token_decimals: Vec<u32> = vec![];
+	TokenSymbol::get_info().iter().for_each(|(symbol_name, decimals)| {
+		token_symbol.push(symbol_name.to_string());
+		token_decimals.push(*decimals);
+	});
+	properties.insert("tokenSymbol".into(), token_symbol.into());
+	properties.insert("tokenDecimals".into(), token_decimals.into());
 
 	let wasm_binary = acala_runtime::WASM_BINARY.ok_or("Acala runtime wasm binary not available")?;
 
@@ -88,7 +108,10 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("acala"),
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: "rococo".into(),
+			para_id: 666_u32.into(),
+		},
 	))
 }
 
@@ -99,12 +122,12 @@ fn acala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
-		get_all_module_accounts, AcalaOracleConfig, BabeConfig, Balance, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, CurrencyId, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		GrandpaConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokenSymbol, TokensConfig, VestingConfig, CENTS, DOLLARS,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig,
+		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
+		RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+		TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC, XBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -114,153 +137,134 @@ fn acala_genesis(
 	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-ACA.json")[..];
 	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
-	const INITIAL_BALANCE: u128 = 1_000_000 * DOLLARS;
-	const INITIAL_STAKING: u128 = 100_000 * DOLLARS;
+	let initial_balance: u128 = 1_000_000 * dollar(ACA);
+	let initial_staking: u128 = 100_000 * dollar(ACA);
+
+	let balances = initial_authorities
+		.iter()
+		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
+		.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
+		.chain(
+			get_all_module_accounts()
+				.iter()
+				.map(|x| (x.clone(), existential_deposit)),
+		)
+		.chain(airdrop_accounts)
+		.fold(
+			BTreeMap::<AccountId, Balance>::new(),
+			|mut acc, (account_id, amount)| {
+				if let Some(balance) = acc.get_mut(&account_id) {
+					*balance = balance
+						.checked_add(amount)
+						.expect("balance cannot overflow when building genesis");
+				} else {
+					acc.insert(account_id.clone(), amount);
+				}
+				acc
+			},
+		)
+		.into_iter()
+		.collect::<Vec<(AccountId, Balance)>>();
 
 	acala_runtime::GenesisConfig {
-		frame_system: Some(SystemConfig {
+		frame_system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
-		}),
-		pallet_indices: Some(IndicesConfig { indices: vec![] }),
-		pallet_balances: Some(BalancesConfig {
-			balances: initial_authorities
-				.iter()
-				.map(|x| (x.0.clone(), INITIAL_STAKING + DOLLARS)) // bit more for fee
-				.chain(endowed_accounts.iter().cloned().map(|k| (k, INITIAL_BALANCE)))
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), existential_deposit)),
-				)
-				.chain(airdrop_accounts)
-				.fold(
-					BTreeMap::<AccountId, Balance>::new(),
-					|mut acc, (account_id, amount)| {
-						if let Some(balance) = acc.get_mut(&account_id) {
-							*balance = balance
-								.checked_add(amount)
-								.expect("balance cannot overflow when building genesis");
-						} else {
-							acc.insert(account_id.clone(), amount);
-						}
-						acc
-					},
-				)
-				.into_iter()
-				.collect::<Vec<(AccountId, Balance)>>(),
-		}),
-		pallet_session: Some(SessionConfig {
-			keys: initial_authorities
-				.iter()
-				.map(|x| (x.0.clone(), x.0.clone(), acala_session_keys(x.2.clone(), x.3.clone())))
-				.collect::<Vec<_>>(),
-		}),
-		pallet_staking: Some(StakingConfig {
-			validator_count: 5,
-			minimum_validator_count: 1,
-			stakers: initial_authorities
-				.iter()
-				.map(|x| (x.0.clone(), x.1.clone(), INITIAL_STAKING, StakerStatus::Validator))
-				.collect(),
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
-			slash_reward_fraction: Perbill::from_percent(10),
-			..Default::default()
-		}),
-		pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
-		pallet_babe: Some(BabeConfig { authorities: vec![] }),
-		pallet_grandpa: Some(GrandpaConfig { authorities: vec![] }),
-		pallet_collective_Instance1: Some(Default::default()),
-		pallet_membership_Instance1: Some(GeneralCouncilMembershipConfig {
+		},
+		pallet_indices: IndicesConfig { indices: vec![] },
+		pallet_balances: BalancesConfig { balances },
+		pallet_sudo: SudoConfig { key: root_key.clone() },
+		pallet_collective_Instance1: Default::default(),
+		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_collective_Instance2: Some(Default::default()),
-		pallet_membership_Instance2: Some(HonzonCouncilMembershipConfig {
+		},
+		pallet_collective_Instance2: Default::default(),
+		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_collective_Instance3: Some(Default::default()),
-		pallet_membership_Instance3: Some(HomaCouncilMembershipConfig {
+		},
+		pallet_collective_Instance3: Default::default(),
+		pallet_membership_Instance3: HomaCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_collective_Instance4: Some(Default::default()),
-		pallet_membership_Instance4: Some(TechnicalCommitteeMembershipConfig {
+		},
+		pallet_collective_Instance4: Default::default(),
+		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
-		}),
-		pallet_membership_Instance5: Some(OperatorMembershipAcalaConfig {
+		},
+		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
-		}),
-		pallet_membership_Instance6: Some(OperatorMembershipBandConfig {
+		},
+		pallet_membership_Instance6: OperatorMembershipBandConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
-		}),
-		pallet_treasury: Some(Default::default()),
-		orml_tokens: Some(TokensConfig {
+		},
+		pallet_treasury: Default::default(),
+		orml_tokens: TokensConfig {
 			endowed_accounts: vec![
-				(root_key.clone(), CurrencyId::Token(TokenSymbol::DOT), INITIAL_BALANCE),
-				(root_key, CurrencyId::Token(TokenSymbol::XBTC), INITIAL_BALANCE),
+				(root_key.clone(), DOT, initial_balance),
+				(root_key, XBTC, initial_balance),
 			],
-		}),
-		orml_vesting: Some(VestingConfig { vesting: vec![] }),
-		module_cdp_treasury: Some(CdpTreasuryConfig {
+		},
+		orml_vesting: VestingConfig { vesting: vec![] },
+		module_cdp_treasury: CdpTreasuryConfig {
 			collateral_auction_maximum_size: vec![
-				(CurrencyId::Token(TokenSymbol::DOT), DOLLARS), // (currency_id, max size of a collateral auction)
-				(CurrencyId::Token(TokenSymbol::XBTC), 5 * CENTS),
-				(CurrencyId::Token(TokenSymbol::RENBTC), 5 * CENTS),
+				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
+				(XBTC, 5 * cent(XBTC)),
+				(RENBTC, 5 * cent(RENBTC)),
 			],
-		}),
-		module_cdp_engine: Some(CdpEngineConfig {
+		},
+		module_cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![
 				(
-					CurrencyId::Token(TokenSymbol::DOT),
+					DOT,
 					Some(FixedU128::zero()),                             // stability fee for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
-					10_000_000 * DOLLARS,                                // maximum debit value in aUSD (cap)
+					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
 				),
 				(
-					CurrencyId::Token(TokenSymbol::XBTC),
+					XBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
 					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 				(
-					CurrencyId::Token(TokenSymbol::LDOT),
+					LDOT,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(120, 100)),
 					Some(FixedU128::saturating_from_rational(10, 100)),
 					Some(FixedU128::saturating_from_rational(130, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 				(
-					CurrencyId::Token(TokenSymbol::RENBTC),
+					RENBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),
 					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * DOLLARS,
+					10_000_000 * dollar(AUSD),
 				),
 			],
 			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
-		}),
-		orml_oracle_Instance1: Some(AcalaOracleConfig {
+		},
+		orml_oracle_Instance1: AcalaOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
-		}),
-		orml_oracle_Instance2: Some(BandOracleConfig {
+		},
+		orml_oracle_Instance2: BandOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
-		}),
-		module_evm: Some(Default::default()),
-		module_staking_pool: Some(StakingPoolConfig {
+		},
+		module_evm: Default::default(),
+		module_staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
 				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
@@ -268,15 +272,18 @@ fn acala_genesis(
 				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
 				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
 			},
-		}),
-		module_dex: Some(DexConfig {
+		},
+		module_dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 			initial_added_liquidity_pools: vec![],
-		}),
-		ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
+		},
+		parachain_info: ParachainInfoConfig {
+			parachain_id: 666.into(),
+		},
+		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-		}),
-		orml_nft: Some(OrmlNFTConfig { tokens: vec![] }),
+		},
+		orml_nft: OrmlNFTConfig { tokens: vec![] },
 	}
 }
