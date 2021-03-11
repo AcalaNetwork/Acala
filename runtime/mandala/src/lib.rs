@@ -64,7 +64,6 @@ use orml_traits::{create_median_value_data_provider, parameter_type_with_key, Da
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
 #[cfg(feature = "standalone")]
-#[cfg(feature = "standalone")]
 use pallet_grandpa::{fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 #[cfg(feature = "standalone")]
 use pallet_session::historical as pallet_session_historical;
