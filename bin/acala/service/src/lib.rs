@@ -144,7 +144,6 @@ where
 		sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
 	let client = Arc::new(client);
 
-	// TODO: custom registry with `acala` prefix?
 	let registry = config.prometheus_registry();
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
@@ -383,7 +382,7 @@ pub fn new_chain_ops(
 		#[cfg(not(feature = "with-mandala-runtime"))]
 		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
 	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-kaura-runtime")]
+		#[cfg(feature = "with-karura-runtime")]
 		{
 			let PartialComponents {
 				client,
@@ -394,7 +393,7 @@ pub fn new_chain_ops(
 			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutor>(config, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
-		#[cfg(not(feature = "with-kaura-runtime"))]
+		#[cfg(not(feature = "with-karura-runtime"))]
 		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
 	} else {
 		#[cfg(feature = "with-acala-runtime")]
