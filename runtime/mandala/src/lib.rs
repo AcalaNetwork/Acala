@@ -40,7 +40,7 @@ use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
 	OpaqueMetadata, H160,
 };
-use sp_runtime::traits::{BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup};
+use sp_runtime::traits::{BadOrigin, BlakeTwo256, Block as BlockT, SaturatedConversion, StaticLookup};
 use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
@@ -49,7 +49,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
-use sp_std::{collections::btree_set::BTreeSet, prelude::*};
+use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -63,17 +63,26 @@ use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
+#[cfg(not(feature = "standalone"))]
 use cumulus_primitives_core::relay_chain::Balance as RelayChainBalance;
+#[cfg(not(feature = "standalone"))]
 use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, NativePalletAssetOr};
+#[cfg(not(feature = "standalone"))]
 use polkadot_parachain::primitives::Sibling;
+#[cfg(not(feature = "standalone"))]
+use sp_runtime::traits::Convert;
+#[cfg(not(feature = "standalone"))]
+use sp_std::collections::btree_set::BTreeSet;
+#[cfg(not(feature = "standalone"))]
 use xcm::v0::{Junction, MultiLocation, NetworkId};
+#[cfg(not(feature = "standalone"))]
 use xcm_builder::{
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
 };
+#[cfg(not(feature = "standalone"))]
 use xcm_executor::{Config, XcmExecutor};
 
-#[cfg(feature = "standalone")]
 #[cfg(feature = "standalone")]
 use pallet_grandpa::{fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 #[cfg(feature = "standalone")]
