@@ -38,6 +38,7 @@ use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
+#[allow(clippy::unused_unit)]
 fn get_exec_name() -> Option<String> {
 	std::env::current_exe()
 		.ok()
