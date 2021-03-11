@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{AccountId, TokenSymbol};
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -36,8 +36,14 @@ pub fn acala_config() -> Result<ChainSpec, String> {
 
 pub fn latest_acala_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert("tokenSymbol".into(), "ACA".into());
-	properties.insert("tokenDecimals".into(), 13.into());
+	let mut token_symbol: Vec<String> = vec![];
+	let mut token_decimals: Vec<u32> = vec![];
+	TokenSymbol::get_info().iter().for_each(|(symbol_name, decimals)| {
+		token_symbol.push(symbol_name.to_string());
+		token_decimals.push(*decimals);
+	});
+	properties.insert("tokenSymbol".into(), token_symbol.into());
+	properties.insert("tokenDecimals".into(), token_decimals.into());
 
 	let wasm_binary = acala_runtime::WASM_BINARY.ok_or("Acala runtime wasm binary not available")?;
 

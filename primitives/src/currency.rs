@@ -72,6 +72,14 @@ macro_rules! create_currency_id {
 
 		$(pub const $vname: CurrencyId = CurrencyId::Token(TokenSymbol::$vname);)*
 
+		impl TokenSymbol {
+			pub fn get_info() -> Vec<(&'static str, u32)> {
+				vec![
+					$((stringify!($vname), $deci),)*
+				]
+			}
+		}
+
 		#[test]
 		#[ignore]
 		fn generate_token_resources() {

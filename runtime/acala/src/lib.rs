@@ -862,7 +862,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, XBTC, RENBTC, POLKABTC, SDN, PHA];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, XBTC, RENBTC, POLKABTC, PHA];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -913,7 +913,6 @@ parameter_types! {
 		TradingPair::new(AUSD, XBTC),
 		TradingPair::new(AUSD, RENBTC),
 		TradingPair::new(AUSD, POLKABTC),
-		TradingPair::new(AUSD, SDN),
 		TradingPair::new(AUSD, PHA),
 	];
 }
@@ -947,7 +946,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, LDOT, DOT, XBTC, RENBTC, POLKABTC, SDN, PHA];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, LDOT, DOT, XBTC, RENBTC, POLKABTC, PHA];
 }
 
 impl module_transaction_payment::Config for Runtime {
