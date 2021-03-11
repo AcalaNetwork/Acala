@@ -24,7 +24,6 @@ use super::*;
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use primitives::{Balance, CurrencyId, TokenSymbol};
-use sp_std::prelude::*;
 
 pub fn dollar(d: u32) -> Balance {
 	let d: Balance = d.into();
