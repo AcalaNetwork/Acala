@@ -1,4 +1,4 @@
-use acala_primitives::AccountId;
+use acala_primitives::{AccountId, TokenSymbol};
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -22,11 +22,14 @@ pub fn acala_config() -> Result<ChainSpec, String> {
 
 pub fn latest_acala_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert(
-		"tokenSymbol".into(),
-		vec!["ACA", "AUSD", "DOT", "LDOT", "POLKABTC", "XBTC", "RENBTC", "PHA", "PLM"].into(),
-	);
-	properties.insert("tokenDecimals".into(), vec![13, 12, 10, 10, 8, 8, 8, 18, 18].into());
+	let mut token_symbol: Vec<String> = vec![];
+	let mut token_decimals: Vec<u32> = vec![];
+	TokenSymbol::get_info().iter().for_each(|(symbol_name, decimals)| {
+		token_symbol.push(symbol_name.to_string());
+		token_decimals.push(*decimals);
+	});
+	properties.insert("tokenSymbol".into(), token_symbol.into());
+	properties.insert("tokenDecimals".into(), token_decimals.into());
 
 	let wasm_binary = acala_runtime::WASM_BINARY.ok_or("Acala runtime wasm binary not available")?;
 

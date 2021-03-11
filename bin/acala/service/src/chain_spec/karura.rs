@@ -1,4 +1,4 @@
-use acala_primitives::AccountId;
+use acala_primitives::{AccountId, TokenSymbol};
 use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -22,11 +22,14 @@ pub fn karura_config() -> Result<ChainSpec, String> {
 
 pub fn latest_karura_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
-	properties.insert(
-		"tokenSymbol".into(),
-		vec!["KAR", "KUSD", "KSM", "LKSM", "POLKABTC", "XBTC", "RENBTC", "SDN"].into(),
-	);
-	properties.insert("tokenDecimals".into(), vec![12, 12, 12, 12, 8, 8, 8, 18].into());
+	let mut token_symbol: Vec<String> = vec![];
+	let mut token_decimals: Vec<u32> = vec![];
+	TokenSymbol::get_info().iter().for_each(|(symbol_name, decimals)| {
+		token_symbol.push(symbol_name.to_string());
+		token_decimals.push(*decimals);
+	});
+	properties.insert("tokenSymbol".into(), token_symbol.into());
+	properties.insert("tokenDecimals".into(), token_decimals.into());
 
 	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Karura runtime wasm binary not available")?;
 
