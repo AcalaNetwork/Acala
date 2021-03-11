@@ -5,17 +5,29 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
+log = "0.4.8"
 structopt = "0.3.8"
-sp-core = { version = "3.0.0", optional = true }
-sc-cli = { version = "0.9.0", optional = true }
-sc-service = { version = "0.9.0", optional = true }
-frame-benchmarking-cli = { version = "3.0.0", optional = true }
+codec = { package = "parity-scale-codec", version = "2.0.0" }
+
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 
 inspect = { package = "acala-inspect", path = "../../../inspect" }
 service = { package = "acala-service", path = "../service", default-features = false, optional = true }
 
 [build-dependencies]
-substrate-build-script-utils = { version = "3.0.0", default-features = false }
+substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 [features]
 default = [ "wasmtime", "cli", "with-mandala-runtime" ]

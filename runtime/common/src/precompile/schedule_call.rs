@@ -20,9 +20,8 @@
 #![allow(clippy::type_complexity)]
 
 use frame_support::{
-	debug,
 	dispatch::Dispatchable,
-	ensure, parameter_types,
+	ensure, log, parameter_types,
 	traits::{
 		schedule::{DispatchTime, Named as ScheduleNamed},
 		Currency, IsType, OriginTrait,
@@ -133,7 +132,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		debug::debug!(target: "evm", "schedule call: input: {:?}", input);
+		log::debug!(target: "evm", "schedule call: input: {:?}", input);
 
 		// Solidity dynamic arrays will add the array size to the front of the array,
 		// pre-compile needs to deal with the `size`.
@@ -153,7 +152,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 				let input_len = input.u32_at(7)?;
 				let input_data = input.bytes_at(8 * PER_PARAM_BYTES, input_len as usize)?;
 
-				debug::debug!(
+				log::debug!(
 					target: "evm",
 					"schedule call: from: {:?}, target: {:?}, value: {:?}, gas_limit: {:?}, storage_limit: {:?}, min_delay: {:?}, input_len: {:?}, input_data: {:?}",
 					from,
@@ -203,7 +202,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 				}
 				.encode();
 
-				debug::debug!(
+				log::debug!(
 					target: "evm",
 					"schedule call: task_id: {:?}",
 					task_id,
@@ -231,7 +230,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 				let task_id_len = input.u32_at(2)?;
 				let task_id = input.bytes_at(3 * PER_PARAM_BYTES, task_id_len as usize)?;
 
-				debug::debug!(
+				log::debug!(
 					target: "evm",
 					"cancel call: from: {:?}, task_id: {:?}",
 					from,
@@ -259,7 +258,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 				let task_id_len = input.u32_at(3)?;
 				let task_id = input.bytes_at(4 * PER_PARAM_BYTES, task_id_len as usize)?;
 
-				debug::debug!(
+				log::debug!(
 					target: "evm",
 					"reschedule call: from: {:?}, task_id: {:?}, min_delay: {:?}",
 					from,

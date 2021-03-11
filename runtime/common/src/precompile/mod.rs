@@ -25,7 +25,7 @@ mod mock;
 mod tests;
 
 use crate::is_acala_precompile;
-use frame_support::debug;
+use frame_support::log;
 use module_evm::{
 	precompiles::{Precompile, Precompiles},
 	Context, ExitError, ExitSucceed,
@@ -112,7 +112,7 @@ impl<
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>> {
 		EthereumPrecompiles::execute(address, input, target_gas, context).or_else(|| {
 			if is_acala_precompile(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
-				debug::debug!(target: "evm", "Precompile no permission");
+				log::debug!(target: "evm", "Precompile no permission");
 				return Some(Err(ExitError::Other("no permission".into())));
 			}
 

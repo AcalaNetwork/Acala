@@ -19,7 +19,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \
 	rustup default nightly-2020-11-16 && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly-2020-11-16 && \
-	cargo build "--$PROFILE" --manifest-path bin/acala-dev/Cargo.toml --features with-ethereum-compatibility
+	cargo build "--$PROFILE" --manifest-path bin/acala/Cargo.toml
 
 # ===== SECOND STAGE ======
 
@@ -33,11 +33,11 @@ RUN mv /usr/share/ca* /tmp && \
 	mv /tmp/ca-certificates /usr/share/ && \
 	useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
-COPY --from=builder /acala/target/$PROFILE/acala-dev /usr/local/bin
+COPY --from=builder /acala/target/$PROFILE/acala /usr/local/bin
 
 # checks
-RUN ldd /usr/local/bin/acala-dev && \
-	/usr/local/bin/acala-dev --version
+RUN ldd /usr/local/bin/acala && \
+	/usr/local/bin/acala --version
 
 # Shrinking
 RUN rm -rf /usr/lib/python* && \
@@ -50,4 +50,4 @@ RUN mkdir /acala/data
 
 VOLUME ["/acala/data"]
 
-ENTRYPOINT ["/usr/local/bin/acala-dev"]
+ENTRYPOINT ["/usr/local/bin/acala"]
