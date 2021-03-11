@@ -75,7 +75,7 @@ macro_rules! create_currency_id {
 		impl TokenSymbol {
 			pub fn get_info() -> Vec<(&'static str, u32)> {
 				vec![
-					$((stringify!($vname), $deci),)*
+					$((stringify!($symbol), $deci),)*
 				]
 			}
 		}
@@ -126,7 +126,7 @@ create_currency_id! {
 		POLKABTC("PolkaBTC", 8) = 6,
 		PLM("Plasm", 18) = 7,
 		PHA("Phala", 18) = 8,
-		HDT("HydraDX", 12) = 9;
+		HDT("HydraDX", 12) = 9,
 
 		// Kusama Ecosystem
 		KAR("Karura", 12) = 128,
