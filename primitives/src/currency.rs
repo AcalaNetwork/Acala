@@ -118,6 +118,7 @@ create_currency_id! {
 		POLKABTC("PolkaBTC", 8) = 6,
 		PLM("Plasm", 18) = 7,
 		PHA("Phala", 18) = 8,
+		HDT("HydraDX", 12) = 9;
 
 		// Kusama Ecosystem
 		KAR("Karura", 12) = 128,
