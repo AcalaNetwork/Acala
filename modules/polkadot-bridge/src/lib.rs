@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::BasicCurrency;
 use primitives::{Balance, EraIndex};
@@ -258,7 +258,7 @@ impl<T: Config> Pallet<T> {
 				let current_era = Self::current_era();
 				let unbonded_era_index = current_era + T::BondingDuration::get();
 				status.unbonding.push((unbonded_era_index, amount));
-				debug::debug!(
+				log::debug!(
 					target: "polkadot bridge simulator",
 					"sub account {:?} unbond: {:?} at {:?}",
 					account_index, amount, current_era,
@@ -300,7 +300,7 @@ impl<T: Config> Pallet<T> {
 				status.bonded = bonded;
 				status.unbonding = unbonding;
 
-				debug::debug!(
+				log::debug!(
 					target: "polkadot bridge simulator",
 					"sub account {:?} rebond: {:?}",
 					account_index, rebond_balance,
@@ -341,7 +341,7 @@ impl<T: Config> Pallet<T> {
 			let reward = status.mock_reward_rate.saturating_mul_int(status.bonded);
 			status.bonded = status.bonded.saturating_add(reward);
 
-			debug::debug!(
+			log::debug!(
 				target: "polkadot bridge simulator",
 				"sub account {:?} get reward: {:?}",
 				account_index, reward,

@@ -6,42 +6,57 @@ edition = "2018"
 
 [dependencies]
 hex-literal = "0.3.1"
-serde = { version = "1.0.102", features = ["derive"] }
+serde = { version = "1.0.118", features = ["derive"] }
 serde_json = "1.0.41"
 codec = { package = "parity-scale-codec", version = "2.0.0" }
-sp-api = { version = "3.0.0" }
-sp-consensus = { version = "0.9.0" }
-sp-consensus-babe = { version = "0.9.0" }
-sp-core = { version = "3.0.0" }
-sp-finality-grandpa = { version = "3.0.0" }
-sp-runtime = { version = "3.0.0" }
-sp-inherents = { version = "3.0.0" }
-sc-finality-grandpa = { version = "0.9.0" }
-sc-chain-spec = { version = "3.0.0" }
-sc-client-api = { version = "3.0.0" }
-sc-telemetry = { version = "3.0.0" }
-sc-service = { version = "0.9.0" }
-sc-executor = { version = "0.9.0" }
-sc-consensus = { version = "0.9.0" }
-sc-consensus-babe = { version = "0.9.0" }
-sc-consensus-manual-seal = { version = "0.9.0" }
-sc-consensus-slots = { version = "0.9.0" }
-sc-transaction-pool = { version = "3.0.0" }
-sc-basic-authorship = { version = "0.9.0" }
-sc-network = { version = "0.9.0" }
-frame-benchmarking = { version = "3.0.0" }
-sp-trie = { version = "3.0.0" }
-prometheus-endpoint = { package = "substrate-prometheus-endpoint", version = "0.9.0"}
 
-sp-block-builder = { version = "3.0.0" }
-frame-system-rpc-runtime-api = { version = "3.0.0" }
-pallet-transaction-payment-rpc-runtime-api = { version = "3.0.0" }
-sp-offchain = { version = "3.0.0" }
-sp-session = { version = "3.0.0" }
-sp-storage = { version = "3.0.0" }
-sp-transaction-pool = { version = "3.0.0" }
-sp-blockchain = { version = "3.0.0" }
-sp-std = { version = "3.0.0" }
+jsonrpc-core = "15.1.0"
+
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-chain-spec = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-executor = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-consensus-manual-seal = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-consensus-slots = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-network = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-trie = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https://github.com/paritytech/substrate", branch = "rococo-v1"}
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+
+sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-offchain = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-session = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-storage = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+
+cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1", features = ["real-overseer"] }
 
 ecosystem-renvm-bridge = { path = "../../../ecosystem-modules/ren/renvm-bridge" }
 module-evm = { path = "../../../modules/evm" }
@@ -59,7 +74,7 @@ karura-runtime = { path = "../../../runtime/karura", optional = true }
 acala-runtime = { path = "../../../runtime/acala", optional = true }
 
 [dev-dependencies]
-sc-consensus-babe = { version = "0.9.0", features = ["test-helpers"] }
+sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", features = ["test-helpers"] }
 
 [features]
 default = ["std", "with-mandala-runtime"]

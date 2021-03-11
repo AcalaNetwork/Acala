@@ -19,21 +19,35 @@
 // Disable the following lints
 #![allow(clippy::borrowed_box)]
 
-use crate::cli::{Cli, Subcommand};
-use sc_cli::{Role, RuntimeVersion, SubstrateCli};
-use sc_service::ChainType;
+use crate::cli::{Cli, RelayChainCli, Subcommand};
+use codec::Encode;
+use cumulus_client_service::genesis::generate_genesis_block;
+use cumulus_primitives_core::ParaId;
 use service::{chain_spec, IdentifyVariant};
 
-fn get_exec_name() -> Option<String> {
-	std::env::current_exe()
-		.ok()
-		.and_then(|pb| pb.file_name().map(|s| s.to_os_string()))
-		.and_then(|s| s.into_string().ok())
-}
+pub use service::mandala_runtime::Block;
+
+use log::info;
+use polkadot_parachain::primitives::AccountIdConversion;
+use sc_cli::{
+	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
+	RuntimeVersion, SharedParams, SubstrateCli,
+};
+use sc_service::config::{BasePath, PrometheusConfig};
+use sp_core::hexdisplay::HexDisplay;
+use sp_runtime::traits::Block as BlockT;
+use std::{io::Write, net::SocketAddr};
+
+#[cfg(feature = "with-acala-runtime")]
+const CHAIN_NAME: &str = "Acala";
+#[cfg(feature = "with-karura-runtime")]
+const CHAIN_NAME: &str = "Karura";
+#[cfg(feature = "with-mandala-runtime")]
+const CHAIN_NAME: &str = "Mandala";
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Acala Node".into()
+		format!("{} Node", CHAIN_NAME)
 	}
 
 	fn impl_version() -> String {
@@ -45,7 +59,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn author() -> String {
-		"Acala Developers".into()
+		env!("CARGO_PKG_AUTHORS").into()
 	}
 
 	fn support_url() -> String {
@@ -58,12 +72,9 @@ impl SubstrateCli for Cli {
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		let id = if id.is_empty() {
-			let n = get_exec_name().unwrap_or_default();
-			["acala", "karura", "mandala"]
-				.iter()
-				.cloned()
-				.find(|&chain| n.starts_with(chain))
-				.unwrap_or("acala")
+			// The binary prefix is always acala.
+			// Make Mandala the default chain spec.
+			"mandala"
 		} else {
 			id
 		};
@@ -142,6 +153,46 @@ impl SubstrateCli for Cli {
 	}
 }
 
+impl SubstrateCli for RelayChainCli {
+	fn impl_name() -> String {
+		format!("{} Parachain Collator", CHAIN_NAME)
+	}
+
+	fn impl_version() -> String {
+		env!("SUBSTRATE_CLI_IMPL_VERSION").into()
+	}
+
+	fn description() -> String {
+		format!(
+			"{} parachain collator\n\nThe command-line arguments provided first will be \
+		passed to the parachain node, while the arguments provided after -- will be passed \
+		to the relaychain node.\n\n\
+		rococo-collator [parachain-args] -- [relaychain-args]",
+			CHAIN_NAME
+		)
+	}
+
+	fn author() -> String {
+		env!("CARGO_PKG_AUTHORS").into()
+	}
+
+	fn support_url() -> String {
+		"https://github.com/AcalaNetwork/Acala/issues".into()
+	}
+
+	fn copyright_start_year() -> i32 {
+		2019
+	}
+
+	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
+		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
+	}
+
+	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
+		polkadot_cli::Cli::native_runtime_version(chain_spec)
+	}
+}
+
 fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
 	use sp_core::crypto::Ss58AddressFormat;
 
@@ -156,40 +207,28 @@ fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
 	sp_core::crypto::set_default_ss58_version(ss58_version);
 }
 
+fn extract_genesis_wasm(chain_spec: &Box<dyn service::ChainSpec>) -> Result<Vec<u8>> {
+	let mut storage = chain_spec.build_storage()?;
+
+	storage
+		.top
+		.remove(sp_core::storage::well_known_keys::CODE)
+		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
+}
+
 /// Parses acala specific CLI arguments and run the service.
 pub fn run() -> sc_cli::Result<()> {
 	let cli = Cli::from_args();
 
 	match &cli.subcommand {
-		None => {
-			let runner = cli.create_runner(&cli.run)?;
-			let chain_spec = &runner.config().chain_spec;
-
-			set_default_ss58_version(chain_spec);
-
-			if cli.instant_sealing && chain_spec.chain_type() != ChainType::Development {
-				return Err("Instant sealing can be turned on only in `--dev` mode".into());
-			}
-
-			runner.run_node_until_exit(|config| async move {
-				match config.role {
-					Role::Light => service::build_light(config),
-					_ => {
-						service::build_full(config, cli.instant_sealing, false).map(|(_, _, task_manager)| task_manager)
-					}
-				}
-				.map_err(sc_cli::Error::Service)
-			})
-		}
-
 		Some(Subcommand::Inspect(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			let chain_spec = &runner.config().chain_spec;
 
 			set_default_ss58_version(chain_spec);
 
-			runner.sync_run(|config| {
-				let (client, _, _) = service::build_full(config, false, false)?;
+			runner.sync_run(|mut config| {
+				let (client, _, _, _) = service::new_chain_ops(&mut config)?;
 				cmd.run(client)
 			})
 		}
@@ -286,5 +325,224 @@ pub fn run() -> sc_cli::Result<()> {
 				Ok((cmd.run(client, backend), task_manager))
 			})
 		}
+
+		Some(Subcommand::ExportGenesisState(params)) => {
+			let mut builder = sc_cli::LoggerBuilder::new("");
+			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
+			let _ = builder.init();
+
+			let block: Block = generate_genesis_block(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
+			let raw_header = block.header().encode();
+			let output_buf = if params.raw {
+				raw_header
+			} else {
+				format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
+			};
+
+			if let Some(output) = &params.output {
+				std::fs::write(output, output_buf)?;
+			} else {
+				std::io::stdout().write_all(&output_buf)?;
+			}
+
+			Ok(())
+		}
+
+		Some(Subcommand::ExportGenesisWasm(params)) => {
+			let mut builder = sc_cli::LoggerBuilder::new("");
+			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
+			let _ = builder.init();
+
+			let raw_wasm_blob = extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
+			let output_buf = if params.raw {
+				raw_wasm_blob
+			} else {
+				format!("0x{:?}", HexDisplay::from(&raw_wasm_blob)).into_bytes()
+			};
+
+			if let Some(output) = &params.output {
+				std::fs::write(output, output_buf)?;
+			} else {
+				std::io::stdout().write_all(&output_buf)?;
+			}
+
+			Ok(())
+		}
+
+		None => {
+			let runner = cli.create_runner(&*cli.run)?;
+
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
+			runner.run_node_until_exit(|config| async move {
+				// TODO
+				let key = sp_core::Pair::generate().0;
+
+				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
+				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
+				let para_id = extension.map(|e| e.para_id);
+
+				let polkadot_cli = RelayChainCli::new(
+					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
+					relay_chain_id,
+					[RelayChainCli::executable_name()]
+						.iter()
+						.chain(cli.relaychain_args.iter()),
+				);
+
+				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(666));
+
+				let parachain_account = AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
+
+				let block: Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
+
+				let task_executor = config.task_executor.clone();
+				let polkadot_config =
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, task_executor, None)
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+				let collator = cli.run.base.validator || cli.collator;
+
+				info!("Parachain id: {:?}", id);
+				info!("Parachain Account: {}", parachain_account);
+				info!("Parachain genesis state: {}", genesis_state);
+				info!("Is collating: {}", if collator { "yes" } else { "no" });
+
+				// TODO: support Karura & Acala
+				service::start_node::<service::mandala_runtime::RuntimeApi, service::MandalaExecutor>(
+					config,
+					key,
+					polkadot_config,
+					id,
+					collator,
+				)
+				.await
+				.map(|r| r.0)
+				.map_err(Into::into)
+			})
+		}
+	}
+}
+
+impl DefaultConfigurationValues for RelayChainCli {
+	fn p2p_listen_port() -> u16 {
+		30334
+	}
+
+	fn rpc_ws_listen_port() -> u16 {
+		9945
+	}
+
+	fn rpc_http_listen_port() -> u16 {
+		9934
+	}
+
+	fn prometheus_listen_port() -> u16 {
+		9616
+	}
+}
+
+impl CliConfiguration<Self> for RelayChainCli {
+	fn shared_params(&self) -> &SharedParams {
+		self.base.base.shared_params()
+	}
+
+	fn import_params(&self) -> Option<&ImportParams> {
+		self.base.base.import_params()
+	}
+
+	fn network_params(&self) -> Option<&NetworkParams> {
+		self.base.base.network_params()
+	}
+
+	fn keystore_params(&self) -> Option<&KeystoreParams> {
+		self.base.base.keystore_params()
+	}
+
+	fn base_path(&self) -> Result<Option<BasePath>> {
+		Ok(self
+			.shared_params()
+			.base_path()
+			.or_else(|| self.base_path.clone().map(Into::into)))
+	}
+
+	fn rpc_http(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+		self.base.base.rpc_http(default_listen_port)
+	}
+
+	fn rpc_ipc(&self) -> Result<Option<String>> {
+		self.base.base.rpc_ipc()
+	}
+
+	fn rpc_ws(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+		self.base.base.rpc_ws(default_listen_port)
+	}
+
+	fn prometheus_config(&self, default_listen_port: u16) -> Result<Option<PrometheusConfig>> {
+		self.base.base.prometheus_config(default_listen_port)
+	}
+
+	fn init<C: SubstrateCli>(&self) -> Result<sc_telemetry::TelemetryWorker> {
+		unreachable!("PolkadotCli is never initialized; qed");
+	}
+
+	fn chain_id(&self, is_dev: bool) -> Result<String> {
+		let chain_id = self.base.base.chain_id(is_dev)?;
+
+		Ok(if chain_id.is_empty() {
+			self.chain_id.clone().unwrap_or_default()
+		} else {
+			chain_id
+		})
+	}
+
+	fn role(&self, is_dev: bool) -> Result<sc_service::Role> {
+		self.base.base.role(is_dev)
+	}
+
+	fn transaction_pool(&self) -> Result<sc_service::config::TransactionPoolOptions> {
+		self.base.base.transaction_pool()
+	}
+
+	fn state_cache_child_ratio(&self) -> Result<Option<usize>> {
+		self.base.base.state_cache_child_ratio()
+	}
+
+	fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {
+		self.base.base.rpc_methods()
+	}
+
+	fn rpc_ws_max_connections(&self) -> Result<Option<usize>> {
+		self.base.base.rpc_ws_max_connections()
+	}
+
+	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
+		self.base.base.rpc_cors(is_dev)
+	}
+
+	fn telemetry_external_transport(&self) -> Result<Option<sc_service::config::ExtTransport>> {
+		self.base.base.telemetry_external_transport()
+	}
+
+	fn default_heap_pages(&self) -> Result<Option<u64>> {
+		self.base.base.default_heap_pages()
+	}
+
+	fn force_authoring(&self) -> Result<bool> {
+		self.base.base.force_authoring()
+	}
+
+	fn disable_grandpa(&self) -> Result<bool> {
+		self.base.base.disable_grandpa()
+	}
+
+	fn max_runtime_instances(&self) -> Result<Option<usize>> {
+		self.base.base.max_runtime_instances()
+	}
+
+	fn announce_block(&self) -> Result<bool> {
+		self.base.base.announce_block()
 	}
 }

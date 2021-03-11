@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use frame_support::debug;
+use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use sp_core::U256;
 use sp_std::{borrow::Cow, convert::TryFrom, marker::PhantomData, prelude::*, result};
@@ -77,7 +77,7 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		debug::debug!(target: "evm", "state_rent input: {:?}", input);
+		log::debug!(target: "evm", "state_rent input: {:?}", input);
 		let input = Input::<Action, AccountId, AddressMapping>::new(input);
 
 		let action = input.action()?;

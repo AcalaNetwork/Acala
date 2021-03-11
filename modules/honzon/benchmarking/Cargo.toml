@@ -1,0 +1,48 @@
+[package]
+name = "module-honzon-benchmarking"
+version = "0.7.3"
+authors = ["Acala Developers"]
+edition = "2018"
+
+[dependencies]
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+orml-oracle = { path = "../../../orml/oracle", default-features = false }
+orml-traits = { path = "../../../orml/traits", default-features = false }
+honzon = { package = "module-honzon", path = "../../honzon", default-features = false }
+prices = { package = "module-prices", path = "../../prices", default-features = false }
+primitives = { package = "acala-primitives", path = "../../../primitives", default-features = false }
+support = { package = "module-support", path = "../../support", default-features = false }
+cdp-engine = { package = "module-cdp-engine", path = "../../cdp_engine", default-features = false }
+loans = { package = "module-loans", path = "../../loans", default-features = false }
+
+[dev-dependencies]
+serde = { version = "1.0.101" }
+codec = { package = "parity-scale-codec", version = "2.0.0", features = ["derive"] }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+orml-currencies = { path = "../../../orml/currencies", default-features = false }
+orml-tokens = { path = "../../../orml/tokens", default-features = false }
+cdp-treasury = { package = "module-cdp-treasury", path = "../../cdp_treasury", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+
+[features]
+default = ["std"]
+std = [
+	"sp-runtime/std",
+	"sp-std/std",
+	"frame-support/std",
+	"frame-system/std",
+	"frame-benchmarking/std",
+	"honzon/std",
+	"cdp-engine/std",
+	"loans/std",
+	"support/std",
+	"orml-oracle/std",
+	"orml-traits/std",
+	"prices/std",
+]
