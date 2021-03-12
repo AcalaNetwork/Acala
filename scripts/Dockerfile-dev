@@ -33,7 +33,7 @@ RUN mv /usr/share/ca* /tmp && \
 	mv /tmp/ca-certificates /usr/share/ && \
 	useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
-COPY --from=builder /acala/target/$PROFILE/acala-dev /usr/local/bin
+COPY --from=builder /acala/bin/acala-dev/target/release/acala-dev /usr/local/bin
 
 # checks
 RUN ldd /usr/local/bin/acala-dev && \
