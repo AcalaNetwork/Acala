@@ -5024,13 +5024,13 @@ dependencies = [
  "cumulus-primitives-core",
  "frame-support",
  "frame-system",
+ "orml-xcm-support",
  "parity-scale-codec",
  "serde",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
- "xcm-executor",
 ]
 
 [[package]]

@@ -5544,6 +5544,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-tokens",
+ "orml-xcm-support",
  "parity-scale-codec",
  "polkadot-core-primitives",
  "serde",
@@ -5552,7 +5553,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
- "xcm-executor",
 ]
 
 [[package]]
