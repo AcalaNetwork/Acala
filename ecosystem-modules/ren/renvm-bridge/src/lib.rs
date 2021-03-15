@@ -45,6 +45,8 @@ mod tests;
 type EcdsaSignature = ecdsa::Signature;
 type PublicKey = [u8; 20];
 type DestAddress = Vec<u8>;
+// Calculated the transaction length from the unit test.
+const MINT_TX_LENGTH: u32 = 168;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -121,9 +123,9 @@ decl_module! {
 		fn mint(
 			origin,
 			who: T::AccountId,
-			p_hash: [u8; 32],
+			_p_hash: [u8; 32],
 			#[compact] amount: Balance,
-			n_hash: [u8; 32],
+			_n_hash: [u8; 32],
 			sig: EcdsaSignature,
 		) {
 			ensure_none(origin)?;
@@ -132,16 +134,8 @@ decl_module! {
 			// TODO: update by benchmarks.
 			let weight: Weight = 10_000;
 
-			let call_len = Call::<T>::mint(
-				who.clone(),
-				p_hash,
-				amount,
-				n_hash,
-				sig,
-			).using_encoded(|c| c.len());
-
 			// charge mint fee. Ignore the result, if it failed, only lost the fee.
-			let _ = T::ChargeTransactionPayment::charge_fee(&who, call_len as u32, weight, Zero::zero(), Pays::Yes, DispatchClass::Normal);
+			let _ = T::ChargeTransactionPayment::charge_fee(&who, MINT_TX_LENGTH, weight, Zero::zero(), Pays::Yes, DispatchClass::Normal);
 			Self::deposit_event(RawEvent::Minted(who, amount));
 		}
 
