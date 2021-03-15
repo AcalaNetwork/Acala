@@ -63,9 +63,11 @@ use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
-use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
+use orml_xcm_support::{
+	CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, XcmHandler as XcmHandlerT,
+};
 use polkadot_parachain::primitives::Sibling;
-use xcm::v0::{Junction, MultiLocation, NetworkId};
+use xcm::v0::{Junction, MultiLocation, NetworkId, Xcm};
 use xcm_builder::{
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
@@ -1253,6 +1255,13 @@ impl cumulus_pallet_xcm_handler::Config for Runtime {
 	type AccountIdConverter = LocationConverter;
 }
 
+pub struct HandleXcm;
+impl XcmHandlerT<AccountId> for HandleXcm {
+	fn execute_xcm(origin: AccountId, xcm: Xcm) -> DispatchResult {
+		XcmHandler::execute_xcm(origin, xcm)
+	}
+}
+
 impl orml_xtokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -1261,8 +1270,7 @@ impl orml_xtokens::Config for Runtime {
 	//TODO: change network id if kusama
 	type RelayChainNetworkId = PolkadotNetworkId;
 	type ParaId = ParachainInfo;
-	type AccountIdConverter = LocationConverter;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type XcmHandler = HandleXcm;
 }
 
 #[allow(clippy::large_enum_variant)]

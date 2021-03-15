@@ -83,11 +83,12 @@ use parachain_use::*;
 mod parachain_use {
 	pub use orml_xcm_support::{
 		CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, NativePalletAssetOr,
+		XcmHandler as XcmHandlerT,
 	};
 	pub use polkadot_parachain::primitives::Sibling;
 	pub use sp_runtime::traits::{Convert, Identity};
 	pub use sp_std::collections::btree_set::BTreeSet;
-	pub use xcm::v0::{Junction, MultiLocation, NetworkId};
+	pub use xcm::v0::{Junction, MultiLocation, NetworkId, Xcm};
 	pub use xcm_builder::{
 		AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 		SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
@@ -1511,6 +1512,13 @@ mod parachain_impl {
 		type AccountIdConverter = LocationConverter;
 	}
 
+	pub struct HandleXcm;
+	impl XcmHandlerT<AccountId> for HandleXcm {
+		fn execute_xcm(origin: AccountId, xcm: Xcm) -> DispatchResult {
+			XcmHandler::execute_xcm(origin, xcm)
+		}
+	}
+
 	impl orml_xtokens::Config for Runtime {
 		type Event = Event;
 		type Balance = Balance;
@@ -1519,8 +1527,7 @@ mod parachain_impl {
 		//TODO: change network id if kusama
 		type RelayChainNetworkId = PolkadotNetworkId;
 		type ParaId = ParachainInfo;
-		type AccountIdConverter = LocationConverter;
-		type XcmExecutor = XcmExecutor<XcmConfig>;
+		type XcmHandler = HandleXcm;
 	}
 }
 
