@@ -20,7 +20,7 @@ cdp-engine = { package = "module-cdp-engine", path = "../../cdp_engine", default
 loans = { package = "module-loans", path = "../../loans", default-features = false }
 
 [dev-dependencies]
-serde = { version = "1.0.101" }
+serde = { version = "1.0.124" }
 codec = { package = "parity-scale-codec", version = "2.0.0", features = ["derive"] }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }

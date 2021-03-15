@@ -8,7 +8,7 @@ edition = "2018"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
+serde = { version = "1.0.124", optional = true, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }

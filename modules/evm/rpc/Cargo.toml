@@ -21,12 +21,12 @@ sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "roc
 sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-network = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 rustc-hex = "2.1.0"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.124", features = ["derive"] }
 module-evm-rpc-runtime-api = { path = "runtime_api" }
 module-evm = { path = ".." }
 
 [dev-dependencies]
-serde_json = "1.0.41"
+serde_json = "1.0.64"
 
 [features]
 default = [ "rpc_binary_search_estimate" ]

@@ -20,7 +20,7 @@ support = { package = "module-support", path = "../../support", default-features
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 [dev-dependencies]
-serde = { version = "1.0.101" }
+serde = { version = "1.0.124" }
 codec = { package = "parity-scale-codec", version = "2.0.0", features = ["derive"] }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
