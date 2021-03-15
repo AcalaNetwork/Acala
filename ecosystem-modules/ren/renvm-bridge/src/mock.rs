@@ -118,9 +118,11 @@ impl orml_currencies::Config for Runtime {
 
 impl Config for Runtime {
 	type Event = Event;
-	type Currency = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
+	type Currency = Balances;
+	type BridgedTokenCurrency = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = UnsignedPriority;
+	type ChargeTransactionPayment = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

@@ -20,7 +20,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use frame_support::pallet_prelude::Weight;
+use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
@@ -351,6 +351,14 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 		weight: Weight,
 	) -> Result<(Balance, NegativeImbalance), TransactionValidityError>;
 	fn refund_fee(who: &AccountId, weight: Weight, payed: NegativeImbalance) -> Result<(), TransactionValidityError>;
+	fn charge_fee(
+		who: &AccountId,
+		len: u32,
+		weight: Weight,
+		tip: Balance,
+		pays_fee: Pays,
+		class: DispatchClass,
+	) -> Result<(), TransactionValidityError>;
 }
 
 #[cfg(feature = "std")]
@@ -376,6 +384,17 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		_who: &AccountId,
 		_weight: Weight,
 		_payed: NegativeImbalance,
+	) -> Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn charge_fee(
+		_who: &AccountId,
+		_len: u32,
+		_weight: Weight,
+		_tip: Balance,
+		_pays_fee: Pays,
+		_class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}

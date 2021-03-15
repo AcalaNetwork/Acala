@@ -1109,11 +1109,13 @@ impl pallet_proxy::Config for Runtime {
 // = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"]; }
 //
 // impl ecosystem_renvm_bridge::Config for Runtime {
-// 	type Event = Event;
-// 	type Currency = Currency<Runtime, RENBTCCurrencyId>;
+//	type Event = Event;
+// 	type Currency = Balances;
+// 	type BridgedTokenCurrency = Currency<Runtime, RENBTCCurrencyId>;
 // 	type CurrencyIdentifier = RENBTCIdentifier;
 // 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
-// }
+// 	type ChargeTransactionPayment =
+// module_transaction_payment::ChargeTransactionPayment<Runtime>; }
 
 parameter_types! {
 	// TODO: update

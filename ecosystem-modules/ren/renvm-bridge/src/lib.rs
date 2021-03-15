@@ -19,19 +19,25 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Encode;
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
-use frame_system::{self as system, ensure_none, ensure_signed};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, ensure,
+	pallet_prelude::{DispatchClass, Pays, Weight},
+	traits::{Currency, Get},
+};
+use frame_system::{ensure_none, ensure_signed};
 use orml_traits::BasicCurrency;
 use primitives::Balance;
 use sp_core::ecdsa;
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
+	traits::Zero,
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
 	DispatchResult,
 };
 use sp_std::vec::Vec;
+use support::TransactionPayment;
 
 mod mock;
 mod tests;
@@ -40,9 +46,15 @@ type EcdsaSignature = ecdsa::Signature;
 type PublicKey = [u8; 20];
 type DestAddress = Vec<u8>;
 
-pub trait Config: system::Config {
-	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
-	type Currency: BasicCurrency<Self::AccountId, Balance = Balance>;
+/// Type alias for currency balance.
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type NegativeImbalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+
+pub trait Config: frame_system::Config {
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+	type Currency: Currency<Self::AccountId>;
+	type BridgedTokenCurrency: BasicCurrency<Self::AccountId, Balance = Balance>;
 	/// The RenVM Currency identifier
 	type CurrencyIdentifier: Get<[u8; 32]>;
 	/// A configuration for base priority of unsigned transactions.
@@ -50,6 +62,8 @@ pub trait Config: system::Config {
 	/// This is exposed so that it can be tuned for particular runtime, when
 	/// multiple modules send unsigned transactions.
 	type UnsignedPriority: Get<TransactionPriority>;
+	/// Charge mint fee.
+	type ChargeTransactionPayment: TransactionPayment<Self::AccountId, BalanceOf<Self>, NegativeImbalanceOf<Self>>;
 }
 
 decl_storage! {
@@ -68,7 +82,7 @@ decl_storage! {
 
 decl_event!(
 	pub enum Event<T> where
-		<T as system::Config>::AccountId,
+		<T as frame_system::Config>::AccountId,
 	{
 		/// Asset minted. \[owner, amount\]
 		Minted(AccountId, Balance),
@@ -107,13 +121,28 @@ decl_module! {
 		fn mint(
 			origin,
 			who: T::AccountId,
-			_p_hash: [u8; 32],
+			p_hash: [u8; 32],
 			#[compact] amount: Balance,
-			_n_hash: [u8; 32],
+			n_hash: [u8; 32],
 			sig: EcdsaSignature,
 		) {
 			ensure_none(origin)?;
-			Self::do_mint(who, amount, sig)?;
+			Self::do_mint(&who, amount, &sig)?;
+
+			// TODO: update by benchmarks.
+			let weight: Weight = 10_000;
+
+			let call_len = Call::<T>::mint(
+				who.clone(),
+				p_hash,
+				amount,
+				n_hash,
+				sig,
+			).using_encoded(|c| c.len());
+
+			// charge mint fee. Ignore the result, if it failed, only lost the fee.
+			let _ = T::ChargeTransactionPayment::charge_fee(&who, call_len as u32, weight, Zero::zero(), Pays::Yes, DispatchClass::Normal);
+			Self::deposit_event(RawEvent::Minted(who, amount));
 		}
 
 		/// Allow a user to burn assets.
@@ -129,7 +158,7 @@ decl_module! {
 				let this_id = *id;
 				*id = id.checked_add(1).ok_or(Error::<T>::BurnIdOverflow)?;
 
-				T::Currency::withdraw(&sender, amount)?;
+				T::BridgedTokenCurrency::withdraw(&sender, amount)?;
 				BurnEvents::<T>::insert(this_id, (frame_system::Module::<T>::block_number(), &to, amount));
 				Self::deposit_event(RawEvent::Burnt(sender, to, amount));
 
@@ -150,24 +179,22 @@ decl_module! {
 		) {
 			ensure_none(origin)?;
 			Self::do_rotate_key(new_key, sig);
+			Self::deposit_event(RawEvent::RotatedKey(new_key));
 		}
 	}
 }
 
 impl<T: Config> Module<T> {
-	fn do_mint(sender: T::AccountId, amount: Balance, sig: EcdsaSignature) -> DispatchResult {
-		T::Currency::deposit(&sender, amount)?;
-		Signatures::insert(&sig, ());
+	fn do_mint(sender: &T::AccountId, amount: Balance, sig: &EcdsaSignature) -> DispatchResult {
+		T::BridgedTokenCurrency::deposit(sender, amount)?;
+		Signatures::insert(sig, ());
 
-		Self::deposit_event(RawEvent::Minted(sender, amount));
 		Ok(())
 	}
 
 	fn do_rotate_key(new_key: PublicKey, sig: EcdsaSignature) {
 		RenVmPublicKey::set(Some(new_key));
 		Signatures::insert(&sig, ());
-
-		Self::deposit_event(RawEvent::RotatedKey(new_key));
 	}
 
 	// ABI-encode the values for creating the signature hash.
@@ -193,7 +220,7 @@ impl<T: Config> Module<T> {
 	// Verify that the signature has been signed by RenVM.
 	fn verify_mint_signature(
 		p_hash: &[u8; 32],
-		amount: u128,
+		amount: Balance,
 		to: &[u8],
 		n_hash: &[u8; 32],
 		sig: &[u8; 65],

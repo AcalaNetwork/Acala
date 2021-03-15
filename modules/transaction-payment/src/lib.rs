@@ -814,11 +814,36 @@ where
 			// is gone in that case.
 			Err(_) => payed,
 		};
-		let imbalances = actual_payment.split(Zero::zero());
 
 		// distribute fee
-		<T as Config>::OnTransactionPayment::on_unbalanceds(Some(imbalances.0).into_iter().chain(Some(imbalances.1)));
+		<T as Config>::OnTransactionPayment::on_unbalanced(actual_payment);
 
+		Ok(())
+	}
+
+	fn charge_fee(
+		who: &T::AccountId,
+		len: u32,
+		weight: Weight,
+		tip: PalletBalanceOf<T>,
+		pays_fee: Pays,
+		class: DispatchClass,
+	) -> Result<(), TransactionValidityError> {
+		let fee = Module::<T>::compute_fee_raw(len, weight, tip, pays_fee, class).final_fee();
+
+		Module::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
+
+		// withdraw native currency as fee
+		let actual_payment = <T as Config>::Currency::withdraw(
+			who,
+			fee,
+			WithdrawReasons::TRANSACTION_PAYMENT,
+			ExistenceRequirement::KeepAlive,
+		)
+		.map_err(|_| InvalidTransaction::Payment)?;
+
+		// distribute fee
+		<T as Config>::OnTransactionPayment::on_unbalanced(actual_payment);
 		Ok(())
 	}
 }

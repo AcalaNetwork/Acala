@@ -1113,9 +1113,11 @@ parameter_types! {
 
 impl ecosystem_renvm_bridge::Config for Runtime {
 	type Event = Event;
-	type Currency = Currency<Runtime, RENBTCCurrencyId>;
+	type Currency = Balances;
+	type BridgedTokenCurrency = Currency<Runtime, RENBTCCurrencyId>;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 }
 
 parameter_types! {

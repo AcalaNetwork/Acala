@@ -13,6 +13,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1"
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+support = { package = "module-support", path = "../../../modules/support", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
 orml-tokens = { path = "../../../orml/tokens", default-features = false }
 primitives = { package = "acala-primitives", path = "../../../primitives", default-features = false }
@@ -32,6 +33,7 @@ std = [
 	"sp-core/std",
 	"sp-io/std",
 	"sp-runtime/std",
+	"support/std",
 	"orml-traits/std",
 	"orml-tokens/std",
 	"primitives/std",
