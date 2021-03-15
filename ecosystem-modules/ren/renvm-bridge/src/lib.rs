@@ -54,7 +54,7 @@ pub type NegativeImbalanceOf<T> =
 pub trait Config: frame_system::Config {
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 	type Currency: Currency<Self::AccountId>;
-	type CurrencyAdapter: BasicCurrency<Self::AccountId, Balance = Balance>;
+	type BridgedTokenCurrency: BasicCurrency<Self::AccountId, Balance = Balance>;
 	/// The RenVM Currency identifier
 	type CurrencyIdentifier: Get<[u8; 32]>;
 	/// A configuration for base priority of unsigned transactions.
@@ -121,15 +121,17 @@ decl_module! {
 		fn mint(
 			origin,
 			who: T::AccountId,
-			p_hash: [u8; 32],
+			_p_hash: [u8; 32],
 			#[compact] amount: Balance,
-			n_hash: [u8; 32],
+			_n_hash: [u8; 32],
 			sig: EcdsaSignature,
 		) {
 			ensure_none(origin)?;
 			Self::do_mint(&who, amount, &sig)?;
 
-			let len = (32 + p_hash.len() + n_hash.len() + sig.0.len()) as u32;
+			// Calculated the transaction length from the unit test.
+			let len: u32 = 166;
+			// TODO: update by benchmarks.
 			let weight: Weight = 10_000;
 
 			// charge mint fee. Ignore the result, if it failed, only lost the fee.
@@ -150,7 +152,7 @@ decl_module! {
 				let this_id = *id;
 				*id = id.checked_add(1).ok_or(Error::<T>::BurnIdOverflow)?;
 
-				T::CurrencyAdapter::withdraw(&sender, amount)?;
+				T::BridgedTokenCurrency::withdraw(&sender, amount)?;
 				BurnEvents::<T>::insert(this_id, (frame_system::Module::<T>::block_number(), &to, amount));
 				Self::deposit_event(RawEvent::Burnt(sender, to, amount));
 
@@ -178,7 +180,7 @@ decl_module! {
 
 impl<T: Config> Module<T> {
 	fn do_mint(sender: &T::AccountId, amount: Balance, sig: &EcdsaSignature) -> DispatchResult {
-		T::CurrencyAdapter::deposit(sender, amount)?;
+		T::BridgedTokenCurrency::deposit(sender, amount)?;
 		Signatures::insert(sig, ());
 
 		Ok(())

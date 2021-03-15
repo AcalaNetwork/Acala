@@ -119,7 +119,7 @@ impl orml_currencies::Config for Runtime {
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type CurrencyAdapter = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
+	type BridgedTokenCurrency = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = UnsignedPriority;
 	type ChargeTransactionPayment = ();
