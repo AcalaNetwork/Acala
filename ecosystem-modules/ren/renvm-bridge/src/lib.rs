@@ -121,21 +121,27 @@ decl_module! {
 		fn mint(
 			origin,
 			who: T::AccountId,
-			_p_hash: [u8; 32],
+			p_hash: [u8; 32],
 			#[compact] amount: Balance,
-			_n_hash: [u8; 32],
+			n_hash: [u8; 32],
 			sig: EcdsaSignature,
 		) {
 			ensure_none(origin)?;
 			Self::do_mint(&who, amount, &sig)?;
 
-			// Calculated the transaction length from the unit test.
-			let len: u32 = 166;
 			// TODO: update by benchmarks.
 			let weight: Weight = 10_000;
 
+			let call_len = Call::<T>::mint(
+				who.clone(),
+				p_hash,
+				amount,
+				n_hash,
+				sig,
+			).using_encoded(|c| c.len());
+
 			// charge mint fee. Ignore the result, if it failed, only lost the fee.
-			let _ = T::ChargeTransactionPayment::charge_fee(&who, len, weight, Zero::zero(), Pays::Yes, DispatchClass::Normal);
+			let _ = T::ChargeTransactionPayment::charge_fee(&who, call_len as u32, weight, Zero::zero(), Pays::Yes, DispatchClass::Normal);
 			Self::deposit_event(RawEvent::Minted(who, amount));
 		}
 
