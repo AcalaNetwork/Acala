@@ -83,7 +83,6 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T> where
 		<T as frame_system::Config>::AccountId,
-	Balance = Balance,
 	{
 		/// Asset minted. \[owner, amount\]
 		Minted(AccountId, Balance),
