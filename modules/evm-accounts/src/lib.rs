@@ -258,8 +258,10 @@ where
 	// Returns None if there is no EvmAddress associated with the AccountId
 	// and there is no underlying EvmAddress in the AccountId.
 	fn get_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
+		// Return the EvmAddress if a mapping to account_id exists
 		EvmAddresses::<T>::get(account_id).or_else(|| {
 			let data: &[u8] = account_id.into_ref().as_ref();
+			// Return the underlying EVM address if it exists otherwise return None
 			if data.starts_with(b"evm:") {
 				Some(EvmAddress::from_slice(&data[4..24]))
 			} else {
