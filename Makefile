@@ -110,9 +110,7 @@ update-orml:
 	git add orml
 
 .PHONY: update
-update: update-orml
-	make cargo-update
-	make check-all
+update: update-orml cargo-update check-all
 
 .PHONY: cargo-update
 cargo-update:
