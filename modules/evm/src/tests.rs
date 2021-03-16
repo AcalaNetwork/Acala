@@ -234,7 +234,7 @@ fn should_deploy_payable_contract() {
 		deploy_free(contract_address);
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 287);
+		assert_eq!(result.used_storage, U256::from(287));
 
 		let alice_balance = INITIAL_BALANCE - amount - 287 * <Test as Config>::StorageDepositPerByte::get();
 		assert_eq!(balance(alice()), alice_balance);
@@ -255,7 +255,7 @@ fn should_deploy_payable_contract() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.output, stored_value);
-		assert_eq!(result.used_storage, 0);
+		assert_eq!(result.used_storage, U256::from(0));
 
 		assert_eq!(balance(alice()), alice_balance - amount);
 		assert_eq!(balance(contract_address), 2 * amount);
@@ -293,7 +293,7 @@ fn should_transfer_from_contract() {
 		let result = Runner::<Test>::create(alice(), contract, 0, 10000000, 10000000, <Test as Config>::config())
 			.expect("create shouldn't fail");
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 892);
+		assert_eq!(result.used_storage, U256::from(892));
 
 		let alice_balance = INITIAL_BALANCE - 892 * <Test as Config>::StorageDepositPerByte::get();
 		assert_eq!(balance(alice()), alice_balance);
@@ -391,7 +391,7 @@ fn contract_should_deploy_contracts() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 467);
+		assert_eq!(result.used_storage, U256::from(467));
 
 		let alice_balance = INITIAL_BALANCE - 467 * <Test as Config>::StorageDepositPerByte::get();
 
@@ -422,7 +422,7 @@ fn contract_should_deploy_contracts() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 281);
+		assert_eq!(result.used_storage, U256::from(281));
 
 		assert_eq!(
 			balance(alice()),
@@ -483,10 +483,10 @@ fn contract_should_deploy_contracts_without_payable() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 290);
+		assert_eq!(result.used_storage, U256::from(290));
 		assert_eq!(
 			balance(alice()),
-			alice_balance - (result.used_storage as u64 * <Test as Config>::StorageDepositPerByte::get())
+			alice_balance - (result.used_storage.as_u64() * <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
 	});
@@ -514,10 +514,10 @@ fn deploy_factory() {
 		let result = Runner::<Test>::create(alice(), contract, 0, 2_000_000, 5000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_gas.as_u64(), 95_203u64);
-		assert_eq!(result.used_storage, 461);
+		assert_eq!(result.used_storage, U256::from(461));
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - (result.used_storage as u64 * <Test as Config>::StorageDepositPerByte::get())
+			INITIAL_BALANCE - (result.used_storage.as_u64() * <Test as Config>::StorageDepositPerByte::get())
 		);
 	});
 }
@@ -602,7 +602,7 @@ fn should_transfer_maintainer() {
 		let result =
 			Runner::<Test>::create(alice(), contract, 0, 12_000_000, 12_000_000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 461);
+		assert_eq!(result.used_storage, U256::from(461));
 		let alice_balance = INITIAL_BALANCE - 461 * <Test as Config>::StorageDepositPerByte::get();
 
 		assert_eq!(balance(alice()), alice_balance);
@@ -663,13 +663,13 @@ fn should_deploy() {
 			<Test as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 0);
+		assert_eq!(result.used_storage, U256::from(0));
 
 		// create contract
 		let result = Runner::<Test>::create(alice(), contract, 0, 21_000_000, 21_000_000, <Test as Config>::config()).unwrap();
 		let contract_address = result.address;
 
-		assert_eq!(result.used_storage, 284);
+		assert_eq!(result.used_storage, U256::from(284));
 		let alice_balance = INITIAL_BALANCE - 284 * <Test as Config>::StorageDepositPerByte::get();
 
 		assert_eq!(balance(alice()), alice_balance);
@@ -864,7 +864,7 @@ fn should_set_code() {
 		)
 		.unwrap();
 		let contract_address = result.address;
-		assert_eq!(result.used_storage, 284);
+		assert_eq!(result.used_storage, U256::from(284));
 		let alice_balance = INITIAL_BALANCE - 284 * <Test as Config>::StorageDepositPerByte::get();
 
 		assert_eq!(balance(alice()), alice_balance);
@@ -927,7 +927,7 @@ fn should_selfdestruct() {
 		)
 		.unwrap();
 		let contract_address = result.address;
-		assert_eq!(result.used_storage, 284);
+		assert_eq!(result.used_storage, U256::from(284));
 		let alice_balance = INITIAL_BALANCE - 284 * <Test as Config>::StorageDepositPerByte::get();
 
 		assert_eq!(balance(alice()), alice_balance);
@@ -961,7 +961,7 @@ fn storage_limit_should_work() {
 		let result =
 			Runner::<Test>::create(alice(), contract.clone(), 0, 100_000, 1000, <Test as Config>::config()).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 516);
+		assert_eq!(result.used_storage, U256::from(516));
 		let alice_balance = INITIAL_BALANCE - 516 * <Test as Config>::StorageDepositPerByte::get();
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -992,7 +992,7 @@ fn storage_limit_should_work() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
-		assert_eq!(result.used_storage, 0);
+		assert_eq!(result.used_storage, U256::from(0));
 
 		// Factory.createContract(1)
 		let amount = 1000000000;
@@ -1010,7 +1010,7 @@ fn storage_limit_should_work() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 290);
+		assert_eq!(result.used_storage, U256::from(290));
 
 		// Factory.createContract(2)
 		let amount = 1000000000;
@@ -1028,7 +1028,7 @@ fn storage_limit_should_work() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
-		assert_eq!(result.used_storage, 0);
+		assert_eq!(result.used_storage, U256::from(0));
 
 		// Factory.createContract(2)
 		let amount = 1000000000;
@@ -1046,7 +1046,7 @@ fn storage_limit_should_work() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 452);
+		assert_eq!(result.used_storage, U256::from(452));
 	});
 }
 
@@ -1080,7 +1080,7 @@ fn evm_execute_mode_should_work() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 516);
+		assert_eq!(result.used_storage, U256::from(516));
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.address;
 
@@ -1112,7 +1112,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(86665),
-				used_storage: 290
+				used_storage: U256::from(290)
 			}
 		);
 
@@ -1134,7 +1134,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(173096),
-				used_storage: 516
+				used_storage: U256::from(516)
 			}
 		);
 		assert_eq!(balance(alice()), alice_balance);
@@ -1158,7 +1158,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Revert(ExitRevert::Reverted),
 				output: vec![],
 				used_gas: U256::from(44814),
-				used_storage: 0
+				used_storage: U256::from(0)
 			}
 		);
 		assert_eq!(balance(alice()), alice_balance);
@@ -1180,7 +1180,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(86665),
-				used_storage: 290
+				used_storage: U256::from(290)
 			}
 		);
 
@@ -1207,7 +1207,7 @@ fn evm_execute_mode_should_work() {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				output: vec![],
 				used_gas: U256::from(71665),
-				used_storage: 226
+				used_storage: U256::from(226)
 			}
 		);
 

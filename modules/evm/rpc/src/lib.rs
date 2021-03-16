@@ -20,21 +20,22 @@
 
 use ethereum_types::U256;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
+use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
 use rustc_hex::ToHex;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_core::Bytes;
+use sp_core::{Bytes, Decode};
 use sp_rpc::number::NumberOrHex;
 use sp_runtime::{
 	codec::Codec,
 	generic::BlockId,
-	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+	traits::{self, Block as BlockT, MaybeDisplay, MaybeFromStr},
 	SaturatedConversion,
 };
 use std::convert::{TryFrom, TryInto};
 use std::{marker::PhantomData, sync::Arc};
 
-use call_request::CallRequest;
+use call_request::{CallRequest, EstimateResourcesResponse};
 pub use module_evm::ExitReason;
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
@@ -115,7 +116,8 @@ where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
 	C::Api: EVMRuntimeRPCApi<B, Balance>,
-	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128>,
+	C::Api: TransactionPaymentApi<B, Balance>,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
@@ -188,7 +190,12 @@ where
 		}
 	}
 
-	fn estimate_gas(&self, request: CallRequest, _: Option<B>) -> Result<U256> {
+	fn estimate_resources(
+		&self,
+		encoded_xt: Bytes,
+		request: CallRequest,
+		_: Option<B>,
+	) -> Result<EstimateResourcesResponse> {
 		let calculate_gas_used = |request| {
 			let hash = self.client.info().best_hash;
 
@@ -217,7 +224,7 @@ where
 				data: None,
 			})?;
 
-			let used_gas = match to {
+			let (used_gas, used_storage) = match to {
 				Some(to) => {
 					let info = self
 						.client
@@ -237,7 +244,7 @@ where
 
 					error_on_execution_failure(&info.exit_reason, &info.output)?;
 
-					info.used_gas
+					(info.used_gas, info.used_storage)
 				}
 				None => {
 					let info = self
@@ -257,11 +264,11 @@ where
 
 					error_on_execution_failure(&info.exit_reason, &[])?;
 
-					info.used_gas
+					(info.used_gas, info.used_storage)
 				}
 			};
 
-			Ok(used_gas)
+			Ok((used_gas, used_storage))
 		};
 
 		if cfg!(feature = "rpc_binary_search_estimate") {
@@ -271,6 +278,7 @@ where
 			let mut mid = upper;
 			let mut best = mid;
 			let mut old_best: U256;
+			let mut storage: U256 = U256::default();
 
 			// if the gas estimation depends on the gas limit, then we want to binary
 			// search until the change is under some threshold. but if not dependent,
@@ -284,12 +292,13 @@ where
 				test_request.gas_limit = Some(mid.as_u32());
 				match calculate_gas_used(test_request) {
 					// if Ok -- try to reduce the gas used
-					Ok(used_gas) => {
+					Ok((used_gas, used_storage)) => {
 						old_best = best;
 						best = used_gas;
 						change_pct = (U256::from(100) * (old_best - best)) / old_best;
 						upper = mid;
 						mid = (lower + upper + 1) / 2;
+						storage = used_storage;
 					}
 
 					// if Err -- we need more gas
@@ -304,9 +313,63 @@ where
 					}
 				}
 			}
-			Ok(best)
+
+			let hash = self.client.info().best_hash;
+
+			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*encoded_xt).map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to dry run extrinsic.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?;
+
+			let fee = self
+				.client
+				.runtime_api()
+				.query_fee_details(&BlockId::Hash(hash), uxt, encoded_xt.len() as u32)
+				.map_err(|e| Error {
+					code: ErrorCode::InternalError,
+					message: "Unable to query fee details.".into(),
+					data: Some(format!("{:?}", e).into()),
+				})?;
+
+			let adjusted_weight_fee = fee
+				.inclusion_fee
+				.map_or_else(|| U256::default(), |inclusion| inclusion.adjusted_weight_fee.into());
+
+			Ok(EstimateResourcesResponse {
+				gas: best,
+				storage: storage,
+				weight_fee: adjusted_weight_fee,
+			})
 		} else {
-			calculate_gas_used(request)
+			let (used_gas, used_storage) = calculate_gas_used(request)?;
+			let hash = self.client.info().best_hash;
+
+			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*encoded_xt).map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to dry run extrinsic.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?;
+
+			let fee = self
+				.client
+				.runtime_api()
+				.query_fee_details(&BlockId::Hash(hash), uxt, encoded_xt.len() as u32)
+				.map_err(|e| Error {
+					code: ErrorCode::InternalError,
+					message: "Unable to query fee details.".into(),
+					data: Some(format!("{:?}", e).into()),
+				})?;
+
+			let adjusted_weight_fee = fee
+				.inclusion_fee
+				.map_or_else(|| U256::default(), |inclusion| inclusion.adjusted_weight_fee.into());
+
+			Ok(EstimateResourcesResponse {
+				gas: used_gas,
+				storage: used_storage,
+				weight_fee: adjusted_weight_fee,
+			})
 		}
 	}
 }

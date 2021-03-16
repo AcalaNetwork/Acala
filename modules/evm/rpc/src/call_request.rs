@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use ethereum_types::H160;
-use serde::Deserialize;
+use ethereum_types::{H160, U256};
+use serde::{Deserialize, Serialize};
 use sp_core::Bytes;
 use sp_rpc::number::NumberOrHex;
 
@@ -38,4 +38,17 @@ pub struct CallRequest {
 	pub value: Option<NumberOrHex>,
 	/// Data
 	pub data: Option<Bytes>,
+}
+
+/// EstimateResources response
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
+pub struct EstimateResourcesResponse {
+	/// Used gas
+	pub gas: U256,
+	/// Used storage
+	pub storage: U256,
+	/// Adjusted weight fee
+	pub weight_fee: U256,
 }

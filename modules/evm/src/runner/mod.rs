@@ -106,7 +106,11 @@ impl<T: Config> Runner<T> {
 					address,
 					output: Vec::default(),
 					used_gas: U256::from(substate.used_gas()),
-					used_storage: substate.used_storage(),
+					used_storage: if substate.used_storage().is_positive() {
+						U256::from(substate.used_storage())
+					} else {
+						U256::default()
+					},
 				};
 
 				log::debug!(
@@ -139,7 +143,11 @@ impl<T: Config> Runner<T> {
 					return TransactionOutcome::Rollback(Ok(create_info));
 				}
 
-				create_info.used_storage = substate.used_storage();
+				create_info.used_storage = if substate.used_storage().is_positive() {
+					U256::from(substate.used_storage())
+				} else {
+					U256::default()
+				};
 
 				if let Err(e) = <Pallet<T>>::on_contract_initialization(&address, &source, out) {
 					create_info.exit_reason = e.into();
@@ -210,7 +218,11 @@ impl<T: Config> Runner<T> {
 				exit_reason: reason.clone(),
 				output: out,
 				used_gas: U256::from(substate.used_gas()),
-				used_storage: substate.used_storage(),
+				used_storage: if substate.used_storage().is_positive() {
+					U256::from(substate.used_storage())
+				} else {
+					U256::default()
+				},
 			};
 
 			log::debug!(

@@ -20,6 +20,7 @@ sc-service = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-network = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 rustc-hex = "2.1.0"
 serde = { version = "1.0.124", features = ["derive"] }
 module-evm-rpc-runtime-api = { path = "runtime_api" }

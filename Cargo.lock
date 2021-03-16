@@ -1980,6 +1980,7 @@ dependencies = [
  "jsonrpc-derive 14.2.2",
  "module-evm",
  "module-evm-rpc-runtime-api",
+ "pallet-transaction-payment-rpc-runtime-api",
  "rustc-hex",
  "sc-client-api",
  "sc-network",
