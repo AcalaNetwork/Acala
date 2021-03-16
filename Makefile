@@ -111,8 +111,15 @@ update-orml:
 
 .PHONY: update
 update: update-orml
+	make cargo-update
+	make check-all
+
+.PHONY: cargo-update
+cargo-update:
 	cargo update
-	make check
+	cargo update --manifest-path bin/acala-dev/Cargo.toml
+	cargo update --manifest-path bin/acala-dev/cli/Cargo.toml
+	cargo update --manifest-path bin/acala-dev/service/Cargo.toml
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
