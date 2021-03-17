@@ -40,10 +40,12 @@ use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
 	OpaqueMetadata, H160,
 };
-use sp_runtime::traits::{BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, Zero},
+	traits::{
+		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, Identity, SaturatedConversion,
+		StaticLookup, Zero,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
@@ -61,10 +63,11 @@ use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
-use cumulus_primitives_core::relay_chain::Balance as RelayChainBalance;
-use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
+use orml_xcm_support::{
+	CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, XcmHandler as XcmHandlerT,
+};
 use polkadot_parachain::primitives::Sibling;
-use xcm::v0::{Junction, MultiLocation, NetworkId};
+use xcm::v0::{Junction, MultiLocation, NetworkId, Xcm};
 use xcm_builder::{
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
@@ -1111,9 +1114,11 @@ parameter_types! {
 
 impl ecosystem_renvm_bridge::Config for Runtime {
 	type Event = Event;
-	type Currency = Currency<Runtime, RENBTCCurrencyId>;
+	type Currency = Balances;
+	type BridgedTokenCurrency = Currency<Runtime, RENBTCCurrencyId>;
 	type CurrencyIdentifier = RENBTCIdentifier;
 	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 }
 
 parameter_types! {
@@ -1218,7 +1223,7 @@ pub type LocationConverter = (
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	Currencies,
-	IsConcreteWithGeneralKey<CurrencyId, RelayToNative>,
+	IsConcreteWithGeneralKey<CurrencyId, Identity>,
 	LocationConverter,
 	AccountId,
 	CurrencyIdConverter<CurrencyId, RelayChainCurrencyId>,
@@ -1253,34 +1258,22 @@ impl cumulus_pallet_xcm_handler::Config for Runtime {
 	type AccountIdConverter = LocationConverter;
 }
 
-pub struct RelayToNative;
-impl Convert<RelayChainBalance, Balance> for RelayToNative {
-	fn convert(val: u128) -> Balance {
-		// native is 18
-		// relay is 12
-		val * 1_000_000
-	}
-}
-
-pub struct NativeToRelay;
-impl Convert<Balance, RelayChainBalance> for NativeToRelay {
-	fn convert(val: u128) -> Balance {
-		// native is 18
-		// relay is 12
-		val / 1_000_000
+pub struct HandleXcm;
+impl XcmHandlerT<AccountId> for HandleXcm {
+	fn execute_xcm(origin: AccountId, xcm: Xcm) -> DispatchResult {
+		XcmHandler::execute_xcm(origin, xcm)
 	}
 }
 
 impl orml_xtokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
-	type ToRelayChainBalance = NativeToRelay;
+	type ToRelayChainBalance = Identity;
 	type AccountId32Convert = AccountId32Convert;
 	//TODO: change network id if kusama
 	type RelayChainNetworkId = PolkadotNetworkId;
 	type ParaId = ParachainInfo;
-	type AccountIdConverter = LocationConverter;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type XcmHandler = HandleXcm;
 }
 
 #[allow(clippy::large_enum_variant)]

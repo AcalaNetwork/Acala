@@ -110,9 +110,14 @@ update-orml:
 	git add orml
 
 .PHONY: update
-update: update-orml
+update: update-orml cargo-update check-all
+
+.PHONY: cargo-update
+cargo-update:
 	cargo update
-	make check
+	cargo update --manifest-path bin/acala-dev/Cargo.toml
+	cargo update --manifest-path bin/acala-dev/cli/Cargo.toml
+	cargo update --manifest-path bin/acala-dev/service/Cargo.toml
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
