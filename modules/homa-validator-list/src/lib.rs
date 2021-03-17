@@ -41,6 +41,9 @@ use sp_runtime::{
 use sp_std::{fmt::Debug, vec::Vec};
 use support::{ExchangeRateProvider, Ratio};
 
+mod mock;
+mod tests;
+
 pub use module::*;
 
 pub const HOMA_VALIDATOR_LIST_ID: LockIdentifier = *b"acalahvl";
@@ -53,6 +56,30 @@ pub trait WeightInfo {
 	fn freeze() -> Weight;
 	fn thaw() -> Weight;
 	fn slash() -> Weight;
+}
+
+impl WeightInfo for () {
+	fn bond() -> Weight {
+		10_000
+	}
+	fn unbond() -> Weight {
+		10_000
+	}
+	fn rebond() -> Weight {
+		10_000
+	}
+	fn withdraw_unbonded() -> Weight {
+		10_000
+	}
+	fn freeze() -> Weight {
+		10_000
+	}
+	fn thaw() -> Weight {
+		10_000
+	}
+	fn slash() -> Weight {
+		10_000
+	}
 }
 
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq)]
@@ -229,11 +256,11 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let guarantor = ensure_signed(origin)?;
 
-			if amount.is_zero() {
+			if !amount.is_zero() {
 				Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 					ensure!(guarantee.unbonding.is_none(), Error::<T>::UnbondingExists);
 					let amount = amount.min(guarantee.bonded);
-					guarantee.bonded = guarantee.bonded.saturating_add(amount);
+					guarantee.bonded = guarantee.bonded.saturating_sub(amount);
 					ensure!(
 						guarantee.bonded.is_zero() || guarantee.bonded >= T::MinBondAmount::get(),
 						Error::<T>::BelowMinBondAmount,
@@ -257,7 +284,7 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let guarantor = ensure_signed(origin)?;
 
-			if amount.is_zero() {
+			if !amount.is_zero() {
 				Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 					*guarantee = guarantee.rebond(amount);
 					Ok(())
@@ -279,7 +306,7 @@ pub mod module {
 			);
 			Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 				let old_total = guarantee.total;
-				guarantee.consolidate_unbonding(<frame_system::Module<T>>::block_number());
+				*guarantee = guarantee.consolidate_unbonding(<frame_system::Module<T>>::block_number());
 				let new_total = guarantee
 					.bonded
 					.saturating_add(guarantee.unbonding.unwrap_or_default().0);
@@ -300,18 +327,16 @@ pub mod module {
 		#[transactional]
 		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
 			T::FreezeOrigin::ensure_origin(origin)?;
-			if !validators.len().is_zero() {
-				validators.iter().for_each(|validator| {
-					ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
-						let mut v = maybe_validator.take().unwrap_or_default();
-						if !v.is_frozen {
-							v.is_frozen = true;
-							Self::deposit_event(Event::FreezeValidator(validator.clone()));
-						}
-						*maybe_validator = Some(v);
-					});
+			validators.iter().for_each(|validator| {
+				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
+					let mut v = maybe_validator.take().unwrap_or_default();
+					if !v.is_frozen {
+						v.is_frozen = true;
+						Self::deposit_event(Event::FreezeValidator(validator.clone()));
+					}
+					*maybe_validator = Some(v);
 				});
-			}
+			});
 			Ok(().into())
 		}
 
@@ -319,18 +344,16 @@ pub mod module {
 		#[transactional]
 		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
 			T::SlashOrigin::ensure_origin(origin)?;
-			if !validators.len().is_zero() {
-				validators.iter().for_each(|validator| {
-					ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
-						let mut v = maybe_validator.take().unwrap_or_default();
-						if v.is_frozen {
-							v.is_frozen = false;
-							Self::deposit_event(Event::ThawValidator(validator.clone()));
-						}
-						*maybe_validator = Some(v);
-					});
+			validators.iter().for_each(|validator| {
+				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
+					let mut v = maybe_validator.take().unwrap_or_default();
+					if v.is_frozen {
+						v.is_frozen = false;
+						Self::deposit_event(Event::ThawValidator(validator.clone()));
+					}
+					*maybe_validator = Some(v);
 				});
-			}
+			});
 			Ok(().into())
 		}
 
@@ -363,7 +386,7 @@ pub mod module {
 							.saturating_mul_int(insurance_loss);
 						let gap = T::LiquidTokenCurrency::slash(&guarantor, should_slashing);
 						let actual_slashing = should_slashing.saturating_sub(gap);
-						guarantee.slash(actual_slashing);
+						*guarantee = guarantee.slash(actual_slashing);
 						Self::deposit_event(Event::SlashGuarantee(
 							guarantor.clone(),
 							validator.clone(),
