@@ -204,7 +204,7 @@ pub mod module {
 			if let Some(extra) = free_balance.checked_sub(total_should_locked) {
 				let amount = amount.min(extra);
 
-				if amount.is_zero() {
+				if !amount.is_zero() {
 					Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 						guarantee.total = guarantee.total.saturating_add(amount);
 						guarantee.bonded = guarantee.bonded.saturating_add(amount);
@@ -362,11 +362,7 @@ pub mod module {
 							.unwrap_or_default()
 							.saturating_mul_int(insurance_loss);
 						let gap = T::LiquidTokenCurrency::slash(&guarantor, should_slashing);
-						let actual_slashing = if !gap.is_zero() {
-							should_slashing.saturating_sub(gap)
-						} else {
-							should_slashing
-						};
+						let actual_slashing = should_slashing.saturating_sub(gap);
 						guarantee.slash(actual_slashing);
 						Self::deposit_event(Event::SlashGuarantee(
 							guarantor.clone(),

@@ -274,6 +274,7 @@ pub mod module {
 			let mut targets = targets;
 			targets.sort();
 			targets.dedup();
+
 			for validator in &targets {
 				ensure!(
 					T::RelaychainValidatorFilter::contains(&validator),
