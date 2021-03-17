@@ -18,6 +18,7 @@ version = "0.7.10"
 dependencies = [
  "acala-dev-cli",
  "acala-dev-service",
+ "funty",
  "futures 0.3.13",
  "parity-util-mem",
 ]
