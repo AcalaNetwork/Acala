@@ -78,11 +78,9 @@ Note: This section is still work in progress, we will update more information as
 
 ## NOTE
 
-To connect on the "Mandala TC3" network, you will want the version `~0.4.2` code which is in this repo.
+To connect on the "Mandala TC6" network, you will want the version `~0.7.10` code which is in this repo.
 
-- **Mandala TC3** is in this [Acala](https://github.com/AcalaNetwork/Acala/tree/mandala-tc3) repo branch `mandala-tc3`.
-
-- **Mandala TC2** is in this [Acala](https://github.com/AcalaNetwork/Acala/tree/mandala) repo branch `mandala`.
+- **Mandala TC6** is in [Acala repo master branch](https://github.com/AcalaNetwork/Acala/tree/master/).
 
 Install Rust:
 
@@ -102,10 +100,10 @@ Install required tools and install git hooks:
 make init
 ```
 
-Build all native code:
+Build Mandala TC native code:
 
 ```bash
-make build
+make build-dev
 ```
 
 # 4. Run
@@ -121,7 +119,7 @@ make run
 To type check:
 
 ```bash
-make check
+make check-all
 ```
 
 To purge old chain data:
@@ -157,6 +155,6 @@ Bench bot will do the benchmarking, generate `weights.rs` file push changes into
 
 Comment on a PR `/bench runtime <runtime> <module_name>` i.e.: `/bench runtime mandala module_currencies`.
 
-To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *` 
+To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *`
 
 Bench bot will do the benchmarking, generate weights file push changes into your branch.
