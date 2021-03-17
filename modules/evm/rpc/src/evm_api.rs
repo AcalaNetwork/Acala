@@ -28,17 +28,17 @@ use crate::call_request::{CallRequest, EstimateResourcesResponse};
 
 /// EVM rpc interface.
 #[rpc(server)]
-pub trait EVMApi<BlockHash, Balance> {
+pub trait EVMApi<BlockHash> {
 	/// Call contract, returning the output data.
 	#[rpc(name = "evm_call")]
 	fn call(&self, _: CallRequest, _: Option<BlockHash>) -> Result<Bytes>;
 
-	/// Estimate gas needed for execution of given contract.
+	/// Estimate resources needed for execution of given contract.
 	#[rpc(name = "evm_estimateResources")]
 	fn estimate_resources(
 		&self,
-		encoded_xt: Bytes,
+		extrinsic: Bytes,
 		_: CallRequest,
 		_: Option<BlockHash>,
-	) -> Result<EstimateResourcesResponse<Balance>>;
+	) -> Result<EstimateResourcesResponse>;
 }

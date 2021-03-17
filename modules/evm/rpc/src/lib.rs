@@ -111,13 +111,13 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
 
-impl<B, C, Balance> EVMApiT<B, Balance> for EVMApi<B, C, Balance>
+impl<B, C, Balance> EVMApiT<B> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
 	C::Api: EVMRuntimeRPCApi<B, Balance>,
 	C::Api: TransactionPaymentApi<B, Balance>,
-	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128>,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
@@ -192,10 +192,10 @@ where
 
 	fn estimate_resources(
 		&self,
-		encoded_xt: Bytes,
+		extrinsic: Bytes,
 		request: CallRequest,
 		_: Option<B>,
-	) -> Result<EstimateResourcesResponse<Balance>> {
+	) -> Result<EstimateResourcesResponse> {
 		let calculate_gas_used = |request| {
 			let hash = self.client.info().best_hash;
 
@@ -316,7 +316,7 @@ where
 
 			let hash = self.client.info().best_hash;
 
-			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*encoded_xt).map_err(|e| Error {
+			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*extrinsic).map_err(|e| Error {
 				code: ErrorCode::InternalError,
 				message: "Unable to dry run extrinsic.".into(),
 				data: Some(format!("{:?}", e).into()),
@@ -325,7 +325,7 @@ where
 			let fee = self
 				.client
 				.runtime_api()
-				.query_fee_details(&BlockId::Hash(hash), uxt, encoded_xt.len() as u32)
+				.query_fee_details(&BlockId::Hash(hash), uxt, extrinsic.len() as u32)
 				.map_err(|e| Error {
 					code: ErrorCode::InternalError,
 					message: "Unable to query fee details.".into(),
@@ -339,13 +339,13 @@ where
 			Ok(EstimateResourcesResponse {
 				gas: best,
 				storage,
-				weight_fee: adjusted_weight_fee,
+				weight_fee: adjusted_weight_fee.into(),
 			})
 		} else {
 			let (used_gas, used_storage) = calculate_gas_used(request)?;
 			let hash = self.client.info().best_hash;
 
-			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*encoded_xt).map_err(|e| Error {
+			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*extrinsic).map_err(|e| Error {
 				code: ErrorCode::InternalError,
 				message: "Unable to dry run extrinsic.".into(),
 				data: Some(format!("{:?}", e).into()),
@@ -354,7 +354,7 @@ where
 			let fee = self
 				.client
 				.runtime_api()
-				.query_fee_details(&BlockId::Hash(hash), uxt, encoded_xt.len() as u32)
+				.query_fee_details(&BlockId::Hash(hash), uxt, extrinsic.len() as u32)
 				.map_err(|e| Error {
 					code: ErrorCode::InternalError,
 					message: "Unable to query fee details.".into(),
@@ -368,7 +368,7 @@ where
 			Ok(EstimateResourcesResponse {
 				gas: used_gas,
 				storage: used_storage,
-				weight_fee: adjusted_weight_fee,
+				weight_fee: adjusted_weight_fee.into(),
 			})
 		}
 	}

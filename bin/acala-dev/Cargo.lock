@@ -1806,7 +1806,7 @@ version = "0.1.0"
 dependencies = [
  "ethereum-types",
  "jsonrpc-core",
- "jsonrpc-derive 14.2.2",
+ "jsonrpc-derive",
  "module-evm",
  "module-evm-rpc-runtime-api",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -3000,18 +3000,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f764902d7b891344a0acb65625f32f6f7c6db006952143bd650209fbe7d94db"
 dependencies = [
  "jsonrpc-client-transports",
-]
-
-[[package]]
-name = "jsonrpc-derive"
-version = "14.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0e77e8812f02155b85a677a96e1d16b60181950c0636199bc4528524fba98dc"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -4503,7 +4491,7 @@ version = "0.7.10"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
  "parity-scale-codec",
@@ -4916,7 +4904,7 @@ dependencies = [
  "funty",
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "orml-oracle-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -5427,7 +5415,7 @@ source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#a94749cb5
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -6980,7 +6968,7 @@ dependencies = [
  "futures 0.3.13",
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "sc-consensus-babe",
  "sc-consensus-epochs",
  "sc-rpc-api",
@@ -7018,7 +7006,7 @@ dependencies = [
  "futures 0.3.13",
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "log",
  "parity-scale-codec",
  "parking_lot 0.11.1",
@@ -7209,7 +7197,7 @@ dependencies = [
  "futures 0.3.13",
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "jsonrpc-pubsub",
  "log",
  "parity-scale-codec",
@@ -7441,7 +7429,7 @@ dependencies = [
  "futures 0.3.13",
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "jsonrpc-pubsub",
  "log",
  "parity-scale-codec",
@@ -8812,7 +8800,7 @@ dependencies = [
  "futures 0.3.13",
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "log",
  "parity-scale-codec",
  "sc-client-api",
