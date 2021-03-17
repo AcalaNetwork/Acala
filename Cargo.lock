@@ -1936,8 +1936,7 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 [[package]]
 name = "evm"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0467250a12bb144ad7b2f41e03e8675e38b971ab73f6d42ede6b78af07657e7b"
+source = "git+https://github.com/rust-blockchain/evm.git?rev=f90f8432fc0070a6de9e2532e5d0fcef7a041fd7#f90f8432fc0070a6de9e2532e5d0fcef7a041fd7"
 dependencies = [
  "ethereum",
  "evm-core",
@@ -1954,8 +1953,7 @@ dependencies = [
 [[package]]
 name = "evm-core"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f0db0394d7b497bf97be3d9ece9c828f8b7670a065fc9f3106c9598cce6556d"
+source = "git+https://github.com/rust-blockchain/evm.git?rev=f90f8432fc0070a6de9e2532e5d0fcef7a041fd7#f90f8432fc0070a6de9e2532e5d0fcef7a041fd7"
 dependencies = [
  "funty",
  "parity-scale-codec",
@@ -1966,8 +1964,7 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c617616408f87be6826bda72cee7625aa8cbc09b759f05b1dccd329fb61b2077"
+source = "git+https://github.com/rust-blockchain/evm.git?rev=f90f8432fc0070a6de9e2532e5d0fcef7a041fd7#f90f8432fc0070a6de9e2532e5d0fcef7a041fd7"
 dependencies = [
  "evm-core",
  "evm-runtime",
@@ -2003,8 +2000,7 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8447504daa86bc5a7ae982b9b5c53225aa0ebcfba636b785cf0f53406eaa4d87"
+source = "git+https://github.com/rust-blockchain/evm.git?rev=f90f8432fc0070a6de9e2532e5d0fcef7a041fd7#f90f8432fc0070a6de9e2532e5d0fcef7a041fd7"
 dependencies = [
  "evm-core",
  "primitive-types",
@@ -11933,23 +11929,3 @@ dependencies = [
  "itertools",
  "libc",
 ]
-
-[[patch.unused]]
-name = "evm"
-version = "0.25.0"
-source = "git+https://github.com/rust-blockchain/evm.git?branch=master#85631ce946189f998ee85e2a26a2f3d00c1cb6cf"
-
-[[patch.unused]]
-name = "evm-core"
-version = "0.25.0"
-source = "git+https://github.com/rust-blockchain/evm.git?branch=master#85631ce946189f998ee85e2a26a2f3d00c1cb6cf"
-
-[[patch.unused]]
-name = "evm-gasometer"
-version = "0.25.0"
-source = "git+https://github.com/rust-blockchain/evm.git?branch=master#85631ce946189f998ee85e2a26a2f3d00c1cb6cf"
-
-[[patch.unused]]
-name = "evm-runtime"
-version = "0.25.0"
-source = "git+https://github.com/rust-blockchain/evm.git?branch=master#85631ce946189f998ee85e2a26a2f3d00c1cb6cf"

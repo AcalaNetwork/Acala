@@ -15,7 +15,7 @@ acala-dev-cli = { path = "cli" }
 acala-dev-service = { path = "service" }
 
 #TODO: This is a workaround for issue https://github.com/bitvecto-rs/bitvec/issues/105. Remove it once fixed.
-funty = { version = "=1.1.0", default-features = false }
+funty = { version = "=1.1.0" }
 
 [features]
 runtime-benchmarks = [
