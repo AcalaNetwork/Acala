@@ -44,11 +44,11 @@ pub struct CallRequest {
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
-pub struct EstimateResourcesResponse {
+pub struct EstimateResourcesResponse<Balance> {
 	/// Used gas
 	pub gas: U256,
 	/// Used storage
-	pub storage: U256,
+	pub storage: i32,
 	/// Adjusted weight fee
-	pub weight_fee: U256,
+	pub weight_fee: Balance,
 }

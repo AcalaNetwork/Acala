@@ -111,13 +111,13 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
 
-impl<B, C, Balance> EVMApiT<B> for EVMApi<B, C, Balance>
+impl<B, C, Balance> EVMApiT<B, Balance> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
 	C::Api: EVMRuntimeRPCApi<B, Balance>,
 	C::Api: TransactionPaymentApi<B, Balance>,
-	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128>,
 {
 	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
@@ -195,7 +195,7 @@ where
 		encoded_xt: Bytes,
 		request: CallRequest,
 		_: Option<B>,
-	) -> Result<EstimateResourcesResponse> {
+	) -> Result<EstimateResourcesResponse<Balance>> {
 		let calculate_gas_used = |request| {
 			let hash = self.client.info().best_hash;
 
@@ -278,7 +278,7 @@ where
 			let mut mid = upper;
 			let mut best = mid;
 			let mut old_best: U256;
-			let mut storage: U256 = U256::default();
+			let mut storage: i32 = Default::default();
 
 			// if the gas estimation depends on the gas limit, then we want to binary
 			// search until the change is under some threshold. but if not dependent,
@@ -334,11 +334,11 @@ where
 
 			let adjusted_weight_fee = fee
 				.inclusion_fee
-				.map_or_else(|| U256::default(), |inclusion| inclusion.adjusted_weight_fee.into());
+				.map_or_else(|| Default::default(), |inclusion| inclusion.adjusted_weight_fee);
 
 			Ok(EstimateResourcesResponse {
 				gas: best,
-				storage: storage,
+				storage,
 				weight_fee: adjusted_weight_fee,
 			})
 		} else {
@@ -363,7 +363,7 @@ where
 
 			let adjusted_weight_fee = fee
 				.inclusion_fee
-				.map_or_else(|| U256::default(), |inclusion| inclusion.adjusted_weight_fee.into());
+				.map_or_else(|| Default::default(), |inclusion| inclusion.adjusted_weight_fee);
 
 			Ok(EstimateResourcesResponse {
 				gas: used_gas,
