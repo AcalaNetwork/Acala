@@ -5478,7 +5478,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "polkadot-core-primitives"
 version = "0.7.30"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#bf7aa8921c1ccc2638c9465224b9b18bef33e35e"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#2f7b975015d5c3f50199cda82b9b84e38726d001"
 dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
@@ -5490,7 +5490,7 @@ dependencies = [
 [[package]]
 name = "polkadot-parachain"
 version = "0.8.29"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#bf7aa8921c1ccc2638c9465224b9b18bef33e35e"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#2f7b975015d5c3f50199cda82b9b84e38726d001"
 dependencies = [
  "derive_more",
  "futures 0.3.13",
@@ -5517,7 +5517,7 @@ dependencies = [
 [[package]]
 name = "polkadot-primitives"
 version = "0.8.29"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#bf7aa8921c1ccc2638c9465224b9b18bef33e35e"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#2f7b975015d5c3f50199cda82b9b84e38726d001"
 dependencies = [
  "bitvec",
  "frame-system",
@@ -8904,9 +8904,9 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "version_check"
-version = "0.9.2"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
+checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "void"
@@ -9209,7 +9209,7 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#bf7aa8921c1ccc2638c9465224b9b18bef33e35e"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#2f7b975015d5c3f50199cda82b9b84e38726d001"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -9217,7 +9217,7 @@ dependencies = [
 [[package]]
 name = "xcm-builder"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#bf7aa8921c1ccc2638c9465224b9b18bef33e35e"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#2f7b975015d5c3f50199cda82b9b84e38726d001"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -9233,7 +9233,7 @@ dependencies = [
 [[package]]
 name = "xcm-executor"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#bf7aa8921c1ccc2638c9465224b9b18bef33e35e"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#2f7b975015d5c3f50199cda82b9b84e38726d001"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples 0.2.1",
