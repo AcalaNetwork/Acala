@@ -212,7 +212,7 @@ where
 				Some(CallRequest {
 					from: None,
 					to: None,
-					gas_limit: Some(gas_limit.try_into().unwrap()),
+					gas_limit: Some(gas_limit),
 					storage_limit: Some(storage_limit),
 					value: Some(NumberOrHex::Hex(value.into())),
 					data: Some(Bytes(data)),
