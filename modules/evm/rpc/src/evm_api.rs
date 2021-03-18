@@ -35,10 +35,5 @@ pub trait EVMApi<BlockHash> {
 
 	/// Estimate resources needed for execution of given contract.
 	#[rpc(name = "evm_estimateResources")]
-	fn estimate_resources(
-		&self,
-		extrinsic: Bytes,
-		_: CallRequest,
-		_: Option<BlockHash>,
-	) -> Result<EstimateResourcesResponse>;
+	fn estimate_resources(&self, extrinsic: Bytes, _: Option<BlockHash>) -> Result<EstimateResourcesResponse>;
 }

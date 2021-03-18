@@ -25,6 +25,7 @@ rustc-hex = "2.1.0"
 serde = { version = "1.0.124", features = ["derive"] }
 module-evm-rpc-runtime-api = { path = "runtime_api" }
 module-evm = { path = ".." }
+mandala-runtime = { path = "../../../runtime/mandala" }
 
 [dev-dependencies]
 serde_json = "1.0.64"

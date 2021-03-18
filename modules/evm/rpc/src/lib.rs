@@ -190,12 +190,43 @@ where
 		}
 	}
 
-	fn estimate_resources(
-		&self,
-		extrinsic: Bytes,
-		request: CallRequest,
-		_: Option<B>,
-	) -> Result<EstimateResourcesResponse> {
+	fn estimate_resources(&self, extrinsic: Bytes, _: Option<B>) -> Result<EstimateResourcesResponse> {
+		let utx = mandala_runtime::UncheckedExtrinsic::decode(&mut &*extrinsic).map_err(|_| Error {
+			code: ErrorCode::InvalidParams,
+			message: "Invalid parameter extrinsic, decode failed.".into(),
+			data: None,
+		})?;
+
+		let request = match utx.function {
+			mandala_runtime::Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
+				Some(CallRequest {
+					from: None,
+					to: Some(to),
+					gas_limit: Some(gas_limit.try_into().unwrap()),
+					storage_limit: Some(storage_limit),
+					value: Some(NumberOrHex::Hex(value.into())),
+					data: Some(Bytes(data)),
+				})
+			}
+			mandala_runtime::Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
+				Some(CallRequest {
+					from: None,
+					to: None,
+					gas_limit: Some(gas_limit.try_into().unwrap()),
+					storage_limit: Some(storage_limit),
+					value: Some(NumberOrHex::Hex(value.into())),
+					data: Some(Bytes(data)),
+				})
+			}
+			_ => None,
+		};
+
+		let request = request.ok_or_else(|| Error {
+			code: ErrorCode::InvalidParams,
+			message: "Invalid parameter extrinsic, not evm Call".into(),
+			data: None,
+		})?;
+
 		let calculate_gas_used = |request| {
 			let hash = self.client.info().best_hash;
 
@@ -295,7 +326,9 @@ where
 					Ok((used_gas, used_storage)) => {
 						old_best = best;
 						best = used_gas;
-						change_pct = (U256::from(100) * (old_best - best)) / old_best;
+						change_pct = (U256::from(100) * (old_best - best))
+							.checked_div(old_best)
+							.unwrap_or_default();
 						upper = mid;
 						mid = (lower + upper + 1) / 2;
 						storage = used_storage;
