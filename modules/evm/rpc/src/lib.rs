@@ -19,6 +19,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use ethereum_types::U256;
+use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
 use rustc_hex::ToHex;
@@ -324,11 +325,15 @@ where
 				match calculate_gas_used(test_request) {
 					// if Ok -- try to reduce the gas used
 					Ok((used_gas, used_storage)) => {
+						log::debug!(
+							target: "evm",
+							"calculate_gas_used ok, used_gas: {:?}, used_storage: {:?}",
+							used_gas, used_storage,
+						);
+
 						old_best = best;
 						best = used_gas;
-						change_pct = (U256::from(100) * (old_best - best))
-							.checked_div(old_best)
-							.unwrap_or_default();
+						change_pct = (U256::from(100) * (old_best - best)) / old_best;
 						upper = mid;
 						mid = (lower + upper + 1) / 2;
 						storage = used_storage;
@@ -336,12 +341,23 @@ where
 
 					// if Err -- we need more gas
 					Err(_) => {
+						log::debug!(
+							target: "evm",
+							"calculate_gas_used err, lower: {:?}, upper: {:?}, mid: {:?}",
+							lower, upper, mid
+						);
+
 						lower = mid;
 						mid = (lower + upper + 1) / 2;
 
-						// exit the loop
 						if mid == lower {
-							break;
+							// 1.balance not enough.
+							// 2.evm exec failed.
+							return Err(Error {
+								code: ErrorCode::InternalError,
+								message: "out of gas / revert".into(),
+								data: None,
+							});
 						}
 					}
 				}

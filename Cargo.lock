@@ -1976,6 +1976,7 @@ name = "evm-rpc"
 version = "0.1.0"
 dependencies = [
  "ethereum-types",
+ "frame-support",
  "jsonrpc-core",
  "jsonrpc-derive",
  "mandala-runtime",
