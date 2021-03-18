@@ -334,7 +334,7 @@ where
 
 			let adjusted_weight_fee = fee
 				.inclusion_fee
-				.map_or_else(|| Default::default(), |inclusion| inclusion.adjusted_weight_fee);
+				.map_or_else(Default::default, |inclusion| inclusion.adjusted_weight_fee);
 
 			Ok(EstimateResourcesResponse {
 				gas: best,
@@ -363,7 +363,7 @@ where
 
 			let adjusted_weight_fee = fee
 				.inclusion_fee
-				.map_or_else(|| Default::default(), |inclusion| inclusion.adjusted_weight_fee);
+				.map_or_else(Default::default, |inclusion| inclusion.adjusted_weight_fee);
 
 			Ok(EstimateResourcesResponse {
 				gas: used_gas,
