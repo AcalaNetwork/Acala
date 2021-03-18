@@ -131,7 +131,7 @@ where
 			data,
 		} = request;
 
-		let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+		let gas_limit = gas_limit.unwrap_or_else(u64::max_value); // TODO: set a limit
 		let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
@@ -202,7 +202,7 @@ where
 				Some(CallRequest {
 					from: None,
 					to: Some(to),
-					gas_limit: Some(gas_limit.try_into().unwrap()),
+					gas_limit: Some(gas_limit),
 					storage_limit: Some(storage_limit),
 					value: Some(NumberOrHex::Hex(value.into())),
 					data: Some(Bytes(data)),
@@ -239,7 +239,7 @@ where
 				data,
 			} = request;
 
-			let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+			let gas_limit = gas_limit.unwrap_or_else(u64::max_value); // TODO: set a limit
 			let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 			let data = data.map(|d| d.0).unwrap_or_default();
 
@@ -320,7 +320,7 @@ where
 			// invariant: lower <= mid <= upper
 			while change_pct > threshold_pct {
 				let mut test_request = request.clone();
-				test_request.gas_limit = Some(mid.as_u32());
+				test_request.gas_limit = Some(mid.as_u64());
 				match calculate_gas_used(test_request) {
 					// if Ok -- try to reduce the gas used
 					Ok((used_gas, used_storage)) => {
