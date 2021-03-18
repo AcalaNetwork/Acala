@@ -758,3 +758,28 @@ fn slash_work() {
 		);
 	});
 }
+
+#[test]
+fn contains_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
+		assert_eq!(
+			HomaValidatorListModule::validator_backings(VALIDATOR_1)
+				.unwrap_or_default()
+				.total_insurance,
+			100
+		);
+		assert_eq!(HomaValidatorListModule::contains(&VALIDATOR_1), false);
+
+		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
+		assert_eq!(
+			HomaValidatorListModule::validator_backings(VALIDATOR_1)
+				.unwrap_or_default()
+				.total_insurance,
+			200
+		);
+		assert_eq!(HomaValidatorListModule::contains(&VALIDATOR_1), true);
+	});
+}

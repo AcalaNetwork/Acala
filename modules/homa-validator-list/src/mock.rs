@@ -177,6 +177,7 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 parameter_types! {
 	pub const MinBondAmount: Balance = 100;
 	pub const BondingDuration: BlockNumber = 100;
+	pub const ValidatorInsuranceThreshold: Balance = 200;
 }
 
 ord_parameter_types! {
@@ -189,6 +190,7 @@ impl Config for Runtime {
 	type LiquidTokenCurrency = LDOTCurrency;
 	type MinBondAmount = MinBondAmount;
 	type BondingDuration = BondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
 	type FreezeOrigin = EnsureSignedBy<Admin, AccountId>;
 	type SlashOrigin = EnsureSignedBy<Admin, AccountId>;
 	type OnSlash = MockOnSlash;

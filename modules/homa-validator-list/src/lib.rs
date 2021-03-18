@@ -58,6 +58,7 @@ pub trait WeightInfo {
 	fn slash() -> Weight;
 }
 
+// TODO: do benchmarking test.
 impl WeightInfo for () {
 	fn bond() -> Weight {
 		10_000
@@ -161,6 +162,8 @@ pub mod module {
 		type MinBondAmount: Get<Balance>;
 		#[pallet::constant]
 		type BondingDuration: Get<Self::BlockNumber>;
+		#[pallet::constant]
+		type ValidatorInsuranceThreshold: Get<Balance>;
 		type FreezeOrigin: EnsureOrigin<Self::Origin>;
 		type SlashOrigin: EnsureOrigin<Self::Origin>;
 		type OnSlash: Happened<Balance>;
@@ -469,7 +472,10 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> Contains<T::RelaychainAccountId> for Pallet<T> {
-	fn contains(t: &T::RelaychainAccountId) -> bool {
-		ValidatorBackings::<T>::contains_key(t)
+	fn contains(relaychain_account_id: &T::RelaychainAccountId) -> bool {
+		Self::validator_backings(relaychain_account_id)
+			.unwrap_or_default()
+			.total_insurance
+			>= T::ValidatorInsuranceThreshold::get()
 	}
 }
