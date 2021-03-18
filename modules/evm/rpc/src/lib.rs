@@ -18,7 +18,7 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-use ethereum_types::U256;
+use ethereum_types::{H160, U256};
 use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
@@ -37,7 +37,7 @@ use std::convert::{TryFrom, TryInto};
 use std::{marker::PhantomData, sync::Arc};
 
 use call_request::{CallRequest, EstimateResourcesResponse};
-pub use module_evm::ExitReason;
+pub use module_evm::{AddressMapping, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
@@ -191,7 +191,7 @@ where
 		}
 	}
 
-	fn estimate_resources(&self, extrinsic: Bytes, _: Option<B>) -> Result<EstimateResourcesResponse> {
+	fn estimate_resources(&self, extrinsic: Bytes, from: H160, _: Option<B>) -> Result<EstimateResourcesResponse> {
 		let utx = mandala_runtime::UncheckedExtrinsic::decode(&mut &*extrinsic).map_err(|_| Error {
 			code: ErrorCode::InvalidParams,
 			message: "Invalid parameter extrinsic, decode failed.".into(),
@@ -201,7 +201,7 @@ where
 		let request = match utx.function {
 			mandala_runtime::Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
 				Some(CallRequest {
-					from: None,
+					from: Some(from),
 					to: Some(to),
 					gas_limit: Some(gas_limit),
 					storage_limit: Some(storage_limit),
@@ -211,7 +211,7 @@ where
 			}
 			mandala_runtime::Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
 				Some(CallRequest {
-					from: None,
+					from: Some(from),
 					to: None,
 					gas_limit: Some(gas_limit),
 					storage_limit: Some(storage_limit),
