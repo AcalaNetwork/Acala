@@ -18,7 +18,7 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-use ethereum_types::{H160, U256};
+use ethereum_types::U256;
 use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
@@ -191,42 +191,23 @@ where
 		}
 	}
 
-	fn estimate_resources(&self, extrinsic: Bytes, from: H160, _: Option<B>) -> Result<EstimateResourcesResponse> {
-		let utx = mandala_runtime::UncheckedExtrinsic::decode(&mut &*extrinsic).map_err(|_| Error {
-			code: ErrorCode::InvalidParams,
-			message: "Invalid parameter extrinsic, decode failed.".into(),
-			data: None,
-		})?;
+	fn estimate_resources(&self, extrinsic: Bytes, _: Option<B>) -> Result<EstimateResourcesResponse> {
+		let hash = self.client.info().best_hash;
+		let request = self
+			.client
+			.runtime_api()
+			.get_estimate_resources_request(&BlockId::Hash(hash), extrinsic.to_vec())
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-		let request = match utx.function {
-			mandala_runtime::Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
-				Some(CallRequest {
-					from: Some(from),
-					to: Some(to),
-					gas_limit: Some(gas_limit),
-					storage_limit: Some(storage_limit),
-					value: Some(NumberOrHex::Hex(value.into())),
-					data: Some(Bytes(data)),
-				})
-			}
-			mandala_runtime::Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
-				Some(CallRequest {
-					from: Some(from),
-					to: None,
-					gas_limit: Some(gas_limit),
-					storage_limit: Some(storage_limit),
-					value: Some(NumberOrHex::Hex(value.into())),
-					data: Some(Bytes(data)),
-				})
-			}
-			_ => None,
+		let request = CallRequest {
+			from: request.from,
+			to: request.to,
+			gas_limit: request.gas_limit,
+			storage_limit: request.storage_limit,
+			value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
+			data: request.data.map(Bytes),
 		};
-
-		let request = request.ok_or_else(|| Error {
-			code: ErrorCode::InvalidParams,
-			message: "Invalid parameter extrinsic, not evm Call".into(),
-			data: None,
-		})?;
 
 		let calculate_gas_used = |request| {
 			let hash = self.client.info().best_hash;
@@ -363,8 +344,6 @@ where
 				}
 			}
 
-			let hash = self.client.info().best_hash;
-
 			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*extrinsic).map_err(|e| Error {
 				code: ErrorCode::InternalError,
 				message: "Unable to dry run extrinsic.".into(),
@@ -392,7 +371,6 @@ where
 			})
 		} else {
 			let (used_gas, used_storage) = calculate_gas_used(request)?;
-			let hash = self.client.info().best_hash;
 
 			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*extrinsic).map_err(|e| Error {
 				code: ErrorCode::InternalError,

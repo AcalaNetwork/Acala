@@ -1808,7 +1808,6 @@ dependencies = [
  "frame-support",
  "jsonrpc-core",
  "jsonrpc-derive",
- "mandala-runtime",
  "module-evm",
  "module-evm-rpc-runtime-api",
  "pallet-transaction-payment-rpc-runtime-api",
