@@ -3,6 +3,7 @@ pub mod storage_meter;
 
 use crate::{AddressMapping, BalanceOf, CallInfo, Config, CreateInfo, Error, Pallet, Vicinity};
 use evm::{CreateScheme, ExitError, ExitReason};
+use evm_gasometer::{self as gasometer};
 use evm_runtime::Handler as HandlerT;
 use frame_support::{
 	debug,
@@ -73,6 +74,11 @@ impl<T: Config> Runner<T> {
 			|substate| {
 				if let Err(e) = Self::transfer(source, address, value) {
 					return TransactionOutcome::Rollback(Err(e));
+				}
+
+				let transaction_cost = gasometer::call_transaction_cost(&init);
+				if substate.gasometer.record_transaction(transaction_cost).is_err() {
+					return TransactionOutcome::Rollback(Err(DispatchError::Other("OutOfGas")));
 				}
 
 				let (reason, out) = substate.execute(
@@ -185,6 +191,11 @@ impl<T: Config> Runner<T> {
 			}
 
 			let code = substate.code(target);
+			let transaction_cost = gasometer::call_transaction_cost(&code);
+			if substate.gasometer.record_transaction(transaction_cost).is_err() {
+				return TransactionOutcome::Rollback(Err(DispatchError::Other("OutOfGas")));
+			}
+
 			let (reason, out) =
 				substate.execute(sender, target, U256::from(value.saturated_into::<u128>()), code, input);
 
