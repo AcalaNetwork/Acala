@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 //! Unit tests for the renvm bridge module.
 
 #![cfg(test)]
@@ -5,7 +23,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok, unsigned::ValidateUnsigned};
 use hex_literal::hex;
-use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, System};
+use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, Runtime, System};
 use sp_core::H256;
 use sp_runtime::transaction_validity::TransactionValidityError;
 
@@ -184,5 +202,22 @@ fn rotate_key_works() {
 			),
 			TransactionValidityError::Invalid(InvalidTransaction::BadProof)
 		);
+	});
+}
+
+#[test]
+fn transaction_length_of_mint() {
+	ExtBuilder::default().build().execute_with(|| {
+		let to: H256 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
+		let call = Call::<Runtime>::mint(
+			to,
+			hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
+			10000 * 10u128.saturating_pow(8),  // 10000 BTC
+			hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
+			EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"])
+		);
+
+		let call_len = call.using_encoded(|c| c.len());
+		assert_eq!(call_len as u32, MINT_TX_LENGTH);
 	});
 }

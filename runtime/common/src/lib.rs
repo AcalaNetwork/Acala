@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 //! Common runtime code for Acala, Karura and Mandala.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -306,10 +324,10 @@ const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO
 
 parameter_types! {
 	/// Maximum length of block. Up to 5MB.
-	pub BlockLength: limits::BlockLength =
+	pub RuntimeBlockLength: limits::BlockLength =
 		limits::BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	/// Block weights base values and limits.
-	pub BlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
+	pub RuntimeBlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
 		.base_block(BlockExecutionWeight::get())
 		.for_class(DispatchClass::all(), |weights| {
 			weights.base_extrinsic = ExtrinsicBaseWeight::get();
@@ -334,7 +352,7 @@ parameter_types! {
 	///
 	/// We want to keep it as high as possible, but can't risk having it reject,
 	/// so we always subtract the base block execution weight.
-	pub OffchainSolutionWeightLimit: Weight = BlockWeights::get()
+	pub OffchainSolutionWeightLimit: Weight = RuntimeBlockWeights::get()
 		.get(DispatchClass::Normal)
 		.max_extrinsic
 		.expect("Normal extrinsics have weight limit configured by default; qed")

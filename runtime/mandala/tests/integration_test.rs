@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 #![cfg(test)]
 
 use codec::Encode;
@@ -683,7 +701,7 @@ fn test_cdp_engine_module() {
 
 #[test]
 fn test_authority_module() {
-	const AUTHORITY_ORIGIN_ID: u8 = 33u8;
+	const AUTHORITY_ORIGIN_ID: u8 = 27u8;
 
 	ExtBuilder::default()
 		.balances(vec![
@@ -790,8 +808,8 @@ fn test_authority_module() {
 
 			run_to_block(SevenDays::get() + 2);
 			let event = Event::pallet_scheduler(pallet_scheduler::RawEvent::Dispatched(
-				(151202, 0),
-				Some([AUTHORITY_ORIGIN_ID, 160, 78, 2, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				(100802, 0),
+				Some([AUTHORITY_ORIGIN_ID, 192, 137, 1, 0, 0, 0, 2, 0, 0, 0].to_vec()),
 				Ok(()),
 			));
 			assert_eq!(last_event(), event);
@@ -812,7 +830,7 @@ fn test_authority_module() {
 
 			run_to_block(SevenDays::get() + 3);
 			let event = Event::pallet_scheduler(pallet_scheduler::RawEvent::Dispatched(
-				(151203, 0),
+				(100803, 0),
 				Some([0, 0, 3, 0, 0, 0].to_vec()),
 				Ok(()),
 			));

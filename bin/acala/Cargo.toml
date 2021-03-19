@@ -1,6 +1,6 @@
 [package]
 name = "acala"
-version = "0.7.3"
+version = "0.7.11"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -14,6 +14,9 @@ parity-util-mem = { version = "0.9.0", default-features = false, features = ["je
 acala-cli = { path = "cli" }
 acala-service = { path = "service" }
 mandala-runtime = { path = "../../runtime/mandala", optional = true }
+
+#TODO: This is a workaround for issue https://github.com/bitvecto-rs/bitvec/issues/105. Remove it once fixed.
+funty = { version = "=1.1.0" }
 
 [features]
 default = [ "with-mandala-runtime" ]

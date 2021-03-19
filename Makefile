@@ -54,7 +54,7 @@ test: githooks
 
 .PHONY: test-eth
 test-eth: githooks
-	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala-dev/Cargo.toml test_evm_module --features with-ethereum-compatibility -p mandala-runtime
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml test_evm_module --features with-ethereum-compatibility -p mandala-runtime
 
 .PHONY: test-all
 test-all: test-dev test-acala
@@ -69,7 +69,7 @@ test-acala:
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala-dev/Cargo.toml --features runtime-benchmarks -p mandala-runtime benchmarking
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --features runtime-benchmarks -p mandala-runtime benchmarking
 
 .PHONY: build
 build: githooks
@@ -110,9 +110,14 @@ update-orml:
 	git add orml
 
 .PHONY: update
-update: update-orml
+update: update-orml cargo-update check-all
+
+.PHONY: cargo-update
+cargo-update:
 	cargo update
-	make check
+	cargo update --manifest-path bin/acala-dev/Cargo.toml
+	cargo update --manifest-path bin/acala-dev/cli/Cargo.toml
+	cargo update --manifest-path bin/acala-dev/service/Cargo.toml
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:

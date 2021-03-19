@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 //! # CDP Engine Module
 //!
 //! ## Overview
@@ -10,7 +28,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -317,14 +335,14 @@ pub mod module {
 		/// submit unsigned tx to trigger liquidation or settlement.
 		fn offchain_worker(now: T::BlockNumber) {
 			if let Err(e) = Self::_offchain_worker() {
-				debug::info!(
+				log::info!(
 					target: "cdp-engine offchain worker",
 					"cannot run offchain worker at {:?}: {:?}",
 					now,
 					e,
 				);
 			} else {
-				debug::debug!(
+				log::debug!(
 					target: "cdp-engine offchain worker",
 					"offchain worker start at block: {:?} already done!",
 					now,
@@ -492,7 +510,7 @@ impl<T: Config> Pallet<T> {
 		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::liquidate(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
-			debug::info!(
+			log::info!(
 				target: "cdp-engine offchain worker",
 				"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
 				who, currency_id,
@@ -504,7 +522,7 @@ impl<T: Config> Pallet<T> {
 		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::settle(currency_id, who.clone());
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
-			debug::info!(
+			log::info!(
 				target: "cdp-engine offchain worker",
 				"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
 				who, currency_id,
@@ -576,7 +594,7 @@ impl<T: Config> Pallet<T> {
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
 		let iteration_end_time = sp_io::offchain::timestamp();
-		debug::debug!(
+		log::debug!(
 			target: "cdp-engine offchain worker",
 			"iteration info:\n max iterations is {:?}\n currency id: {:?}, start key: {:?}, iterate count: {:?}\n iteration start at: {:?}, end at: {:?}, execution time: {:?}\n",
 			max_iterations,

@@ -1,8 +1,26 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use frame_support::pallet_prelude::Weight;
+use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::evm::{CallInfo, EvmAddress};
 use sp_core::H160;
 use sp_runtime::{
@@ -333,6 +351,14 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 		weight: Weight,
 	) -> Result<(Balance, NegativeImbalance), TransactionValidityError>;
 	fn refund_fee(who: &AccountId, weight: Weight, payed: NegativeImbalance) -> Result<(), TransactionValidityError>;
+	fn charge_fee(
+		who: &AccountId,
+		len: u32,
+		weight: Weight,
+		tip: Balance,
+		pays_fee: Pays,
+		class: DispatchClass,
+	) -> Result<(), TransactionValidityError>;
 }
 
 #[cfg(feature = "std")]
@@ -358,6 +384,17 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		_who: &AccountId,
 		_weight: Weight,
 		_payed: NegativeImbalance,
+	) -> Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn charge_fee(
+		_who: &AccountId,
+		_len: u32,
+		_weight: Weight,
+		_tip: Balance,
+		_pays_fee: Pays,
+		_class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}

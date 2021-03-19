@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 #![allow(clippy::type_complexity)]
 
 use crate::{
@@ -10,7 +28,7 @@ use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
-	debug, require_transactional,
+	log, require_transactional,
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
@@ -425,7 +443,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
-		debug::debug!(
+		log::debug!(
 			target: "evm",
 			"handler: create: caller {:?}",
 			caller,
@@ -512,7 +530,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		is_static: bool,
 		context: Context,
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
-		debug::debug!(
+		log::debug!(
 			target: "evm",
 			"handler: call: source {:?} code_address {:?} input: {:?} target_gas {:?} gas_left {:?}",
 			context.caller,
@@ -557,7 +575,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 				try_or_rollback!(gasometer.record_cost(target_gas));
 
 				if let Some(ret) = T::Precompiles::execute(code_address, &input, Some(target_gas), &context) {
-					debug::debug!(
+					log::debug!(
 						target: "evm",
 						"handler: call-result: precompile result {:?}",
 						ret
@@ -585,7 +603,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 					input,
 				);
 
-				debug::debug!(
+				log::debug!(
 					target: "evm",
 					"handler: call-result: reason {:?} out {:?} gas_left {:?}",
 					reason, out, substate.gas_left()
@@ -638,7 +656,7 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			return Ok(());
 		}
 
-		debug::debug!(
+		log::debug!(
 			target: "evm",
 			"reserve_storage: from {:?} limit {:?}",
 			self.origin, limit,
@@ -658,7 +676,7 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			return Ok(());
 		}
 
-		debug::debug!(
+		log::debug!(
 			target: "evm",
 			"unreserve_storage: from {:?} used {:?} refunded {:?} unused {:?}",
 			self.origin, used, refunded, unused
@@ -680,7 +698,7 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			return Ok(());
 		}
 
-		debug::debug!(
+		log::debug!(
 			target: "evm",
 			"charge_storage: from {:?} contract {:?} used {:?} refunded {:?}",
 			&self.origin, contract, used, refunded
