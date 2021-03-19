@@ -135,6 +135,12 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		code: Vec<u8>,
 		input: Vec<u8>,
 	) -> (ExitReason, Vec<u8>) {
+		let transaction_cost = gasometer::call_transaction_cost(&code);
+		match self.gasometer.record_transaction(transaction_cost) {
+			Ok(()) => (),
+			Err(e) => return (e.into(), Vec::new()),
+		}
+
 		let context = Context {
 			caller,
 			address,
