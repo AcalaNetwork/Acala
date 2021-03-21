@@ -31,7 +31,7 @@ use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use module_evm::ExitError;
 use orml_traits::DataFeeder;
-use primitives::{evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
+use primitives::{currency::GetDecimals, evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, H256, U256};
 use sp_runtime::FixedPointNumber;
 
@@ -142,7 +142,7 @@ fn oracle_precompile_should_work() {
 		// returned price + timestamp
 		let mut expected_output = [0u8; 32];
 
-		let maybe_adjustment_multiplier = 10u128.checked_pow(8).unwrap();
+		let maybe_adjustment_multiplier = 10u128.checked_pow(XBTC.decimals()).unwrap();
 		let price = Price::checked_from_rational(price.into_inner(), maybe_adjustment_multiplier).unwrap();
 		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..]);
 
