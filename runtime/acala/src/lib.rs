@@ -1222,6 +1222,7 @@ pub type LocationConverter = (
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	Currencies,
+	UnknownTokens,
 	IsConcreteWithGeneralKey<CurrencyId, Identity>,
 	LocationConverter,
 	AccountId,
@@ -1273,6 +1274,10 @@ impl orml_xtokens::Config for Runtime {
 	type RelayChainNetworkId = PolkadotNetworkId;
 	type ParaId = ParachainInfo;
 	type XcmHandler = HandleXcm;
+}
+
+impl orml_unknown_tokens::Config for Runtime {
+	type Event = Event;
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -1371,6 +1376,7 @@ construct_runtime!(
 		ParachainInfo: parachain_info::{Module, Storage, Config},
 		XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
 		XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
+		UnknownTokens: orml_unknown_tokens::{Module, Storage, Event},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},

@@ -1462,6 +1462,7 @@ mod parachain_impl {
 
 	pub type LocalAssetTransactor = MultiCurrencyAdapter<
 		Currencies,
+		UnknownTokens,
 		IsConcreteWithGeneralKey<CurrencyId, Identity>,
 		LocationConverter,
 		AccountId,
@@ -1530,6 +1531,10 @@ mod parachain_impl {
 		type RelayChainNetworkId = PolkadotNetworkId;
 		type ParaId = ParachainInfo;
 		type XcmHandler = HandleXcm;
+	}
+
+	impl orml_unknown_tokens::Config for Runtime {
+		type Event = Event;
 	}
 }
 
@@ -1654,6 +1659,7 @@ construct_mandala_runtime! {
 	ParachainInfo: parachain_info::{Module, Storage, Config},
 	XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
 	XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
+	UnknownTokens: orml_unknown_tokens::{Module, Storage, Event},
 }
 
 /// The address format for describing accounts.

@@ -203,6 +203,7 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-unknown-tokens",
  "orml-vesting",
  "orml-xcm-support",
  "orml-xtokens",
@@ -3148,6 +3149,7 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-unknown-tokens",
  "orml-vesting",
  "orml-xcm-support",
  "orml-xtokens",
@@ -3875,6 +3877,7 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-unknown-tokens",
  "orml-vesting",
  "orml-xcm-support",
  "orml-xtokens",
@@ -4978,6 +4981,19 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "orml-unknown-tokens"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-xcm-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]
