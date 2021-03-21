@@ -27,7 +27,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use module_support::DEXIncentives;
+use module_support::{DEXIncentives, ExchangeRate, ExchangeRateProvider};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	evm::AddressMapping, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, Header, Nonce, TokenSymbol,
@@ -130,6 +130,8 @@ impl pallet_balances::Config for Test {
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
@@ -301,7 +303,7 @@ pub type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<AccountId, Moc
 
 pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, NFTModule>;
 pub type StateRentPrecompile = crate::StateRentPrecompile<AccountId, MockAddressMapping, ModuleEVM>;
-pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, Oracle>;
+pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, Prices>;
 pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	AccountId,
 	MockAddressMapping,
@@ -366,6 +368,37 @@ impl module_evm::Config for Test {
 	type WeightInfo = ();
 }
 
+pub struct MockLiquidStakingExchangeProvider;
+impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
+	fn get_exchange_rate() -> ExchangeRate {
+		ExchangeRate::saturating_from_rational(1, 2)
+	}
+}
+
+parameter_types! {
+	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
+	pub const GetStakingCurrencyId: CurrencyId = DOT;
+	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
+}
+
+ord_parameter_types! {
+	pub const One: AccountId = AccountId::new([1u8; 32]);
+}
+
+impl module_prices::Config for Test {
+	type Event = Event;
+	type Source = Oracle;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
+	type GetStakingCurrencyId = GetStakingCurrencyId;
+	type GetLiquidCurrencyId = GetLiquidCurrencyId;
+	type LockOrigin = EnsureSignedBy<One, AccountId>;
+	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
+	type DEX = DexModule;
+	type Currency = Currencies;
+	type WeightInfo = ();
+}
+
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const EVA: AccountId = AccountId::new([5u8; 32]);
@@ -421,6 +454,7 @@ frame_support::construct_runtime!(
 		EVMBridge: module_evm_bridge::{Module},
 		NFTModule: module_nft::{Module, Call, Event<T>},
 		TransactionPayment: module_transaction_payment::{Module, Call, Storage},
+		Prices: module_prices::{Module, Storage, Call, Event<T>},
 		Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Utility: pallet_utility::{Module, Call, Event},
 		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},

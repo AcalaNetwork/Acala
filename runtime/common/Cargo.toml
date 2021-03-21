@@ -22,6 +22,7 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 
 module-support = { path = "../../modules/support", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
+module-prices = { path = "../../modules/prices", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 
@@ -32,7 +33,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1",
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }
@@ -58,5 +59,6 @@ std = [
 	"primitives/std",
 	"module-staking-pool/std",
 	"module-transaction-payment/std",
+	"module-prices/std",
 ]
 with-ethereum-compatibility = []

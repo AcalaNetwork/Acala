@@ -127,7 +127,7 @@ fn oracle_precompile_should_work() {
 		// no price yet
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
-		assert_eq!(output, [0u8; 64]);
+		assert_eq!(output, [0u8; 32]);
 		assert_eq!(used_gas, 0);
 
 		assert_ok!(Oracle::feed_value(ALICE, XBTC, price));
@@ -140,9 +140,11 @@ fn oracle_precompile_should_work() {
 		);
 
 		// returned price + timestamp
-		let mut expected_output = [0u8; 64];
-		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..32]);
-		U256::from(1).to_big_endian(&mut expected_output[32..64]);
+		let mut expected_output = [0u8; 32];
+
+		let maybe_adjustment_multiplier = 10u128.checked_pow(8).unwrap();
+		let price = Price::checked_from_rational(price.into_inner(), maybe_adjustment_multiplier).unwrap();
+		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..]);
 
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
