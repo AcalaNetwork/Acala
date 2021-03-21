@@ -18,11 +18,12 @@
 
 use crate::{
 	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, CurrencyId, GetStableCurrencyId, Incentives, Rate,
-	Rewards, Runtime, TokenSymbol, ACA, AUSD, DOT,
+	Rewards, Runtime, System, TokenSymbol, ACA, AUSD, DOT,
 };
 
 use super::utils::set_balance;
 use frame_benchmarking::account;
+use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_incentives::PoolId;
 use orml_benchmarking::runtime_benchmarks;
@@ -45,7 +46,7 @@ runtime_benchmarks! {
 			let currency_id = currency_ids[i as usize];
 			let pool_id = PoolId::LoansIncentive(currency_id);
 
-			Incentives::update_incentive_rewards(RawOrigin::Root, vec![(pool_id.clone(), 100 * dollar(ACA))])?;
+			Incentives::update_incentive_rewards(RawOrigin::Root.into(), vec![(pool_id.clone(), 100 * dollar(ACA))])?;
 			orml_rewards::Pools::<Runtime>::mutate(pool_id, |pool_info| {
 				pool_info.total_shares += 100;
 			});
@@ -76,8 +77,8 @@ runtime_benchmarks! {
 		let caller: AccountId = account("caller", 0, SEED);
 		let pool_id = PoolId::LoansIncentive(DOT);
 
-		Rewards::add_share(&caller, pool_id, 100);
-		orml_rewards::Pools::<Runtime>::mutate(pool_id, |pool_info| {
+		Rewards::add_share(&caller, &pool_id, 100);
+		orml_rewards::Pools::<Runtime>::mutate(&pool_id, |pool_info| {
 			pool_info.total_rewards += 5000;
 		});
 	}: _(RawOrigin::Signed(caller), pool_id)
