@@ -74,6 +74,7 @@ where
 			Action::GetPrice => {
 				let key = input.currency_id_at(1)?;
 				let value = PriceProvider::get_price(key).unwrap_or_else(Default::default);
+				log::debug!(target: "evm", "oracle currency_id: {:?}, price: {:?}", key, value);
 				Ok((ExitSucceed::Returned, vec_u8_from_price(value), 0))
 			}
 		}
