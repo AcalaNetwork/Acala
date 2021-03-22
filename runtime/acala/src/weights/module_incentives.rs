@@ -45,6 +45,13 @@ use sp_std::marker::PhantomData;
 /// Weight functions for module_incentives.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
+	fn on_initialize(c: u32) -> Weight {
+		(7_775_000 as Weight)
+			// Standard Error: 20_000
+			.saturating_add((5_061_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
+	}
 	fn deposit_dex_share() -> Weight {
 		(84_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
@@ -60,25 +67,19 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn update_loans_incentive_rewards(c: u32) -> Weight {
+	fn update_incentive_rewards(c: u32) -> Weight {
 		(746_000 as Weight)
 			// Standard Error: 31_000
 			.saturating_add((1_789_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
-	fn update_dex_incentive_rewards(c: u32) -> Weight {
-		(1_325_000 as Weight)
-			// Standard Error: 21_000
-			.saturating_add((1_639_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
-	fn update_homa_incentive_reward() -> Weight {
-		(2_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn update_dex_saving_rates(c: u32) -> Weight {
+	fn update_dex_saving_rewards(c: u32) -> Weight {
 		(875_000 as Weight)
 			// Standard Error: 21_000
 			.saturating_add((1_832_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+	}
+	fn add_allowance() -> Weight {
+		(2_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }

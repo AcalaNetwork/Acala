@@ -978,9 +978,8 @@ impl module_evm_accounts::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = module_incentives::PoolId;
+	type PoolId = module_incentives::PoolId<AccountId>;
 	type Handler = Incentives;
-	type WeightInfo = weights::orml_rewards::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -989,12 +988,12 @@ parameter_types! {
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
-	type LoansIncentivePool = ZeroAccountId;
-	type DexIncentivePool = ZeroAccountId;
-	type HomaIncentivePool = ZeroAccountId;
+	type RelaychainAccountId = AccountId;
+	type RewardsVaultAccountId = ZeroAccountId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type StableCurrencyId = GetStableCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
-	type IncentiveCurrencyId = GetNativeCurrencyId;
-	type SavingCurrencyId = GetStableCurrencyId;
 	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type CDPTreasury = CdpTreasury;
 	type Currency = Currencies;
@@ -1655,7 +1654,6 @@ impl_runtime_apis! {
 
 			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
 			// orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
-			// orml_add_benchmark!(params, batches, orml_rewards, benchmarking::rewards);
 			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
