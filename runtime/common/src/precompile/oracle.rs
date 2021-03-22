@@ -74,13 +74,13 @@ where
 			Action::GetPrice => {
 				let key = input.currency_id_at(1)?;
 				let value = PriceProvider::get_price(key).unwrap_or_else(Default::default);
-				Ok((ExitSucceed::Returned, vec_u8_from_timestamped(value), 0))
+				Ok((ExitSucceed::Returned, vec_u8_from_price(value), 0))
 			}
 		}
 	}
 }
 
-fn vec_u8_from_timestamped(value: Price) -> Vec<u8> {
+fn vec_u8_from_price(value: Price) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(value.into_inner()).to_big_endian(&mut be_bytes[..32]);
 	be_bytes.to_vec()
