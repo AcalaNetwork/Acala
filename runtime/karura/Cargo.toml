@@ -78,6 +78,7 @@ orml-rewards = { path = "../../orml/rewards", default-features = false }
 orml-nft= { path = "../../orml/nft", default-features = false }
 orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
+orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
@@ -186,6 +187,7 @@ std = [
 	"orml-nft/std",
 	"orml-xtokens/std",
 	"orml-xcm-support/std",
+	"orml-unknown-tokens/std",
 
 	"module-transaction-payment/std",
 	"module-airdrop/std",
