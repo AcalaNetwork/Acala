@@ -17,12 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, CollateralCurrencyIds, CurrencyId, GetStableCurrencyId, Incentives, Rate, Rewards, Runtime,
-	TokenSymbol, ACA, AUSD, DOT,
+	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, CurrencyId, GetStableCurrencyId, Incentives, Rate,
+	Rewards, Runtime, System, TokenSymbol, ACA, AUSD, DOT,
 };
 
 use super::utils::set_balance;
 use frame_benchmarking::account;
+use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_incentives::PoolId;
 use orml_benchmarking::runtime_benchmarks;
@@ -35,6 +36,27 @@ runtime_benchmarks! {
 	{ Runtime, module_incentives }
 
 	_ {}
+
+	on_initialize {
+		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let currency_ids = CollateralCurrencyIds::get();
+		let block_number = AccumulatePeriod::get();
+
+		for i in 0 .. c {
+			let currency_id = currency_ids[i as usize];
+			let pool_id = PoolId::LoansIncentive(currency_id);
+
+			Incentives::update_incentive_rewards(RawOrigin::Root.into(), vec![(pool_id.clone(), 100 * dollar(ACA))])?;
+			orml_rewards::Pools::<Runtime>::mutate(pool_id, |pool_info| {
+				pool_info.total_shares += 100;
+			});
+		}
+
+		Incentives::on_initialize(1);
+		System::set_block_number(block_number);
+	}: {
+		Incentives::on_initialize(System::block_number());
+	}
 
 	deposit_dex_share {
 		let caller: AccountId = account("caller", 0, SEED);
@@ -53,26 +75,26 @@ runtime_benchmarks! {
 
 	claim_rewards {
 		let caller: AccountId = account("caller", 0, SEED);
-		let pool_id = PoolId::Loans(DOT);
+		let pool_id = PoolId::LoansIncentive(DOT);
 
-		Rewards::add_share(&caller, pool_id, 100);
-		orml_rewards::Pools::<Runtime>::mutate(pool_id, |pool_info| {
+		Rewards::add_share(&caller, &pool_id, 100);
+		orml_rewards::Pools::<Runtime>::mutate(&pool_id, |pool_info| {
 			pool_info.total_rewards += 5000;
 		});
 	}: _(RawOrigin::Signed(caller), pool_id)
 
-	update_loans_incentive_rewards {
+	update_incentive_rewards {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let mut values = vec![];
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			values.push((currency_id, 100 * dollar(ACA)));
+			values.push((PoolId::LoansIncentive(currency_id), 100 * dollar(ACA)));
 		}
 	}: _(RawOrigin::Root, values)
 
-	update_dex_incentive_rewards {
+	update_dex_saving_rewards {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let caller: AccountId = account("caller", 0, SEED);
@@ -87,29 +109,7 @@ runtime_benchmarks! {
 				}
 				_ => return Err("invalid currency id"),
 			};
-			values.push((lp_share_currency_id, 100 * dollar(ACA)));
-		}
-	}: _(RawOrigin::Root, values)
-
-	update_homa_incentive_reward {
-	}: _(RawOrigin::Root, 100 * dollar(ACA))
-
-	update_dex_saving_rates {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
-		let currency_ids = CollateralCurrencyIds::get();
-		let caller: AccountId = account("caller", 0, SEED);
-		let mut values = vec![];
-		let base_currency_id = GetStableCurrencyId::get();
-
-		for i in 0 .. c {
-			let currency_id = currency_ids[i as usize];
-			let lp_share_currency_id = match (currency_id, base_currency_id) {
-				(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
-					CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol)
-				}
-				_ => return Err("invalid currency id"),
-			};
-			values.push((lp_share_currency_id, Rate::default()));
+			values.push((PoolId::DexSaving(lp_share_currency_id), Rate::default()));
 		}
 	}: _(RawOrigin::Root, values)
 }
@@ -124,6 +124,13 @@ mod tests {
 			.build_storage::<Runtime>()
 			.unwrap()
 			.into()
+	}
+
+	#[test]
+	fn test_on_initialize() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_on_initialize());
+		});
 	}
 
 	#[test]
@@ -148,30 +155,16 @@ mod tests {
 	}
 
 	#[test]
-	fn test_update_loans_incentive_rewards() {
+	fn test_update_incentive_rewards() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_loans_incentive_rewards());
+			assert_ok!(test_benchmark_update_incentive_rewards());
 		});
 	}
 
 	#[test]
-	fn test_update_dex_incentive_rewards() {
+	fn test_update_dex_saving_rewards() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_dex_incentive_rewards());
-		});
-	}
-
-	#[test]
-	fn test_update_homa_incentive_reward() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_homa_incentive_reward());
-		});
-	}
-
-	#[test]
-	fn test_update_dex_saving_rates() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_dex_saving_rates());
+			assert_ok!(test_benchmark_update_dex_saving_rewards());
 		});
 	}
 }

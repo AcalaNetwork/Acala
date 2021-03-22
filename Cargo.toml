@@ -30,6 +30,7 @@ members = [
 	"orml/vesting",
 	"orml/xtokens",
 	"orml/xcm-support",
+	"orml/unknown-tokens",
 
 	"ecosystem-modules/ren/renvm-bridge",
 ]
