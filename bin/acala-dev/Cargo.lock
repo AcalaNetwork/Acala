@@ -6647,6 +6647,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-evm",
+ "module-prices",
  "module-staking-pool",
  "module-support",
  "module-transaction-payment",

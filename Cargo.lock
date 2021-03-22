@@ -8147,6 +8147,7 @@ dependencies = [
  "module-evm",
  "module-evm-bridge",
  "module-nft",
+ "module-prices",
  "module-staking-pool",
  "module-support",
  "module-transaction-payment",
