@@ -96,6 +96,7 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
+module-homa-validator-list = { path = "../../modules/homa-validator-list", default-features = false }
 module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }

@@ -59,7 +59,7 @@ fn distribute_decrement_work() {
 }
 
 #[test]
-fn staking_ledger_work() {
+fn relaychain_staking_ledger_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		BRIDGE_STATUS.with(|v| {
 			let mut old_map = v.borrow().clone();
@@ -99,7 +99,7 @@ fn staking_ledger_work() {
 		});
 
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 1340,
 				active: 1000,
@@ -154,7 +154,7 @@ fn balance_work() {
 			*v.borrow_mut() = old_map;
 		});
 
-		assert_eq!(StakingPoolModule::balance(), 1340 + 1000);
+		assert_eq!(StakingPoolModule::relaychain_free_balance(), 1000);
 	});
 }
 
@@ -547,7 +547,7 @@ fn withdraw_unbonded_work() {
 }
 
 #[test]
-fn payout_nominator_work() {
+fn payout_stakers_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		BRIDGE_STATUS.with(|v| {
 			let mut old_map = v.borrow().clone();
@@ -586,7 +586,7 @@ fn payout_nominator_work() {
 			*v.borrow_mut() = old_map;
 		});
 
-		StakingPoolModule::payout_nominator();
+		StakingPoolModule::payout_stakers(0);
 		assert_eq!(
 			*BRIDGE_STATUS
 				.with(|v| v.borrow().clone())
@@ -783,6 +783,12 @@ fn mint_work() {
 
 		let mint_liquid_event = Event::staking_pool(crate::Event::MintLiquid(ALICE, 500, 5000));
 		assert!(System::events().iter().any(|record| record.event == mint_liquid_event));
+
+		RebalancePhase::<Runtime>::put(Phase::Started);
+		assert_noop!(
+			StakingPoolModule::mint(&ALICE, 500),
+			Error::<Runtime>::RebalanceUnfinished
+		);
 	});
 }
 
@@ -886,6 +892,12 @@ fn redeem_by_unbond_work() {
 			}
 		);
 		assert_eq!(StakingPoolModule::next_era_unbonds(&BOB), 400);
+
+		RebalancePhase::<Runtime>::put(Phase::Started);
+		assert_noop!(
+			StakingPoolModule::redeem_by_unbond(&BOB, 9000),
+			Error::<Runtime>::RebalanceUnfinished
+		);
 	});
 }
 
@@ -953,6 +965,12 @@ fn redeem_by_free_unbonded_work() {
 		assert_eq!(CurrenciesModule::free_balance(DOT, &BOB), 300);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 5338);
 		assert_eq!(CurrenciesModule::total_issuance(LDOT), 5338);
+
+		RebalancePhase::<Runtime>::put(Phase::Started);
+		assert_noop!(
+			StakingPoolModule::redeem_by_free_unbonded(&BOB, 9000),
+			Error::<Runtime>::RebalanceUnfinished
+		);
 	});
 }
 
@@ -1037,7 +1055,20 @@ fn redeem_by_claim_unbonding_work() {
 		assert_eq!(StakingPoolModule::unbondings(&BOB, 4), 316);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 15090);
 		assert_eq!(CurrenciesModule::total_issuance(LDOT), 15090);
+
+		RebalancePhase::<Runtime>::put(Phase::Started);
+		assert_noop!(
+			StakingPoolModule::redeem_by_claim_unbonding(&BOB, 10000, 4),
+			Error::<Runtime>::RebalanceUnfinished
+		);
 	});
+}
+
+fn mock_rebalance_process(era: EraIndex) {
+	StakingPoolModule::on_new_era(era);
+	StakingPoolModule::on_initialize((era * 3).into()); // Started
+	StakingPoolModule::on_initialize((era * 3 + 1).into()); // RelaychainUpdated
+	StakingPoolModule::on_initialize((era * 3 + 2).into()); // LedgerUpdated
 }
 
 #[test]
@@ -1047,7 +1078,7 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::mint(&ALICE, 100000), Ok(1000000));
 
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 0,
 				active: 0,
@@ -1069,10 +1100,9 @@ fn rebalance_work() {
 		);
 		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
 
-		CurrentEra::<Runtime>::put(1);
-		StakingPoolModule::rebalance(1);
+		mock_rebalance_process(1);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 90000,
 				active: 90000,
@@ -1095,10 +1125,9 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(6), (0, 0, 0));
 
-		CurrentEra::<Runtime>::put(2);
-		StakingPoolModule::rebalance(2);
+		mock_rebalance_process(2);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 90900,
 				active: 89891,
@@ -1121,10 +1150,9 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(5), (0, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(6), (1009, 0, 0));
 
-		CurrentEra::<Runtime>::put(3);
-		StakingPoolModule::rebalance(3);
+		mock_rebalance_process(3);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 91798,
 				active: 89772,
@@ -1152,10 +1180,9 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(7), (1017, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(8), (0, 0, 0));
 
-		CurrentEra::<Runtime>::put(4);
-		StakingPoolModule::rebalance(4);
+		mock_rebalance_process(4);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 92695,
 				active: 89643,
@@ -1185,10 +1212,9 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(8), (1026, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(9), (0, 0, 0));
 
-		CurrentEra::<Runtime>::put(5);
-		StakingPoolModule::rebalance(5);
+		mock_rebalance_process(5);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 93591,
 				active: 90484,
@@ -1220,10 +1246,9 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(9), (55, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(10), (0, 0, 0));
 
-		CurrentEra::<Runtime>::put(6);
-		StakingPoolModule::rebalance(6);
+		mock_rebalance_process(6);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 94045,
 				active: 90911,
@@ -1255,10 +1280,9 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(10), (1036, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(11), (0, 0, 0));
 
-		CurrentEra::<Runtime>::put(7);
-		StakingPoolModule::rebalance(7);
+		mock_rebalance_process(7);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 94862,
 				active: 91700,
@@ -1290,10 +1314,9 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::unbonding(11), (1045, 0, 0));
 		assert_eq!(StakingPoolModule::unbonding(12), (0, 0, 0));
 
-		CurrentEra::<Runtime>::put(8);
-		StakingPoolModule::rebalance(8);
+		mock_rebalance_process(8);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 95687,
 				active: 92498,
@@ -1339,10 +1362,10 @@ fn rebalance_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&ALICE), 212);
 		assert_eq!(StakingPoolModule::unbondings(&ALICE, 11), 85);
 		assert_eq!(StakingPoolModule::unbondings(&ALICE, 13), 0);
-		CurrentEra::<Runtime>::put(9);
-		StakingPoolModule::rebalance(9);
+
+		mock_rebalance_process(9);
 		assert_eq!(
-			StakingPoolModule::staking_ledger(),
+			StakingPoolModule::relaychain_staking_ledger(),
 			PolkadotStakingLedger {
 				total: 96555,
 				active: 93050,

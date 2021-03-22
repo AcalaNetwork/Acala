@@ -16,26 +16,35 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for nominees election module.
+//! Mocks for homa validator list module.
 
 #![cfg(test)]
 
 use super::*;
-
-use crate as nominees;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, CurrencyId, TokenSymbol};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_std::cell::RefCell;
+use std::collections::HashMap;
+use support::ExchangeRate;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
+pub const VALIDATOR_1: AccountId = 2;
+pub const VALIDATOR_2: AccountId = 3;
+pub const VALIDATOR_3: AccountId = 4;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+
+mod homa_validator_list {
+	pub use super::super::*;
+}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -106,37 +115,89 @@ pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 
 impl orml_currencies::Config for Runtime {
 	type Event = Event;
-	type MultiCurrency = TokensModule;
+	type MultiCurrency = OrmlTokens;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const MinBondThreshold: Balance = 5;
-	pub const BondingDuration: EraIndex = 4;
-	pub const NominateesCount: u32 = 5;
-	pub const MaxUnlockingChunks: u32 = 3;
+thread_local! {
+	pub static SHARES: RefCell<HashMap<(AccountId, AccountId), Balance>> = RefCell::new(HashMap::new());
+	pub static ACCUMULATED_SLASH: RefCell<Balance> = RefCell::new(0);
 }
 
-pub struct MockRelaychainValidatorFilter;
-impl Contains<AccountId> for MockRelaychainValidatorFilter {
-	fn contains(a: &AccountId) -> bool {
-		match a {
-			0..=6 => true,
-			_ => false,
-		}
+pub struct MockOnSlash;
+impl Happened<Balance> for MockOnSlash {
+	fn happened(amount: &Balance) {
+		ACCUMULATED_SLASH.with(|v| *v.borrow_mut() += amount);
 	}
 }
 
+pub struct MockOnIncreaseGuarantee;
+impl Happened<(AccountId, AccountId, Balance)> for MockOnIncreaseGuarantee {
+	fn happened(info: &(AccountId, AccountId, Balance)) {
+		let (account_id, relaychain_id, amount) = info;
+		SHARES.with(|v| {
+			let mut old_map = v.borrow().clone();
+			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
+				*share = share.saturating_add(*amount);
+			} else {
+				old_map.insert((*account_id, *relaychain_id), *amount);
+			};
+
+			*v.borrow_mut() = old_map;
+		});
+	}
+}
+
+pub struct MockOnDecreaseGuarantee;
+impl Happened<(AccountId, AccountId, Balance)> for MockOnDecreaseGuarantee {
+	fn happened(info: &(AccountId, AccountId, Balance)) {
+		let (account_id, relaychain_id, amount) = info;
+		SHARES.with(|v| {
+			let mut old_map = v.borrow().clone();
+			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
+				*share = share.saturating_sub(*amount);
+			} else {
+				old_map.insert((*account_id, *relaychain_id), Default::default());
+			};
+
+			*v.borrow_mut() = old_map;
+		});
+	}
+}
+
+pub struct MockLiquidStakingExchangeProvider;
+impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
+	fn get_exchange_rate() -> ExchangeRate {
+		ExchangeRate::saturating_from_rational(1, 2)
+	}
+}
+
+parameter_types! {
+	pub const MinBondAmount: Balance = 100;
+	pub const BondingDuration: BlockNumber = 100;
+	pub const ValidatorInsuranceThreshold: Balance = 200;
+}
+
+ord_parameter_types! {
+	pub const Admin: AccountId = 10;
+}
+
 impl Config for Runtime {
-	type Currency = LDOTCurrency;
-	type PolkadotAccountId = AccountId;
-	type MinBondThreshold = MinBondThreshold;
+	type Event = Event;
+	type RelaychainAccountId = AccountId;
+	type LiquidTokenCurrency = LDOTCurrency;
+	type MinBondAmount = MinBondAmount;
 	type BondingDuration = BondingDuration;
-	type NominateesCount = NominateesCount;
-	type MaxUnlockingChunks = MaxUnlockingChunks;
-	type RelaychainValidatorFilter = MockRelaychainValidatorFilter;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type FreezeOrigin = EnsureSignedBy<Admin, AccountId>;
+	type SlashOrigin = EnsureSignedBy<Admin, AccountId>;
+	type OnSlash = MockOnSlash;
+	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
+	type WeightInfo = ();
+	type OnIncreaseGuarantee = MockOnIncreaseGuarantee;
+	type OnDecreaseGuarantee = MockOnDecreaseGuarantee;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -149,10 +210,10 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		NomineesElectionModule: nominees::{Module, Call, Storage},
-		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		OrmlTokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
 		OrmlCurrencies: orml_currencies::{Module, Call, Event<T>},
+		HomaValidatorListModule: homa_validator_list::{Module, Call, Storage, Event<T>},
 	}
 );
 

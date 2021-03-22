@@ -169,9 +169,13 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_payout_nominator(origin: OriginFor<T>, account_index: u32) -> DispatchResultWithPostInfo {
+		pub fn simulate_payout_stakers(
+			origin: OriginFor<T>,
+			account_index: u32,
+			era: EraIndex,
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
-			Self::payout_nominator(account_index);
+			Self::payout_stakers(account_index, era);
 			Ok(().into())
 		}
 
@@ -336,7 +340,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// simulate receive staking reward by sub account
-	fn sub_account_payout_nominator(account_index: u32) {
+	fn sub_account_payout_stakers(account_index: u32, _era: EraIndex) {
 		SubAccounts::<T>::mutate(account_index, |status| {
 			let reward = status.mock_reward_rate.saturating_mul_int(status.bonded);
 			status.bonded = status.bonded.saturating_add(reward);
@@ -394,8 +398,8 @@ impl<T: Config> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraInd
 		Self::sub_account_withdraw_unbonded(account_index)
 	}
 
-	fn payout_nominator(account_index: u32) {
-		Self::sub_account_payout_nominator(account_index)
+	fn payout_stakers(account_index: u32, era: EraIndex) {
+		Self::sub_account_payout_stakers(account_index, era)
 	}
 
 	fn nominate(account_index: u32, targets: Vec<Self::PolkadotAccountId>) {
@@ -414,8 +418,7 @@ impl<T: Config> PolkadotBridgeCall<T::AccountId, T::BlockNumber, Balance, EraInd
 impl<T: Config> PolkadotBridgeState<Balance, EraIndex> for Pallet<T> {
 	fn staking_ledger(account_index: u32) -> PolkadotStakingLedger<Balance, EraIndex> {
 		let status = Self::sub_accounts(account_index);
-		let active = status.bonded;
-		let mut total = active;
+		let mut total = status.bonded;
 		let unlocking = status
 			.unbonding
 			.into_iter()
@@ -430,21 +433,13 @@ impl<T: Config> PolkadotBridgeState<Balance, EraIndex> for Pallet<T> {
 
 		PolkadotStakingLedger {
 			total,
-			active,
+			active: status.bonded,
 			unlocking,
 		}
 	}
 
-	/// bonded + available + total_unlocking
-	fn balance(account_index: u32) -> Balance {
-		let status = Self::sub_accounts(account_index);
-
-		status
-			.unbonding
-			.iter()
-			.fold(status.bonded.saturating_add(status.available), |x, (_, balance)| {
-				x.saturating_add(*balance)
-			})
+	fn free_balance(account_index: u32) -> Balance {
+		Self::sub_accounts(account_index).available
 	}
 
 	fn current_era() -> EraIndex {

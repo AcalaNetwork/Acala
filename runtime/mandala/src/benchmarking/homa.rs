@@ -19,6 +19,7 @@
 use super::utils::set_balance;
 use crate::{
 	dollar, AccountId, Currencies, GetStakingCurrencyId, Homa, PolkadotBondingDuration, PolkadotBridge, Runtime,
+	StakingPool,
 };
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
@@ -28,6 +29,13 @@ use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
+
+fn new_era() {
+	PolkadotBridge::new_era(Default::default());
+	StakingPool::rebalance();
+	StakingPool::rebalance();
+	StakingPool::rebalance();
+}
 
 runtime_benchmarks! {
 	{ Runtime, module_homa }
@@ -48,7 +56,7 @@ runtime_benchmarks! {
 		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
 		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
 		for era_index in 0..=PolkadotBondingDuration::get() {
-			PolkadotBridge::new_era(Default::default());
+			new_era();
 		}
 	}: redeem(RawOrigin::Signed(caller.clone()), dollar(currency_id), RedeemStrategy::Immediately)
 	verify {
@@ -61,7 +69,7 @@ runtime_benchmarks! {
 		let currency_id = GetStakingCurrencyId::get();
 		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
 		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
-		PolkadotBridge::new_era(Default::default());
+		new_era();
 	}: redeem(RawOrigin::Signed(caller), dollar(currency_id), RedeemStrategy::WaitForUnbonding)
 
 	// redeem DOT by claim unbonding
@@ -70,8 +78,8 @@ runtime_benchmarks! {
 		let currency_id = GetStakingCurrencyId::get();
 		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
 		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
-		PolkadotBridge::new_era(Default::default());
-		PolkadotBridge::new_era(Default::default());
+		new_era();
+		new_era();
 	}: redeem(RawOrigin::Signed(caller.clone()), dollar(currency_id), RedeemStrategy::Target(PolkadotBondingDuration::get() + 2))
 
 	withdraw_redemption {
@@ -79,10 +87,10 @@ runtime_benchmarks! {
 		let currency_id = GetStakingCurrencyId::get();
 		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
 		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
-		PolkadotBridge::new_era(Default::default());
+		new_era();
 		Homa::redeem(RawOrigin::Signed(caller.clone()).into(), dollar(currency_id), RedeemStrategy::WaitForUnbonding)?;
 		for era_index in 0..=PolkadotBondingDuration::get() {
-			PolkadotBridge::new_era(Default::default());
+			new_era();
 		}
 	}: _(RawOrigin::Signed(caller.clone()))
 	verify {

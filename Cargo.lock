@@ -140,6 +140,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
+ "module-homa-validator-list",
  "module-honzon",
  "module-incentives",
  "module-loans",
@@ -3408,6 +3409,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
+ "module-homa-validator-list",
  "module-honzon",
  "module-incentives",
  "module-loans",
@@ -4204,6 +4206,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
+ "module-homa-validator-list",
  "module-honzon",
  "module-incentives",
  "module-loans",
@@ -4778,6 +4781,28 @@ dependencies = [
  "module-support",
  "parity-scale-codec",
  "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-homa-validator-list"
+version = "0.7.3"
+dependencies = [
+ "acala-primitives",
+ "clear_on_drop",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "orml-utilities",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]

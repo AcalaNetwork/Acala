@@ -1056,6 +1056,28 @@ impl module_nominees_election::Config for Runtime {
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
+}
+
+parameter_types! {
+	pub MinGuaranteeAmount: Balance = dollar(LDOT);
+	pub const ValidatorInsuranceThreshold: Balance = 0;
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type Event = Event;
+	type RelaychainAccountId = AccountId;
+	type LiquidTokenCurrency = Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinGuaranteeAmount;
+	type BondingDuration = PolkadotBondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type FreezeOrigin = EnsureRootOrHalfHomaCouncil;
+	type SlashOrigin = EnsureRootOrHalfHomaCouncil;
+	type OnSlash = module_staking_pool::OnSlash<Runtime>;
+	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type WeightInfo = ();
+	type OnIncreaseGuarantee = module_incentives::OnIncreaseGuarantee<Runtime>;
+	type OnDecreaseGuarantee = module_incentives::OnDecreaseGuarantee<Runtime>;
 }
 
 parameter_types! {
@@ -1358,6 +1380,7 @@ construct_runtime!(
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>, Config},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage},
+		HomaValidatorListModule: module_homa_validator_list::{Module, Call, Storage, Event<T>},
 
 		// Acala Other
 		Incentives: module_incentives::{Module, Storage, Call, Event<T>},

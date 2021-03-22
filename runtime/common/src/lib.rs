@@ -359,6 +359,13 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
+pub struct RelaychainValidatorFilter;
+impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
+	fn contains(_: &AccountId) -> bool {
+		true
+	}
+}
+
 pub fn dollar(currency_id: CurrencyId) -> Balance {
 	10u128.saturating_pow(currency_id.decimals())
 }
