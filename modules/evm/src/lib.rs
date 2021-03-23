@@ -415,6 +415,8 @@ pub mod module {
 			})
 		}
 
+		/// Issue an EVM call operation on a scheduled contract call, and
+		/// refund the unused gas reserved when the call was scheduled.
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
 		pub fn scheduled_call(
@@ -561,6 +563,7 @@ pub mod module {
 			})
 		}
 
+		/// Transfers Contract maintainership to a new EVM Address.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_maintainer())]
 		#[transactional]
 		pub fn transfer_maintainer(
@@ -576,6 +579,7 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Deploy a new instance of a given contract on chain.
 		#[pallet::weight(<T as Config>::WeightInfo::deploy())]
 		#[transactional]
 		pub fn deploy(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -592,6 +596,8 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Deploy a new instance of a given contract on chain without
+		/// paying the deployment fee.
 		#[pallet::weight(<T as Config>::WeightInfo::deploy_free())]
 		#[transactional]
 		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -601,6 +607,7 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Enable contract development by reserving a developer deposit.
 		#[pallet::weight(<T as Config>::WeightInfo::enable_contract_development())]
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -625,6 +632,7 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Disable contranct development by freeing the developer deposit.
 		#[pallet::weight(<T as Config>::WeightInfo::disable_contract_development())]
 		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -644,6 +652,7 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Set the code of a contract at a given address.
 		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
 		#[transactional]
 		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
@@ -655,6 +664,7 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Selfdestruct a contract at a given address.
 		#[pallet::weight(<T as Config>::WeightInfo::selfdestruct())]
 		#[transactional]
 		pub fn selfdestruct(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -670,7 +680,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Remove an account.
+	/// Removes an account from Accounts and AccountStorages.
 	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
 		let mut size = 0u32;
 
@@ -779,6 +789,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Sets a given contract's contract info to a new maintainer.
 	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
 			account_info
@@ -825,6 +836,11 @@ impl<T: Config> Pallet<T> {
 		})
 	}
 
+	/// Set the code of a contract at a given address.
+	///
+	/// - Ensures signer is maintainer or root.
+	/// - Update codes info.
+	/// - Save `code`if not saved yet.
 	fn do_set_code(root_or_signed: Either<(), T::AccountId>, contract: EvmAddress, code: Vec<u8>) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
@@ -870,6 +886,15 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Selfdestruct a contract at a given address.
+	///
+	/// - Ensure that the given maintainer is the contract maintainer.
+	/// - Remove the contract from AccountStorage.
+	/// - Update the contract's CodeInfo if it exists to decrease it's reference
+	///   count.
+	/// - Remove the contract's CodeInfo if the reference count is zero.
+	/// - Unreserve the contract's balance.
+	/// - Merge the contract's account id with the maintainer's account id.
 	fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
 		Accounts::<T>::mutate_exists(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.take().ok_or(Error::<T>::ContractNotFound)?;
