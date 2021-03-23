@@ -159,8 +159,8 @@ pub mod module {
 			Ok(().into())
 		}
 
-		/// Claim account mapping between Substrate accounts and a generated EVM address
-		/// based off of those accounts.
+		/// Claim account mapping between Substrate accounts and a generated EVM
+		/// address based off of those accounts.
 		/// Ensure eth_address has not been mapped.
 		#[pallet::weight(T::WeightInfo::claim_default_account())]
 		pub fn claim_default_account(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -228,8 +228,8 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-// Creates a an EvmAddress from an AccountId by appending the bytes "evm:" to the
-// account_id and hashing it.
+// Creates a an EvmAddress from an AccountId by appending the bytes "evm:" to
+// the account_id and hashing it.
 fn account_to_default_evm_address(account_id: &impl Encode) -> EvmAddress {
 	let payload = (b"evm:", account_id);
 	EvmAddress::from_slice(&payload.using_encoded(blake2_256)[0..20])
