@@ -38,16 +38,18 @@ use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
-#[cfg(feature = "with-acala-runtime")]
-const CHAIN_NAME: &str = "Acala";
-#[cfg(feature = "with-karura-runtime")]
-const CHAIN_NAME: &str = "Karura";
-#[cfg(feature = "with-mandala-runtime")]
-const CHAIN_NAME: &str = "Mandala";
+fn chain_name() -> String {
+	#[cfg(feature = "with-acala-runtime")]
+	return "Acala".into();
+	#[cfg(feature = "with-karura-runtime")]
+	return "Karura".into();
+	#[cfg(feature = "with-mandala-runtime")]
+	return "Mandala".into();
+}
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		format!("{} Node", CHAIN_NAME)
+		format!("{} Node", chain_name())
 	}
 
 	fn impl_version() -> String {
@@ -155,7 +157,7 @@ impl SubstrateCli for Cli {
 
 impl SubstrateCli for RelayChainCli {
 	fn impl_name() -> String {
-		format!("{} Parachain Collator", CHAIN_NAME)
+		format!("{} Parachain Collator", chain_name())
 	}
 
 	fn impl_version() -> String {
@@ -168,7 +170,7 @@ impl SubstrateCli for RelayChainCli {
 		passed to the parachain node, while the arguments provided after -- will be passed \
 		to the relaychain node.\n\n\
 		rococo-collator [parachain-args] -- [relaychain-args]",
-			CHAIN_NAME
+			chain_name()
 		)
 	}
 
@@ -239,16 +241,25 @@ pub fn run() -> sc_cli::Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			#[cfg(feature = "with-acala-runtime")]
-			return runner.sync_run(|config| cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config));
-
-			#[cfg(feature = "with-karura-runtime")]
-			return runner
-				.sync_run(|config| cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config));
-
-			#[cfg(feature = "with-mandala-runtime")]
-			return runner
-				.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config));
+			if chain_spec.is_acala() {
+				#[cfg(feature = "with-acala-runtime")]
+				return runner
+					.sync_run(|config| cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config));
+				#[cfg(not(feature = "with-acala-runtime"))]
+				return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+			} else if chain_spec.is_karura() {
+				#[cfg(feature = "with-karura-runtime")]
+				return runner
+					.sync_run(|config| cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config));
+				#[cfg(not(feature = "with-karura-runtime"))]
+				return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+			} else {
+				#[cfg(feature = "with-mandala-runtime")]
+				return runner
+					.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config));
+				#[cfg(not(feature = "with-mandala-runtime"))]
+				return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+			}
 		}
 
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
