@@ -72,7 +72,7 @@ pub mod module {
 }
 
 impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
-	// Calls the totalSupply method on an ERC20 using the given context
+	// Calls the totalSupply method on an ERC20 contract using the given context
 	// and returns the total supply.
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
@@ -86,7 +86,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		Ok(value.saturated_into::<BalanceOf<T>>())
 	}
 
-	// Calls the balanceOf method on an ERC20 using the given context
+	// Calls the balanceOf method on an ERC20 contract using the given context
 	// and returns the address's balance.
 	fn balance_of(context: InvokeContext, address: H160) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.balanceOf method hash
@@ -103,7 +103,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 			.saturated_into::<BalanceOf<T>>())
 	}
 
-	// Calls the transfer method on an ERC20 using the given context.
+	// Calls the transfer method on an ERC20 contract using the given context.
 	fn transfer(context: InvokeContext, to: H160, value: BalanceOf<T>) -> DispatchResult {
 		// ERC20.transfer method hash
 		let mut input = hex!("a9059cbb").to_vec();
