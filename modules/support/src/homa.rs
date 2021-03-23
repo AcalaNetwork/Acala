@@ -63,12 +63,12 @@ pub trait PolkadotBridgeCall<AccountId, BlockNumber, Balance, EraIndex>:
 	fn nominate(account_index: u32, targets: Vec<Self::PolkadotAccountId>);
 	fn transfer_to_bridge(account_index: u32, from: &AccountId, amount: Balance) -> DispatchResult;
 	fn receive_from_bridge(account_index: u32, to: &AccountId, amount: Balance) -> DispatchResult;
-	fn payout_nominator(account_index: u32);
+	fn payout_stakers(account_index: u32, era: EraIndex);
 }
 
 pub trait PolkadotBridgeState<Balance, EraIndex> {
 	fn staking_ledger(account_index: u32) -> PolkadotStakingLedger<Balance, EraIndex>;
-	fn balance(account_index: u32) -> Balance;
+	fn free_balance(account_index: u32) -> Balance;
 	fn current_era() -> EraIndex;
 }
 

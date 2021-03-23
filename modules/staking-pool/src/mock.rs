@@ -222,7 +222,7 @@ impl PolkadotBridgeCall<AccountId, BlockNumber, Balance, EraIndex> for MockBridg
 
 	fn nominate(_account_index: u32, _targets: Vec<Self::PolkadotAccountId>) {}
 
-	fn payout_nominator(account_index: u32) {
+	fn payout_stakers(account_index: u32, _era: EraIndex) {
 		BRIDGE_STATUS.with(|v| {
 			let mut old_map = v.borrow().clone();
 			if let Some(status) = old_map.get_mut(&account_index) {
@@ -300,10 +300,10 @@ impl PolkadotBridgeState<Balance, EraIndex> for MockBridge {
 		}
 	}
 
-	fn balance(account_index: u32) -> Balance {
+	fn free_balance(account_index: u32) -> Balance {
 		let map = BRIDGE_STATUS.with(|v| v.borrow().clone());
 		let status = map.get(&account_index).unwrap_or(&Default::default()).to_owned();
-		status.free + Self::staking_ledger(account_index).total
+		status.free
 	}
 
 	fn current_era() -> EraIndex {
@@ -372,7 +372,7 @@ construct_runtime!(
 	{
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		StakingPoolModule: staking_pool::{Module, Call, Storage, Event<T>, Config},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
 		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 		CurrenciesModule: orml_currencies::{Module, Call, Event<T>},
 	}

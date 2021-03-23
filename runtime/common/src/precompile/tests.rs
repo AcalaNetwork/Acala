@@ -31,7 +31,7 @@ use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use module_evm::ExitError;
 use orml_traits::DataFeeder;
-use primitives::{evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
+use primitives::{currency::GetDecimals, evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, H256, U256};
 use sp_runtime::FixedPointNumber;
 
@@ -127,7 +127,7 @@ fn oracle_precompile_should_work() {
 		// no price yet
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
-		assert_eq!(output, [0u8; 64]);
+		assert_eq!(output, [0u8; 32]);
 		assert_eq!(used_gas, 0);
 
 		assert_ok!(Oracle::feed_value(ALICE, XBTC, price));
@@ -140,9 +140,11 @@ fn oracle_precompile_should_work() {
 		);
 
 		// returned price + timestamp
-		let mut expected_output = [0u8; 64];
-		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..32]);
-		U256::from(1).to_big_endian(&mut expected_output[32..64]);
+		let mut expected_output = [0u8; 32];
+
+		let maybe_adjustment_multiplier = 10u128.checked_pow(XBTC.decimals()).unwrap();
+		let price = Price::checked_from_rational(price.into_inner(), maybe_adjustment_multiplier).unwrap();
+		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..]);
 
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
@@ -309,13 +311,13 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999995421);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999909417);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
 		#[cfg(feature = "with-ethereum-compatibility")]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999995421);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999909441);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -393,7 +395,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		);
 
 		run_to_block(4);
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999999930);
+		assert_eq!(Balances::free_balance(from_account.clone()), 999999913926);
 		assert_eq!(Balances::reserved_balance(from_account), 0);
 		assert_eq!(Balances::free_balance(to_account), 1000000000000);
 	});

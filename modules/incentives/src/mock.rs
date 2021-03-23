@@ -39,8 +39,11 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const VAULT: AccountId = 10;
+pub const VALIDATOR: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
@@ -125,7 +128,7 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 	}
 
 	fn issue_debit(who: &AccountId, debit: Balance, _: bool) -> DispatchResult {
-		TokensModule::deposit(ACA, who, debit)
+		TokensModule::deposit(AUSD, who, debit)
 	}
 
 	fn burn_debit(_: &AccountId, _: Balance) -> DispatchResult {
@@ -204,18 +207,16 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = PoolId;
+	type PoolId = PoolId<AccountId>;
 	type Handler = IncentivesModule;
-	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const LoansIncentivePool: AccountId = 10;
-	pub const DexIncentivePool: AccountId = 11;
-	pub const HomaIncentivePool: AccountId = 12;
+	pub const RewardsVaultAccountId: AccountId = VAULT;
 	pub const AccumulatePeriod: BlockNumber = 10;
-	pub const IncentiveCurrencyId: CurrencyId = ACA;
-	pub const SavingCurrencyId: CurrencyId = AUSD;
+	pub const NativeCurrencyId: CurrencyId = ACA;
+	pub const StableCurrencyId: CurrencyId = AUSD;
+	pub const LiquidCurrencyId: CurrencyId = LDOT;
 	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
 }
 
@@ -225,12 +226,12 @@ ord_parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
-	type LoansIncentivePool = LoansIncentivePool;
-	type DexIncentivePool = DexIncentivePool;
-	type HomaIncentivePool = HomaIncentivePool;
+	type RelaychainAccountId = AccountId;
+	type RewardsVaultAccountId = RewardsVaultAccountId;
 	type AccumulatePeriod = AccumulatePeriod;
-	type IncentiveCurrencyId = IncentiveCurrencyId;
-	type SavingCurrencyId = SavingCurrencyId;
+	type NativeCurrencyId = NativeCurrencyId;
+	type StableCurrencyId = StableCurrencyId;
+	type LiquidCurrencyId = LiquidCurrencyId;
 	type UpdateOrigin = EnsureSignedBy<Four, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;

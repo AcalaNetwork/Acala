@@ -176,7 +176,7 @@ fn bob() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
 }
 
-pub fn alice_account_id() -> AccountId {
+pub fn evm_alice_account_id() -> AccountId {
 	let address = EvmAccounts::eth_address(&alice());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
@@ -184,7 +184,7 @@ pub fn alice_account_id() -> AccountId {
 	AccountId::from(Into::<[u8; 32]>::into(data))
 }
 
-pub fn bob_account_id() -> AccountId {
+pub fn evm_bob_account_id() -> AccountId {
 	let address = EvmAccounts::eth_address(&bob());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
@@ -976,11 +976,11 @@ fn test_nft_module() {
 #[test]
 fn test_evm_accounts_module() {
 	ExtBuilder::default()
-		.balances(vec![(bob_account_id(), ACA, 1_000 * dollar(ACA))])
+		.balances(vec![(evm_bob_account_id(), ACA, 1_000 * dollar(ACA))])
 		.build()
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice()),
@@ -1017,23 +1017,23 @@ fn test_evm_accounts_module() {
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice_account_id(), ACA, 1_000 * dollar(ACA)),
-			(bob_account_id(), ACA, 1_000 * dollar(ACA)),
+			(evm_alice_account_id(), ACA, 1_000 * dollar(ACA)),
+			(evm_bob_account_id(), ACA, 1_000 * dollar(ACA)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(alice_account_id()), 1_000 * dollar(ACA));
-			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_alice_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
 
 			let _alice_address = EvmAccounts::eth_address(&alice());
 			let bob_address = EvmAccounts::eth_address(&bob());
 
-			let contract = deploy_contract(alice_account_id()).unwrap();
+			let contract = deploy_contract(evm_alice_account_id()).unwrap();
 			let event = Event::module_evm(module_evm::Event::Created(contract));
 			assert_eq!(last_event(), event);
 
 			assert_ok!(EVM::transfer_maintainer(
-				Origin::signed(alice_account_id()),
+				Origin::signed(evm_alice_account_id()),
 				contract,
 				bob_address
 			));
@@ -1041,18 +1041,18 @@ fn test_evm_module() {
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(alice_account_id()), 9_999_998_963_300_000);
-			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_alice_account_id()), 9_999_998_963_300_000);
+			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
 			let to = EvmAccounts::eth_address(&alice());
 			assert_ok!(Currencies::transfer(
-				Origin::signed(bob_account_id()),
+				Origin::signed(evm_bob_account_id()),
 				MultiAddress::Address20(to.0),
 				ACA,
 				10 * dollar(ACA)
 			));
-			assert_eq!(Balances::free_balance(alice_account_id()), 10_099_998_963_300_000);
+			assert_eq!(Balances::free_balance(evm_alice_account_id()), 10_099_998_963_300_000);
 			assert_eq!(
-				Balances::free_balance(bob_account_id()),
+				Balances::free_balance(evm_bob_account_id()),
 				1_000 * dollar(ACA) - 10 * dollar(ACA)
 			);
 		});
@@ -1063,13 +1063,13 @@ fn test_evm_module() {
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice_account_id(), ACA, 1_000 * dollar(ACA)),
-			(bob_account_id(), ACA, 1_000 * dollar(ACA)),
+			(evm_alice_account_id(), ACA, 1_000 * dollar(ACA)),
+			(evm_bob_account_id(), ACA, 1_000 * dollar(ACA)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(alice_account_id()), 1_000 * dollar(ACA));
-			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_alice_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
 
 			use std::fs::{self, File};
 			use std::io::Read;
@@ -1091,7 +1091,7 @@ fn test_evm_module() {
 
 				let bytecode = hex::decode(bytecode_str).unwrap();
 				assert_ok!(EVM::create(
-					Origin::signed(alice_account_id()),
+					Origin::signed(evm_alice_account_id()),
 					bytecode,
 					0,
 					u64::MAX,
@@ -1111,4 +1111,105 @@ fn test_evm_module() {
 				};
 			}
 		});
+}
+
+#[cfg(not(feature = "standalone"))]
+mod parachain_tests {
+	use super::*;
+
+	use codec::Encode;
+	use cumulus_primitives_core::{
+		DownwardMessageHandler, HrmpMessageHandler, InboundDownwardMessage, InboundHrmpMessage,
+	};
+	use polkadot_parachain::primitives::Sibling;
+	use xcm::{
+		v0::{Junction, MultiAsset, MultiLocation, NetworkId, Order, Xcm},
+		VersionedXcm,
+	};
+
+	use mandala_runtime::{Tokens, XcmHandler, PLM};
+
+	#[test]
+	fn receive_cross_chain_assets() {
+		ExtBuilder::default().build().execute_with(|| {
+			let dot_amount = 1000 * dollar(DOT);
+
+			// receive relay chain token
+			let msg: VersionedXcm = Xcm::ReserveAssetDeposit {
+				assets: vec![MultiAsset::ConcreteFungible {
+					id: MultiLocation::X1(Junction::Parent),
+					amount: dot_amount,
+				}],
+				effects: vec![Order::DepositAsset {
+					assets: vec![MultiAsset::All],
+					dest: MultiLocation::X1(Junction::AccountId32 {
+						network: NetworkId::Named("acala".into()),
+						id: ALICE,
+					}),
+				}],
+			}
+			.into();
+			XcmHandler::handle_downward_message(InboundDownwardMessage {
+				sent_at: 10,
+				msg: msg.encode(),
+			});
+			assert_eq!(Tokens::free_balance(DOT, &ALICE.into()), dot_amount);
+
+			let sibling_para_id = 5000;
+			let sibling_parachain_acc: AccountId = Sibling::from(sibling_para_id).into_account();
+
+			// receive owned token
+			let aca_amount = 1000 * dollar(ACA);
+			assert_ok!(Currencies::deposit(ACA, &sibling_parachain_acc, 1100 * dollar(ACA)));
+
+			let msg1: VersionedXcm = Xcm::WithdrawAsset {
+				assets: vec![MultiAsset::ConcreteFungible {
+					id: MultiLocation::X1(Junction::GeneralKey("ACA".into())),
+					amount: aca_amount,
+				}],
+				effects: vec![Order::DepositAsset {
+					assets: vec![MultiAsset::All],
+					dest: MultiLocation::X1(Junction::AccountId32 {
+						network: NetworkId::Named("acala".into()),
+						id: ALICE,
+					}),
+				}],
+			}
+			.into();
+			XcmHandler::handle_hrmp_message(
+				sibling_para_id.into(),
+				InboundHrmpMessage {
+					sent_at: 10,
+					data: msg1.encode(),
+				},
+			);
+			assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc), 100 * dollar(ACA));
+			assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
+
+			// receive non-owned token
+			let plm_amount = 1000 * dollar(PLM);
+			let msg2: VersionedXcm = Xcm::ReserveAssetDeposit {
+				assets: vec![MultiAsset::ConcreteFungible {
+					id: MultiLocation::X1(Junction::GeneralKey("PLM".into())),
+					amount: plm_amount,
+				}],
+				effects: vec![Order::DepositAsset {
+					assets: vec![MultiAsset::All],
+					dest: MultiLocation::X1(Junction::AccountId32 {
+						network: NetworkId::Named("acala".into()),
+						id: ALICE,
+					}),
+				}],
+			}
+			.into();
+			XcmHandler::handle_hrmp_message(
+				sibling_para_id.into(),
+				InboundHrmpMessage {
+					sent_at: 10,
+					data: msg2.encode(),
+				},
+			);
+			assert_eq!(Currencies::free_balance(PLM, &ALICE.into()), plm_amount);
+		});
+	}
 }

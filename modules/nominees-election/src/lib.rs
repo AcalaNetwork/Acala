@@ -22,7 +22,7 @@
 use codec::Encode;
 use frame_support::{pallet_prelude::*, traits::LockIdentifier, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{BasicCurrency, BasicLockableCurrency};
+use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains};
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
@@ -130,6 +130,7 @@ pub mod module {
 		type NominateesCount: Get<u32>;
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
+		type RelaychainValidatorFilter: Contains<Self::PolkadotAccountId>;
 	}
 
 	#[pallet::error]
@@ -139,6 +140,7 @@ pub mod module {
 		TooManyChunks,
 		NoBonded,
 		NoUnlockChunk,
+		InvalidRelaychainValidator,
 	}
 
 	#[pallet::storage]
@@ -272,6 +274,13 @@ pub mod module {
 			let mut targets = targets;
 			targets.sort();
 			targets.dedup();
+
+			for validator in &targets {
+				ensure!(
+					T::RelaychainValidatorFilter::contains(&validator),
+					Error::<T>::InvalidRelaychainValidator
+				);
+			}
 
 			let old_nominations = Self::nominations(&who);
 			let old_active = Self::ledger(&who).active;

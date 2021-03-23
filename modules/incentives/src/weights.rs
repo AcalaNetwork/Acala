@@ -48,18 +48,24 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_incentives.
 pub trait WeightInfo {
+	fn on_initialize(c: u32) -> Weight;
 	fn deposit_dex_share() -> Weight;
 	fn withdraw_dex_share() -> Weight;
 	fn claim_rewards() -> Weight;
-	fn update_loans_incentive_rewards(c: u32, ) -> Weight;
-	fn update_dex_incentive_rewards(c: u32, ) -> Weight;
-	fn update_homa_incentive_reward() -> Weight;
-	fn update_dex_saving_rates(c: u32, ) -> Weight;
+	fn update_incentive_rewards(c: u32, ) -> Weight;
+	fn update_dex_saving_rewards(c: u32, ) -> Weight;
+	fn add_allowance() -> Weight;
 }
 
 /// Weights for module_incentives using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
+	fn on_initialize(c: u32) -> Weight {
+		(33_360_000 as Weight)
+			.saturating_add((23_139_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
+	}
 	fn deposit_dex_share() -> Weight {
 		(84_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
@@ -75,32 +81,32 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn update_loans_incentive_rewards(c: u32, ) -> Weight {
+	fn update_incentive_rewards(c: u32, ) -> Weight {
 		(479_000 as Weight)
 			// Standard Error: 29_000
 			.saturating_add((1_893_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
-	fn update_dex_incentive_rewards(c: u32, ) -> Weight {
-		(1_275_000 as Weight)
-			// Standard Error: 17_000
-			.saturating_add((1_632_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
-	fn update_homa_incentive_reward() -> Weight {
-		(2_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn update_dex_saving_rates(c: u32, ) -> Weight {
+	fn update_dex_saving_rewards(c: u32, ) -> Weight {
 		(914_000 as Weight)
 			// Standard Error: 21_000
 			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
+	fn add_allowance() -> Weight {
+		(2_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
+	fn on_initialize(c: u32) -> Weight {
+		(33_360_000 as Weight)
+			.saturating_add((23_139_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
+	}
 	fn deposit_dex_share() -> Weight {
 		(84_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
@@ -116,26 +122,20 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
-	fn update_loans_incentive_rewards(c: u32, ) -> Weight {
+	fn update_incentive_rewards(c: u32, ) -> Weight {
 		(479_000 as Weight)
 			// Standard Error: 29_000
 			.saturating_add((1_893_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
-	fn update_dex_incentive_rewards(c: u32, ) -> Weight {
-		(1_275_000 as Weight)
-			// Standard Error: 17_000
-			.saturating_add((1_632_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
-	fn update_homa_incentive_reward() -> Weight {
-		(2_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn update_dex_saving_rates(c: u32, ) -> Weight {
+	fn update_dex_saving_rewards(c: u32, ) -> Weight {
 		(914_000 as Weight)
 			// Standard Error: 21_000
 			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+	}
+	fn add_allowance() -> Weight {
+		(2_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }

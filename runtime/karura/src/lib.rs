@@ -975,9 +975,8 @@ impl module_evm_accounts::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = module_incentives::PoolId;
+	type PoolId = module_incentives::PoolId<AccountId>;
 	type Handler = Incentives;
-	type WeightInfo = weights::orml_rewards::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -986,12 +985,12 @@ parameter_types! {
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
-	type LoansIncentivePool = ZeroAccountId;
-	type DexIncentivePool = ZeroAccountId;
-	type HomaIncentivePool = ZeroAccountId;
+	type RelaychainAccountId = AccountId;
+	type RewardsVaultAccountId = ZeroAccountId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type StableCurrencyId = GetStableCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
-	type IncentiveCurrencyId = GetNativeCurrencyId;
-	type SavingCurrencyId = GetStableCurrencyId;
 	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type CDPTreasury = CdpTreasury;
 	type Currency = Currencies;
@@ -1054,6 +1053,28 @@ impl module_nominees_election::Config for Runtime {
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
+}
+
+parameter_types! {
+	pub MinGuaranteeAmount: Balance = dollar(LKSM);
+	pub const ValidatorInsuranceThreshold: Balance = 0;
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type Event = Event;
+	type RelaychainAccountId = AccountId;
+	type LiquidTokenCurrency = Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinGuaranteeAmount;
+	type BondingDuration = PolkadotBondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type FreezeOrigin = EnsureRootOrHalfHomaCouncil;
+	type SlashOrigin = EnsureRootOrHalfHomaCouncil;
+	type OnSlash = module_staking_pool::OnSlash<Runtime>;
+	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type WeightInfo = ();
+	type OnIncreaseGuarantee = module_incentives::OnIncreaseGuarantee<Runtime>;
+	type OnDecreaseGuarantee = module_incentives::OnDecreaseGuarantee<Runtime>;
 }
 
 parameter_types! {
@@ -1135,8 +1156,7 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
-pub type OraclePrecompile =
-	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, AggregatedDataProvider>;
+pub type OraclePrecompile = runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, Prices>;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
@@ -1220,6 +1240,7 @@ pub type LocationConverter = (
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	Currencies,
+	UnknownTokens,
 	IsConcreteWithGeneralKey<CurrencyId, Identity>,
 	LocationConverter,
 	AccountId,
@@ -1271,6 +1292,10 @@ impl orml_xtokens::Config for Runtime {
 	type RelayChainNetworkId = PolkadotNetworkId;
 	type ParaId = ParachainInfo;
 	type XcmHandler = HandleXcm;
+}
+
+impl orml_unknown_tokens::Config for Runtime {
+	type Event = Event;
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -1352,6 +1377,7 @@ construct_runtime!(
 		NomineesElection: module_nominees_election::{Module, Call, Storage},
 		StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>, Config},
 		PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage},
+		HomaValidatorListModule: module_homa_validator_list::{Module, Call, Storage, Event<T>},
 
 		// Acala Other
 		Incentives: module_incentives::{Module, Storage, Call, Event<T>},
@@ -1370,6 +1396,7 @@ construct_runtime!(
 		ParachainInfo: parachain_info::{Module, Storage, Config},
 		XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
 		XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
+		UnknownTokens: orml_unknown_tokens::{Module, Storage, Event},
 
 		// Dev
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
