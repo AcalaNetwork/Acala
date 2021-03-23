@@ -1063,13 +1063,13 @@ fn test_evm_module() {
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice_account_id(), ACA, 1_000 * dollar(ACA)),
-			(bob_account_id(), ACA, 1_000 * dollar(ACA)),
+			(evm_alice_account_id(), ACA, 1_000 * dollar(ACA)),
+			(evm_bob_account_id(), ACA, 1_000 * dollar(ACA)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(alice_account_id()), 1_000 * dollar(ACA));
-			assert_eq!(Balances::free_balance(bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_alice_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
 
 			use std::fs::{self, File};
 			use std::io::Read;
@@ -1091,7 +1091,7 @@ fn test_evm_module() {
 
 				let bytecode = hex::decode(bytecode_str).unwrap();
 				assert_ok!(EVM::create(
-					Origin::signed(alice_account_id()),
+					Origin::signed(evm_alice_account_id()),
 					bytecode,
 					0,
 					u64::MAX,
