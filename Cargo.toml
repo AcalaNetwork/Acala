@@ -33,6 +33,7 @@ members = [
 	"orml/unknown-tokens",
 
 	"ecosystem-modules/ren/renvm-bridge",
+	"ecosystem-modules/chainsafe",
 ]
 exclude = [
 	"bin/acala-dev",
