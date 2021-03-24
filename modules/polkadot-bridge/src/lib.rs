@@ -223,7 +223,7 @@ pub mod module {
 		#[transactional]
 		pub fn force_era(origin: OriginFor<T>, at: T::BlockNumber) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
-			if at > <frame_system::Module<T>>::block_number() {
+			if at > <frame_system::Pallet<T>>::block_number() {
 				ForcedEra::<T>::put(at);
 			}
 			Ok(().into())

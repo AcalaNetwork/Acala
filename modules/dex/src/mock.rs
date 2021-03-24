@@ -132,9 +132,9 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		DexModule: dex::{Module, Storage, Call, Event<T>, Config<T>},
-		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		DexModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 	}
 );
 

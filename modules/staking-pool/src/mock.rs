@@ -370,11 +370,11 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		StakingPoolModule: staking_pool::{Module, Call, Storage, Event<T>, Config},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
-		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		CurrenciesModule: orml_currencies::{Module, Call, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		StakingPoolModule: staking_pool::{Pallet, Call, Storage, Event<T>, Config},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		CurrenciesModule: orml_currencies::{Pallet, Call, Event<T>},
 	}
 );
 

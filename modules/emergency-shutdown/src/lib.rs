@@ -137,7 +137,7 @@ pub mod module {
 			}
 
 			IsShutdown::<T>::put(true);
-			Self::deposit_event(Event::Shutdown(<frame_system::Module<T>>::block_number()));
+			Self::deposit_event(Event::Shutdown(<frame_system::Pallet<T>>::block_number()));
 			Ok(().into())
 		}
 
@@ -172,14 +172,14 @@ pub mod module {
 				);
 				// there's on debit in CDP
 				ensure!(
-					<loans::Module<T>>::total_positions(currency_id).debit.is_zero(),
+					<loans::Pallet<T>>::total_positions(currency_id).debit.is_zero(),
 					Error::<T>::ExistUnhandledDebit,
 				);
 			}
 
 			// Open refund stage
 			CanRefund::<T>::put(true);
-			Self::deposit_event(Event::OpenRefund(<frame_system::Module<T>>::block_number()));
+			Self::deposit_event(Event::OpenRefund(<frame_system::Pallet<T>>::block_number()));
 			Ok(().into())
 		}
 

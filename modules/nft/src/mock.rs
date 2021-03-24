@@ -75,7 +75,7 @@ impl pallet_balances::Config for Runtime {
 	type Event = Event;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = frame_system::Module<Runtime>;
+	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
@@ -225,14 +225,14 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		NFTModule: nft::{Module, Call, Event<T>},
-		OrmlNFT: orml_nft::{Module, Storage, Config<T>},
-		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-		Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
-		Utility: pallet_utility::{Module, Call, Event},
-		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		Currency: module_currencies::{Module, Call, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		NFTModule: nft::{Pallet, Call, Event<T>},
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
+		Utility: pallet_utility::{Pallet, Call, Event},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Currency: module_currencies::{Pallet, Call, Event<T>},
 	}
 );
 
@@ -269,7 +269,7 @@ impl ExtBuilder {
 }
 
 pub fn last_event() -> Event {
-	frame_system::Module::<Runtime>::events()
+	frame_system::Pallet::<Runtime>::events()
 		.pop()
 		.expect("Event expected")
 		.event

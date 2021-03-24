@@ -288,7 +288,7 @@ impl<T: Config> Pallet<T> {
 
 			// increase account ref if new position
 			if p.collateral.is_zero() && p.debit.is_zero() {
-				if frame_system::Module::<T>::inc_consumers(who).is_err() {
+				if frame_system::Pallet::<T>::inc_consumers(who).is_err() {
 					// No providers for the locks. This is impossible under normal circumstances
 					// since the funds that are under the lock will themselves be stored in the
 					// account and therefore will need a reference.
@@ -306,7 +306,7 @@ impl<T: Config> Pallet<T> {
 
 			if p.collateral.is_zero() && p.debit.is_zero() {
 				// decrease account ref if zero position
-				frame_system::Module::<T>::dec_consumers(who);
+				frame_system::Pallet::<T>::dec_consumers(who);
 
 				// remove position storage if zero position
 				*may_be_position = None;

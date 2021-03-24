@@ -115,7 +115,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = ();
 }
 
-pub type PalletBalances = pallet_balances::Module<Runtime>;
+pub type PalletBalances = pallet_balances::Pallet<Runtime>;
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
@@ -193,12 +193,12 @@ frame_support::construct_runtime!(
 	NodeBlock = Block,
 	UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-		Tokens: tokens::{Module, Storage, Event<T>, Config<T>},
-		Currencies: currencies::{Module, Call, Event<T>},
-		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
-		EVMBridge: module_evm_bridge::{Module},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Tokens: tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Currencies: currencies::{Pallet, Call, Event<T>},
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Pallet},
 	}
 );
 

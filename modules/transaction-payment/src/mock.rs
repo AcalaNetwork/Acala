@@ -232,12 +232,12 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		TransactionPayment: transaction_payment::{Module, Call, Storage},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		Currencies: module_currencies::{Module, Call, Event<T>},
-		DEXModule: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		TransactionPayment: transaction_payment::{Pallet, Call, Storage},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Currencies: module_currencies::{Pallet, Call, Event<T>},
+		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
 

@@ -153,7 +153,7 @@ decl_module! {
 				*id = id.checked_add(1).ok_or(Error::<T>::BurnIdOverflow)?;
 
 				T::BridgedTokenCurrency::withdraw(&sender, amount)?;
-				BurnEvents::<T>::insert(this_id, (frame_system::Module::<T>::block_number(), &to, amount));
+				BurnEvents::<T>::insert(this_id, (frame_system::Pallet::<T>::block_number(), &to, amount));
 				Self::deposit_event(RawEvent::Burnt(sender, to, amount));
 
 				Ok(())
@@ -178,7 +178,7 @@ decl_module! {
 	}
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
 	fn do_mint(sender: &T::AccountId, amount: Balance, sig: &EcdsaSignature) -> DispatchResult {
 		T::BridgedTokenCurrency::deposit(sender, amount)?;
 		Signatures::insert(sig, ());
@@ -261,7 +261,7 @@ impl<T: Config> Module<T> {
 }
 
 #[allow(deprecated)]
-impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
+impl<T: Config> frame_support::unsigned::ValidateUnsigned for Pallet<T> {
 	type Call = Call<T>;
 
 	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
