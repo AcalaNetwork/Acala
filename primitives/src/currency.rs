@@ -138,7 +138,8 @@ create_currency_id! {
 		// Reserve for POLKABTC = 134
 		SDN("Shiden", 18) = 135,
 		// Reserve for PHA = 136
-		KILT("Kilt", 15) = 137,
+		// Reserve for HDT = 137
+		KILT("Kilt", 15) = 138,
 	}
 }
 
