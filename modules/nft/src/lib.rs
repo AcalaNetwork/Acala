@@ -37,6 +37,7 @@ use sp_runtime::{
 	DispatchResult, ModuleId, RuntimeDebug,
 };
 
+pub mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -173,7 +174,7 @@ pub mod module {
 		#[transactional]
 		pub fn create_class(origin: OriginFor<T>, metadata: CID, properties: Properties) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let next_id = orml_nft::Module::<T>::next_class_id();
+			let next_id = orml_nft::Pallet::<T>::next_class_id();
 			let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
 			let deposit = T::CreateClassDeposit::get();
 
@@ -183,12 +184,12 @@ pub mod module {
 			<T as Config>::Currency::reserve(&owner, <T as Config>::Currency::free_balance(&owner))?;
 
 			// owner add proxy delegate to origin
-			let proxy_deposit = <pallet_proxy::Module<T>>::deposit(1u32);
+			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
 			<T as pallet_proxy::Config>::Currency::transfer(&who, &owner, proxy_deposit, KeepAlive)?;
-			<pallet_proxy::Module<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
+			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
 
 			let data = ClassData { deposit, properties };
-			orml_nft::Module::<T>::create_class(&owner, metadata, data)?;
+			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
 
 			Self::deposit_event(Event::CreatedClass(owner, next_id));
 			Ok(().into())
@@ -212,7 +213,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
-			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
+			let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
 			let deposit = T::CreateTokenDeposit::get();
 			let total_deposit = deposit * (quantity as u128);
@@ -220,7 +221,7 @@ pub mod module {
 
 			let data = TokenData { deposit };
 			for _ in 0..quantity {
-				orml_nft::Module::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
+				orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
 			}
 
 			Self::deposit_event(Event::MintedToken(who, to, class_id, quantity));
@@ -251,17 +252,17 @@ pub mod module {
 		#[transactional]
 		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+			let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 			let data = class_info.data;
 			ensure!(
 				data.properties.0.contains(ClassProperty::Burnable),
 				Error::<T>::NonBurnable
 			);
 
-			let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+			let token_info = orml_nft::Pallet::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
 			ensure!(who == token_info.owner, Error::<T>::NoPermission);
 
-			orml_nft::Module::<T>::burn(&who, token)?;
+			orml_nft::Pallet::<T>::burn(&who, token)?;
 			let owner: T::AccountId = T::ModuleId::get().into_sub_account(token.0);
 			let data = token_info.data;
 			// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
@@ -286,7 +287,7 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
-			let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
+			let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
 			ensure!(
 				class_info.total_issuance == Zero::zero(),
@@ -301,7 +302,7 @@ pub mod module {
 			<T as Config>::Currency::transfer(&owner, &dest, data.deposit)?;
 
 			// transfer all free from origin to dest
-			orml_nft::Module::<T>::destroy_class(&who, class_id)?;
+			orml_nft::Pallet::<T>::destroy_class(&who, class_id)?;
 
 			Self::deposit_event(Event::DestroyedClass(who, class_id, dest));
 			Ok(().into())
@@ -313,17 +314,17 @@ impl<T: Config> Pallet<T> {
 	/// Ensured atomic.
 	#[transactional]
 	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
-		let class_info = orml_nft::Module::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+		let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 		let data = class_info.data;
 		ensure!(
 			data.properties.0.contains(ClassProperty::Transferable),
 			Error::<T>::NonTransferable
 		);
 
-		let token_info = orml_nft::Module::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+		let token_info = orml_nft::Pallet::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
 		ensure!(*from == token_info.owner, Error::<T>::NoPermission);
 
-		orml_nft::Module::<T>::transfer(from, to, token)?;
+		orml_nft::Pallet::<T>::transfer(from, to, token)?;
 
 		Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
 		Ok(())
@@ -340,7 +341,7 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 	}
 
 	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
-		orml_nft::Module::<T>::tokens(token.0, token.1).map(|t| t.owner)
+		orml_nft::Pallet::<T>::tokens(token.0, token.1).map(|t| t.owner)
 	}
 
 	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {

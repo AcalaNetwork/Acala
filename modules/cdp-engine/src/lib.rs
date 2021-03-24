@@ -70,7 +70,7 @@ pub const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/cdp-engine/max-iterati
 pub const LOCK_DURATION: u64 = 100;
 pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
-pub type LoansOf<T> = loans::Module<T>;
+pub type LoansOf<T> = loans::Pallet<T>;
 
 /// Risk management params
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
@@ -480,7 +480,7 @@ pub mod module {
 
 					ValidTransaction::with_tag_prefix("CDPEngineOffchainWorker")
 						.priority(T::UnsignedPriority::get())
-						.and_provides((<frame_system::Module<T>>::block_number(), currency_id, who))
+						.and_provides((<frame_system::Pallet<T>>::block_number(), currency_id, who))
 						.longevity(64_u64)
 						.propagate(true)
 						.build()

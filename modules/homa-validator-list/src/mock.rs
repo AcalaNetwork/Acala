@@ -209,11 +209,11 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		OrmlTokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Module, Call, Event<T>},
-		HomaValidatorListModule: homa_validator_list::{Module, Call, Storage, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+		OrmlCurrencies: orml_currencies::{Pallet, Call, Event<T>},
+		HomaValidatorListModule: homa_validator_list::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

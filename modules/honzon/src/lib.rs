@@ -118,7 +118,7 @@ pub mod module {
 			if !debit_adjustment.is_zero() {
 				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			}
-			<cdp_engine::Module<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
+			<cdp_engine::Pallet<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
 			Ok(().into())
 		}
 
@@ -139,7 +139,7 @@ pub mod module {
 			let from = T::Lookup::lookup(from)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			Self::check_authorization(&from, &to, currency_id)?;
-			<loans::Module<T>>::transfer_loan(&from, &to, currency_id)?;
+			<loans::Pallet<T>>::transfer_loan(&from, &to, currency_id)?;
 			Ok(().into())
 		}
 

@@ -93,4 +93,4 @@ decl_module! {
 	}
 }
 
-impl<T: Config> Module<T> {}
+impl<T: Config> Pallet<T> {}
