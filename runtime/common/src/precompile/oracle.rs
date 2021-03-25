@@ -18,15 +18,12 @@
 
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use primitives::{evm::AddressMapping as AddressMappingT, CurrencyId, Moment};
+use primitives::{evm::AddressMapping as AddressMappingT, CurrencyId};
 use sp_core::U256;
 use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use orml_traits::DataProviderExtended as OracleT;
-
 use super::input::{Input, InputT};
-use module_support::Price;
-use orml_oracle::TimestampedValue;
+use module_support::{Price, PriceProvider as PriceProviderT};
 
 /// The `Oracle` impl precompile.
 ///
@@ -35,7 +32,9 @@ use orml_oracle::TimestampedValue;
 ///
 /// Actions:
 /// - Get price. Rest `input` bytes: `currency_id`.
-pub struct OraclePrecompile<AccountId, AddressMapping, Oracle>(PhantomData<(AccountId, AddressMapping, Oracle)>);
+pub struct OraclePrecompile<AccountId, AddressMapping, PriceProvider>(
+	PhantomData<(AccountId, AddressMapping, PriceProvider)>,
+);
 
 enum Action {
 	GetPrice,
@@ -52,11 +51,11 @@ impl TryFrom<u8> for Action {
 	}
 }
 
-impl<AccountId, AddressMapping, Oracle> Precompile for OraclePrecompile<AccountId, AddressMapping, Oracle>
+impl<AccountId, AddressMapping, PriceProvider> Precompile for OraclePrecompile<AccountId, AddressMapping, PriceProvider>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
-	Oracle: OracleT<CurrencyId, TimestampedValue<Price, Moment>>,
+	PriceProvider: PriceProviderT<CurrencyId>,
 {
 	fn execute(
 		input: &[u8],
@@ -74,19 +73,16 @@ where
 		match action {
 			Action::GetPrice => {
 				let key = input.currency_id_at(1)?;
-				let value = Oracle::get_no_op(&key).unwrap_or_else(|| TimestampedValue {
-					value: Default::default(),
-					timestamp: Default::default(),
-				});
-				Ok((ExitSucceed::Returned, vec_u8_from_timestamped(value), 0))
+				let value = PriceProvider::get_price(key).unwrap_or_else(Default::default);
+				log::debug!(target: "evm", "oracle currency_id: {:?}, price: {:?}", key, value);
+				Ok((ExitSucceed::Returned, vec_u8_from_price(value), 0))
 			}
 		}
 	}
 }
 
-fn vec_u8_from_timestamped(value: TimestampedValue<Price, Moment>) -> Vec<u8> {
-	let mut be_bytes = [0u8; 64];
-	U256::from(value.value.into_inner()).to_big_endian(&mut be_bytes[..32]);
-	U256::from(value.timestamp).to_big_endian(&mut be_bytes[32..64]);
+fn vec_u8_from_price(value: Price) -> Vec<u8> {
+	let mut be_bytes = [0u8; 32];
+	U256::from(value.into_inner()).to_big_endian(&mut be_bytes[..32]);
 	be_bytes.to_vec()
 }

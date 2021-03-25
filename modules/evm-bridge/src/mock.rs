@@ -132,7 +132,7 @@ impl module_evm::Config for Runtime {
 impl Config for Runtime {
 	type EVM = EVM;
 }
-pub type EvmBridgeModule = Module<Runtime>;
+pub type EvmBridgeModule = Pallet<Runtime>;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -143,10 +143,10 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		EVMBridge: evm_bridge::{Module},
-		EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		EVMBridge: evm_bridge::{Pallet},
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
 

@@ -103,11 +103,11 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
+module-homa-validator-list = { path = "../../modules/homa-validator-list", default-features = false }
 module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
-module-nft-benchmarking = { path = "../../modules/nft/benchmarking", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -240,7 +240,7 @@ runtime-benchmarks = [
 
 	"module-cdp-treasury/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
-	"module-nft-benchmarking",
+	"module-nft/runtime-benchmarks",
 ]
 # When enabled, the runtime api will not be build.
 #

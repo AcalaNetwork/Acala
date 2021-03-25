@@ -44,7 +44,7 @@ pub use precompile::{
 	StateRentPrecompile,
 };
 pub use primitives::currency::{
-	GetDecimals, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, PHA, PLM, POLKABTC, RENBTC, SDN, XBTC,
+	GetDecimals, ACA, AUSD, DOT, KAR, KILT, KSM, KUSD, LDOT, LKSM, PHA, PLM, POLKABTC, RENBTC, SDN, XBTC,
 };
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
@@ -357,6 +357,13 @@ parameter_types! {
 		.max_extrinsic
 		.expect("Normal extrinsics have weight limit configured by default; qed")
 		.saturating_sub(BlockExecutionWeight::get());
+}
+
+pub struct RelaychainValidatorFilter;
+impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
+	fn contains(_: &AccountId) -> bool {
+		true
+	}
 }
 
 pub fn dollar(currency_id: CurrencyId) -> Balance {

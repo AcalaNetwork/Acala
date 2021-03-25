@@ -250,10 +250,10 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		IncentivesModule: incentives::{Module, Storage, Call, Event<T>},
-		TokensModule: orml_tokens::{Module, Storage, Event<T>},
-		RewardsModule: orml_rewards::{Module, Storage, Call},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		IncentivesModule: incentives::{Pallet, Storage, Call, Event<T>},
+		TokensModule: orml_tokens::{Pallet, Storage, Event<T>},
+		RewardsModule: orml_rewards::{Pallet, Storage, Call},
 	}
 );
 

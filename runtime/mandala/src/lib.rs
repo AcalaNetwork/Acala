@@ -127,7 +127,7 @@ pub use primitives::{
 pub use runtime_common::{
 	cent, deposit, dollar, microcent, millicent, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit,
 	Price, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TimeStampedPrice, ACA, AUSD,
-	DOT, LDOT, PHA, PLM, POLKABTC, RENBTC, XBTC,
+	DOT, KILT, LDOT, PHA, PLM, POLKABTC, RENBTC, XBTC,
 };
 
 mod authority;
@@ -160,7 +160,7 @@ impl_opaque_keys! {
 	pub struct SessionKeys {}
 }
 
-// Module accounts of runtime
+// Pallet accounts of runtime
 parameter_types! {
 	pub const AcalaTreasuryModuleId: ModuleId = ModuleId(*b"aca/trsy");
 	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
@@ -262,7 +262,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = AcalaTreasury;
 	type Event = Event;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
-	type AccountStore = frame_system::Module<Runtime>;
+	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = MaxLocks;
 	type WeightInfo = ();
 }
@@ -767,7 +767,7 @@ parameter_types! {
 
 impl orml_vesting::Config for Runtime {
 	type Event = Event;
-	type Currency = pallet_balances::Module<Runtime>;
+	type Currency = pallet_balances::Pallet<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureRootOrAcalaTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
@@ -893,7 +893,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, XBTC, RENBTC, POLKABTC, PLM, PHA];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, XBTC, RENBTC, POLKABTC];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -946,6 +946,7 @@ parameter_types! {
 		TradingPair::new(AUSD, POLKABTC),
 		TradingPair::new(AUSD, PLM),
 		TradingPair::new(AUSD, PHA),
+		TradingPair::new(AUSD, KILT),
 	];
 }
 
@@ -978,7 +979,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 parameter_types! {
 	// All currency types except for native currency, Sort by fee charge order
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, LDOT, DOT, XBTC, RENBTC, POLKABTC, PLM, PHA];
+	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, LDOT, DOT, XBTC, RENBTC, POLKABTC, PLM, PHA, KILT];
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1089,6 +1090,28 @@ impl module_nominees_election::Config for Runtime {
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
+}
+
+parameter_types! {
+	pub MinGuaranteeAmount: Balance = dollar(LDOT);
+	pub const ValidatorInsuranceThreshold: Balance = 0;
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type Event = Event;
+	type RelaychainAccountId = AccountId;
+	type LiquidTokenCurrency = Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinGuaranteeAmount;
+	type BondingDuration = PolkadotBondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type FreezeOrigin = EnsureRootOrHalfHomaCouncil;
+	type SlashOrigin = EnsureRootOrHalfHomaCouncil;
+	type OnSlash = module_staking_pool::OnSlash<Runtime>;
+	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type WeightInfo = ();
+	type OnIncreaseGuarantee = module_incentives::OnIncreaseGuarantee<Runtime>;
+	type OnDecreaseGuarantee = module_incentives::OnDecreaseGuarantee<Runtime>;
 }
 
 parameter_types! {
@@ -1180,8 +1203,7 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
 pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
-pub type OraclePrecompile =
-	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, AggregatedDataProvider>;
+pub type OraclePrecompile = runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, Prices>;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
@@ -1242,6 +1264,13 @@ pub use standalone_impl::*;
 #[cfg(feature = "standalone")]
 mod standalone_impl {
 	use super::*;
+
+	/// The BABE epoch configuration at genesis.
+	pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
+		sp_consensus_babe::BabeEpochConfiguration {
+			c: PRIMARY_PROBABILITY,
+			allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
+		};
 
 	impl_opaque_keys! {
 		pub struct SessionKeys {
@@ -1342,7 +1371,7 @@ mod standalone_impl {
 		pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
 		pub const MaxIterations: u32 = 5;
 		// 0.05%. The higher the value, the more strict solution acceptance becomes.
-		pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
+		pub MinSolutionScoreBump: Perbill = Perbill::from_rational(5u32, 10_000);
 	}
 
 	impl pallet_staking::Config for Runtime {
@@ -1359,16 +1388,10 @@ mod standalone_impl {
 		/// A super-majority of the council can cancel the slash.
 		type SlashCancelOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 		type SessionInterface = Self;
-		type RewardCurve = RewardCurve;
+		type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
 		type NextNewSession = Session;
-		type ElectionLookahead = ElectionLookahead;
-		type Call = Call;
-		type MaxIterations = MaxIterations;
-		type MinSolutionScoreBump = MinSolutionScoreBump;
 		type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-		type UnsignedPriority = runtime_common::StakingUnsignedPriority;
 		type WeightInfo = ();
-		type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
 		type ElectionProvider = ElectionProviderMultiPhase;
 	}
 
@@ -1388,7 +1411,7 @@ mod standalone_impl {
 		pub const Fallback: pallet_election_provider_multi_phase::FallbackStrategy =
 			pallet_election_provider_multi_phase::FallbackStrategy::Nothing;
 
-		pub SolutionImprovementThreshold: Perbill = Perbill::from_rational_approximation(1u32, 10_000);
+		pub SolutionImprovementThreshold: Perbill = Perbill::from_rational(1u32, 10_000);
 
 		// miner configs
 		pub const MultiPhaseUnsignedPriority: TransactionPriority = StakingUnsignedPriority::get() - 1u64;
@@ -1426,7 +1449,7 @@ mod parachain_impl {
 	impl cumulus_pallet_parachain_system::Config for Runtime {
 		type Event = Event;
 		type OnValidationData = ();
-		type SelfParaId = parachain_info::Module<Runtime>;
+		type SelfParaId = parachain_info::Pallet<Runtime>;
 		type DownwardMessageHandlers = XcmHandler;
 		type HrmpMessageHandlers = XcmHandler;
 	}
@@ -1489,6 +1512,9 @@ mod parachain_impl {
 			// Hydrate
 			t.insert(("HDT".into(), (Junction::Parent, Junction::Parachain { id: 82406 }).into()));
 
+			// KILT
+			t.insert(("KILT".into(), (Junction::Parent, Junction::Parachain { id: 12623 }).into()));
+
 			t
 		};
 	}
@@ -1547,93 +1573,95 @@ macro_rules! construct_mandala_runtime {
 				UncheckedExtrinsic = UncheckedExtrinsic
 			{
 				// Core
-				System: frame_system::{Module, Call, Storage, Config, Event<T>},
-				Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-				RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
+				System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+				Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
+				RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage} = 2,
 
 				// Tokens & Related
-				Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+				Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
 
-				TransactionPayment: module_transaction_payment::{Module, Call, Storage},
-				EvmAccounts: module_evm_accounts::{Module, Call, Storage, Event<T>},
-				Currencies: module_currencies::{Module, Call, Event<T>},
-				Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-				Vesting: orml_vesting::{Module, Storage, Call, Event<T>, Config<T>},
+				TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 4,
+				EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 5,
+				Currencies: module_currencies::{Pallet, Call, Event<T>} = 6,
+				Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 7,
+				Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 8,
 
-				AcalaTreasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
-				Bounties: pallet_bounties::{Module, Call, Storage, Event<T>},
-				Tips: pallet_tips::{Module, Call, Storage, Event<T>},
+				AcalaTreasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 9,
+				Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 10,
+				Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 11,
 
 				// Utility
-				Utility: pallet_utility::{Module, Call, Event},
-				Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-				Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
-				Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
-				Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+				Utility: pallet_utility::{Pallet, Call, Event} = 12,
+				Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 13,
+				Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 14,
+				Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 15,
+				Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 16,
 
-				Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
-				GraduallyUpdate: orml_gradually_update::{Module, Storage, Call, Event<T>},
+				Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 17,
+				GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 18,
 
 				// Governance
-				GeneralCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-				GeneralCouncilMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
-				HonzonCouncil: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-				HonzonCouncilMembership: pallet_membership::<Instance2>::{Module, Call, Storage, Event<T>, Config<T>},
-				HomaCouncil: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-				HomaCouncilMembership: pallet_membership::<Instance3>::{Module, Call, Storage, Event<T>, Config<T>},
-				TechnicalCommittee: pallet_collective::<Instance4>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-				TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Module, Call, Storage, Event<T>, Config<T>},
+				GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 19,
+				GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 20,
+				HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 21,
+				HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 22,
+				HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 23,
+				HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 24,
+				TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 25,
+				TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 26,
 
-				Authority: orml_authority::{Module, Call, Event<T>, Origin<T>},
-				ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>},
+				Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 27,
+				ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 28,
 
 				// Oracle
-				AcalaOracle: orml_oracle::<Instance1>::{Module, Storage, Call, Config<T>, Event<T>},
-				BandOracle: orml_oracle::<Instance2>::{Module, Storage, Call, Config<T>, Event<T>},
+				AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 29,
+				BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Config<T>, Event<T>} = 30,
 				// OperatorMembership must be placed after Oracle or else will have race condition on initialization
-				OperatorMembershipAcala: pallet_membership::<Instance5>::{Module, Call, Storage, Event<T>, Config<T>},
-				OperatorMembershipBand: pallet_membership::<Instance6>::{Module, Call, Storage, Event<T>, Config<T>},
+				OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 31,
+				OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 32,
 
 				// ORML Core
-				Auction: orml_auction::{Module, Storage, Call, Event<T>},
-				Rewards: orml_rewards::{Module, Storage, Call},
-				OrmlNFT: orml_nft::{Module, Storage, Config<T>},
+				Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 33,
+				Rewards: orml_rewards::{Pallet, Storage, Call} = 34,
+				OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 35,
 
 				// Acala Core
-				Prices: module_prices::{Module, Storage, Call, Event<T>},
+				Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 36,
 
 				// DEX
-				Dex: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
+				Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 37,
 
 				// Honzon
-				AuctionManager: module_auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
-				Loans: module_loans::{Module, Storage, Call, Event<T>},
-				Honzon: module_honzon::{Module, Storage, Call, Event<T>},
-				CdpTreasury: module_cdp_treasury::{Module, Storage, Call, Config, Event<T>},
-				CdpEngine: module_cdp_engine::{Module, Storage, Call, Event<T>, Config, ValidateUnsigned},
-				EmergencyShutdown: module_emergency_shutdown::{Module, Storage, Call, Event<T>},
+				AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 38,
+				Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 39,
+				Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 40,
+				CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 41,
+				CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 42,
+				EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 43,
 
 				// Homa
-				Homa: module_homa::{Module, Call},
-				NomineesElection: module_nominees_election::{Module, Call, Storage},
-				StakingPool: module_staking_pool::{Module, Call, Storage, Event<T>, Config},
-				PolkadotBridge: module_polkadot_bridge::{Module, Call, Storage},
+				Homa: module_homa::{Pallet, Call} = 44,
+				NomineesElection: module_nominees_election::{Pallet, Call, Storage} = 45,
+				StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 46,
+				PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 47,
+				HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 48,
 
 				// Acala Other
-				Incentives: module_incentives::{Module, Storage, Call, Event<T>},
-				AirDrop: module_airdrop::{Module, Call, Storage, Event<T>, Config<T>},
-				NFT: module_nft::{Module, Call, Event<T>},
+				Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 49,
+				AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 50,
+				NFT: module_nft::{Pallet, Call, Event<T>} = 51,
 
 				// Ecosystem modules
-				RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
+				RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 52,
 
-				EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
-				EVMBridge: module_evm_bridge::{Module},
-
-				$($modules)*
+				// Smart contracts
+				EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 53,
+				EVMBridge: module_evm_bridge::{Pallet} = 54,
 
 				// Dev
-				Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
+				Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 55,
+
+				$($modules)*
 			}
 		}
 	}
@@ -1642,23 +1670,23 @@ macro_rules! construct_mandala_runtime {
 #[cfg(feature = "standalone")]
 construct_mandala_runtime! {
 	// Consensus & Staking
-	Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-	Babe: pallet_babe::{Module, Call, Storage, Config, ValidateUnsigned},
-	Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
-	ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Module, Call, Storage, Event<T>, ValidateUnsigned},
-	Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
-	Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
-	Historical: pallet_session_historical::{Module},
+	Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 56,
+	Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 57,
+	Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event, ValidateUnsigned} = 58,
+	ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 59,
+	Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 60,
+	Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 61,
+	Historical: pallet_session_historical::{Pallet} = 62,
 }
 
 #[cfg(not(feature = "standalone"))]
 construct_mandala_runtime! {
 	// Parachain
-	ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
-	ParachainInfo: parachain_info::{Module, Storage, Config},
-	XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
-	XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
-	UnknownTokens: orml_unknown_tokens::{Module, Storage, Event},
+	ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 56,
+	ParachainInfo: parachain_info::{Pallet, Storage, Config} = 57,
+	XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 58,
+	XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 59,
+	UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 60,
 }
 
 /// The address format for describing accounts.
@@ -1690,7 +1718,7 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -1735,7 +1763,7 @@ impl_runtime_apis! {
 		}
 
 		fn random_seed() -> <Block as BlockT>::Hash {
-			RandomnessCollectiveFlip::random_seed()
+			RandomnessCollectiveFlip::random_seed().0
 		}
 	}
 
@@ -1971,8 +1999,8 @@ impl_runtime_apis! {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
-			use module_nft_benchmarking::Module as NftBench;
-			impl module_nft_benchmarking::Config for Runtime {}
+			use module_nft::benchmarking::Pallet as NftBench;
+			impl module_nft::benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number

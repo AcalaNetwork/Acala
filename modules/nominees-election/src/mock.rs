@@ -119,6 +119,16 @@ parameter_types! {
 	pub const MaxUnlockingChunks: u32 = 3;
 }
 
+pub struct MockRelaychainValidatorFilter;
+impl Contains<AccountId> for MockRelaychainValidatorFilter {
+	fn contains(a: &AccountId) -> bool {
+		match a {
+			0..=6 => true,
+			_ => false,
+		}
+	}
+}
+
 impl Config for Runtime {
 	type Currency = LDOTCurrency;
 	type PolkadotAccountId = AccountId;
@@ -126,6 +136,7 @@ impl Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type RelaychainValidatorFilter = MockRelaychainValidatorFilter;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -137,11 +148,11 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		NomineesElectionModule: nominees::{Module, Call, Storage},
-		TokensModule: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Module, Call, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		NomineesElectionModule: nominees::{Pallet, Call, Storage},
+		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+		OrmlCurrencies: orml_currencies::{Pallet, Call, Event<T>},
 	}
 );
 
