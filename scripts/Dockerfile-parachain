@@ -7,6 +7,8 @@ LABEL description="This is the build stage for Acala Node. Here we create the bi
 ENV DEBIAN_FRONTEND=noninteractive
 
 ARG PROFILE=release
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT
 WORKDIR /acala
 
 COPY . /acala

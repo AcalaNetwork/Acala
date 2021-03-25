@@ -34,6 +34,7 @@ dependencies = [
  "cumulus-primitives-core",
  "frame-benchmarking-cli",
  "log",
+ "orml-build-script-utils",
  "parity-scale-codec",
  "polkadot-cli",
  "polkadot-parachain",
@@ -45,7 +46,6 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "structopt",
- "substrate-build-script-utils",
 ]
 
 [[package]]
@@ -5399,6 +5399,13 @@ dependencies = [
  "sp-runtime",
  "sp-runtime-interface",
  "sp-std",
+]
+
+[[package]]
+name = "orml-build-script-utils"
+version = "0.4.1-dev"
+dependencies = [
+ "platforms",
 ]
 
 [[package]]
