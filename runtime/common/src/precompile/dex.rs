@@ -85,7 +85,7 @@ where
 				let currency_id_b = input.currency_id_at(2)?;
 				log::debug!(
 					target: "evm",
-					"dex: GetLiquidityPool currency_id_a: {:?}, currency_id_b: {:?}",
+					"dex: get_liquidity_pool currency_id_a: {:?}, currency_id_b: {:?}",
 					currency_id_a, currency_id_b
 				);
 
@@ -107,12 +107,12 @@ where
 				let supply_amount = input.balance_at((path_len + 1) as usize)?;
 				log::debug!(
 					target: "evm",
-					"dex: GetSwapTargetAmount path: {:?}, supply_amount: {:?}",
+					"dex: get_swap_target_amount path: {:?}, supply_amount: {:?}",
 					path, supply_amount
 				);
 
 				let value = Dex::get_swap_target_amount(&path, supply_amount, None)
-					.ok_or(ExitError::Other("Dex get_swap_target_amount failed".into()))?;
+					.ok_or_else(|| ExitError::Other("Dex get_swap_target_amount failed".into()))?;
 
 				// output
 				let mut be_bytes = [0u8; 32];
@@ -129,12 +129,12 @@ where
 				let target_amount = input.balance_at((path_len + 1) as usize)?;
 				log::debug!(
 					target: "evm",
-					"dex: GetSwapSupplyAmount path: {:?}, target_amount: {:?}",
+					"dex: get_swap_supply_amount path: {:?}, target_amount: {:?}",
 					path, target_amount
 				);
 
 				let value = Dex::get_swap_target_amount(&path, target_amount, None)
-					.ok_or(ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
+					.ok_or_else(|| ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
 
 				// output
 				let mut be_bytes = [0u8; 32];
@@ -153,7 +153,7 @@ where
 				let min_target_amount = input.balance_at((path_len + 4) as usize)?;
 				log::debug!(
 					target: "evm",
-					"dex: SwapWithExactSupply who: {:?}, path: {:?}, supply_amount: {:?}, min_target_amount: {:?}",
+					"dex: swap_with_exact_supply who: {:?}, path: {:?}, supply_amount: {:?}, min_target_amount: {:?}",
 					who, path, supply_amount, min_target_amount
 				);
 
@@ -180,7 +180,7 @@ where
 				let max_supply_amount = input.balance_at((path_len + 4) as usize)?;
 				log::debug!(
 					target: "evm",
-					"dex: SwapWithExactTarget who: {:?}, path: {:?}, target_amount: {:?}, max_supply_amount: {:?}",
+					"dex: swap_with_exact_target who: {:?}, path: {:?}, target_amount: {:?}, max_supply_amount: {:?}",
 					who, path, target_amount, max_supply_amount
 				);
 
