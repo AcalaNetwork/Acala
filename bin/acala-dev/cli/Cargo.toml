@@ -15,7 +15,7 @@ inspect = { package = "acala-inspect", path = "../../../inspect" }
 service = { package = "acala-dev-service", path = "../service", default-features = false, optional = true }
 
 [build-dependencies]
-substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+orml-build-script-utils = { path = "../../../orml/build-script-utils"}
 
 [features]
 default = [ "wasmtime", "cli", "with-mandala-runtime" ]
