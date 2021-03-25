@@ -32,7 +32,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1",
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }
