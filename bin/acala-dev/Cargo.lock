@@ -30,11 +30,11 @@ dependencies = [
  "acala-dev-service",
  "acala-inspect",
  "frame-benchmarking-cli",
+ "orml-build-script-utils",
  "sc-cli",
  "sc-service",
  "sp-core",
  "structopt",
- "substrate-build-script-utils",
 ]
 
 [[package]]
@@ -4887,6 +4887,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-build-script-utils"
+version = "0.4.1-dev"
+dependencies = [
+ "platforms",
+]
+
+[[package]]
 name = "orml-gradually-update"
 version = "0.4.1-dev"
 dependencies = [
@@ -8838,14 +8845,6 @@ dependencies = [
  "schnorrkel",
  "sha2 0.8.2",
  "zeroize",
-]
-
-[[package]]
-name = "substrate-build-script-utils"
-version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#1404f2af4cbe90d35b4c8a1405a9452feb789adc"
-dependencies = [
- "platforms",
 ]
 
 [[package]]
