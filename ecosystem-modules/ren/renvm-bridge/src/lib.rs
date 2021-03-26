@@ -17,14 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unused_unit)]
 
 use codec::Encode;
 use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, ensure,
-	pallet_prelude::{DispatchClass, Pays, Weight},
+	ensure,
+	pallet_prelude::*,
 	traits::{Currency, Get},
 };
-use frame_system::{ensure_none, ensure_signed};
+use frame_system::{ensure_none, ensure_signed, pallet_prelude::*};
 use orml_traits::BasicCurrency;
 use primitives::Balance;
 use sp_core::ecdsa;
@@ -42,10 +43,11 @@ use support::TransactionPayment;
 mod mock;
 mod tests;
 
+pub use module::*;
+
 type EcdsaSignature = ecdsa::Signature;
 type PublicKey = [u8; 20];
 type DestAddress = Vec<u8>;
-// Calculated the transaction length from the unit test.
 const MINT_TX_LENGTH: u32 = 168;
 
 /// Type alias for currency balance.
@@ -53,50 +55,30 @@ pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system:
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
-pub trait Config: frame_system::Config {
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
-	type Currency: Currency<Self::AccountId>;
-	type BridgedTokenCurrency: BasicCurrency<Self::AccountId, Balance = Balance>;
-	/// The RenVM Currency identifier
-	type CurrencyIdentifier: Get<[u8; 32]>;
-	/// A configuration for base priority of unsigned transactions.
-	///
-	/// This is exposed so that it can be tuned for particular runtime, when
-	/// multiple modules send unsigned transactions.
-	type UnsignedPriority: Get<TransactionPriority>;
-	/// Charge mint fee.
-	type ChargeTransactionPayment: TransactionPayment<Self::AccountId, BalanceOf<Self>, NegativeImbalanceOf<Self>>;
-}
+#[frame_support::pallet]
+pub mod module {
+	use super::*;
 
-decl_storage! {
-	trait Store for Module<T: Config> as Template {
-		/// The RenVM split public key
-		RenVmPublicKey get(fn ren_vm_public_key) config(): Option<PublicKey>;
-		/// Signature blacklist. This is required to prevent double claim.
-		Signatures get(fn signatures): map hasher(opaque_twox_256) EcdsaSignature => Option<()>;
-
-		/// Record burn event details
-		BurnEvents get(fn burn_events): map hasher(twox_64_concat) u32 => Option<(T::BlockNumber, DestAddress, Balance)>;
-		/// Next burn event ID
-		NextBurnEventId get(fn next_burn_event_id): u32;
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type Currency: Currency<Self::AccountId>;
+		type BridgedTokenCurrency: BasicCurrency<Self::AccountId, Balance = Balance>;
+		/// The RenVM Currency identifier
+		#[pallet::constant]
+		type CurrencyIdentifier: Get<[u8; 32]>;
+		/// A configuration for base priority of unsigned transactions.
+		///
+		/// This is exposed so that it can be tuned for particular runtime, when
+		/// multiple modules send unsigned transactions.
+		#[pallet::constant]
+		type UnsignedPriority: Get<TransactionPriority>;
+		/// Charge mint fee.
+		type ChargeTransactionPayment: TransactionPayment<Self::AccountId, BalanceOf<Self>, NegativeImbalanceOf<Self>>;
 	}
-}
 
-decl_event!(
-	pub enum Event<T> where
-		<T as frame_system::Config>::AccountId,
-	{
-		/// Asset minted. \[owner, amount\]
-		Minted(AccountId, Balance),
-		/// Asset burnt in this chain \[owner, dest, amount\]
-		Burnt(AccountId, DestAddress, Balance),
-		/// Rotated key \[new_key\]
-		RotatedKey(PublicKey),
-	}
-);
-
-decl_error! {
-	pub enum Error for Module<T: Config> {
+	#[pallet::error]
+	pub enum Error<T> {
 		/// The RenVM split public key is invalid.
 		InvalidRenVmPublicKey,
 		/// The mint signature is invalid.
@@ -106,28 +88,99 @@ decl_error! {
 		/// Burn ID overflow.
 		BurnIdOverflow,
 	}
-}
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
+	#[pallet::event]
+	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::metadata(T::Balance = "Balance")]
+	pub enum Event<T: Config> {
+		/// Asset minted. \[owner, amount\]
+		Minted(T::AccountId, Balance),
+		/// Asset burnt in this chain \[owner, dest, amount\]
+		Burnt(T::AccountId, DestAddress, Balance),
+		/// Rotated key \[new_key\]
+		RotatedKey(PublicKey),
+	}
 
-		fn deposit_event() = default;
+	/// The RenVM split public key
+	#[pallet::storage]
+	#[pallet::getter(fn ren_vm_public_key)]
+	pub type RenVmPublicKey<T: Config> = StorageValue<_, PublicKey, OptionQuery>;
 
+	/// Signature blacklist. This is required to prevent double claim.
+	#[pallet::storage]
+	#[pallet::getter(fn signatures)]
+	pub type Signatures<T: Config> = StorageMap<_, Twox64Concat, EcdsaSignature, (), OptionQuery>;
+
+	/// Record burn event details
+	#[pallet::storage]
+	#[pallet::getter(fn burn_events)]
+	type BurnEvents<T: Config> = StorageMap<_, Twox64Concat, u32, (T::BlockNumber, DestAddress, Balance), OptionQuery>;
+
+	/// Next burn event ID
+	#[pallet::storage]
+	#[pallet::getter(fn next_burn_event_id)]
+	type NextBurnEventId<T: Config> = StorageValue<_, u32, ValueQuery>;
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig {
+		pub ren_vm_public_key: PublicKey,
+	}
+
+	#[cfg(feature = "std")]
+	impl Default for GenesisConfig {
+		fn default() -> Self {
+			GenesisConfig {
+				ren_vm_public_key: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+		fn build(&self) {
+			RenVmPublicKey::<T>::set(Some(self.ren_vm_public_key));
+		}
+	}
+
+	#[cfg(feature = "std")]
+	impl GenesisConfig {
+		/// Direct implementation of `GenesisBuild::build_storage`.
+		///
+		/// Kept in order not to break dependency.
+		pub fn build_storage<T: Config>(&self) -> Result<sp_runtime::Storage, String> {
+			<Self as frame_support::traits::GenesisBuild<T>>::build_storage(self)
+		}
+
+		/// Direct implementation of `GenesisBuild::assimilate_storage`.
+		///
+		/// Kept in order not to break dependency.
+		pub fn assimilate_storage<T: Config>(&self, storage: &mut sp_runtime::Storage) -> Result<(), String> {
+			<Self as frame_support::traits::GenesisBuild<T>>::assimilate_storage(self, storage)
+		}
+	}
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(_);
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
 		/// Allow a user to mint if they have a valid signature from RenVM.
 		///
 		/// The dispatch origin of this call must be _None_.
 		///
 		/// Verify input by `validate_unsigned`
-		#[weight = 10_000]
-		fn mint(
-			origin,
+		#[pallet::weight(10_000)]
+		pub fn mint(
+			origin: OriginFor<T>,
 			who: T::AccountId,
 			_p_hash: [u8; 32],
-			#[compact] amount: Balance,
+			#[pallet::compact] amount: Balance,
 			_n_hash: [u8; 32],
 			sig: EcdsaSignature,
-		) {
+		) -> DispatchResultWithPostInfo {
 			ensure_none(origin)?;
 			Self::do_mint(&who, amount, &sig)?;
 
@@ -135,29 +188,40 @@ decl_module! {
 			let weight: Weight = 10_000;
 
 			// charge mint fee. Ignore the result, if it failed, only lost the fee.
-			let _ = T::ChargeTransactionPayment::charge_fee(&who, MINT_TX_LENGTH, weight, Zero::zero(), Pays::Yes, DispatchClass::Normal);
-			Self::deposit_event(RawEvent::Minted(who, amount));
+			let _ = T::ChargeTransactionPayment::charge_fee(
+				&who,
+				MINT_TX_LENGTH,
+				weight,
+				Zero::zero(),
+				Pays::Yes,
+				DispatchClass::Normal,
+			);
+			Self::deposit_event(Event::Minted(who, amount));
+
+			Ok(().into())
 		}
 
 		/// Allow a user to burn assets.
-		#[weight = 10_000]
-		fn burn(
-			origin,
+		#[pallet::weight(10_000)]
+		pub fn burn(
+			origin: OriginFor<T>,
 			to: DestAddress,
-			#[compact] amount: Balance,
-		) {
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResultWithPostInfo {
 			let sender = ensure_signed(origin)?;
 
-			NextBurnEventId::try_mutate(|id| -> DispatchResult {
+			NextBurnEventId::<T>::try_mutate(|id| -> DispatchResult {
 				let this_id = *id;
 				*id = id.checked_add(1).ok_or(Error::<T>::BurnIdOverflow)?;
 
 				T::BridgedTokenCurrency::withdraw(&sender, amount)?;
 				BurnEvents::<T>::insert(this_id, (frame_system::Pallet::<T>::block_number(), &to, amount));
-				Self::deposit_event(RawEvent::Burnt(sender, to, amount));
+				Self::deposit_event(Event::Burnt(sender, to, amount));
 
 				Ok(())
 			})?;
+
+			Ok(().into())
 		}
 
 		/// Allow RenVm rotate the public key.
@@ -165,15 +229,13 @@ decl_module! {
 		/// The dispatch origin of this call must be _None_.
 		///
 		/// Verify input by `validate_unsigned`
-		#[weight = 10_000]
-		fn rotate_key(
-			origin,
-			new_key: PublicKey,
-			sig: EcdsaSignature,
-		) {
+		#[pallet::weight(10_000)]
+		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResultWithPostInfo {
 			ensure_none(origin)?;
 			Self::do_rotate_key(new_key, sig);
-			Self::deposit_event(RawEvent::RotatedKey(new_key));
+			Self::deposit_event(Event::RotatedKey(new_key));
+
+			Ok(().into())
 		}
 	}
 }
@@ -181,14 +243,14 @@ decl_module! {
 impl<T: Config> Pallet<T> {
 	fn do_mint(sender: &T::AccountId, amount: Balance, sig: &EcdsaSignature) -> DispatchResult {
 		T::BridgedTokenCurrency::deposit(sender, amount)?;
-		Signatures::insert(sig, ());
+		Signatures::<T>::insert(sig, ());
 
 		Ok(())
 	}
 
 	fn do_rotate_key(new_key: PublicKey, sig: EcdsaSignature) {
-		RenVmPublicKey::set(Some(new_key));
-		Signatures::insert(&sig, ());
+		RenVmPublicKey::<T>::set(Some(new_key));
+		Signatures::<T>::insert(&sig, ());
 	}
 
 	// ABI-encode the values for creating the signature hash.
@@ -232,7 +294,7 @@ impl<T: Config> Pallet<T> {
 			secp256k1_ecdsa_recover(&sig, &signed_message_hash).map_err(|_| Error::<T>::InvalidMintSignature)?;
 		let addr = &keccak_256(&recoverd)[12..];
 
-		let pubkey = RenVmPublicKey::get().ok_or(Error::<T>::InvalidRenVmPublicKey)?;
+		let pubkey = RenVmPublicKey::<T>::get().ok_or(Error::<T>::InvalidRenVmPublicKey)?;
 		ensure!(addr == pubkey, Error::<T>::InvalidMintSignature);
 
 		Ok(())
@@ -253,7 +315,7 @@ impl<T: Config> Pallet<T> {
 			secp256k1_ecdsa_recover(&sig, &signed_message_hash).map_err(|_| Error::<T>::InvalidMintSignature)?;
 		let addr = &keccak_256(&recoverd)[12..];
 
-		let pubkey = RenVmPublicKey::get().ok_or(Error::<T>::InvalidRenVmPublicKey)?;
+		let pubkey = RenVmPublicKey::<T>::get().ok_or(Error::<T>::InvalidRenVmPublicKey)?;
 		ensure!(addr == pubkey, Error::<T>::InvalidMintSignature);
 
 		Ok(())
@@ -268,7 +330,7 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Pallet<T> {
 		match call {
 			Call::mint(who, p_hash, amount, n_hash, sig) => {
 				// check if already exists
-				if Signatures::contains_key(&sig) {
+				if Signatures::<T>::contains_key(&sig) {
 					return InvalidTransaction::Stale.into();
 				}
 
@@ -290,7 +352,7 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Pallet<T> {
 			}
 			Call::rotate_key(new_key, sig) => {
 				// check if already exists
-				if Signatures::contains_key(&sig) {
+				if Signatures::<T>::contains_key(&sig) {
 					return InvalidTransaction::Stale.into();
 				}
 

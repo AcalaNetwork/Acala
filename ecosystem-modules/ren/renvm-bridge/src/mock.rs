@@ -159,7 +159,7 @@ impl ExtBuilder {
 		renvm::GenesisConfig {
 			ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		}
-		.assimilate_storage(&mut t)
+		.assimilate_storage::<Runtime>(&mut t)
 		.unwrap();
 
 		t.into()
