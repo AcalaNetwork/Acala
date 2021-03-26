@@ -1176,7 +1176,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#90b1e1804897193b3911f49b45de51532e305733"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
 dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
@@ -1205,7 +1205,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-xcm-handler"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#90b1e1804897193b3911f49b45de51532e305733"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -1220,7 +1220,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-core"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#90b1e1804897193b3911f49b45de51532e305733"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
 dependencies = [
  "impl-trait-for-tuples 0.2.1",
  "parity-scale-codec",
@@ -1235,7 +1235,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#90b1e1804897193b3911f49b45de51532e305733"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
 dependencies = [
  "cumulus-primitives-core",
  "parity-scale-codec",
@@ -2422,7 +2422,7 @@ dependencies = [
  "httparse",
  "httpdate",
  "itoa",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "socket2 0.3.19",
  "tokio 0.2.25",
  "tower-service",
@@ -3017,7 +3017,7 @@ dependencies = [
  "libp2p-yamux",
  "parity-multiaddr",
  "parking_lot 0.11.1",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "smallvec 1.6.1",
  "wasm-timer",
 ]
@@ -3042,7 +3042,7 @@ dependencies = [
  "multistream-select",
  "parity-multiaddr",
  "parking_lot 0.11.1",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "prost",
  "prost-build",
  "rand 0.7.3",
@@ -3265,7 +3265,7 @@ checksum = "6ce3374f3b28162db9d3442c9347c4f14cb01e8290052615c7d341d40eae0599"
 dependencies = [
  "futures 0.3.13",
  "log",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "rand 0.7.3",
  "salsa20",
  "sha3 0.9.1",
@@ -4077,6 +4077,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "orml-nft",
  "orml-traits",
  "pallet-proxy",
@@ -4271,7 +4272,7 @@ dependencies = [
  "bytes 1.0.1",
  "futures 0.3.13",
  "log",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "smallvec 1.6.1",
  "unsigned-varint 0.7.0",
 ]
@@ -5121,7 +5122,7 @@ dependencies = [
 [[package]]
 name = "parachain-info"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#90b1e1804897193b3911f49b45de51532e305733"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -5456,11 +5457,11 @@ dependencies = [
 
 [[package]]
 name = "pin-project"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96fa8ebb90271c4477f144354485b8068bd8f6b78b428b01ba892ca26caf0b63"
+checksum = "bc174859768806e91ae575187ada95c91a29e96a98dc5d2cd9a1fed039501ba6"
 dependencies = [
- "pin-project-internal 1.0.5",
+ "pin-project-internal 1.0.6",
 ]
 
 [[package]]
@@ -5476,9 +5477,9 @@ dependencies = [
 
 [[package]]
 name = "pin-project-internal"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "758669ae3558c6f74bd2a18b41f7ac0b5a195aea6639d6a9b5e5d1ad5ba24c0b"
+checksum = "a490329918e856ed1b083f244e3bfe2d8c4f336407e4ea9e1a9f479ff09049e5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5512,7 +5513,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "polkadot-core-primitives"
 version = "0.7.30"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#34e8d5061434c039f0e13c8319dedf54dbb4bc81"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
 dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
@@ -5524,7 +5525,7 @@ dependencies = [
 [[package]]
 name = "polkadot-parachain"
 version = "0.8.29"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#34e8d5061434c039f0e13c8319dedf54dbb4bc81"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
 dependencies = [
  "derive_more",
  "futures 0.3.13",
@@ -5551,7 +5552,7 @@ dependencies = [
 [[package]]
 name = "polkadot-primitives"
 version = "0.8.29"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#34e8d5061434c039f0e13c8319dedf54dbb4bc81"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
 dependencies = [
  "bitvec",
  "frame-system",
@@ -6584,7 +6585,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "parking_lot 0.11.1",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "rand 0.7.3",
  "sc-block-builder",
  "sc-client-api",
@@ -6718,7 +6719,7 @@ dependencies = [
  "nohash-hasher",
  "parity-scale-codec",
  "parking_lot 0.11.1",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "prost",
  "prost-build",
  "rand 0.7.3",
@@ -6903,7 +6904,7 @@ dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
  "parking_lot 0.11.1",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "rand 0.7.3",
  "sc-block-builder",
  "sc-chain-spec",
@@ -6973,7 +6974,7 @@ dependencies = [
  "libp2p",
  "log",
  "parking_lot 0.11.1",
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "rand 0.7.3",
  "serde",
  "serde_json",
@@ -8687,7 +8688,7 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
 dependencies = [
- "pin-project 1.0.5",
+ "pin-project 1.0.6",
  "tracing",
 ]
 
@@ -9255,7 +9256,7 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#34e8d5061434c039f0e13c8319dedf54dbb4bc81"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -9263,7 +9264,7 @@ dependencies = [
 [[package]]
 name = "xcm-builder"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#34e8d5061434c039f0e13c8319dedf54dbb4bc81"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -9279,7 +9280,7 @@ dependencies = [
 [[package]]
 name = "xcm-executor"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#34e8d5061434c039f0e13c8319dedf54dbb4bc81"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples 0.2.1",
