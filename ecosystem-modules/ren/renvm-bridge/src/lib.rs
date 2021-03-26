@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unused_unit)]
 
 use codec::Encode;
 use frame_support::{
@@ -125,6 +126,7 @@ pub mod module {
 		pub ren_vm_public_key: PublicKey,
 	}
 
+	#[cfg(feature = "std")]
 	impl Default for GenesisConfig {
 		fn default() -> Self {
 			GenesisConfig {
@@ -216,7 +218,7 @@ pub mod module {
 				BurnEvents::<T>::insert(this_id, (frame_system::Pallet::<T>::block_number(), &to, amount));
 				Self::deposit_event(Event::Burnt(sender, to, amount));
 
-				Ok(().into())
+				Ok(())
 			})?;
 
 			Ok(().into())
