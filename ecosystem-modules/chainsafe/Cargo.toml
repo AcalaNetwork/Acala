@@ -15,7 +15,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 support = { package = "module-support", path = "../../modules/support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-chainbridge = { git = "https://github.com/wangjj9219/chainbridge-substrate", default-features = false }
+chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 
 [dev-dependencies]

@@ -1258,8 +1258,8 @@ impl module_evm_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LocalChainId: chainbridge::ChainId = 1;
-	pub const ProposalLifetime: BlockNumber = 50;
+	pub const LocalChainId: chainbridge::ChainId = 2;
+	pub const ProposalLifetime: BlockNumber = 15 * MINUTES;
 }
 
 impl chainbridge::Config for Runtime {
@@ -1270,21 +1270,11 @@ impl chainbridge::Config for Runtime {
 	type ProposalLifetime = ProposalLifetime;
 }
 
-parameter_types! {
-	pub const HashId: chainbridge::ResourceId = hex!["0000000000000000000000000000000000000000000000000000000000000000"];
-}
-
-parameter_type_with_key! {
-	pub ResourceIds: |_currency_id: CurrencyId| -> chainbridge::ResourceId {
-		//TODO: convert CurrencyId to ResourceId
-		hex!["0000000000000000000000000000000000000000000000000000000000000001"]
-	};
-}
-
 impl ecosystem_chainsafe::Config for Runtime {
-	type HashId = HashId;
-	type ResourceIds = ResourceIds;
 	type Currency = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type RegistorOrigin = EnsureRootOrHalfGeneralCouncil;
+	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
 }
 
 #[cfg(feature = "standalone")]
@@ -1678,8 +1668,8 @@ macro_rules! construct_mandala_runtime {
 
 				// Ecosystem modules
 				RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
-				Chainbridge: chainbridge::{Module, Call, Storage, Event<T>},
-				ChainSafeTransfer: ecosystem_chainsafe::{Module, Call},
+				ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+				ChainSafeTransfer: ecosystem_chainsafe::{Module, Call, Storage},
 
 				EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
 				EVMBridge: module_evm_bridge::{Module},

@@ -21,7 +21,7 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{GetByKey, MultiCurrency};
+use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::SaturatedConversion;
 use sp_std::vec::Vec;
@@ -36,23 +36,35 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + chainbridge::Config {
-		#[pallet::constant]
-		/// Ids can be defined by the runtime and passed in, perhaps from
-		/// blake2b_128 hashes.
-		type HashId: Get<ResourceId>;
-
-		type ResourceIds: GetByKey<CurrencyId, ResourceId>;
-
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+		#[pallet::constant]
+		type NativeCurrencyId: Get<CurrencyId>;
+
+		type RegistorOrigin: EnsureOrigin<Self::Origin>;
+
+		/// Specifies the origin check provided by the bridge for calls that can
+		/// only be called by the bridge pallet
+		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		InvalidDestChainId,
+		ResourceIdAlreadyRegistered,
+		ResourceIdNotRegistered,
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
+
+	#[pallet::storage]
+	#[pallet::getter(fn resource_ids)]
+	pub type ResourceIds<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ResourceId, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn currency_ids)]
+	pub type CurrencyIds<T: Config> = StorageMap<_, Twox64Concat, ResourceId, CurrencyId, OptionQuery>;
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
@@ -61,46 +73,95 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(1_000_000)]
 		#[transactional]
-		pub fn transfer_tokens(
+		pub fn register_resource_id(
 			origin: OriginFor<T>,
-			dest_chain_id: chainbridge::ChainId,
-			recipient: Vec<u8>,
+			resource_id: ResourceId,
 			currency_id: CurrencyId,
-			amount: Balance,
 		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
+			T::RegistorOrigin::ensure_origin(origin)?;
 			ensure!(
-				chainbridge::Module::<T>::chain_whitelisted(dest_chain_id),
-				Error::<T>::InvalidDestChainId
+				ResourceIds::<T>::contains_key(&currency_id) || CurrencyIds::<T>::contains_key(&resource_id),
+				Error::<T>::ResourceIdAlreadyRegistered,
 			);
-
-			let bridge_account_id = chainbridge::Module::<T>::account_id();
-			let resource_id = T::ResourceIds::get(&currency_id);
-			T::Currency::transfer(currency_id, &who, &bridge_account_id, amount.into())?;
-			chainbridge::Module::<T>::transfer_fungible(
-				dest_chain_id,
-				resource_id,
-				recipient,
-				sp_core::U256::from(amount.saturated_into::<u128>()),
-			)?;
-
+			ResourceIds::<T>::insert(&currency_id, resource_id);
+			CurrencyIds::<T>::insert(&resource_id, currency_id);
 			Ok(().into())
 		}
 
 		#[pallet::weight(1_000_000)]
 		#[transactional]
-		pub fn transfer_hash(
-			origin: OriginFor<T>,
-			dest_chain_id: chainbridge::ChainId,
-			hash: T::Hash,
-		) -> DispatchResultWithPostInfo {
-			let _ = ensure_signed(origin)?;
-
-			let resource_id = T::HashId::get();
-			let metadata: Vec<u8> = hash.as_ref().to_vec();
-			chainbridge::Module::<T>::transfer_generic(dest_chain_id, resource_id, metadata)?;
-
+		pub fn remove_resource_id(origin: OriginFor<T>, resource_id: ResourceId) -> DispatchResultWithPostInfo {
+			T::RegistorOrigin::ensure_origin(origin)?;
+			if let Some(currency_id) = CurrencyIds::<T>::take(&resource_id) {
+				ResourceIds::<T>::remove(&currency_id);
+			}
 			Ok(().into())
 		}
+
+		#[pallet::weight(1_000_000)]
+		#[transactional]
+		pub fn transfer_to_bridge(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			dest_chain_id: chainbridge::ChainId,
+			recipient: Vec<u8>,
+			amount: Balance,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			Self::do_transfer_to_bridge(&who, currency_id, dest_chain_id, recipient, amount)?;
+			Ok(().into())
+		}
+
+		#[pallet::weight(1_000_000)]
+		#[transactional]
+		pub fn transfer_native_to_bridge(
+			origin: OriginFor<T>,
+			dest_chain_id: chainbridge::ChainId,
+			recipient: Vec<u8>,
+			amount: Balance,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			Self::do_transfer_to_bridge(&who, T::NativeCurrencyId::get(), dest_chain_id, recipient, amount)?;
+			Ok(().into())
+		}
+
+		#[pallet::weight(1_000_000)]
+		#[transactional]
+		pub fn transfer_from_bridge(
+			origin: OriginFor<T>,
+			to: T::AccountId,
+			amount: Balance,
+			resource_id: ResourceId,
+		) -> DispatchResultWithPostInfo {
+			let bridge_account_id = T::BridgeOrigin::ensure_origin(origin)?;
+			let currency_id = Self::currency_ids(resource_id).ok_or(Error::<T>::ResourceIdNotRegistered)?;
+			T::Currency::transfer(currency_id, &bridge_account_id, &to, amount)?;
+			Ok(().into())
+		}
+	}
+}
+
+impl<T: Config> Pallet<T> {
+	fn do_transfer_to_bridge(
+		from: &T::AccountId,
+		currency_id: CurrencyId,
+		dest_chain_id: chainbridge::ChainId,
+		recipient: Vec<u8>,
+		amount: Balance,
+	) -> DispatchResult {
+		ensure!(
+			chainbridge::Module::<T>::chain_whitelisted(dest_chain_id),
+			Error::<T>::InvalidDestChainId
+		);
+
+		let bridge_account_id = chainbridge::Module::<T>::account_id();
+		let resource_id = Self::resource_ids(currency_id).ok_or(Error::<T>::ResourceIdNotRegistered)?;
+		T::Currency::transfer(currency_id, &from, &bridge_account_id, amount)?;
+		chainbridge::Module::<T>::transfer_fungible(
+			dest_chain_id,
+			resource_id,
+			recipient,
+			sp_core::U256::from(amount.saturated_into::<u128>()),
+		)
 	}
 }
