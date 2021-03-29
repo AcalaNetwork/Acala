@@ -222,7 +222,7 @@ fn testnet_genesis(
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
 		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
 		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT,
-		LDOT, RENBTC, XBTC,
+		LDOT, RENBTC, XBTC, BABE_GENESIS_EPOCH_CONFIG
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -286,7 +286,10 @@ fn testnet_genesis(
 			..Default::default()
 		},
 		pallet_sudo: SudoConfig { key: root_key.clone() },
-		pallet_babe: BabeConfig { authorities: vec![] },
+		pallet_babe: BabeConfig {
+			authorities: vec![],
+			epoch_config: Some(BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: GrandpaConfig { authorities: vec![] },
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
@@ -429,7 +432,7 @@ fn mandala_genesis(
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
 		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
 		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-		ACA, AUSD, DOT, LDOT, RENBTC, XBTC,
+		ACA, AUSD, DOT, LDOT, RENBTC, XBTC, BABE_GENESIS_EPOCH_CONFIG,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -492,7 +495,10 @@ fn mandala_genesis(
 			..Default::default()
 		},
 		pallet_sudo: SudoConfig { key: root_key.clone() },
-		pallet_babe: BabeConfig { authorities: vec![] },
+		pallet_babe: BabeConfig {
+			authorities: vec![],
+			epoch_config: Some(BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: GrandpaConfig { authorities: vec![] },
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {

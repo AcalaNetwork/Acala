@@ -27,7 +27,7 @@ use sp_consensus::BlockStatus;
 use sp_runtime::{
 	generic::{BlockId, SignedBlock},
 	traits::{BlakeTwo256, Block as BlockT},
-	Justification,
+	Justifications,
 };
 use sp_storage::{ChildInfo, PrefixedStorageKey, StorageData, StorageKey};
 use std::sync::Arc;
@@ -212,14 +212,14 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn justification(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Justification>> {
+	fn justifications(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Justifications>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.justification(id),
+			Self::Mandala(client) => client.justifications(id),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.justification(id),
+			Self::Karura(client) => client.justifications(id),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.justification(id),
+			Self::Acala(client) => client.justifications(id),
 		}
 	}
 
@@ -234,25 +234,25 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn extrinsic(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<Option<<Block as BlockT>::Extrinsic>> {
+	fn indexed_transaction(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<Option<Vec<u8>>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.extrinsic(hash),
+			Self::Mandala(client) => client.indexed_transaction(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.extrinsic(hash),
+			Self::Karura(client) => client.indexed_transaction(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.extrinsic(hash),
+			Self::Acala(client) => client.indexed_transaction(hash),
 		}
 	}
 
-	fn have_extrinsic(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<bool> {
+	fn has_indexed_transaction(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<bool> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.have_extrinsic(hash),
+			Self::Mandala(client) => client.has_indexed_transaction(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.have_extrinsic(hash),
+			Self::Karura(client) => client.has_indexed_transaction(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.have_extrinsic(hash),
+			Self::Acala(client) => client.has_indexed_transaction(hash),
 		}
 	}
 }

@@ -258,8 +258,8 @@ pub mod module {
 								"the trading pair is invalid!",
 							);
 
-							let result = match <Module<T>>::trading_pair_statuses(trading_pair) {
-								TradingPairStatus::<_, _>::Enabled => <Module<T>>::do_add_liquidity(
+							let result = match <Pallet<T>>::trading_pair_statuses(trading_pair) {
+								TradingPairStatus::<_, _>::Enabled => <Pallet<T>>::do_add_liquidity(
 									&who,
 									trading_pair.0,
 									trading_pair.1,
@@ -511,7 +511,7 @@ pub mod module {
 						T::Currency::transfer(trading_pair.1, &module_account_id, &who, contribution.1)?;
 
 						// decrease ref count
-						frame_system::Module::<T>::dec_consumers(&who);
+						frame_system::Pallet::<T>::dec_consumers(&who);
 					}
 
 					TradingPairStatuses::<T>::remove(trading_pair);
@@ -538,7 +538,7 @@ impl<T: Config> Pallet<T> {
 		if let TradingPairStatus::<_, _>::Provisioning(provision_parameters) = Self::trading_pair_statuses(trading_pair)
 		{
 			// check if able to be converted to Enable status
-			if frame_system::Module::<T>::block_number() >= provision_parameters.not_before
+			if frame_system::Pallet::<T>::block_number() >= provision_parameters.not_before
 				&& !provision_parameters.accumulated_provision.0.is_zero()
 				&& !provision_parameters.accumulated_provision.1.is_zero()
 				&& (provision_parameters.accumulated_provision.0 >= provision_parameters.target_provision.0
@@ -575,7 +575,7 @@ impl<T: Config> Pallet<T> {
 					}
 
 					// decrease ref count
-					frame_system::Module::<T>::dec_consumers(&who);
+					frame_system::Pallet::<T>::dec_consumers(&who);
 				}
 
 				// inject provision to liquidity pool
@@ -635,7 +635,7 @@ impl<T: Config> Pallet<T> {
 			*maybe_pool = Some(pool);
 
 			if !existed && maybe_pool.is_some() {
-				if frame_system::Module::<T>::inc_consumers(&who).is_err() {
+				if frame_system::Pallet::<T>::inc_consumers(&who).is_err() {
 					// No providers for the locks. This is impossible under normal circumstances
 					// since the funds that are under the lock will themselves be stored in the
 					// account and therefore will need a reference.

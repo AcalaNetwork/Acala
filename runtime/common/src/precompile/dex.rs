@@ -37,7 +37,10 @@ pub struct DexPrecompile<AccountId, AddressMapping, Dex>(PhantomData<(AccountId,
 
 enum Action {
 	GetLiquidityPool,
+	GetSwapTargetAmount,
+	GetSwapSupplyAmount,
 	SwapWithExactSupply,
+	SwapWithExactTarget,
 }
 
 impl TryFrom<u8> for Action {
@@ -46,7 +49,10 @@ impl TryFrom<u8> for Action {
 	fn try_from(value: u8) -> Result<Self, Self::Error> {
 		match value {
 			0 => Ok(Action::GetLiquidityPool),
-			1 => Ok(Action::SwapWithExactSupply),
+			1 => Ok(Action::GetSwapTargetAmount),
+			2 => Ok(Action::GetSwapSupplyAmount),
+			3 => Ok(Action::SwapWithExactSupply),
+			4 => Ok(Action::SwapWithExactTarget),
 			_ => Err(()),
 		}
 	}
@@ -67,7 +73,9 @@ where
 
 		log::debug!(target: "evm", "input: {:?}", input);
 
-		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+		// Solidity dynamic arrays will add the array size to the front of the array,
+		// pre-compile needs to deal with the `size`.
+		let input = Input::<Action, AccountId, AddressMapping>::new(&input[32..]);
 
 		let action = input.action()?;
 
@@ -75,6 +83,11 @@ where
 			Action::GetLiquidityPool => {
 				let currency_id_a = input.currency_id_at(1)?;
 				let currency_id_b = input.currency_id_at(2)?;
+				log::debug!(
+					target: "evm",
+					"dex: get_liquidity_pool currency_id_a: {:?}, currency_id_b: {:?}",
+					currency_id_a, currency_id_b
+				);
 
 				let (balance_a, balance_b) = Dex::get_liquidity_pool(currency_id_a, currency_id_b);
 
@@ -85,24 +98,97 @@ where
 
 				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
 			}
+			Action::GetSwapTargetAmount => {
+				let path_len = input.u32_at(1)?;
+				let mut path = vec![];
+				for i in 0..path_len {
+					path.push(input.currency_id_at((2 + i) as usize)?);
+				}
+				let supply_amount = input.balance_at((path_len + 1) as usize)?;
+				log::debug!(
+					target: "evm",
+					"dex: get_swap_target_amount path: {:?}, supply_amount: {:?}",
+					path, supply_amount
+				);
+
+				let value = Dex::get_swap_target_amount(&path, supply_amount, None)
+					.ok_or_else(|| ExitError::Other("Dex get_swap_target_amount failed".into()))?;
+
+				// output
+				let mut be_bytes = [0u8; 32];
+				U256::from(value).to_big_endian(&mut be_bytes[..32]);
+
+				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+			}
+			Action::GetSwapSupplyAmount => {
+				let path_len = input.u32_at(1)?;
+				let mut path = vec![];
+				for i in 0..path_len {
+					path.push(input.currency_id_at((2 + i) as usize)?);
+				}
+				let target_amount = input.balance_at((path_len + 1) as usize)?;
+				log::debug!(
+					target: "evm",
+					"dex: get_swap_supply_amount path: {:?}, target_amount: {:?}",
+					path, target_amount
+				);
+
+				let value = Dex::get_swap_target_amount(&path, target_amount, None)
+					.ok_or_else(|| ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
+
+				// output
+				let mut be_bytes = [0u8; 32];
+				U256::from(value).to_big_endian(&mut be_bytes[..32]);
+
+				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+			}
 			Action::SwapWithExactSupply => {
 				let who = input.account_id_at(1)?;
-				let currency_id_a = input.currency_id_at(2)?;
-				let currency_id_b = input.currency_id_at(3)?;
-				let supply_amount = input.balance_at(4)?;
-				let min_target_amount = input.balance_at(5)?;
+				let path_len = input.u32_at(2)?;
+				let mut path = vec![];
+				for i in 0..path_len {
+					path.push(input.currency_id_at((3 + i) as usize)?);
+				}
+				let supply_amount = input.balance_at((path_len + 3) as usize)?;
+				let min_target_amount = input.balance_at((path_len + 4) as usize)?;
+				log::debug!(
+					target: "evm",
+					"dex: swap_with_exact_supply who: {:?}, path: {:?}, supply_amount: {:?}, min_target_amount: {:?}",
+					who, path, supply_amount, min_target_amount
+				);
 
-				let value = Dex::swap_with_exact_supply(
-					&who,
-					&[currency_id_a, currency_id_b],
-					supply_amount,
-					min_target_amount,
-					None,
-				)
-				.map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
-				})?;
+				let value =
+					Dex::swap_with_exact_supply(&who, &path, supply_amount, min_target_amount, None).map_err(|e| {
+						let err_msg: &str = e.into();
+						ExitError::Other(err_msg.into())
+					})?;
+
+				// output
+				let mut be_bytes = [0u8; 32];
+				U256::from(value).to_big_endian(&mut be_bytes[..32]);
+
+				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+			}
+			Action::SwapWithExactTarget => {
+				let who = input.account_id_at(1)?;
+				let path_len = input.u32_at(2)?;
+				let mut path = vec![];
+				for i in 0..path_len {
+					path.push(input.currency_id_at((3 + i) as usize)?);
+				}
+				let target_amount = input.balance_at((path_len + 3) as usize)?;
+				let max_supply_amount = input.balance_at((path_len + 4) as usize)?;
+				log::debug!(
+					target: "evm",
+					"dex: swap_with_exact_target who: {:?}, path: {:?}, target_amount: {:?}, max_supply_amount: {:?}",
+					who, path, target_amount, max_supply_amount
+				);
+
+				let value =
+					Dex::swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None).map_err(|e| {
+						let err_msg: &str = e.into();
+						ExitError::Other(err_msg.into())
+					})?;
 
 				// output
 				let mut be_bytes = [0u8; 32];

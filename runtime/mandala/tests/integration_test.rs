@@ -47,17 +47,17 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
 
-pub type OracleModule = orml_oracle::Module<Runtime, orml_oracle::Instance1>;
-pub type DexModule = module_dex::Module<Runtime>;
-pub type CdpEngineModule = module_cdp_engine::Module<Runtime>;
-pub type LoansModule = module_loans::Module<Runtime>;
-pub type CdpTreasuryModule = module_cdp_treasury::Module<Runtime>;
-pub type SystemModule = frame_system::Module<Runtime>;
-pub type EmergencyShutdownModule = module_emergency_shutdown::Module<Runtime>;
-pub type AuctionManagerModule = module_auction_manager::Module<Runtime>;
-pub type AuthorityModule = orml_authority::Module<Runtime>;
-pub type Currencies = module_currencies::Module<Runtime>;
-pub type SchedulerModule = pallet_scheduler::Module<Runtime>;
+pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
+pub type DexModule = module_dex::Pallet<Runtime>;
+pub type CdpEngineModule = module_cdp_engine::Pallet<Runtime>;
+pub type LoansModule = module_loans::Pallet<Runtime>;
+pub type CdpTreasuryModule = module_cdp_treasury::Pallet<Runtime>;
+pub type SystemModule = frame_system::Pallet<Runtime>;
+pub type EmergencyShutdownModule = module_emergency_shutdown::Pallet<Runtime>;
+pub type AuctionManagerModule = module_auction_manager::Pallet<Runtime>;
+pub type AuthorityModule = orml_authority::Pallet<Runtime>;
+pub type Currencies = module_currencies::Pallet<Runtime>;
+pub type SchedulerModule = pallet_scheduler::Pallet<Runtime>;
 
 fn run_to_block(n: u32) {
 	while SystemModule::block_number() < n {
