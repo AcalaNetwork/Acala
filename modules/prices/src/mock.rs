@@ -143,6 +143,27 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
+
+	fn add_liquidity(
+		_who: &AccountId,
+		_currency_id_a: CurrencyId,
+		_currency_id_b: CurrencyId,
+		_max_amount_a: Balance,
+		_max_amount_b: Balance,
+		_deposit_increment_share: bool,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn remove_liquidity(
+		_who: &AccountId,
+		_currency_id_a: CurrencyId,
+		_currency_id_b: CurrencyId,
+		_remove_share: Balance,
+		_by_withdraw: bool,
+	) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 parameter_type_with_key! {

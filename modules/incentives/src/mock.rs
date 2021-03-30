@@ -187,6 +187,14 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
+
+	fn add_liquidity(_: &AccountId, _: CurrencyId, _: CurrencyId, _: Balance, _: Balance, _: bool) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn remove_liquidity(_: &AccountId, _: CurrencyId, _: CurrencyId, _: Balance, _: bool) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 thread_local! {
