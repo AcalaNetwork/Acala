@@ -766,7 +766,6 @@ impl<T: Config> Pallet<T> {
 		})
 	}
 
-	/// Ensured atomic.
 	#[transactional]
 	fn do_remove_liquidity(
 		who: &T::AccountId,
