@@ -55,6 +55,9 @@ pub type EthereumPrecompiles = (
 	module_evm::precompiles::Sha256,
 	module_evm::precompiles::Ripemd160,
 	module_evm::precompiles::Identity,
+	module_evm::precompiles::ECRecoverPublicKey,
+	module_evm::precompiles::Sha3FIPS256,
+	module_evm::precompiles::Sha3FIPS512,
 );
 
 pub struct AllPrecompiles<
