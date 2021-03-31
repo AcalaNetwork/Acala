@@ -18,6 +18,12 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+// NOTE: These benchmarks are the same as mandala benchmarks,
+// the only difference is currency ids: ACA -> KAR, AUSD -> KUSD, DOT -> KSM
+//
+// TODO: Make sure to keep those files up-to-date with mandala benchmarks
+// until we implement a better solution
+
 // module benchmarking
 pub mod auction_manager;
 pub mod cdp_engine;
