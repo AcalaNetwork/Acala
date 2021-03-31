@@ -378,6 +378,13 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Issue an EVM call operation. This is similar to a message call
 		/// transaction in Ethereum.
+		///
+		/// - `target`: the contract address to call
+		/// - `input`: the data supplied for the call
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can
+		///   increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn call(
 			origin: OriginFor<T>,
@@ -415,6 +422,16 @@ pub mod module {
 			})
 		}
 
+		/// Issue an EVM call operation on a scheduled contract call, and
+		/// refund the unused gas reserved when the call was scheduled.
+		///
+		/// - `from`: the address the scheduled call originates from
+		/// - `target`: the contract address to call
+		/// - `input`: the data supplied for the call
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can
+		///   increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
 		pub fn scheduled_call(
@@ -472,6 +489,12 @@ pub mod module {
 
 		/// Issue an EVM create operation. This is similar to a contract
 		/// creation transaction in Ethereum.
+		///
+		/// - `init`: the data supplied for the contract's constructor
+		/// - `value`: the amount sent to the contract upon creation
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can
+		///   increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -500,6 +523,14 @@ pub mod module {
 		}
 
 		/// Issue an EVM create2 operation.
+		///
+		/// - `target`: the contract address to call
+		/// - `init`: the data supplied for the contract's constructor
+		/// - `salt`: used for generating the new contract's address
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can
+		///   increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -530,6 +561,12 @@ pub mod module {
 
 		/// Issue an EVM create operation. The next available system contract
 		/// address will be used as created contract address.
+		///
+		/// - `init`: the data supplied for the contract's constructor
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can
+		///   increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create_network_contract(
 			origin: OriginFor<T>,
@@ -561,6 +598,11 @@ pub mod module {
 			})
 		}
 
+		/// Transfers Contract maintainership to a new EVM Address.
+		///
+		/// - `contract`: the contract whose maintainership is being
+		///   transferred, the caller must be the contract's maintainer
+		/// - `new_maintainer`: the address of the new maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_maintainer())]
 		#[transactional]
 		pub fn transfer_maintainer(
@@ -576,6 +618,10 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Mark a given contract as deployed.
+		///
+		/// - `contract`: The contract to mark as deployed, the caller must the
+		///   contract's maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::deploy())]
 		#[transactional]
 		pub fn deploy(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -592,6 +638,10 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Mark a given contract as deployed without paying the deployment fee
+		///
+		/// - `contract`: The contract to mark as deployed, the caller must be
+		///   the contract's maintainer.
 		#[pallet::weight(<T as Config>::WeightInfo::deploy_free())]
 		#[transactional]
 		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -601,6 +651,8 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Mark the caller's address to allow contract development.
+		/// This allows the address to interact with non-deployed contracts.
 		#[pallet::weight(<T as Config>::WeightInfo::enable_contract_development())]
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -625,6 +677,8 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Mark the caller's address to disable contract development.
+		/// This disallows the address to interact with non-deployed contracts.
 		#[pallet::weight(<T as Config>::WeightInfo::disable_contract_development())]
 		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -644,6 +698,11 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Set the code of a contract at a given address.
+		///
+		/// - `contract`: The contract whose code is being set, must not be
+		///   marked as deployed
+		/// - `code`: The new ABI bundle for the contract
 		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
 		#[transactional]
 		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
@@ -655,6 +714,9 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Remove a contract at a given address.
+		///
+		/// - `contract`: The contract to remove, must not be marked as deployed
 		#[pallet::weight(<T as Config>::WeightInfo::selfdestruct())]
 		#[transactional]
 		pub fn selfdestruct(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -670,7 +732,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Remove an account.
+	/// Removes an account from Accounts and AccountStorages.
 	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
 		let mut size = 0u32;
 
@@ -779,6 +841,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Sets a given contract's contract info to a new maintainer.
 	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
 			account_info
@@ -825,6 +888,11 @@ impl<T: Config> Pallet<T> {
 		})
 	}
 
+	/// Set the code of a contract at a given address.
+	///
+	/// - Ensures signer is maintainer or root.
+	/// - Update codes info.
+	/// - Save `code`if not saved yet.
 	fn do_set_code(root_or_signed: Either<(), T::AccountId>, contract: EvmAddress, code: Vec<u8>) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
@@ -870,6 +938,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Selfdestruct a contract at a given address.
 	fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
 		Accounts::<T>::mutate_exists(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.take().ok_or(Error::<T>::ContractNotFound)?;
