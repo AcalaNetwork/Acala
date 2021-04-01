@@ -33,7 +33,29 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::Encode;
+pub use frame_support::{
+	construct_runtime, log, parameter_types,
+	traits::{
+		Contains, ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier,
+		Randomness, U128CurrencyToVote, WithdrawReasons,
+	},
+	weights::{
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
+		DispatchClass, IdentityFee, Weight,
+	},
+	StorageValue,
+};
+use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use hex_literal::hex;
+use module_currencies::{BasicCurrencyAdapter, Currency};
+use module_evm::{CallInfo, CreateInfo};
+use module_evm_accounts::EvmAddressMapping;
+use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use orml_tokens::CurrencyAdapter;
+use orml_traits::{
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, Handler,
+};
+use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
@@ -47,18 +69,10 @@ use sp_runtime::{
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
+
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-
-use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
-use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::{CallInfo, CreateInfo};
-use module_evm_accounts::EvmAddressMapping;
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use orml_tokens::CurrencyAdapter;
-use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
-use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 
 #[cfg(any(feature = "std", test))]
 pub use pallet_staking::StakerStatus;
@@ -98,19 +112,6 @@ mod parachain_use {
 
 /// Weights for pallets used in the runtime.
 mod weights;
-
-pub use frame_support::{
-	construct_runtime, log, parameter_types,
-	traits::{
-		Contains, ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier,
-		Randomness, U128CurrencyToVote,
-	},
-	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
-		DispatchClass, IdentityFee, Weight,
-	},
-	StorageValue,
-};
 
 // pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
@@ -998,11 +999,28 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 }
 
+pub struct EvmAccountsOnClaimHandler;
+impl Handler<AccountId> for EvmAccountsOnClaimHandler {
+	fn handle(who: &AccountId) -> DispatchResult {
+		if System::providers(who) == 0 {
+			// no provider. i.e. no native tokens
+			// ensure there are some native tokens, which will add provider
+			TransactionPayment::ensure_can_charge_fee(
+				who,
+				NativeTokenExistentialDeposit::get(),
+				WithdrawReasons::TRANSACTION_PAYMENT,
+			);
+		}
+		Ok(())
+	}
+}
+
 impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
+	type OnClaim = EvmAccountsOnClaimHandler;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 

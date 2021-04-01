@@ -533,7 +533,7 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
-	fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
+	pub fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
 		let native_currency_id = T::NativeCurrencyId::get();
 		let stable_currency_id = T::StableCurrencyId::get();
 		let other_currency_ids = T::AllNonNativeCurrencyIds::get();
