@@ -241,6 +241,7 @@ runtime-benchmarks = [
 	"pallet-collective/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
+	"chainbridge/runtime-benchmarks",
 
 	"module-cdp-treasury/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
