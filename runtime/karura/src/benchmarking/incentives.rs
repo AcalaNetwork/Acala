@@ -18,7 +18,7 @@
 
 use crate::{
 	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, CurrencyId, GetStableCurrencyId, Incentives, Rate,
-	Rewards, Runtime, System, TokenSymbol, KAR, KSM, KUSD,
+	Rewards, Runtime, System, TokenSymbol, KAR, KSM, KUSD, LKSM,
 };
 
 use super::utils::set_balance;
@@ -112,6 +112,12 @@ runtime_benchmarks! {
 			values.push((PoolId::DexSaving(lp_share_currency_id), Rate::default()));
 		}
 	}: _(RawOrigin::Root, values)
+
+	add_allowance {
+		let caller: AccountId = account("caller", 0, SEED);
+		set_balance(LKSM, &caller, 10_000 * dollar(KUSD));
+		let pool_id = PoolId::HomaValidatorAllowance(caller.clone());
+	}: _(RawOrigin::Signed(caller), pool_id, 1_000)
 }
 
 #[cfg(test)]

@@ -81,4 +81,7 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 			.saturating_add((3_337_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
+	fn add_allowance() -> Weight {
+		(2_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
