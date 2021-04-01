@@ -987,7 +987,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/wangjj9219/chainbridge-substrate#cc994d8190e986eedc2538ab2bb10a5fb83e017f"
+source = "git+https://github.com/AcalaNetwork/chainbridge-substrate#f8b4d8360f9a3bf4b100056ccdbce7fc1278a337"
 dependencies = [
  "frame-support",
  "frame-system",

@@ -1271,6 +1271,7 @@ impl chainbridge::Config for Runtime {
 }
 
 impl ecosystem_chainsafe::Config for Runtime {
+	type Event = Event;
 	type Currency = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type RegistorOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -1669,7 +1670,7 @@ macro_rules! construct_mandala_runtime {
 				// Ecosystem modules
 				RenVmBridge: ecosystem_renvm_bridge::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
 				ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
-				ChainSafeTransfer: ecosystem_chainsafe::{Module, Call, Storage},
+				ChainSafeTransfer: ecosystem_chainsafe::{Module, Call, Storage, Event<T>},
 
 				EVM: module_evm::{Module, Config<T>, Call, Storage, Event<T>},
 				EVMBridge: module_evm_bridge::{Module},

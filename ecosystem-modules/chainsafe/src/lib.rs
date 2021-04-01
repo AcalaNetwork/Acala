@@ -36,6 +36,8 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + chainbridge::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		#[pallet::constant]
@@ -53,6 +55,12 @@ pub mod module {
 		InvalidDestChainId,
 		ResourceIdAlreadyRegistered,
 		ResourceIdNotRegistered,
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(fn deposit_event)]
+	pub enum Event<T: Config> {
+		RegisteredResourceId(ResourceId, CurrencyId),
 	}
 
 	#[pallet::pallet]
@@ -80,11 +88,12 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			T::RegistorOrigin::ensure_origin(origin)?;
 			ensure!(
-				ResourceIds::<T>::contains_key(&currency_id) || CurrencyIds::<T>::contains_key(&resource_id),
+				!ResourceIds::<T>::contains_key(currency_id) && !CurrencyIds::<T>::contains_key(resource_id),
 				Error::<T>::ResourceIdAlreadyRegistered,
 			);
-			ResourceIds::<T>::insert(&currency_id, resource_id);
-			CurrencyIds::<T>::insert(&resource_id, currency_id);
+			ResourceIds::<T>::insert(currency_id, resource_id);
+			CurrencyIds::<T>::insert(resource_id, currency_id);
+			Self::deposit_event(Event::RegisteredResourceId(resource_id, currency_id));
 			Ok(().into())
 		}
 
@@ -92,8 +101,8 @@ pub mod module {
 		#[transactional]
 		pub fn remove_resource_id(origin: OriginFor<T>, resource_id: ResourceId) -> DispatchResultWithPostInfo {
 			T::RegistorOrigin::ensure_origin(origin)?;
-			if let Some(currency_id) = CurrencyIds::<T>::take(&resource_id) {
-				ResourceIds::<T>::remove(&currency_id);
+			if let Some(currency_id) = CurrencyIds::<T>::take(resource_id) {
+				ResourceIds::<T>::remove(currency_id);
 			}
 			Ok(().into())
 		}
