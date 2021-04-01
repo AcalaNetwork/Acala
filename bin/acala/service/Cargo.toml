@@ -83,6 +83,7 @@ runtime-benchmarks = [
 	"mandala-runtime/runtime-benchmarks",
 	"karura-runtime/runtime-benchmarks",
 	"acala-runtime/runtime-benchmarks",
+	"polkadot-service/runtime-benchmarks",
 ]
 with-mandala-runtime = [
 	"mandala-runtime",
