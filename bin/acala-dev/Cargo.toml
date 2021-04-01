@@ -24,4 +24,7 @@ runtime-benchmarks = [
 with-ethereum-compatibility = [
 	"acala-dev-service/with-ethereum-compatibility"
 ]
-with-mandala-runtime = []
+with-mandala-runtime = [
+	"acala-dev-service/with-mandala-runtime",
+	"acala-cli/with-mandala-runtime",
+]
