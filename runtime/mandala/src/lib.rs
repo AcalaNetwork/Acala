@@ -1534,6 +1534,9 @@ mod parachain_impl {
 			// KILT
 			t.insert(("KILT".into(), (Junction::Parent, Junction::Parachain { id: 12623 }).into()));
 
+			// BCG
+			t.insert(("BCG".into(), (Junction::Parent, Junction::Parachain { id: 8 }).into()));
+
 			t
 		};
 	}
