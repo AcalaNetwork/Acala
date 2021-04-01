@@ -12,7 +12,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1",
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-evm = { version = "0.24.0", default-features = false, features = ["with-codec"] }
+evm = { version = "0.26.0", default-features = false, features = ["with-codec"] }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }

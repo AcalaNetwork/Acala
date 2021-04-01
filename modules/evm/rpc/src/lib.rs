@@ -37,7 +37,7 @@ use std::convert::{TryFrom, TryInto};
 use std::{marker::PhantomData, sync::Arc};
 
 use call_request::{CallRequest, EstimateResourcesResponse};
-pub use module_evm::{AddressMapping, ExitReason};
+pub use module_evm::{AddressMapping, ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
@@ -57,11 +57,21 @@ fn internal_err<T: ToString>(message: T) -> Error {
 fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	match reason {
 		ExitReason::Succeed(_) => Ok(()),
-		ExitReason::Error(e) => Err(Error {
-			code: ErrorCode::InternalError,
-			message: format!("execution error: {:?}", e),
-			data: Some(Value::String("0x".to_string())),
-		}),
+		ExitReason::Error(e) => {
+			if *e == ExitError::OutOfGas || *e == ExitError::OutOfFund {
+				// `ServerError(0)` will be useful in estimate gas
+				return Err(Error {
+					code: ErrorCode::ServerError(0),
+					message: "out of gas or fund".to_string(),
+					data: None,
+				});
+			}
+			Err(Error {
+				code: ErrorCode::InternalError,
+				message: format!("execution error: {:?}", e),
+				data: Some(Value::String("0x".to_string())),
+			})
+		}
 		ExitReason::Revert(_) => Err(Error {
 			code: ErrorCode::InternalError,
 			message: decode_revert_message(data)
@@ -209,7 +219,7 @@ where
 			data: request.data.map(Bytes),
 		};
 
-		let calculate_gas_used = |request| {
+		let calculate_gas_used = |request| -> Result<(U256, i32)> {
 			let hash = self.client.info().best_hash;
 
 			let CallRequest {
@@ -320,26 +330,24 @@ where
 						storage = used_storage;
 					}
 
-					// if Err -- we need more gas
-					Err(_) => {
+					Err(err) => {
 						log::debug!(
 							target: "evm",
 							"calculate_gas_used err, lower: {:?}, upper: {:?}, mid: {:?}",
 							lower, upper, mid
 						);
 
-						lower = mid;
-						mid = (lower + upper + 1) / 2;
-
-						if mid == lower {
-							// 1.balance not enough.
-							// 2.evm exec failed.
-							return Err(Error {
-								code: ErrorCode::InternalError,
-								message: "out of gas / revert".into(),
-								data: None,
-							});
+						// if Err == OutofGas or OutofFund, we need more gas
+						if err.code == ErrorCode::ServerError(0) {
+							lower = mid;
+							mid = (lower + upper + 1) / 2;
+							if mid == lower {
+								break;
+							}
 						}
+
+						// Other errors, return directly
+						return Err(err);
 					}
 				}
 			}
