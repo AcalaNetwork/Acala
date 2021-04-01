@@ -504,7 +504,7 @@ impl<T: Config> Pallet<T> {
 			T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, bid_price)?;
 
 			// decrease account ref of bidder
-			frame_system::Module::<T>::dec_consumers(&bidder);
+			frame_system::Pallet::<T>::dec_consumers(&bidder);
 		}
 
 		// decrease total surplus in auction
@@ -520,7 +520,7 @@ impl<T: Config> Pallet<T> {
 			T::CDPTreasury::issue_debit(&bidder, debit_auction.fix, false)?;
 
 			// decrease account ref of bidder
-			frame_system::Module::<T>::dec_consumers(&bidder);
+			frame_system::Pallet::<T>::dec_consumers(&bidder);
 		}
 
 		// decrease total debit in auction
@@ -570,11 +570,11 @@ impl<T: Config> Pallet<T> {
 			T::CDPTreasury::issue_debit(&bidder, bid_price, false)?;
 
 			// decrease account ref of bidder
-			frame_system::Module::<T>::dec_consumers(&bidder);
+			frame_system::Pallet::<T>::dec_consumers(&bidder);
 		}
 
 		// decrease account ref of refund recipient
-		frame_system::Module::<T>::dec_consumers(&collateral_auction.refund_recipient);
+		frame_system::Pallet::<T>::dec_consumers(&collateral_auction.refund_recipient);
 
 		// decrease total collateral and target in auction
 		TotalCollateralInAuction::<T>::mutate(collateral_auction.currency_id, |balance| {
@@ -879,7 +879,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// decrement recipient account reference
-		frame_system::Module::<T>::dec_consumers(&collateral_auction.refund_recipient);
+		frame_system::Pallet::<T>::dec_consumers(&collateral_auction.refund_recipient);
 
 		// update auction records
 		TotalCollateralInAuction::<T>::mutate(collateral_auction.currency_id, |balance| {
@@ -939,7 +939,7 @@ impl<T: Config> Pallet<T> {
 	/// increment `new_bidder` reference and decrement `last_bidder`
 	/// reference if any
 	fn swap_bidders(new_bidder: &T::AccountId, last_bidder: Option<&T::AccountId>) {
-		if frame_system::Module::<T>::inc_consumers(new_bidder).is_err() {
+		if frame_system::Pallet::<T>::inc_consumers(new_bidder).is_err() {
 			// No providers for the locks. This is impossible under normal circumstances
 			// since the funds that are under the lock will themselves be stored in the
 			// account and therefore will need a reference.
@@ -950,7 +950,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(who) = last_bidder {
-			frame_system::Module::<T>::dec_consumers(who);
+			frame_system::Pallet::<T>::dec_consumers(who);
 		}
 	}
 }
@@ -995,7 +995,7 @@ impl<T: Config> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId>
 
 		if let Some((bidder, _)) = &winner {
 			// decrease account ref of winner
-			frame_system::Module::<T>::dec_consumers(bidder);
+			frame_system::Pallet::<T>::dec_consumers(bidder);
 		}
 	}
 }
@@ -1025,7 +1025,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 			})?;
 		}
 
-		let start_time = <frame_system::Module<T>>::block_number();
+		let start_time = <frame_system::Pallet<T>>::block_number();
 
 		// do not set end time for collateral auction
 		let auction_id = T::Auction::new_auction(start_time, None)?;
@@ -1043,7 +1043,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 		);
 
 		// increment recipient account reference
-		if frame_system::Module::<T>::inc_consumers(refund_recipient).is_err() {
+		if frame_system::Pallet::<T>::inc_consumers(refund_recipient).is_err() {
 			// No providers for the locks. This is impossible under normal circumstances
 			// since the funds that are under the lock will themselves be stored in the
 			// account and therefore will need a reference.
@@ -1067,7 +1067,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 			Ok(())
 		})?;
 
-		let start_time = <frame_system::Module<T>>::block_number();
+		let start_time = <frame_system::Pallet<T>>::block_number();
 		let end_block = start_time + T::AuctionTimeToClose::get();
 
 		// set end time for debit auction
@@ -1094,7 +1094,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 			Ok(())
 		})?;
 
-		let start_time = <frame_system::Module<T>>::block_number();
+		let start_time = <frame_system::Pallet<T>>::block_number();
 
 		// do not set end time for surplus auction
 		let auction_id = T::Auction::new_auction(start_time, None)?;

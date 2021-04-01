@@ -187,6 +187,14 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
+
+	fn add_liquidity(_: &AccountId, _: CurrencyId, _: CurrencyId, _: Balance, _: Balance, _: bool) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn remove_liquidity(_: &AccountId, _: CurrencyId, _: CurrencyId, _: Balance, _: bool) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 thread_local! {
@@ -250,10 +258,10 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		IncentivesModule: incentives::{Module, Storage, Call, Event<T>},
-		TokensModule: orml_tokens::{Module, Storage, Event<T>},
-		RewardsModule: orml_rewards::{Module, Storage, Call},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		IncentivesModule: incentives::{Pallet, Storage, Call, Event<T>},
+		TokensModule: orml_tokens::{Pallet, Storage, Event<T>},
+		RewardsModule: orml_rewards::{Pallet, Storage, Call},
 	}
 );
 

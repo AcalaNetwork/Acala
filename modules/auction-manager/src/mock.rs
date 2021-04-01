@@ -216,12 +216,12 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		AuctionManagerModule: auction_manager::{Module, Storage, Call, Event<T>, ValidateUnsigned},
-		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		AuctionModule: orml_auction::{Module, Storage, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Event<T>},
-		DEXModule: module_dex::{Module, Storage, Call, Event<T>, Config<T>},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		AuctionManagerModule: auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		AuctionModule: orml_auction::{Pallet, Storage, Call, Event<T>},
+		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
+		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
 

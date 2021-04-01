@@ -178,7 +178,7 @@ pub mod module {
 									)
 									.is_ok()
 								{
-									<orml_rewards::Module<T>>::accumulate_reward(&pool_id, incentive_reward_amount);
+									<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, incentive_reward_amount);
 								}
 							}
 
@@ -210,7 +210,7 @@ pub mod module {
 											)
 											.is_ok()
 										{
-											<orml_rewards::Module<T>>::accumulate_reward(
+											<orml_rewards::Pallet<T>>::accumulate_reward(
 												&pool_id,
 												dex_saving_reward_amount,
 											);
@@ -264,7 +264,7 @@ pub mod module {
 			pool_id: PoolId<T::RelaychainAccountId>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			<orml_rewards::Module<T>>::claim_rewards(&who, &pool_id);
+			<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
 			Self::deposit_event(Event::ClaimRewards(who, pool_id));
 			Ok(().into())
 		}
@@ -330,7 +330,7 @@ pub mod module {
 						&T::RewardsVaultAccountId::get(),
 						amount,
 					)?;
-					<orml_rewards::Module<T>>::accumulate_reward(&pool_id, amount);
+					<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, amount);
 				}
 				_ => {
 					return Err(Error::<T>::InvalidPoolId.into());
@@ -353,12 +353,12 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 
 		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
-		<orml_rewards::Module<T>>::add_share(
+		<orml_rewards::Pallet<T>>::add_share(
 			who,
 			&PoolId::DexIncentive(lp_currency_id),
 			amount.unique_saturated_into(),
 		);
-		<orml_rewards::Module<T>>::add_share(who, &PoolId::DexSaving(lp_currency_id), amount);
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::DexSaving(lp_currency_id), amount);
 
 		Self::deposit_event(Event::DepositDEXShare(who.clone(), lp_currency_id, amount));
 		Ok(())
@@ -367,8 +367,8 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	fn do_withdraw_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 		ensure!(
-			<orml_rewards::Module<T>>::share_and_withdrawn_reward(&PoolId::DexIncentive(lp_currency_id), &who).0
-				>= amount && <orml_rewards::Module<T>>::share_and_withdrawn_reward(
+			<orml_rewards::Pallet<T>>::share_and_withdrawn_reward(&PoolId::DexIncentive(lp_currency_id), &who).0
+				>= amount && <orml_rewards::Pallet<T>>::share_and_withdrawn_reward(
 				&PoolId::DexSaving(lp_currency_id),
 				&who
 			)
@@ -377,12 +377,12 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		);
 
 		T::Currency::transfer(lp_currency_id, &Self::account_id(), &who, amount)?;
-		<orml_rewards::Module<T>>::remove_share(
+		<orml_rewards::Pallet<T>>::remove_share(
 			who,
 			&PoolId::DexIncentive(lp_currency_id),
 			amount.unique_saturated_into(),
 		);
-		<orml_rewards::Module<T>>::remove_share(who, &PoolId::DexSaving(lp_currency_id), amount);
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::DexSaving(lp_currency_id), amount);
 
 		Self::deposit_event(Event::WithdrawDEXShare(who.clone(), lp_currency_id, amount));
 		Ok(())
@@ -403,7 +403,7 @@ impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpda
 				previous_amount.saturating_sub(adjustment_abs)
 			};
 
-			<orml_rewards::Module<T>>::set_share(who, &PoolId::LoansIncentive(*currency_id), new_share_amount);
+			<orml_rewards::Pallet<T>>::set_share(who, &PoolId::LoansIncentive(*currency_id), new_share_amount);
 		}
 	}
 }
@@ -412,7 +412,7 @@ pub struct OnIncreaseGuarantee<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, T::RelaychainAccountId, Balance)> for OnIncreaseGuarantee<T> {
 	fn happened(info: &(T::AccountId, T::RelaychainAccountId, Balance)) {
 		let (who, validator, increment) = info;
-		<orml_rewards::Module<T>>::add_share(who, &PoolId::HomaValidatorAllowance(validator.clone()), *increment);
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::HomaValidatorAllowance(validator.clone()), *increment);
 	}
 }
 
@@ -420,7 +420,7 @@ pub struct OnDecreaseGuarantee<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, T::RelaychainAccountId, Balance)> for OnDecreaseGuarantee<T> {
 	fn happened(info: &(T::AccountId, T::RelaychainAccountId, Balance)) {
 		let (who, validator, decrement) = info;
-		<orml_rewards::Module<T>>::remove_share(who, &PoolId::HomaValidatorAllowance(validator.clone()), *decrement);
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::HomaValidatorAllowance(validator.clone()), *decrement);
 	}
 }
 

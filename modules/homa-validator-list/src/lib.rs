@@ -268,7 +268,7 @@ pub mod module {
 						guarantee.bonded.is_zero() || guarantee.bonded >= T::MinBondAmount::get(),
 						Error::<T>::BelowMinBondAmount,
 					);
-					let expired_block = <frame_system::Module<T>>::block_number() + T::BondingDuration::get();
+					let expired_block = <frame_system::Pallet<T>>::block_number() + T::BondingDuration::get();
 					guarantee.unbonding = Some((amount, expired_block));
 
 					Self::deposit_event(Event::UnbondGuarantee(guarantor.clone(), validator.clone(), amount));
@@ -309,7 +309,7 @@ pub mod module {
 			);
 			Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 				let old_total = guarantee.total;
-				*guarantee = guarantee.consolidate_unbonding(<frame_system::Module<T>>::block_number());
+				*guarantee = guarantee.consolidate_unbonding(<frame_system::Pallet<T>>::block_number());
 				let new_total = guarantee
 					.bonded
 					.saturating_add(guarantee.unbonding.unwrap_or_default().0);

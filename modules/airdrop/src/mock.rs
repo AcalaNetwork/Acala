@@ -80,12 +80,12 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		AirDrop: airdrop::{Module, Call, Storage, Event<T>, Config<T>},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		AirDrop: airdrop::{Pallet, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
-pub type Airdrop = Module<Runtime>;
+pub type Airdrop = Pallet<Runtime>;
 
 pub struct ExtBuilder();
 
