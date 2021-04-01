@@ -247,25 +247,25 @@ fn compute_fee_works_without_multiplier() {
 				class: DispatchClass::Operational,
 				pays_fee: Pays::No,
 			};
-			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 10), 10);
+			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 10), 10);
 			// No tip, only base fee works
 			let dispatch_info = DispatchInfo {
 				weight: 0,
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
-			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
 			// Tip + base fee works
-			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 69), 169);
+			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 69), 169);
 			// Len (byte fee) + base fee works
-			assert_eq!(Module::<Runtime>::compute_fee(42, &dispatch_info, 0), 520);
+			assert_eq!(Pallet::<Runtime>::compute_fee(42, &dispatch_info, 0), 520);
 			// Weight fee + base fee works
 			let dispatch_info = DispatchInfo {
 				weight: 1000,
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
-			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 1100);
+			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 0), 1100);
 		});
 }
 
@@ -284,7 +284,7 @@ fn compute_fee_works_with_multiplier() {
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
-			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
 
 			// Everything works together :)
 			let dispatch_info = DispatchInfo {
@@ -294,7 +294,7 @@ fn compute_fee_works_with_multiplier() {
 			};
 			// 123 weight, 456 length, 100 base
 			assert_eq!(
-				Module::<Runtime>::compute_fee(456, &dispatch_info, 789),
+				Pallet::<Runtime>::compute_fee(456, &dispatch_info, 789),
 				100 + (3 * 123 / 2) + 4560 + 789,
 			);
 		});
@@ -316,7 +316,7 @@ fn compute_fee_works_with_negative_multiplier() {
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
-			assert_eq!(Module::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
+			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 0), 100);
 
 			// Everything works together.
 			let dispatch_info = DispatchInfo {
@@ -326,7 +326,7 @@ fn compute_fee_works_with_negative_multiplier() {
 			};
 			// 123 weight, 456 length, 100 base
 			assert_eq!(
-				Module::<Runtime>::compute_fee(456, &dispatch_info, 789),
+				Pallet::<Runtime>::compute_fee(456, &dispatch_info, 789),
 				100 + (123 / 2) + 4560 + 789,
 			);
 		});
@@ -346,7 +346,7 @@ fn compute_fee_does_not_overflow() {
 				pays_fee: Pays::Yes,
 			};
 			assert_eq!(
-				Module::<Runtime>::compute_fee(<u32>::max_value(), &dispatch_info, <u128>::max_value()),
+				Pallet::<Runtime>::compute_fee(<u32>::max_value(), &dispatch_info, <u128>::max_value()),
 				<u128>::max_value()
 			);
 		});

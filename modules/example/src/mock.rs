@@ -69,9 +69,9 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Event<T>},
+		System: frame_system::{Pallet, Call, Event<T>},
 		// NOTE: name Example here is needed in order to have same module prefix
-		Example: example::{Module, Call, Event<T>, Config<T>, Storage},
+		Example: example::{Pallet, Call, Event<T>, Config<T>, Storage},
 	}
 );
 

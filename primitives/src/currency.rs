@@ -127,6 +127,7 @@ create_currency_id! {
 		PLM("Plasm", 18) = 7,
 		PHA("Phala", 18) = 8,
 		HDT("HydraDX", 12) = 9,
+		BCG("Bit.Country", 18) = 11,
 
 		// Kusama Ecosystem
 		KAR("Karura", 12) = 128,
@@ -138,6 +139,9 @@ create_currency_id! {
 		// Reserve for POLKABTC = 134
 		SDN("Shiden", 18) = 135,
 		// Reserve for PHA = 136
+		// Reserve for HDT = 137
+		KILT("Kilt", 15) = 138,
+		// Reserve for BCG = 139
 	}
 }
 

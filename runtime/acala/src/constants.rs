@@ -80,8 +80,8 @@ pub mod fee {
 			smallvec![WeightToFeeCoefficient {
 				degree: 1,
 				negative: false,
-				coeff_frac: Perbill::from_rational_approximation(p % q, q), // zero
-				coeff_integer: p / q,                                       // 80
+				coeff_frac: Perbill::from_rational(p % q, q), // zero
+				coeff_integer: p / q,                         // 80
 			}]
 		}
 	}

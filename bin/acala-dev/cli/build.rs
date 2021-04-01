@@ -17,5 +17,5 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 fn main() {
-	substrate_build_script_utils::generate_cargo_keys();
+	orml_build_script_utils::generate_cargo_keys();
 }

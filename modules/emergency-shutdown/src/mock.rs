@@ -102,7 +102,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = frame_system::Module<Runtime>;
+	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
 }
@@ -246,13 +246,13 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event<T>},
-		EmergencyShutdownModule: emergency_shutdown::{Module, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Module, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Module, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Module, Storage, Call, Event<T>},
-		Loans: loans::{Module, Storage, Call, Event<T>},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		EmergencyShutdownModule: emergency_shutdown::{Pallet, Storage, Call, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call, Event<T>},
+		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
+		Loans: loans::{Pallet, Storage, Call, Event<T>},
 	}
 );
 

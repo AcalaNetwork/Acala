@@ -1,6 +1,6 @@
 [package]
 name = "module-transaction-payment"
-version = "0.7.10"
+version = "0.7.11"
 authors = ["Acala Developers"]
 edition = "2018"
 

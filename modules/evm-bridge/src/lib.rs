@@ -51,9 +51,13 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Execution failed
 		ExecutionFail,
+		/// Execution reverted
 		ExecutionRevert,
+		/// Execution fatal
 		ExecutionFatal,
+		/// Execution error
 		ExecutionError,
 	}
 
@@ -68,6 +72,8 @@ pub mod module {
 }
 
 impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
+	// Calls the totalSupply method on an ERC20 contract using the given context
+	// and returns the total supply.
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
@@ -80,6 +86,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		Ok(value.saturated_into::<BalanceOf<T>>())
 	}
 
+	// Calls the balanceOf method on an ERC20 contract using the given context
+	// and returns the address's balance.
 	fn balance_of(context: InvokeContext, address: H160) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.balanceOf method hash
 		let mut input = hex!("70a08231").to_vec();
@@ -95,6 +103,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 			.saturated_into::<BalanceOf<T>>())
 	}
 
+	// Calls the transfer method on an ERC20 contract using the given context.
 	fn transfer(context: InvokeContext, to: H160, value: BalanceOf<T>) -> DispatchResult {
 		// ERC20.transfer method hash
 		let mut input = hex!("a9059cbb").to_vec();

@@ -143,6 +143,27 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
+
+	fn add_liquidity(
+		_who: &AccountId,
+		_currency_id_a: CurrencyId,
+		_currency_id_b: CurrencyId,
+		_max_amount_a: Balance,
+		_max_amount_b: Balance,
+		_deposit_increment_share: bool,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn remove_liquidity(
+		_who: &AccountId,
+		_currency_id_a: CurrencyId,
+		_currency_id_b: CurrencyId,
+		_remove_share: Balance,
+		_by_withdraw: bool,
+	) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 parameter_type_with_key! {
@@ -195,9 +216,9 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		PricesModule: prices::{Module, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Module, Call, Storage, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		PricesModule: prices::{Pallet, Storage, Call, Event<T>},
+		Tokens: orml_tokens::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

@@ -21,7 +21,7 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{Change, MultiCurrency};
+use orml_traits::{Change, Happened, MultiCurrency};
 use primitives::{Balance, CurrencyId, EraIndex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -57,6 +57,25 @@ pub struct Params {
 	pub base_fee_rate: Rate,
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+pub enum Phase {
+	/// Rebalance process started.
+	Started,
+	/// Relaychain has already `withdraw_unbonded` and `payout_stakers`.
+	RelaychainUpdated,
+	/// Transfer available assets from relaychain to parachain and update ledger
+	/// of staking_pool.
+	LedgerUpdated,
+	/// Rebalance process finished.
+	Finished,
+}
+
+impl Default for Phase {
+	fn default() -> Self {
+		Self::Finished
+	}
+}
+
 /// The ledger of staking pool.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
 pub struct Ledger {
@@ -68,6 +87,7 @@ pub struct Ledger {
 	pub free_pool: Balance,
 	/// The amount to unbond when next era beginning.
 	pub to_unbond_next_era: (Balance, Balance),
+	//TODO: add `debit` to record total debit caused by slahsing on relaychain.
 }
 
 impl Ledger {
@@ -178,6 +198,8 @@ pub mod module {
 		GetFeeFailed,
 		/// Invalid config.
 		InvalidConfig,
+		/// Rebalance process is unfinished.
+		RebalanceUnfinished,
 	}
 
 	#[pallet::event]
@@ -231,6 +253,11 @@ pub mod module {
 	#[pallet::getter(fn staking_pool_ledger)]
 	pub type StakingPoolLedger<T: Config> = StorageValue<_, Ledger, ValueQuery>;
 
+	/// The rebalance phase of current era.
+	#[pallet::storage]
+	#[pallet::getter(fn rebalance_phase)]
+	pub type RebalancePhase<T: Config> = StorageValue<_, Phase, ValueQuery>;
+
 	/// The params of staking pool.
 	#[pallet::storage]
 	#[pallet::getter(fn staking_pool_params)]
@@ -270,7 +297,14 @@ pub mod module {
 	pub struct Pallet<T>(PhantomData<T>);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(_: T::BlockNumber) -> Weight {
+			Self::rebalance();
+
+			// TODO: return different weight according rebalance phase.
+			0
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -344,7 +378,7 @@ impl<T: Config> Pallet<T> {
 		distribution
 	}
 
-	/// Require polkadot bridge to bind more staking currency on Polkadot.
+	/// Require polkadot bridge to bind more staking currency on relaychain.
 	pub fn bond_extra(amount: Balance) -> DispatchResult {
 		if amount.is_zero() {
 			return Ok(());
@@ -355,7 +389,7 @@ impl<T: Config> Pallet<T> {
 			.iter()
 			.map(|account_index| {
 				let staking_ledger = T::Bridge::staking_ledger(*account_index);
-				let free = T::Bridge::balance(*account_index).saturating_sub(staking_ledger.total);
+				let free = T::Bridge::free_balance(*account_index);
 				(staking_ledger.active, *account_index, free)
 			})
 			.collect::<Vec<_>>();
@@ -375,7 +409,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Require polkadot bridge to unbond on Polkadot.
+	/// Require bridge to unbond on relaychain.
 	pub fn unbond(amount: Balance) -> DispatchResult {
 		if amount.is_zero() {
 			return Ok(());
@@ -398,8 +432,8 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Require polkadot bridge to transfer staking currency to specific
-	/// account from Polkadot.
+	/// Require bridge to transfer staking currency to specific
+	/// account from relaychain.
 	pub fn receive_from_bridge(to: &T::AccountId, amount: Balance) -> DispatchResult {
 		if amount.is_zero() {
 			return Ok(());
@@ -410,7 +444,7 @@ impl<T: Config> Pallet<T> {
 			.iter()
 			.map(|account_index| {
 				let ledger = T::Bridge::staking_ledger(*account_index);
-				let free = T::Bridge::balance(*account_index).saturating_sub(ledger.total);
+				let free = T::Bridge::free_balance(*account_index);
 				(ledger.active, *account_index, free)
 			})
 			.collect::<Vec<_>>();
@@ -430,8 +464,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Transfer staking currency from specific account to Polkadot by
-	/// polkadot bridge.
+	/// Transfer staking currency from specific account to relaychain by bridge.
 	pub fn transfer_to_bridge(from: &T::AccountId, amount: Balance) -> DispatchResult {
 		if amount.is_zero() {
 			return Ok(());
@@ -454,29 +487,29 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Require polkadot bridge to withdraw unbonded on Polkadot.
+	/// Require bridge to withdraw unbonded on relaychain.
 	pub fn withdraw_unbonded() {
 		for sub_account_index in T::PoolAccountIndexes::get() {
 			T::Bridge::withdraw_unbonded(sub_account_index);
 		}
 	}
 
-	/// Require polkadot bridge to get staking rewards on Polkadot.
-	pub fn payout_nominator() {
+	/// Require bridge to get staking rewards on relaychain.
+	pub fn payout_stakers(era: EraIndex) {
 		for sub_account_index in T::PoolAccountIndexes::get() {
-			T::Bridge::payout_nominator(sub_account_index);
+			T::Bridge::payout_stakers(sub_account_index, era);
 		}
 	}
 
-	/// Require polkadot bridge to nominate validators of Polkadot.
+	/// Require bridge to nominate validators of relaychain.
 	pub fn nominate(targets: Vec<PolkadotAccountIdOf<T>>) {
 		for sub_account_index in T::PoolAccountIndexes::get() {
 			T::Bridge::nominate(sub_account_index, targets.clone());
 		}
 	}
 
-	/// Merge ledger of sub accounts on Polkadot.
-	pub fn staking_ledger() -> PolkadotStakingLedger<Balance, EraIndex> {
+	/// Merge ledger of sub accounts on relaychain.
+	pub fn relaychain_staking_ledger() -> PolkadotStakingLedger<Balance, EraIndex> {
 		let mut active: Balance = Zero::zero();
 		let mut total: Balance = Zero::zero();
 
@@ -512,11 +545,11 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// Merge total balance of sub accounts on Polkadot.
-	pub fn balance() -> Balance {
+	/// Merge total balance of sub accounts on relaychain.
+	pub fn relaychain_free_balance() -> Balance {
 		let mut total: Balance = Zero::zero();
 		for sub_account_index in T::PoolAccountIndexes::get() {
-			total = total.saturating_add(T::Bridge::balance(sub_account_index));
+			total = total.saturating_add(T::Bridge::free_balance(sub_account_index));
 		}
 		total
 	}
@@ -552,102 +585,121 @@ impl<T: Config> Pallet<T> {
 			})
 	}
 
-	pub fn update_ledger_with_bridge(current_era: EraIndex) {
-		// require polkadot bridge to withdraw unbonded.
-		Self::withdraw_unbonded();
+	pub fn rebalance() {
+		match Self::rebalance_phase() {
+			Phase::Started => {
+				// require relaychain to update nominees.
+				Self::nominate(T::Nominees::nominees());
 
-		// require polkadot bridge to payout nominator.
-		// TODO: record the balances of bridge before and after payout_nominator,
-		// and oncommision to homa treasury according to `RewardFeeRatio`.
-		Self::payout_nominator();
+				// require relaychain to withdraw unbonded.
+				Self::withdraw_unbonded();
 
-		StakingPoolLedger::<T>::mutate(|ledger| {
-			let polkadot_bridge_ledger = Self::staking_ledger();
-			let available_on_polkadot_bridge = Self::balance().saturating_sub(polkadot_bridge_ledger.total);
+				// require relaychain to payout stakers.
+				Self::payout_stakers(Self::current_era().saturating_sub(1));
 
-			// update bonded of staking pool to the active(bonded) of polkadot bridge
-			// ledger.
-			ledger.bonded = polkadot_bridge_ledger.active;
-
-			// withdraw available staking currency from polkadot bridge to staking pool.
-			if Self::receive_from_bridge(&Self::account_id(), available_on_polkadot_bridge).is_ok() {
-				let (total_unbonded, claimed_unbonded, _) = Unbonding::<T>::take(current_era);
-				ledger.unbonding_to_free = ledger
-					.unbonding_to_free
-					.saturating_sub(total_unbonded.saturating_sub(claimed_unbonded));
-				ledger.free_pool = ledger
-					.free_pool
-					.saturating_add(available_on_polkadot_bridge.saturating_sub(claimed_unbonded));
-			}
-		});
-	}
-
-	pub fn rebalance(current_era: EraIndex) {
-		// require polkadot bridge to update nominees.
-		Self::nominate(T::Nominees::nominees());
-
-		// require polkadot bridge to withdraw unbonded and withdraw payout and update
-		// staking pool ledger.
-		Self::update_ledger_with_bridge(current_era);
-
-		// staking pool require polkadot bridge to bond and unbond according to ledger,
-		// and update related records.
-		StakingPoolLedger::<T>::mutate(|ledger| {
-			let (mut total_unbond, claimed_unbond) = ledger.to_unbond_next_era;
-			let staking_pool_params = Self::staking_pool_params();
-
-			let bond_rate = ledger
-				.free_pool_ratio()
-				.saturating_sub(staking_pool_params.target_max_free_unbonded_ratio);
-			let bond_amount = bond_rate
-				.saturating_mul_int(ledger.total_belong_to_liquid_holders())
-				.min(ledger.free_pool);
-
-			let unbond_to_free_rate = staking_pool_params
-				.target_unbonding_to_free_ratio
-				.saturating_sub(ledger.unbonding_to_free_ratio())
-				.min(staking_pool_params.unbonding_to_free_adjustment);
-			let unbond_to_free_amount = unbond_to_free_rate
-				.saturating_mul_int(ledger.total_belong_to_liquid_holders())
-				.min(ledger.bonded_belong_to_liquid_holders());
-			total_unbond = total_unbond.saturating_add(unbond_to_free_amount);
-
-			if !bond_amount.is_zero() {
-				if Self::transfer_to_bridge(&Self::account_id(), bond_amount).is_ok() {
-					ledger.free_pool = ledger.free_pool.saturating_sub(bond_amount);
-				}
-
-				if Self::bond_extra(bond_amount).is_ok() {
-					ledger.bonded = ledger.bonded.saturating_add(bond_amount);
-				}
+				RebalancePhase::<T>::put(Phase::RelaychainUpdated);
 			}
 
-			if !total_unbond.is_zero() {
-				// if failed, will try unbonding on next era beginning.
-				if Self::unbond(total_unbond).is_ok() {
-					let expired_era_index = current_era
-						.saturating_add(<<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get());
+			Phase::RelaychainUpdated => {
+				StakingPoolLedger::<T>::mutate(|ledger| {
+					let relaychain_staking_ledger = Self::relaychain_staking_ledger();
+					let relaychain_free_balance = Self::relaychain_free_balance();
 
-					Unbonding::<T>::insert(expired_era_index, (total_unbond, claimed_unbond, claimed_unbond));
-					for (who, claimed) in NextEraUnbonds::<T>::drain() {
-						Unbondings::<T>::insert(who, expired_era_index, claimed);
+					// update bonded of staking pool to the active(bonded) of relaychain ledger.
+					ledger.bonded = relaychain_staking_ledger.active;
+
+					// withdraw available staking currency from polkadot bridge to staking pool.
+					if Self::receive_from_bridge(&Self::account_id(), relaychain_free_balance).is_ok() {
+						let current_era = Self::current_era();
+						let mut total_unbonded: Balance = Zero::zero();
+						let mut total_claimed_unbonded: Balance = Zero::zero();
+
+						// iterator all expired unbonding to get total unbonded amount.
+						for (era_index, (total_unbonding, claimed_unbonding, _)) in Unbonding::<T>::iter() {
+							if era_index <= current_era {
+								total_unbonded = total_unbonded.saturating_add(total_unbonding);
+								total_claimed_unbonded = total_claimed_unbonded.saturating_add(claimed_unbonding);
+								Unbonding::<T>::remove(era_index);
+							}
+						}
+
+						ledger.unbonding_to_free = ledger
+							.unbonding_to_free
+							.saturating_sub(total_unbonded.saturating_sub(total_claimed_unbonded));
+						ledger.free_pool = ledger
+							.free_pool
+							.saturating_add(relaychain_free_balance.saturating_sub(total_claimed_unbonded));
+					}
+				});
+
+				RebalancePhase::<T>::put(Phase::LedgerUpdated);
+			}
+
+			Phase::LedgerUpdated => {
+				StakingPoolLedger::<T>::mutate(|ledger| {
+					let staking_pool_params = Self::staking_pool_params();
+					let (mut total_unbond, claimed_unbond) = ledger.to_unbond_next_era;
+
+					let bond_rate = ledger
+						.free_pool_ratio()
+						.saturating_sub(staking_pool_params.target_max_free_unbonded_ratio);
+					let amount_to_bond = bond_rate
+						.saturating_mul_int(ledger.total_belong_to_liquid_holders())
+						.min(ledger.free_pool);
+					let unbond_to_free_rate = staking_pool_params
+						.target_unbonding_to_free_ratio
+						.saturating_sub(ledger.unbonding_to_free_ratio())
+						.min(staking_pool_params.unbonding_to_free_adjustment);
+					let amount_to_unbond_to_free = unbond_to_free_rate
+						.saturating_mul_int(ledger.total_belong_to_liquid_holders())
+						.min(ledger.bonded_belong_to_liquid_holders());
+					total_unbond = total_unbond.saturating_add(amount_to_unbond_to_free);
+
+					if !amount_to_bond.is_zero() {
+						if Self::transfer_to_bridge(&Self::account_id(), amount_to_bond).is_ok() {
+							ledger.free_pool = ledger.free_pool.saturating_sub(amount_to_bond);
+						}
+
+						if Self::bond_extra(amount_to_bond).is_ok() {
+							ledger.bonded = ledger.bonded.saturating_add(amount_to_bond);
+						}
 					}
 
-					ledger.bonded = ledger.bonded.saturating_sub(total_unbond);
-					ledger.unbonding_to_free = ledger
-						.unbonding_to_free
-						.saturating_add(total_unbond.saturating_sub(claimed_unbond));
-					ledger.to_unbond_next_era = (Zero::zero(), Zero::zero());
-				}
+					if !total_unbond.is_zero() {
+						// if failed, will try unbonding on next era beginning.
+						if Self::unbond(total_unbond).is_ok() {
+							let expired_era_index =
+								Self::current_era()
+									.saturating_add(
+										<<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get(),
+									);
+
+							Unbonding::<T>::insert(expired_era_index, (total_unbond, claimed_unbond, claimed_unbond));
+							for (who, claimed) in NextEraUnbonds::<T>::drain() {
+								Unbondings::<T>::insert(who, expired_era_index, claimed);
+							}
+
+							ledger.bonded = ledger.bonded.saturating_sub(total_unbond);
+							ledger.unbonding_to_free = ledger
+								.unbonding_to_free
+								.saturating_add(total_unbond.saturating_sub(claimed_unbond));
+							ledger.to_unbond_next_era = (Zero::zero(), Zero::zero());
+						}
+					}
+				});
+
+				RebalancePhase::<T>::put(Phase::Finished);
 			}
-		});
+
+			_ => {}
+		}
 	}
 }
 
 impl<T: Config> OnNewEra<EraIndex> for Pallet<T> {
 	fn on_new_era(new_era: EraIndex) {
 		CurrentEra::<T>::put(new_era);
-		Self::rebalance(new_era);
+		RebalancePhase::<T>::put(Phase::Started);
 	}
 }
 
@@ -659,6 +711,11 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 		if amount.is_zero() {
 			return Ok(Zero::zero());
 		}
+
+		ensure!(
+			Self::rebalance_phase() == Phase::Finished,
+			Error::<T>::RebalanceUnfinished
+		);
 
 		StakingPoolLedger::<T>::try_mutate(|ledger| -> sp_std::result::Result<Self::Balance, DispatchError> {
 			let liquid_amount_to_issue = Self::liquid_exchange_rate()
@@ -682,6 +739,11 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 		if amount.is_zero() {
 			return Ok(());
 		}
+
+		ensure!(
+			Self::rebalance_phase() == Phase::Finished,
+			Error::<T>::RebalanceUnfinished
+		);
 
 		StakingPoolLedger::<T>::try_mutate(|ledger| -> DispatchResult {
 			let mut liquid_amount_to_burn = amount;
@@ -730,6 +792,11 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 		if amount.is_zero() {
 			return Ok(());
 		}
+
+		ensure!(
+			Self::rebalance_phase() == Phase::Finished,
+			Error::<T>::RebalanceUnfinished
+		);
 
 		StakingPoolLedger::<T>::try_mutate(|ledger| -> DispatchResult {
 			let mut liquid_amount_to_burn = amount;
@@ -801,6 +868,11 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 		if amount.is_zero() {
 			return Ok(());
 		}
+
+		ensure!(
+			Self::rebalance_phase() == Phase::Finished,
+			Error::<T>::RebalanceUnfinished
+		);
 
 		let current_era = Self::current_era();
 		let bonding_duration = <<T as Config>::Bridge as PolkadotBridgeType<_, _>>::BondingDuration::get();
@@ -889,5 +961,13 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 
 		T::Currency::transfer(T::StakingCurrencyId::get(), &Self::account_id(), who, withdrawn_amount)?;
 		Ok(withdrawn_amount)
+	}
+}
+
+pub struct OnSlash<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Happened<Balance> for OnSlash<T> {
+	fn happened(_amount: &Balance) {
+		// TODO: should reduce debit when homa_validator_list module burn
+		// insurance to compensate LDOT holders.
 	}
 }

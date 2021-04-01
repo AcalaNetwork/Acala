@@ -31,7 +31,7 @@ use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use module_evm::ExitError;
 use orml_traits::DataFeeder;
-use primitives::{evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
+use primitives::{currency::GetDecimals, evm::AddressMapping, Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, H256, U256};
 use sp_runtime::FixedPointNumber;
 
@@ -127,7 +127,7 @@ fn oracle_precompile_should_work() {
 		// no price yet
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
-		assert_eq!(output, [0u8; 64]);
+		assert_eq!(output, [0u8; 32]);
 		assert_eq!(used_gas, 0);
 
 		assert_ok!(Oracle::feed_value(ALICE, XBTC, price));
@@ -140,9 +140,11 @@ fn oracle_precompile_should_work() {
 		);
 
 		// returned price + timestamp
-		let mut expected_output = [0u8; 64];
-		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..32]);
-		U256::from(1).to_big_endian(&mut expected_output[32..64]);
+		let mut expected_output = [0u8; 32];
+
+		let maybe_adjustment_multiplier = 10u128.checked_pow(XBTC.decimals()).unwrap();
+		let price = Price::checked_from_rational(price.into_inner(), maybe_adjustment_multiplier).unwrap();
+		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..]);
 
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
@@ -309,13 +311,13 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999995421);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999909417);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
 		#[cfg(feature = "with-ethereum-compatibility")]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999995421);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999909441);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -393,7 +395,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		);
 
 		run_to_block(4);
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999999930);
+		assert_eq!(Balances::free_balance(from_account.clone()), 999999913926);
 		assert_eq!(Balances::reserved_balance(from_account), 0);
 		assert_eq!(Balances::free_balance(to_account), 1000000000000);
 	});
@@ -420,15 +422,101 @@ fn dex_precompile_get_liquidity_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// action + currency_id_a + currency_id_b
-		let mut input = [0u8; 96];
-		U256::from(0).to_big_endian(&mut input[..32]);
-		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[32..64]);
-		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[64..96]);
+		// array_size + action + currency_id_a + currency_id_b
+		let mut input = [0u8; 4 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		U256::from(0).to_big_endian(&mut input[1 * 32..2 * 32]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
 
 		let mut expected_output = [0u8; 64];
 		U256::from(1_000).to_big_endian(&mut expected_output[..32]);
 		U256::from(1_000_000).to_big_endian(&mut expected_output[32..64]);
+
+		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+	});
+}
+
+#[test]
+fn dex_precompile_get_swap_target_amount_should_work() {
+	new_test_ext().execute_with(|| {
+		// enable XBTC/AUSD
+		assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), XBTC, AUSD,));
+
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			XBTC,
+			AUSD,
+			1_000,
+			1_000_000,
+			true
+		));
+
+		let context = Context {
+			address: Default::default(),
+			caller: alice(),
+			apparent_value: Default::default(),
+		};
+
+		// array_size + action + path_len + currency_id_a + currency_id_b +
+		// supply_amount
+		let mut input = [0u8; 6 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		U256::from(1).to_big_endian(&mut input[1 * 32..2 * 32]);
+		U256::from(2).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		U256::from(1).to_big_endian(&mut input[5 * 32..6 * 32]);
+
+		let mut expected_output = [0u8; 32];
+		U256::from(202195).to_big_endian(&mut expected_output[..32]);
+
+		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+	});
+}
+
+#[test]
+fn dex_precompile_get_swap_supply_amount_should_work() {
+	new_test_ext().execute_with(|| {
+		// enable XBTC/AUSD
+		assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), XBTC, AUSD,));
+
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			XBTC,
+			AUSD,
+			1_000,
+			1_000_000,
+			true
+		));
+
+		let context = Context {
+			address: Default::default(),
+			caller: alice(),
+			apparent_value: Default::default(),
+		};
+
+		// array_size + action + path_len + currency_id_a + currency_id_b +
+		// target_amount
+		let mut input = [0u8; 6 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		U256::from(2).to_big_endian(&mut input[1 * 32..2 * 32]);
+		U256::from(2).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		U256::from(1).to_big_endian(&mut input[5 * 32..6 * 32]);
+
+		let mut expected_output = [0u8; 32];
+		U256::from(202195).to_big_endian(&mut expected_output[..32]);
 
 		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
@@ -458,18 +546,65 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// action + who + currency_id_a + currency_id_b + supply_amount +
-		// min_target_amount
-		let mut input = [0u8; 192];
-		U256::from(1).to_big_endian(&mut input[..32]);
-		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[32..64]);
-		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[64..96]);
-		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[96..128]);
-		U256::from(1).to_big_endian(&mut input[128..160]);
-		U256::from(0).to_big_endian(&mut input[160..192]);
+		// array_size + action + who + path_len + currency_id_a + currency_id_b +
+		// supply_amount + min_target_amount
+		let mut input = [0u8; 8 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		U256::from(3).to_big_endian(&mut input[1 * 32..2 * 32]);
+		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[5 * 32..6 * 32]);
+		U256::from(1).to_big_endian(&mut input[6 * 32..7 * 32]);
+		U256::from(0).to_big_endian(&mut input[7 * 32..8 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(989).to_big_endian(&mut expected_output[..32]);
+
+		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+	});
+}
+
+#[test]
+fn dex_precompile_swap_with_exact_target_should_work() {
+	new_test_ext().execute_with(|| {
+		// enable XBTC/AUSD
+		assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), XBTC, AUSD,));
+
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			XBTC,
+			AUSD,
+			1_000,
+			1_000_000,
+			true
+		));
+
+		let context = Context {
+			address: Default::default(),
+			caller: alice(),
+			apparent_value: Default::default(),
+		};
+
+		// array_size + action + who + path_len + currency_id_a + currency_id_b +
+		// target_amount + max_supply_amount
+		let mut input = [0u8; 8 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		U256::from(4).to_big_endian(&mut input[1 * 32..2 * 32]);
+		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from_big_endian(&hex!("0400").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		U256::from_big_endian(&hex!("0100").to_vec()).to_big_endian(&mut input[5 * 32..6 * 32]);
+		U256::from(1).to_big_endian(&mut input[6 * 32..7 * 32]);
+		U256::from(1).to_big_endian(&mut input[7 * 32..8 * 32]);
+
+		let mut expected_output = [0u8; 32];
+		U256::from(1).to_big_endian(&mut expected_output[..32]);
 
 		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);

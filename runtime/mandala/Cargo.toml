@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "0.7.10"
+version = "0.7.11"
 authors = ["Acala Developers"]
 edition = "2018"
 build = "build.rs"
@@ -83,6 +83,7 @@ orml-rewards = { path = "../../orml/rewards", default-features = false }
 orml-nft= { path = "../../orml/nft", default-features = false }
 orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
+orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
@@ -102,11 +103,11 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
+module-homa-validator-list = { path = "../../modules/homa-validator-list", default-features = false }
 module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
-module-nft-benchmarking = { path = "../../modules/nft/benchmarking", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -195,6 +196,7 @@ std = [
 	"orml-nft/std",
 	"orml-xtokens/std",
 	"orml-xcm-support/std",
+	"orml-unknown-tokens/std",
 
 	"module-transaction-payment/std",
 	"module-airdrop/std",
@@ -238,7 +240,7 @@ runtime-benchmarks = [
 
 	"module-cdp-treasury/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
-	"module-nft-benchmarking",
+	"module-nft/runtime-benchmarks",
 ]
 # When enabled, the runtime api will not be build.
 #
