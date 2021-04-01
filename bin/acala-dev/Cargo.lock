@@ -1365,7 +1365,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#2fc85fd6737d29e875e7b700cfebc4186b7c3232"
 dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
@@ -1394,7 +1394,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-xcm-handler"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#2fc85fd6737d29e875e7b700cfebc4186b7c3232"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -1409,7 +1409,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-core"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#2fc85fd6737d29e875e7b700cfebc4186b7c3232"
 dependencies = [
  "impl-trait-for-tuples 0.2.1",
  "parity-scale-codec",
@@ -1424,7 +1424,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#2fc85fd6737d29e875e7b700cfebc4186b7c3232"
 dependencies = [
  "cumulus-primitives-core",
  "parity-scale-codec",
@@ -5523,7 +5523,7 @@ dependencies = [
 [[package]]
 name = "parachain-info"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#9d89ed653217203810822483ae86fd8867f59620"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#2fc85fd6737d29e875e7b700cfebc4186b7c3232"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -5955,7 +5955,7 @@ checksum = "989d43012e2ca1c4a02507c67282691a0a3207f9dc67cec596b43fe925b3d325"
 [[package]]
 name = "polkadot-core-primitives"
 version = "0.7.30"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#6900ce8ef52b1bb80b3fe606dd9af1da441c4d79"
 dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
@@ -5967,7 +5967,7 @@ dependencies = [
 [[package]]
 name = "polkadot-parachain"
 version = "0.8.29"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#6900ce8ef52b1bb80b3fe606dd9af1da441c4d79"
 dependencies = [
  "derive_more",
  "futures 0.3.13",
@@ -5994,7 +5994,7 @@ dependencies = [
 [[package]]
 name = "polkadot-primitives"
 version = "0.8.29"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#6900ce8ef52b1bb80b3fe606dd9af1da441c4d79"
 dependencies = [
  "bitvec",
  "frame-system",
@@ -10173,7 +10173,7 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#6900ce8ef52b1bb80b3fe606dd9af1da441c4d79"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -10181,7 +10181,7 @@ dependencies = [
 [[package]]
 name = "xcm-builder"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#6900ce8ef52b1bb80b3fe606dd9af1da441c4d79"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -10197,7 +10197,7 @@ dependencies = [
 [[package]]
 name = "xcm-executor"
 version = "0.8.22"
-source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#962ae024bcb6e14a16eecf756c6423c35007d067"
+source = "git+https://github.com/paritytech/polkadot?branch=rococo-v1#6900ce8ef52b1bb80b3fe606dd9af1da441c4d79"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples 0.2.1",
