@@ -196,6 +196,7 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
+	type OnSetCode = ParachainSystem;
 }
 
 parameter_types! {
@@ -1209,7 +1210,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OnValidationData = ();
 	type SelfParaId = ParachainInfo;
 	type DownwardMessageHandlers = XcmHandler;
-	type HrmpMessageHandlers = XcmHandler;
+	type XcmpMessageHandlers = XcmHandler;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1273,7 +1274,7 @@ impl cumulus_pallet_xcm_handler::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type UpwardMessageSender = ParachainSystem;
-	type HrmpMessageSender = ParachainSystem;
+	type XcmpMessageSender = ParachainSystem;
 	type SendXcmOrigin = EnsureRoot<AccountId>;
 	type AccountIdConverter = LocationConverter;
 }
