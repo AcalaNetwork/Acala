@@ -687,8 +687,8 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 
 		// should always be able to unreserve the amount
 		// but otherwise we will just ignore the issue here
-		let _ = T::Currency::unreserve(&user, amount);
-
+		let err_amount = T::Currency::unreserve(&user, amount);
+		debug_assert!(err_amount.is_zero());
 		Ok(())
 	}
 
