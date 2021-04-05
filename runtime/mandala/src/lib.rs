@@ -1537,6 +1537,9 @@ mod parachain_impl {
 			// BCG
 			t.insert(("BCG".into(), (Junction::Parent, Junction::Parachain { id: 8 }).into()));
 
+			// PHALA
+			t.insert(("PHA".into(), (Junction::Parent, Junction::Parachain { id: 30 }).into()));
+
 			t
 		};
 	}
