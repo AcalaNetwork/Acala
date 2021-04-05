@@ -473,12 +473,13 @@ pub mod module {
 				if !refund_gas.is_zero() {
 					// ignore the result to continue. if it fails, just the user will not
 					// be refunded, there will not increase user balance.
-					let _ = T::ChargeTransactionPayment::refund_fee(
+					let res = T::ChargeTransactionPayment::refund_fee(
 						&_from_account,
 						T::GasToWeight::convert(refund_gas),
 						_payed,
 					);
 				}
+				debug_assert!(res.is_ok());
 			}
 
 			Ok(PostDispatchInfo {

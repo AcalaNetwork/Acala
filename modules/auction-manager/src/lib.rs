@@ -833,7 +833,8 @@ impl<T: Config> Pallet<T> {
 					// refund stable currency to the last bidder, it shouldn't fail and affect the
 					// process. but even it failed, just the winner did not get the bid price. it
 					// can be fixed by treasury council.
-					let _ = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
+					let res = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
+					debug_assert!(res.is_ok());
 
 					if collateral_auction.in_reverse_stage(stable_amount) {
 						// refund extra stable currency to recipient
@@ -843,7 +844,9 @@ impl<T: Config> Pallet<T> {
 						// it shouldn't fail and affect the process.
 						// but even it failed, just the winner did not get the refund amount. it can be
 						// fixed by treasury council.
-						let _ = T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
+						let res =
+							T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
+						debug_assert!(res.is_ok());
 					}
 
 					Self::deposit_event(Event::DEXTakeCollateralAuction(
@@ -859,11 +862,12 @@ impl<T: Config> Pallet<T> {
 				// transfer collateral to winner from CDP treasury, it shouldn't fail and affect
 				// the process. but even it failed, just the winner did not get the amount. it
 				// can be fixed by treasury council.
-				let _ = T::CDPTreasury::withdraw_collateral(
+				let res = T::CDPTreasury::withdraw_collateral(
 					&bidder,
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 				);
+				debug_assert!(res.is_ok());
 
 				let payment_amount = collateral_auction.payment_amount(bid_price);
 				Self::deposit_event(Event::CollateralAuctionDealt(
@@ -897,7 +901,8 @@ impl<T: Config> Pallet<T> {
 			// issue native token to winner, it shouldn't fail and affect the process.
 			// but even it failed, just the winner did not get the amount. it can be fixed
 			// by treasury council. TODO: transfer from RESERVED TREASURY instead of issuing
-			let _ = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
+			let res = T::Currency::deposit(T::GetNativeCurrencyId::get(), &bidder, debit_auction.amount);
+			assert!(res.is_ok());
 
 			Self::deposit_event(Event::DebitAuctionDealt(
 				auction_id,
@@ -921,7 +926,8 @@ impl<T: Config> Pallet<T> {
 			// deposit unbacked stable token to winner by CDP treasury, it shouldn't fail
 			// and affect the process. but even it failed, just the winner did not get the
 			// amount. it can be fixed by treasury council.
-			let _ = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
+			let res = T::CDPTreasury::issue_debit(&bidder, surplus_auction.amount, false);
+			debug_assert!(res.is_ok());
 
 			Self::deposit_event(Event::SurplusAuctionDealt(
 				auction_id,
