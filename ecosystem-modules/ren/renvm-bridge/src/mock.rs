@@ -66,7 +66,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type OnSetCode = ();
 }
 
 parameter_types! {
