@@ -1119,7 +1119,7 @@ mod parachain_tests {
 
 	use codec::Encode;
 	use cumulus_primitives_core::{
-		DownwardMessageHandler, HrmpMessageHandler, InboundDownwardMessage, InboundHrmpMessage,
+		DownwardMessageHandler, InboundDownwardMessage, InboundHrmpMessage, XcmpMessageHandler,
 	};
 	use polkadot_parachain::primitives::Sibling;
 	use xcm::{
@@ -1176,13 +1176,7 @@ mod parachain_tests {
 				}],
 			}
 			.into();
-			XcmHandler::handle_hrmp_message(
-				sibling_para_id.into(),
-				InboundHrmpMessage {
-					sent_at: 10,
-					data: msg1.encode(),
-				},
-			);
+			XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg1);
 			assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc), 100 * dollar(ACA));
 			assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
 
@@ -1202,13 +1196,7 @@ mod parachain_tests {
 				}],
 			}
 			.into();
-			XcmHandler::handle_hrmp_message(
-				sibling_para_id.into(),
-				InboundHrmpMessage {
-					sent_at: 10,
-					data: msg2.encode(),
-				},
-			);
+			XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg2);
 			assert_eq!(Currencies::free_balance(PLM, &ALICE.into()), plm_amount);
 		});
 	}

@@ -224,6 +224,10 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
+	#[cfg(feature = "standalone")]
+	type OnSetCode = ();
+	#[cfg(not(feature = "standalone"))]
+	type OnSetCode = ParachainSystem;
 }
 
 parameter_types! {
@@ -1470,7 +1474,7 @@ mod parachain_impl {
 		type OnValidationData = ();
 		type SelfParaId = parachain_info::Pallet<Runtime>;
 		type DownwardMessageHandlers = XcmHandler;
-		type HrmpMessageHandlers = XcmHandler;
+		type XcmpMessageHandlers = XcmHandler;
 	}
 
 	impl parachain_info::Config for Runtime {}
@@ -1560,7 +1564,7 @@ mod parachain_impl {
 		type Event = Event;
 		type XcmExecutor = XcmExecutor<XcmConfig>;
 		type UpwardMessageSender = ParachainSystem;
-		type HrmpMessageSender = ParachainSystem;
+		type XcmpMessageSender = ParachainSystem;
 		type SendXcmOrigin = EnsureRoot<AccountId>;
 		type AccountIdConverter = LocationConverter;
 	}
