@@ -60,22 +60,24 @@ macro_rules! create_currency_id {
 		}
 
 		impl GetDecimals for CurrencyId {
-			fn decimals(&self) -> u32 {
+			fn decimals(&self) -> Option<u32> {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => $deci,)*
 						CurrencyId::DEXShare(symbol_0, symbol_1) => {
 							let decimals_0 = match symbol_0 {
 								DEXShareWrapper::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
-								DEXShareWrapper::ERC20(_address) => 0, // TODO: get from evm-manager
+								// ERC20 handler by evm-manager
+								DEXShareWrapper::ERC20(_) => return None,
 							};
 							let decimals_1 = match symbol_1 {
 								DEXShareWrapper::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
-								DEXShareWrapper::ERC20(_address) => 0, // TODO: get from evm-manager
+								// ERC20 handler by evm-manager
+								DEXShareWrapper::ERC20(_) => return None,
 							};
-							sp_std::cmp::max(decimals_0, decimals_1)
+							Some(sp_std::cmp::max(decimals_0, decimals_1))
 						},
 					// default decimals is 18
-					_ => 18,
+					_ => Some(18),
 				}
 			}
 		}
@@ -157,6 +159,8 @@ pub trait GetDecimals {
 	fn decimals(&self) -> u32;
 }
 
+type StorageMap = HashMap<u32, Option<ERC20Info>>;
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DEXShareWrapper {
@@ -236,8 +240,7 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 					// Token
 					v[27].try_into().map(DEXShareWrapper::Token)?
 				} else {
-					// ERC20
-					// TODO: get from evm-manager
+					// ERC20 handler by evm-manager
 					return Err(());
 				}
 			};
@@ -246,8 +249,7 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 					// Token
 					v[31].try_into().map(DEXShareWrapper::Token)?
 				} else {
-					// ERC20
-					// TODO: get from evm-manager
+					// ERC20 handler by evm-manager
 					return Err(());
 				}
 			};
