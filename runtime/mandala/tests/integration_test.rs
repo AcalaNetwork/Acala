@@ -1119,6 +1119,7 @@ mod parachain_tests {
 
 	use codec::Encode;
 	use cumulus_primitives_core::{DownwardMessageHandler, InboundDownwardMessage, XcmpMessageHandler};
+	use frame_support::traits::Get;
 	use polkadot_parachain::primitives::Sibling;
 	use xcm::{
 		v0::{Junction, MultiAsset, MultiLocation, NetworkId, Order, Xcm},
@@ -1166,7 +1167,7 @@ mod parachain_tests {
 					id: MultiLocation::X3(
 						Junction::Parent,
 						Junction::Parachain { id: para_id },
-						Junction::GeneralKey(CurrencyId::Token(TokenSymbol::ACA)),
+						Junction::GeneralKey(CurrencyId::Token(TokenSymbol::ACA).encode()),
 					),
 					amount: aca_amount,
 				}],
