@@ -32,7 +32,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::Encode;
+use codec::{Decode, Encode};
 use hex_literal::hex;
 use sp_api::impl_runtime_apis;
 use sp_core::{
@@ -64,7 +64,12 @@ use pallet_transaction_payment::RuntimeDispatchInfo;
 
 use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, XcmHandler as XcmHandlerT};
 use polkadot_parachain::primitives::Sibling;
-use xcm::v0::{Junction, MultiAsset, MultiLocation, NetworkId, Xcm};
+use xcm::v0::{
+	Junction::{GeneralKey, Parachain, Parent},
+	MultiAsset,
+	MultiLocation::{self, X1, X2, X3},
+	NetworkId, Xcm,
+};
 use xcm_builder::{
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
@@ -1228,7 +1233,7 @@ impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
 parameter_types! {
 	pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
-	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
+	pub Ancestry: MultiLocation = X1(Parachain {
 		id: ParachainInfo::get().into(),
 	});
 	pub const RelayChainCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -1284,25 +1289,64 @@ impl XcmHandlerT<AccountId> for HandleXcm {
 	}
 }
 
+//TODO: use token registry currency type encoding
+fn native_currency_location(id: CurrencyId) -> MultiLocation {
+	X3(
+		Parent,
+		Parachain {
+			id: ParachainInfo::get().into(),
+		},
+		GeneralKey(id.encode()),
+	)
+}
+
 pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		unimplemented!()
+		use CurrencyId::Token;
+		use TokenSymbol::*;
+		match id {
+			Token(DOT) => Some(X1(Parent)),
+			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(native_currency_location(id)),
+			_ => None,
+		}
 	}
 }
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(l: MultiLocation) -> Option<CurrencyId> {
-		unimplemented!()
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+		use CurrencyId::Token;
+		use TokenSymbol::*;
+		let _para_id: u32 = ParachainInfo::get().into();
+		match location {
+			X1(Parent) => Some(Token(DOT)),
+			X3(Parent, Parachain { id: _para_id }, GeneralKey(key)) => {
+				// decode the general key
+				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
+					// check `currency_id` is cross-chain asset
+					match currency_id {
+						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
+						_ => None,
+					}
+				} else {
+					None
+				}
+			}
+			_ => None,
+		}
 	}
 }
 impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(a: MultiAsset) -> Option<CurrencyId> {
-		unimplemented!()
+	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+		if let MultiAsset::ConcreteFungible { id, amount: _ } = asset {
+			Self::convert(id)
+		} else {
+			None
+		}
 	}
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::X2(Junction::Parent, Junction::Parachain { id: ParachainInfo::get().into() });
+	pub SelfLocation: MultiLocation = X2(Parent, Parachain { id: ParachainInfo::get().into() });
 }
 
 impl orml_xtokens::Config for Runtime {

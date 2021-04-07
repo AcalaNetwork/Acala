@@ -27,8 +27,8 @@ use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
 	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts,
-	GetNativeCurrencyId, NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, Perbill, Proxy, Runtime,
-	SevenDays, System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, XBTC,
+	GetNativeCurrencyId, NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, ParachainInfo, Perbill,
+	Proxy, Runtime, SevenDays, System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, XBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -1160,9 +1160,14 @@ mod parachain_tests {
 			let aca_amount = 1000 * dollar(ACA);
 			assert_ok!(Currencies::deposit(ACA, &sibling_parachain_acc, 1100 * dollar(ACA)));
 
+			let para_id: u32 = ParachainInfo::get().into();
 			let msg1: VersionedXcm = Xcm::WithdrawAsset {
 				assets: vec![MultiAsset::ConcreteFungible {
-					id: MultiLocation::X1(Junction::GeneralKey("ACA".into())),
+					id: MultiLocation::X3(
+						Junction::Parent,
+						Junction::Parachain { id: para_id },
+						Junction::GeneralKey(CurrencyId::Token(TokenSymbol::ACA)),
+					),
 					amount: aca_amount,
 				}],
 				effects: vec![Order::DepositAsset {
@@ -1177,25 +1182,6 @@ mod parachain_tests {
 			XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg1);
 			assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc), 100 * dollar(ACA));
 			assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
-
-			// receive non-owned token
-			let plm_amount = 1000 * dollar(PLM);
-			let msg2: VersionedXcm = Xcm::ReserveAssetDeposit {
-				assets: vec![MultiAsset::ConcreteFungible {
-					id: MultiLocation::X1(Junction::GeneralKey("PLM".into())),
-					amount: plm_amount,
-				}],
-				effects: vec![Order::DepositAsset {
-					assets: vec![MultiAsset::All],
-					dest: MultiLocation::X1(Junction::AccountId32 {
-						network: NetworkId::Named("acala".into()),
-						id: ALICE,
-					}),
-				}],
-			}
-			.into();
-			XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg2);
-			assert_eq!(Currencies::free_balance(PLM, &ALICE.into()), plm_amount);
 		});
 	}
 }

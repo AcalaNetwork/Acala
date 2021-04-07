@@ -95,11 +95,17 @@ mod standalone_use {
 use parachain_use::*;
 #[cfg(not(feature = "standalone"))]
 mod parachain_use {
+	pub use codec::Decode;
 	pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, XcmHandler as XcmHandlerT};
 	pub use polkadot_parachain::primitives::Sibling;
 	pub use sp_runtime::traits::{Convert, Identity};
 	pub use sp_std::collections::btree_set::BTreeSet;
-	pub use xcm::v0::{Junction, MultiAsset, MultiLocation, NetworkId, Xcm};
+	pub use xcm::v0::{
+		Junction::{GeneralKey, Parachain, Parent},
+		MultiAsset,
+		MultiLocation::{self, X1, X2, X3},
+		NetworkId, Xcm,
+	};
 	pub use xcm_builder::{
 		AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 		SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
@@ -1502,7 +1508,7 @@ mod parachain_impl {
 	parameter_types! {
 		pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
 		pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
-		pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
+		pub Ancestry: MultiLocation = X1(Parachain {
 			id: ParachainInfo::get().into(),
 		});
 		pub const RelayChainCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -1531,32 +1537,6 @@ mod parachain_impl {
 		SignedAccountId32AsNative<AcalaNetwork, Origin>,
 	);
 
-	parameter_types! {
-		pub NativeOrmlTokens: BTreeSet<(Vec<u8>, MultiLocation)> = {
-			let mut t = BTreeSet::new();
-			//TODO: might need to add other assets based on orml-tokens
-
-			// Plasm
-			t.insert(("SDN".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
-			// Plasm
-			t.insert(("PLM".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
-
-			// Hydrate
-			t.insert(("HDT".into(), (Junction::Parent, Junction::Parachain { id: 82406 }).into()));
-
-			// KILT
-			t.insert(("KILT".into(), (Junction::Parent, Junction::Parachain { id: 12623 }).into()));
-
-			// BCG
-			t.insert(("BCG".into(), (Junction::Parent, Junction::Parachain { id: 8 }).into()));
-
-			// PHALA
-			t.insert(("PHA".into(), (Junction::Parent, Junction::Parachain { id: 30 }).into()));
-
-			t
-		};
-	}
-
 	pub struct XcmConfig;
 	impl Config for XcmConfig {
 		type Call = Call;
@@ -1584,25 +1564,64 @@ mod parachain_impl {
 		}
 	}
 
+	//TODO: use token registry currency type encoding
+	fn native_currency_location(id: CurrencyId) -> MultiLocation {
+		X3(
+			Parent,
+			Parachain {
+				id: ParachainInfo::get().into(),
+			},
+			GeneralKey(id.encode()),
+		)
+	}
+
 	pub struct CurrencyIdConvert;
 	impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		fn convert(id: CurrencyId) -> Option<MultiLocation> {
-			unimplemented!()
+			use CurrencyId::Token;
+			use TokenSymbol::*;
+			match id {
+				Token(DOT) => Some(X1(Parent)),
+				Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(native_currency_location(id)),
+				_ => None,
+			}
 		}
 	}
 	impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-		fn convert(l: MultiLocation) -> Option<CurrencyId> {
-			unimplemented!()
+		fn convert(location: MultiLocation) -> Option<CurrencyId> {
+			use CurrencyId::Token;
+			use TokenSymbol::*;
+			let _para_id: u32 = ParachainInfo::get().into();
+			match location {
+				X1(Parent) => Some(Token(DOT)),
+				X3(Parent, Parachain { id: _para_id }, GeneralKey(key)) => {
+					// decode the general key
+					if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
+						// check `currency_id` is cross-chain asset
+						match currency_id {
+							Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
+							_ => None,
+						}
+					} else {
+						None
+					}
+				}
+				_ => None,
+			}
 		}
 	}
 	impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-		fn convert(a: MultiAsset) -> Option<CurrencyId> {
-			unimplemented!()
+		fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+			if let MultiAsset::ConcreteFungible { id, amount: _ } = asset {
+				Self::convert(id)
+			} else {
+				None
+			}
 		}
 	}
 
 	parameter_types! {
-		pub SelfLocation: MultiLocation = MultiLocation::X2(Junction::Parent, Junction::Parachain { id: ParachainInfo::get().into() });
+		pub SelfLocation: MultiLocation = X2(Parent, Parachain { id: ParachainInfo::get().into() });
 	}
 
 	impl orml_xtokens::Config for Runtime {
