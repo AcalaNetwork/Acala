@@ -4785,6 +4785,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-evm-manager"
+version = "0.7.11"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-evm-rpc-runtime-api"
 version = "0.1.0"
 dependencies = [

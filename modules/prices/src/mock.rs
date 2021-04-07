@@ -37,8 +37,14 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const LP_BTC_AUSD: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
-pub const LP_AUSD_DOT: CurrencyId = CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::DOT);
+pub const LP_BTC_AUSD: CurrencyId = CurrencyId::DEXShare(
+	DEXShareWrapper::Token(TokenSymbol::XBTC),
+	DEXShareWrapper::Token(TokenSymbol::AUSD),
+);
+pub const LP_AUSD_DOT: CurrencyId = CurrencyId::DEXShare(
+	DEXShareWrapper::Token(TokenSymbol::AUSD),
+	DEXShareWrapper::Token(TokenSymbol::DOT),
+);
 
 mod prices {
 	pub use super::super::*;

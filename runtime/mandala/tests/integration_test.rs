@@ -34,6 +34,7 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
+pub use primitives::DEXShareWrapper;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
@@ -46,6 +47,10 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 
 const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
+const LPTOKEN: CurrencyId = CurrencyId::DEXShare(
+	DEXShareWrapper::Token(TokenSymbol::AUSD),
+	DEXShareWrapper::Token(TokenSymbol::XBTC),
+);
 
 pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
 pub type DexModule = module_dex::Pallet<Runtime>;
@@ -404,17 +409,8 @@ fn test_dex_module() {
 		.build()
 		.execute_with(|| {
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (0, 0));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				0
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(ALICE)
-				),
-				0
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 0);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
 
 			assert_noop!(
 				DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), XBTC, AUSD, 0, 10000000, false,),
@@ -443,17 +439,8 @@ fn test_dex_module() {
 				.any(|record| record.event == add_liquidity_event));
 
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10000, 10000000));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20000000
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(ALICE)
-				),
-				20000000
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20000000);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 20000000);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
 				XBTC,
@@ -463,33 +450,15 @@ fn test_dex_module() {
 				false,
 			));
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20002000
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(BOB)
-				),
-				2000
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_noop!(
 				DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, AUSD, 1, 999, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20002000
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(BOB)
-				),
-				2000
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
 				XBTC,
@@ -509,10 +478,7 @@ fn test_dex_module() {
 			));
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10003, 10003000));
 
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20005998
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20005998);
 		});
 }
 

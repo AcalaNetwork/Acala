@@ -32,7 +32,10 @@
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
-use primitives::{currency::GetDecimals, Balance, CurrencyId};
+use primitives::{
+	currency::{DEXShareWrapper, GetDecimals},
+	Balance, CurrencyId,
+};
 use sp_runtime::{
 	traits::{CheckedDiv, CheckedMul},
 	FixedPointNumber,
@@ -165,8 +168,14 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			return Self::get_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
 		} else if let CurrencyId::DEXShare(symbol_0, symbol_1) = currency_id {
-			let token_0 = CurrencyId::Token(symbol_0);
-			let token_1 = CurrencyId::Token(symbol_1);
+			let token_0 = match symbol_0 {
+				DEXShareWrapper::Token(token) => CurrencyId::Token(token),
+				DEXShareWrapper::ERC20(address) => CurrencyId::ERC20(address),
+			};
+			let token_1 = match symbol_1 {
+				DEXShareWrapper::Token(token) => CurrencyId::Token(token),
+				DEXShareWrapper::ERC20(address) => CurrencyId::ERC20(address),
+			};
 			let (pool_0, _) = T::DEX::get_liquidity_pool(token_0, token_1);
 			let total_shares = T::Currency::total_issuance(currency_id);
 

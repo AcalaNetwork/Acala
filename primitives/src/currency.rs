@@ -63,7 +63,17 @@ macro_rules! create_currency_id {
 			fn decimals(&self) -> u32 {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => $deci,)*
-					CurrencyId::DEXShare(symbol_0, symbol_1) => sp_std::cmp::max(CurrencyId::Token(*symbol_0).decimals(), CurrencyId::Token(*symbol_1).decimals()),
+						CurrencyId::DEXShare(symbol_0, symbol_1) => {
+							let decimals_0 = match symbol_0 {
+								DEXShareWrapper::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
+								DEXShareWrapper::ERC20(_address) => 0, // TODO: get from evm-manager
+							};
+							let decimals_1 = match symbol_1 {
+								DEXShareWrapper::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
+								DEXShareWrapper::ERC20(_address) => 0, // TODO: get from evm-manager
+							};
+							sp_std::cmp::max(decimals_0, decimals_1)
+						},
 					// default decimals is 18
 					_ => 18,
 				}
@@ -149,9 +159,16 @@ pub trait GetDecimals {
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum DEXShareWrapper {
+	Token(TokenSymbol),
+	ERC20(EvmAddress),
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	Token(TokenSymbol),
-	DEXShare(TokenSymbol, TokenSymbol),
+	DEXShare(DEXShareWrapper, DEXShareWrapper),
 	ERC20(EvmAddress),
 }
 
@@ -167,19 +184,32 @@ impl CurrencyId {
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
 		match self {
 			CurrencyId::DEXShare(token_symbol_0, token_symbol_1) => {
-				Some((CurrencyId::Token(*token_symbol_0), CurrencyId::Token(*token_symbol_1)))
+				let symbol_0 = match token_symbol_0 {
+					DEXShareWrapper::Token(token) => CurrencyId::Token(*token),
+					DEXShareWrapper::ERC20(address) => CurrencyId::ERC20(*address),
+				};
+				let symbol_1 = match token_symbol_1 {
+					DEXShareWrapper::Token(token) => CurrencyId::Token(*token),
+					DEXShareWrapper::ERC20(address) => CurrencyId::ERC20(*address),
+				};
+				Some((symbol_0, symbol_1))
 			}
 			_ => None,
 		}
 	}
 
 	pub fn join_dex_share_currency_id(currency_id_0: Self, currency_id_1: Self) -> Option<Self> {
-		match (currency_id_0, currency_id_1) {
-			(CurrencyId::Token(token_symbol_0), CurrencyId::Token(token_symbol_1)) => {
-				Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
-			}
-			_ => None,
-		}
+		let token_symbol_0 = match currency_id_0 {
+			CurrencyId::Token(symbol) => DEXShareWrapper::Token(symbol),
+			CurrencyId::ERC20(address) => DEXShareWrapper::ERC20(address),
+			_ => return None,
+		};
+		let token_symbol_1 = match currency_id_1 {
+			CurrencyId::Token(symbol) => DEXShareWrapper::Token(symbol),
+			CurrencyId::ERC20(address) => DEXShareWrapper::ERC20(address),
+			_ => return None,
+		};
+		Some(CurrencyId::DEXShare(token_symbol_0, token_symbol_1))
 	}
 }
 
@@ -189,19 +219,38 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	type Error = ();
 
 	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
-		if !v.starts_with(&[0u8; 29][..]) {
+		// tag: u8 + u32 + u32 = 1 + 4 + 4
+		if !v.starts_with(&[0u8; 23][..]) {
 			return Err(());
 		}
 
 		// token
-		if v[29] == 0 && v[31] == 0 {
-			return v[30].try_into().map(CurrencyId::Token);
+		if v[23] == 0 && v[24..27] == [0u8; 3] && v[28..32] == [0u8; 4] {
+			return v[27].try_into().map(CurrencyId::Token);
 		}
 
 		// DEX share
-		if v[29] == 1 {
-			let left = v[30].try_into()?;
-			let right = v[31].try_into()?;
+		if v[23] == 1 {
+			let left = {
+				if v[24..27] == [0u8; 3] {
+					// Token
+					v[27].try_into().map(DEXShareWrapper::Token)?
+				} else {
+					// ERC20
+					// TODO: get from evm-manager
+					return Err(());
+				}
+			};
+			let right = {
+				if v[28..31] == [0u8; 3] {
+					// Token
+					v[31].try_into().map(DEXShareWrapper::Token)?
+				} else {
+					// ERC20
+					// TODO: get from evm-manager
+					return Err(());
+				}
+			};
 			return Ok(CurrencyId::DEXShare(left, right));
 		}
 
@@ -215,16 +264,66 @@ impl From<CurrencyId> for [u8; 32] {
 	fn from(val: CurrencyId) -> Self {
 		let mut bytes = [0u8; 32];
 		match val {
-			CurrencyId::Token(token) => {
-				bytes[30] = token as u8;
+			CurrencyId::Token(_) => {
+				bytes[24..28].copy_from_slice(&Into::<u32>::into(val).to_be_bytes()[..]);
 			}
 			CurrencyId::DEXShare(left, right) => {
-				bytes[29] = 1;
-				bytes[30] = left as u8;
-				bytes[31] = right as u8;
+				bytes[23] = 1;
+				match left {
+					DEXShareWrapper::Token(token) => {
+						bytes[24..28].copy_from_slice(&Into::<u32>::into(CurrencyId::Token(token)).to_be_bytes()[..])
+					}
+					DEXShareWrapper::ERC20(address) => {
+						bytes[24..28].copy_from_slice(&Into::<u32>::into(CurrencyId::ERC20(address)).to_be_bytes()[..])
+					}
+				}
+				match right {
+					DEXShareWrapper::Token(token) => {
+						bytes[28..32].copy_from_slice(&Into::<u32>::into(CurrencyId::Token(token)).to_be_bytes()[..])
+					}
+					DEXShareWrapper::ERC20(address) => {
+						bytes[28..32].copy_from_slice(&Into::<u32>::into(CurrencyId::ERC20(address)).to_be_bytes()[..])
+					}
+				}
 			}
-			_ => {}
+			CurrencyId::ERC20(address) => {
+				bytes[12..32].copy_from_slice(&address[..]);
+			}
 		}
 		bytes
+	}
+}
+
+impl From<CurrencyId> for u32 {
+	fn from(val: CurrencyId) -> Self {
+		let mut bytes = [0u8; 4];
+		match val {
+			CurrencyId::Token(token) => {
+				bytes[3] = token as u8;
+			}
+			CurrencyId::DEXShare(left, right) => {
+				match left {
+					DEXShareWrapper::Token(token) => {
+						bytes[..].copy_from_slice(&Self::from(CurrencyId::Token(token)).to_be_bytes()[..])
+					}
+					DEXShareWrapper::ERC20(address) => {
+						bytes[..].copy_from_slice(&Self::from(CurrencyId::ERC20(address)).to_be_bytes()[..])
+					}
+				}
+				match right {
+					DEXShareWrapper::Token(token) => {
+						bytes[..].copy_from_slice(&Self::from(CurrencyId::Token(token)).to_be_bytes()[..])
+					}
+					DEXShareWrapper::ERC20(address) => {
+						bytes[..].copy_from_slice(&Self::from(CurrencyId::ERC20(address)).to_be_bytes()[..])
+					}
+				}
+			}
+			CurrencyId::ERC20(address) => {
+				//TODO: update, maybe hash
+				bytes[..].copy_from_slice(&address[..4]);
+			}
+		}
+		u32::from_be_bytes(bytes)
 	}
 }

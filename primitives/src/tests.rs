@@ -26,17 +26,20 @@ fn currency_id_to_bytes_works() {
 	assert_eq!(Into::<[u8; 32]>::into(CurrencyId::Token(TokenSymbol::ACA)), [0u8; 32]);
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, 1, 0][..]);
+	bytes[23..].copy_from_slice(&[0, 0, 0, 0, 1, 0, 0, 0, 0][..]);
 	assert_eq!(Into::<[u8; 32]>::into(CurrencyId::Token(TokenSymbol::AUSD)), bytes);
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, 5, 0][..]);
+	bytes[23..].copy_from_slice(&[0, 0, 0, 0, 5, 0, 0, 0, 0][..]);
 	assert_eq!(Into::<[u8; 32]>::into(CurrencyId::Token(TokenSymbol::RENBTC)), bytes);
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 0, 1][..]);
+	bytes[23..].copy_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, 1][..]);
 	assert_eq!(
-		Into::<[u8; 32]>::into(CurrencyId::DEXShare(TokenSymbol::ACA, TokenSymbol::AUSD)),
+		Into::<[u8; 32]>::into(CurrencyId::DEXShare(
+			DEXShareWrapper::Token(TokenSymbol::ACA),
+			DEXShareWrapper::Token(TokenSymbol::AUSD)
+		)),
 		bytes
 	);
 }
@@ -44,26 +47,29 @@ fn currency_id_to_bytes_works() {
 #[test]
 fn currency_id_try_from_bytes_works() {
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, 1, 0][..]);
+	bytes[23..28].copy_from_slice(&[0, 0, 0, 0, 1][..]);
 	assert_ok!(bytes.try_into(), CurrencyId::Token(TokenSymbol::AUSD));
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, u8::MAX, 0][..]);
+	bytes[23..28].copy_from_slice(&[0, 0, 0, 0, u8::MAX][..]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 0, 1][..]);
+	bytes[23..32].copy_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, 1][..]);
 	assert_ok!(
 		bytes.try_into(),
-		CurrencyId::DEXShare(TokenSymbol::ACA, TokenSymbol::AUSD)
+		CurrencyId::DEXShare(
+			DEXShareWrapper::Token(TokenSymbol::ACA),
+			DEXShareWrapper::Token(TokenSymbol::AUSD)
+		)
 	);
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, u8::MAX, 0][..]);
+	bytes[23..].copy_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, u8::MAX]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 0, u8::MAX][..]);
+	bytes[23..].copy_from_slice(&[1, 0, 0, 0, u8::MAX, 0, 0, 0, 0]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 }
 

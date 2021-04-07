@@ -66,3 +66,12 @@ pub trait AddressMapping<AccountId> {
 	fn get_default_evm_address(account_id: &AccountId) -> EvmAddress;
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct ERC20Info {
+	pub address: EvmAddress,
+	pub name: String,
+	pub symbol: String,
+	pub decimals: u32,
+}

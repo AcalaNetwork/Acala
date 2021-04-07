@@ -441,3 +441,8 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 pub trait Contains<T> {
 	fn contains(t: &T) -> bool;
 }
+
+pub trait CurrencyIdMapping {
+	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
+	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
+}
