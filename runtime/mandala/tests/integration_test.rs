@@ -34,7 +34,7 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
-pub use primitives::DEXShareWrapper;
+pub use primitives::DexShare;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
@@ -47,10 +47,8 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 
 const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
-const LPTOKEN: CurrencyId = CurrencyId::DEXShare(
-	DEXShareWrapper::Token(TokenSymbol::AUSD),
-	DEXShareWrapper::Token(TokenSymbol::XBTC),
-);
+const LPTOKEN: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::XBTC));
 
 pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
 pub type DexModule = module_dex::Pallet<Runtime>;

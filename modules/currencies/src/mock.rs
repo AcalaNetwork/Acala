@@ -222,7 +222,7 @@ pub const EVA: AccountId = AccountId::new([5u8; 32]);
 pub const ID_1: LockIdentifier = *b"1       ";
 
 pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-pub const ERC20: CurrencyId = CurrencyId::ERC20(ERC20_ADDRESS);
+pub const ERC20: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS);
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

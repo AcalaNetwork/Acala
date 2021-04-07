@@ -36,9 +36,9 @@ fn currency_id_to_bytes_works() {
 	let mut bytes = [0u8; 32];
 	bytes[23..].copy_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, 1][..]);
 	assert_eq!(
-		Into::<[u8; 32]>::into(CurrencyId::DEXShare(
-			DEXShareWrapper::Token(TokenSymbol::ACA),
-			DEXShareWrapper::Token(TokenSymbol::AUSD)
+		Into::<[u8; 32]>::into(CurrencyId::DexShare(
+			DexShare::Token(TokenSymbol::ACA),
+			DexShare::Token(TokenSymbol::AUSD)
 		)),
 		bytes
 	);
@@ -58,10 +58,7 @@ fn currency_id_try_from_bytes_works() {
 	bytes[23..32].copy_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, 1][..]);
 	assert_ok!(
 		bytes.try_into(),
-		CurrencyId::DEXShare(
-			DEXShareWrapper::Token(TokenSymbol::ACA),
-			DEXShareWrapper::Token(TokenSymbol::AUSD)
-		)
+		CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD))
 	);
 
 	let mut bytes = [0u8; 32];

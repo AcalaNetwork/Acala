@@ -69,9 +69,9 @@ pub trait AddressMapping<AccountId> {
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct ERC20Info {
+pub struct Erc20Info {
 	pub address: EvmAddress,
-	pub name: String,
-	pub symbol: String,
+	pub name: Vec<u8>,
+	pub symbol: Vec<u8>,
 	pub decimals: u32,
 }

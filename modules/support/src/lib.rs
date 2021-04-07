@@ -446,3 +446,14 @@ pub trait CurrencyIdMapping {
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
 }
+
+#[cfg(feature = "std")]
+impl CurrencyIdMapping for () {
+	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
+		Ok(())
+	}
+
+	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
+		None
+	}
+}

@@ -927,6 +927,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
+	type CurrencyIdMapping = EvmManager;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -974,6 +975,10 @@ impl module_evm_accounts::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type MergeAccount = Currencies;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
+}
+
+impl module_evm_manager::Config for Runtime {
+	type Event = Event;
 }
 
 impl orml_rewards::Config for Runtime {
@@ -1318,6 +1323,7 @@ construct_runtime!(
 
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 4,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 5,
+		EvmManager: module_evm_manager::{Pallet, Storage, Event<T>} = 60, //TODO
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 6,
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 7,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 8,

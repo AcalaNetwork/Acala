@@ -29,7 +29,7 @@
 use frame_support::{ensure, pallet_prelude::*, require_transactional};
 use module_support::CurrencyIdMapping;
 use primitives::{
-	evm::{ERC20Info, EvmAddress},
+	evm::{Erc20Info, EvmAddress},
 	CurrencyId,
 };
 
@@ -48,7 +48,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	//#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {}
 
 	/// Error for evm accounts module.
@@ -60,7 +60,7 @@ pub mod module {
 
 	#[pallet::storage]
 	#[pallet::getter(fn currency_id_map)]
-	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, ERC20Info>;
+	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -74,22 +74,20 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {}
 
-pub struct EvmCurrencyIdMapping<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
+impl<T: Config> CurrencyIdMapping for Pallet<T> {
 	#[require_transactional]
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult {
-		let currency_id: u32 = CurrencyId::ERC20(address).into();
+		let currency_id: u32 = CurrencyId::Erc20(address).into();
 
 		CurrencyIdMap::<T>::mutate(currency_id, |maybe_erc20_info| -> DispatchResult {
 			if let Some(erc20_info) = maybe_erc20_info.as_mut() {
 				ensure!(erc20_info.address == address, Error::<T>::CurrencyIdExisted);
 			} else {
-				let info = ERC20Info {
+				let info = Erc20Info {
 					address,
-					name: "test".to_string(),   // TODO: get from evm-bridge
-					symbol: "test".to_string(), // TODO: get from evm-bridge
-					decimals: 10,               // TODO: get from evm-bridge
+					name: b"test".to_vec(),   // TODO: get from evm-bridge
+					symbol: b"test".to_vec(), // TODO: get from evm-bridge
+					decimals: 10,             // TODO: get from evm-bridge
 				};
 
 				*maybe_erc20_info = Some(info);

@@ -28,8 +28,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::DEXShareWrapper;
-use primitives::TokenSymbol;
+use primitives::{DexShare, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
@@ -47,14 +46,10 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(
-	DEXShareWrapper::Token(TokenSymbol::XBTC),
-	DEXShareWrapper::Token(TokenSymbol::AUSD),
-);
-pub const DOT_AUSD_LP: CurrencyId = CurrencyId::DEXShare(
-	DEXShareWrapper::Token(TokenSymbol::DOT),
-	DEXShareWrapper::Token(TokenSymbol::AUSD),
-);
+pub const BTC_AUSD_LP: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::XBTC), DexShare::Token(TokenSymbol::AUSD));
+pub const DOT_AUSD_LP: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::DOT), DexShare::Token(TokenSymbol::AUSD));
 
 mod incentives {
 	pub use super::super::*;

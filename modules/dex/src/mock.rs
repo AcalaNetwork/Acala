@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
-use primitives::{evm::EvmAddress, Amount, TokenSymbol};
+use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 
@@ -102,16 +102,6 @@ impl DEXIncentives<AccountId, CurrencyId, Balance> for MockDEXIncentives {
 	}
 }
 
-pub struct MockCurrencyIdMapping;
-impl CurrencyIdMapping for MockCurrencyIdMapping {
-	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
-		Ok(())
-	}
-	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
-		None
-	}
-}
-
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = 3;
 }
@@ -128,7 +118,7 @@ impl Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
-	type CurrencyIdMapping = MockCurrencyIdMapping;
+	type CurrencyIdMapping = ();
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;

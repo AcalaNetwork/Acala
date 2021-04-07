@@ -33,7 +33,7 @@ use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
 use primitives::{
-	currency::{DEXShareWrapper, GetDecimals},
+	currency::{DexShare, GetDecimals},
 	Balance, CurrencyId,
 };
 use sp_runtime::{
@@ -167,14 +167,14 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			// liquid/staking exchange rate.
 			return Self::get_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
-		} else if let CurrencyId::DEXShare(symbol_0, symbol_1) = currency_id {
+		} else if let CurrencyId::DexShare(symbol_0, symbol_1) = currency_id {
 			let token_0 = match symbol_0 {
-				DEXShareWrapper::Token(token) => CurrencyId::Token(token),
-				DEXShareWrapper::ERC20(address) => CurrencyId::ERC20(address),
+				DexShare::Token(token) => CurrencyId::Token(token),
+				DexShare::Erc20(address) => CurrencyId::Erc20(address),
 			};
 			let token_1 = match symbol_1 {
-				DEXShareWrapper::Token(token) => CurrencyId::Token(token),
-				DEXShareWrapper::ERC20(address) => CurrencyId::ERC20(address),
+				DexShare::Token(token) => CurrencyId::Token(token),
+				DexShare::Erc20(address) => CurrencyId::Erc20(address),
 			};
 			let (pool_0, _) = T::DEX::get_liquidity_pool(token_0, token_1);
 			let total_shares = T::Currency::total_issuance(currency_id);
@@ -195,7 +195,7 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			// if locked price exists, return it, otherwise return latest price from oracle.
 			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
 		};
-		let maybe_adjustment_multiplier = 10u128.checked_pow(currency_id.decimals());
+		let maybe_adjustment_multiplier = 10u128.checked_pow(currency_id.decimals()?);
 
 		if let (Some(feed_price), Some(adjustment_multiplier)) = (maybe_feed_price, maybe_adjustment_multiplier) {
 			Price::checked_from_rational(feed_price.into_inner(), adjustment_multiplier)

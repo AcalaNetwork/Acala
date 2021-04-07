@@ -32,7 +32,7 @@ use sp_runtime::{
 };
 use sp_std::{convert::Into, prelude::*};
 
-pub use currency::{CurrencyId, DEXShareWrapper, TokenSymbol};
+pub use currency::{CurrencyId, DexShare, TokenSymbol};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

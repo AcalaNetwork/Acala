@@ -437,17 +437,11 @@ pub mod module {
 				Error::<T>::NotAllowedList
 			);
 
-			match currency_id_a {
-				CurrencyId::ERC20(address) => {
-					T::CurrencyIdMapping::set_erc20_mapping(address)?;
-				}
-				_ => (),
+			if let CurrencyId::Erc20(address) = currency_id_a {
+				T::CurrencyIdMapping::set_erc20_mapping(address)?;
 			}
-			match currency_id_b {
-				CurrencyId::ERC20(address) => {
-					T::CurrencyIdMapping::set_erc20_mapping(address)?;
-				}
-				_ => (),
+			if let CurrencyId::Erc20(address) = currency_id_b {
+				T::CurrencyIdMapping::set_erc20_mapping(address)?;
 			}
 
 			let (min_contribution, target_provision) = if currency_id_a == trading_pair.0 {
