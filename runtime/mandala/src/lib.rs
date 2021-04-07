@@ -95,14 +95,11 @@ mod standalone_use {
 use parachain_use::*;
 #[cfg(not(feature = "standalone"))]
 mod parachain_use {
-	pub use orml_xcm_support::{
-		CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, NativePalletAssetOr,
-		XcmHandler as XcmHandlerT,
-	};
+	pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, XcmHandler as XcmHandlerT};
 	pub use polkadot_parachain::primitives::Sibling;
 	pub use sp_runtime::traits::{Convert, Identity};
 	pub use sp_std::collections::btree_set::BTreeSet;
-	pub use xcm::v0::{Junction, MultiLocation, NetworkId, Xcm};
+	pub use xcm::v0::{Junction, MultiAsset, MultiLocation, NetworkId, Xcm};
 	pub use xcm_builder::{
 		AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 		SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
@@ -227,7 +224,7 @@ impl frame_system::Config for Runtime {
 	#[cfg(feature = "standalone")]
 	type OnSetCode = ();
 	#[cfg(not(feature = "standalone"))]
-	type OnSetCode = ParachainSystem;
+	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 }
 
 parameter_types! {
@@ -1398,6 +1395,7 @@ mod standalone_impl {
 	}
 
 	impl pallet_staking::Config for Runtime {
+		const MAX_NOMINATIONS: u32 = MAX_NOMINATIONS;
 		type Currency = Balances;
 		type UnixTime = Timestamp;
 		type CurrencyToVote = U128CurrencyToVote;
@@ -1445,6 +1443,17 @@ mod standalone_impl {
 			.saturating_sub(BlockExecutionWeight::get());
 	}
 
+	sp_npos_elections::generate_solution_type!(
+		#[compact]
+		pub struct NposCompactSolution16::<
+			VoterIndex = u32,
+			TargetIndex = u16,
+			Accuracy = sp_runtime::PerU16,
+		>(16)
+	);
+
+	pub const MAX_NOMINATIONS: u32 = <NposCompactSolution16 as sp_npos_elections::CompactSolution>::LIMIT as u32;
+
 	impl pallet_election_provider_multi_phase::Config for Runtime {
 		type Event = Event;
 		type Currency = Balances;
@@ -1456,7 +1465,7 @@ mod standalone_impl {
 		type MinerTxPriority = MultiPhaseUnsignedPriority;
 		type DataProvider = Staking;
 		type OnChainAccuracy = Perbill;
-		type CompactSolution = pallet_staking::CompactAssignments;
+		type CompactSolution = NposCompactSolution16;
 		type Fallback = Fallback;
 		type WeightInfo = pallet_election_provider_multi_phase::weights::SubstrateWeight<Runtime>;
 		type BenchmarkingConfig = ();
@@ -1508,11 +1517,11 @@ mod parachain_impl {
 	pub type LocalAssetTransactor = MultiCurrencyAdapter<
 		Currencies,
 		UnknownTokens,
-		IsConcreteWithGeneralKey<CurrencyId, Identity>,
-		LocationConverter,
+		IsNativeConcrete<CurrencyId, CurrencyIdConvert>,
 		AccountId,
-		CurrencyIdConverter<CurrencyId, RelayChainCurrencyId>,
+		LocationConverter,
 		CurrencyId,
+		CurrencyIdConvert,
 	>;
 
 	pub type LocalOriginConverter = (
@@ -1554,8 +1563,7 @@ mod parachain_impl {
 		type XcmSender = XcmHandler;
 		type AssetTransactor = LocalAssetTransactor;
 		type OriginConverter = LocalOriginConverter;
-		//TODO: might need to add other assets based on orml-tokens
-		type IsReserve = NativePalletAssetOr<NativeOrmlTokens>;
+		type IsReserve = MultiNativeAsset;
 		type IsTeleporter = ();
 		type LocationInverter = LocationInverter<Ancestry>;
 	}
@@ -1576,14 +1584,34 @@ mod parachain_impl {
 		}
 	}
 
+	pub struct CurrencyIdConvert;
+	impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
+		fn convert(id: CurrencyId) -> Option<MultiLocation> {
+			unimplemented!()
+		}
+	}
+	impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+		fn convert(l: MultiLocation) -> Option<CurrencyId> {
+			unimplemented!()
+		}
+	}
+	impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
+		fn convert(a: MultiAsset) -> Option<CurrencyId> {
+			unimplemented!()
+		}
+	}
+
+	parameter_types! {
+		pub SelfLocation: MultiLocation = MultiLocation::X2(Junction::Parent, Junction::Parachain { id: ParachainInfo::get().into() });
+	}
+
 	impl orml_xtokens::Config for Runtime {
 		type Event = Event;
 		type Balance = Balance;
-		type ToRelayChainBalance = Identity;
+		type CurrencyId = CurrencyId;
+		type CurrencyIdConvert = CurrencyIdConvert;
 		type AccountId32Convert = AccountId32Convert;
-		//TODO: change network id if kusama
-		type RelayChainNetworkId = PolkadotNetworkId;
-		type ParaId = ParachainInfo;
+		type SelfLocation = SelfLocation;
 		type XcmHandler = HandleXcm;
 	}
 

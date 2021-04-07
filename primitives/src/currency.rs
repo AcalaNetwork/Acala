@@ -117,12 +117,12 @@ create_currency_id! {
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// Polkadot Ecosystem
-		ACA("Acala", 13) = 0,
-		AUSD("Acala Dollar", 12) = 1,
-		DOT("Polkadot", 10) = 2,
-		LDOT("Liquid DOT", 10) = 3,
+		ACA("Acala", 13) = 0, //TODO
+		AUSD("Acala Dollar", 12) = 1, //TODO
+		DOT("Polkadot", 10) = 2, //TODO
+		LDOT("Liquid DOT", 10) = 3, //TODO
 		XBTC("ChainX BTC", 8) = 4,
-		RENBTC("Ren Protocol BTC", 8) = 5,
+		RENBTC("Ren Protocol BTC", 8) = 5, //TODO
 		POLKABTC("PolkaBTC", 8) = 6,
 		PLM("Plasm", 18) = 7,
 		PHA("Phala", 18) = 8,
@@ -130,10 +130,10 @@ create_currency_id! {
 		BCG("Bit.Country", 18) = 11,
 
 		// Kusama Ecosystem
-		KAR("Karura", 12) = 128,
-		KUSD("Karura Dollar", 12) = 129,
-		KSM("Kusama", 12) = 130,
-		LKSM("Liquid KSM", 12) = 131,
+		KAR("Karura", 12) = 128, //TODO:
+		KUSD("Karura Dollar", 12) = 129, //TODO
+		KSM("Kusama", 12) = 130, //TODO
+		LKSM("Liquid KSM", 12) = 131, //TODO
 		// Reserve for XBTC = 132
 		// Reserve for RENBTC = 133
 		// Reserve for POLKABTC = 134

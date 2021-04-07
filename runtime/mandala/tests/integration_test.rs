@@ -1118,9 +1118,7 @@ mod parachain_tests {
 	use super::*;
 
 	use codec::Encode;
-	use cumulus_primitives_core::{
-		DownwardMessageHandler, InboundDownwardMessage, InboundHrmpMessage, XcmpMessageHandler,
-	};
+	use cumulus_primitives_core::{DownwardMessageHandler, InboundDownwardMessage, XcmpMessageHandler};
 	use polkadot_parachain::primitives::Sibling;
 	use xcm::{
 		v0::{Junction, MultiAsset, MultiLocation, NetworkId, Order, Xcm},
