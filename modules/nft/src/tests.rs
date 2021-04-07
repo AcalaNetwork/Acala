@@ -21,15 +21,17 @@
 #![cfg(test)]
 
 use super::*;
+use frame_support::traits::Currency;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
+use primitives::Balance;
 
 fn free_balance(who: &AccountId) -> Balance {
-	<Runtime as Config>::Currency::free_balance(who)
+	<Runtime as pallet_proxy::Config>::Currency::free_balance(who)
 }
 
 fn reserved_balance(who: &AccountId) -> Balance {
-	<Runtime as Config>::Currency::reserved_balance(who)
+	<Runtime as pallet_proxy::Config>::Currency::reserved_balance(who)
 }
 
 fn class_id_account() -> AccountId {

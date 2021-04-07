@@ -162,7 +162,6 @@ impl module_nft::Config for Test {
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
-	type Currency = AdaptedBasicCurrency;
 	type WeightInfo = ();
 }
 

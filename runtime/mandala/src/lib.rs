@@ -1147,7 +1147,6 @@ impl module_nft::Config for Runtime {
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
-	type Currency = Currency<Runtime, GetNativeCurrencyId>;
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 

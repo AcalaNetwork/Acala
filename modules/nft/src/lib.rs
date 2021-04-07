@@ -24,12 +24,12 @@
 use enumflags2::BitFlags;
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Currency, ExistenceRequirement::KeepAlive},
+	traits::{Currency, ExistenceRequirement::KeepAlive, ReservableCurrency},
 	transactional,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{BasicCurrency, BasicReservableCurrency, NFT};
-use primitives::{Balance, NFTBalance};
+use orml_traits::NFT;
+use primitives::NFTBalance;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
@@ -77,7 +77,7 @@ impl Decode for Properties {
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct ClassData {
+pub struct ClassData<Balance> {
 	/// The minimum balance to create class
 	pub deposit: Balance,
 	/// Property of token
@@ -86,13 +86,15 @@ pub struct ClassData {
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TokenData {
+pub struct TokenData<Balance> {
 	/// The minimum balance to create token
 	pub deposit: Balance,
 }
 
 pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
 pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
+pub type BalanceOf<T> =
+	<<T as pallet_proxy::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod module {
@@ -100,25 +102,23 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config + orml_nft::Config<ClassData = ClassData, TokenData = TokenData> + pallet_proxy::Config
+		frame_system::Config
+		+ orml_nft::Config<ClassData = ClassData<BalanceOf<Self>>, TokenData = TokenData<BalanceOf<Self>>>
+		+ pallet_proxy::Config
 	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The minimum balance to create class
 		#[pallet::constant]
-		type CreateClassDeposit: Get<Balance>;
+		type CreateClassDeposit: Get<BalanceOf<Self>>;
 
 		/// The minimum balance to create token
 		#[pallet::constant]
-		type CreateTokenDeposit: Get<Balance>;
+		type CreateTokenDeposit: Get<BalanceOf<Self>>;
 
 		/// The NFT's module id
 		#[pallet::constant]
 		type ModuleId: Get<ModuleId>;
-
-		///  Currency type for reserve/unreserve balance to
-		/// create_class/mint/burn/destroy_class
-		type Currency: BasicReservableCurrency<Self::AccountId, Balance = Balance>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -179,9 +179,9 @@ pub mod module {
 			let deposit = T::CreateClassDeposit::get();
 
 			// it depends https://github.com/paritytech/substrate/issues/7563
-			<T as Config>::Currency::transfer(&who, &owner, deposit)?;
+			T::Currency::transfer(&who, &owner, deposit, KeepAlive)?;
 			// Currently, use `free_balance(owner)` instead of `deposit`.
-			<T as Config>::Currency::reserve(&owner, <T as Config>::Currency::free_balance(&owner))?;
+			T::Currency::reserve(&owner, T::Currency::free_balance(&owner))?;
 
 			// owner add proxy delegate to origin
 			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
@@ -216,8 +216,8 @@ pub mod module {
 			let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
 			let deposit = T::CreateTokenDeposit::get();
-			let total_deposit = deposit * (quantity as u128);
-			<T as Config>::Currency::reserve(&class_info.owner, total_deposit)?;
+			let total_deposit = deposit * quantity.into();
+			T::Currency::reserve(&class_info.owner, total_deposit)?;
 
 			let data = TokenData { deposit };
 			for _ in 0..quantity {
@@ -267,8 +267,8 @@ pub mod module {
 			let data = token_info.data;
 			// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
 			// `transfer` not do this check.
-			<T as Config>::Currency::unreserve(&owner, data.deposit);
-			<T as Config>::Currency::transfer(&owner, &who, data.deposit)?;
+			T::Currency::unreserve(&owner, data.deposit);
+			T::Currency::transfer(&owner, &who, data.deposit, KeepAlive)?;
 
 			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
 			Ok(().into())
@@ -298,8 +298,8 @@ pub mod module {
 			let data = class_info.data;
 			// `repatriate_reserved` will check `to` account exist and return `DeadAccount`.
 			// `transfer` not do this check.
-			<T as Config>::Currency::unreserve(&owner, data.deposit);
-			<T as Config>::Currency::transfer(&owner, &dest, data.deposit)?;
+			T::Currency::unreserve(&owner, data.deposit);
+			T::Currency::transfer(&owner, &dest, data.deposit, KeepAlive)?;
 
 			// transfer all free from origin to dest
 			orml_nft::Pallet::<T>::destroy_class(&who, class_id)?;
