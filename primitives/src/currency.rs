@@ -130,7 +130,7 @@ create_currency_id! {
 		BCG("Bit.Country", 18) = 11,
 
 		// Kusama Ecosystem
-		KAR("Karura", 12) = 128,:
+		KAR("Karura", 12) = 128,
 		KUSD("Karura Dollar", 12) = 129,
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
