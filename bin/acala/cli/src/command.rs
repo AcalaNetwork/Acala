@@ -73,13 +73,9 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		let id = if id.is_empty() {
-			// The binary prefix is always acala.
-			// Make Mandala the default chain spec.
-			"mandala"
-		} else {
-			id
-		};
+		if id.is_empty() {
+			return Err("Not specific which chain to run.".into());
+		}
 
 		Ok(match id {
 			#[cfg(feature = "with-mandala-runtime")]
