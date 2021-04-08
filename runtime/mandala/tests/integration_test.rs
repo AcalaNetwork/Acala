@@ -614,7 +614,7 @@ fn test_cdp_engine_module() {
 			let new_collateral_params = CdpEngineModule::collateral_params(XBTC);
 
 			assert_eq!(
-				new_collateral_params.stability_fee,
+				new_collateral_params.annual_interest_rate,
 				Some(Rate::saturating_from_rational(1, 100000))
 			);
 			assert_eq!(
@@ -1126,7 +1126,7 @@ mod parachain_tests {
 		VersionedXcm,
 	};
 
-	use mandala_runtime::{Tokens, XcmHandler, PLM};
+	use mandala_runtime::{Tokens, XcmHandler};
 
 	#[test]
 	fn receive_cross_chain_assets() {
