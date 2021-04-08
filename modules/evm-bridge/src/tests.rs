@@ -25,6 +25,48 @@ use frame_support::{assert_err, assert_ok};
 use mock::{alice, bob, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
 use primitives::evm::AddressMapping;
 
+//#[test]
+fn should_read_name() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			EvmBridgeModule::name(InvokeContext {
+				contract: erc20_address(),
+				sender: Default::default(),
+				origin: Default::default(),
+			}),
+			Ok(b"Basic".to_vec())
+		);
+	});
+}
+
+//#[test]
+fn should_read_symbol() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			EvmBridgeModule::symbol(InvokeContext {
+				contract: erc20_address(),
+				sender: Default::default(),
+				origin: Default::default(),
+			}),
+			Ok(b"BSC".to_vec())
+		);
+	});
+}
+
+#[test]
+fn should_read_decimals() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			EvmBridgeModule::decimals(InvokeContext {
+				contract: erc20_address(),
+				sender: Default::default(),
+				origin: Default::default(),
+			}),
+			Ok(18)
+		);
+	});
+}
+
 #[test]
 fn should_read_total_supply() {
 	ExtBuilder::default().build().execute_with(|| {

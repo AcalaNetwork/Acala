@@ -352,6 +352,12 @@ pub struct InvokeContext {
 
 /// An abstraction of EVMBridge
 pub trait EVMBridge<AccountId, Balance> {
+	/// Execute ERC20.name() to read token name from ERC20 contract
+	fn name(context: InvokeContext) -> Result<Vec<u8>, DispatchError>;
+	/// Execute ERC20.symbol() to read token symbol from ERC20 contract
+	fn symbol(context: InvokeContext) -> Result<Vec<u8>, DispatchError>;
+	/// Execute ERC20.decimals() to read token decimals from ERC20 contract
+	fn decimals(context: InvokeContext) -> Result<u8, DispatchError>;
 	/// Execute ERC20.totalSupply() to read total supply from ERC20 contract
 	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20

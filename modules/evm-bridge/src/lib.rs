@@ -68,6 +68,44 @@ pub mod module {
 }
 
 impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
+	fn name(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
+		// ERC20.name method hash
+		let input = hex!("06fdde03").to_vec();
+
+		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+
+		Self::handle_exit_reason(info.exit_reason)?;
+
+		//let value = U256::from(info.output.as_slice()).saturated_into::<u128>();
+		//Ok(value.saturated_into::<BalanceOf<T>>())
+		Ok(vec![])
+	}
+
+	fn symbol(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
+		// ERC20.symbol method hash
+		let input = hex!("95d89b41").to_vec();
+
+		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+
+		Self::handle_exit_reason(info.exit_reason)?;
+
+		//let value = U256::from(info.output.as_slice()).saturated_into::<u128>();
+		//TOk(value.saturated_into::<BalanceOf<T>>())
+		Ok(vec![])
+	}
+
+	fn decimals(context: InvokeContext) -> Result<u8, DispatchError> {
+		// ERC20.decimals method hash
+		let input = hex!("313ce567").to_vec();
+
+		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+
+		Self::handle_exit_reason(info.exit_reason)?;
+
+		let value = U256::from(info.output.as_slice()).saturated_into::<u8>();
+		Ok(value)
+	}
+
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
