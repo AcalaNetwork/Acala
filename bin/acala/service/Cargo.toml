@@ -74,7 +74,7 @@ karura-runtime = { path = "../../../runtime/karura", optional = true }
 acala-runtime = { path = "../../../runtime/acala", optional = true }
 
 [dev-dependencies]
-sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", features = ["test-helpers"] }
+sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
 [features]
 default = ["std", "with-mandala-runtime"]
