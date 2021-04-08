@@ -445,6 +445,12 @@ fn destroy_class_should_fail() {
 		);
 
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
+
+		assert_noop!(
+			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID, BOB),
+			pallet_proxy::Error::<Runtime>::NotFound
+		);
+
 		assert_ok!(NFTModule::destroy_class(
 			Origin::signed(class_id_account()),
 			CLASS_ID,
