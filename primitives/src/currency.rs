@@ -117,7 +117,7 @@ create_currency_id! {
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// Polkadot Ecosystem
-		ACA("Acala", 13) = 0,
+		ACA("Acala", 12) = 0,
 		AUSD("Acala Dollar", 12) = 1,
 		DOT("Polkadot", 10) = 2,
 		LDOT("Liquid DOT", 10) = 3,
@@ -125,7 +125,7 @@ create_currency_id! {
 		RENBTC("Ren Protocol BTC", 8) = 5,
 		POLKABTC("PolkaBTC", 8) = 6,
 		PLM("Plasm", 18) = 7,
-		PHA("Phala", 18) = 8,
+		PHA("Phala", 12) = 8,
 		HDT("HydraDX", 12) = 9,
 		BCG("Bit.Country", 18) = 11,
 
