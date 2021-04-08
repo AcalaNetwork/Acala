@@ -1126,7 +1126,7 @@ mod parachain_tests {
 		VersionedXcm,
 	};
 
-	use mandala_runtime::{Tokens, XcmHandler, PLM};
+	use mandala_runtime::{Tokens, XcmHandler};
 
 	#[test]
 	fn receive_cross_chain_assets() {
