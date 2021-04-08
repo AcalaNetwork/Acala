@@ -25,7 +25,7 @@ use frame_support::{assert_err, assert_ok};
 use mock::{alice, bob, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
 use primitives::evm::AddressMapping;
 
-//#[test]
+#[test]
 fn should_read_name() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
@@ -34,12 +34,12 @@ fn should_read_name() {
 				sender: Default::default(),
 				origin: Default::default(),
 			}),
-			Ok(b"Basic".to_vec())
+			Ok(b"long string name, long string name, long string name, long string name, long string name".to_vec())
 		);
 	});
 }
 
-//#[test]
+#[test]
 fn should_read_symbol() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
@@ -48,7 +48,7 @@ fn should_read_symbol() {
 				sender: Default::default(),
 				origin: Default::default(),
 			}),
-			Ok(b"BSC".to_vec())
+			Ok(b"TestToken".to_vec())
 		);
 	});
 }
@@ -62,7 +62,7 @@ fn should_read_decimals() {
 				sender: Default::default(),
 				origin: Default::default(),
 			}),
-			Ok(18)
+			Ok(17)
 		);
 	});
 }

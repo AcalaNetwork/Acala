@@ -55,6 +55,7 @@ pub mod module {
 		ExecutionRevert,
 		ExecutionFatal,
 		ExecutionError,
+		InvalidReturnValue,
 	}
 
 	#[pallet::pallet]
@@ -76,9 +77,28 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
-		//let value = U256::from(info.output.as_slice()).saturated_into::<u128>();
-		//Ok(value.saturated_into::<BalanceOf<T>>())
-		Ok(vec![])
+		// output is 32-byte aligned and consists of 3 parts:
+		// - part 1: 32 byte, the offset of its description is passed in the position of
+		// the corresponding parameter or return value.
+		// - part 2: 32 byte, string length
+		// - part 3: string data
+		let output = info.output.as_slice().to_vec();
+		ensure!(
+			output.len() >= 64 && output.len() % 32 == 0,
+			Error::<T>::InvalidReturnValue
+		);
+
+		let offset = U256::from_big_endian(&output[0..32]);
+		let length = U256::from_big_endian(&output[offset.as_usize()..offset.as_usize() + 32]);
+		ensure!(
+			output.len() >= offset.as_usize() + 32 + length.as_usize(),
+			Error::<T>::InvalidReturnValue
+		);
+
+		let mut data = Vec::new();
+		data.extend_from_slice(&output[offset.as_usize() + 32..offset.as_usize() + 32 + length.as_usize()]);
+
+		Ok(data.to_vec())
 	}
 
 	fn symbol(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
@@ -89,9 +109,28 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
-		//let value = U256::from(info.output.as_slice()).saturated_into::<u128>();
-		//TOk(value.saturated_into::<BalanceOf<T>>())
-		Ok(vec![])
+		// output is 32-byte aligned and consists of 3 parts:
+		// - part 1: 32 byte, the offset of its description is passed in the position of
+		// the corresponding parameter or return value.
+		// - part 2: 32 byte, string length
+		// - part 3: string data
+		let output = info.output.as_slice().to_vec();
+		ensure!(
+			output.len() >= 64 && output.len() % 32 == 0,
+			Error::<T>::InvalidReturnValue
+		);
+
+		let offset = U256::from_big_endian(&output[0..32]);
+		let length = U256::from_big_endian(&output[offset.as_usize()..offset.as_usize() + 32]);
+		ensure!(
+			output.len() >= offset.as_usize() + 32 + length.as_usize(),
+			Error::<T>::InvalidReturnValue
+		);
+
+		let mut data = Vec::new();
+		data.extend_from_slice(&output[offset.as_usize() + 32..offset.as_usize() + 32 + length.as_usize()]);
+
+		Ok(data.to_vec())
 	}
 
 	fn decimals(context: InvokeContext) -> Result<u8, DispatchError> {
@@ -102,6 +141,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
+		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
 		let value = U256::from(info.output.as_slice()).saturated_into::<u8>();
 		Ok(value)
 	}
@@ -114,6 +154,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
+		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
 		let value = U256::from(info.output.as_slice()).saturated_into::<u128>();
 		Ok(value.saturated_into::<BalanceOf<T>>())
 	}
@@ -128,6 +169,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
+		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
 		Ok(U256::from(info.output.as_slice())
 			.saturated_into::<u128>()
 			.saturated_into::<BalanceOf<T>>())
