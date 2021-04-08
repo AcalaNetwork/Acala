@@ -282,13 +282,20 @@ pub mod module {
 			Ok(().into())
 		}
 
-		/// Destroy NFT class
+		/// Destroy NFT class, remove dest from proxy, and send all the free
+		/// balance to dest
 		///
-		/// - `class_id`: destroy class id
+		/// - `class_id`: The class ID to destroy
+		/// - `dest`: The proxy account that will receive free balance
 		#[pallet::weight(<T as Config>::WeightInfo::destroy_class())]
 		#[transactional]
-		pub fn destroy_class(origin: OriginFor<T>, class_id: ClassIdOf<T>) -> DispatchResultWithPostInfo {
+		pub fn destroy_class(
+			origin: OriginFor<T>,
+			class_id: ClassIdOf<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			let dest = T::Lookup::lookup(dest)?;
 			let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 			ensure!(who == class_info.owner, Error::<T>::NoPermission);
 			ensure!(
@@ -301,6 +308,11 @@ pub mod module {
 			T::Currency::unreserve(&who, data.deposit);
 
 			orml_nft::Pallet::<T>::destroy_class(&who, class_id)?;
+
+			// this should unresere proxy deposit
+			pallet_proxy::Pallet::<T>::remove_proxy_delegate(&who, dest.clone(), Default::default(), Zero::zero())?;
+
+			T::Currency::transfer(&who, &dest, T::Currency::free_balance(&who), AllowDeath)?;
 
 			Self::deposit_event(Event::DestroyedClass(who, class_id));
 			Ok(().into())

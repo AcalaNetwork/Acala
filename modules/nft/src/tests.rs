@@ -394,16 +394,17 @@ fn destroy_class_should_work() {
 			1
 		));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
-		assert_ok!(NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID,));
+		assert_ok!(NFTModule::destroy_class(
+			Origin::signed(class_id_account()),
+			CLASS_ID,
+			ALICE
+		));
 		let event = Event::nft(crate::Event::DestroyedClass(class_id_account(), CLASS_ID));
 		assert_eq!(last_event(), event);
 
-		assert_eq!(
-			free_balance(&class_id_account()),
-			<Runtime as Config>::CreateClassDeposit::get()
-		);
-		assert_eq!(reserved_balance(&class_id_account()), 2); // proxy
-		assert_eq!(free_balance(&ALICE), 99800 - 2);
+		assert_eq!(free_balance(&class_id_account()), 0);
+		assert_eq!(reserved_balance(&class_id_account()), 0);
+		assert_eq!(free_balance(&ALICE), 100000);
 		assert_eq!(free_balance(&BOB), <Runtime as Config>::CreateTokenDeposit::get());
 	});
 }
@@ -429,21 +430,25 @@ fn destroy_class_should_fail() {
 			1
 		));
 		assert_noop!(
-			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID_NOT_EXIST),
+			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID_NOT_EXIST, BOB),
 			Error::<Runtime>::ClassIdNotFound
 		);
 
 		assert_noop!(
-			NFTModule::destroy_class(Origin::signed(BOB), CLASS_ID),
+			NFTModule::destroy_class(Origin::signed(BOB), CLASS_ID, BOB),
 			Error::<Runtime>::NoPermission
 		);
 
 		assert_noop!(
-			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID),
+			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID, BOB),
 			Error::<Runtime>::CannotDestroyClass
 		);
 
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
-		assert_ok!(NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID,));
+		assert_ok!(NFTModule::destroy_class(
+			Origin::signed(class_id_account()),
+			CLASS_ID,
+			ALICE
+		));
 	});
 }
