@@ -588,8 +588,8 @@ fn mandala_genesis(
 				let nft_airdrop: Vec<(
 					AccountId,
 					Vec<u8>,
-					module_nft::ClassData,
-					Vec<(Vec<u8>, module_nft::TokenData, Vec<AccountId>)>,
+					module_nft::ClassData<Balance>,
+					Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
 				)> = serde_json::from_slice(nft_airdrop_json).unwrap();
 
 				let mut tokens = vec![];

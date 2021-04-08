@@ -26,9 +26,9 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts,
-	GetNativeCurrencyId, NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, ParachainInfo, Perbill,
-	Proxy, Runtime, SevenDays, System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, XBTC,
+	CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts, GetNativeCurrencyId,
+	NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, ParachainInfo, Perbill, Runtime, SevenDays,
+	System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, XBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
@@ -956,20 +956,22 @@ fn test_nft_module() {
 			));
 			assert_ok!(NFT::burn(origin_of(AccountId::from(BOB)), (0, 0)));
 			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
+			assert_noop!(
+				NFT::destroy_class(
+					origin_of(NftModuleId::get().into_sub_account(0)),
+					0,
+					MultiAddress::Id(AccountId::from(BOB))
+				),
+				pallet_proxy::Error::<Runtime>::NotFound
+			);
 			assert_ok!(NFT::destroy_class(
 				origin_of(NftModuleId::get().into_sub_account(0)),
 				0,
-				MultiAddress::Id(AccountId::from(BOB))
+				MultiAddress::Id(AccountId::from(ALICE))
 			));
-			assert_eq!(
-				Balances::free_balance(AccountId::from(BOB)),
-				CreateClassDeposit::get() + CreateTokenDeposit::get()
-			);
+			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
 			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
-			assert_eq!(
-				Balances::free_balance(AccountId::from(ALICE)),
-				1_000 * dollar(ACA) - (CreateClassDeposit::get() + Proxy::deposit(1u32))
-			);
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1_000 * dollar(ACA));
 		});
 }
 
