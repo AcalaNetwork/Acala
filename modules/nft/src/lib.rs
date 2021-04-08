@@ -176,16 +176,17 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let next_id = orml_nft::Pallet::<T>::next_class_id();
 			let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
-			let deposit = T::CreateClassDeposit::get();
+			let class_deposit = T::CreateClassDeposit::get();
 
-			// it depends https://github.com/paritytech/substrate/issues/7563
-			T::Currency::transfer(&who, &owner, deposit, KeepAlive)?;
-			// Currently, use `free_balance(owner)` instead of `deposit`.
-			T::Currency::reserve(&owner, T::Currency::free_balance(&owner))?;
+			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
+			let total_deposit = proxy_deposit.saturated_add(class_deposit);
+
+			// ensure enough token for proxy deposit + class deposit
+			T::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
+
+			T::Currency::reserve(&owner, class_deposit)?;
 
 			// owner add proxy delegate to origin
-			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
-			<T as pallet_proxy::Config>::Currency::transfer(&who, &owner, proxy_deposit, KeepAlive)?;
 			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
 
 			let data = ClassData { deposit, properties };
