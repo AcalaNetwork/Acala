@@ -1043,7 +1043,7 @@ fn test_evm_module() {
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(evm_alice_account_id()), 9_999_998_963_300_000);
+			assert_eq!(Balances::free_balance(evm_alice_account_id()), 999_999_896_330_000);
 			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
 			let to = EvmAccounts::eth_address(&alice());
 			assert_ok!(Currencies::transfer(
@@ -1052,7 +1052,7 @@ fn test_evm_module() {
 				ACA,
 				10 * dollar(ACA)
 			));
-			assert_eq!(Balances::free_balance(evm_alice_account_id()), 10_099_998_963_300_000);
+			assert_eq!(Balances::free_balance(evm_alice_account_id()), 1_009_999_896_330_000);
 			assert_eq!(
 				Balances::free_balance(evm_bob_account_id()),
 				1_000 * dollar(ACA) - 10 * dollar(ACA)
