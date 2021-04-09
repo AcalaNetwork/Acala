@@ -384,7 +384,7 @@ fn testnet_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 666.into(),
+			parachain_id: 1000.into(),
 		},
 		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
@@ -583,7 +583,7 @@ fn mandala_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 666.into(),
+			parachain_id: 1000.into(),
 		},
 		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
@@ -594,8 +594,8 @@ fn mandala_genesis(
 				let nft_airdrop: Vec<(
 					AccountId,
 					Vec<u8>,
-					module_nft::ClassData,
-					Vec<(Vec<u8>, module_nft::TokenData, Vec<AccountId>)>,
+					module_nft::ClassData<Balance>,
+					Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
 				)> = serde_json::from_slice(nft_airdrop_json).unwrap();
 
 				let mut tokens = vec![];
