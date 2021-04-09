@@ -266,7 +266,7 @@ fn karura_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 666.into(),
+			parachain_id: 1000.into(),
 		},
 		// TODO: need RENBTC for Kusama Ecosystem
 		// ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
