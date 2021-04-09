@@ -96,6 +96,7 @@ use parachain_use::*;
 #[cfg(not(feature = "standalone"))]
 mod parachain_use {
 	pub use codec::Decode;
+	pub use cumulus_primitives_core::ParaId;
 	pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, XcmHandler as XcmHandlerT};
 	pub use polkadot_parachain::primitives::Sibling;
 	pub use sp_runtime::traits::{Convert, Identity};
@@ -1590,13 +1591,12 @@ mod parachain_impl {
 		fn convert(location: MultiLocation) -> Option<CurrencyId> {
 			use CurrencyId::Token;
 			use TokenSymbol::*;
-			let _para_id: u32 = ParachainInfo::get().into();
 			match location {
 				X1(Parent) => Some(Token(DOT)),
-				X3(Parent, Parachain { id: _para_id }, GeneralKey(key)) => {
+				X3(Parent, Parachain { id }, GeneralKey(key)) if ParaId::from(id) == ParachainInfo::get() => {
 					// decode the general key
 					if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
-						// check `currency_id` is cross-chain asset
+						// check if `currency_id` is cross-chain asset
 						match currency_id {
 							Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
 							_ => None,
