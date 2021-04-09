@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use primitives::{Balance, TokenSymbol};
+use primitives::{Balance, Moment, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
@@ -234,6 +234,16 @@ impl cdp_treasury::Config for Runtime {
 }
 
 parameter_types! {
+	pub const MinimumPeriod: Moment = 1000;
+}
+impl pallet_timestamp::Config for Runtime {
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
+}
+
+parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
@@ -258,6 +268,7 @@ impl cdp_engine::Config for Runtime {
 	type DEX = ();
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type UnixTime = Timestamp;
 	type WeightInfo = ();
 }
 
@@ -278,6 +289,7 @@ construct_runtime!(
 		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
 		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
 		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
 

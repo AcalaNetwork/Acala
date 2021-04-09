@@ -28,7 +28,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -43,7 +43,7 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, StaticLookup, Zero},
+	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
@@ -80,8 +80,8 @@ pub struct RiskManagementParams {
 	/// type.
 	pub maximum_total_debit_value: Balance,
 
-	/// Extra stability fee rate, `None` value means not set
-	pub stability_fee: Option<Rate>,
+	/// Extra interest rate per sec, `None` value means not set
+	pub interest_rate_per_sec: Option<Rate>,
 
 	/// Liquidation ratio, when the collateral ratio of
 	/// CDP under this collateral type is below the liquidation ratio, this
@@ -174,6 +174,12 @@ pub mod module {
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
 
+		/// Time used for computing era duration.
+		///
+		/// It is guaranteed to start being called from the first `on_finalize`.
+		/// Thus value at genesis is not used.
+		type UnixTime: UnixTime;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -211,9 +217,9 @@ pub mod module {
 		LiquidateUnsafeCDP(CurrencyId, T::AccountId, Balance, Balance, LiquidationStrategy),
 		/// Settle the CDP has debit. [collateral_type, owner]
 		SettleCDPInDebit(CurrencyId, T::AccountId),
-		/// The stability fee for specific collateral type updated.
-		/// \[collateral_type, new_stability_fee\]
-		StabilityFeeUpdated(CurrencyId, Option<Rate>),
+		/// The interest rate per sec for specific collateral type updated.
+		/// \[collateral_type, new_interest_rate_per_sec\]
+		InterestRatePerSec(CurrencyId, Option<Rate>),
 		/// The liquidation fee for specific collateral type updated.
 		/// \[collateral_type, new_liquidation_ratio\]
 		LiquidationRatioUpdated(CurrencyId, Option<Ratio>),
@@ -226,9 +232,9 @@ pub mod module {
 		/// The hard cap of total debit value for specific collateral type
 		/// updated. \[collateral_type, new_total_debit_value\]
 		MaximumTotalDebitValueUpdated(CurrencyId, Balance),
-		/// The global stability fee for all types of collateral updated.
-		/// \[new_global_stability_fee\]
-		GlobalStabilityFeeUpdated(Rate),
+		/// The global interest rate per sec for all types of collateral
+		/// updated. \[new_global_interest_rate_per_sec\]
+		GlobalInterestRatePerSecUpdated(Rate),
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -237,15 +243,20 @@ pub mod module {
 	#[pallet::getter(fn debit_exchange_rate)]
 	pub type DebitExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ExchangeRate, OptionQuery>;
 
-	/// Global stability fee rate for all types of collateral
+	/// Global interest rate per sec for all types of collateral
 	#[pallet::storage]
-	#[pallet::getter(fn global_stability_fee)]
-	pub type GlobalStabilityFee<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	#[pallet::getter(fn global_interest_rate_per_sec)]
+	pub type GlobalInterestRatePerSec<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
 	/// Mapping from collateral type to its risk management params
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_params)]
 	pub type CollateralParams<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, RiskManagementParams, ValueQuery>;
+
+	/// Timestamp in seconds of the last interest accumulation
+	#[pallet::storage]
+	#[pallet::getter(fn last_accumulation_secs)]
+	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig {
@@ -258,7 +269,7 @@ pub mod module {
 			Option<Ratio>,
 			Balance,
 		)>,
-		pub global_stability_fee: Rate,
+		pub global_interest_rate_per_sec: Rate,
 	}
 
 	#[cfg(feature = "std")]
@@ -266,7 +277,7 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				collaterals_params: vec![],
-				global_stability_fee: Default::default(),
+				global_interest_rate_per_sec: Default::default(),
 			}
 		}
 	}
@@ -277,7 +288,7 @@ pub mod module {
 			self.collaterals_params.iter().for_each(
 				|(
 					currency_id,
-					stability_fee,
+					interest_rate_per_sec,
 					liquidation_ratio,
 					liquidation_penalty,
 					required_collateral_ratio,
@@ -287,7 +298,7 @@ pub mod module {
 						currency_id,
 						RiskManagementParams {
 							maximum_total_debit_value: *maximum_total_debit_value,
-							stability_fee: *stability_fee,
+							interest_rate_per_sec: *interest_rate_per_sec,
 							liquidation_ratio: *liquidation_ratio,
 							liquidation_penalty: *liquidation_penalty,
 							required_collateral_ratio: *required_collateral_ratio,
@@ -295,7 +306,7 @@ pub mod module {
 					);
 				},
 			);
-			GlobalStabilityFee::<T>::put(self.global_stability_fee);
+			GlobalInterestRatePerSec::<T>::put(self.global_interest_rate_per_sec);
 		}
 	}
 
@@ -306,29 +317,9 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		/// Issue interest in stable currency for all types of collateral has
 		/// debit when block end, and update their debit exchange rate
-		fn on_finalize(_now: T::BlockNumber) {
-			// collect stability fee for all types of collateral
-			if !T::EmergencyShutdown::is_shutdown() {
-				for currency_id in T::CollateralCurrencyIds::get() {
-					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
-					let stability_fee_rate = Self::get_stability_fee(currency_id);
-					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
-					if !stability_fee_rate.is_zero() && !total_debits.is_zero() {
-						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(stability_fee_rate);
-						let total_debit_value = Self::get_debit_value(currency_id, total_debits);
-						let issued_stable_coin_balance =
-							debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
-
-						// issue stablecoin to surplus pool
-						if <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance).is_ok() {
-							// update exchange rate when issue success
-							let new_debit_exchange_rate =
-								debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
-							DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
-						}
-					}
-				}
-			}
+		fn on_initialize(_: T::BlockNumber) -> Weight {
+			let count: u32 = Self::accumulate_interest(T::UnixTime::now().as_secs(), Self::last_accumulation_secs());
+			<T as Config>::WeightInfo::on_initialize(count)
 		}
 
 		/// Runs after every block. Start offchain worker to check CDP and
@@ -359,7 +350,7 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[pallet::weight(T::WeightInfo::liquidate_by_dex())]
+		#[pallet::weight(<T as Config>::WeightInfo::liquidate_by_dex())]
 		#[transactional]
 		pub fn liquidate(
 			origin: OriginFor<T>,
@@ -379,7 +370,7 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[pallet::weight(T::WeightInfo::settle())]
+		#[pallet::weight(<T as Config>::WeightInfo::settle())]
 		#[transactional]
 		pub fn settle(
 			origin: OriginFor<T>,
@@ -397,13 +388,16 @@ pub mod module {
 		///
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
-		/// - `global_stability_fee`: global stability fee rate.
-		#[pallet::weight((T::WeightInfo::set_global_params(), DispatchClass::Operational))]
+		/// - `global_interest_rate_per_sec`: global interest rate per sec.
+		#[pallet::weight((<T as Config>::WeightInfo::set_global_params(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn set_global_params(origin: OriginFor<T>, global_stability_fee: Rate) -> DispatchResultWithPostInfo {
+		pub fn set_global_params(
+			origin: OriginFor<T>,
+			global_interest_rate_per_sec: Rate,
+		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			GlobalStabilityFee::<T>::put(global_stability_fee);
-			Self::deposit_event(Event::GlobalStabilityFeeUpdated(global_stability_fee));
+			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
+			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated(global_interest_rate_per_sec));
 			Ok(().into())
 		}
 
@@ -413,8 +407,8 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type.
-		/// - `stability_fee`: extra stability fee rate, `None` means do not
-		///   update, `Some(None)` means update it to `None`.
+		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means
+		///   do not update, `Some(None)` means update it to `None`.
 		/// - `liquidation_ratio`: liquidation ratio, `None` means do not
 		///   update, `Some(None)` means update it to `None`.
 		/// - `liquidation_penalty`: liquidation penalty, `None` means do not
@@ -422,12 +416,12 @@ pub mod module {
 		/// - `required_collateral_ratio`: required collateral ratio, `None`
 		///   means do not update, `Some(None)` means update it to `None`.
 		/// - `maximum_total_debit_value`: maximum total debit value.
-		#[pallet::weight((T::WeightInfo::set_collateral_params(), DispatchClass::Operational))]
+		#[pallet::weight((<T as Config>::WeightInfo::set_collateral_params(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn set_collateral_params(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			stability_fee: ChangeOptionRate,
+			interest_rate_per_sec: ChangeOptionRate,
 			liquidation_ratio: ChangeOptionRatio,
 			liquidation_penalty: ChangeOptionRate,
 			required_collateral_ratio: ChangeOptionRatio,
@@ -440,9 +434,9 @@ pub mod module {
 			);
 
 			let mut collateral_params = Self::collateral_params(currency_id);
-			if let Change::NewValue(update) = stability_fee {
-				collateral_params.stability_fee = update;
-				Self::deposit_event(Event::StabilityFeeUpdated(currency_id, update));
+			if let Change::NewValue(update) = interest_rate_per_sec {
+				collateral_params.interest_rate_per_sec = update;
+				Self::deposit_event(Event::InterestRatePerSec(currency_id, update));
 			}
 			if let Change::NewValue(update) = liquidation_ratio {
 				collateral_params.liquidation_ratio = update;
@@ -506,6 +500,40 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	fn accumulate_interest(now_secs: u64, last_accumulation_secs: u64) -> u32 {
+		let mut count: u32 = 0;
+
+		if !T::EmergencyShutdown::is_shutdown() && !now_secs.is_zero() {
+			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
+
+			for currency_id in T::CollateralCurrencyIds::get() {
+				let rate_to_accumulate =
+					Self::compound_interest_rate(Self::get_interest_rate_per_sec(currency_id), interval_secs);
+				let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
+
+				if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
+					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
+					let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
+					let total_debit_value = Self::get_debit_value(currency_id, total_debits);
+					let issued_stable_coin_balance =
+						debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
+
+					// issue stablecoin to surplus pool
+					if <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance).is_ok() {
+						// update exchange rate when issue success
+						let new_debit_exchange_rate = debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
+						DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
+					}
+				}
+				count += 1;
+			}
+		}
+
+		// update last accumulation timestamp
+		LastAccumulationSecs::<T>::put(now_secs);
+		count
+	}
+
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) {
 		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::liquidate(currency_id, who.clone());
@@ -645,11 +673,18 @@ impl<T: Config> Pallet<T> {
 		Self::collateral_params(currency_id).required_collateral_ratio
 	}
 
-	pub fn get_stability_fee(currency_id: CurrencyId) -> Rate {
+	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Rate {
 		Self::collateral_params(currency_id)
-			.stability_fee
+			.interest_rate_per_sec
 			.unwrap_or_default()
-			.saturating_add(Self::global_stability_fee())
+			.saturating_add(Self::global_interest_rate_per_sec())
+	}
+
+	pub fn compound_interest_rate(rate_per_sec: Rate, secs: u64) -> Rate {
+		rate_per_sec
+			.saturating_add(Rate::one())
+			.saturating_pow(secs.unique_saturated_into())
+			.saturating_sub(Rate::one())
 	}
 
 	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Ratio {

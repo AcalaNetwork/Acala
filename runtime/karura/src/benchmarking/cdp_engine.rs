@@ -17,13 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, Balance, CdpEngine, CurrencyId, Dex, EmergencyShutdown,
-	GetStableCurrencyId, Indices, MaxSlippageSwapWithDEX, MinimumDebitValue, Price, Rate, Ratio, Runtime, KSM, KUSD,
+	dollar, AcalaOracle, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
+	DefaultDebitExchangeRate, Dex, EmergencyShutdown, GetStableCurrencyId, Indices, MaxSlippageSwapWithDEX,
+	MinimumDebitValue, Price, Rate, Ratio, Runtime, KSM, KUSD, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::set_balance;
 use core::convert::TryInto;
 use frame_benchmarking::account;
+use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
@@ -66,6 +68,54 @@ runtime_benchmarks! {
 	{ Runtime, module_cdp_engine }
 
 	_ {}
+
+	on_initialize {
+		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let owner: AccountId = account("owner", 0, SEED);
+		let owner_lookup = Indices::unlookup(owner.clone());
+		let currency_ids = CollateralCurrencyIds::get();
+		let min_debit_value = MinimumDebitValue::get();
+		let debit_exchange_rate = DefaultDebitExchangeRate::get();
+		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
+		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
+		let collateral_value = 2 * min_debit_value;
+
+		// feed price
+		let mut feed_data: Vec<(CurrencyId, Price)> = vec![];
+		for i in 0 .. c {
+			let currency_id = currency_ids[i as usize];
+			let collateral_price = Price::one();
+			feed_data.push((currency_id, collateral_price));
+		}
+		AcalaOracle::feed_values(RawOrigin::Root.into(), feed_data)?;
+
+		for i in 0 .. c {
+			let currency_id = currency_ids[i as usize];
+			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
+
+			// set balance
+			set_balance(currency_id, &owner, collateral_amount);
+
+			CdpEngine::set_collateral_params(
+				RawOrigin::Root.into(),
+				currency_id,
+				Change::NoChange,
+				Change::NewValue(Some(Ratio::saturating_from_rational(0, 100))),
+				Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(0, 100))),
+				Change::NewValue(min_debit_value * 100),
+			)?;
+
+			// adjust position
+			CdpEngine::adjust_position(&owner, currency_id, collateral_amount.try_into().unwrap(), min_debit_amount)?;
+		}
+
+		Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
+		CdpEngine::on_initialize(1);
+	}: {
+		Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
+		CdpEngine::on_initialize(2);
+	}
 
 	set_collateral_params {
 	}: _(
@@ -223,6 +273,13 @@ runtime_benchmarks! {
 mod tests {
 	use super::*;
 	use frame_support::assert_ok;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap()
+			.into()
+	}
 
 	fn new_test_ext() -> sp_io::TestExternalities {
 		frame_system::GenesisConfig::default()

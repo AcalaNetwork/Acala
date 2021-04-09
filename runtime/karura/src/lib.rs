@@ -893,6 +893,7 @@ impl module_cdp_engine::Config for Runtime {
 	type DEX = Dex;
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
+	type UnixTime = Timestamp;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
