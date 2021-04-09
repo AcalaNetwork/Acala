@@ -268,6 +268,7 @@ impl cdp_engine::Config for Runtime {
 	type DEX = ();
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type UnixTime = Timestamp;
 	type WeightInfo = ();
 }
 
@@ -288,6 +289,7 @@ construct_runtime!(
 		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
 		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
 		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
 

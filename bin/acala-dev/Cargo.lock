@@ -4311,7 +4311,6 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "orml-utilities",
- "pallet-timestamp",
  "parity-scale-codec",
  "serde",
  "sp-application-crypto",

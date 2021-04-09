@@ -344,7 +344,7 @@ fn testnet_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // annual interest rate for this collateral
+					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(150, 100)), // required liquidation ratio
@@ -375,7 +375,7 @@ fn testnet_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_annual_interest_rate: FixedU128::saturating_from_rational(5, 100), /* 5% APR */
+			global_interest_rate_per_sec: FixedU128::saturating_from_rational(1_547_126_000u128, 1_000_000_000_000_000_000u128), /* 5% APR */
 		},
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: vec![],
@@ -547,7 +547,7 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // annual interest rate for this collateral
+					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
@@ -578,7 +578,7 @@ fn mandala_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_annual_interest_rate: FixedU128::saturating_from_rational(5, 100), /* 5% APR */
+			global_interest_rate_per_sec: FixedU128::saturating_from_rational(1_547_126_000u128, 1_000_000_000_000_000_000u128), /* 5% APR */
 		},
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: {

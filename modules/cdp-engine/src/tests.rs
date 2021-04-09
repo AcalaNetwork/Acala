@@ -128,15 +128,15 @@ fn set_global_params_work() {
 			Rate::saturating_from_rational(1, 10000),
 		));
 
-		let update_global_annual_interest_rate_event = Event::cdp_engine(
-			crate::Event::GlobalAnnualInterestRateUpdated(Rate::saturating_from_rational(1, 10000)),
+		let update_global_interest_rate_per_sec_event = Event::cdp_engine(
+			crate::Event::GlobalInterestRatePerSecUpdated(Rate::saturating_from_rational(1, 10000)),
 		);
 		assert!(System::events()
 			.iter()
-			.any(|record| record.event == update_global_annual_interest_rate_event));
+			.any(|record| record.event == update_global_interest_rate_per_sec_event));
 
 		assert_eq!(
-			CDPEngineModule::global_annual_interest_rate(),
+			CDPEngineModule::global_interest_rate_per_sec(),
 			Rate::saturating_from_rational(1, 10000)
 		);
 	});
@@ -181,13 +181,13 @@ fn set_collateral_params_work() {
 			Change::NewValue(10000),
 		));
 
-		let update_annual_interest_rate_event = Event::cdp_engine(crate::Event::AnnualInterestRate(
+		let update_interest_rate_per_sec_event = Event::cdp_engine(crate::Event::InterestRatePerSec(
 			BTC,
 			Some(Rate::saturating_from_rational(1, 100000)),
 		));
 		assert!(System::events()
 			.iter()
-			.any(|record| record.event == update_annual_interest_rate_event));
+			.any(|record| record.event == update_interest_rate_per_sec_event));
 		let update_liquidation_ratio_event = Event::cdp_engine(crate::Event::LiquidationRatioUpdated(
 			BTC,
 			Some(Ratio::saturating_from_rational(3, 2)),
@@ -228,7 +228,7 @@ fn set_collateral_params_work() {
 		let new_collateral_params = CDPEngineModule::collateral_params(BTC);
 
 		assert_eq!(
-			new_collateral_params.annual_interest_rate,
+			new_collateral_params.interest_rate_per_sec,
 			Some(Rate::saturating_from_rational(1, 100000))
 		);
 		assert_eq!(
@@ -478,6 +478,80 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 }
 
 #[test]
+fn get_interest_rate_per_sec_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(BTC), Rate::zero());
+		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Rate::zero());
+
+		assert_ok!(CDPEngineModule::set_global_params(
+			Origin::signed(1),
+			Rate::saturating_from_rational(1, 10000),
+		));
+		assert_eq!(
+			CDPEngineModule::get_interest_rate_per_sec(BTC),
+			Rate::saturating_from_rational(1, 10000)
+		);
+		assert_eq!(
+			CDPEngineModule::get_interest_rate_per_sec(DOT),
+			Rate::saturating_from_rational(1, 10000)
+		);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		assert_eq!(
+			CDPEngineModule::get_interest_rate_per_sec(BTC),
+			Rate::saturating_from_rational(12, 100000)
+		);
+		assert_eq!(
+			CDPEngineModule::get_interest_rate_per_sec(DOT),
+			Rate::saturating_from_rational(1, 10000)
+		);
+	});
+}
+
+#[test]
+fn compound_interest_rate_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(CDPEngineModule::compound_interest_rate(Rate::zero(), 10), Rate::zero());
+		assert_eq!(
+			CDPEngineModule::compound_interest_rate(Rate::saturating_from_rational(1, 10000), 0),
+			Rate::zero()
+		);
+		assert_eq!(
+			CDPEngineModule::compound_interest_rate(Rate::saturating_from_rational(1, 10000), 1),
+			Rate::saturating_from_rational(1, 10000)
+		);
+		assert_eq!(
+			CDPEngineModule::compound_interest_rate(Rate::saturating_from_rational(1, 10000), 2),
+			Rate::saturating_from_rational(20001, 100000000)
+		);
+
+		// 1% APY
+		assert_eq!(
+			CDPEngineModule::compound_interest_rate(
+				Rate::saturating_from_rational(315_523_000u128, 1_000_000_000_000_000_000u128),
+				6
+			),
+			Rate::saturating_from_rational(1_893_138_000u128, 1_000_000_000_000_000_000u128)
+		);
+		assert_eq!(
+			CDPEngineModule::compound_interest_rate(
+				Rate::saturating_from_rational(315_523_000u128, 1_000_000_000_000_000_000u128),
+				12
+			),
+			Rate::saturating_from_rational(3_786_276_004u128, 1_000_000_000_000_000_000u128)
+		);
+	});
+}
+
+#[test]
 fn accumulate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
@@ -499,14 +573,14 @@ fn accumulate_interest_work() {
 			Change::NewValue(10000),
 		));
 
-		CDPEngineModule::accumulate_interest(ONE_YEAR, 0);
-		assert_eq!(CDPEngineModule::last_timestamp(), ONE_YEAR);
+		CDPEngineModule::accumulate_interest(1, 0);
+		assert_eq!(CDPEngineModule::last_accumulation_secs(), 1);
 		assert_eq!(CDPEngineModule::debit_exchange_rate(BTC), None);
 		assert_eq!(CDPEngineModule::debit_exchange_rate(DOT), None);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 30));
 
-		CDPEngineModule::accumulate_interest(ONE_YEAR * 2, ONE_YEAR);
-		assert_eq!(CDPEngineModule::last_timestamp(), ONE_YEAR * 2);
+		CDPEngineModule::accumulate_interest(2, 1);
+		assert_eq!(CDPEngineModule::last_accumulation_secs(), 2);
 		assert_eq!(
 			CDPEngineModule::debit_exchange_rate(BTC),
 			Some(ExchangeRate::saturating_from_rational(101, 100))
@@ -516,8 +590,8 @@ fn accumulate_interest_work() {
 		mock_shutdown();
 		assert_eq!(<Runtime as Config>::EmergencyShutdown::is_shutdown(), true);
 
-		CDPEngineModule::accumulate_interest(ONE_YEAR * 3, ONE_YEAR * 2);
-		assert_eq!(CDPEngineModule::last_timestamp(), ONE_YEAR * 3);
+		CDPEngineModule::accumulate_interest(3, 2);
+		assert_eq!(CDPEngineModule::last_accumulation_secs(), 3);
 		assert_eq!(
 			CDPEngineModule::debit_exchange_rate(BTC),
 			Some(ExchangeRate::saturating_from_rational(101, 100))

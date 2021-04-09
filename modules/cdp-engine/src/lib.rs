@@ -28,7 +28,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -36,14 +36,14 @@ use frame_system::{
 use loans::Position;
 use orml_traits::Change;
 use orml_utilities::{IterableStorageDoubleMapExtended, OffchainErr};
-use primitives::{Amount, Balance, CurrencyId, Moment};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
 		storage::StorageValueRef,
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, StaticLookup, Zero},
+	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
@@ -69,7 +69,6 @@ pub const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/cdp-engine/lock/";
 pub const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/cdp-engine/max-iterations/";
 pub const LOCK_DURATION: u64 = 100;
 pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
-pub const ONE_YEAR: Moment = 365 * 24 * 60 * 60 * 1000; // 1 year;
 
 pub type LoansOf<T> = loans::Pallet<T>;
 
@@ -81,8 +80,8 @@ pub struct RiskManagementParams {
 	/// type.
 	pub maximum_total_debit_value: Balance,
 
-	/// Extra annual interest rate, `None` value means not set
-	pub annual_interest_rate: Option<Rate>,
+	/// Extra interest rate per sec, `None` value means not set
+	pub interest_rate_per_sec: Option<Rate>,
 
 	/// Liquidation ratio, when the collateral ratio of
 	/// CDP under this collateral type is below the liquidation ratio, this
@@ -120,12 +119,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config
-		+ loans::Config
-		+ pallet_timestamp::Config<Moment = Moment>
-		+ SendTransactionTypes<Call<Self>>
-	{
+	pub trait Config: frame_system::Config + loans::Config + SendTransactionTypes<Call<Self>> {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The origin which may update risk management parameters. Root can
@@ -180,6 +174,12 @@ pub mod module {
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
 
+		/// Time used for computing era duration.
+		///
+		/// It is guaranteed to start being called from the first `on_finalize`.
+		/// Thus value at genesis is not used.
+		type UnixTime: UnixTime;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -217,9 +217,9 @@ pub mod module {
 		LiquidateUnsafeCDP(CurrencyId, T::AccountId, Balance, Balance, LiquidationStrategy),
 		/// Settle the CDP has debit. [collateral_type, owner]
 		SettleCDPInDebit(CurrencyId, T::AccountId),
-		/// The annual interest rate for specific collateral type updated.
-		/// \[collateral_type, new_annual_interest_rate\]
-		AnnualInterestRate(CurrencyId, Option<Rate>),
+		/// The interest rate per sec for specific collateral type updated.
+		/// \[collateral_type, new_interest_rate_per_sec\]
+		InterestRatePerSec(CurrencyId, Option<Rate>),
 		/// The liquidation fee for specific collateral type updated.
 		/// \[collateral_type, new_liquidation_ratio\]
 		LiquidationRatioUpdated(CurrencyId, Option<Ratio>),
@@ -232,9 +232,9 @@ pub mod module {
 		/// The hard cap of total debit value for specific collateral type
 		/// updated. \[collateral_type, new_total_debit_value\]
 		MaximumTotalDebitValueUpdated(CurrencyId, Balance),
-		/// The global annual interest rate for all types of collateral updated.
-		/// \[new_global_annual_interest_rate\]
-		GlobalAnnualInterestRateUpdated(Rate),
+		/// The global interest rate per sec for all types of collateral
+		/// updated. \[new_global_interest_rate_per_sec\]
+		GlobalInterestRatePerSecUpdated(Rate),
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -243,20 +243,20 @@ pub mod module {
 	#[pallet::getter(fn debit_exchange_rate)]
 	pub type DebitExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ExchangeRate, OptionQuery>;
 
-	/// Global annual interest rate for all types of collateral
+	/// Global interest rate per sec for all types of collateral
 	#[pallet::storage]
-	#[pallet::getter(fn global_annual_interest_rate)]
-	pub type GlobalAnnualInterestRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	#[pallet::getter(fn global_interest_rate_per_sec)]
+	pub type GlobalInterestRatePerSec<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
 	/// Mapping from collateral type to its risk management params
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_params)]
 	pub type CollateralParams<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, RiskManagementParams, ValueQuery>;
 
-	/// Timestamp of the last interest accumulation
+	/// Timestamp in seconds of the last interest accumulation
 	#[pallet::storage]
-	#[pallet::getter(fn last_timestamp)]
-	pub type LastTimestamp<T: Config> = StorageValue<_, Moment, ValueQuery>;
+	#[pallet::getter(fn last_accumulation_secs)]
+	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig {
@@ -269,7 +269,7 @@ pub mod module {
 			Option<Ratio>,
 			Balance,
 		)>,
-		pub global_annual_interest_rate: Rate,
+		pub global_interest_rate_per_sec: Rate,
 	}
 
 	#[cfg(feature = "std")]
@@ -277,7 +277,7 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				collaterals_params: vec![],
-				global_annual_interest_rate: Default::default(),
+				global_interest_rate_per_sec: Default::default(),
 			}
 		}
 	}
@@ -288,7 +288,7 @@ pub mod module {
 			self.collaterals_params.iter().for_each(
 				|(
 					currency_id,
-					annual_interest_rate,
+					interest_rate_per_sec,
 					liquidation_ratio,
 					liquidation_penalty,
 					required_collateral_ratio,
@@ -298,7 +298,7 @@ pub mod module {
 						currency_id,
 						RiskManagementParams {
 							maximum_total_debit_value: *maximum_total_debit_value,
-							annual_interest_rate: *annual_interest_rate,
+							interest_rate_per_sec: *interest_rate_per_sec,
 							liquidation_ratio: *liquidation_ratio,
 							liquidation_penalty: *liquidation_penalty,
 							required_collateral_ratio: *required_collateral_ratio,
@@ -306,7 +306,7 @@ pub mod module {
 					);
 				},
 			);
-			GlobalAnnualInterestRate::<T>::put(self.global_annual_interest_rate);
+			GlobalInterestRatePerSec::<T>::put(self.global_interest_rate_per_sec);
 		}
 	}
 
@@ -318,7 +318,7 @@ pub mod module {
 		/// Issue interest in stable currency for all types of collateral has
 		/// debit when block end, and update their debit exchange rate
 		fn on_initialize(_: T::BlockNumber) -> Weight {
-			let count: u32 = Self::accumulate_interest(pallet_timestamp::Pallet::<T>::get(), Self::last_timestamp());
+			let count: u32 = Self::accumulate_interest(T::UnixTime::now().as_secs(), Self::last_accumulation_secs());
 			<T as Config>::WeightInfo::on_initialize(count)
 		}
 
@@ -388,16 +388,16 @@ pub mod module {
 		///
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
-		/// - `global_annual_interest_rate`: global annual interest rate.
+		/// - `global_interest_rate_per_sec`: global interest rate per sec.
 		#[pallet::weight((<T as Config>::WeightInfo::set_global_params(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn set_global_params(
 			origin: OriginFor<T>,
-			global_annual_interest_rate: Rate,
+			global_interest_rate_per_sec: Rate,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			GlobalAnnualInterestRate::<T>::put(global_annual_interest_rate);
-			Self::deposit_event(Event::GlobalAnnualInterestRateUpdated(global_annual_interest_rate));
+			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
+			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated(global_interest_rate_per_sec));
 			Ok(().into())
 		}
 
@@ -407,7 +407,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type.
-		/// - `annual_interest_rate`: extra annual interest rate, `None` means
+		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means
 		///   do not update, `Some(None)` means update it to `None`.
 		/// - `liquidation_ratio`: liquidation ratio, `None` means do not
 		///   update, `Some(None)` means update it to `None`.
@@ -421,7 +421,7 @@ pub mod module {
 		pub fn set_collateral_params(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			annual_interest_rate: ChangeOptionRate,
+			interest_rate_per_sec: ChangeOptionRate,
 			liquidation_ratio: ChangeOptionRatio,
 			liquidation_penalty: ChangeOptionRate,
 			required_collateral_ratio: ChangeOptionRatio,
@@ -434,9 +434,9 @@ pub mod module {
 			);
 
 			let mut collateral_params = Self::collateral_params(currency_id);
-			if let Change::NewValue(update) = annual_interest_rate {
-				collateral_params.annual_interest_rate = update;
-				Self::deposit_event(Event::AnnualInterestRate(currency_id, update));
+			if let Change::NewValue(update) = interest_rate_per_sec {
+				collateral_params.interest_rate_per_sec = update;
+				Self::deposit_event(Event::InterestRatePerSec(currency_id, update));
 			}
 			if let Change::NewValue(update) = liquidation_ratio {
 				collateral_params.liquidation_ratio = update;
@@ -500,21 +500,20 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	fn accumulate_interest(now: Moment, last_accumulate_timestamp: Moment) -> u32 {
+	fn accumulate_interest(now_secs: u64, last_accumulation_secs: u64) -> u32 {
 		let mut count: u32 = 0;
 
-		if !T::EmergencyShutdown::is_shutdown() && !now.is_zero() {
-			let interval = now.saturating_sub(last_accumulate_timestamp);
-			let multiplier = Rate::checked_from_rational(interval, ONE_YEAR).unwrap_or_default();
+		if !T::EmergencyShutdown::is_shutdown() && !now_secs.is_zero() {
+			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
 
 			for currency_id in T::CollateralCurrencyIds::get() {
-				let annual_interest_rate = Self::get_annual_interest_rate(currency_id);
+				let rate_to_accumulate =
+					Self::compound_interest_rate(Self::get_interest_rate_per_sec(currency_id), interval_secs);
 				let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
 
-				if !annual_interest_rate.is_zero() && !total_debits.is_zero() {
+				if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
-					let debit_exchange_rate_increment =
-						debit_exchange_rate.saturating_mul(annual_interest_rate.saturating_mul(multiplier));
+					let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
 					let total_debit_value = Self::get_debit_value(currency_id, total_debits);
 					let issued_stable_coin_balance =
 						debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
@@ -526,12 +525,12 @@ impl<T: Config> Pallet<T> {
 						DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
 					}
 				}
-
 				count += 1;
 			}
 		}
 
-		LastTimestamp::<T>::put(now);
+		// update last accumulation timestamp
+		LastAccumulationSecs::<T>::put(now_secs);
 		count
 	}
 
@@ -674,11 +673,18 @@ impl<T: Config> Pallet<T> {
 		Self::collateral_params(currency_id).required_collateral_ratio
 	}
 
-	pub fn get_annual_interest_rate(currency_id: CurrencyId) -> Rate {
+	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Rate {
 		Self::collateral_params(currency_id)
-			.annual_interest_rate
+			.interest_rate_per_sec
 			.unwrap_or_default()
-			.saturating_add(Self::global_annual_interest_rate())
+			.saturating_add(Self::global_interest_rate_per_sec())
+	}
+
+	pub fn compound_interest_rate(rate_per_sec: Rate, secs: u64) -> Rate {
+		rate_per_sec
+			.saturating_add(Rate::one())
+			.saturating_pow(secs.unique_saturated_into())
+			.saturating_sub(Rate::one())
 	}
 
 	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Ratio {

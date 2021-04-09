@@ -300,6 +300,7 @@ impl Config for Runtime {
 	type DEX = DEXModule;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type UnixTime = Timestamp;
 	type WeightInfo = ();
 }
 
@@ -320,6 +321,7 @@ construct_runtime!(
 		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
 
