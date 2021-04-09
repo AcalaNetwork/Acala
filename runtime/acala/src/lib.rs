@@ -62,6 +62,7 @@ use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
+use cumulus_primitives_core::ParaId;
 use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, XcmHandler as XcmHandlerT};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{
@@ -1315,10 +1316,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
-		let _para_id: u32 = ParachainInfo::get().into();
 		match location {
 			X1(Parent) => Some(Token(DOT)),
-			X3(Parent, Parachain { id: _para_id }, GeneralKey(key)) => {
+			X3(Parent, Parachain { id }, GeneralKey(key)) if ParaId::from(id) == ParachainInfo::get() => {
 				// decode the general key
 				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
 					// check `currency_id` is cross-chain asset

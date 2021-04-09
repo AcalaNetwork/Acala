@@ -1123,12 +1123,20 @@ mod parachain_tests {
 	use cumulus_primitives_core::{DownwardMessageHandler, InboundDownwardMessage, XcmpMessageHandler};
 	use frame_support::traits::Get;
 	use polkadot_parachain::primitives::Sibling;
+	use sp_runtime::traits::Convert;
 	use xcm::{
-		v0::{Junction, MultiAsset, MultiLocation, NetworkId, Order, Xcm},
+		v0::{
+			Junction::{self, *},
+			MultiAsset,
+			MultiLocation::{self, *},
+			NetworkId, Order, Xcm,
+		},
 		VersionedXcm,
 	};
 
-	use mandala_runtime::{Tokens, XcmHandler};
+	use mandala_runtime::{CurrencyIdConvert, Tokens, XcmHandler};
+
+	use primitives::currency::*;
 
 	#[test]
 	fn receive_cross_chain_assets() {
@@ -1185,6 +1193,92 @@ mod parachain_tests {
 			XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg1);
 			assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc), 100 * dollar(ACA));
 			assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
+		});
+	}
+
+	#[test]
+	fn currency_id_convert() {
+		ExtBuilder::default().build().execute_with(|| {
+			let id: u32 = ParachainInfo::get().into();
+
+			assert_eq!(CurrencyIdConvert::convert(DOT), Some(X1(Parent)));
+			assert_eq!(
+				CurrencyIdConvert::convert(ACA),
+				Some(X3(Parent, Parachain { id }, GeneralKey(ACA.encode())))
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(AUSD),
+				Some(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode())))
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(LDOT),
+				Some(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode())))
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(RENBTC),
+				Some(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode())))
+			);
+			assert_eq!(CurrencyIdConvert::convert(XBTC), None);
+			assert_eq!(CurrencyIdConvert::convert(POLKABTC), None);
+			assert_eq!(CurrencyIdConvert::convert(KAR), None);
+			assert_eq!(CurrencyIdConvert::convert(KUSD), None);
+			assert_eq!(CurrencyIdConvert::convert(KSM), None);
+			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
+
+			assert_eq!(CurrencyIdConvert::convert(X1(Parent)), Some(DOT));
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(ACA.encode()))),
+				Some(ACA)
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode()))),
+				Some(AUSD)
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode()))),
+				Some(LDOT)
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode()))),
+				Some(RENBTC)
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(XBTC.encode()))),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(POLKABTC.encode()))),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KAR.encode()))),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KUSD.encode()))),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KSM.encode()))),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LKSM.encode()))),
+				None
+			);
+
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain { id: id + 1 }, GeneralKey(ACA.encode()))),
+				None
+			);
+
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiAsset::ConcreteFungible {
+					id: X3(Parent, Parachain { id }, GeneralKey(ACA.encode())),
+					amount: 1
+				}),
+				Some(ACA)
+			);
 		});
 	}
 }
