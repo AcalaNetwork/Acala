@@ -1387,7 +1387,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#b225faf24d3c25228fd25df93ed82c90e004d698"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
@@ -1417,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-xcm-handler"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#b225faf24d3c25228fd25df93ed82c90e004d698"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -1432,7 +1432,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-core"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#b225faf24d3c25228fd25df93ed82c90e004d698"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
  "impl-trait-for-tuples 0.2.1",
  "parity-scale-codec",
@@ -1448,7 +1448,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#b225faf24d3c25228fd25df93ed82c90e004d698"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
  "cumulus-primitives-core",
  "parity-scale-codec",
@@ -5618,7 +5618,7 @@ dependencies = [
 [[package]]
 name = "parachain-info"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#b225faf24d3c25228fd25df93ed82c90e004d698"
+source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
