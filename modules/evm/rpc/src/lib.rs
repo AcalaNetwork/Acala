@@ -19,23 +19,25 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use ethereum_types::U256;
+use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
+use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
 use rustc_hex::ToHex;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_core::Bytes;
+use sp_core::{Bytes, Decode};
 use sp_rpc::number::NumberOrHex;
 use sp_runtime::{
 	codec::Codec,
 	generic::BlockId,
-	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+	traits::{self, Block as BlockT, MaybeDisplay, MaybeFromStr},
 	SaturatedConversion,
 };
 use std::convert::{TryFrom, TryInto};
 use std::{marker::PhantomData, sync::Arc};
 
-use call_request::CallRequest;
-pub use module_evm::ExitReason;
+use call_request::{CallRequest, EstimateResourcesResponse};
+pub use module_evm::{AddressMapping, ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
@@ -55,11 +57,21 @@ fn internal_err<T: ToString>(message: T) -> Error {
 fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	match reason {
 		ExitReason::Succeed(_) => Ok(()),
-		ExitReason::Error(e) => Err(Error {
-			code: ErrorCode::InternalError,
-			message: format!("execution error: {:?}", e),
-			data: Some(Value::String("0x".to_string())),
-		}),
+		ExitReason::Error(e) => {
+			if *e == ExitError::OutOfGas || *e == ExitError::OutOfFund {
+				// `ServerError(0)` will be useful in estimate gas
+				return Err(Error {
+					code: ErrorCode::ServerError(0),
+					message: "out of gas or fund".to_string(),
+					data: None,
+				});
+			}
+			Err(Error {
+				code: ErrorCode::InternalError,
+				message: format!("execution error: {:?}", e),
+				data: Some(Value::String("0x".to_string())),
+			})
+		}
 		ExitReason::Revert(_) => Err(Error {
 			code: ErrorCode::InternalError,
 			message: decode_revert_message(data)
@@ -115,7 +127,8 @@ where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
 	C::Api: EVMRuntimeRPCApi<B, Balance>,
-	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128>,
+	C::Api: TransactionPaymentApi<B, Balance>,
+	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
 		let hash = self.client.info().best_hash;
@@ -129,7 +142,7 @@ where
 			data,
 		} = request;
 
-		let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+		let gas_limit = gas_limit.unwrap_or_else(u64::max_value); // TODO: set a limit
 		let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 		let data = data.map(|d| d.0).unwrap_or_default();
 
@@ -188,8 +201,25 @@ where
 		}
 	}
 
-	fn estimate_gas(&self, request: CallRequest, _: Option<B>) -> Result<U256> {
-		let calculate_gas_used = |request| {
+	fn estimate_resources(&self, extrinsic: Bytes, _: Option<B>) -> Result<EstimateResourcesResponse> {
+		let hash = self.client.info().best_hash;
+		let request = self
+			.client
+			.runtime_api()
+			.get_estimate_resources_request(&BlockId::Hash(hash), extrinsic.to_vec())
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+
+		let request = CallRequest {
+			from: request.from,
+			to: request.to,
+			gas_limit: request.gas_limit,
+			storage_limit: request.storage_limit,
+			value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
+			data: request.data.map(Bytes),
+		};
+
+		let calculate_gas_used = |request| -> Result<(U256, i32)> {
 			let hash = self.client.info().best_hash;
 
 			let CallRequest {
@@ -201,7 +231,7 @@ where
 				data,
 			} = request;
 
-			let gas_limit = gas_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+			let gas_limit = gas_limit.unwrap_or_else(u64::max_value); // TODO: set a limit
 			let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 			let data = data.map(|d| d.0).unwrap_or_default();
 
@@ -217,7 +247,7 @@ where
 				data: None,
 			})?;
 
-			let used_gas = match to {
+			let (used_gas, used_storage) = match to {
 				Some(to) => {
 					let info = self
 						.client
@@ -237,7 +267,7 @@ where
 
 					error_on_execution_failure(&info.exit_reason, &info.output)?;
 
-					info.used_gas
+					(info.used_gas, info.used_storage)
 				}
 				None => {
 					let info = self
@@ -257,11 +287,11 @@ where
 
 					error_on_execution_failure(&info.exit_reason, &[])?;
 
-					info.used_gas
+					(info.used_gas, info.used_storage)
 				}
 			};
 
-			Ok(used_gas)
+			Ok((used_gas, used_storage))
 		};
 
 		if cfg!(feature = "rpc_binary_search_estimate") {
@@ -271,6 +301,7 @@ where
 			let mut mid = upper;
 			let mut best = mid;
 			let mut old_best: U256;
+			let mut storage: i32 = Default::default();
 
 			// if the gas estimation depends on the gas limit, then we want to binary
 			// search until the change is under some threshold. but if not dependent,
@@ -281,10 +312,16 @@ where
 			// invariant: lower <= mid <= upper
 			while change_pct > threshold_pct {
 				let mut test_request = request.clone();
-				test_request.gas_limit = Some(mid.as_u32());
+				test_request.gas_limit = Some(mid.as_u64());
 				match calculate_gas_used(test_request) {
 					// if Ok -- try to reduce the gas used
-					Ok(used_gas) => {
+					Ok((used_gas, used_storage)) => {
+						log::debug!(
+							target: "evm",
+							"calculate_gas_used ok, used_gas: {:?}, used_storage: {:?}",
+							used_gas, used_storage,
+						);
+
 						old_best = best;
 						best = used_gas;
 						change_pct = (U256::from(100) * (old_best - best))
@@ -292,23 +329,84 @@ where
 							.unwrap_or_default();
 						upper = mid;
 						mid = (lower + upper + 1) / 2;
+						storage = used_storage;
 					}
 
-					// if Err -- we need more gas
-					Err(_) => {
-						lower = mid;
-						mid = (lower + upper + 1) / 2;
+					Err(err) => {
+						log::debug!(
+							target: "evm",
+							"calculate_gas_used err, lower: {:?}, upper: {:?}, mid: {:?}",
+							lower, upper, mid
+						);
 
-						// exit the loop
-						if mid == lower {
-							break;
+						// if Err == OutofGas or OutofFund, we need more gas
+						if err.code == ErrorCode::ServerError(0) {
+							lower = mid;
+							mid = (lower + upper + 1) / 2;
+							if mid == lower {
+								break;
+							}
 						}
+
+						// Other errors, return directly
+						return Err(err);
 					}
 				}
 			}
-			Ok(best)
+
+			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*extrinsic).map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to dry run extrinsic.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?;
+
+			let fee = self
+				.client
+				.runtime_api()
+				.query_fee_details(&BlockId::Hash(hash), uxt, extrinsic.len() as u32)
+				.map_err(|e| Error {
+					code: ErrorCode::InternalError,
+					message: "Unable to query fee details.".into(),
+					data: Some(format!("{:?}", e).into()),
+				})?;
+
+			let adjusted_weight_fee = fee
+				.inclusion_fee
+				.map_or_else(Default::default, |inclusion| inclusion.adjusted_weight_fee);
+
+			Ok(EstimateResourcesResponse {
+				gas: best,
+				storage,
+				weight_fee: adjusted_weight_fee.into(),
+			})
 		} else {
-			calculate_gas_used(request)
+			let (used_gas, used_storage) = calculate_gas_used(request)?;
+
+			let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*extrinsic).map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to dry run extrinsic.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?;
+
+			let fee = self
+				.client
+				.runtime_api()
+				.query_fee_details(&BlockId::Hash(hash), uxt, extrinsic.len() as u32)
+				.map_err(|e| Error {
+					code: ErrorCode::InternalError,
+					message: "Unable to query fee details.".into(),
+					data: Some(format!("{:?}", e).into()),
+				})?;
+
+			let adjusted_weight_fee = fee
+				.inclusion_fee
+				.map_or_else(Default::default, |inclusion| inclusion.adjusted_weight_fee);
+
+			Ok(EstimateResourcesResponse {
+				gas: used_gas,
+				storage: used_storage,
+				weight_fee: adjusted_weight_fee.into(),
+			})
 		}
 	}
 }
