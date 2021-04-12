@@ -38,7 +38,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
-	Decode, OpaqueMetadata, H160,
+	OpaqueMetadata, H160,
 };
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,

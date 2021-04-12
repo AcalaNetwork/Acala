@@ -754,7 +754,7 @@ dependencies = [
  "futures 0.3.13",
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "jsonrpc-pubsub",
  "log",
  "parity-scale-codec",
@@ -6126,7 +6126,7 @@ source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#13a07b4b6
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
- "jsonrpc-derive 15.1.0",
+ "jsonrpc-derive",
  "pallet-mmr-primitives",
  "parity-scale-codec",
  "serde",
