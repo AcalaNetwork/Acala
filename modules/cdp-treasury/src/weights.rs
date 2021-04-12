@@ -48,8 +48,6 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_cdp_treasury.
 pub trait WeightInfo {
-	fn auction_surplus() -> Weight;
-	fn auction_debit() -> Weight;
 	fn auction_collateral() -> Weight;
 	fn set_collateral_auction_maximum_size() -> Weight;
 }
@@ -57,16 +55,6 @@ pub trait WeightInfo {
 /// Weights for module_cdp_treasury using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
-	fn auction_surplus() -> Weight {
-		(27_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn auction_debit() -> Weight {
-		(26_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-	}
 	fn auction_collateral() -> Weight {
 		(2_124_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
@@ -80,16 +68,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn auction_surplus() -> Weight {
-		(27_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
-	}
-	fn auction_debit() -> Weight {
-		(26_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-	}
 	fn auction_collateral() -> Weight {
 		(2_124_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(6 as Weight))

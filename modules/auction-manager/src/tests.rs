@@ -59,17 +59,6 @@ fn collateral_auction_methods() {
 }
 
 #[test]
-fn debit_auction_methods() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(AuctionManagerModule::new_debit_auction(200, 100));
-		let debit_auction = AuctionManagerModule::debit_auctions(0).unwrap();
-		assert_eq!(debit_auction.amount_for_sale(0, 100), 200);
-		assert_eq!(debit_auction.amount_for_sale(100, 200), 100);
-		assert_eq!(debit_auction.amount_for_sale(200, 1000), 40);
-	});
-}
-
-#[test]
 fn new_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
@@ -92,60 +81,6 @@ fn new_collateral_auction_work() {
 
 		assert_noop!(
 			AuctionManagerModule::new_collateral_auction(&ALICE, BTC, Balance::max_value(), Balance::max_value()),
-			Error::<Runtime>::InvalidAmount,
-		);
-	});
-}
-
-#[test]
-fn new_debit_auction_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_noop!(
-			AuctionManagerModule::new_debit_auction(0, 100),
-			Error::<Runtime>::InvalidAmount,
-		);
-		assert_noop!(
-			AuctionManagerModule::new_debit_auction(200, 0),
-			Error::<Runtime>::InvalidAmount,
-		);
-
-		assert_ok!(AuctionManagerModule::new_debit_auction(200, 100));
-		let new_debit_auction_event = Event::auction_manager(crate::Event::NewDebitAuction(0, 200, 100));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == new_debit_auction_event));
-
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
-		assert_eq!(AuctionModule::auctions_index(), 1);
-
-		assert_noop!(
-			AuctionManagerModule::new_debit_auction(200, Balance::max_value()),
-			Error::<Runtime>::InvalidAmount,
-		);
-	});
-}
-
-#[test]
-fn new_surplus_auction_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_noop!(
-			AuctionManagerModule::new_surplus_auction(0),
-			Error::<Runtime>::InvalidAmount,
-		);
-
-		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
-		let new_surplus_auction_event = Event::auction_manager(crate::Event::NewSurplusAuction(0, 100));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == new_surplus_auction_event));
-
-		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
-		assert_eq!(AuctionModule::auctions_index(), 1);
-
-		assert_noop!(
-			AuctionManagerModule::new_surplus_auction(Balance::max_value()),
 			Error::<Runtime>::InvalidAmount,
 		);
 	});
@@ -212,94 +147,6 @@ fn collateral_auction_bid_handler_work() {
 }
 
 #[test]
-fn debit_auction_bid_handler_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			AuctionManagerModule::debit_auction_bid_handler(1, 0, (BOB, 99), None),
-			Error::<Runtime>::AuctionNotExists,
-		);
-
-		assert_ok!(AuctionManagerModule::new_debit_auction(200, 100));
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
-		assert_eq!(AuctionManagerModule::debit_auctions(0).unwrap().amount, 200);
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
-
-		let bob_ref_count_0 = System::consumers(&BOB);
-
-		assert_noop!(
-			AuctionManagerModule::debit_auction_bid_handler(1, 0, (BOB, 99), None),
-			Error::<Runtime>::InvalidBidPrice,
-		);
-		assert_eq!(
-			AuctionManagerModule::debit_auction_bid_handler(1, 0, (BOB, 100), None).is_ok(),
-			true
-		);
-		assert_eq!(AuctionManagerModule::debit_auctions(0).unwrap().amount, 200);
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
-
-		let bob_ref_count_1 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
-		let carol_ref_count_0 = System::consumers(&CAROL);
-
-		assert_eq!(
-			AuctionManagerModule::debit_auction_bid_handler(2, 0, (CAROL, 200), Some((BOB, 100))).is_ok(),
-			true
-		);
-		assert_eq!(AuctionManagerModule::debit_auctions(0).unwrap().amount, 100);
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
-		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 900);
-		let bob_ref_count_2 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1);
-		let carol_ref_count_1 = System::consumers(&CAROL);
-		assert_eq!(carol_ref_count_1, carol_ref_count_0 + 1);
-	});
-}
-
-#[test]
-fn surplus_auction_bid_handler_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			AuctionManagerModule::surplus_auction_bid_handler(1, 0, (BOB, 99), None),
-			Error::<Runtime>::AuctionNotExists,
-		);
-
-		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
-
-		let bob_ref_count_0 = System::consumers(&BOB);
-
-		assert_eq!(
-			AuctionManagerModule::surplus_auction_bid_handler(1, 0, (BOB, 50), None).is_ok(),
-			true
-		);
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 950);
-		assert_eq!(Tokens::free_balance(ACA, &CAROL), 1000);
-
-		let bob_ref_count_1 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
-		let carol_ref_count_0 = System::consumers(&CAROL);
-
-		assert_noop!(
-			AuctionManagerModule::surplus_auction_bid_handler(2, 0, (CAROL, 51), Some((BOB, 50))),
-			Error::<Runtime>::InvalidBidPrice,
-		);
-		assert_eq!(
-			AuctionManagerModule::surplus_auction_bid_handler(2, 0, (CAROL, 55), Some((BOB, 50))).is_ok(),
-			true
-		);
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
-		assert_eq!(Tokens::free_balance(ACA, &CAROL), 945);
-		let bob_ref_count_2 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_2, bob_ref_count_1 - 1);
-		let carol_ref_count_1 = System::consumers(&CAROL);
-		assert_eq!(carol_ref_count_1, carol_ref_count_0 + 1);
-	});
-}
-
-#[test]
 fn bid_when_soft_cap_for_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
@@ -313,44 +160,6 @@ fn bid_when_soft_cap_for_collateral_auction_work() {
 		);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 15), Some((BOB, 5))).auction_end_change,
-			Change::NewValue(Some(2051))
-		);
-	});
-}
-
-#[test]
-fn bid_when_soft_cap_for_debit_auction_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(AuctionManagerModule::new_debit_auction(200, 100));
-		assert_eq!(
-			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
-			Change::NewValue(Some(101))
-		);
-		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 105), Some((BOB, 100))).accept_bid,
-			false
-		);
-		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end_change,
-			Change::NewValue(Some(2051))
-		);
-	});
-}
-
-#[test]
-fn bid_when_soft_cap_for_surplus_auction_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
-		assert_eq!(
-			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
-			Change::NewValue(Some(101))
-		);
-		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 105), Some((BOB, 100))).accept_bid,
-			false
-		);
-		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 110), Some((BOB, 100))).auction_end_change,
 			Change::NewValue(Some(2051))
 		);
 	});
@@ -524,112 +333,6 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 }
 
 #[test]
-fn debit_auction_end_handler_without_bid() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_ok!(AuctionManagerModule::new_debit_auction(300, 100));
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
-
-		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
-		AuctionManagerModule::on_auction_ended(0, None);
-		let auction_passed_event = Event::auction_manager(crate::Event::CancelAuction(0));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == auction_passed_event));
-
-		assert_eq!(AuctionManagerModule::debit_auctions(0), None);
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
-	});
-}
-
-#[test]
-fn debit_auction_end_handler_with_bid() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_ok!(AuctionManagerModule::new_debit_auction(300, 100));
-		assert_eq!(
-			AuctionManagerModule::debit_auction_bid_handler(1, 0, (BOB, 100), None).is_ok(),
-			true
-		);
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
-
-		let bob_ref_count_0 = System::consumers(&BOB);
-
-		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
-		AuctionManagerModule::on_auction_ended(0, Some((BOB, 100)));
-		let debit_auction_deal_event = Event::auction_manager(crate::Event::DebitAuctionDealt(0, 300, BOB, 100));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == debit_auction_deal_event));
-
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 1300);
-		assert_eq!(Tokens::total_issuance(ACA), 3300);
-		assert_eq!(AuctionManagerModule::debit_auctions(0), None);
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
-
-		let bob_ref_count_1 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
-	});
-}
-
-#[test]
-fn surplus_auction_end_handler_without_bid() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
-		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
-
-		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
-		AuctionManagerModule::on_auction_ended(0, None);
-		let auction_passed_event = Event::auction_manager(crate::Event::CancelAuction(0));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == auction_passed_event));
-
-		assert_eq!(AuctionManagerModule::surplus_auctions(0), None);
-		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
-	});
-}
-
-#[test]
-fn surplus_auction_end_handler_with_bid() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_ok!(CDPTreasuryModule::on_system_surplus(100));
-		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
-		assert_eq!(
-			AuctionManagerModule::surplus_auction_bid_handler(1, 0, (BOB, 500), None).is_ok(),
-			true
-		);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
-		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 500);
-		assert_eq!(Tokens::total_issuance(ACA), 2500);
-
-		let bob_ref_count_0 = System::consumers(&BOB);
-
-		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
-		AuctionManagerModule::on_auction_ended(0, Some((BOB, 500)));
-		let surplus_auction_deal_event = Event::auction_manager(crate::Event::SurplusAuctionDealt(0, 100, BOB, 500));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == surplus_auction_deal_event));
-
-		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
-		assert_eq!(AuctionManagerModule::surplus_auctions(0), None);
-		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1100);
-		assert_eq!(Tokens::total_issuance(ACA), 2500);
-
-		let bob_ref_count_1 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
-	});
-}
-
-#[test]
 fn swap_bidders_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let alice_ref_count_0 = System::consumers(&ALICE);
@@ -653,77 +356,6 @@ fn swap_bidders_works() {
 		assert_eq!(alice_ref_count_2, alice_ref_count_1 - 1);
 		let bob_ref_count_3 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_3, bob_ref_count_2 + 1);
-	});
-}
-
-#[test]
-fn cancel_surplus_auction_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-
-		assert_ok!(AuctionManagerModule::new_surplus_auction(100));
-		assert_ok!(AuctionModule::bid(Origin::signed(BOB), 0, 500));
-		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), true);
-		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 100);
-		assert_eq!(AuctionModule::auction_info(0).is_some(), true);
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 500);
-
-		let bob_ref_count_0 = System::consumers(&BOB);
-
-		assert_noop!(
-			AuctionManagerModule::cancel(Origin::none(), 0),
-			Error::<Runtime>::MustAfterShutdown
-		);
-
-		mock_shutdown();
-		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
-		let cancel_auction_event = Event::auction_manager(crate::Event::CancelAuction(0));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == cancel_auction_event));
-
-		assert_eq!(AuctionManagerModule::surplus_auctions(0).is_some(), false);
-		assert_eq!(AuctionManagerModule::total_surplus_in_auction(), 0);
-		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
-		assert_eq!(Tokens::free_balance(ACA, &BOB), 1000);
-
-		let bob_ref_count_1 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
-	});
-}
-
-#[test]
-fn cancel_debit_auction_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-
-		assert_ok!(AuctionManagerModule::new_debit_auction(200, 100));
-		assert_ok!(AuctionModule::bid(Origin::signed(BOB), 0, 100));
-		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), true);
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 100);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
-
-		let bob_ref_count_0 = System::consumers(&BOB);
-
-		assert_noop!(
-			AuctionManagerModule::cancel(Origin::none(), 0),
-			Error::<Runtime>::MustAfterShutdown
-		);
-
-		mock_shutdown();
-		assert_ok!(AuctionManagerModule::cancel(Origin::none(), 0));
-		let cancel_auction_event = Event::auction_manager(crate::Event::CancelAuction(0));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == cancel_auction_event));
-
-		assert_eq!(AuctionManagerModule::debit_auctions(0).is_some(), false);
-		assert_eq!(AuctionManagerModule::total_debit_in_auction(), 0);
-		assert_eq!(AuctionModule::auction_info(0).is_some(), false);
-		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
-
-		let bob_ref_count_1 = System::consumers(&BOB);
-		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
 	});
 }
 

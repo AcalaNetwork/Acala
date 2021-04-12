@@ -38,7 +38,6 @@ use sp_runtime::{
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
-mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -65,8 +64,7 @@ pub mod module {
 		/// Stablecoin currency id
 		type GetStableCurrencyId: Get<CurrencyId>;
 
-		/// Auction manager creates different types of auction to handle system
-		/// surplus and debit, and confiscated collateral assets
+		/// Auction manager creates auction to handle system surplus and debit
 		type AuctionManagerHandler: AuctionManager<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Dex manager is used to swap confiscated collateral assets to stable
@@ -158,35 +156,6 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::WeightInfo::auction_surplus())]
-		#[transactional]
-		pub fn auction_surplus(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				Self::surplus_pool().saturating_sub(T::AuctionManagerHandler::get_total_surplus_in_auction()) >= amount,
-				Error::<T>::SurplusPoolNotEnough,
-			);
-			T::AuctionManagerHandler::new_surplus_auction(amount)?;
-			Ok(().into())
-		}
-
-		#[pallet::weight(T::WeightInfo::auction_debit())]
-		#[transactional]
-		pub fn auction_debit(
-			origin: OriginFor<T>,
-			debit_amount: Balance,
-			initial_price: Balance,
-		) -> DispatchResultWithPostInfo {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				Self::debit_pool().saturating_sub(T::AuctionManagerHandler::get_total_debit_in_auction())
-					>= debit_amount,
-				Error::<T>::DebitPoolNotEnough,
-			);
-			T::AuctionManagerHandler::new_debit_auction(initial_price, debit_amount)?;
-			Ok(().into())
-		}
-
 		#[pallet::weight(T::WeightInfo::auction_collateral())]
 		#[transactional]
 		pub fn auction_collateral(

@@ -167,20 +167,8 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		Ok(())
 	}
 
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn new_surplus_auction(_amount: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
 		Ok(())
-	}
-
-	fn get_total_debit_in_auction() -> Self::Balance {
-		Default::default()
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
@@ -188,10 +176,6 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		Default::default()
-	}
-
-	fn get_total_surplus_in_auction() -> Self::Balance {
 		Default::default()
 	}
 }

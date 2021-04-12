@@ -47,24 +47,12 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_auction_manager.
 pub trait WeightInfo {
-	fn cancel_surplus_auction() -> Weight;
-	fn cancel_debit_auction() -> Weight;
 	fn cancel_collateral_auction() -> Weight;
 }
 
 /// Weights for module_auction_manager using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
-	fn cancel_surplus_auction() -> Weight {
-		(31_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn cancel_debit_auction() -> Weight {
-		(35_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
 	fn cancel_collateral_auction() -> Weight {
 		(78_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
@@ -74,16 +62,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn cancel_surplus_auction() -> Weight {
-		(31_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn cancel_debit_auction() -> Weight {
-		(35_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
-	}
 	fn cancel_collateral_auction() -> Weight {
 		(78_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(9 as Weight))

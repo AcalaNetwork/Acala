@@ -88,13 +88,8 @@ pub trait AuctionManager<AccountId> {
 		amount: Self::Balance,
 		target: Self::Balance,
 	) -> DispatchResult;
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) -> DispatchResult;
-	fn new_surplus_auction(amount: Self::Balance) -> DispatchResult;
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult;
-
 	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance;
-	fn get_total_surplus_in_auction() -> Self::Balance;
-	fn get_total_debit_in_auction() -> Self::Balance;
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
