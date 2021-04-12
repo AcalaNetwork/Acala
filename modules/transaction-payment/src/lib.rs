@@ -29,7 +29,9 @@
 use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
 	pallet_prelude::*,
-	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, ReservableCurrency, WithdrawReasons},
+	traits::{
+		Currency, ExistenceRequirement, Imbalance, OnUnbalanced, ReservableCurrency, SameOrOther, WithdrawReasons,
+	},
 	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeePolynomial},
 };
 use frame_system::pallet_prelude::*;
@@ -533,7 +535,7 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
-	fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
+	pub fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
 		let native_currency_id = T::NativeCurrencyId::get();
 		let stable_currency_id = T::StableCurrencyId::get();
 		let other_currency_ids = T::AllNonNativeCurrencyIds::get();
@@ -743,8 +745,9 @@ where
 					// The refund cannot be larger than the up front payed max weight.
 					// `PostDispatchInfo::calc_unspent` guards against such a case.
 					match payed.offset(refund_imbalance) {
-						Ok(actual_payment) => actual_payment,
-						Err(_) => return Err(InvalidTransaction::Payment.into()),
+						SameOrOther::Same(actual_payment) => actual_payment,
+						SameOrOther::None => Default::default(),
+						_ => return Err(InvalidTransaction::Payment.into()),
 					}
 				}
 				// We do not recreate the account using the refund. The up front payment
@@ -806,8 +809,9 @@ where
 			Ok(refund_imbalance) => {
 				// The refund cannot be larger than the up front payed max weight.
 				match payed.offset(refund_imbalance) {
-					Ok(actual_payment) => actual_payment,
-					Err(_) => return Err(InvalidTransaction::Payment.into()),
+					SameOrOther::Same(actual_payment) => actual_payment,
+					SameOrOther::None => Default::default(),
+					_ => return Err(InvalidTransaction::Payment.into()),
 				}
 			}
 			// We do not recreate the account using the refund. The up front payment

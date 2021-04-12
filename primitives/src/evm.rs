@@ -16,11 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Balance;
 use codec::{Decode, Encode};
 use evm::ExitReason;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::U256;
+use sp_core::{H160, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
@@ -66,4 +67,21 @@ pub struct Erc20Info {
 	pub name: Vec<u8>,
 	pub symbol: Vec<u8>,
 	pub decimals: u8,
+}
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct EstimateResourcesRequest {
+	/// From
+	pub from: Option<H160>,
+	/// To
+	pub to: Option<H160>,
+	/// Gas Limit
+	pub gas_limit: Option<u64>,
+	/// Storage Limit
+	pub storage_limit: Option<u32>,
+	/// Value
+	pub value: Option<Balance>,
+	/// Data
+	pub data: Option<Vec<u8>>,
 }

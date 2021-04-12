@@ -52,9 +52,13 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Execution failed
 		ExecutionFail,
+		/// Execution reverted
 		ExecutionRevert,
+		/// Execution fatal
 		ExecutionFatal,
+		/// Execution error
 		ExecutionError,
 		InvalidReturnValue,
 	}
@@ -70,6 +74,8 @@ pub mod module {
 }
 
 impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
+	// Calls the name method on an ERC20 contract using the given context
+	// and returns the token name.
 	fn name(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
 		// ERC20.name method hash
 		let input = hex!("06fdde03").to_vec();
@@ -102,6 +108,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		Ok(data.to_vec())
 	}
 
+	// Calls the symbol method on an ERC20 contract using the given context
+	// and returns the token symbol.
 	fn symbol(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
 		// ERC20.symbol method hash
 		let input = hex!("95d89b41").to_vec();
@@ -134,6 +142,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		Ok(data.to_vec())
 	}
 
+	// Calls the decimals method on an ERC20 contract using the given context
+	// and returns the decimals.
 	fn decimals(context: InvokeContext) -> Result<u8, DispatchError> {
 		// ERC20.decimals method hash
 		let input = hex!("313ce567").to_vec();
@@ -147,6 +157,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		Ok(value)
 	}
 
+	// Calls the totalSupply method on an ERC20 contract using the given context
+	// and returns the total supply.
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
 		let input = hex!("18160ddd").to_vec();
@@ -160,6 +172,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		Ok(value.saturated_into::<BalanceOf<T>>())
 	}
 
+	// Calls the balanceOf method on an ERC20 contract using the given context
+	// and returns the address's balance.
 	fn balance_of(context: InvokeContext, address: H160) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.balanceOf method hash
 		let mut input = hex!("70a08231").to_vec();
@@ -176,6 +190,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 			.saturated_into::<BalanceOf<T>>())
 	}
 
+	// Calls the transfer method on an ERC20 contract using the given context.
 	fn transfer(context: InvokeContext, to: H160, value: BalanceOf<T>) -> DispatchResult {
 		// ERC20.transfer method hash
 		let mut input = hex!("a9059cbb").to_vec();
