@@ -17,9 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
-	DefaultDebitExchangeRate, Dex, EmergencyShutdown, GetStableCurrencyId, Indices, MaxSlippageSwapWithDEX,
-	MinimumDebitValue, Price, Rate, Ratio, Runtime, KSM, KUSD, MILLISECS_PER_BLOCK,
+	dollar, AcalaOracle, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
+	DefaultDebitExchangeRate, Dex, EmergencyShutdown, GetStableCurrencyId, MaxSlippageSwapWithDEX, MinimumDebitValue,
+	Price, Rate, Ratio, Runtime, Timestamp, KSM, KUSD, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::set_balance;
@@ -31,7 +31,7 @@ use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{StaticLookup, UniqueSaturatedInto},
+	traits::{AccountIdLookup, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;
@@ -72,7 +72,7 @@ runtime_benchmarks! {
 	on_initialize {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let owner: AccountId = account("owner", 0, SEED);
-		let owner_lookup = Indices::unlookup(owner.clone());
+		let owner_lookup: Address = AccountIdLookup::unlookup(owner.clone());
 		let currency_ids = CollateralCurrencyIds::get();
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = DefaultDebitExchangeRate::get();
@@ -91,7 +91,7 @@ runtime_benchmarks! {
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
+			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 			// set balance
 			set_balance(currency_id, &owner, collateral_amount);
@@ -134,7 +134,7 @@ runtime_benchmarks! {
 	// `liquidate` by_auction
 	liquidate_by_auction {
 		let owner: AccountId = account("owner", 0, SEED);
-		let owner_lookup = Indices::unlookup(owner.clone());
+		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
 		let currency_id: CurrencyId = KSM;
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
@@ -179,7 +179,7 @@ runtime_benchmarks! {
 	// `liquidate` by dex
 	liquidate_by_dex {
 		let owner: AccountId = account("owner", 0, SEED);
-		let owner_lookup = Indices::unlookup(owner.clone());
+		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
 		let funder: AccountId = account("funder", 0, SEED);
 
 		let debit_value = 100 * dollar(KUSD);
@@ -234,7 +234,7 @@ runtime_benchmarks! {
 
 	settle {
 		let owner: AccountId = account("owner", 0, SEED);
-		let owner_lookup = Indices::unlookup(owner.clone());
+		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
 		let currency_id: CurrencyId = KSM;
 		let min_debit_value = MinimumDebitValue::get();
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
@@ -273,13 +273,6 @@ runtime_benchmarks! {
 mod tests {
 	use super::*;
 	use frame_support::assert_ok;
-
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
 
 	fn new_test_ext() -> sp_io::TestExternalities {
 		frame_system::GenesisConfig::default()
