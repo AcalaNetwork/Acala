@@ -614,7 +614,7 @@ fn test_cdp_engine_module() {
 			let new_collateral_params = CdpEngineModule::collateral_params(XBTC);
 
 			assert_eq!(
-				new_collateral_params.stability_fee,
+				new_collateral_params.interest_rate_per_sec,
 				Some(Rate::saturating_from_rational(1, 100000))
 			);
 			assert_eq!(

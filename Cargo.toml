@@ -109,9 +109,3 @@ wasmi = { opt-level = 3 }
 x25519-dalek = { opt-level = 3 }
 yamux = { opt-level = 3 }
 zeroize = { opt-level = 3 }
-
-[patch.crates-io]
-evm = { git = "https://github.com/rust-blockchain/evm.git", rev = "f90f8432fc0070a6de9e2532e5d0fcef7a041fd7" }
-evm-core = { git = "https://github.com/rust-blockchain/evm.git", rev = "f90f8432fc0070a6de9e2532e5d0fcef7a041fd7" }
-evm-gasometer = { git = "https://github.com/rust-blockchain/evm.git", rev = "f90f8432fc0070a6de9e2532e5d0fcef7a041fd7" }
-evm-runtime = { git = "https://github.com/rust-blockchain/evm.git", rev = "f90f8432fc0070a6de9e2532e5d0fcef7a041fd7" }

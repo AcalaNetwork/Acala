@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{TokenSymbol, TradingPair};
+use primitives::{Moment, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
@@ -246,6 +246,16 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
 }
 
+parameter_types! {
+	pub const MinimumPeriod: Moment = 1000;
+}
+impl pallet_timestamp::Config for Runtime {
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
+}
+
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
@@ -290,6 +300,7 @@ impl Config for Runtime {
 	type DEX = DEXModule;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type UnixTime = Timestamp;
 	type WeightInfo = ();
 }
 
@@ -310,6 +321,7 @@ construct_runtime!(
 		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
 
