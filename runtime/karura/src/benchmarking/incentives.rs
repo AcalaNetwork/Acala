@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, CurrencyId, GetStableCurrencyId, Incentives, Rate,
-	Rewards, Runtime, System, TokenSymbol, KAR, KSM, KUSD, LKSM,
+	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, Incentives, Rate, Rewards, Runtime, System, TokenSymbol, KAR, KSM, KUSD, LKSM,
 };
 
 use super::utils::set_balance;
@@ -27,6 +27,7 @@ use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_incentives::PoolId;
 use orml_benchmarking::runtime_benchmarks;
+use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
@@ -76,11 +77,11 @@ runtime_benchmarks! {
 	claim_rewards {
 		let caller: AccountId = account("caller", 0, SEED);
 		let pool_id = PoolId::LoansIncentive(KSM);
+		let native_currency_id = GetNativeCurrencyId::get();
 
 		Rewards::add_share(&caller, &pool_id, 100);
-		orml_rewards::Pools::<Runtime>::mutate(&pool_id, |pool_info| {
-			pool_info.total_rewards += 5000;
-		});
+		Currencies::deposit(native_currency_id, &<Runtime as module_incentives::Config>::RewardsVaultAccountId::get(), 80 * dollar(native_currency_id))?;
+		Rewards::accumulate_reward(&pool_id, 80 * dollar(native_currency_id));
 	}: _(RawOrigin::Signed(caller), pool_id)
 
 	update_incentive_rewards {
