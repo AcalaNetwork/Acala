@@ -307,12 +307,14 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
-		let _ = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
+		let res = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
+		debug_assert!(res.is_ok());
 		Ledger::<T>::insert(who, ledger);
 	}
 
 	fn remove_ledger(who: &T::AccountId) {
-		let _ = T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
+		let res = T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
+		debug_assert!(res.is_ok());
 		Ledger::<T>::remove(who);
 		Nominations::<T>::remove(who);
 	}

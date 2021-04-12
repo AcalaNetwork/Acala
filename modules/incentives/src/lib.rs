@@ -438,6 +438,7 @@ impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
 		// payout the reward to user from the pool. it should not affect the
 		// process, ignore the result to continue. if it fails, just the user will not
 		// be rewarded, there will not increase user balance.
-		let _ = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, amount);
+		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, amount);
+		debug_assert!(res.is_ok());
 	}
 }
