@@ -47,6 +47,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_cdp_engine.
 pub trait WeightInfo {
+	fn on_initialize(c: u32) -> Weight;
 	fn set_collateral_params() -> Weight;
 	fn set_global_params() -> Weight;
 	fn liquidate_by_auction() -> Weight;
@@ -57,6 +58,12 @@ pub trait WeightInfo {
 /// Weights for module_cdp_engine using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
+	fn on_initialize(c: u32) -> Weight {
+		(33_360_000 as Weight)
+			.saturating_add((23_139_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
+	}
 	fn set_collateral_params() -> Weight {
 		(37_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
@@ -85,6 +92,12 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
+	fn on_initialize(c: u32) -> Weight {
+		(33_360_000 as Weight)
+			.saturating_add((23_139_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
+	}
 	fn set_collateral_params() -> Weight {
 		(37_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))

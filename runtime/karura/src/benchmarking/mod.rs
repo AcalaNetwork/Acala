@@ -42,7 +42,6 @@ pub mod transaction_payment;
 pub mod auction;
 pub mod authority;
 pub mod currencies;
-pub mod gradually_update;
 pub mod oracle;
 pub mod tokens;
 pub mod utils;

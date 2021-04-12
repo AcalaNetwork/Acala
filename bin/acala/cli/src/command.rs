@@ -73,13 +73,9 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		let id = if id.is_empty() {
-			// The binary prefix is always acala.
-			// Make Mandala the default chain spec.
-			"mandala"
-		} else {
-			id
-		};
+		if id.is_empty() {
+			return Err("Not specific which chain to run.".into());
+		}
 
 		Ok(match id {
 			#[cfg(feature = "with-mandala-runtime")]
@@ -403,7 +399,7 @@ pub fn run() -> sc_cli::Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(666));
+				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(1000));
 
 				let parachain_account = AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
 

@@ -28,7 +28,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, TokenSymbol};
+use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, Balance, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
@@ -66,6 +66,7 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
@@ -210,15 +211,14 @@ impl Config for Runtime {
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
-	type Currency = NativeCurrency;
 	type WeightInfo = ();
 }
 
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
-	type ClassData = ClassData;
-	type TokenData = TokenData;
+	type ClassData = ClassData<Balance>;
+	type TokenData = TokenData<Balance>;
 }
 
 use frame_system::Call as SystemCall;

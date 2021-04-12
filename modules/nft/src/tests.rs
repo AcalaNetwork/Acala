@@ -21,15 +21,18 @@
 #![cfg(test)]
 
 use super::*;
+use frame_support::traits::Currency;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
+use orml_nft::TokenInfo;
+use primitives::Balance;
 
 fn free_balance(who: &AccountId) -> Balance {
-	<Runtime as Config>::Currency::free_balance(who)
+	<Runtime as pallet_proxy::Config>::Currency::free_balance(who)
 }
 
 fn reserved_balance(who: &AccountId) -> Balance {
-	<Runtime as Config>::Currency::reserved_balance(who)
+	<Runtime as pallet_proxy::Config>::Currency::reserved_balance(who)
 }
 
 fn class_id_account() -> AccountId {
@@ -88,7 +91,7 @@ fn mint_should_work() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			vec![1],
+			vec![2],
 			2
 		));
 		let event = Event::nft(crate::Event::MintedToken(class_id_account(), BOB, CLASS_ID, 2));
@@ -96,9 +99,34 @@ fn mint_should_work() {
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Config>::CreateClassDeposit::get()
-				+ 2 * <Runtime as Config>::CreateTokenDeposit::get()
-				+ Proxy::deposit(1u32)
+			<Runtime as Config>::CreateClassDeposit::get() + Proxy::deposit(1u32)
+		);
+
+		assert_eq!(
+			reserved_balance(&BOB),
+			2 * <Runtime as Config>::CreateTokenDeposit::get()
+		);
+
+		assert_eq!(
+			orml_nft::Pallet::<Runtime>::tokens(0, 0).unwrap(),
+			TokenInfo {
+				metadata: vec![2],
+				owner: BOB,
+				data: TokenData {
+					deposit: <Runtime as Config>::CreateTokenDeposit::get()
+				}
+			}
+		);
+
+		assert_eq!(
+			orml_nft::Pallet::<Runtime>::tokens(0, 1).unwrap(),
+			TokenInfo {
+				metadata: vec![2],
+				owner: BOB,
+				data: TokenData {
+					deposit: <Runtime as Config>::CreateTokenDeposit::get()
+				}
+			}
 		);
 	});
 }
@@ -162,13 +190,33 @@ fn transfer_should_work() {
 			2
 		));
 
+		assert_eq!(
+			reserved_balance(&BOB),
+			2 * <Runtime as Config>::CreateTokenDeposit::get()
+		);
+
 		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
 		let event = Event::nft(crate::Event::TransferredToken(BOB, ALICE, CLASS_ID, TOKEN_ID));
 		assert_eq!(last_event(), event);
 
+		assert_eq!(
+			reserved_balance(&BOB),
+			1 * <Runtime as Config>::CreateTokenDeposit::get()
+		);
+		assert_eq!(
+			reserved_balance(&ALICE),
+			1 * <Runtime as Config>::CreateTokenDeposit::get()
+		);
+
 		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
 		let event = Event::nft(crate::Event::TransferredToken(ALICE, BOB, CLASS_ID, TOKEN_ID));
 		assert_eq!(last_event(), event);
+
+		assert_eq!(
+			reserved_balance(&BOB),
+			2 * <Runtime as Config>::CreateTokenDeposit::get()
+		);
+		assert_eq!(reserved_balance(&ALICE), 0);
 	});
 }
 
@@ -202,7 +250,7 @@ fn transfer_should_fail() {
 		);
 		assert_noop!(
 			NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)),
-			Error::<Runtime>::NoPermission
+			orml_nft::Error::<Runtime>::NoPermission
 		);
 	});
 
@@ -334,11 +382,10 @@ fn destroy_class_should_work() {
 			vec![1],
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		); // + 100
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * <Runtime as Config>::CreateTokenDeposit::get()
+		)); // + 100
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
@@ -350,14 +397,15 @@ fn destroy_class_should_work() {
 		assert_ok!(NFTModule::destroy_class(
 			Origin::signed(class_id_account()),
 			CLASS_ID,
-			BOB
+			ALICE
 		));
-		let event = Event::nft(crate::Event::DestroyedClass(class_id_account(), CLASS_ID, BOB));
+		let event = Event::nft(crate::Event::DestroyedClass(class_id_account(), CLASS_ID));
 		assert_eq!(last_event(), event);
 
-		assert_eq!(reserved_balance(&class_id_account()), 2);
-		assert_eq!(free_balance(&ALICE), 99700 + 100 - 2);
-		assert_eq!(free_balance(&BOB), 300);
+		assert_eq!(free_balance(&class_id_account()), 0);
+		assert_eq!(reserved_balance(&class_id_account()), 0);
+		assert_eq!(free_balance(&ALICE), 100000);
+		assert_eq!(free_balance(&BOB), <Runtime as Config>::CreateTokenDeposit::get());
 	});
 }
 
@@ -397,10 +445,16 @@ fn destroy_class_should_fail() {
 		);
 
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
+
+		assert_noop!(
+			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID, BOB),
+			pallet_proxy::Error::<Runtime>::NotFound
+		);
+
 		assert_ok!(NFTModule::destroy_class(
 			Origin::signed(class_id_account()),
 			CLASS_ID,
-			BOB
+			ALICE
 		));
 	});
 }

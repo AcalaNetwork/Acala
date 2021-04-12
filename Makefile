@@ -34,7 +34,7 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
 .PHONY: check-all
-check-all: check-dev check-acala
+check-all: check-dev check-acala check-benchmarks
 
 .PHONY: check-dev
 check-dev:
@@ -43,6 +43,10 @@ check-dev:
 .PHONY: check-acala
 check-acala:
 	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala/Cargo.toml --tests --all --features with-all-runtime
+
+.PHONY: check-benchmarks
+check-benchmarks:
+	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala/Cargo.toml --tests --all --features with-all-runtime --features runtime-benchmarks
 
 .PHONY: check-debug
 check-debug:
@@ -57,7 +61,7 @@ test-eth: githooks
 	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml test_evm_module --features with-ethereum-compatibility -p mandala-runtime
 
 .PHONY: test-all
-test-all: test-dev test-acala
+test-all: test-dev test-acala test-benchmarking
 
 .PHONY: test-dev
 test-dev:
@@ -69,7 +73,7 @@ test-acala:
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --features runtime-benchmarks -p mandala-runtime benchmarking
+	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
 
 .PHONY: build
 build: githooks

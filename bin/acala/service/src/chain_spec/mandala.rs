@@ -319,7 +319,7 @@ fn testnet_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // stability fee for this collateral
+					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(150, 100)), // required liquidation ratio
@@ -350,7 +350,10 @@ fn testnet_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
+			global_interest_rate_per_sec: FixedU128::saturating_from_rational(
+				1_547_126_000u128,
+				1_000_000_000_000_000_000u128,
+			), /* 5% APR */
 		},
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: vec![],
@@ -381,7 +384,7 @@ fn testnet_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 666.into(),
+			parachain_id: 1000.into(),
 		},
 		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
@@ -496,7 +499,7 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // stability fee for this collateral
+					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
@@ -527,7 +530,10 @@ fn mandala_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
+			global_interest_rate_per_sec: FixedU128::saturating_from_rational(
+				1_547_126_000u128,
+				1_000_000_000_000_000_000u128,
+			), /* 5% APR */
 		},
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: {
@@ -577,7 +583,7 @@ fn mandala_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 666.into(),
+			parachain_id: 1000.into(),
 		},
 		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
@@ -588,8 +594,8 @@ fn mandala_genesis(
 				let nft_airdrop: Vec<(
 					AccountId,
 					Vec<u8>,
-					module_nft::ClassData,
-					Vec<(Vec<u8>, module_nft::TokenData, Vec<AccountId>)>,
+					module_nft::ClassData<Balance>,
+					Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
 				)> = serde_json::from_slice(nft_airdrop_json).unwrap();
 
 				let mut tokens = vec![];

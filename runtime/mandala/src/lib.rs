@@ -32,7 +32,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::Encode;
+use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -48,7 +48,7 @@ pub use frame_support::{
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use hex_literal::hex;
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::{CallInfo, CreateInfo};
+use module_evm::{AddressMapping, CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
@@ -66,7 +66,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, SaturatedConversion, StaticLookup, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId, MultiAddress,
 };
 use sp_std::prelude::*;
 
@@ -95,14 +95,17 @@ mod standalone_use {
 use parachain_use::*;
 #[cfg(not(feature = "standalone"))]
 mod parachain_use {
-	pub use orml_xcm_support::{
-		CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter, NativePalletAssetOr,
-		XcmHandler as XcmHandlerT,
-	};
+	pub use cumulus_primitives_core::ParaId;
+	pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, XcmHandler as XcmHandlerT};
 	pub use polkadot_parachain::primitives::Sibling;
 	pub use sp_runtime::traits::{Convert, Identity};
 	pub use sp_std::collections::btree_set::BTreeSet;
-	pub use xcm::v0::{Junction, MultiLocation, NetworkId, Xcm};
+	pub use xcm::v0::{
+		Junction::{GeneralKey, Parachain, Parent},
+		MultiAsset,
+		MultiLocation::{self, X1, X2, X3},
+		NetworkId, Xcm,
+	};
 	pub use xcm_builder::{
 		AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 		SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
@@ -122,8 +125,9 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
-	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
+	evm::EstimateResourcesRequest, AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId,
+	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol,
+	TradingPair,
 };
 pub use runtime_common::{
 	cent, deposit, dollar, microcent, millicent, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit,
@@ -224,6 +228,10 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
+	#[cfg(feature = "standalone")]
+	type OnSetCode = ();
+	#[cfg(not(feature = "standalone"))]
+	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 }
 
 parameter_types! {
@@ -918,6 +926,7 @@ impl module_cdp_engine::Config for Runtime {
 	type DEX = Dex;
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
+	type UnixTime = Timestamp;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1143,15 +1152,14 @@ impl module_nft::Config for Runtime {
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type ModuleId = NftModuleId;
-	type Currency = Currency<Runtime, GetNativeCurrencyId>;
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
-	type ClassData = module_nft::ClassData;
-	type TokenData = module_nft::TokenData;
+	type ClassData = module_nft::ClassData<Balance>;
+	type TokenData = module_nft::TokenData<Balance>;
 }
 
 parameter_types! {
@@ -1394,6 +1402,7 @@ mod standalone_impl {
 	}
 
 	impl pallet_staking::Config for Runtime {
+		const MAX_NOMINATIONS: u32 = MAX_NOMINATIONS;
 		type Currency = Balances;
 		type UnixTime = Timestamp;
 		type CurrencyToVote = U128CurrencyToVote;
@@ -1441,6 +1450,17 @@ mod standalone_impl {
 			.saturating_sub(BlockExecutionWeight::get());
 	}
 
+	sp_npos_elections::generate_solution_type!(
+		#[compact]
+		pub struct NposCompactSolution16::<
+			VoterIndex = u32,
+			TargetIndex = u16,
+			Accuracy = sp_runtime::PerU16,
+		>(16)
+	);
+
+	pub const MAX_NOMINATIONS: u32 = <NposCompactSolution16 as sp_npos_elections::CompactSolution>::LIMIT as u32;
+
 	impl pallet_election_provider_multi_phase::Config for Runtime {
 		type Event = Event;
 		type Currency = Balances;
@@ -1452,7 +1472,7 @@ mod standalone_impl {
 		type MinerTxPriority = MultiPhaseUnsignedPriority;
 		type DataProvider = Staking;
 		type OnChainAccuracy = Perbill;
-		type CompactSolution = pallet_staking::CompactAssignments;
+		type CompactSolution = NposCompactSolution16;
 		type Fallback = Fallback;
 		type WeightInfo = pallet_election_provider_multi_phase::weights::SubstrateWeight<Runtime>;
 		type BenchmarkingConfig = ();
@@ -1470,7 +1490,7 @@ mod parachain_impl {
 		type OnValidationData = ();
 		type SelfParaId = parachain_info::Pallet<Runtime>;
 		type DownwardMessageHandlers = XcmHandler;
-		type HrmpMessageHandlers = XcmHandler;
+		type XcmpMessageHandlers = XcmHandler;
 	}
 
 	impl parachain_info::Config for Runtime {}
@@ -1489,7 +1509,7 @@ mod parachain_impl {
 	parameter_types! {
 		pub AcalaNetwork: NetworkId = NetworkId::Named("acala".into());
 		pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
-		pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
+		pub Ancestry: MultiLocation = X1(Parachain {
 			id: ParachainInfo::get().into(),
 		});
 		pub const RelayChainCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -1504,11 +1524,11 @@ mod parachain_impl {
 	pub type LocalAssetTransactor = MultiCurrencyAdapter<
 		Currencies,
 		UnknownTokens,
-		IsConcreteWithGeneralKey<CurrencyId, Identity>,
-		LocationConverter,
+		IsNativeConcrete<CurrencyId, CurrencyIdConvert>,
 		AccountId,
-		CurrencyIdConverter<CurrencyId, RelayChainCurrencyId>,
+		LocationConverter,
 		CurrencyId,
+		CurrencyIdConvert,
 	>;
 
 	pub type LocalOriginConverter = (
@@ -1518,37 +1538,13 @@ mod parachain_impl {
 		SignedAccountId32AsNative<AcalaNetwork, Origin>,
 	);
 
-	parameter_types! {
-		pub NativeOrmlTokens: BTreeSet<(Vec<u8>, MultiLocation)> = {
-			let mut t = BTreeSet::new();
-			//TODO: might need to add other assets based on orml-tokens
-
-			// Plasm
-			t.insert(("SDN".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
-			// Plasm
-			t.insert(("PLM".into(), (Junction::Parent, Junction::Parachain { id: 5000 }).into()));
-
-			// Hydrate
-			t.insert(("HDT".into(), (Junction::Parent, Junction::Parachain { id: 82406 }).into()));
-
-			// KILT
-			t.insert(("KILT".into(), (Junction::Parent, Junction::Parachain { id: 12623 }).into()));
-
-			// BCG
-			t.insert(("BCG".into(), (Junction::Parent, Junction::Parachain { id: 8 }).into()));
-
-			t
-		};
-	}
-
 	pub struct XcmConfig;
 	impl Config for XcmConfig {
 		type Call = Call;
 		type XcmSender = XcmHandler;
 		type AssetTransactor = LocalAssetTransactor;
 		type OriginConverter = LocalOriginConverter;
-		//TODO: might need to add other assets based on orml-tokens
-		type IsReserve = NativePalletAssetOr<NativeOrmlTokens>;
+		type IsReserve = MultiNativeAsset;
 		type IsTeleporter = ();
 		type LocationInverter = LocationInverter<Ancestry>;
 	}
@@ -1557,7 +1553,7 @@ mod parachain_impl {
 		type Event = Event;
 		type XcmExecutor = XcmExecutor<XcmConfig>;
 		type UpwardMessageSender = ParachainSystem;
-		type HrmpMessageSender = ParachainSystem;
+		type XcmpMessageSender = ParachainSystem;
 		type SendXcmOrigin = EnsureRoot<AccountId>;
 		type AccountIdConverter = LocationConverter;
 	}
@@ -1569,14 +1565,72 @@ mod parachain_impl {
 		}
 	}
 
+	//TODO: use token registry currency type encoding
+	fn native_currency_location(id: CurrencyId) -> MultiLocation {
+		X3(
+			Parent,
+			Parachain {
+				id: ParachainInfo::get().into(),
+			},
+			GeneralKey(id.encode()),
+		)
+	}
+
+	pub struct CurrencyIdConvert;
+	impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
+		fn convert(id: CurrencyId) -> Option<MultiLocation> {
+			use CurrencyId::Token;
+			use TokenSymbol::*;
+			match id {
+				Token(DOT) => Some(X1(Parent)),
+				Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(native_currency_location(id)),
+				_ => None,
+			}
+		}
+	}
+	impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+		fn convert(location: MultiLocation) -> Option<CurrencyId> {
+			use CurrencyId::Token;
+			use TokenSymbol::*;
+			match location {
+				X1(Parent) => Some(Token(DOT)),
+				X3(Parent, Parachain { id }, GeneralKey(key)) if ParaId::from(id) == ParachainInfo::get() => {
+					// decode the general key
+					if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
+						// check if `currency_id` is cross-chain asset
+						match currency_id {
+							Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
+							_ => None,
+						}
+					} else {
+						None
+					}
+				}
+				_ => None,
+			}
+		}
+	}
+	impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
+		fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+			if let MultiAsset::ConcreteFungible { id, amount: _ } = asset {
+				Self::convert(id)
+			} else {
+				None
+			}
+		}
+	}
+
+	parameter_types! {
+		pub SelfLocation: MultiLocation = X2(Parent, Parachain { id: ParachainInfo::get().into() });
+	}
+
 	impl orml_xtokens::Config for Runtime {
 		type Event = Event;
 		type Balance = Balance;
-		type ToRelayChainBalance = Identity;
+		type CurrencyId = CurrencyId;
+		type CurrencyIdConvert = CurrencyIdConvert;
 		type AccountId32Convert = AccountId32Convert;
-		//TODO: change network id if kusama
-		type RelayChainNetworkId = PolkadotNetworkId;
-		type ParaId = ParachainInfo;
+		type SelfLocation = SelfLocation;
 		type XcmHandler = HandleXcm;
 	}
 
@@ -1925,7 +1979,6 @@ impl_runtime_apis! {
 		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_no_op(&key),
-				DataProviderId::Band => BandOracle::get_no_op(&key),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_no_op(&key)
 			}
 		}
@@ -1933,7 +1986,6 @@ impl_runtime_apis! {
 		fn get_all_values(provider_id: DataProviderId) -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_all_values(),
-				DataProviderId::Band => BandOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
 			}
 		}
@@ -1961,7 +2013,7 @@ impl_runtime_apis! {
 			to: H160,
 			data: Vec<u8>,
 			value: Balance,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
@@ -1979,7 +2031,7 @@ impl_runtime_apis! {
 				to,
 				data,
 				value,
-				gas_limit.into(),
+				gas_limit,
 				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
@@ -1989,7 +2041,7 @@ impl_runtime_apis! {
 			from: H160,
 			data: Vec<u8>,
 			value: Balance,
-			gas_limit: u32,
+			gas_limit: u64,
 			storage_limit: u32,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
@@ -2005,10 +2057,51 @@ impl_runtime_apis! {
 				from,
 				data,
 				value,
-				gas_limit.into(),
+				gas_limit,
 				storage_limit,
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
+		}
+
+		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
+			let utx = UncheckedExtrinsic::decode(&mut &*extrinsic)
+				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
+
+			let request = match utx.function {
+				Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
+					Some(EstimateResourcesRequest {
+						from: None,
+						to: Some(to),
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
+						value: Some(value),
+						data: Some(data),
+					})
+				}
+				Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
+					Some(EstimateResourcesRequest {
+						from: None,
+						to: None,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
+						value: Some(value),
+						data: Some(data),
+					})
+				}
+				_ => None,
+			};
+
+			let mut request = request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))?;
+			let signature = utx.signature.ok_or(sp_runtime::DispatchError::Other("Invalid parameter signature, miss signature"))?;
+			let account = match signature.0 {
+				MultiAddress::Id(account) => Some(account),
+				_ => None,
+			}.ok_or(sp_runtime::DispatchError::Other("Invalid parameter signature, not MultiAddress::Id"))?;
+
+			request.from = Some(EvmAddressMapping::<Runtime>::get_evm_address(&account)
+								.ok_or(sp_runtime::DispatchError::Other("Invalid parameter signature, not mapping evm address"))?);
+
+			Ok(request)
 		}
 	}
 
@@ -2022,7 +2115,6 @@ impl_runtime_apis! {
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft::benchmarking::Pallet as NftBench;
-			impl module_nft::benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
