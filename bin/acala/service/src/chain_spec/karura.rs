@@ -126,7 +126,7 @@ fn karura_genesis(
 		CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
 		HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
 		ParachainInfoConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
+		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -137,6 +137,9 @@ fn karura_genesis(
 
 	let initial_balance: u128 = 1_000_000 * dollar(KAR);
 	let initial_staking: u128 = 100_000 * dollar(KAR);
+
+	let mut unreleased_native = 100_000_000 * dollar(KAR); // 100 million KAR
+													   // if want to config vesting, should handle unreleased_native firstly.
 
 	let balances = initial_authorities
 		.iter()
@@ -158,10 +161,12 @@ fn karura_genesis(
 				} else {
 					acc.insert(account_id.clone(), amount);
 				}
+				unreleased_native = unreleased_native.saturating_sub(amount);
 				acc
 			},
 		)
 		.into_iter()
+		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	karura_runtime::GenesisConfig {
