@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, Honzon, Indices, Price, Rate,
-	Ratio, Runtime, KSM, KUSD,
+	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, Honzon, Price, Rate, Ratio,
+	Runtime, KSM, KUSD,
 };
 
 use super::utils::set_balance;
@@ -28,7 +28,7 @@ use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{StaticLookup, UniqueSaturatedInto},
+	traits::{AccountIdLookup, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;
@@ -43,13 +43,13 @@ runtime_benchmarks! {
 	authorize {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);
-		let to_lookup = Indices::unlookup(to);
+		let to_lookup = AccountIdLookup::unlookup(to);
 	}: _(RawOrigin::Signed(caller), KSM, to_lookup)
 
 	unauthorize {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);
-		let to_lookup = Indices::unlookup(to);
+		let to_lookup = AccountIdLookup::unlookup(to);
 		Honzon::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
 			KSM,
@@ -63,7 +63,7 @@ runtime_benchmarks! {
 		let caller: AccountId = account("caller", 0, SEED);
 		let currency_ids = CollateralCurrencyIds::get();
 		let to: AccountId = account("to", 0, SEED);
-		let to_lookup = Indices::unlookup(to);
+		let to_lookup = AccountIdLookup::unlookup(to);
 
 		for i in 0 .. c {
 			Honzon::authorize(
@@ -108,9 +108,9 @@ runtime_benchmarks! {
 	transfer_loan_from {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let sender: AccountId = account("sender", 0, SEED);
-		let sender_lookup = Indices::unlookup(sender.clone());
+		let sender_lookup = AccountIdLookup::unlookup(sender.clone());
 		let receiver: AccountId = account("receiver", 0, SEED);
-		let receiver_lookup = Indices::unlookup(receiver.clone());
+		let receiver_lookup = AccountIdLookup::unlookup(receiver.clone());
 
 
 		let debit_value = 100 * dollar(KUSD);

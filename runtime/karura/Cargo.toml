@@ -11,25 +11,18 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 serde = { version = "1.0.124", optional = true }
 hex-literal = { version = "0.3.1" }
 
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false, optional = true }
 frame-executive = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-bounties = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-grandpa = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-indices = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-multisig = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-offences = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-recovery = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", features = ["historical"], default-features = false }
 pallet-staking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
@@ -44,7 +37,6 @@ pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "ro
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-application-crypto = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
@@ -55,7 +47,6 @@ sp-staking = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-version = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-libsecp256k1 = { version = "0.3.4", default-features = false, optional = true }
 
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
@@ -71,7 +62,6 @@ orml-authority = { path = "../../orml/authority", default-features = false }
 orml-benchmarking = { path = "../../orml/benchmarking", default-features = false, optional = true }
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
-orml-gradually-update = { path = "../../orml/gradually-update", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
@@ -109,7 +99,9 @@ runtime-common = { path = "../common", default-features = false }
 
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 
-ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
+# benchmarking deps
+libsecp256k1 = { version = "0.3.4", default-features = false, optional = true }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false, optional = true }
 
 [build-dependencies]
 substrate-wasm-builder = "4.0.0"
@@ -129,19 +121,14 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-benchmarking/std",
-	"pallet-babe/std",
 	"pallet-balances/std",
 	"pallet-bounties/std",
 	"pallet-collective/std",
-	"pallet-elections-phragmen/std",
 	"module-evm/std",
-	"pallet-grandpa/std",
-	"pallet-indices/std",
 	"pallet-membership/std",
 	"pallet-multisig/std",
 	"pallet-proxy/std",
 	"pallet-randomness-collective-flip/std",
-	"pallet-recovery/std",
 	"pallet-scheduler/std",
 	"pallet-session/std",
 	"pallet-staking/std",
@@ -154,7 +141,6 @@ std = [
 	"pallet-utility/std",
 	"sp-api/std",
 	"sp-block-builder/std",
-	"sp-consensus-babe/std",
 	"sp-core/std",
 	"sp-offchain/std",
 	"sp-runtime/std",
@@ -180,7 +166,6 @@ std = [
 	"orml-benchmarking/std",
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
-	"orml-gradually-update/std",
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-vesting/std",
@@ -215,8 +200,6 @@ std = [
 	"runtime-common/std",
 
 	"module-evm-rpc-runtime-api/std",
-
-	"ecosystem-renvm-bridge/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",
@@ -228,6 +211,8 @@ runtime-benchmarks = [
 	"pallet-collective/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
+	"orml-vesting/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
 
 	"module-cdp-treasury/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
