@@ -57,6 +57,7 @@ use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
+use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
@@ -923,7 +924,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
-	type CurrencyIdMapping = EvmManager;
+	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -974,7 +975,8 @@ impl module_evm_accounts::Config for Runtime {
 }
 
 impl module_evm_manager::Config for Runtime {
-	type Event = Event;
+	type Currency = Balances;
+	type EVMBridge = EVMBridge;
 }
 
 impl orml_rewards::Config for Runtime {
@@ -1156,15 +1158,23 @@ parameter_types! {
 	pub DeploymentFee: Balance = dollar(KAR);
 }
 
-pub type MultiCurrencyPrecompile =
-	runtime_common::MultiCurrencyPrecompile<AccountId, EvmAddressMapping<Runtime>, Currencies>;
+pub type MultiCurrencyPrecompile = runtime_common::MultiCurrencyPrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	EvmCurrencyIdMapping<Runtime>,
+	Currencies,
+>;
 
-pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
-pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
-pub type OraclePrecompile = runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, Prices>;
+pub type NFTPrecompile =
+	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, NFT>;
+pub type StateRentPrecompile =
+	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, EVM>;
+pub type OraclePrecompile =
+	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Prices>;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
+	EvmCurrencyIdMapping<Runtime>,
 	Scheduler,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	Call,
@@ -1172,7 +1182,8 @@ pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	OriginCaller,
 	Runtime,
 >;
-pub type DexPrecompile = runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, Dex>;
+pub type DexPrecompile =
+	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Dex>;
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1320,7 +1331,7 @@ construct_runtime!(
 
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 4,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 5,
-		EvmManager: module_evm_manager::{Pallet, Storage, Event<T>} = 60, //TODO
+		EvmManager: module_evm_manager::{Pallet, Storage} = 60, //TODO
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 6,
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 7,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 8,

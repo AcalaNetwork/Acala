@@ -22,8 +22,12 @@ module-support = { path = "../support", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-currencies = { path = "../../orml/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+orml-utilities = { path = "../../orml/utilities" }
+module-evm = { path = "../evm" }
+module-evm-bridge = { path = "../evm-bridge" }
 
 [features]
 default = ["std"]

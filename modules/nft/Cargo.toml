@@ -27,7 +27,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "r
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
-support = { package = "module-support", path = "../../modules/support" }
+support = { package = "module-support", path = "../support", default-features = false }
 
 [features]
 default = ["std"]

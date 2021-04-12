@@ -24,14 +24,12 @@ use super::*;
 use crate as transaction_payment;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types, weights::WeightToFeeCoefficients};
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, TokenSymbol, TradingPair};
+use primitives::{Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{
-	testing::Header, traits::IdentityLookup, DispatchError, DispatchResult, FixedPointNumber, ModuleId, Perbill,
-};
+use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, ModuleId, Perbill};
 use sp_std::cell::RefCell;
-use support::{EVMBridge, InvokeContext, Ratio};
+use support::{mocks::MockAddressMapping, Ratio};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -119,31 +117,6 @@ impl pallet_balances::Config for Runtime {
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
-pub struct MockEVMBridge;
-impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
-where
-	AccountId: Default,
-	Balance: Default,
-{
-	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn get_origin() -> Option<AccountId> {
-		None
-	}
-
-	fn set_origin(_origin: AccountId) {}
-}
-
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 }
@@ -155,7 +128,7 @@ impl module_currencies::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
-	type EVMBridge = MockEVMBridge;
+	type EVMBridge = ();
 }
 
 thread_local! {

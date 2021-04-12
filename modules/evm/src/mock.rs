@@ -23,7 +23,6 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::mocks::MockAddressMapping;
 use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
@@ -32,6 +31,7 @@ use sp_runtime::{
 	AccountId32,
 };
 use std::{collections::BTreeMap, str::FromStr};
+use support::mocks::MockAddressMapping;
 
 mod evm_mod {
 	pub use super::super::*;

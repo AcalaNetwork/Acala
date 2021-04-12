@@ -35,6 +35,7 @@ use sp_std::{
 };
 
 pub mod homa;
+pub mod mocks;
 pub use homa::{
 	HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
 	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
@@ -371,6 +372,32 @@ pub trait EVMBridge<AccountId, Balance> {
 	fn set_origin(origin: AccountId);
 }
 
+#[cfg(feature = "std")]
+impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
+	fn name(_context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
+		Ok(Default::default())
+	}
+	fn symbol(_context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
+		Ok(Default::default())
+	}
+	fn decimals(_context: InvokeContext) -> Result<u8, DispatchError> {
+		Ok(Default::default())
+	}
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
+		Ok(())
+	}
+	fn get_origin() -> Option<AccountId> {
+		None
+	}
+	fn set_origin(_origin: AccountId) {}
+}
+
 /// An abstraction of EVMStateRentTrait
 pub trait EVMStateRentTrait<AccountId, Balance> {
 	/// Query the constants `NewContractExtraBytes` value from evm module.
@@ -446,6 +473,15 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 
 pub trait Contains<T> {
 	fn contains(t: &T) -> bool;
+}
+
+/// A mapping between `AccountId` and `EvmAddress`.
+pub trait AddressMapping<AccountId> {
+	fn get_account_id(evm: &EvmAddress) -> AccountId;
+	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
+	fn get_or_create_evm_address(account_id: &AccountId) -> EvmAddress;
+	fn get_default_evm_address(account_id: &AccountId) -> EvmAddress;
+	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
 pub trait CurrencyIdMapping {

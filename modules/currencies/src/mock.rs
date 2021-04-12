@@ -22,13 +22,14 @@
 
 use frame_support::{ord_parameter_types, parameter_types, traits::GenesisBuild};
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::AddressMapping, mocks::MockAddressMapping, CurrencyId, TokenSymbol};
+use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
 	AccountId32, ModuleId, Perbill,
 };
+use support::{mocks::MockAddressMapping, AddressMapping};
 
 use super::*;
 use frame_system::EnsureSignedBy;

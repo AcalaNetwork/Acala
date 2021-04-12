@@ -26,7 +26,8 @@ use sp_std::{
 };
 
 use module_evm::ExitError;
-use primitives::{evm::AddressMapping as AddressMappingT, Amount, Balance, CurrencyId};
+use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_core::H160;
 
 pub const PER_PARAM_BYTES: usize = 32;
@@ -58,11 +59,13 @@ pub trait InputT {
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
 }
 
-pub struct Input<'a, Action, AccountId, AddressMapping> {
+pub struct Input<'a, Action, AccountId, AddressMapping, CurrencyIdMapping> {
 	content: &'a [u8],
-	_marker: PhantomData<(Action, AccountId, AddressMapping)>,
+	_marker: PhantomData<(Action, AccountId, AddressMapping, CurrencyIdMapping)>,
 }
-impl<'a, Action, AccountId, AddressMapping> Input<'a, Action, AccountId, AddressMapping> {
+impl<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
+	Input<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
+{
 	pub fn new(content: &'a [u8]) -> Self {
 		Self {
 			content,
@@ -71,10 +74,12 @@ impl<'a, Action, AccountId, AddressMapping> Input<'a, Action, AccountId, Address
 	}
 }
 
-impl<Action, AccountId, AddressMapping> InputT for Input<'_, Action, AccountId, AddressMapping>
+impl<Action, AccountId, AddressMapping, CurrencyIdMapping> InputT
+	for Input<'_, Action, AccountId, AddressMapping, CurrencyIdMapping>
 where
 	Action: TryFrom<u8>,
 	AddressMapping: AddressMappingT<AccountId>,
+	CurrencyIdMapping: CurrencyIdMappingT,
 {
 	type Error = ExitError;
 	type Action = Action;
@@ -189,7 +194,8 @@ mod tests {
 	use frame_support::{assert_err, assert_ok};
 	use sp_core::H160;
 
-	use primitives::{mocks::MockAddressMapping, AccountId, CurrencyId, TokenSymbol};
+	use module_support::mocks::{MockAddressMapping, MockCurrencyIdMapping};
+	use primitives::{AccountId, CurrencyId, TokenSymbol};
 
 	#[derive(Debug, PartialEq, Eq)]
 	pub enum Action {
@@ -207,7 +213,7 @@ mod tests {
 		}
 	}
 
-	pub type TestInput<'a> = Input<'a, Action, AccountId, MockAddressMapping>;
+	pub type TestInput<'a> = Input<'a, Action, AccountId, MockAddressMapping, MockCurrencyIdMapping>;
 
 	#[test]
 	fn nth_param_works() {
@@ -262,7 +268,7 @@ mod tests {
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
 
 		let mut raw_input = [0u8; 32];
-		raw_input[30] = 1;
+		raw_input[27] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
 	}

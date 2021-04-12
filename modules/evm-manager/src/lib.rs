@@ -26,8 +26,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{ensure, pallet_prelude::*, require_transactional};
-use module_support::CurrencyIdMapping;
+use frame_support::{ensure, pallet_prelude::*, require_transactional, traits::Currency};
+use module_support::{CurrencyIdMapping, EVMBridge, InvokeContext};
 use primitives::{
 	evm::{Erc20Info, EvmAddress},
 	CurrencyId,
@@ -38,18 +38,17 @@ mod tests;
 
 pub use module::*;
 
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type Currency: Currency<Self::AccountId>;
+		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
 	}
-
-	#[pallet::event]
-	//#[pallet::generate_deposit(fn deposit_event)]
-	pub enum Event<T: Config> {}
 
 	/// Error for evm accounts module.
 	#[pallet::error]
@@ -74,7 +73,9 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {}
 
-impl<T: Config> CurrencyIdMapping for Pallet<T> {
+pub struct EvmCurrencyIdMapping<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	#[require_transactional]
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult {
 		let currency_id: u32 = CurrencyId::Erc20(address).into();
@@ -85,9 +86,21 @@ impl<T: Config> CurrencyIdMapping for Pallet<T> {
 			} else {
 				let info = Erc20Info {
 					address,
-					name: b"test".to_vec(),   // TODO: get from evm-bridge
-					symbol: b"test".to_vec(), // TODO: get from evm-bridge
-					decimals: 10,             // TODO: get from evm-bridge
+					name: T::EVMBridge::name(InvokeContext {
+						contract: address,
+						sender: Default::default(),
+						origin: Default::default(),
+					})?,
+					symbol: T::EVMBridge::symbol(InvokeContext {
+						contract: address,
+						sender: Default::default(),
+						origin: Default::default(),
+					})?,
+					decimals: T::EVMBridge::decimals(InvokeContext {
+						contract: address,
+						sender: Default::default(),
+						origin: Default::default(),
+					})?,
 				};
 
 				*maybe_erc20_info = Some(info);

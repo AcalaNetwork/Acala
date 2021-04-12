@@ -34,11 +34,9 @@ use frame_support::{
 	transactional,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
+use module_support::AddressMapping;
 use orml_traits::account::MergeAccount;
-use primitives::{
-	evm::{AddressMapping, EvmAddress},
-	AccountIndex,
-};
+use primitives::{evm::EvmAddress, AccountIndex};
 use sp_core::{crypto::AccountId32, ecdsa};
 use sp_io::{
 	crypto::secp256k1_ecdsa_recover,

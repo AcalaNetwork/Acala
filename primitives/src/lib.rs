@@ -22,7 +22,6 @@
 
 pub mod currency;
 pub mod evm;
-pub mod mocks;
 
 use codec::{Decode, Encode};
 use sp_runtime::{

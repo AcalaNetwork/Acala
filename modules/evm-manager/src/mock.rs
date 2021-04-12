@@ -21,11 +21,14 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_system::EnsureSignedBy;
+use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::{crypto::AccountId32, H256};
+use sp_core::{bytes::from_hex, crypto::AccountId32, H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
+use std::{collections::BTreeMap, str::FromStr};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -105,12 +108,69 @@ impl orml_currencies::Config for Runtime {
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
-impl Config for Runtime {
+parameter_types! {
+	pub const MinimumPeriod: u64 = 1000;
+}
+impl pallet_timestamp::Config for Runtime {
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const NewContractExtraBytes: u32 = 1;
+	pub NetworkContractSource: H160 = H160::default();
+}
+
+ord_parameter_types! {
+	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
+	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
+	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const StorageDepositPerByte: u128 = 10;
+	pub const MaxCodeSize: u32 = 60 * 1024;
+	pub const DeveloperDeposit: u64 = 1000;
+	pub const DeploymentFee: u64 = 200;
+}
+
+impl module_evm::Config for Runtime {
+	type AddressMapping = MockAddressMapping;
+	type Currency = Balances;
+	type MergeAccount = ();
+	type NewContractExtraBytes = NewContractExtraBytes;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type MaxCodeSize = MaxCodeSize;
+
 	type Event = Event;
+	type Precompiles = ();
+	type ChainId = ();
+	type GasToWeight = ();
+	type ChargeTransactionPayment = ();
+	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
+	type NetworkContractSource = NetworkContractSource;
+
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = TreasuryAccount;
+	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+
+	type WeightInfo = ();
+}
+
+impl module_evm_bridge::Config for Runtime {
+	type EVM = EVM;
+}
+
+impl Config for Runtime {
+	type Currency = Balances;
+	type EVMBridge = EVMBridge;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+pub const ERC20: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS);
 
 construct_runtime!(
 	pub enum Runtime where
@@ -119,10 +179,13 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		EvmManagerModule: evm_manager::{Pallet, Call, Storage, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		EvmManager: evm_manager::{Pallet, Storage},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call, Event<T>},
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Pallet},
 	}
 );
 
@@ -136,8 +199,31 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
+			.unwrap();
+
+		let mut accounts = BTreeMap::new();
+		let mut storage = BTreeMap::new();
+		storage.insert(
+			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
+		);
+		storage.insert(
+			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
+		);
+		accounts.insert(
+			ERC20_ADDRESS,
+			module_evm::GenesisAccount {
+				nonce: 1,
+				balance: 0,
+				storage,
+				code: from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap(),
+			},
+		);
+		module_evm::GenesisConfig::<Runtime> { accounts }
+			.assimilate_storage(&mut t)
 			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);

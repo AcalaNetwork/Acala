@@ -16,15 +16,39 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Unit tests for the evm-accounts module.
+//! Unit tests for the evm-manager module.
 
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
-use mock::ExtBuilder;
+use frame_support::assert_ok;
+use mock::{ExtBuilder, Runtime, ERC20, ERC20_ADDRESS};
+use orml_utilities::with_transaction_result;
 
 #[test]
-fn claim_account_work() {
-	ExtBuilder::default().build().execute_with(|| {});
+fn set_erc20_mapping_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(with_transaction_result(|| -> DispatchResult {
+			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
+		}));
+
+		assert_ok!(with_transaction_result(|| -> DispatchResult {
+			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
+		}));
+	});
+}
+
+#[test]
+fn get_evm_address_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(with_transaction_result(|| -> DispatchResult {
+			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
+		}));
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::get_evm_address(ERC20.into()),
+			Some(ERC20_ADDRESS)
+		);
+
+		assert_eq!(EvmCurrencyIdMapping::<Runtime>::get_evm_address(u32::default()), None);
+	});
 }

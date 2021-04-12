@@ -38,10 +38,7 @@ use orml_traits::{
 	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
 use orml_utilities::with_transaction_result;
-use primitives::{
-	evm::{AddressMapping, EvmAddress},
-	CurrencyId,
-};
+use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
 use sp_runtime::{
 	traits::{CheckedSub, MaybeSerializeDeserialize, Saturating, StaticLookup, Zero},
@@ -52,7 +49,7 @@ use sp_std::{
 	fmt::Debug,
 	marker, result,
 };
-use support::{EVMBridge, InvokeContext};
+use support::{AddressMapping, EVMBridge, InvokeContext};
 
 mod mock;
 mod tests;

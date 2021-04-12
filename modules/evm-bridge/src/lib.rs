@@ -29,6 +29,7 @@ use module_evm::{ExitReason, ExitSucceed};
 use primitive_types::H256;
 use sp_core::{H160, U256};
 use sp_runtime::SaturatedConversion;
+use sp_std::vec::Vec;
 use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
