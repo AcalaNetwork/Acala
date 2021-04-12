@@ -27,7 +27,7 @@ use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchError, FixedPointNumber};
-use support::{ExchangeRate, Ratio};
+use support::{mocks::MockCurrencyIdMapping, ExchangeRate, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -207,6 +207,7 @@ impl Config for Runtime {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type DEX = MockDEX;
 	type Currency = Tokens;
+	type CurrencyIdMapping = MockCurrencyIdMapping;
 	type WeightInfo = ();
 }
 

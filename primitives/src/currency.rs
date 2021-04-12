@@ -62,27 +62,29 @@ macro_rules! create_currency_id {
 		}
 
 		impl GetDecimals for CurrencyId {
-			fn decimals(&self) -> Option<u32> {
+			fn decimals(&self) -> Option<u8> {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($deci),)*
-						CurrencyId::DexShare(symbol_0, symbol_1) => {
-							let decimals_0 = match symbol_0 {
-								DexShare::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
-								// Erc20 handler by evm-manager
-								DexShare::Erc20(_) => None,
-							};
-							let decimals_1 = match symbol_1 {
-								DexShare::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
-								// Erc20 handler by evm-manager
-								DexShare::Erc20(_) => None,
-							};
-							if decimals_0.is_none() || decimals_1.is_none() {
-								return None;
-							}
-							Some(sp_std::cmp::max(decimals_0.unwrap(), decimals_1.unwrap()))
-						},
-					// default decimals is 18
-					_ => Some(18),
+					CurrencyId::DexShare(symbol_0, symbol_1) => {
+						let decimals_0 = match symbol_0 {
+							DexShare::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
+							// Erc20 handler by evm-manager CurrencyIdMapping
+							DexShare::Erc20(_) => None,
+						};
+						let decimals_1 = match symbol_1 {
+							DexShare::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
+							// Erc20 handler by evm-manager CurrencyIdMapping
+							DexShare::Erc20(_) => None,
+						};
+						if decimals_0.is_none() || decimals_1.is_none() {
+							return None;
+						}
+						Some(sp_std::cmp::max(decimals_0.unwrap(), decimals_1.unwrap()))
+					},
+					// Erc20 handler by evm-manager CurrencyIdMapping
+					CurrencyId::Erc20(_) => {
+						return None;
+					}
 				}
 			}
 		}
@@ -163,7 +165,7 @@ create_currency_id! {
 }
 
 pub trait GetDecimals {
-	fn decimals(&self) -> Option<u32>;
+	fn decimals(&self) -> Option<u8>;
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
@@ -245,7 +247,7 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 					// Token
 					v[27].try_into().map(DexShare::Token)?
 				} else {
-					// Erc20 handler by evm-manager
+					// Erc20 handler by evm-manager CurrencyIdMapping
 					return Err(());
 				}
 			};
@@ -254,7 +256,7 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 					// Token
 					v[31].try_into().map(DexShare::Token)?
 				} else {
-					// Erc20 handler by evm-manager
+					// Erc20 handler by evm-manager CurrencyIdMapping
 					return Err(());
 				}
 			};

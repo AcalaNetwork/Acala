@@ -21,7 +21,10 @@
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::evm::{CallInfo, EvmAddress};
+use primitives::{
+	evm::{CallInfo, EvmAddress},
+	CurrencyId,
+};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -487,6 +490,8 @@ pub trait AddressMapping<AccountId> {
 pub trait CurrencyIdMapping {
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
+	fn decimals(currency_id: CurrencyId) -> Option<u8>;
+	fn u256_to_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
 }
 
 #[cfg(feature = "std")]
@@ -496,6 +501,14 @@ impl CurrencyIdMapping for () {
 	}
 
 	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
+		None
+	}
+
+	fn decimals(_currency_id: CurrencyId) -> Option<u8> {
+		None
+	}
+
+	fn u256_to_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {
 		None
 	}
 }

@@ -29,9 +29,11 @@
 use frame_support::{ensure, pallet_prelude::*, require_transactional, traits::Currency};
 use module_support::{CurrencyIdMapping, EVMBridge, InvokeContext};
 use primitives::{
+	currency::GetDecimals,
 	evm::{Erc20Info, EvmAddress},
-	CurrencyId,
+	CurrencyId, DexShare,
 };
+use sp_std::convert::TryInto;
 
 mod mock;
 mod tests;
@@ -111,5 +113,73 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress> {
 		CurrencyIdMap::<T>::get(currency_id).map(|v| v.address)
+	}
+
+	fn decimals(currency_id: CurrencyId) -> Option<u8> {
+		match currency_id {
+			CurrencyId::Token(_) => currency_id.decimals(),
+			CurrencyId::DexShare(symbol_0, symbol_1) => {
+				let decimals_0 = match symbol_0 {
+					DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
+					DexShare::Erc20(address) => {
+						CurrencyIdMap::<T>::get(Into::<u32>::into(CurrencyId::Erc20(address))).map(|v| v.decimals)
+					}
+				};
+				let decimals_1 = match symbol_1 {
+					DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
+					DexShare::Erc20(address) => {
+						CurrencyIdMap::<T>::get(Into::<u32>::into(CurrencyId::Erc20(address))).map(|v| v.decimals)
+					}
+				};
+				if decimals_0.is_none() || decimals_1.is_none() {
+					return None;
+				}
+				Some(sp_std::cmp::max(decimals_0.unwrap(), decimals_1.unwrap()))
+			}
+			CurrencyId::Erc20(address) => {
+				CurrencyIdMap::<T>::get(Into::<u32>::into(CurrencyId::Erc20(address))).map(|v| v.decimals)
+			}
+		}
+	}
+
+	fn u256_to_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
+		// tag: u8 + u32 + u32 = 1 + 4 + 4
+		if !v.starts_with(&[0u8; 23][..]) {
+			return None;
+		}
+
+		// DEX share
+		if v[23] == 1 {
+			let left = {
+				if v[24..27] == [0u8; 3] {
+					// Token
+					v[27].try_into().map(DexShare::Token).ok()
+				} else {
+					// Erc20
+					let mut id = [0u8; 4];
+					id.copy_from_slice(&v[24..28]);
+					let id = u32::from_be_bytes(id);
+					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+				}
+			};
+			let right = {
+				if v[28..31] == [0u8; 3] {
+					// Token
+					v[31].try_into().map(DexShare::Token).ok()
+				} else {
+					// Erc20
+					let mut id = [0u8; 4];
+					id.copy_from_slice(&v[28..32]);
+					let id = u32::from_be_bytes(id);
+					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+				}
+			};
+			if left.is_none() || right.is_none() {
+				return None;
+			}
+			Some(CurrencyId::DexShare(left.unwrap(), right.unwrap()))
+		} else {
+			(*v).try_into().ok()
+		}
 	}
 }

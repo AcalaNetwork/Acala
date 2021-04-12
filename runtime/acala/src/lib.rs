@@ -689,6 +689,7 @@ impl module_prices::Config for Runtime {
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
 	type DEX = Dex;
 	type Currency = Currencies;
+	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 

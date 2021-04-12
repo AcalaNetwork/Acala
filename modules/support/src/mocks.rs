@@ -16,12 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AddressMapping, CurrencyIdMapping};
+use crate::{AddressMapping, CurrencyId, CurrencyIdMapping};
 use codec::Encode;
 use frame_support::pallet_prelude::DispatchResult;
-use primitives::evm::EvmAddress;
+use primitives::{currency::GetDecimals, evm::EvmAddress};
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
+use sp_std::convert::TryInto;
 
 pub struct MockAddressMapping;
 
@@ -67,5 +68,13 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 
 	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
 		Some(EvmAddress::default())
+	}
+
+	fn decimals(currency_id: CurrencyId) -> Option<u8> {
+		currency_id.decimals()
+	}
+
+	fn u256_to_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
+		(*v).try_into().ok()
 	}
 }

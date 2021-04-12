@@ -406,6 +406,7 @@ impl module_prices::Config for Test {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type DEX = DexModule;
 	type Currency = Currencies;
+	type CurrencyIdMapping = EvmCurrencyIdMapping;
 	type WeightInfo = ();
 }
 

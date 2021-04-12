@@ -112,7 +112,7 @@ pub mod module {
 		#[pallet::constant]
 		type ModuleId: Get<ModuleId>;
 
-		/// Mapping between CurrencyId and ERC20 address so user can use ERC20
+		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
 		/// address as LP token.
 		type CurrencyIdMapping: CurrencyIdMapping;
 
