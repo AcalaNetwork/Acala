@@ -318,3 +318,22 @@ fn set_collateral_auction_maximum_size_work() {
 			.any(|record| record.event == update_collateral_auction_maximum_size_event));
 	});
 }
+
+#[test]
+fn extract_surplus_to_treasury_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPTreasuryModule::on_system_surplus(1000));
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 0);
+
+		assert_noop!(
+			CDPTreasuryModule::extract_surplus_to_treasury(Origin::signed(5), 200),
+			BadOrigin
+		);
+		assert_ok!(CDPTreasuryModule::extract_surplus_to_treasury(Origin::signed(1), 200));
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 200);
+	});
+}
