@@ -519,10 +519,22 @@ impl<T: Config> Pallet<T> {
 						debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
 
 					// issue stablecoin to surplus pool
-					if <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance).is_ok() {
-						// update exchange rate when issue success
-						let new_debit_exchange_rate = debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
-						DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
+					let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
+					match res {
+						Ok(_) => {
+							// update exchange rate when issue success
+							let new_debit_exchange_rate =
+								debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
+							DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
+						}
+						Err(e) => {
+							log::warn!(
+								target: "cdp-engine",
+								"on_system_surplus: failed to on system surplus {:?}: {:?}. \
+								This is unexpected but should be safe",
+								issued_stable_coin_balance, e
+							);
+						}
 					}
 				}
 				count += 1;

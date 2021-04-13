@@ -570,8 +570,19 @@ impl<T: Config> Pallet<T> {
 					};
 
 					// issue shares to contributor
-					if T::Currency::deposit(lp_share_currency_id, &who, share_amount).is_ok() {
-						total_shares_issued = total_shares_issued.saturating_add(share_amount);
+					let res = T::Currency::deposit(lp_share_currency_id, &who, share_amount);
+					match res {
+						Ok(_) => {
+							total_shares_issued = total_shares_issued.saturating_add(share_amount);
+						}
+						Err(e) => {
+							log::warn!(
+								target: "dex",
+								"deposit: failed to deposit {:?} {:?} to {:?}: {:?}. \
+								This is unexpected but should be safe",
+								share_amount, lp_share_currency_id, who.clone(), e
+							);
+						}
 					}
 
 					// decrease ref count
