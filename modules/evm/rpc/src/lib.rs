@@ -130,8 +130,8 @@ where
 	C::Api: TransactionPaymentApi<B, Balance>,
 	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
-	fn call(&self, request: CallRequest, _: Option<B>) -> Result<Bytes> {
-		let hash = self.client.info().best_hash;
+	fn call(&self, request: CallRequest, at: Option<B>) -> Result<Bytes> {
+		let hash = at.map_or_else(|| self.client.info().best_hash, |v| v.hash());
 
 		let CallRequest {
 			from,
@@ -205,9 +205,9 @@ where
 		&self,
 		from: H160,
 		unsigned_extrinsic: Bytes,
-		_: Option<B>,
+		at: Option<B>,
 	) -> Result<EstimateResourcesResponse> {
-		let hash = self.client.info().best_hash;
+		let hash = at.map_or_else(|| self.client.info().best_hash, |v| v.hash());
 		let request = self
 			.client
 			.runtime_api()
