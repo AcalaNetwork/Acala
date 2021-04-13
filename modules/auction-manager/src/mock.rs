@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types, PalletId};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{TokenSymbol, TradingPair};
@@ -29,7 +29,6 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::IdentityLookup,
-	ModuleId,
 };
 use sp_std::cell::RefCell;
 pub use support::Price;
@@ -110,7 +109,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
-	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -121,7 +120,7 @@ impl cdp_treasury::Config for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
-	type ModuleId = CDPTreasuryModuleId;
+	type PalletId = CDPTreasuryPalletId;
 	type WeightInfo = ();
 }
 
@@ -150,7 +149,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
@@ -161,7 +160,7 @@ impl module_dex::Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
-	type ModuleId = DEXModuleId;
+	type PalletId = DEXPalletId;
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;

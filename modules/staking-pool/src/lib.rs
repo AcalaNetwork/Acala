@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Change, Happened, MultiCurrency};
 use primitives::{Balance, CurrencyId, EraIndex};
@@ -27,7 +27,7 @@ use primitives::{Balance, CurrencyId, EraIndex};
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, Saturating, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug,
+	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 use support::{
@@ -164,7 +164,7 @@ pub mod module {
 		/// The staking pool's module id, keep all staking currency belong to
 		/// Homa protocol.
 		#[pallet::constant]
-		type ModuleId: Get<ModuleId>;
+		type PalletId: Get<PalletId>;
 
 		/// The sub account indexs of parachain to vault assets of Homa protocol
 		/// in Polkadot.
@@ -558,7 +558,7 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> Pallet<T> {
 	/// Module account id
 	pub fn account_id() -> T::AccountId {
-		T::ModuleId::get().into_account()
+		T::PalletId::get().into_account()
 	}
 
 	/// Get the exchange rate for liquid currency to staking currency.

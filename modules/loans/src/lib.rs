@@ -27,12 +27,12 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
-	DispatchResult, ModuleId, RuntimeDebug,
+	DispatchResult, RuntimeDebug,
 };
 use sp_std::{convert::TryInto, result};
 use support::{CDPTreasury, RiskManager};
@@ -81,7 +81,7 @@ pub mod module {
 
 		/// The loan's module id, keep all collaterals of CDPs.
 		#[pallet::constant]
-		type ModuleId: Get<ModuleId>;
+		type PalletId: Get<PalletId>;
 
 		/// Event handler which calls when update loan.
 		type OnUpdateLoan: Happened<(Self::AccountId, CurrencyId, Amount, Balance)>;
@@ -135,7 +135,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
-		T::ModuleId::get().into_account()
+		T::PalletId::get().into_account()
 	}
 
 	/// confiscate collateral and debit to cdp treasury.

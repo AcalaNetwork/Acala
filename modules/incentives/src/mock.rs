@@ -226,7 +226,7 @@ parameter_types! {
 	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
 	pub const LiquidCurrencyId: CurrencyId = LDOT;
-	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
+	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 }
 
 ord_parameter_types! {
@@ -246,7 +246,7 @@ impl Config for Runtime {
 	type Currency = TokensModule;
 	type DEX = MockDEX;
 	type EmergencyShutdown = MockEmergencyShutdown;
-	type ModuleId = IncentivesModuleId;
+	type PalletId = IncentivesPalletId;
 	type WeightInfo = ();
 }
 

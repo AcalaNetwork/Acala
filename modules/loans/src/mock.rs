@@ -21,12 +21,12 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types, PalletId};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId};
+use sp_runtime::{testing::Header, traits::IdentityLookup};
 use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;
@@ -152,7 +152,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
-	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -163,7 +163,7 @@ impl cdp_treasury::Config for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
-	type ModuleId = CDPTreasuryModuleId;
+	type PalletId = CDPTreasuryPalletId;
 	type WeightInfo = ();
 }
 
@@ -204,7 +204,7 @@ impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
 }
 
 parameter_types! {
-	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
+	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 }
 
 impl Config for Runtime {
@@ -213,7 +213,7 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type RiskManager = MockRiskManager;
 	type CDPTreasury = CDPTreasuryModule;
-	type ModuleId = LoansModuleId;
+	type PalletId = LoansPalletId;
 	type OnUpdateLoan = ();
 }
 

@@ -204,13 +204,13 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const CreateClassDeposit: Balance = 200;
 	pub const CreateTokenDeposit: Balance = 100;
-	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
+	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 }
 impl Config for Runtime {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ModuleId = NftModuleId;
+	type PalletId = NftPalletId;
 	type WeightInfo = ();
 }
 

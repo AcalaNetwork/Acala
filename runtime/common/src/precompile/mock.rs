@@ -24,7 +24,7 @@ use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
 	traits::{GenesisBuild, InstanceFilter, OnFinalize, OnInitialize},
 	weights::IdentityFee,
-	RuntimeDebug,
+	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::{DEXIncentives, ExchangeRate, ExchangeRateProvider};
@@ -36,7 +36,7 @@ pub use primitives::{
 use sp_core::{bytes::from_hex, crypto::AccountId32, Bytes, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup},
-	DispatchResult, FixedPointNumber, FixedU128, ModuleId, Perbill,
+	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
@@ -155,13 +155,13 @@ impl module_evm_bridge::Config for Test {
 parameter_types! {
 	pub const CreateClassDeposit: Balance = 200;
 	pub const CreateTokenDeposit: Balance = 100;
-	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
+	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 }
 impl module_nft::Config for Test {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ModuleId = NftModuleId;
+	type PalletId = NftPalletId;
 	type WeightInfo = ();
 }
 
@@ -284,7 +284,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 
 impl module_dex::Config for Test {
@@ -292,7 +292,7 @@ impl module_dex::Config for Test {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
-	type ModuleId = DEXModuleId;
+	type PalletId = DEXPalletId;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
