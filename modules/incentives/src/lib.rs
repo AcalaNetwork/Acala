@@ -20,7 +20,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
@@ -90,6 +90,10 @@ pub mod module {
 		#[pallet::constant]
 		type LiquidCurrencyId: Get<CurrencyId>;
 
+		/// The source account for native token rewards.
+		#[pallet::constant]
+		type NativeRewardsSource: Get<Self::AccountId>;
+
 		/// The vault account to keep rewards.
 		#[pallet::constant]
 		type RewardsVaultAccountId: Get<Self::AccountId>;
@@ -97,7 +101,7 @@ pub mod module {
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-		/// CDP treasury to issue rewards in AUSD
+		/// CDP treasury to issue rewards in stable token
 		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
 		/// Currency for transfer/issue assets
@@ -169,16 +173,21 @@ pub mod module {
 								count += 1;
 								let incentive_reward_amount = Self::incentive_reward_amount(pool_id.clone());
 
-								// TODO: transfer native token from RESERVED TREASURY instead of issuing.
-								if !incentive_reward_amount.is_zero()
-									&& T::Currency::deposit(
+								if !incentive_reward_amount.is_zero() {
+									let res = T::Currency::transfer(
 										native_currency_id,
+										&T::NativeRewardsSource::get(),
 										&T::RewardsVaultAccountId::get(),
 										incentive_reward_amount,
-									)
-									.is_ok()
-								{
-									<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, incentive_reward_amount);
+									);
+
+									if res.is_ok() {
+										<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, incentive_reward_amount);
+									} else {
+										log::warn!(
+											"Warning: Attempt to get native rewards from source account failed. This is unexpected but should be safe"
+										);
+									}
 								}
 							}
 

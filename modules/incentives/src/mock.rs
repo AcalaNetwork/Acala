@@ -40,6 +40,7 @@ pub type BlockNumber = u64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const VAULT: AccountId = 10;
+pub const UNRELEASED: AccountId = 11;
 pub const VALIDATOR: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
@@ -222,6 +223,7 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const RewardsVaultAccountId: AccountId = VAULT;
+	pub const NativeRewardsSource: AccountId = UNRELEASED;
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
@@ -237,6 +239,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
 	type RewardsVaultAccountId = RewardsVaultAccountId;
+	type NativeRewardsSource = NativeRewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
 	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
@@ -261,19 +264,33 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
 		IncentivesModule: incentives::{Pallet, Storage, Call, Event<T>},
-		TokensModule: orml_tokens::{Pallet, Storage, Event<T>},
+		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		RewardsModule: orml_rewards::{Pallet, Storage, Call},
 	}
 );
 
-#[derive(Default)]
-pub struct ExtBuilder;
+pub struct ExtBuilder {
+	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			endowed_accounts: vec![(UNRELEASED, ACA, 10_000)],
+		}
+	}
+}
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+		orml_tokens::GenesisConfig::<Runtime> {
+			endowed_accounts: self.endowed_accounts,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 		t.into()
 	}
 }

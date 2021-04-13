@@ -179,6 +179,8 @@ parameter_types! {
 	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"aca/phre";
 	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
+	// Vault all unrleased native token.
+	pub UnreleasedNativeVaultAccountId: AccountId = ModuleId(*b"aca/urls").into_account();
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1046,6 +1048,7 @@ parameter_types! {
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
+	type NativeRewardsSource = UnreleasedNativeVaultAccountId;
 	type RewardsVaultAccountId = ZeroAccountId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
