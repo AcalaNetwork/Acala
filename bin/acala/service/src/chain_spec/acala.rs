@@ -127,7 +127,7 @@ fn acala_genesis(
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
 		RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC, XBTC,
+		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC, XBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -139,6 +139,9 @@ fn acala_genesis(
 
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
+
+	let mut unreleased_native = 1_000_000_000 * dollar(ACA); // 1 billion KAR
+														 // if want to config vesting, should handle unreleased_native firstly.
 
 	let balances = initial_authorities
 		.iter()
@@ -160,10 +163,12 @@ fn acala_genesis(
 				} else {
 					acc.insert(account_id.clone(), amount);
 				}
+				unreleased_native = unreleased_native.saturating_sub(amount);
 				acc
 			},
 		)
 		.into_iter()
+		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	acala_runtime::GenesisConfig {

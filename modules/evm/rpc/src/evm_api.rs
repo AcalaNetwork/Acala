@@ -18,6 +18,7 @@
 
 //! EVM rpc interface.
 
+use ethereum_types::H160;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_core::Bytes;
@@ -31,9 +32,14 @@ use crate::call_request::{CallRequest, EstimateResourcesResponse};
 pub trait EVMApi<BlockHash> {
 	/// Call contract, returning the output data.
 	#[rpc(name = "evm_call")]
-	fn call(&self, _: CallRequest, _: Option<BlockHash>) -> Result<Bytes>;
+	fn call(&self, _: CallRequest, at: Option<BlockHash>) -> Result<Bytes>;
 
 	/// Estimate resources needed for execution of given contract.
 	#[rpc(name = "evm_estimateResources")]
-	fn estimate_resources(&self, extrinsic: Bytes, _: Option<BlockHash>) -> Result<EstimateResourcesResponse>;
+	fn estimate_resources(
+		&self,
+		from: H160,
+		unsigned_extrinsic: Bytes,
+		at: Option<BlockHash>,
+	) -> Result<EstimateResourcesResponse>;
 }

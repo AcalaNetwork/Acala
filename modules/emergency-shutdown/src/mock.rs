@@ -28,7 +28,7 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{Convert, IdentityLookup},
+	traits::{AccountIdConversion, Convert, IdentityLookup},
 	DispatchResult,
 };
 use support::{AuctionManager, Price, PriceProvider};
@@ -194,6 +194,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -205,6 +206,7 @@ impl cdp_treasury::Config for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
+	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 

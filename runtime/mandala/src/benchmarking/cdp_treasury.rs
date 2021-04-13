@@ -19,6 +19,7 @@
 use crate::{dollar, CdpTreasury, Currencies, CurrencyId, Runtime, AUSD, DOT};
 
 use frame_system::RawOrigin;
+use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
@@ -36,6 +37,10 @@ runtime_benchmarks! {
 	set_collateral_auction_maximum_size {
 		let currency_id: CurrencyId = DOT;
 	}: _(RawOrigin::Root, currency_id, 200 * dollar(currency_id))
+
+	extract_surplus_to_treasury {
+		CdpTreasury::on_system_surplus(1_000 * dollar(AUSD))?;
+	}: _(RawOrigin::Root, 200 * dollar(AUSD))
 }
 
 #[cfg(test)]
@@ -61,6 +66,13 @@ mod tests {
 	fn test_set_collateral_auction_maximum_size() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_set_collateral_auction_maximum_size());
+		});
+	}
+
+	#[test]
+	fn test_extract_surplus_to_treasury() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_extract_surplus_to_treasury());
 		});
 	}
 }
