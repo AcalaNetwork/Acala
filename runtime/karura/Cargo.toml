@@ -214,7 +214,6 @@ runtime-benchmarks = [
 	"orml-vesting/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
 
-	"module-cdp-treasury/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
 	"module-nft/runtime-benchmarks",
 ]

@@ -150,15 +150,6 @@ pub mod module {
 			T::ShutdownOrigin::ensure_origin(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown); // must after shutdown
 
-			// Ensure there's no debit and surplus auction now, they may bring uncertain
-			// surplus to system. Cancel all surplus auctions and debit auctions to pass the
-			// check!
-			ensure!(
-				<T as Config>::AuctionManagerHandler::get_total_debit_in_auction().is_zero()
-					&& <T as Config>::AuctionManagerHandler::get_total_surplus_in_auction().is_zero(),
-				Error::<T>::ExistPotentialSurplus,
-			);
-
 			// Ensure all debits of CDPs have been settled, and all collateral auction has
 			// been done or canceled. Settle all collaterals type CDPs which have debit,
 			// cancel all collateral auctions in forward stage and wait for all collateral

@@ -16,10 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, CdpTreasury, Currencies, CurrencyId, Runtime, KAR, KSM, KUSD};
+use crate::{dollar, CdpTreasury, Currencies, CurrencyId, Runtime, KSM, KUSD};
 
 use frame_system::RawOrigin;
-use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
@@ -28,14 +27,6 @@ runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
 
 	_ {}
-
-	auction_surplus {
-		CdpTreasury::on_system_surplus(100 * dollar(KUSD))?;
-	}: _(RawOrigin::Root, 100 * dollar(KUSD))
-
-	auction_debit {
-		CdpTreasury::on_system_debit(100 * dollar(KUSD))?;
-	}: _(RawOrigin::Root, 100 * dollar(KUSD), 200 * dollar(KAR))
 
 	auction_collateral {
 		let currency_id: CurrencyId = KSM;
@@ -57,20 +48,6 @@ mod tests {
 			.build_storage::<Runtime>()
 			.unwrap()
 			.into()
-	}
-
-	#[test]
-	fn test_auction_surplus() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_auction_surplus());
-		});
-	}
-
-	#[test]
-	fn test_auction_debit() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_auction_debit());
-		});
 	}
 
 	#[test]

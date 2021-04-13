@@ -4305,7 +4305,6 @@ name = "module-cdp-treasury"
 version = "0.7.11"
 dependencies = [
  "acala-primitives",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-support",

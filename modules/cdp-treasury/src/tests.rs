@@ -297,36 +297,6 @@ fn create_collateral_auctions_work() {
 }
 
 #[test]
-fn auction_surplus_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(CDPTreasuryModule::auction_surplus(Origin::signed(5), 100), BadOrigin,);
-		assert_noop!(
-			CDPTreasuryModule::auction_surplus(Origin::signed(1), 100),
-			Error::<Runtime>::SurplusPoolNotEnough,
-		);
-		assert_ok!(CDPTreasuryModule::on_system_surplus(100));
-		assert_eq!(TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut()), 0);
-		assert_ok!(CDPTreasuryModule::auction_surplus(Origin::signed(1), 100));
-		assert_eq!(TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut()), 1);
-	});
-}
-
-#[test]
-fn auction_debit_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(CDPTreasuryModule::auction_debit(Origin::signed(5), 100, 200), BadOrigin,);
-		assert_noop!(
-			CDPTreasuryModule::auction_debit(Origin::signed(1), 100, 200),
-			Error::<Runtime>::DebitPoolNotEnough,
-		);
-		assert_ok!(CDPTreasuryModule::on_system_debit(100));
-		assert_eq!(TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut()), 0);
-		assert_ok!(CDPTreasuryModule::auction_debit(Origin::signed(1), 100, 200));
-		assert_eq!(TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut()), 1);
-	});
-}
-
-#[test]
 fn set_collateral_auction_maximum_size_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
