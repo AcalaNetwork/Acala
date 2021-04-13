@@ -28,7 +28,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
@@ -54,14 +54,14 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The origin which may update parameters and handle
-		/// surplus/debit/collateral. Root can always do this.
+		/// surplus/collateral.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 		/// The Currency for managing assets related to CDP
 		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		#[pallet::constant]
 		/// Stablecoin currency id
+		#[pallet::constant]
 		type GetStableCurrencyId: Get<CurrencyId>;
 
 		/// Auction manager creates auction to handle system surplus and debit
@@ -71,15 +71,18 @@ pub mod module {
 		/// currency
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-		#[pallet::constant]
 		/// The cap of lots number when create collateral auction on a
 		/// liquidation or to create debit/surplus auction on block end.
 		/// If set to 0, does not work.
+		#[pallet::constant]
 		type MaxAuctionsCount: Get<u32>;
 
 		#[pallet::constant]
+		type TreasuryAccount: Get<Self::AccountId>;
+
 		/// The CDP treasury's module id, keep surplus and collateral assets
 		/// from liquidation.
+		#[pallet::constant]
 		type ModuleId: Get<ModuleId>;
 
 		/// Weight information for the extrinsics in this module.
@@ -156,6 +159,19 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
+		#[transactional]
+		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			T::Currency::transfer(
+				T::GetStableCurrencyId::get(),
+				&Self::account_id(),
+				&T::TreasuryAccount::get(),
+				amount,
+			)?;
+			Ok(().into())
+		}
+
 		#[pallet::weight(T::WeightInfo::auction_collateral())]
 		#[transactional]
 		pub fn auction_collateral(
@@ -224,14 +240,19 @@ impl<T: Config> Pallet<T> {
 		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
 
 		// Burn the amount that is equal to offset amount of stable currency.
-		if !offset_amount.is_zero()
-			&& T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount).is_ok()
-		{
-			DebitPool::<T>::mutate(|debit| {
-				*debit = debit
-					.checked_sub(offset_amount)
-					.expect("offset = min(debit, surplus); qed")
-			});
+		if !offset_amount.is_zero() {
+			let res = T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount);
+			if res.is_ok() {
+				DebitPool::<T>::mutate(|debit| {
+					*debit = debit
+						.checked_sub(offset_amount)
+						.expect("offset = min(debit, surplus); qed")
+				});
+			} else {
+				log::warn!(
+					"Warning: Attempt to burn surplus for offset debit failed. This is unexpected but should be safe"
+				);
+			}
 		}
 	}
 }

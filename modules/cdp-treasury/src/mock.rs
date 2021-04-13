@@ -178,6 +178,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub const TreasuryAccount: AccountId = 10;
 }
 
 thread_local! {
@@ -193,6 +194,7 @@ impl Config for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 

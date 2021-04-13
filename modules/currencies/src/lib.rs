@@ -83,8 +83,8 @@ pub mod module {
 			+ BasicLockableCurrency<Self::AccountId, Balance = BalanceOf<Self>>
 			+ BasicReservableCurrency<Self::AccountId, Balance = BalanceOf<Self>>;
 
-		#[pallet::constant]
 		/// The native currency id
+		#[pallet::constant]
 		type GetNativeCurrencyId: Get<CurrencyId>;
 
 		/// Weight information for extrinsics in this module.

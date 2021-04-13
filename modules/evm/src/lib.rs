@@ -146,6 +146,7 @@ pub mod module {
 		type Precompiles: Precompiles;
 
 		/// Chain ID of EVM.
+		#[pallet::constant]
 		type ChainId: Get<u64>;
 
 		/// Convert gas to weight.
@@ -174,6 +175,7 @@ pub mod module {
 		#[pallet::constant]
 		type DeploymentFee: Get<BalanceOf<Self>>;
 
+		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
 		type FreeDeploymentOrigin: EnsureOrigin<Self::Origin>;

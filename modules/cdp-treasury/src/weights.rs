@@ -48,6 +48,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_cdp_treasury.
 pub trait WeightInfo {
+	fn extract_surplus_to_treasury() -> Weight;
 	fn auction_collateral() -> Weight;
 	fn set_collateral_auction_maximum_size() -> Weight;
 }
@@ -55,6 +56,11 @@ pub trait WeightInfo {
 /// Weights for module_cdp_treasury using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
+	fn extract_surplus_to_treasury() -> Weight {
+		(124_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+	}
 	fn auction_collateral() -> Weight {
 		(2_124_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
@@ -68,6 +74,11 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
+	fn extract_surplus_to_treasury() -> Weight {
+		(124_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+	}
 	fn auction_collateral() -> Weight {
 		(2_124_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(6 as Weight))

@@ -131,21 +131,21 @@ pub mod module {
 	pub trait Config: frame_system::Config + SendTransactionTypes<Call<Self>> {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		#[pallet::constant]
 		/// The minimum increment size of each bid compared to the previous one
+		#[pallet::constant]
 		type MinimumIncrementSize: Get<Rate>;
 
-		#[pallet::constant]
 		/// The extended time for the auction to end after each successful bid
+		#[pallet::constant]
 		type AuctionTimeToClose: Get<Self::BlockNumber>;
 
-		#[pallet::constant]
 		/// When the total duration of the auction exceeds this soft cap, push
 		/// the auction to end more faster
+		#[pallet::constant]
 		type AuctionDurationSoftCap: Get<Self::BlockNumber>;
 
-		#[pallet::constant]
 		/// The stable currency id
+		#[pallet::constant]
 		type GetStableCurrencyId: Get<CurrencyId>;
 
 		/// Currency to transfer assets
@@ -163,11 +163,11 @@ pub mod module {
 		/// The price source of currencies
 		type PriceSource: PriceProvider<CurrencyId>;
 
-		#[pallet::constant]
 		/// A configuration for base priority of unsigned transactions.
 		///
 		/// This is exposed so that it can be tuned for particular runtime, when
 		/// multiple modules send unsigned transactions.
+		#[pallet::constant]
 		type UnsignedPriority: Get<TransactionPriority>;
 
 		/// Emergency shutdown.

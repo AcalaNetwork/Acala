@@ -57,20 +57,20 @@ pub mod module {
 		/// The data source, such as Oracle.
 		type Source: DataProvider<CurrencyId, Price> + DataFeeder<CurrencyId, Price, Self::AccountId>;
 
-		#[pallet::constant]
 		/// The stable currency id, it should be AUSD in Acala.
+		#[pallet::constant]
 		type GetStableCurrencyId: Get<CurrencyId>;
 
-		#[pallet::constant]
 		/// The fixed prices of stable currency, it should be 1 USD in Acala.
+		#[pallet::constant]
 		type StableCurrencyFixedPrice: Get<Price>;
 
-		#[pallet::constant]
 		/// The staking currency id, it should be DOT in Acala.
+		#[pallet::constant]
 		type GetStakingCurrencyId: Get<CurrencyId>;
 
-		#[pallet::constant]
 		/// The liquid currency id, it should be LDOT in Acala.
+		#[pallet::constant]
 		type GetLiquidCurrencyId: Get<CurrencyId>;
 
 		/// The origin which may lock and unlock prices feed to system.
