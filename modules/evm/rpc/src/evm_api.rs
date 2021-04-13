@@ -32,7 +32,7 @@ use crate::call_request::{CallRequest, EstimateResourcesResponse};
 pub trait EVMApi<BlockHash> {
 	/// Call contract, returning the output data.
 	#[rpc(name = "evm_call")]
-	fn call(&self, _: CallRequest, _: Option<BlockHash>) -> Result<Bytes>;
+	fn call(&self, _: CallRequest, at: Option<BlockHash>) -> Result<Bytes>;
 
 	/// Estimate resources needed for execution of given contract.
 	#[rpc(name = "evm_estimateResources")]
@@ -40,6 +40,6 @@ pub trait EVMApi<BlockHash> {
 		&self,
 		from: H160,
 		unsigned_extrinsic: Bytes,
-		_: Option<BlockHash>,
+		at: Option<BlockHash>,
 	) -> Result<EstimateResourcesResponse>;
 }
