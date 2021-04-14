@@ -131,12 +131,7 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			let maybe_path: Option<&[CurrencyId]> = if let Some(p) = maybe_path.as_ref() {
-				Some(&p)
-			} else {
-				None
-			};
-			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, maybe_path)?;
+			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, maybe_path.as_deref())?;
 			Ok(().into())
 		}
 
