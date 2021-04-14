@@ -242,16 +242,21 @@ impl<T: Config> Pallet<T> {
 		// Burn the amount that is equal to offset amount of stable currency.
 		if !offset_amount.is_zero() {
 			let res = T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount);
-			if res.is_ok() {
-				DebitPool::<T>::mutate(|debit| {
-					*debit = debit
-						.checked_sub(offset_amount)
-						.expect("offset = min(debit, surplus); qed")
-				});
-			} else {
-				log::warn!(
-					"Warning: Attempt to burn surplus for offset debit failed. This is unexpected but should be safe"
-				);
+			match res {
+				Ok(_) => {
+					DebitPool::<T>::mutate(|debit| {
+						*debit = debit
+							.checked_sub(offset_amount)
+							.expect("offset = min(debit, surplus); qed")
+					});
+				}
+				Err(e) => {
+					log::warn!(
+						target: "cdp-treasury",
+						"get_swap_supply_amount: Attempt to burn surplus {:?} failed: {:?}, this is unexpected but should be safe",
+						offset_amount, e
+					);
+				}
 			}
 		}
 	}

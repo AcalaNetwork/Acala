@@ -20,7 +20,7 @@
 #![allow(clippy::unused_unit)]
 
 use codec::Encode;
-use frame_support::{pallet_prelude::*, traits::LockIdentifier, transactional};
+use frame_support::{log, pallet_prelude::*, traits::LockIdentifier, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains};
 use primitives::{Balance, EraIndex};
@@ -308,13 +308,31 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
 		let res = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
-		debug_assert!(res.is_ok());
+		if let Err(e) = res {
+			log::warn!(
+				target: "nominees-election",
+				"set_lock: failed to lock {:?} for {:?}: {:?}. \
+				This is unexpected but should be safe",
+				ledger.total, who.clone(), e
+			);
+			debug_assert!(false);
+		}
+
 		Ledger::<T>::insert(who, ledger);
 	}
 
 	fn remove_ledger(who: &T::AccountId) {
 		let res = T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
-		debug_assert!(res.is_ok());
+		if let Err(e) = res {
+			log::warn!(
+				target: "nominees-election",
+				"remove_lock: failed to remove lock for {:?}: {:?}. \
+				This is unexpected but should be safe",
+				who.clone(), e
+			);
+			debug_assert!(false);
+		}
+
 		Ledger::<T>::remove(who);
 		Nominations::<T>::remove(who);
 	}
