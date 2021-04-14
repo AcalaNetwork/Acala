@@ -141,7 +141,7 @@ where
 					path, target_amount
 				);
 
-				let value = Dex::get_swap_target_amount(&path, target_amount, None)
+				let value = Dex::get_swap_supply_amount(&path, target_amount, None)
 					.ok_or_else(|| ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
 
 				// output

@@ -123,7 +123,9 @@ fn oracle_precompile_should_work() {
 		// action + currency_id
 		let mut input = [0u8; 64];
 		U256::default().to_big_endian(&mut input[..32]);
-		U256::from_big_endian(&hex!("0400000000").to_vec()).to_big_endian(&mut input[32..64]);
+		let mut id = [0u8; 32];
+		id[15] = 4; // XBTC
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[32..64]);
 
 		// no price yet
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
@@ -428,8 +430,12 @@ fn dex_precompile_get_liquidity_should_work() {
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
 		U256::from(0).to_big_endian(&mut input[1 * 32..2 * 32]);
-		U256::from_big_endian(&hex!("0400000000").to_vec()).to_big_endian(&mut input[2 * 32..3 * 32]);
-		U256::from_big_endian(&hex!("0100000000").to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 4; // XBTC
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 1; // AUSD
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
 
 		let mut expected_output = [0u8; 64];
 		U256::from(1_000).to_big_endian(&mut expected_output[..32]);
@@ -470,8 +476,12 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
 		U256::from(1).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(2).to_big_endian(&mut input[2 * 32..3 * 32]);
-		U256::from_big_endian(&hex!("0400000000").to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
-		U256::from_big_endian(&hex!("0100000000").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 4; // XBTC
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 1; // AUSD
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
 		U256::from(1).to_big_endian(&mut input[5 * 32..6 * 32]);
 
 		let mut expected_output = [0u8; 32];
@@ -512,8 +522,12 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
 		U256::from(2).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(2).to_big_endian(&mut input[2 * 32..3 * 32]);
-		U256::from_big_endian(&hex!("0400000000").to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
-		U256::from_big_endian(&hex!("0100000000").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 4; // XBTC
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 1; // AUSD
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
 		U256::from(1).to_big_endian(&mut input[5 * 32..6 * 32]);
 
 		let mut expected_output = [0u8; 32];
@@ -555,8 +569,12 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		U256::from(3).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
-		U256::from_big_endian(&hex!("0400000000").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
-		U256::from_big_endian(&hex!("0100000000").to_vec()).to_big_endian(&mut input[5 * 32..6 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 4; // XBTC
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 1; // AUSD
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[5 * 32..6 * 32]);
 		U256::from(1).to_big_endian(&mut input[6 * 32..7 * 32]);
 		U256::from(0).to_big_endian(&mut input[7 * 32..8 * 32]);
 
@@ -599,8 +617,12 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 		U256::from(4).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
-		U256::from_big_endian(&hex!("0400000000").to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
-		U256::from_big_endian(&hex!("0100000000").to_vec()).to_big_endian(&mut input[5 * 32..6 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 4; // XBTC
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 * 32..5 * 32]);
+		let mut id = [0u8; 32];
+		id[15] = 1; // AUSD
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[5 * 32..6 * 32]);
 		U256::from(1).to_big_endian(&mut input[6 * 32..7 * 32]);
 		U256::from(1).to_big_endian(&mut input[7 * 32..8 * 32]);
 
