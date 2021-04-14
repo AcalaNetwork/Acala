@@ -174,16 +174,6 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 8; // Ss58AddressFormat::KaruraAccount
 }
 
-pub struct BaseCallFilter;
-impl Filter<Call> for BaseCallFilter {
-	fn filter(call: &Call) -> bool {
-		match call {
-			Call::Sudo(_) => true,
-			_ => false,
-		}
-	}
-}
-
 impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
