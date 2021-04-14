@@ -563,11 +563,13 @@ impl<T: Config> Pallet<T> {
 					.unwrap_or_default()
 			{
 				// try swap collateral in auction with DEX to get stable
-				if let Ok(stable_amount) = T::CDPTreasury::swap_exact_collateral_in_auction_to_stable(
+				if let Ok(stable_amount) = T::CDPTreasury::swap_exact_collateral_to_stable(
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 					Zero::zero(),
 					None,
+					None,
+					true,
 				) {
 					// swap successfully, will not deal
 					should_deal = false;

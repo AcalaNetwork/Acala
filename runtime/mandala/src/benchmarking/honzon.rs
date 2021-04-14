@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, Honzon, Indices, Price, Rate,
-	Ratio, Runtime, AUSD, DOT,
+	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, Dex, Honzon, Indices, Price,
+	Rate, Ratio, Runtime, AUSD, DOT,
 };
 
 use super::utils::set_balance;
@@ -112,7 +112,6 @@ runtime_benchmarks! {
 		let receiver: AccountId = account("receiver", 0, SEED);
 		let receiver_lookup = Indices::unlookup(receiver.clone());
 
-
 		let debit_value = 100 * dollar(AUSD);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
@@ -152,6 +151,56 @@ runtime_benchmarks! {
 			receiver_lookup,
 		)?;
 	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
+
+	close_loan_has_debit_by_dex {
+		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
+		let sender: AccountId = account("sender", 0, SEED);
+		let maker: AccountId = account("maker", 0, SEED);
+		let debit_value = 100 * dollar(AUSD);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
+		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
+		let debit_amount: Amount = debit_amount.unique_saturated_into();
+		let collateral_value = 10 * debit_value;
+		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
+
+		// set balance
+		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(currency_id, &maker, collateral_amount);
+		set_balance(AUSD, &maker, debit_value * 100);
+
+		// inject liquidity
+		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, AUSD);
+		Dex::add_liquidity(
+			RawOrigin::Signed(maker.clone()).into(),
+			currency_id,
+			AUSD,
+			collateral_amount,
+			debit_value * 100,
+			false,
+		)?;
+
+		// feed price
+		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
+
+		// set risk params
+		CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			currency_id,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(debit_value * 100),
+		)?;
+
+		// initialize sender's loan
+		Honzon::adjust_loan(
+			RawOrigin::Signed(sender.clone()).into(),
+			currency_id,
+			collateral_amount.try_into().unwrap(),
+			debit_amount,
+		)?;
+	}: _(RawOrigin::Signed(sender), currency_id, None)
 }
 
 #[cfg(test)]
@@ -191,6 +240,13 @@ mod tests {
 	fn test_adjust_loan() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_adjust_loan());
+		});
+	}
+
+	#[test]
+	fn test_close_loan_has_debit_by_dex() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_close_loan_has_debit_by_dex());
 		});
 	}
 }

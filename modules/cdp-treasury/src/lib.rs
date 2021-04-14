@@ -99,6 +99,8 @@ pub mod module {
 		DebitPoolOverflow,
 		/// The debit pool of CDP treasury is not enough
 		DebitPoolNotEnough,
+		/// The swap path is invalid
+		InvalidSwapPath,
 	}
 
 	#[pallet::event]
@@ -323,23 +325,46 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
-	/// Swap exact amount of collateral in auction to stable,
+	/// Swap exact amount of collateral stable,
 	/// return actual target stable amount
-	fn swap_exact_collateral_in_auction_to_stable(
+	fn swap_exact_collateral_to_stable(
 		currency_id: CurrencyId,
 		supply_amount: Balance,
 		min_target_amount: Balance,
 		price_impact_limit: Option<Ratio>,
+		maybe_path: Option<&[CurrencyId]>,
+		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		ensure!(
-			Self::total_collaterals(currency_id) >= supply_amount
-				&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_amount,
-			Error::<T>::CollateralNotEnough,
-		);
+		if collateral_in_auction {
+			ensure!(
+				Self::total_collaterals(currency_id) >= supply_amount
+					&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_amount,
+				Error::<T>::CollateralNotEnough,
+			);
+		} else {
+			ensure!(
+				Self::total_collaterals_not_in_auction(currency_id) >= supply_amount,
+				Error::<T>::CollateralNotEnough,
+			);
+		}
+
+		let stable_currency_id = T::GetStableCurrencyId::get();
+		let default_swap_path = &[currency_id, stable_currency_id];
+		let swap_path = match maybe_path {
+			None => default_swap_path,
+			Some(path) => {
+				let path_length = path.len();
+				ensure!(
+					path_length >= 2 && path[0] == currency_id && path[path_length - 1] == stable_currency_id,
+					Error::<T>::InvalidSwapPath
+				);
+				path
+			}
+		};
 
 		T::DEX::swap_with_exact_supply(
 			&Self::account_id(),
-			&[currency_id, T::GetStableCurrencyId::get()],
+			swap_path,
 			supply_amount,
 			min_target_amount,
 			price_impact_limit,
@@ -348,20 +373,44 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 
 	/// swap collateral which not in auction to get exact stable,
 	/// return actual supply collateral amount
-	fn swap_collateral_not_in_auction_with_exact_stable(
+	fn swap_collateral_to_exact_stable(
 		currency_id: CurrencyId,
-		target_amount: Balance,
 		max_supply_amount: Balance,
+		target_amount: Balance,
 		price_impact_limit: Option<Ratio>,
+		maybe_path: Option<&[CurrencyId]>,
+		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		ensure!(
-			Self::total_collaterals_not_in_auction(currency_id) >= max_supply_amount,
-			Error::<T>::CollateralNotEnough,
-		);
+		if collateral_in_auction {
+			ensure!(
+				Self::total_collaterals(currency_id) >= max_supply_amount
+					&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= max_supply_amount,
+				Error::<T>::CollateralNotEnough,
+			);
+		} else {
+			ensure!(
+				Self::total_collaterals_not_in_auction(currency_id) >= max_supply_amount,
+				Error::<T>::CollateralNotEnough,
+			);
+		}
+
+		let stable_currency_id = T::GetStableCurrencyId::get();
+		let default_swap_path = &[currency_id, stable_currency_id];
+		let swap_path = match maybe_path {
+			None => default_swap_path,
+			Some(path) => {
+				let path_length = path.len();
+				ensure!(
+					path_length >= 2 && path[0] == currency_id && path[path_length - 1] == stable_currency_id,
+					Error::<T>::InvalidSwapPath
+				);
+				path
+			}
+		};
 
 		T::DEX::swap_with_exact_target(
 			&Self::account_id(),
-			&[currency_id, T::GetStableCurrencyId::get()],
+			swap_path,
 			target_amount,
 			max_supply_amount,
 			price_impact_limit,

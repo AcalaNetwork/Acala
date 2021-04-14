@@ -642,3 +642,83 @@ fn settle_cdp_has_debit_work() {
 		);
 	});
 }
+
+#[test]
+fn close_cdp_has_debit_by_dex_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			BTC,
+			AUSD,
+			100,
+			1000,
+			false
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 0));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+
+		assert_noop!(
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, None),
+			Error::<Runtime>::NoDebitValue
+		);
+
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 50));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(CDPTreasuryModule::get_surplus_pool(), 0);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 0);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(5, 2))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		assert_noop!(
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, None),
+			Error::<Runtime>::IsUnsafe
+		);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, None));
+		let close_cdp_has_debit_by_dex_event =
+			Event::cdp_engine(crate::Event::CloseCDPInDebitByDEX(BTC, ALICE, 6, 94, 50));
+		assert!(System::events()
+			.iter()
+			.any(|record| record.event == close_cdp_has_debit_by_dex_event));
+
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 994);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert_eq!(CDPTreasuryModule::get_surplus_pool(), 50);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 50);
+	});
+}
