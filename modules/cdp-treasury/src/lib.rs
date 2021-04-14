@@ -104,15 +104,16 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The fixed size for collateral auction under specific collateral type
-		/// updated. \[collateral_type, new_size\]
-		CollateralAuctionMaximumSizeUpdated(CurrencyId, Balance),
+		/// The expected amount size for per lot collateral auction of specific
+		/// collateral type updated. \[collateral_type, new_size\]
+		ExpectedCollateralAuctionSizeUpdated(CurrencyId, Balance),
 	}
 
-	/// The maximum amount of collateral amount for sale per collateral auction
+	/// The expected amount size for per lot collateral auction of specific
+	/// collateral type.
 	#[pallet::storage]
-	#[pallet::getter(fn collateral_auction_maximum_size)]
-	pub type CollateralAuctionMaximumSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
+	#[pallet::getter(fn expected_collateral_auction_size)]
+	pub type ExpectedCollateralAuctionSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	/// Current total debit value of system. It's not same as debit in CDP
 	/// engine, it is the bad debt of the system.
@@ -122,14 +123,14 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig {
-		pub collateral_auction_maximum_size: Vec<(CurrencyId, Balance)>,
+		pub expected_collateral_auction_size: Vec<(CurrencyId, Balance)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl Default for GenesisConfig {
 		fn default() -> Self {
 			GenesisConfig {
-				collateral_auction_maximum_size: vec![],
+				expected_collateral_auction_size: vec![],
 			}
 		}
 	}
@@ -137,10 +138,10 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
-			self.collateral_auction_maximum_size
+			self.expected_collateral_auction_size
 				.iter()
 				.for_each(|(currency_id, size)| {
-					CollateralAuctionMaximumSize::<T>::insert(currency_id, size);
+					ExpectedCollateralAuctionSize::<T>::insert(currency_id, size);
 				});
 		}
 	}
@@ -198,17 +199,17 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type
-		/// - `surplus_buffer_size`: collateral auction maximum size
-		#[pallet::weight((T::WeightInfo::set_collateral_auction_maximum_size(), DispatchClass::Operational))]
+		/// - `amount`: expected size of per lot collateral auction
+		#[pallet::weight((T::WeightInfo::set_expected_collateral_auction_size(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn set_collateral_auction_maximum_size(
+		pub fn set_expected_collateral_auction_size(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			size: Balance,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			CollateralAuctionMaximumSize::<T>::insert(currency_id, size);
-			Self::deposit_event(Event::CollateralAuctionMaximumSizeUpdated(currency_id, size));
+			ExpectedCollateralAuctionSize::<T>::insert(currency_id, size);
+			Self::deposit_event(Event::ExpectedCollateralAuctionSizeUpdated(currency_id, size));
 			Ok(().into())
 		}
 	}
@@ -381,21 +382,21 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 
 		let mut unhandled_collateral_amount = amount;
 		let mut unhandled_target = target;
-		let collateral_auction_maximum_size = Self::collateral_auction_maximum_size(currency_id);
+		let expected_collateral_auction_size = Self::expected_collateral_auction_size(currency_id);
 		let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
 		let lots_count = if !splited
 			|| max_auctions_count.is_zero()
-			|| collateral_auction_maximum_size.is_zero()
-			|| amount <= collateral_auction_maximum_size
+			|| expected_collateral_auction_size.is_zero()
+			|| amount <= expected_collateral_auction_size
 		{
 			One::one()
 		} else {
 			let mut count = amount
-				.checked_div(collateral_auction_maximum_size)
+				.checked_div(expected_collateral_auction_size)
 				.expect("collateral auction maximum size is not zero; qed");
 
 			let remainder = amount
-				.checked_rem(collateral_auction_maximum_size)
+				.checked_rem(expected_collateral_auction_size)
 				.expect("collateral auction maximum size is not zero; qed");
 			if !remainder.is_zero() {
 				count = count.saturating_add(One::one());

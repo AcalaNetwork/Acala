@@ -250,7 +250,7 @@ fn swap_exact_collateral_in_auction_to_stable_work() {
 fn create_collateral_auctions_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Currencies::deposit(BTC, &CDPTreasuryModule::account_id(), 10000));
-		assert_eq!(CDPTreasuryModule::collateral_auction_maximum_size(BTC), 0);
+		assert_eq!(CDPTreasuryModule::expected_collateral_auction_size(BTC), 0);
 		assert_noop!(
 			CDPTreasuryModule::create_collateral_auctions(BTC, 10001, 1000, ALICE, true),
 			Error::<Runtime>::CollateralNotEnough,
@@ -264,7 +264,7 @@ fn create_collateral_auctions_work() {
 		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1000);
 
 		// set collateral auction maximum size
-		assert_ok!(CDPTreasuryModule::set_collateral_auction_maximum_size(
+		assert_ok!(CDPTreasuryModule::set_expected_collateral_auction_size(
 			Origin::signed(1),
 			BTC,
 			300
@@ -297,25 +297,25 @@ fn create_collateral_auctions_work() {
 }
 
 #[test]
-fn set_collateral_auction_maximum_size_work() {
+fn set_expected_collateral_auction_size_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_eq!(CDPTreasuryModule::collateral_auction_maximum_size(BTC), 0);
+		assert_eq!(CDPTreasuryModule::expected_collateral_auction_size(BTC), 0);
 		assert_noop!(
-			CDPTreasuryModule::set_collateral_auction_maximum_size(Origin::signed(5), BTC, 200),
+			CDPTreasuryModule::set_expected_collateral_auction_size(Origin::signed(5), BTC, 200),
 			BadOrigin
 		);
-		assert_ok!(CDPTreasuryModule::set_collateral_auction_maximum_size(
+		assert_ok!(CDPTreasuryModule::set_expected_collateral_auction_size(
 			Origin::signed(1),
 			BTC,
 			200
 		));
 
-		let update_collateral_auction_maximum_size_event =
-			Event::cdp_treasury(crate::Event::CollateralAuctionMaximumSizeUpdated(BTC, 200));
+		let update_expected_collateral_auction_size_event =
+			Event::cdp_treasury(crate::Event::ExpectedCollateralAuctionSizeUpdated(BTC, 200));
 		assert!(System::events()
 			.iter()
-			.any(|record| record.event == update_collateral_auction_maximum_size_event));
+			.any(|record| record.event == update_expected_collateral_auction_size_event));
 	});
 }
 

@@ -34,7 +34,7 @@ runtime_benchmarks! {
 		Currencies::deposit(currency_id, &CdpTreasury::account_id(), 10_000 * dollar(currency_id))?;
 	}: _(RawOrigin::Root, currency_id, 1_000 * dollar(currency_id), 1_000 * dollar(AUSD), true)
 
-	set_collateral_auction_maximum_size {
+	set_expected_collateral_auction_size {
 		let currency_id: CurrencyId = DOT;
 	}: _(RawOrigin::Root, currency_id, 200 * dollar(currency_id))
 
@@ -63,9 +63,9 @@ mod tests {
 	}
 
 	#[test]
-	fn test_set_collateral_auction_maximum_size() {
+	fn test_set_expected_collateral_auction_size() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_set_collateral_auction_maximum_size());
+			assert_ok!(test_benchmark_set_expected_collateral_auction_size());
 		});
 	}
 
