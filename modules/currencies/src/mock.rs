@@ -20,14 +20,14 @@
 
 #![cfg(test)]
 
-use frame_support::{ord_parameter_types, parameter_types, traits::GenesisBuild};
+use frame_support::{ord_parameter_types, parameter_types, traits::GenesisBuild, PalletId};
 use orml_traits::parameter_type_with_key;
 use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
-	AccountId32, ModuleId, Perbill,
+	AccountId32, Perbill,
 };
 use support::{mocks::MockAddressMapping, AddressMapping};
 
@@ -83,7 +83,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub DustAccount: AccountId = ModuleId(*b"orml/dst").into_account();
+	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account();
 }
 
 impl tokens::Config for Runtime {

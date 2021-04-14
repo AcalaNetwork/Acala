@@ -309,7 +309,7 @@ fn testnet_genesis(
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
-			collateral_auction_maximum_size: vec![
+			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
 				(XBTC, dollar(XBTC)),
 				(RENBTC, dollar(RENBTC)),
@@ -492,7 +492,7 @@ fn mandala_genesis(
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
-			collateral_auction_maximum_size: vec![
+			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
 				(XBTC, 5 * cent(XBTC)),
 				(RENBTC, 5 * cent(RENBTC)),

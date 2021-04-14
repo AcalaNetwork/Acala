@@ -20,13 +20,13 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, MaybeDisplay, UniqueSaturatedInto, Zero},
-	DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug,
+	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
@@ -115,7 +115,7 @@ pub mod module {
 
 		/// The module id, keep DEXShare LP.
 		#[pallet::constant]
-		type ModuleId: Get<ModuleId>;
+		type PalletId: Get<PalletId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -180,13 +180,21 @@ pub mod module {
 										&T::RewardsVaultAccountId::get(),
 										incentive_reward_amount,
 									);
-
-									if res.is_ok() {
-										<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, incentive_reward_amount);
-									} else {
-										log::warn!(
-											"Warning: Attempt to get native rewards from source account failed. This is unexpected but should be safe"
-										);
+									match res {
+										Ok(_) => {
+											<orml_rewards::Pallet<T>>::accumulate_reward(
+												&pool_id,
+												incentive_reward_amount,
+											);
+										}
+										Err(e) => {
+											log::warn!(
+												target: "incentives",
+												"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
+												This is unexpected but should be safe",
+												incentive_reward_amount, native_currency_id, T::NativeRewardsSource::get(), T::RewardsVaultAccountId::get(), e
+											);
+										}
 									}
 								}
 							}
@@ -211,18 +219,28 @@ pub mod module {
 											dex_saving_reward_rate.saturating_mul_int(dex_saving_reward_base);
 
 										// issue stable coin without backing.
-										if !dex_saving_reward_amount.is_zero()
-											&& T::CDPTreasury::issue_debit(
+										if !dex_saving_reward_amount.is_zero() {
+											let res = T::CDPTreasury::issue_debit(
 												&T::RewardsVaultAccountId::get(),
 												dex_saving_reward_amount,
 												false,
-											)
-											.is_ok()
-										{
-											<orml_rewards::Pallet<T>>::accumulate_reward(
-												&pool_id,
-												dex_saving_reward_amount,
 											);
+											match res {
+												Ok(_) => {
+													<orml_rewards::Pallet<T>>::accumulate_reward(
+														&pool_id,
+														dex_saving_reward_amount,
+													);
+												}
+												Err(e) => {
+													log::warn!(
+														target: "incentives",
+														"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
+														This is unexpected but should be safe",
+														dex_saving_reward_amount, T::RewardsVaultAccountId::get(), e
+													);
+												}
+											}
 										}
 									}
 								}
@@ -353,7 +371,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
-		T::ModuleId::get().into_account()
+		T::PalletId::get().into_account()
 	}
 }
 
@@ -448,6 +466,14 @@ impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
 		// process, ignore the result to continue. if it fails, just the user will not
 		// be rewarded, there will not increase user balance.
 		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, amount);
-		debug_assert!(res.is_ok());
+		if let Err(e) = res {
+			log::warn!(
+				target: "incentives",
+				"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
+				This is unexpected but should be safe",
+				amount, currency_id, T::RewardsVaultAccountId::get(), who, e
+			);
+			debug_assert!(false);
+		}
 	}
 }

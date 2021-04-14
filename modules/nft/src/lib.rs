@@ -29,7 +29,7 @@ use frame_support::{
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		ReservableCurrency,
 	},
-	transactional,
+	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::NFT;
@@ -38,7 +38,7 @@ use primitives::NFTBalance;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, Saturating, StaticLookup, Zero},
-	DispatchResult, ModuleId, RuntimeDebug,
+	DispatchResult, RuntimeDebug,
 };
 
 pub mod benchmarking;
@@ -122,7 +122,7 @@ pub mod module {
 
 		/// The NFT's module id
 		#[pallet::constant]
-		type ModuleId: Get<ModuleId>;
+		type PalletId: Get<PalletId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -179,7 +179,7 @@ pub mod module {
 		pub fn create_class(origin: OriginFor<T>, metadata: CID, properties: Properties) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let next_id = orml_nft::Pallet::<T>::next_class_id();
-			let owner: T::AccountId = T::ModuleId::get().into_sub_account(next_id);
+			let owner: T::AccountId = T::PalletId::get().into_sub_account(next_id);
 			let class_deposit = T::CreateClassDeposit::get();
 
 			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);

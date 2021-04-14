@@ -237,15 +237,14 @@ pub mod module {
 			if T::EmergencyShutdown::is_shutdown() && sp_io::offchain::is_validator() {
 				if let Err(e) = Self::_offchain_worker() {
 					log::info!(
-						target: "auction-manager offchain worker",
-						"cannot run offchain worker at {:?}: {:?}",
-						now,
-						e,
+						target: "auction-manager",
+						"offchain worker: cannot run offchain worker at {:?}: {:?}",
+						now, e,
 					);
 				} else {
 					log::debug!(
-						target: "auction-manager offchain worker",
-						"offchain worker start at block: {:?} already done!",
+						target: "auction-manager",
+						"offchain worker: offchain worker start at block: {:?} already done!",
 						now,
 					);
 				}
@@ -311,10 +310,9 @@ impl<T: Config> Pallet<T> {
 		let call = Call::<T>::cancel(auction_id);
 		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
 			log::info!(
-				target: "auction-manager offchain worker",
-				"submit unsigned auction cancel tx for \nAuctionId {:?} \nfailed: {:?}",
-				auction_id,
-				err,
+				target: "auction-manager",
+				"offchain worker: submit unsigned auction cancel tx for AuctionId {:?} failed: {:?}",
+				auction_id, err,
 			);
 		}
 	}
@@ -336,7 +334,11 @@ impl<T: Config> Pallet<T> {
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
 
-		log::debug!(target: "auction-manager offchain worker", "max iterations is {:?}", max_iterations);
+		log::debug!(
+			target: "auction-manager",
+			"offchain worker: max iterations is {:?}",
+			max_iterations
+		);
 
 		// start iterations to cancel collateral auctions
 		let mut iterator = <CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
@@ -574,7 +576,15 @@ impl<T: Config> Pallet<T> {
 					// process. but even it failed, just the winner did not get the bid price. it
 					// can be fixed by treasury council.
 					let res = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
-					debug_assert!(res.is_ok());
+					if let Err(e) = res {
+						log::warn!(
+							target: "auction-manager",
+							"issue_debit: failed to issue stable {:?} to {:?}: {:?}. \
+							This is unexpected but should be safe",
+							bid_price, bidder, e
+						);
+						debug_assert!(false);
+					}
 
 					if collateral_auction.in_reverse_stage(stable_amount) {
 						// refund extra stable currency to recipient
@@ -586,7 +596,15 @@ impl<T: Config> Pallet<T> {
 						// fixed by treasury council.
 						let res =
 							T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
-						debug_assert!(res.is_ok());
+						if let Err(e) = res {
+							log::warn!(
+								target: "auction-manager",
+								"issue_debit: failed to issue stable {:?} to {:?}: {:?}. \
+								This is unexpected but should be safe",
+								refund_amount, collateral_auction.refund_recipient, e
+							);
+							debug_assert!(false);
+						}
 					}
 
 					Self::deposit_event(Event::DEXTakeCollateralAuction(
@@ -607,7 +625,15 @@ impl<T: Config> Pallet<T> {
 					collateral_auction.currency_id,
 					collateral_auction.amount,
 				);
-				debug_assert!(res.is_ok());
+				if let Err(e) = res {
+					log::warn!(
+						target: "auction-manager",
+						"withdraw_collateral: failed to withdraw {:?} {:?} from CDP treasury to {:?}: {:?}. \
+						This is unexpected but should be safe",
+						collateral_auction.amount, collateral_auction.currency_id, bidder, e
+					);
+					debug_assert!(false);
+				}
 
 				let payment_amount = collateral_auction.payment_amount(bid_price);
 				Self::deposit_event(Event::CollateralAuctionDealt(
@@ -640,8 +666,10 @@ impl<T: Config> Pallet<T> {
 			// since the funds that are under the lock will themselves be stored in the
 			// account and therefore will need a reference.
 			log::warn!(
-				"Warning: Attempt to introduce lock consumer reference, yet no providers. \
-				This is unexpected but should be safe."
+				target: "auction-manager",
+				"inc_consumers: failed for {:?}. \
+				This is impossible under normal circumstances.",
+				new_bidder.clone()
 			);
 		}
 
@@ -732,8 +760,10 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 			// since the funds that are under the lock will themselves be stored in the
 			// account and therefore will need a reference.
 			log::warn!(
-				"Warning: Attempt to introduce lock consumer reference, yet no providers. \
-				This is unexpected but should be safe."
+				target: "auction-manager",
+				"Attempt to `inc_consumers` for {:?} failed. \
+				This is unexpected but should be safe.",
+				refund_recipient.clone()
 			);
 		}
 
