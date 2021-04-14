@@ -46,7 +46,7 @@ use sp_runtime::{
 		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -87,7 +87,7 @@ pub use frame_support::{
 		Randomness, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
-	StorageValue,
+	PalletId, StorageValue,
 };
 
 pub use pallet_timestamp::Call as TimestampCall;
@@ -137,33 +137,32 @@ impl_opaque_keys! {
 
 // Pallet accounts of runtime
 parameter_types! {
-	pub const AcalaTreasuryModuleId: ModuleId = ModuleId(*b"aca/trsy");
-	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
-	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
-	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
-	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
-	pub const HonzonTreasuryModuleId: ModuleId = ModuleId(*b"aca/hztr");
-	pub const HomaTreasuryModuleId: ModuleId = ModuleId(*b"aca/hmtr");
-	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
+	pub const AcalaTreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub const StakingPoolPalletId: PalletId = PalletId(*b"aca/stkp");
+	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
+	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
+	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	// Decentralized Sovereign Wealth Fund
-	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
-	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"aca/phre";
-	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
-	// Vault all unrleased native token.
-	pub UnreleasedNativeVaultAccountId: AccountId = ModuleId(*b"aca/urls").into_account();
+	pub const DSWFPalletId: PalletId = PalletId(*b"aca/dswf");
+	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"aca/phre";
+	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
 	vec![
-		AcalaTreasuryModuleId::get().into_account(),
-		LoansModuleId::get().into_account(),
-		DEXModuleId::get().into_account(),
-		CDPTreasuryModuleId::get().into_account(),
-		StakingPoolModuleId::get().into_account(),
-		HonzonTreasuryModuleId::get().into_account(),
-		HomaTreasuryModuleId::get().into_account(),
-		IncentivesModuleId::get().into_account(),
-		DSWFModuleId::get().into_account(),
+		AcalaTreasuryPalletId::get().into_account(),
+		LoansPalletId::get().into_account(),
+		DEXPalletId::get().into_account(),
+		CDPTreasuryPalletId::get().into_account(),
+		StakingPoolPalletId::get().into_account(),
+		HonzonTreasuryPalletId::get().into_account(),
+		HomaTreasuryPalletId::get().into_account(),
+		IncentivesPalletId::get().into_account(),
+		DSWFPalletId::get().into_account(),
 		ZeroAccountId::get(),
 	]
 }
@@ -510,7 +509,7 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Runtime {
-	type ModuleId = AcalaTreasuryModuleId;
+	type PalletId = AcalaTreasuryPalletId;
 	type Currency = Balances;
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -594,7 +593,7 @@ parameter_types! {
 }
 
 impl pallet_elections_phragmen::Config for Runtime {
-	type ModuleId = ElectionsPhragmenModuleId;
+	type PalletId = ElectionsPhragmenPalletId;
 	type Event = Event;
 	type Currency = CurrencyAdapter<Runtime, GetLiquidCurrencyId>;
 	type CurrencyToVote = U128CurrencyToVote;
@@ -662,7 +661,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub AcalaTreasuryAccount: AccountId = AcalaTreasuryModuleId::get().into_account();
+	pub AcalaTreasuryAccount: AccountId = AcalaTreasuryPalletId::get().into_account();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -721,9 +720,9 @@ impl EnsureOrigin<Origin> for EnsureRootOrAcalaTreasury {
 
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
-			RawOrigin::Root => Ok(AcalaTreasuryModuleId::get().into_account()),
+			RawOrigin::Root => Ok(AcalaTreasuryPalletId::get().into_account()),
 			RawOrigin::Signed(caller) => {
-				if caller == AcalaTreasuryModuleId::get().into_account() {
+				if caller == AcalaTreasuryPalletId::get().into_account() {
 					Ok(caller)
 				} else {
 					Err(Origin::from(Some(caller)))
@@ -807,7 +806,7 @@ impl module_loans::Config for Runtime {
 	type Currency = Currencies;
 	type RiskManager = CdpEngine;
 	type CDPTreasury = CdpTreasury;
-	type ModuleId = LoansModuleId;
+	type PalletId = LoansPalletId;
 	type OnUpdateLoan = module_incentives::OnUpdateLoan<Runtime>;
 }
 
@@ -932,7 +931,7 @@ impl module_dex::Config for Runtime {
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
-	type ModuleId = DEXModuleId;
+	type PalletId = DEXPalletId;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -940,7 +939,7 @@ impl module_dex::Config for Runtime {
 
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 100;
-	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryModuleId::get().into_account();
+	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -951,7 +950,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
-	type ModuleId = CDPTreasuryModuleId;
+	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
@@ -1010,7 +1009,7 @@ impl module_incentives::Config for Runtime {
 	type Currency = Currencies;
 	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
-	type ModuleId = IncentivesModuleId;
+	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
 }
 
@@ -1039,7 +1038,7 @@ impl module_staking_pool::Config for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type DefaultExchangeRate = DefaultExchangeRate;
-	type ModuleId = StakingPoolModuleId;
+	type PalletId = StakingPoolPalletId;
 	type PoolAccountIndexes = PoolAccountIndexes;
 	type UpdateOrigin = EnsureRootOrHalfHomaCouncil;
 	type FeeModel = CurveFeeModel;
@@ -1100,7 +1099,7 @@ impl module_nft::Config for Runtime {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ModuleId = NftModuleId;
+	type PalletId = NftPalletId;
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 

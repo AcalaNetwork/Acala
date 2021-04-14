@@ -18,7 +18,7 @@
 
 use super::utils::{lookup_of_account, set_aca_balance};
 use crate::{
-	dollar, AcalaTreasuryModuleId, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, MinVestedTransfer,
+	dollar, AcalaTreasuryPalletId, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, MinVestedTransfer,
 	Runtime, System, Vesting, ACA,
 };
 
@@ -49,7 +49,7 @@ runtime_benchmarks! {
 		};
 
 		// extra 1 dollar to pay fees
-		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
+		let from: AccountId = AcalaTreasuryPalletId::get().into_account();
 		set_aca_balance(&from, schedule.total_amount().unwrap() + dollar(ACA));
 
 		let to: AccountId = account("to", 0, SEED);
@@ -72,7 +72,7 @@ runtime_benchmarks! {
 			per_period: MinVestedTransfer::get(),
 		};
 
-		let from: AccountId = AcalaTreasuryModuleId::get().into_account();
+		let from: AccountId = AcalaTreasuryPalletId::get().into_account();
 		// extra 1 dollar to pay fees
 		set_aca_balance(&from, schedule.total_amount().unwrap() * i as u128 + dollar(ACA));
 

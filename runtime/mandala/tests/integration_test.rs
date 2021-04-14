@@ -26,8 +26,8 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateTokenDeposit, CurrencyId, DSWFModuleId, EnabledTradingPairs, Event, EvmAccounts, GetNativeCurrencyId,
-	NativeTokenExistentialDeposit, NftModuleId, Origin, OriginCaller, ParachainInfo, Perbill, Runtime, SevenDays,
+	CreateTokenDeposit, CurrencyId, DSWFPalletId, EnabledTradingPairs, Event, EvmAccounts, GetNativeCurrencyId,
+	NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller, ParachainInfo, Perbill, Runtime, SevenDays,
 	System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, XBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
@@ -707,7 +707,7 @@ fn test_authority_module() {
 		.balances(vec![
 			(AccountId::from(ALICE), AUSD, 1_000 * dollar(AUSD)),
 			(AccountId::from(ALICE), XBTC, 1_000 * dollar(XBTC)),
-			(DSWFModuleId::get().into_account(), AUSD, 1000 * dollar(AUSD)),
+			(DSWFPalletId::get().into_account(), AUSD, 1000 * dollar(AUSD)),
 		])
 		.build()
 		.execute_with(|| {
@@ -781,7 +781,7 @@ fn test_authority_module() {
 
 			run_to_block(2);
 			assert_eq!(
-				Currencies::free_balance(AUSD, &DSWFModuleId::get().into_account()),
+				Currencies::free_balance(AUSD, &DSWFPalletId::get().into_account()),
 				500 * dollar(AUSD)
 			);
 			assert_eq!(
@@ -943,12 +943,12 @@ fn test_nft_module() {
 				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable)
 			));
 			assert_eq!(
-				Balances::deposit_into_existing(&NftModuleId::get().into_sub_account(0), 1 * CreateTokenDeposit::get())
+				Balances::deposit_into_existing(&NftPalletId::get().into_sub_account(0), 1 * CreateTokenDeposit::get())
 					.is_ok(),
 				true
 			);
 			assert_ok!(NFT::mint(
-				origin_of(NftModuleId::get().into_sub_account(0)),
+				origin_of(NftPalletId::get().into_sub_account(0)),
 				MultiAddress::Id(AccountId::from(BOB)),
 				0,
 				vec![1],
@@ -958,14 +958,14 @@ fn test_nft_module() {
 			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
 			assert_noop!(
 				NFT::destroy_class(
-					origin_of(NftModuleId::get().into_sub_account(0)),
+					origin_of(NftPalletId::get().into_sub_account(0)),
 					0,
 					MultiAddress::Id(AccountId::from(BOB))
 				),
 				pallet_proxy::Error::<Runtime>::NotFound
 			);
 			assert_ok!(NFT::destroy_class(
-				origin_of(NftModuleId::get().into_sub_account(0)),
+				origin_of(NftPalletId::get().into_sub_account(0)),
 				0,
 				MultiAddress::Id(AccountId::from(ALICE))
 			));

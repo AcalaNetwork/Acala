@@ -36,7 +36,7 @@ fn reserved_balance(who: &AccountId) -> Balance {
 }
 
 fn class_id_account() -> AccountId {
-	<Runtime as Config>::ModuleId::get().into_sub_account(CLASS_ID)
+	<Runtime as Config>::PalletId::get().into_sub_account(CLASS_ID)
 }
 
 #[test]
