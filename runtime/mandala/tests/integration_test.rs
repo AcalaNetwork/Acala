@@ -530,15 +530,16 @@ fn test_dex_module() {
 			assert_eq!(Currencies::total_issuance(LPTOKEN_ERC20), 0);
 			assert_eq!(Currencies::free_balance(LPTOKEN_ERC20, &AccountId::from(ALICE)), 0);
 
-			assert_ok!(DexModule::add_liquidity(
-				origin_of(AccountId::from(ALICE)),
-				ERC20_0,
-				ERC20_1,
-				10000,
-				10000000,
-				false,
-			));
-			assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1), (10000, 10000000));
+			//assert_ok!(DexModule::add_liquidity(
+			//	origin_of(AccountId::from(ALICE)),
+			//	ERC20_0,
+			//	ERC20_1,
+			//	10000,
+			//	10000000,
+			//	false,
+			//));
+			//assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1),
+			// (10000, 10000000));
 		});
 }
 
@@ -727,7 +728,7 @@ fn test_cdp_engine_module() {
 
 #[test]
 fn test_authority_module() {
-	const AUTHORITY_ORIGIN_ID: u8 = 27u8;
+	const AUTHORITY_ORIGIN_ID: u8 = 28u8;
 
 	ExtBuilder::default()
 		.balances(vec![

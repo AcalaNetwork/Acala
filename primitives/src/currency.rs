@@ -65,26 +65,7 @@ macro_rules! create_currency_id {
 			fn decimals(&self) -> Option<u8> {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($deci),)*
-					CurrencyId::DexShare(symbol_0, symbol_1) => {
-						let decimals_0 = match symbol_0 {
-							DexShare::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
-							// Erc20 handler by evm-manager CurrencyIdMapping
-							DexShare::Erc20(_) => None,
-						};
-						let decimals_1 = match symbol_1 {
-							DexShare::Token(symbol) => CurrencyId::Token(*symbol).decimals(),
-							// Erc20 handler by evm-manager CurrencyIdMapping
-							DexShare::Erc20(_) => None,
-						};
-						if decimals_0.is_none() || decimals_1.is_none() {
-							return None;
-						}
-						Some(sp_std::cmp::max(decimals_0.unwrap(), decimals_1.unwrap()))
-					},
-					// Erc20 handler by evm-manager CurrencyIdMapping
-					CurrencyId::Erc20(_) => {
-						return None;
-					}
+					_ => None,
 				}
 			}
 		}
@@ -234,110 +215,51 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	type Error = ();
 
 	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
-		// tag: u8 + u32 + u32 = 1 + 4 + 4
-		if !v.starts_with(&[0u8; 23][..]) {
+		// token/dex flag(1byte) | evm address(20byte)
+		// token/dex flag(1byte) | dex left(4byte) | dex right(4byte)
+		// v[11] = token/dex flag(1byte)
+		// v[12..16] = dex left(4byte)
+		// v[16..20] = dex right(4byte)
+		// v[12..32] = evm address(20byte)
+
+		if !v.starts_with(&[0u8; 11][..]) {
 			return Err(());
 		}
 
 		// token
-		if v[23] == 0 && v[24..27] == [0u8; 3] && v[28..32] == [0u8; 4] {
-			return v[27].try_into().map(CurrencyId::Token);
+		if v[11] == 0 && v[12..15] == [0u8; 3] && v[16..32] == [0u8; 16] {
+			return v[15].try_into().map(CurrencyId::Token);
 		}
 
-		// DEX share
-		if v[23] == 1 {
-			let left = {
-				if v[24..27] == [0u8; 3] {
-					// Token
-					v[27].try_into().map(DexShare::Token)?
-				} else {
-					// Erc20 handler by evm-manager CurrencyIdMapping
-					return Err(());
-				}
-			};
-			let right = {
-				if v[28..31] == [0u8; 3] {
-					// Token
-					v[31].try_into().map(DexShare::Token)?
-				} else {
-					// Erc20 handler by evm-manager CurrencyIdMapping
-					return Err(());
-				}
-			};
-			return Ok(CurrencyId::DexShare(left, right));
+		// erc20
+		if v[11] == 0 {
+			return Ok(CurrencyId::Erc20(EvmAddress::from_slice(&v[12..32])));
 		}
 
 		Err(())
 	}
 }
 
-/// Note the pre-deployed Erc20 contracts depend on `CurrencyId` implementation,
-/// and need to be updated if any change.
-impl From<CurrencyId> for [u8; 32] {
-	fn from(val: CurrencyId) -> Self {
-		let mut bytes = [0u8; 32];
-		match val {
-			CurrencyId::Token(_) => {
-				bytes[24..28].copy_from_slice(&Into::<u32>::into(val).to_be_bytes()[..]);
-			}
-			CurrencyId::DexShare(left, right) => {
-				bytes[23] = 1;
-				match left {
-					DexShare::Token(token) => {
-						bytes[24..28].copy_from_slice(&Into::<u32>::into(CurrencyId::Token(token)).to_be_bytes()[..])
-					}
-					DexShare::Erc20(address) => {
-						bytes[24..28].copy_from_slice(&Into::<u32>::into(CurrencyId::Erc20(address)).to_be_bytes()[..])
-					}
-				}
-				match right {
-					DexShare::Token(token) => {
-						bytes[28..32].copy_from_slice(&Into::<u32>::into(CurrencyId::Token(token)).to_be_bytes()[..])
-					}
-					DexShare::Erc20(address) => {
-						bytes[28..32].copy_from_slice(&Into::<u32>::into(CurrencyId::Erc20(address)).to_be_bytes()[..])
-					}
-				}
-			}
-			CurrencyId::Erc20(address) => {
-				bytes[12..32].copy_from_slice(&address[..]);
-			}
-		}
-		bytes
-	}
-}
+impl TryFrom<CurrencyId> for u32 {
+	type Error = ();
 
-impl From<CurrencyId> for u32 {
-	fn from(val: CurrencyId) -> Self {
+	fn try_from(val: CurrencyId) -> Result<Self, Self::Error> {
 		let mut bytes = [0u8; 4];
 		match val {
 			CurrencyId::Token(token) => {
 				bytes[3] = token as u8;
 			}
-			CurrencyId::DexShare(left, right) => {
-				match left {
-					DexShare::Token(token) => {
-						bytes[..].copy_from_slice(&Into::<u32>::into(CurrencyId::Token(token)).to_be_bytes()[..])
-					}
-					DexShare::Erc20(address) => {
-						bytes[..].copy_from_slice(&Into::<u32>::into(CurrencyId::Erc20(address)).to_be_bytes()[..])
-					}
-				}
-				match right {
-					DexShare::Token(token) => {
-						bytes[..].copy_from_slice(&Into::<u32>::into(CurrencyId::Token(token)).to_be_bytes()[..])
-					}
-					DexShare::Erc20(address) => {
-						bytes[..].copy_from_slice(&Into::<u32>::into(CurrencyId::Erc20(address)).to_be_bytes()[..])
-					}
-				}
-			}
 			CurrencyId::Erc20(address) => {
-				//TODO: update, maybe hash
-				bytes[..].copy_from_slice(&address[..4]);
+				let is_zero = |&&d: &&u8| -> bool { d == 0 };
+				let leading_zeros = address.as_bytes().iter().take_while(is_zero).count();
+				let index = if leading_zeros > 16 { 16 } else { leading_zeros };
+				bytes[..].copy_from_slice(&address[index..index + 4][..]);
+			}
+			_ => {
+				return Err(());
 			}
 		}
-		u32::from_be_bytes(bytes)
+		Ok(u32::from_be_bytes(bytes))
 	}
 }
 

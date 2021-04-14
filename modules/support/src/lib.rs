@@ -486,7 +486,8 @@ pub trait CurrencyIdMapping {
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
 	fn decimals(currency_id: CurrencyId) -> Option<u8>;
-	fn u256_to_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
+	fn encode_currency_id(v: CurrencyId) -> [u8; 32];
+	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
 }
 
 #[cfg(feature = "std")]
@@ -503,7 +504,11 @@ impl CurrencyIdMapping for () {
 		None
 	}
 
-	fn u256_to_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {
+	fn encode_currency_id(_v: CurrencyId) -> [u8; 32] {
+		Default::default()
+	}
+
+	fn decode_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {
 		None
 	}
 }

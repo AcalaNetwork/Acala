@@ -74,7 +74,11 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 		currency_id.decimals()
 	}
 
-	fn u256_to_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
+	fn encode_currency_id(_v: CurrencyId) -> [u8; 32] {
+		Default::default()
+	}
+
+	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
 		(*v).try_into().ok()
 	}
 }

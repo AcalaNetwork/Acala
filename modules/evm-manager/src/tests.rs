@@ -48,7 +48,7 @@ fn get_evm_address_works() {
 			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
 		}));
 		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::get_evm_address(ERC20.into()),
+			EvmCurrencyIdMapping::<Runtime>::get_evm_address(ERC20.try_into().unwrap()),
 			Some(ERC20_ADDRESS)
 		);
 
@@ -71,22 +71,74 @@ fn decimals_works() {
 }
 
 #[test]
-fn u256_to_currency_id_works() {
+fn encode_currency_id_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let mut bytes = [0u8; 32];
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::ACA)),
+			bytes
+		);
+
+		bytes[15] = 1;
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::AUSD)),
+			bytes
+		);
+
+		let mut bytes = [0u8; 32];
+		bytes[12..32].copy_from_slice(&ERC20_ADDRESS.as_bytes()[..]);
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Erc20(ERC20_ADDRESS)),
+			bytes
+		);
+
+		let mut bytes = [0u8; 32];
+		bytes[11] = 1;
+		let id1: u32 = CurrencyId::Token(TokenSymbol::ACA).try_into().unwrap();
+		let id2: u32 = CurrencyId::Token(TokenSymbol::AUSD).try_into().unwrap();
+		bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
+		bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
+				DexShare::Token(TokenSymbol::ACA),
+				DexShare::Token(TokenSymbol::AUSD)
+			)),
+			bytes
+		);
+
+		let mut bytes = [0u8; 32];
+		bytes[11] = 1;
+		let id1: u32 = CurrencyId::Erc20(ERC20_ADDRESS).try_into().unwrap();
+		let id2: u32 = CurrencyId::Erc20(ERC20_ADDRESS).try_into().unwrap();
+		bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
+		bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
+				DexShare::Erc20(ERC20_ADDRESS),
+				DexShare::Erc20(ERC20_ADDRESS)
+			)),
+			bytes
+		);
+	});
+}
+
+#[test]
+fn decode_currency_id_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(with_transaction_result(|| -> DispatchResult {
 			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
 		}));
 
 		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::u256_to_currency_id(&[0u8; 32]),
+			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[0u8; 32]),
 			Some(CurrencyId::Token(TokenSymbol::ACA))
 		);
-		assert_eq!(EvmCurrencyIdMapping::<Runtime>::u256_to_currency_id(&[255u8; 32]), None);
+		assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[255u8; 32]), None);
 
-		let mut id = [0u8; 32];
-		id[23] = 1;
+		let mut currency_id = [0u8; 32];
+		currency_id[11] = 1;
 		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::u256_to_currency_id(&id),
+			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&currency_id),
 			Some(CurrencyId::DexShare(
 				DexShare::Token(TokenSymbol::ACA),
 				DexShare::Token(TokenSymbol::ACA)
@@ -94,11 +146,12 @@ fn u256_to_currency_id_works() {
 		);
 
 		// CurrencyId::DexShare(Erc20, token)
-		let mut id = [0u8; 32];
-		id[23] = 1;
-		id[24..28].copy_from_slice(&Into::<u32>::into(ERC20).to_be_bytes()[..]);
+		let mut currency_id = [0u8; 32];
+		currency_id[11] = 1;
+		let id: u32 = ERC20.try_into().unwrap();
+		currency_id[12..16].copy_from_slice(&id.to_be_bytes()[..]);
 		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::u256_to_currency_id(&id),
+			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&currency_id),
 			Some(CurrencyId::DexShare(
 				DexShare::Erc20(H160::from_str("0x2000000000000000000000000000000000000001").unwrap()),
 				DexShare::Token(TokenSymbol::ACA)
@@ -106,7 +159,12 @@ fn u256_to_currency_id_works() {
 		);
 
 		// CurrencyId::Erc20
-		id[23] = 0;
-		assert_eq!(EvmCurrencyIdMapping::<Runtime>::u256_to_currency_id(&id), None);
+		currency_id[11] = 0;
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&currency_id),
+			Some(CurrencyId::Erc20(
+				H160::from_str("0x2000000000000000000000000000000000000000").unwrap()
+			))
+		);
 	});
 }

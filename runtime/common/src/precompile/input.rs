@@ -128,7 +128,7 @@ where
 			.try_into()
 			.map_err(|_| ExitError::Other("currency id param bytes too short".into()))?;
 
-		CurrencyIdMapping::u256_to_currency_id(bytes).ok_or_else(|| ExitError::Other("invalid currency id".into()))
+		CurrencyIdMapping::decode_currency_id(bytes).ok_or_else(|| ExitError::Other("invalid currency id".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
