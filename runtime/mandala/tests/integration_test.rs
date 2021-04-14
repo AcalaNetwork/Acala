@@ -34,12 +34,14 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
-pub use primitives::DexShare;
+pub use primitives::{DexShare, TradingPair};
+use sp_core::{bytes::from_hex, H256};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
+use std::{collections::BTreeMap, str::FromStr};
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -49,6 +51,13 @@ const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
 const LPTOKEN: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::XBTC));
+const LPTOKEN_ERC20: CurrencyId =
+	CurrencyId::DexShare(DexShare::Erc20(ERC20_ADDRESS_0), DexShare::Erc20(ERC20_ADDRESS_1));
+
+pub const ERC20_ADDRESS_0: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+pub const ERC20_0: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_0);
+pub const ERC20_ADDRESS_1: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+pub const ERC20_1: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_1);
 
 pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
 pub type DexModule = module_dex::Pallet<Runtime>;
@@ -99,7 +108,8 @@ impl ExtBuilder {
 
 		let native_currency_id = GetNativeCurrencyId::get();
 		let existential_deposit = NativeTokenExistentialDeposit::get();
-		let initial_enabled_trading_pairs = EnabledTradingPairs::get();
+		let mut initial_enabled_trading_pairs = EnabledTradingPairs::get();
+		initial_enabled_trading_pairs.push(TradingPair::new(ERC20_0, ERC20_1));
 
 		module_dex::GenesisConfig::<Runtime> {
 			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
@@ -146,6 +156,38 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
+
+		let mut accounts = BTreeMap::new();
+		let mut storage = BTreeMap::new();
+		storage.insert(
+			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
+		);
+		storage.insert(
+			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
+		);
+		accounts.insert(
+			ERC20_ADDRESS_0,
+			module_evm::GenesisAccount {
+				nonce: 1,
+				balance: 0,
+				storage: storage.clone(),
+				code: from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap(),
+			},
+		);
+		accounts.insert(
+			ERC20_ADDRESS_1,
+			module_evm::GenesisAccount {
+				nonce: 1,
+				balance: 0,
+				storage,
+				code: from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap(),
+			},
+		);
+		module_evm::GenesisConfig::<Runtime> { accounts }
+			.assimilate_storage(&mut t)
+			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| SystemModule::set_block_number(1));
@@ -477,6 +519,26 @@ fn test_dex_module() {
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10003, 10003000));
 
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20005998);
+
+			// Erc20
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(ALICE)),
+				EvmAccounts::eth_address(&alice()),
+				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+			));
+			assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1), (0, 0));
+			assert_eq!(Currencies::total_issuance(LPTOKEN_ERC20), 0);
+			assert_eq!(Currencies::free_balance(LPTOKEN_ERC20, &AccountId::from(ALICE)), 0);
+
+			assert_ok!(DexModule::add_liquidity(
+				origin_of(AccountId::from(ALICE)),
+				ERC20_0,
+				ERC20_1,
+				10000,
+				10000000,
+				false,
+			));
+			assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1), (10000, 10000000));
 		});
 }
 

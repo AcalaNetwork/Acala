@@ -134,7 +134,9 @@ impl TradingPair {
 	}
 
 	pub fn from_token_currency_ids(currency_id_0: CurrencyId, currency_id_1: CurrencyId) -> Option<Self> {
-		match currency_id_0.is_token_currency_id() && currency_id_1.is_token_currency_id() {
+		match (currency_id_0.is_token_currency_id() || currency_id_0.is_erc20_currency_id())
+			&& (currency_id_1.is_token_currency_id() || currency_id_1.is_erc20_currency_id())
+		{
 			true => Some(TradingPair::new(currency_id_1, currency_id_0)),
 			_ => None,
 		}

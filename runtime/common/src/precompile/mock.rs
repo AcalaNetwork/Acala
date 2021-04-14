@@ -297,7 +297,7 @@ impl module_dex::Config for Test {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type ModuleId = DEXModuleId;
-	type CurrencyIdMapping = (); //TODO use evm-manager
+	type CurrencyIdMapping = EvmCurrencyIdMapping;
 	type DEXIncentives = MockDEXIncentives;
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
