@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureOneOf, EnsureRoot, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
@@ -140,8 +140,6 @@ impl module_dex::Config for Runtime {
 thread_local! {
 	pub static TOTAL_COLLATERAL_AUCTION: RefCell<u32> = RefCell::new(0);
 	pub static TOTAL_COLLATERAL_IN_AUCTION: RefCell<Balance> = RefCell::new(0);
-	pub static TOTAL_DEBIT_AUCTION: RefCell<u32> = RefCell::new(0);
-	pub static TOTAL_SURPLUS_AUCTION: RefCell<u32> = RefCell::new(0);
 }
 
 pub struct MockAuctionManager;
@@ -161,34 +159,16 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		Ok(())
 	}
 
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) -> DispatchResult {
-		TOTAL_DEBIT_AUCTION.with(|v| *v.borrow_mut() += 1);
-		Ok(())
-	}
-
-	fn new_surplus_auction(_amount: Self::Balance) -> DispatchResult {
-		TOTAL_SURPLUS_AUCTION.with(|v| *v.borrow_mut() += 1);
-		Ok(())
-	}
-
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
-		Ok(())
+		unimplemented!()
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
 		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut())
 	}
 
-	fn get_total_surplus_in_auction() -> Self::Balance {
-		Default::default()
-	}
-
-	fn get_total_debit_in_auction() -> Self::Balance {
-		Default::default()
-	}
-
 	fn get_total_target_in_auction() -> Self::Balance {
-		Default::default()
+		unimplemented!()
 	}
 }
 
@@ -199,6 +179,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub const TreasuryAccount: AccountId = 10;
 }
 
 thread_local! {
@@ -210,10 +191,11 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type UpdateOrigin = EnsureOneOf<AccountId, EnsureRoot<AccountId>, EnsureSignedBy<One, AccountId>>;
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 

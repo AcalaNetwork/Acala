@@ -28,7 +28,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
@@ -38,7 +38,6 @@ use sp_runtime::{
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
-mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -55,33 +54,35 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The origin which may update parameters and handle
-		/// surplus/debit/collateral. Root can always do this.
+		/// surplus/collateral.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 		/// The Currency for managing assets related to CDP
 		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		#[pallet::constant]
 		/// Stablecoin currency id
+		#[pallet::constant]
 		type GetStableCurrencyId: Get<CurrencyId>;
 
-		/// Auction manager creates different types of auction to handle system
-		/// surplus and debit, and confiscated collateral assets
+		/// Auction manager creates auction to handle system surplus and debit
 		type AuctionManagerHandler: AuctionManager<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Dex manager is used to swap confiscated collateral assets to stable
 		/// currency
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-		#[pallet::constant]
 		/// The cap of lots number when create collateral auction on a
 		/// liquidation or to create debit/surplus auction on block end.
 		/// If set to 0, does not work.
+		#[pallet::constant]
 		type MaxAuctionsCount: Get<u32>;
 
 		#[pallet::constant]
+		type TreasuryAccount: Get<Self::AccountId>;
+
 		/// The CDP treasury's module id, keep surplus and collateral assets
 		/// from liquidation.
+		#[pallet::constant]
 		type ModuleId: Get<ModuleId>;
 
 		/// Weight information for the extrinsics in this module.
@@ -158,32 +159,16 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::WeightInfo::auction_surplus())]
+		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
 		#[transactional]
-		pub fn auction_surplus(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				Self::surplus_pool().saturating_sub(T::AuctionManagerHandler::get_total_surplus_in_auction()) >= amount,
-				Error::<T>::SurplusPoolNotEnough,
-			);
-			T::AuctionManagerHandler::new_surplus_auction(amount)?;
-			Ok(().into())
-		}
-
-		#[pallet::weight(T::WeightInfo::auction_debit())]
-		#[transactional]
-		pub fn auction_debit(
-			origin: OriginFor<T>,
-			debit_amount: Balance,
-			initial_price: Balance,
-		) -> DispatchResultWithPostInfo {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				Self::debit_pool().saturating_sub(T::AuctionManagerHandler::get_total_debit_in_auction())
-					>= debit_amount,
-				Error::<T>::DebitPoolNotEnough,
-			);
-			T::AuctionManagerHandler::new_debit_auction(initial_price, debit_amount)?;
+			T::Currency::transfer(
+				T::GetStableCurrencyId::get(),
+				&Self::account_id(),
+				&T::TreasuryAccount::get(),
+				amount,
+			)?;
 			Ok(().into())
 		}
 
@@ -255,14 +240,19 @@ impl<T: Config> Pallet<T> {
 		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
 
 		// Burn the amount that is equal to offset amount of stable currency.
-		if !offset_amount.is_zero()
-			&& T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount).is_ok()
-		{
-			DebitPool::<T>::mutate(|debit| {
-				*debit = debit
-					.checked_sub(offset_amount)
-					.expect("offset = min(debit, surplus); qed")
-			});
+		if !offset_amount.is_zero() {
+			let res = T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount);
+			if res.is_ok() {
+				DebitPool::<T>::mutate(|debit| {
+					*debit = debit
+						.checked_sub(offset_amount)
+						.expect("offset = min(debit, surplus); qed")
+				});
+			} else {
+				log::warn!(
+					"Warning: Attempt to burn surplus for offset debit failed. This is unexpected but should be safe"
+				);
+			}
 		}
 	}
 }

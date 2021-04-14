@@ -15,7 +15,6 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false, optional = true }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
@@ -38,10 +37,4 @@ std = [
 	"orml-tokens/std",
 	"support/std",
 	"primitives/std",
-	"frame-benchmarking/std",
-]
-runtime-benchmarks = [
-	"frame-benchmarking",
-	"frame-support/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
 ]

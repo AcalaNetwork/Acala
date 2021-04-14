@@ -122,12 +122,11 @@ fn karura_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-		KAR, KSM, KUSD, LKSM, RENBTC,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, CdpEngineConfig,
+		CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
+		HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
+		ParachainInfoConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -138,6 +137,9 @@ fn karura_genesis(
 
 	let initial_balance: u128 = 1_000_000 * dollar(KAR);
 	let initial_staking: u128 = 100_000 * dollar(KAR);
+
+	let mut unreleased_native = 100_000_000 * dollar(KAR); // 100 million KAR
+													   // if want to config vesting, should handle unreleased_native firstly.
 
 	let balances = initial_authorities
 		.iter()
@@ -159,10 +161,12 @@ fn karura_genesis(
 				} else {
 					acc.insert(account_id.clone(), amount);
 				}
+				unreleased_native = unreleased_native.saturating_sub(amount);
 				acc
 			},
 		)
 		.into_iter()
+		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	karura_runtime::GenesisConfig {
@@ -171,7 +175,6 @@ fn karura_genesis(
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_indices: IndicesConfig { indices: vec![] },
 		pallet_balances: BalancesConfig { balances },
 		pallet_sudo: SudoConfig { key: root_key.clone() },
 		pallet_collective_Instance1: Default::default(),
@@ -195,10 +198,6 @@ fn karura_genesis(
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
-			members: endowed_accounts.clone(),
-			phantom: Default::default(),
-		},
-		pallet_membership_Instance6: OperatorMembershipBandConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
 		},
@@ -246,10 +245,6 @@ fn karura_genesis(
 			), /* 5% APR */
 		},
 		orml_oracle_Instance1: AcalaOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
-		},
-		orml_oracle_Instance2: BandOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		},

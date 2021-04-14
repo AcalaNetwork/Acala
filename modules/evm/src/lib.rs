@@ -148,6 +148,7 @@ pub mod module {
 		type Precompiles: Precompiles;
 
 		/// Chain ID of EVM.
+		#[pallet::constant]
 		type ChainId: Get<u64>;
 
 		/// Convert gas to weight.
@@ -176,6 +177,7 @@ pub mod module {
 		#[pallet::constant]
 		type DeploymentFee: Get<BalanceOf<Self>>;
 
+		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
 		type FreeDeploymentOrigin: EnsureOrigin<Self::Origin>;
@@ -475,11 +477,12 @@ pub mod module {
 				if !refund_gas.is_zero() {
 					// ignore the result to continue. if it fails, just the user will not
 					// be refunded, there will not increase user balance.
-					let _ = T::ChargeTransactionPayment::refund_fee(
+					let res = T::ChargeTransactionPayment::refund_fee(
 						&_from_account,
 						T::GasToWeight::convert(refund_gas),
 						_payed,
 					);
+					debug_assert!(res.is_ok());
 				}
 			}
 
@@ -1077,10 +1080,12 @@ pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
 		if let Some(address) = T::AddressMapping::get_evm_address(who) {
-			let _ = Pallet::<T>::remove_account(&address);
+			let res = Pallet::<T>::remove_account(&address);
+			debug_assert!(res.is_ok());
 		}
 		let address = T::AddressMapping::get_default_evm_address(who);
-		let _ = Pallet::<T>::remove_account(&address);
+		let res = Pallet::<T>::remove_account(&address);
+		debug_assert!(res.is_ok());
 	}
 }
 

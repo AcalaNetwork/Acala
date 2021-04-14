@@ -117,7 +117,6 @@ pub enum AuthoritysOriginId {
 pub enum DataProviderId {
 	Aggregated = 0,
 	Acala = 1,
-	Band = 2,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]

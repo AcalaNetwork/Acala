@@ -48,7 +48,7 @@ pub use frame_support::{
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use hex_literal::hex;
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::{AddressMapping, CallInfo, CreateInfo};
+use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
@@ -67,7 +67,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, SaturatedConversion, StaticLookup, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId, MultiAddress,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, ModuleId,
 };
 use sp_std::prelude::*;
 
@@ -180,6 +180,8 @@ parameter_types! {
 	pub const DSWFModuleId: ModuleId = ModuleId(*b"aca/dswf");
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"aca/phre";
 	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
+	// Vault all unrleased native token.
+	pub UnreleasedNativeVaultAccountId: AccountId = ModuleId(*b"aca/urls").into_account();
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -695,7 +697,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryModuleAccount: AccountId = AcalaTreasuryModuleId::get().into_account();
+	pub AcalaTreasuryAccount: AccountId = AcalaTreasuryModuleId::get().into_account();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -705,7 +707,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryModuleAccount>;
+	type OnDust = orml_tokens::TransferDust<Runtime, AcalaTreasuryAccount>;
 }
 
 parameter_types! {
@@ -826,7 +828,6 @@ impl module_auction_manager::Config for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type DEX = Dex;
 	type PriceSource = Prices;
@@ -977,6 +978,7 @@ impl module_dex::Config for Runtime {
 
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 100;
+	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryModuleId::get().into_account();
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -988,6 +990,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type TreasuryAccount = HonzonTreasuryAccount;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
 
@@ -1055,12 +1058,13 @@ parameter_types! {
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
+	type NativeRewardsSource = UnreleasedNativeVaultAccountId;
 	type RewardsVaultAccountId = ZeroAccountId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
-	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
+	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
 	type Currency = Currencies;
 	type DEX = Dex;
@@ -1288,7 +1292,7 @@ impl module_evm::Config for Runtime {
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
 	type DeploymentFee = DeploymentFee;
-	type TreasuryAccount = TreasuryModuleAccount;
+	type TreasuryAccount = AcalaTreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
@@ -1675,85 +1679,85 @@ macro_rules! construct_mandala_runtime {
 
 				TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 4,
 				EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 5,
-				EvmManager: module_evm_manager::{Pallet, Storage} = 65, //TODO
-				Currencies: module_currencies::{Pallet, Call, Event<T>} = 6,
-				Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 7,
-				Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 8,
+				EvmManager: module_evm_manager::{Pallet, Storage} = 6,
+				Currencies: module_currencies::{Pallet, Call, Event<T>} = 7,
+				Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 8,
+				Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 9,
 
-				AcalaTreasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 9,
-				Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 10,
-				Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 11,
+				AcalaTreasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 10,
+				Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 11,
+				Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 12,
 
 				// Utility
-				Utility: pallet_utility::{Pallet, Call, Event} = 12,
-				Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 13,
-				Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 14,
-				Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 15,
-				Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 16,
+				Utility: pallet_utility::{Pallet, Call, Event} = 13,
+				Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 14,
+				Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 15,
+				Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 16,
+				Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 17,
 
-				Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 17,
-				GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 18,
+				Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 18,
+				GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 19,
 
 				// Governance
-				GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 19,
-				GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 20,
-				HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 21,
-				HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 22,
-				HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 23,
-				HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 24,
-				TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 25,
-				TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 26,
+				GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 20,
+				GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 21,
+				HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 22,
+				HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 23,
+				HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 24,
+				HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 25,
+				TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 26,
+				TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 27,
 
-				Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 27,
-				ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 28,
+				Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 28,
+				ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 29,
 
 				// Oracle
-				AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 29,
-				BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Config<T>, Event<T>} = 30,
+				AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 30,
+				BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Config<T>, Event<T>} = 31,
 				// OperatorMembership must be placed after Oracle or else will have race condition on initialization
-				OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 31,
-				OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 32,
+				OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 32,
+				OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 33,
 
 				// ORML Core
-				Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 33,
-				Rewards: orml_rewards::{Pallet, Storage, Call} = 34,
-				OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 35,
+				Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 34,
+				Rewards: orml_rewards::{Pallet, Storage, Call} = 35,
+				OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 36,
 
 				// Acala Core
-				Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 36,
+				Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 37,
 
 				// DEX
-				Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 37,
+				Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 38,
 
 				// Honzon
-				AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 38,
-				Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 39,
-				Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 40,
-				CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 41,
-				CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 42,
-				EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 43,
+				AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 39,
+				Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 40,
+				Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 41,
+				CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 42,
+				CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 43,
+				EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 44,
 
 				// Homa
-				Homa: module_homa::{Pallet, Call} = 44,
-				NomineesElection: module_nominees_election::{Pallet, Call, Storage} = 45,
-				StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 46,
-				PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 47,
-				HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 48,
+				Homa: module_homa::{Pallet, Call} = 45,
+				NomineesElection: module_nominees_election::{Pallet, Call, Storage} = 46,
+				StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 47,
+				PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 48,
+				HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 49,
 
 				// Acala Other
-				Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 49,
-				AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 50,
-				NFT: module_nft::{Pallet, Call, Event<T>} = 51,
+				Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 50,
+				AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 51,
+				NFT: module_nft::{Pallet, Call, Event<T>} = 52,
 
 				// Ecosystem modules
-				RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 52,
+				RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 53,
 
 				// Smart contracts
-				EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 53,
-				EVMBridge: module_evm_bridge::{Pallet} = 54,
+				EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 54,
+				EVMBridge: module_evm_bridge::{Pallet} = 55,
 
 				// Dev
-				Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 55,
+				Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 56,
 
 				$($modules)*
 			}
@@ -1764,23 +1768,23 @@ macro_rules! construct_mandala_runtime {
 #[cfg(feature = "standalone")]
 construct_mandala_runtime! {
 	// Consensus & Staking
-	Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 56,
-	Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 57,
-	Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event, ValidateUnsigned} = 58,
-	ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 59,
-	Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 60,
-	Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 61,
-	Historical: pallet_session_historical::{Pallet} = 62,
+	Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 57,
+	Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 58,
+	Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event, ValidateUnsigned} = 59,
+	ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 60,
+	Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 61,
+	Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 62,
+	Historical: pallet_session_historical::{Pallet} = 63,
 }
 
 #[cfg(not(feature = "standalone"))]
 construct_mandala_runtime! {
 	// Parachain
-	ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 56,
-	ParachainInfo: parachain_info::{Pallet, Storage, Config} = 57,
-	XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 58,
-	XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 59,
-	UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 60,
+	ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 57,
+	ParachainInfo: parachain_info::{Pallet, Storage, Config} = 58,
+	XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 59,
+	XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 60,
+	UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 61,
 }
 
 /// The address format for describing accounts.
@@ -1997,7 +2001,6 @@ impl_runtime_apis! {
 		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_no_op(&key),
-				DataProviderId::Band => BandOracle::get_no_op(&key),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_no_op(&key)
 			}
 		}
@@ -2005,7 +2008,6 @@ impl_runtime_apis! {
 		fn get_all_values(provider_id: DataProviderId) -> Vec<(CurrencyId, Option<TimeStampedPrice>)> {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_all_values(),
-				DataProviderId::Band => BandOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
 			}
 		}
@@ -2111,17 +2113,7 @@ impl_runtime_apis! {
 				_ => None,
 			};
 
-			let mut request = request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))?;
-			let signature = utx.signature.ok_or(sp_runtime::DispatchError::Other("Invalid parameter signature, miss signature"))?;
-			let account = match signature.0 {
-				MultiAddress::Id(account) => Some(account),
-				_ => None,
-			}.ok_or(sp_runtime::DispatchError::Other("Invalid parameter signature, not MultiAddress::Id"))?;
-
-			request.from = Some(EvmAddressMapping::<Runtime>::get_evm_address(&account)
-								.ok_or(sp_runtime::DispatchError::Other("Invalid parameter signature, not mapping evm address"))?);
-
-			Ok(request)
+			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
 		}
 	}
 
@@ -2135,7 +2127,6 @@ impl_runtime_apis! {
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft::benchmarking::Pallet as NftBench;
-			impl module_nft::benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number

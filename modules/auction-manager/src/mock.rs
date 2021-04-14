@@ -28,7 +28,7 @@ use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::IdentityLookup,
+	traits::{AccountIdConversion, IdentityLookup},
 	ModuleId,
 };
 use sp_std::cell::RefCell;
@@ -42,7 +42,6 @@ pub type Amount = i64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CAROL: AccountId = 3;
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 
@@ -112,6 +111,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub TreasuryAccount: AccountId = ModuleId(*b"aca/hztr").into_account();
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -123,6 +123,7 @@ impl cdp_treasury::Config for Runtime {
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 
@@ -188,7 +189,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
@@ -200,7 +200,6 @@ impl Config for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type DEX = DEXModule;
 	type PriceSource = MockPriceSource;
@@ -251,9 +250,6 @@ impl Default for ExtBuilder {
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
 				(CAROL, BTC, 1000),
-				(ALICE, ACA, 1000),
-				(BOB, ACA, 1000),
-				(CAROL, ACA, 1000),
 			],
 		}
 	}

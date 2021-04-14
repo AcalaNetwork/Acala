@@ -29,12 +29,9 @@ use frame_system::RawOrigin;
 use sp_runtime::traits::{AccountIdConversion, StaticLookup, UniqueSaturatedInto};
 
 pub use crate::*;
-use orml_traits::BasicCurrencyExtended;
 use primitives::Balance;
 
 pub struct Module<T: Config>(crate::Pallet<T>);
-
-pub trait Config: crate::Config + orml_nft::Config + pallet_proxy::Config + module_currencies::Config {}
 
 const SEED: u32 = 0;
 
@@ -49,7 +46,7 @@ benchmarks! {
 		let caller: T::AccountId = account("caller", 0, SEED);
 		let base_currency_amount = dollar(1000);
 
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 	}: _(RawOrigin::Signed(caller), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))
 
 	// mint NFT token
@@ -61,11 +58,11 @@ benchmarks! {
 		let to_lookup = T::Lookup::unlookup(to);
 
 		let base_currency_amount = dollar(1000);
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&module_account, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 	}: _(RawOrigin::Signed(module_account), to_lookup, 0u32.into(), vec![1], i)
 
 	// transfer NFT token to another account
@@ -76,11 +73,11 @@ benchmarks! {
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
 		let base_currency_amount = dollar(1000);
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&module_account, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), caller_lookup, (0u32.into(), 0u32.into()))
 
@@ -91,32 +88,32 @@ benchmarks! {
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
 		let base_currency_amount = dollar(1000);
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&module_account, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()))
 
 	// destroy NFT class
 	destroy_class {
 		let caller: T::AccountId = account("caller", 0, SEED);
-		let to: T::AccountId = account("to", 0, SEED);
-		let to_lookup = T::Lookup::unlookup(to);
+		let caller_lookup = T::Lookup::unlookup(caller.clone());
 
 		let base_currency_amount = dollar(1000);
 
-		<T as module_currencies::Config>::NativeCurrency::update_balance(&caller, base_currency_amount.unique_saturated_into())?;
+		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::ModuleId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-	}: _(RawOrigin::Signed(module_account), 0u32.into(), to_lookup)
+	}: _(RawOrigin::Signed(module_account), 0u32.into(), caller_lookup)
 }
 
 #[cfg(test)]
 mod mock {
 	use super::*;
+	use crate as nft;
 
 	use codec::{Decode, Encode};
 	use frame_support::{
@@ -125,15 +122,12 @@ mod mock {
 		weights::Weight,
 		RuntimeDebug,
 	};
-	use orml_traits::parameter_type_with_key;
-	use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId};
 	use sp_core::{crypto::AccountId32, H256};
 	use sp_runtime::{
 		testing::Header,
 		traits::{BlakeTwo256, IdentityLookup},
-		DispatchError, DispatchResult, ModuleId, Perbill,
+		ModuleId, Perbill,
 	};
-	use support::{EVMBridge, InvokeContext};
 
 	parameter_types! {
 		pub const BlockHashCount: u64 = 250;
@@ -243,58 +237,6 @@ mod mock {
 		type AnnouncementDepositFactor = AnnouncementDepositFactor;
 	}
 
-	pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-
-	parameter_type_with_key! {
-		pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-			Default::default()
-		};
-	}
-
-	impl orml_tokens::Config for Runtime {
-		type Event = ();
-		type Balance = Balance;
-		type Amount = Amount;
-		type CurrencyId = CurrencyId;
-		type WeightInfo = ();
-		type ExistentialDeposits = ExistentialDeposits;
-		type OnDust = ();
-	}
-
-	pub struct MockEVMBridge;
-	impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
-	where
-		AccountId: Default,
-		Balance: Default,
-	{
-		fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-			Ok(Default::default())
-		}
-
-		fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
-			Ok(Default::default())
-		}
-
-		fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
-			Ok(())
-		}
-
-		fn get_origin() -> Option<AccountId> {
-			None
-		}
-
-		fn set_origin(_origin: AccountId) {}
-	}
-
-	impl module_currencies::Config for Runtime {
-		type Event = ();
-		type MultiCurrency = Tokens;
-		type NativeCurrency = NativeCurrency;
-		type WeightInfo = ();
-		type AddressMapping = MockAddressMapping;
-		type EVMBridge = MockEVMBridge;
-	}
-
 	parameter_types! {
 		pub const CreateClassDeposit: Balance = 200;
 		pub const CreateTokenDeposit: Balance = 100;
@@ -305,7 +247,6 @@ mod mock {
 		type CreateClassDeposit = CreateClassDeposit;
 		type CreateTokenDeposit = CreateTokenDeposit;
 		type ModuleId = NftModuleId;
-		type Currency = NativeCurrency;
 		type WeightInfo = ();
 	}
 
@@ -328,17 +269,13 @@ mod mock {
 			System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 			Utility: pallet_utility::{Pallet, Call, Event},
 			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-			Currencies: module_currencies::{Pallet, Call, Event<T>},
-			Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 			Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 			OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
-			NFT: crate::{Pallet, Call, Event<T>},
+			NFT: nft::{Pallet, Call, Event<T>},
 		}
 	);
 
 	use frame_system::Call as SystemCall;
-
-	impl crate::Config for Runtime {}
 
 	pub fn new_test_ext() -> sp_io::TestExternalities {
 		let t = frame_system::GenesisConfig::default()
@@ -354,8 +291,8 @@ mod mock {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{new_test_ext, Runtime};
 	use frame_support::assert_ok;
+	use mock::{new_test_ext, Runtime};
 
 	#[test]
 	fn test_create_class() {

@@ -26,7 +26,11 @@ use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, ModuleId};
+use sp_runtime::{
+	testing::Header,
+	traits::{AccountIdConversion, IdentityLookup},
+	ModuleId,
+};
 use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;
@@ -132,20 +136,8 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		Ok(())
 	}
 
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn new_surplus_auction(_amount: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
 		Ok(())
-	}
-
-	fn get_total_debit_in_auction() -> Self::Balance {
-		Default::default()
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
@@ -153,10 +145,6 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		Default::default()
-	}
-
-	fn get_total_surplus_in_auction() -> Self::Balance {
 		Default::default()
 	}
 }
@@ -169,6 +157,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
 	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub TreasuryAccount: AccountId = ModuleId(*b"aca/hztr").into_account();
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -180,6 +169,7 @@ impl cdp_treasury::Config for Runtime {
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type ModuleId = CDPTreasuryModuleId;
+	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 
