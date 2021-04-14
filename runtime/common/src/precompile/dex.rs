@@ -112,7 +112,7 @@ where
 				for i in 0..path_len {
 					path.push(input.currency_id_at((2 + i) as usize)?);
 				}
-				let supply_amount = input.balance_at((path_len + 1) as usize)?;
+				let supply_amount = input.balance_at((path_len + 2) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: get_swap_target_amount path: {:?}, supply_amount: {:?}",
@@ -134,7 +134,7 @@ where
 				for i in 0..path_len {
 					path.push(input.currency_id_at((2 + i) as usize)?);
 				}
-				let target_amount = input.balance_at((path_len + 1) as usize)?;
+				let target_amount = input.balance_at((path_len + 2) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: get_swap_supply_amount path: {:?}, target_amount: {:?}",

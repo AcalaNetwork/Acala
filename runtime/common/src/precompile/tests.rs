@@ -485,7 +485,7 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 		U256::from(1).to_big_endian(&mut input[5 * 32..6 * 32]);
 
 		let mut expected_output = [0u8; 32];
-		U256::from(999999).to_big_endian(&mut expected_output[..32]);
+		U256::from(989).to_big_endian(&mut expected_output[..32]);
 
 		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
@@ -531,7 +531,7 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 		U256::from(1).to_big_endian(&mut input[5 * 32..6 * 32]);
 
 		let mut expected_output = [0u8; 32];
-		U256::from(999999).to_big_endian(&mut expected_output[..32]);
+		U256::from(1).to_big_endian(&mut expected_output[..32]);
 
 		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
