@@ -207,7 +207,7 @@ fn karura_genesis(
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
-			collateral_auction_maximum_size: vec![
+			expected_collateral_auction_size: vec![
 				(KSM, dollar(KSM)), // (currency_id, max size of a collateral auction)
 				(RENBTC, 5 * cent(RENBTC)),
 			],
