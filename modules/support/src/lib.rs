@@ -373,22 +373,22 @@ pub trait EVMBridge<AccountId, Balance> {
 #[cfg(feature = "std")]
 impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 	fn name(_context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
-		Ok(Default::default())
+		Err(DispatchError::Other("unimplemented evm bridge"))
 	}
 	fn symbol(_context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
-		Ok(Default::default())
+		Err(DispatchError::Other("unimplemented evm bridge"))
 	}
 	fn decimals(_context: InvokeContext) -> Result<u8, DispatchError> {
-		Ok(Default::default())
+		Err(DispatchError::Other("unimplemented evm bridge"))
 	}
 	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
+		Err(DispatchError::Other("unimplemented evm bridge"))
 	}
 	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
+		Err(DispatchError::Other("unimplemented evm bridge"))
 	}
 	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
-		Ok(())
+		Err(DispatchError::Other("unimplemented evm bridge"))
 	}
 	fn get_origin() -> Option<AccountId> {
 		None
@@ -482,6 +482,8 @@ pub trait AddressMapping<AccountId> {
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
+/// A mapping between u32 and Erc20 address.
+/// provide a way to encode/decode for CurrencyId;
 pub trait CurrencyIdMapping {
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
@@ -493,7 +495,7 @@ pub trait CurrencyIdMapping {
 #[cfg(feature = "std")]
 impl CurrencyIdMapping for () {
 	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
-		Ok(())
+		Err(DispatchError::Other("unimplemented CurrencyIdMapping"))
 	}
 
 	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {

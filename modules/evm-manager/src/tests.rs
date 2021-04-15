@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 use mock::{ExtBuilder, Runtime, ERC20, ERC20_ADDRESS};
 use orml_utilities::with_transaction_result;
 use primitives::TokenSymbol;
@@ -38,6 +38,14 @@ fn set_erc20_mapping_works() {
 		assert_ok!(with_transaction_result(|| -> DispatchResult {
 			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
 		}));
+
+		let address: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+		assert_noop!(
+			with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(address)
+			}),
+			Error::<Runtime>::CurrencyIdExisted,
+		);
 	});
 }
 

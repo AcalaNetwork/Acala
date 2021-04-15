@@ -20,8 +20,8 @@
 //!
 //! ## Overview
 //!
-//! Evm Manager module provide a two way mapping between CurrencyId and
-//! ERC20 address so user can use ERC20 address as LP token.
+//! Evm Manager module provide a way mapping between CurrencyId and
+//! Erc20 address so user can use Erc20 address as LP token.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -59,6 +59,9 @@ pub mod module {
 		CurrencyIdExisted,
 	}
 
+	/// Mapping between u32 and Erc20 address.
+	/// Erc20 address is 20 byte, take the first 4 non-zero bytes, if it is less
+	/// than 4, add 0 to the left.
 	#[pallet::storage]
 	#[pallet::getter(fn currency_id_map)]
 	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info>;
