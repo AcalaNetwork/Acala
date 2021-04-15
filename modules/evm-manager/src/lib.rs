@@ -20,8 +20,9 @@
 //!
 //! ## Overview
 //!
-//! Evm Manager module provide a way mapping between CurrencyId and
-//! Erc20 address so user can use Erc20 address as LP token.
+//! Evm manager module provides common support features for Evm, including:
+//! - A two way mapping between `u32` and `Erc20 address` so user can use Erc20
+//!   address as LP token.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
