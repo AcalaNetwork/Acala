@@ -82,6 +82,8 @@ impl<T: Config> Pallet<T> {}
 pub struct EvmCurrencyIdMapping<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
+	// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm address.
+	// Take the first 4 non-zero bytes, if it is less than 4, add 0 to the left.
 	#[require_transactional]
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult {
 		let id: u32 = CurrencyId::Erc20(address)
@@ -117,10 +119,14 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 		})
 	}
 
+	// Returns the EvmAddress associated with a given u32.
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress> {
 		CurrencyIdMap::<T>::get(currency_id).map(|v| v.address)
 	}
 
+	// Returns the decimals associated with a given CurrencyId.
+	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	// the EvmAddress must have been mapped.
 	fn decimals(currency_id: CurrencyId) -> Option<u8> {
 		match currency_id {
 			CurrencyId::Token(_) => currency_id.decimals(),
@@ -131,7 +137,9 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 						let id: u32 = CurrencyId::Erc20(address)
 							.try_into()
 							.expect("CurrencyId::Erc20 into u32 is success; qed");
-						CurrencyIdMap::<T>::get(id).map(|v| v.decimals)
+						CurrencyIdMap::<T>::get(id)
+							.filter(|v| v.address == address)
+							.map(|v| v.decimals)
 					}
 				};
 				let decimals_1 = match symbol_1 {
@@ -140,7 +148,9 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 						let id: u32 = CurrencyId::Erc20(address)
 							.try_into()
 							.expect("CurrencyId::Erc20 into u32 is success; qed");
-						CurrencyIdMap::<T>::get(id).map(|v| v.decimals)
+						CurrencyIdMap::<T>::get(id)
+							.filter(|v| v.address == address)
+							.map(|v| v.decimals)
 					}
 				};
 				if decimals_0.is_none() || decimals_1.is_none() {
@@ -152,14 +162,17 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				let id: u32 = CurrencyId::Erc20(address)
 					.try_into()
 					.expect("CurrencyId::Erc20 into u32 is success; qed");
-				CurrencyIdMap::<T>::get(id).map(|v| v.decimals)
+				CurrencyIdMap::<T>::get(id)
+					.filter(|v| v.address == address)
+					.map(|v| v.decimals)
 			}
 		}
 	}
 
-	/// Note the pre-deployed Erc20 contracts depend on `CurrencyId`
-	/// implementation, and need to be updated if any change.
-	fn encode_currency_id(val: CurrencyId) -> [u8; 32] {
+	// Encode the CurrencyId to [u8; 32].
+	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	// the EvmAddress must have been mapped.
+	fn encode_currency_id(val: CurrencyId) -> Option<[u8; 32]> {
 		let mut bytes = [0u8; 32];
 		match val {
 			CurrencyId::Token(_) => {
@@ -179,7 +192,11 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 						let id: u32 = CurrencyId::Erc20(address)
 							.try_into()
 							.expect("CurrencyId::Erc20 into u32 is success; qed");
-						bytes[12..16].copy_from_slice(&id.to_be_bytes()[..])
+						if CurrencyIdMap::<T>::get(id).filter(|v| v.address == address).is_some() {
+							bytes[12..16].copy_from_slice(&id.to_be_bytes()[..])
+						} else {
+							return None;
+						}
 					}
 				}
 				match right {
@@ -193,7 +210,11 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 						let id: u32 = CurrencyId::Erc20(address)
 							.try_into()
 							.expect("CurrencyId::Erc20 into u32 is success; qed");
-						bytes[16..20].copy_from_slice(&id.to_be_bytes()[..])
+						if CurrencyIdMap::<T>::get(id).filter(|v| v.address == address).is_some() {
+							bytes[16..20].copy_from_slice(&id.to_be_bytes()[..])
+						} else {
+							return None;
+						}
 					}
 				}
 			}
@@ -201,9 +222,12 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				bytes[12..32].copy_from_slice(&address[..]);
 			}
 		}
-		bytes
+		Some(bytes)
 	}
 
+	// Decode the [u8; 32] to CurrencyId.
+	// If is CurrencyId::DexShare and contain DexShare::Erc20,
+	// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
 		// token/dex flag(1byte) | evm address(20byte)
 		// token/dex flag(1byte) | dex left(4byte) | dex right(4byte)

@@ -475,20 +475,42 @@ pub trait Contains<T> {
 
 /// A mapping between `AccountId` and `EvmAddress`.
 pub trait AddressMapping<AccountId> {
+	/// Returns the AccountId used go generate the given EvmAddress.
 	fn get_account_id(evm: &EvmAddress) -> AccountId;
+	/// Returns the EvmAddress associated with a given AccountId or the
+	/// underlying EvmAddress of the AccountId.
+	/// Returns None if there is no EvmAddress associated with the AccountId
+	/// and there is no underlying EvmAddress in the AccountId.
 	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
+	/// Returns the EVM address associated with an account ID and generates an
+	/// account mapping if no association exists.
 	fn get_or_create_evm_address(account_id: &AccountId) -> EvmAddress;
+	/// Returns the default EVM address associated with an account ID.
 	fn get_default_evm_address(account_id: &AccountId) -> EvmAddress;
+	/// Returns true if a given AccountId is associated with a given EvmAddress
+	/// and false if is not.
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
 /// A mapping between u32 and Erc20 address.
 /// provide a way to encode/decode for CurrencyId;
 pub trait CurrencyIdMapping {
+	/// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm
+	/// address.
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
+	/// Returns the EvmAddress associated with a given u32.
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
+	/// Returns the decimals associated with a given CurrencyId.
+	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// the EvmAddress must have been mapped.
 	fn decimals(currency_id: CurrencyId) -> Option<u8>;
-	fn encode_currency_id(v: CurrencyId) -> [u8; 32];
+	/// Encode the CurrencyId to [u8; 32].
+	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// the EvmAddress must have been mapped.
+	fn encode_currency_id(v: CurrencyId) -> Option<[u8; 32]>;
+	/// Decode the [u8; 32] to CurrencyId.
+	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
 }
 
@@ -506,8 +528,8 @@ impl CurrencyIdMapping for () {
 		None
 	}
 
-	fn encode_currency_id(_v: CurrencyId) -> [u8; 32] {
-		Default::default()
+	fn encode_currency_id(_v: CurrencyId) -> Option<[u8; 32]> {
+		None
 	}
 
 	fn decode_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {

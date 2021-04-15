@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{ExtBuilder, Runtime, ERC20, ERC20_ADDRESS};
+use mock::{ExtBuilder, Runtime, ERC20, ERC20_ADDRESS, ERC20_ADDRESS_NOT_EXISTS, ERC20_NOT_EXISTS};
 use orml_utilities::with_transaction_result;
 use primitives::TokenSymbol;
 use sp_core::H160;
@@ -39,10 +39,9 @@ fn set_erc20_mapping_works() {
 			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
 		}));
 
-		let address: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
 		assert_noop!(
 			with_transaction_result(|| -> DispatchResult {
-				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(address)
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS_NOT_EXISTS)
 			}),
 			Error::<Runtime>::CurrencyIdExisted,
 		);
@@ -75,29 +74,34 @@ fn decimals_works() {
 			Some(12)
 		);
 		assert_eq!(EvmCurrencyIdMapping::<Runtime>::decimals(ERC20), Some(17));
+
+		assert_eq!(EvmCurrencyIdMapping::<Runtime>::decimals(ERC20_NOT_EXISTS), None);
 	});
 }
 
 #[test]
 fn encode_currency_id_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(with_transaction_result(|| -> DispatchResult {
+			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
+		}));
 		let mut bytes = [0u8; 32];
 		assert_eq!(
 			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::ACA)),
-			bytes
+			Some(bytes)
 		);
 
 		bytes[15] = 1;
 		assert_eq!(
 			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::AUSD)),
-			bytes
+			Some(bytes)
 		);
 
 		let mut bytes = [0u8; 32];
 		bytes[12..32].copy_from_slice(&ERC20_ADDRESS.as_bytes()[..]);
 		assert_eq!(
 			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Erc20(ERC20_ADDRESS)),
-			bytes
+			Some(bytes)
 		);
 
 		let mut bytes = [0u8; 32];
@@ -111,7 +115,7 @@ fn encode_currency_id_works() {
 				DexShare::Token(TokenSymbol::ACA),
 				DexShare::Token(TokenSymbol::AUSD)
 			)),
-			bytes
+			Some(bytes)
 		);
 
 		let mut bytes = [0u8; 32];
@@ -125,7 +129,15 @@ fn encode_currency_id_works() {
 				DexShare::Erc20(ERC20_ADDRESS),
 				DexShare::Erc20(ERC20_ADDRESS)
 			)),
-			bytes
+			Some(bytes)
+		);
+
+		assert_eq!(
+			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
+				DexShare::Erc20(ERC20_ADDRESS_NOT_EXISTS),
+				DexShare::Erc20(ERC20_ADDRESS_NOT_EXISTS)
+			)),
+			None
 		);
 	});
 }

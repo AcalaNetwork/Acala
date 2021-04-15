@@ -171,7 +171,9 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+pub const ERC20_ADDRESS_NOT_EXISTS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
 pub const ERC20: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS);
+pub const ERC20_NOT_EXISTS: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_NOT_EXISTS);
 
 construct_runtime!(
 	pub enum Runtime where

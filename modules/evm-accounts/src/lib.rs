@@ -293,6 +293,7 @@ where
 		})
 	}
 
+	// Returns the default EVM address associated with an account ID.
 	fn get_default_evm_address(account_id: &T::AccountId) -> EvmAddress {
 		account_to_default_evm_address(account_id)
 	}
