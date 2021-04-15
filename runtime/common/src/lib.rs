@@ -367,7 +367,7 @@ impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
 }
 
 pub fn dollar(currency_id: CurrencyId) -> Balance {
-	10u128.saturating_pow(currency_id.decimals())
+	10u128.saturating_pow(currency_id.decimals().expect("Not support Erc20 decimals").into())
 }
 
 pub fn cent(currency_id: CurrencyId) -> Balance {

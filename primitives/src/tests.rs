@@ -17,61 +17,45 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use std::convert::TryInto;
+use crate::evm::EvmAddress;
+use std::{convert::TryInto, str::FromStr};
 
 use frame_support::{assert_err, assert_ok};
 
 #[test]
-fn currency_id_to_bytes_works() {
-	assert_eq!(Into::<[u8; 32]>::into(CurrencyId::Token(TokenSymbol::ACA)), [0u8; 32]);
-
-	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, 1, 0][..]);
-	assert_eq!(Into::<[u8; 32]>::into(CurrencyId::Token(TokenSymbol::AUSD)), bytes);
-
-	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, 5, 0][..]);
-	assert_eq!(Into::<[u8; 32]>::into(CurrencyId::Token(TokenSymbol::RENBTC)), bytes);
-
-	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 0, 1][..]);
-	assert_eq!(
-		Into::<[u8; 32]>::into(CurrencyId::DEXShare(TokenSymbol::ACA, TokenSymbol::AUSD)),
-		bytes
-	);
-}
-
-#[test]
 fn currency_id_try_from_bytes_works() {
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, 1, 0][..]);
+	bytes[11..16].copy_from_slice(&[0, 0, 0, 0, 1][..]);
 	assert_ok!(bytes.try_into(), CurrencyId::Token(TokenSymbol::AUSD));
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[0, u8::MAX, 0][..]);
+	bytes[11..16].copy_from_slice(&[0, 0, 0, 0, u8::MAX][..]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 0, 1][..]);
-	assert_ok!(
-		bytes.try_into(),
-		CurrencyId::DEXShare(TokenSymbol::ACA, TokenSymbol::AUSD)
-	);
-
-	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, u8::MAX, 0][..]);
+	bytes[11..20].copy_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, 1][..]);
+	// No support CurrencyId::DexShare. EVM-manager deals with it.
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 
 	let mut bytes = [0u8; 32];
-	bytes[29..].copy_from_slice(&[1, 0, u8::MAX][..]);
+	bytes[11..20].copy_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, u8::MAX]);
+	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
+
+	let mut bytes = [0u8; 32];
+	bytes[11..20].copy_from_slice(&[1, 0, 0, 0, u8::MAX, 0, 0, 0, 0]);
 	assert_err!(TryInto::<CurrencyId>::try_into(bytes), ());
 }
 
 #[test]
-fn currency_id_encode_decode_bytes_works() {
-	let currency_id = CurrencyId::Token(TokenSymbol::AUSD);
-	let bytes: [u8; 32] = currency_id.into();
-	assert_ok!(bytes.try_into(), currency_id)
+fn currency_id_decode_bytes_works() {
+	let mut bytes = [0u8; 32];
+	assert_ok!(bytes.try_into(), CurrencyId::Token(TokenSymbol::ACA));
+
+	bytes[12] = 32;
+	assert_ok!(
+		bytes.try_into(),
+		CurrencyId::Erc20(EvmAddress::from_str("0x2000000000000000000000000000000000000000").unwrap())
+	);
 }
 
 #[test]
@@ -80,4 +64,19 @@ fn currency_id_try_from_vec_u8_works() {
 		"ACA".as_bytes().to_vec().try_into(),
 		CurrencyId::Token(TokenSymbol::ACA)
 	);
+}
+
+#[test]
+fn currency_id_try_into_u32_works() {
+	let currency_id = CurrencyId::Erc20(EvmAddress::from_str("0x2000000000000000000000000000000000000000").unwrap());
+	assert_eq!(currency_id.try_into(), Ok(0x20000000));
+
+	let currency_id = CurrencyId::Erc20(EvmAddress::from_str("0x0000000000000001000000000000000000000000").unwrap());
+	assert_eq!(currency_id.try_into(), Ok(0x01000000));
+
+	let currency_id = CurrencyId::Erc20(EvmAddress::from_str("0x0000000000000000000000000000000000000001").unwrap());
+	assert_eq!(currency_id.try_into(), Ok(0x01));
+
+	let currency_id = CurrencyId::Erc20(EvmAddress::from_str("0x0000000000000000000000000000000000000000").unwrap());
+	assert_eq!(currency_id.try_into(), Ok(0x00));
 }

@@ -38,10 +38,7 @@ use orml_traits::{
 	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
 use orml_utilities::with_transaction_result;
-use primitives::{
-	evm::{AddressMapping, EvmAddress},
-	CurrencyId,
-};
+use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
 use sp_runtime::{
 	traits::{CheckedSub, MaybeSerializeDeserialize, Saturating, StaticLookup, Zero},
@@ -52,7 +49,7 @@ use sp_std::{
 	fmt::Debug,
 	marker, result,
 };
-use support::{EVMBridge, InvokeContext};
+use support::{AddressMapping, EVMBridge, InvokeContext};
 
 mod mock;
 mod tests;
@@ -101,8 +98,8 @@ pub mod module {
 		AmountIntoBalanceFailed,
 		/// Balance is too low.
 		BalanceTooLow,
-		/// ERC20 invalid operation
-		ERC20InvalidOperation,
+		/// Erc20 invalid operation
+		Erc20InvalidOperation,
 		/// EVM account not found
 		EvmAccountNotFound,
 	}
@@ -187,7 +184,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn minimum_balance(currency_id: Self::CurrencyId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::Erc20(_) => Default::default(),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::minimum_balance(),
 			_ => T::MultiCurrency::minimum_balance(currency_id),
 		}
@@ -195,7 +192,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn total_issuance(currency_id: Self::CurrencyId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(contract) => T::EVMBridge::total_supply(InvokeContext {
+			CurrencyId::Erc20(contract) => T::EVMBridge::total_supply(InvokeContext {
 				contract,
 				sender: Default::default(),
 				origin: Default::default(),
@@ -208,7 +205,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
 					let context = InvokeContext {
 						contract,
@@ -226,7 +223,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn free_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
 					let context = InvokeContext {
 						contract,
@@ -244,7 +241,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn ensure_can_withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
 				let balance = T::EVMBridge::balance_of(
 					InvokeContext {
@@ -274,7 +271,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		}
 
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::EvmAccountNotFound)?;
 				let origin = T::EVMBridge::get_origin().unwrap_or_default();
 				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
@@ -302,7 +299,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			return Ok(());
 		}
 		match currency_id {
-			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => return Err(Error::<T>::Erc20InvalidOperation.into()),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount)?,
 			_ => T::MultiCurrency::deposit(currency_id, who, amount)?,
 		}
@@ -315,7 +312,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			return Ok(());
 		}
 		match currency_id {
-			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => return Err(Error::<T>::Erc20InvalidOperation.into()),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount)?,
 			_ => T::MultiCurrency::withdraw(currency_id, who, amount)?,
 		}
@@ -325,7 +322,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn can_slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> bool {
 		match currency_id {
-			CurrencyId::ERC20(_) => false,
+			CurrencyId::Erc20(_) => false,
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::can_slash(who, amount),
 			_ => T::MultiCurrency::can_slash(currency_id, who, amount),
 		}
@@ -333,7 +330,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(_) => Default::default(),
+			CurrencyId::Erc20(_) => Default::default(),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::slash(who, amount),
 			_ => T::MultiCurrency::slash(currency_id, who, amount),
 		}
@@ -345,7 +342,7 @@ impl<T: Config> MultiCurrencyExtended<T::AccountId> for Pallet<T> {
 
 	fn update_balance(currency_id: Self::CurrencyId, who: &T::AccountId, by_amount: Self::Amount) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => return Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => return Err(Error::<T>::Erc20InvalidOperation.into()),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::update_balance(who, by_amount)?,
 			_ => T::MultiCurrency::update_balance(currency_id, who, by_amount)?,
 		}
@@ -364,7 +361,7 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Pallet<T> {
 		amount: Self::Balance,
 	) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::set_lock(lock_id, who, amount),
 			_ => T::MultiCurrency::set_lock(lock_id, currency_id, who, amount),
 		}
@@ -377,7 +374,7 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Pallet<T> {
 		amount: Self::Balance,
 	) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::extend_lock(lock_id, who, amount),
 			_ => T::MultiCurrency::extend_lock(lock_id, currency_id, who, amount),
 		}
@@ -385,7 +382,7 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Pallet<T> {
 
 	fn remove_lock(lock_id: LockIdentifier, currency_id: Self::CurrencyId, who: &T::AccountId) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(_) => Err(Error::<T>::ERC20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::remove_lock(lock_id, who),
 			_ => T::MultiCurrency::remove_lock(lock_id, currency_id, who),
 		}
@@ -395,7 +392,7 @@ impl<T: Config> MultiLockableCurrency<T::AccountId> for Pallet<T> {
 impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 	fn can_reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> bool {
 		match currency_id {
-			CurrencyId::ERC20(_) => Self::ensure_can_withdraw(currency_id, who, value).is_ok(),
+			CurrencyId::Erc20(_) => Self::ensure_can_withdraw(currency_id, who, value).is_ok(),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::can_reserve(who, value),
 			_ => T::MultiCurrency::can_reserve(currency_id, who, value),
 		}
@@ -403,7 +400,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 
 	fn slash_reserved(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(_) => value,
+			CurrencyId::Erc20(_) => value,
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::slash_reserved(who, value),
 			_ => T::MultiCurrency::slash_reserved(currency_id, who, value),
 		}
@@ -411,7 +408,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 
 	fn reserved_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
 					return T::EVMBridge::balance_of(
 						InvokeContext {
@@ -432,7 +429,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 
 	fn reserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> DispatchResult {
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				if value.is_zero() {
 					return Ok(());
 				}
@@ -454,7 +451,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 
 	fn unreserve(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				if value.is_zero() {
 					return value;
 				}
@@ -498,7 +495,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 		status: BalanceStatus,
 	) -> result::Result<Self::Balance, DispatchError> {
 		match currency_id {
-			CurrencyId::ERC20(contract) => {
+			CurrencyId::Erc20(contract) => {
 				if value.is_zero() {
 					return Ok(value);
 				}

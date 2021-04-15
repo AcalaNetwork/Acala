@@ -28,10 +28,12 @@ use frame_system::RawOrigin;
 use module_incentives::PoolId;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
+use primitives::DexShare;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
+const BTC_AUSD_LP: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::XBTC), DexShare::Token(TokenSymbol::AUSD));
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
@@ -106,7 +108,7 @@ runtime_benchmarks! {
 			let currency_id = currency_ids[i as usize];
 			let lp_share_currency_id = match (currency_id, base_currency_id) {
 				(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
-					CurrencyId::DEXShare(other_currency_symbol, base_currency_symbol)
+					CurrencyId::DexShare(DexShare::Token(other_currency_symbol), DexShare::Token(base_currency_symbol))
 				}
 				_ => return Err("invalid currency id"),
 			};

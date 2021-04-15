@@ -59,13 +59,14 @@ pub struct CallInfo {
 	pub used_gas: U256,
 	pub used_storage: i32,
 }
-/// A mapping between `AccountId` and `EvmAddress`.
-pub trait AddressMapping<AccountId> {
-	fn get_account_id(evm: &EvmAddress) -> AccountId;
-	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
-	fn get_or_create_evm_address(account_id: &AccountId) -> EvmAddress;
-	fn get_default_evm_address(account_id: &AccountId) -> EvmAddress;
-	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct Erc20Info {
+	pub address: EvmAddress,
+	pub name: Vec<u8>,
+	pub symbol: Vec<u8>,
+	pub decimals: u8,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]

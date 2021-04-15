@@ -22,13 +22,14 @@
 
 use frame_support::{ord_parameter_types, parameter_types, traits::GenesisBuild, PalletId};
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::AddressMapping, mocks::MockAddressMapping, CurrencyId, TokenSymbol};
+use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
 	AccountId32, Perbill,
 };
+use support::{mocks::MockAddressMapping, AddressMapping};
 
 use super::*;
 use frame_system::EnsureSignedBy;
@@ -223,7 +224,7 @@ pub const EVA: AccountId = AccountId::new([5u8; 32]);
 pub const ID_1: LockIdentifier = *b"1       ";
 
 pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-pub const ERC20: CurrencyId = CurrencyId::ERC20(ERC20_ADDRESS);
+pub const ERC20: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS);
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,

@@ -22,7 +22,6 @@
 
 pub mod currency;
 pub mod evm;
-pub mod mocks;
 
 use codec::{Decode, Encode};
 use sp_runtime::{
@@ -32,7 +31,7 @@ use sp_runtime::{
 };
 use sp_std::{convert::Into, prelude::*};
 
-pub use currency::{CurrencyId, TokenSymbol};
+pub use currency::{CurrencyId, DexShare, TokenSymbol};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -134,9 +133,10 @@ impl TradingPair {
 	}
 
 	pub fn from_token_currency_ids(currency_id_0: CurrencyId, currency_id_1: CurrencyId) -> Option<Self> {
-		match currency_id_0.is_token_currency_id() && currency_id_1.is_token_currency_id() {
-			true if currency_id_0 > currency_id_1 => Some(TradingPair(currency_id_1, currency_id_0)),
-			true if currency_id_0 < currency_id_1 => Some(TradingPair(currency_id_0, currency_id_1)),
+		match (currency_id_0.is_token_currency_id() || currency_id_0.is_erc20_currency_id())
+			&& (currency_id_1.is_token_currency_id() || currency_id_1.is_erc20_currency_id())
+		{
+			true => Some(TradingPair::new(currency_id_1, currency_id_0)),
 			_ => None,
 		}
 	}

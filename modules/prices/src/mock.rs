@@ -27,7 +27,7 @@ use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchError, FixedPointNumber};
-use support::{ExchangeRate, Ratio};
+use support::{mocks::MockCurrencyIdMapping, ExchangeRate, Ratio};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -37,8 +37,10 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const LP_BTC_AUSD: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
-pub const LP_AUSD_DOT: CurrencyId = CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::DOT);
+pub const LP_BTC_AUSD: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::XBTC), DexShare::Token(TokenSymbol::AUSD));
+pub const LP_AUSD_DOT: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
 
 mod prices {
 	pub use super::super::*;
@@ -205,6 +207,7 @@ impl Config for Runtime {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type DEX = MockDEX;
 	type Currency = Tokens;
+	type CurrencyIdMapping = MockCurrencyIdMapping;
 	type WeightInfo = ();
 }
 

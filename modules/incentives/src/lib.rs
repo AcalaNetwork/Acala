@@ -113,7 +113,7 @@ pub mod module {
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
 
-		/// The module id, keep DEXShare LP.
+		/// The module id, keep DexShare LP.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
@@ -135,9 +135,9 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
-		DepositDEXShare(T::AccountId, CurrencyId, Balance),
+		DepositDexShare(T::AccountId, CurrencyId, Balance),
 		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
-		WithdrawDEXShare(T::AccountId, CurrencyId, Balance),
+		WithdrawDexShare(T::AccountId, CurrencyId, Balance),
 		/// Claim rewards. \[who, pool_id\]
 		ClaimRewards(T::AccountId, PoolId<T::RelaychainAccountId>),
 	}
@@ -387,7 +387,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		);
 		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::DexSaving(lp_currency_id), amount);
 
-		Self::deposit_event(Event::DepositDEXShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::DepositDexShare(who.clone(), lp_currency_id, amount));
 		Ok(())
 	}
 
@@ -411,7 +411,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		);
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::DexSaving(lp_currency_id), amount);
 
-		Self::deposit_event(Event::WithdrawDEXShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::WithdrawDexShare(who.clone(), lp_currency_id, amount));
 		Ok(())
 	}
 }

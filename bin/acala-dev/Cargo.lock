@@ -116,7 +116,6 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -179,6 +178,7 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
+ "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-homa-validator-list",
@@ -3203,6 +3203,7 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
+ "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-homa-validator-list",
@@ -3959,6 +3960,7 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
+ "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-homa-validator-list",
@@ -4390,7 +4392,7 @@ dependencies = [
  "ripemd160",
  "rlp",
  "serde",
- "sha3 0.8.2",
+ "sha3 0.9.1",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -4431,7 +4433,24 @@ dependencies = [
  "parity-scale-codec",
  "primitive-types",
  "serde",
- "sha3 0.8.2",
+ "sha3 0.9.1",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-evm-manager"
+version = "0.7.11"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -4649,6 +4668,7 @@ dependencies = [
  "orml-traits",
  "parity-scale-codec",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]

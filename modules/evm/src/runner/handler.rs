@@ -215,11 +215,11 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				salt,
 			} => {
 				let mut hasher = Keccak256::new();
-				hasher.input(&[0xff]);
-				hasher.input(&caller[..]);
-				hasher.input(&salt[..]);
-				hasher.input(&code_hash[..]);
-				H256::from_slice(hasher.result().as_slice()).into()
+				hasher.update(&[0xff]);
+				hasher.update(&caller[..]);
+				hasher.update(&salt[..]);
+				hasher.update(&code_hash[..]);
+				H256::from_slice(hasher.finalize().as_slice()).into()
 			}
 			CreateScheme::Legacy { caller } => {
 				let nonce = Self::nonce(caller);

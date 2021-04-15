@@ -319,7 +319,7 @@ fn erc20_free_balance_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		// empty address
 		assert_eq!(
-			Currencies::free_balance(CurrencyId::ERC20(H160::default()), &alice()),
+			Currencies::free_balance(CurrencyId::Erc20(H160::default()), &alice()),
 			0
 		);
 		assert_eq!(Currencies::free_balance(ERC20, &bob()), 0);
@@ -334,10 +334,10 @@ fn erc20_total_balance_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		// empty address
 		assert_eq!(
-			Currencies::total_balance(CurrencyId::ERC20(H160::default()), &alice()),
+			Currencies::total_balance(CurrencyId::Erc20(H160::default()), &alice()),
 			0
 		);
-		assert_eq!(Currencies::total_balance(CurrencyId::ERC20(H160::default()), &bob()), 0);
+		assert_eq!(Currencies::total_balance(CurrencyId::Erc20(H160::default()), &bob()), 0);
 
 		assert_eq!(Currencies::total_balance(ERC20, &alice()), u128::max_value());
 		assert_eq!(Currencies::total_balance(ERC20, &bob()), 0);
@@ -407,7 +407,7 @@ fn erc20_transfer_should_fail() {
 			<EVM as EVMTrait<AccountId>>::set_origin(bob());
 			// empty address
 			assert!(
-				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::ERC20(H160::default()), 100).is_err()
+				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::Erc20(H160::default()), 100).is_err()
 			);
 
 			// bob can't transfer. bob balance 0
@@ -486,15 +486,15 @@ fn erc20_should_not_be_lockable() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			Currencies::set_lock(ID_1, ERC20, &alice(), 1),
-			Error::<Runtime>::ERC20InvalidOperation
+			Error::<Runtime>::Erc20InvalidOperation
 		);
 		assert_noop!(
 			Currencies::extend_lock(ID_1, ERC20, &alice(), 1),
-			Error::<Runtime>::ERC20InvalidOperation
+			Error::<Runtime>::Erc20InvalidOperation
 		);
 		assert_noop!(
 			Currencies::remove_lock(ID_1, ERC20, &alice()),
-			Error::<Runtime>::ERC20InvalidOperation
+			Error::<Runtime>::Erc20InvalidOperation
 		);
 	});
 }
@@ -563,15 +563,15 @@ fn erc20_invalid_operation() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			Currencies::deposit(ERC20, &alice(), 1),
-			Error::<Runtime>::ERC20InvalidOperation
+			Error::<Runtime>::Erc20InvalidOperation
 		);
 		assert_noop!(
 			Currencies::withdraw(ERC20, &alice(), 1),
-			Error::<Runtime>::ERC20InvalidOperation
+			Error::<Runtime>::Erc20InvalidOperation
 		);
 		assert_noop!(
 			Currencies::update_balance(Origin::root(), alice(), ERC20, 1),
-			Error::<Runtime>::ERC20InvalidOperation,
+			Error::<Runtime>::Erc20InvalidOperation,
 		);
 	});
 }

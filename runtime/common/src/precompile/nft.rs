@@ -17,13 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::{H160, U256};
 use sp_std::{borrow::Cow, convert::TryFrom, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
 
 use super::input::{Input, InputT};
-use primitives::{evm::AddressMapping as AddressMappingT, NFTBalance};
+use primitives::NFTBalance;
 
 /// The `NFT` impl precompile.
 ///
@@ -33,7 +34,9 @@ use primitives::{evm::AddressMapping as AddressMappingT, NFTBalance};
 /// - Query balance. Rest `input` bytes: `account_id`.
 /// - Query owner. Rest `input` bytes: `class_id`, `token_id`.
 /// - Transfer. Rest `input`bytes: `from`, `to`, `class_id`, `token_id`.
-pub struct NFTPrecompile<AccountId, AddressMapping, NFT>(PhantomData<(AccountId, AddressMapping, NFT)>);
+pub struct NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>(
+	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, NFT)>,
+);
 
 enum Action {
 	QueryBalance,
@@ -54,10 +57,12 @@ impl TryFrom<u8> for Action {
 	}
 }
 
-impl<AccountId, AddressMapping, NFT> Precompile for NFTPrecompile<AccountId, AddressMapping, NFT>
+impl<AccountId, AddressMapping, CurrencyIdMapping, NFT> Precompile
+	for NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>
 where
 	AccountId: Clone,
 	AddressMapping: AddressMappingT<AccountId>,
+	CurrencyIdMapping: CurrencyIdMappingT,
 	NFT: NFTT<AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
 {
 	fn execute(
@@ -65,7 +70,7 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
 

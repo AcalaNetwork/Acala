@@ -27,12 +27,11 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use module_support::{DEXIncentives, ExchangeRate, ExchangeRateProvider};
-use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
-pub use primitives::{
-	evm::AddressMapping, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, Header, Nonce, TokenSymbol,
-	TradingPair,
+use module_support::{
+	mocks::MockAddressMapping, AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider,
 };
+use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
+pub use primitives::{Amount, BlockNumber, CurrencyId, Header, Nonce, TokenSymbol, TradingPair};
 use sp_core::{bytes::from_hex, crypto::AccountId32, Bytes, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup},
@@ -150,6 +149,11 @@ impl module_currencies::Config for Test {
 
 impl module_evm_bridge::Config for Test {
 	type EVM = ModuleEVM;
+}
+
+impl module_evm_manager::Config for Test {
+	type Currency = Balances;
+	type EVMBridge = EVMBridge;
 }
 
 parameter_types! {
@@ -293,6 +297,7 @@ impl module_dex::Config for Test {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type CurrencyIdMapping = EvmCurrencyIdMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
@@ -300,14 +305,18 @@ impl module_dex::Config for Test {
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
-pub type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, Currencies>;
+pub type EvmCurrencyIdMapping = module_evm_manager::EvmCurrencyIdMapping<Test>;
+pub type MultiCurrencyPrecompile =
+	crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, Currencies>;
 
-pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, NFTModule>;
-pub type StateRentPrecompile = crate::StateRentPrecompile<AccountId, MockAddressMapping, ModuleEVM>;
-pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, Prices>;
+pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, NFTModule>;
+pub type StateRentPrecompile =
+	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, ModuleEVM>;
+pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, Prices>;
 pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	AccountId,
 	MockAddressMapping,
+	EvmCurrencyIdMapping,
 	Scheduler,
 	ChargeTransactionPayment,
 	Call,
@@ -315,7 +324,7 @@ pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	OriginCaller,
 	Test,
 >;
-pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, DexModule>;
+pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, DexModule>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice();
@@ -397,6 +406,7 @@ impl module_prices::Config for Test {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type DEX = DexModule;
 	type Currency = Currencies;
+	type CurrencyIdMapping = EvmCurrencyIdMapping;
 	type WeightInfo = ();
 }
 
@@ -453,6 +463,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
 		EVMBridge: module_evm_bridge::{Pallet},
+		EVMManager: module_evm_manager::{Pallet, Storage},
 		NFTModule: module_nft::{Pallet, Call, Event<T>},
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage},
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>},

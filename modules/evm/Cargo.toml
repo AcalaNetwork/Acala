@@ -14,7 +14,7 @@ primitive-types = { version = "0.9.0", default-features = false, features = ["rl
 ripemd160 = { version = "0.9", default-features = false }
 rlp = { version = "0.5", default-features = false }
 serde = { version = "1.0.124", optional = true, features = ["derive"] }
-sha3 = { version = "0.8", default-features = false }
+sha3 = { version = "0.9.1", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
 
 evm = { version = "0.26.0", default-features = false, features = ["with-codec"] }

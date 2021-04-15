@@ -57,6 +57,7 @@ use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
+use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::RuntimeDispatchInfo;
@@ -619,6 +620,7 @@ impl module_prices::Config for Runtime {
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
 	type DEX = Dex;
 	type Currency = Currencies;
+	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -846,6 +848,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -896,6 +899,11 @@ impl module_evm_accounts::Config for Runtime {
 	type MergeAccount = Currencies;
 	type OnClaim = (); // TODO: update implementation to something similar to Mandala
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
+}
+
+impl module_evm_manager::Config for Runtime {
+	type Currency = Balances;
+	type EVMBridge = EVMBridge;
 }
 
 impl orml_rewards::Config for Runtime {
@@ -1062,15 +1070,23 @@ parameter_types! {
 	pub DeploymentFee: Balance = dollar(KAR);
 }
 
-pub type MultiCurrencyPrecompile =
-	runtime_common::MultiCurrencyPrecompile<AccountId, EvmAddressMapping<Runtime>, Currencies>;
+pub type MultiCurrencyPrecompile = runtime_common::MultiCurrencyPrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	EvmCurrencyIdMapping<Runtime>,
+	Currencies,
+>;
 
-pub type NFTPrecompile = runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, NFT>;
-pub type StateRentPrecompile = runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EVM>;
-pub type OraclePrecompile = runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, Prices>;
+pub type NFTPrecompile =
+	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, NFT>;
+pub type StateRentPrecompile =
+	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, EVM>;
+pub type OraclePrecompile =
+	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Prices>;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
+	EvmCurrencyIdMapping<Runtime>,
 	Scheduler,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	Call,
@@ -1078,7 +1094,8 @@ pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	OriginCaller,
 	Runtime,
 >;
-pub type DexPrecompile = runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, Dex>;
+pub type DexPrecompile =
+	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Dex>;
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1343,21 +1360,22 @@ construct_runtime!(
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 42,
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 43,
 		EVMBridge: module_evm_bridge::{Pallet} = 44,
+		EvmManager: module_evm_manager::{Pallet, Storage} = 45,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 45,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 46,
-		XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 47,
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 48,
-		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 49,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 46,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 47,
+		XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 48,
+		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 49,
+		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 50,
 
 		// Dev
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 50,
+		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 51,
 
 		// Oracle
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 51,
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 52,
 		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 52,
+		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 53,
 	}
 );
 

@@ -34,11 +34,14 @@ use module_cdp_engine::LiquidationStrategy;
 use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
+pub use primitives::{DexShare, TradingPair};
+use sp_core::{bytes::from_hex, H160, H256};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
+use std::{collections::BTreeMap, str::FromStr};
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -46,6 +49,15 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 
 const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
+const LPTOKEN: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::XBTC));
+const LPTOKEN_ERC20: CurrencyId =
+	CurrencyId::DexShare(DexShare::Erc20(ERC20_ADDRESS_0), DexShare::Erc20(ERC20_ADDRESS_1));
+
+pub const ERC20_ADDRESS_0: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+pub const ERC20_0: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_0);
+pub const ERC20_ADDRESS_1: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+pub const ERC20_1: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_1);
 
 pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
 pub type DexModule = module_dex::Pallet<Runtime>;
@@ -96,7 +108,8 @@ impl ExtBuilder {
 
 		let native_currency_id = GetNativeCurrencyId::get();
 		let existential_deposit = NativeTokenExistentialDeposit::get();
-		let initial_enabled_trading_pairs = EnabledTradingPairs::get();
+		let mut initial_enabled_trading_pairs = EnabledTradingPairs::get();
+		initial_enabled_trading_pairs.push(TradingPair::new(ERC20_0, ERC20_1));
 
 		module_dex::GenesisConfig::<Runtime> {
 			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
@@ -143,6 +156,38 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
+
+		let mut accounts = BTreeMap::new();
+		let mut storage = BTreeMap::new();
+		storage.insert(
+			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
+		);
+		storage.insert(
+			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
+			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
+		);
+		accounts.insert(
+			ERC20_ADDRESS_0,
+			module_evm::GenesisAccount {
+				nonce: 1,
+				balance: 0,
+				storage: storage.clone(),
+				code: from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap(),
+			},
+		);
+		accounts.insert(
+			ERC20_ADDRESS_1,
+			module_evm::GenesisAccount {
+				nonce: 1,
+				balance: 0,
+				storage,
+				code: from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap(),
+			},
+		);
+		module_evm::GenesisConfig::<Runtime> { accounts }
+			.assimilate_storage(&mut t)
+			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| SystemModule::set_block_number(1));
@@ -192,8 +237,6 @@ pub fn evm_bob_account_id() -> AccountId {
 	AccountId::from(Into::<[u8; 32]>::into(data))
 }
 
-#[cfg(not(feature = "with-ethereum-compatibility"))]
-use sp_core::H160;
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 	// pragma solidity ^0.5.0;
@@ -404,17 +447,8 @@ fn test_dex_module() {
 		.build()
 		.execute_with(|| {
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (0, 0));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				0
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(ALICE)
-				),
-				0
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 0);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
 
 			assert_noop!(
 				DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), XBTC, AUSD, 0, 10000000, false,),
@@ -443,17 +477,8 @@ fn test_dex_module() {
 				.any(|record| record.event == add_liquidity_event));
 
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10000, 10000000));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20000000
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(ALICE)
-				),
-				20000000
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20000000);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 20000000);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
 				XBTC,
@@ -463,33 +488,15 @@ fn test_dex_module() {
 				false,
 			));
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20002000
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(BOB)
-				),
-				2000
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_noop!(
 				DexModule::add_liquidity(origin_of(AccountId::from(BOB)), XBTC, AUSD, 1, 999, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10001, 10001000));
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20002000
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC),
-					&AccountId::from(BOB)
-				),
-				2000
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_ok!(DexModule::add_liquidity(
 				origin_of(AccountId::from(BOB)),
 				XBTC,
@@ -509,10 +516,28 @@ fn test_dex_module() {
 			));
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (10003, 10003000));
 
-			assert_eq!(
-				Currencies::total_issuance(CurrencyId::DEXShare(TokenSymbol::AUSD, TokenSymbol::XBTC)),
-				20005998
-			);
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 20005998);
+
+			// Erc20
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(ALICE)),
+				EvmAccounts::eth_address(&alice()),
+				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+			));
+			assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1), (0, 0));
+			assert_eq!(Currencies::total_issuance(LPTOKEN_ERC20), 0);
+			assert_eq!(Currencies::free_balance(LPTOKEN_ERC20, &AccountId::from(ALICE)), 0);
+
+			//assert_ok!(DexModule::add_liquidity(
+			//	origin_of(AccountId::from(ALICE)),
+			//	ERC20_0,
+			//	ERC20_1,
+			//	10000,
+			//	10000000,
+			//	false,
+			//));
+			//assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1),
+			// (10000, 10000000));
 		});
 }
 
@@ -701,7 +726,7 @@ fn test_cdp_engine_module() {
 
 #[test]
 fn test_authority_module() {
-	const AUTHORITY_ORIGIN_ID: u8 = 27u8;
+	const AUTHORITY_ORIGIN_ID: u8 = 28u8;
 
 	ExtBuilder::default()
 		.balances(vec![

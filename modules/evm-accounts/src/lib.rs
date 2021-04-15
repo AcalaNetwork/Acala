@@ -34,11 +34,9 @@ use frame_support::{
 	transactional,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
+use module_support::AddressMapping;
 use orml_traits::{account::MergeAccount, Handler};
-use primitives::{
-	evm::{AddressMapping, EvmAddress},
-	AccountIndex,
-};
+use primitives::{evm::EvmAddress, AccountIndex};
 use sp_core::{crypto::AccountId32, ecdsa};
 use sp_io::{
 	crypto::secp256k1_ecdsa_recover,
@@ -295,6 +293,7 @@ where
 		})
 	}
 
+	// Returns the default EVM address associated with an account ID.
 	fn get_default_evm_address(account_id: &T::AccountId) -> EvmAddress {
 		account_to_default_evm_address(account_id)
 	}

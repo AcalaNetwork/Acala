@@ -16,25 +16,24 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the evm-bridge module.
+//! Mocks for the evm-manager module.
 
 #![cfg(test)]
 
 use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use module_evm::GenesisAccount;
-use primitives::evm::EvmAddress;
-use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
+use module_support::mocks::MockAddressMapping;
+use orml_traits::parameter_type_with_key;
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+use sp_core::{bytes::from_hex, crypto::AccountId32, H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
-use support::mocks::MockAddressMapping;
+use std::{collections::BTreeMap, str::FromStr};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-pub type Balance = u128;
 
-mod evm_bridge {
+mod evm_manager {
 	pub use super::super::*;
 }
 
@@ -43,11 +42,10 @@ parameter_types! {
 }
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
 	type Origin = Origin;
-	type Call = Call;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
+	type Call = Call;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
@@ -55,7 +53,6 @@ impl frame_system::Config for Runtime {
 	type Header = Header;
 	type Event = Event;
 	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -63,6 +60,8 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type DbWeight = ();
+	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -71,21 +70,48 @@ impl frame_system::Config for Runtime {
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
-
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
-	type DustRemoval = ();
 	type Event = Event;
+	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
+	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
+	type WeightInfo = ();
 }
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+}
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+}
+
+impl orml_currencies::Config for Runtime {
+	type Event = Event;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
-
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
@@ -95,11 +121,12 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub NetworkContractSource: EvmAddress = alice();
+	pub NetworkContractSource: H160 = H160::default();
 }
 
 ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
+	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = 10;
 	pub const MaxCodeSize: u32 = 60 * 1024;
@@ -120,24 +147,33 @@ impl module_evm::Config for Runtime {
 	type ChainId = ();
 	type GasToWeight = ();
 	type ChargeTransactionPayment = ();
-	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
+	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 
 	type DeveloperDeposit = DeveloperDeposit;
 	type DeploymentFee = DeploymentFee;
-	type TreasuryAccount = ();
+	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
 	type WeightInfo = ();
 }
 
-impl Config for Runtime {
+impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
-pub type EvmBridgeModule = Pallet<Runtime>;
+
+impl Config for Runtime {
+	type Currency = Balances;
+	type EVMBridge = EVMBridge;
+}
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+pub const ERC20_ADDRESS_NOT_EXISTS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+pub const ERC20: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS);
+pub const ERC20_NOT_EXISTS: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_NOT_EXISTS);
 
 construct_runtime!(
 	pub enum Runtime where
@@ -146,52 +182,29 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		EVMBridge: evm_bridge::{Pallet},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		EvmManager: evm_manager::{Pallet, Storage},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call, Event<T>},
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Pallet},
 	}
 );
 
-pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, Balance)>,
-}
+pub struct ExtBuilder();
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			endowed_accounts: vec![],
-		}
+		Self()
 	}
-}
-
-pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("2000000000000000000000000000000000000001").unwrap()
-}
-
-pub fn alice() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
-}
-
-pub fn bob() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, Balance)>) -> Self {
-		self.endowed_accounts = endowed_accounts;
-		self
-	}
-
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
-
-		pallet_balances::GenesisConfig::<Runtime> {
-			balances: self.endowed_accounts.clone().into_iter().collect::<Vec<_>>(),
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
 
 		let mut accounts = BTreeMap::new();
 		let mut storage = BTreeMap::new();
@@ -204,12 +217,12 @@ impl ExtBuilder {
 			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
 		);
 		accounts.insert(
-			erc20_address(),
-			GenesisAccount {
+			ERC20_ADDRESS,
+			module_evm::GenesisAccount {
 				nonce: 1,
 				balance: 0,
 				storage,
-				code: from_hex(include!("./erc20_demo_contract")).unwrap(),
+				code: from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap(),
 			},
 		);
 		module_evm::GenesisConfig::<Runtime> { accounts }

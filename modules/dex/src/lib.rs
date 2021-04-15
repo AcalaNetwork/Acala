@@ -43,7 +43,7 @@ use sp_runtime::{
 	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{DEXIncentives, DEXManager, Price, Ratio};
+use support::{CurrencyIdMapping, DEXIncentives, DEXManager, Price, Ratio};
 
 mod mock;
 mod tests;
@@ -111,6 +111,10 @@ pub mod module {
 		/// The DEX's module id, keep all assets in DEX.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
+
+		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
+		/// address as LP token.
+		type CurrencyIdMapping: CurrencyIdMapping;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -432,6 +436,13 @@ pub mod module {
 				T::Currency::total_issuance(dex_share_currency_id).is_zero(),
 				Error::<T>::NotAllowedList
 			);
+
+			if let CurrencyId::Erc20(address) = currency_id_a {
+				T::CurrencyIdMapping::set_erc20_mapping(address)?;
+			}
+			if let CurrencyId::Erc20(address) = currency_id_b {
+				T::CurrencyIdMapping::set_erc20_mapping(address)?;
+			}
 
 			let (min_contribution, target_provision) = if currency_id_a == trading_pair.0 {
 				(

@@ -45,14 +45,16 @@ use sp_runtime::{
 	Either, TransactionOutcome,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait};
+pub use support::{
+	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
+};
 
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 pub use orml_traits::account::MergeAccount;
 pub use primitives::{
-	evm::{Account, AddressMapping, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
+	evm::{Account, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
 	MIRRORED_NFT_ADDRESS_START,
 };
 
