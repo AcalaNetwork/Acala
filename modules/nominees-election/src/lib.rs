@@ -373,7 +373,6 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config> NomineesProvider<T::PolkadotAccountId> for Pallet<T> {
 	fn nominees() -> Vec<T::PolkadotAccountId> {
-		Self::rebalance();
 		Nominees::<T>::get()
 	}
 }
