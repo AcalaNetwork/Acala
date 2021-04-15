@@ -923,7 +923,6 @@ impl module_cdp_engine::Config for Runtime {
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
-	type DEX = Dex;
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;

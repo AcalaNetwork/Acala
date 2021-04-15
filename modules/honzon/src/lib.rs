@@ -122,6 +122,19 @@ pub mod module {
 			Ok(().into())
 		}
 
+		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
+		#[transactional]
+		pub fn close_loan_has_debit_by_dex(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			maybe_path: Option<sp_std::vec::Vec<CurrencyId>>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, maybe_path.as_deref())?;
+			Ok(().into())
+		}
+
 		/// Transfer the whole CDP of `from` under `currency_id` to caller's CDP
 		/// under the same `currency_id`, caller must have the authorization of
 		/// `from` for the specific collateral type

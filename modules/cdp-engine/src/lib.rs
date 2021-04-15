@@ -51,8 +51,7 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager,
+	CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio, RiskManager,
 };
 
 mod debit_exchange_rate_convertor;
@@ -161,9 +160,6 @@ pub mod module {
 		/// The price source of all types of currencies related to CDP
 		type PriceSource: PriceProvider<CurrencyId>;
 
-		/// The DEX participating in liquidation
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
-
 		#[pallet::constant]
 		/// A configuration for base priority of unsigned transactions.
 		///
@@ -195,6 +191,8 @@ pub mod module {
 		BelowLiquidationRatio,
 		/// The CDP must be unsafe to be liquidated
 		MustBeUnsafe,
+		/// The CDP already is unsafe
+		IsUnsafe,
 		/// Invalid collateral type
 		InvalidCollateralType,
 		/// Remain debit value in CDP below the dust amount
@@ -217,6 +215,10 @@ pub mod module {
 		LiquidateUnsafeCDP(CurrencyId, T::AccountId, Balance, Balance, LiquidationStrategy),
 		/// Settle the CDP has debit. [collateral_type, owner]
 		SettleCDPInDebit(CurrencyId, T::AccountId),
+		/// Directly close CDP has debit by handle debit with DEX.
+		/// \[collateral_type, owner, sold_collateral_amount,
+		/// refund_collateral_amount, debit_value\]
+		CloseCDPInDebitByDEX(CurrencyId, T::AccountId, Balance, Balance, Balance),
 		/// The interest rate per sec for specific collateral type updated.
 		/// \[collateral_type, new_interest_rate_per_sec\]
 		InterestRatePerSec(CurrencyId, Option<Rate>),
@@ -765,6 +767,49 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	// close cdp has debit by swap collateral to exact debit
+	pub fn close_cdp_has_debit_by_dex(
+		who: T::AccountId,
+		currency_id: CurrencyId,
+		maybe_path: Option<&[CurrencyId]>,
+	) -> DispatchResult {
+		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+		ensure!(!debit.is_zero(), Error::<T>::NoDebitValue);
+		ensure!(
+			!Self::is_cdp_unsafe(currency_id, collateral, debit),
+			Error::<T>::IsUnsafe
+		);
+
+		// confiscate all collateral and debit of unsafe cdp to cdp treasury
+		<LoansOf<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral, debit)?;
+
+		// swap exact stable with DEX in limit of price impact
+		let debit_value = Self::get_debit_value(currency_id, debit);
+		let actual_supply_collateral = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
+			currency_id,
+			collateral,
+			debit_value,
+			None,
+			maybe_path,
+			false,
+		)?;
+
+		// refund remain collateral to CDP owner
+		let refund_collateral_amount = collateral
+			.checked_sub(actual_supply_collateral)
+			.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+		<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
+
+		Self::deposit_event(Event::CloseCDPInDebitByDEX(
+			currency_id,
+			who,
+			actual_supply_collateral,
+			refund_collateral_amount,
+			debit_value,
+		));
+		Ok(())
+	}
+
 	// liquidate unsafe cdp
 	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
@@ -785,13 +830,14 @@ impl<T: Config> Pallet<T> {
 		// is below the limit, otherwise create collateral auctions.
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
 			// swap exact stable with DEX in limit of price impact
-			if let Ok(actual_supply_collateral) =
-				<T as Config>::CDPTreasury::swap_collateral_not_in_auction_with_exact_stable(
-					currency_id,
-					target_stable_amount,
-					collateral,
-					Some(T::MaxSlippageSwapWithDEX::get()),
-				) {
+			if let Ok(actual_supply_collateral) = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
+				currency_id,
+				collateral,
+				target_stable_amount,
+				Some(T::MaxSlippageSwapWithDEX::get()),
+				None,
+				false,
+			) {
 				// refund remain collateral to CDP owner
 				let refund_collateral_amount = collateral
 					.checked_sub(actual_supply_collateral)

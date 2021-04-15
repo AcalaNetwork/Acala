@@ -250,18 +250,22 @@ pub trait CDPTreasury<AccountId> {
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn swap_exact_collateral_in_auction_to_stable(
+	fn swap_exact_collateral_to_stable(
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
 		min_target_amount: Self::Balance,
 		price_impact_limit: Option<Ratio>,
+		maybe_path: Option<&[Self::CurrencyId]>,
+		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
 
-	fn swap_collateral_not_in_auction_with_exact_stable(
+	fn swap_collateral_to_exact_stable(
 		currency_id: Self::CurrencyId,
-		target_amount: Self::Balance,
 		max_supply_amount: Self::Balance,
+		target_amount: Self::Balance,
 		price_impact_limit: Option<Ratio>,
+		path: Option<&[Self::CurrencyId]>,
+		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
 
 	fn create_collateral_auctions(

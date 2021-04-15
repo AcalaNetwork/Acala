@@ -39,6 +39,7 @@ pub const BOB: AccountId = 1;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 mod cdp_treasury {
 	pub use super::super::*;
@@ -121,7 +122,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
+	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC), TradingPair::new(AUSD, DOT), TradingPair::new(BTC, DOT)];
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 
@@ -224,8 +225,10 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			endowed_accounts: vec![
+				(ALICE, DOT, 1000),
 				(ALICE, AUSD, 1000),
 				(ALICE, BTC, 1000),
+				(BOB, DOT, 1000),
 				(BOB, AUSD, 1000),
 				(BOB, BTC, 1000),
 			],
