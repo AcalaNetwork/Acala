@@ -121,7 +121,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
-		type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
+		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 		#[pallet::constant]
 		type MinBondThreshold: Get<Balance>;
 		#[pallet::constant]
@@ -130,7 +130,7 @@ pub mod module {
 		type NominateesCount: Get<u32>;
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
-		type RelaychainValidatorFilter: Contains<Self::PolkadotAccountId>;
+		type RelaychainValidatorFilter: Contains<Self::NomineeId>;
 	}
 
 	#[pallet::error]
@@ -145,7 +145,7 @@ pub mod module {
 
 	#[pallet::storage]
 	#[pallet::getter(fn nominations)]
-	pub type Nominations<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::PolkadotAccountId>, ValueQuery>;
+	pub type Nominations<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::NomineeId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
@@ -153,11 +153,11 @@ pub mod module {
 
 	#[pallet::storage]
 	#[pallet::getter(fn votes)]
-	pub type Votes<T: Config> = StorageMap<_, Twox64Concat, T::PolkadotAccountId, Balance, ValueQuery>;
+	pub type Votes<T: Config> = StorageMap<_, Twox64Concat, T::NomineeId, Balance, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn nominees)]
-	pub type Nominees<T: Config> = StorageValue<_, Vec<T::PolkadotAccountId>, ValueQuery>;
+	pub type Nominees<T: Config> = StorageValue<_, Vec<T::NomineeId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
@@ -261,7 +261,7 @@ pub mod module {
 
 		#[pallet::weight(10000)]
 		#[transactional]
-		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::PolkadotAccountId>) -> DispatchResultWithPostInfo {
+		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				!targets.is_empty() && targets.len() <= T::NominateesCount::get().saturated_into(),
@@ -339,9 +339,9 @@ impl<T: Config> Pallet<T> {
 
 	fn update_votes(
 		old_active: Balance,
-		old_nominations: &[T::PolkadotAccountId],
+		old_nominations: &[T::NomineeId],
 		new_active: Balance,
-		new_nominations: &[T::PolkadotAccountId],
+		new_nominations: &[T::NomineeId],
 	) {
 		if !old_active.is_zero() && !old_nominations.is_empty() {
 			for account in old_nominations {
@@ -357,7 +357,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn rebalance() {
-		let mut voters = Votes::<T>::iter().collect::<Vec<(T::PolkadotAccountId, Balance)>>();
+		let mut voters = Votes::<T>::iter().collect::<Vec<(T::NomineeId, Balance)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 
@@ -371,8 +371,8 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> NomineesProvider<T::PolkadotAccountId> for Pallet<T> {
-	fn nominees() -> Vec<T::PolkadotAccountId> {
+impl<T: Config> NomineesProvider<T::NomineeId> for Pallet<T> {
+	fn nominees() -> Vec<T::NomineeId> {
 		Nominees::<T>::get()
 	}
 }

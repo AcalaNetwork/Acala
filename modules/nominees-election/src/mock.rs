@@ -132,7 +132,7 @@ impl Contains<AccountId> for MockRelaychainValidatorFilter {
 
 impl Config for Runtime {
 	type Currency = LDOTCurrency;
-	type PolkadotAccountId = AccountId;
+	type NomineeId = AccountId;
 	type MinBondThreshold = MinBondThreshold;
 	type BondingDuration = BondingDuration;
 	type NominateesCount = NominateesCount;
