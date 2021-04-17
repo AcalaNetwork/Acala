@@ -99,12 +99,7 @@ impl<'handler> StorageMeter<'handler> {
 			storage
 		);
 		self.handle(|this| {
-			let used = this.total_used.saturating_add(storage);
-			if this.limit < used.saturating_sub(this.total_refunded) {
-				this.result = Err(this.out_of_storage_error());
-				return this.result;
-			}
-			this.total_used = used;
+			this.total_used = this.total_used.saturating_add(storage);
 			this.self_used = this.self_used.saturating_add(storage);
 			Ok(())
 		})
@@ -144,6 +139,10 @@ impl<'handler> StorageMeter<'handler> {
 		);
 		self.handle(|this| {
 			if let Err(x) = (|| {
+				if this.limit < this.total_used.saturating_sub(this.total_refunded) {
+					this.result = Err(this.out_of_storage_error());
+					return this.result;
+				}
 				this.handler
 					.charge_storage(&this.contract, this.self_used, this.self_refunded)?;
 				let new_limit = this
