@@ -369,12 +369,9 @@ mod tests {
 		assert_ok!(storage_meter.charge(500));
 		assert_eq!(storage_meter.available_storage(), 0);
 
-		assert_err!(storage_meter.charge(1), DispatchError::Other("OutOfStorage"));
-		assert_err!(storage_meter.refund(1), DispatchError::Other("OutOfStorage"));
-		assert_err!(
-			storage_meter.child_meter(CONTRACT_2).map(|_| ()),
-			DispatchError::Other("OutOfStorage")
-		);
+		assert_ok!(storage_meter.charge(2));
+		assert_ok!(storage_meter.refund(1));
+		assert_ok!(storage_meter.child_meter(CONTRACT_2).map(|_| ()));
 		assert_err!(storage_meter.finish(), DispatchError::Other("OutOfStorage"));
 	}
 
