@@ -119,9 +119,10 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config {
+		type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
-		type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
+		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 		#[pallet::constant]
 		type MinBondThreshold: Get<Balance>;
 		#[pallet::constant]
@@ -130,11 +131,11 @@ pub mod module {
 		type NominateesCount: Get<u32>;
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
-		type RelaychainValidatorFilter: Contains<Self::PolkadotAccountId>;
+		type RelaychainValidatorFilter: Contains<Self::NomineeId>;
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
+	pub enum Error<T, I = ()> {
 		BelowMinBondThreshold,
 		InvalidTargetsLength,
 		TooManyChunks,
@@ -143,34 +144,44 @@ pub mod module {
 		InvalidRelaychainValidator,
 	}
 
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	pub enum Event<T: Config<I>, I: 'static = ()> {
+		/// rebond. [who, amount]
+		Rebond(T::AccountId, Balance),
+	}
+
 	#[pallet::storage]
 	#[pallet::getter(fn nominations)]
-	pub type Nominations<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::PolkadotAccountId>, ValueQuery>;
+	pub type Nominations<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Twox64Concat, T::AccountId, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
-	pub type Ledger<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, BondingLedger, ValueQuery>;
+	pub type Ledger<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Twox64Concat, T::AccountId, BondingLedger, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn votes)]
-	pub type Votes<T: Config> = StorageMap<_, Twox64Concat, T::PolkadotAccountId, Balance, ValueQuery>;
+	pub type Votes<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Twox64Concat, <T as Config<I>>::NomineeId, Balance, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn nominees)]
-	pub type Nominees<T: Config> = StorageValue<_, Vec<T::PolkadotAccountId>, ValueQuery>;
+	pub type Nominees<T: Config<I>, I: 'static = ()> = StorageValue<_, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
-	pub type CurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
+	pub type CurrentEra<T: Config<I>, I: 'static = ()> = StorageValue<_, EraIndex, ValueQuery>;
 
 	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
+	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		#[pallet::weight(10000)]
 		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
@@ -184,7 +195,7 @@ pub mod module {
 				ledger.active += extra;
 				ensure!(
 					ledger.active >= T::MinBondThreshold::get(),
-					Error::<T>::BelowMinBondThreshold
+					Error::<T, I>::BelowMinBondThreshold
 				);
 				ledger.total += extra;
 				let old_nominations = Self::nominations(&who);
@@ -203,7 +214,7 @@ pub mod module {
 			let mut ledger = Self::ledger(&who);
 			ensure!(
 				ledger.unlocking.len() < T::MaxUnlockingChunks::get().saturated_into(),
-				Error::<T>::TooManyChunks,
+				Error::<T, I>::TooManyChunks,
 			);
 
 			let amount = amount.min(ledger.active);
@@ -214,7 +225,7 @@ pub mod module {
 
 				ensure!(
 					ledger.active.is_zero() || ledger.active >= T::MinBondThreshold::get(),
-					Error::<T>::BelowMinBondThreshold,
+					Error::<T, I>::BelowMinBondThreshold,
 				);
 
 				// Note: in case there is no current era it is fine to bond one era more.
@@ -233,13 +244,14 @@ pub mod module {
 		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let ledger = Self::ledger(&who);
-			ensure!(!ledger.unlocking.is_empty(), Error::<T>::NoUnlockChunk,);
+			ensure!(!ledger.unlocking.is_empty(), Error::<T, I>::NoUnlockChunk);
 			let old_active = ledger.active;
 			let old_nominations = Self::nominations(&who);
 			let ledger = ledger.rebond(amount);
 
 			Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
 			Self::update_ledger(&who, &ledger);
+			Self::deposit_event(Event::Rebond(who, amount));
 			Ok(().into())
 		}
 
@@ -261,15 +273,15 @@ pub mod module {
 
 		#[pallet::weight(10000)]
 		#[transactional]
-		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::PolkadotAccountId>) -> DispatchResultWithPostInfo {
+		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				!targets.is_empty() && targets.len() <= T::NominateesCount::get().saturated_into(),
-				Error::<T>::InvalidTargetsLength,
+				Error::<T, I>::InvalidTargetsLength,
 			);
 
 			let ledger = Self::ledger(&who);
-			ensure!(!ledger.total.is_zero(), Error::<T>::NoBonded);
+			ensure!(!ledger.total.is_zero(), Error::<T, I>::NoBonded);
 
 			let mut targets = targets;
 			targets.sort();
@@ -278,7 +290,7 @@ pub mod module {
 			for validator in &targets {
 				ensure!(
 					T::RelaychainValidatorFilter::contains(&validator),
-					Error::<T>::InvalidRelaychainValidator
+					Error::<T, I>::InvalidRelaychainValidator
 				);
 			}
 
@@ -286,7 +298,7 @@ pub mod module {
 			let old_active = Self::ledger(&who).active;
 
 			Self::update_votes(old_active, &old_nominations, old_active, &targets);
-			Nominations::<T>::insert(&who, &targets);
+			Nominations::<T, I>::insert(&who, &targets);
 			Ok(().into())
 		}
 
@@ -299,13 +311,13 @@ pub mod module {
 			let old_active = Self::ledger(&who).active;
 
 			Self::update_votes(old_active, &old_nominations, Zero::zero(), &[]);
-			Nominations::<T>::remove(&who);
+			Nominations::<T, I>::remove(&who);
 			Ok(().into())
 		}
 	}
 }
 
-impl<T: Config> Pallet<T> {
+impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
 		let res = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
 		if let Err(e) = res {
@@ -318,7 +330,7 @@ impl<T: Config> Pallet<T> {
 			debug_assert!(false);
 		}
 
-		Ledger::<T>::insert(who, ledger);
+		Ledger::<T, I>::insert(who, ledger);
 	}
 
 	fn remove_ledger(who: &T::AccountId) {
@@ -333,31 +345,31 @@ impl<T: Config> Pallet<T> {
 			debug_assert!(false);
 		}
 
-		Ledger::<T>::remove(who);
-		Nominations::<T>::remove(who);
+		Ledger::<T, I>::remove(who);
+		Nominations::<T, I>::remove(who);
 	}
 
 	fn update_votes(
 		old_active: Balance,
-		old_nominations: &[T::PolkadotAccountId],
+		old_nominations: &[T::NomineeId],
 		new_active: Balance,
-		new_nominations: &[T::PolkadotAccountId],
+		new_nominations: &[T::NomineeId],
 	) {
 		if !old_active.is_zero() && !old_nominations.is_empty() {
 			for account in old_nominations {
-				Votes::<T>::mutate(account, |balance| *balance = balance.saturating_sub(old_active));
+				Votes::<T, I>::mutate(account, |balance| *balance = balance.saturating_sub(old_active));
 			}
 		}
 
 		if !new_active.is_zero() && !new_nominations.is_empty() {
 			for account in new_nominations {
-				Votes::<T>::mutate(account, |balance| *balance = balance.saturating_add(new_active));
+				Votes::<T, I>::mutate(account, |balance| *balance = balance.saturating_add(new_active));
 			}
 		}
 	}
 
 	fn rebalance() {
-		let mut voters = Votes::<T>::iter().collect::<Vec<(T::PolkadotAccountId, Balance)>>();
+		let mut voters = Votes::<T, I>::iter().collect::<Vec<(T::NomineeId, Balance)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 
@@ -367,19 +379,19 @@ impl<T: Config> Pallet<T> {
 			.map(|(nominee, _)| nominee)
 			.collect::<Vec<_>>();
 
-		Nominees::<T>::put(new_nominees);
+		Nominees::<T, I>::put(new_nominees);
 	}
 }
 
-impl<T: Config> NomineesProvider<T::PolkadotAccountId> for Pallet<T> {
-	fn nominees() -> Vec<T::PolkadotAccountId> {
-		Nominees::<T>::get()
+impl<T: Config<I>, I: 'static> NomineesProvider<T::NomineeId> for Pallet<T, I> {
+	fn nominees() -> Vec<T::NomineeId> {
+		Nominees::<T, I>::get()
 	}
 }
 
-impl<T: Config> OnNewEra<EraIndex> for Pallet<T> {
+impl<T: Config<I>, I: 'static> OnNewEra<EraIndex> for Pallet<T, I> {
 	fn on_new_era(era: EraIndex) {
-		CurrentEra::<T>::put(era);
+		CurrentEra::<T, I>::put(era);
 		Self::rebalance();
 	}
 }

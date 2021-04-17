@@ -1067,8 +1067,9 @@ parameter_types! {
 }
 
 impl module_nominees_election::Config for Runtime {
+	type Event = Event;
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
-	type PolkadotAccountId = AccountId;
+	type NomineeId = AccountId;
 	type MinBondThreshold = MinCouncilBondThreshold;
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
@@ -1459,7 +1460,7 @@ construct_runtime!(
 
 		// Homa
 		Homa: module_homa::{Pallet, Call} = 45,
-		NomineesElection: module_nominees_election::{Pallet, Call, Storage} = 46,
+		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 46,
 		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 47,
 		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 48,
 		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 49,
