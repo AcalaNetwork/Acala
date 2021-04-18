@@ -376,6 +376,25 @@ mod tests {
 	}
 
 	#[test]
+	fn test_high_use_and_refund() {
+		let mut handler = DummyHandler::new();
+		handler.storages.insert(ALICE, 1000);
+
+		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
+		assert_eq!(storage_meter.available_storage(), 1000);
+
+		assert_ok!(storage_meter.charge(1000));
+		assert_eq!(storage_meter.available_storage(), 0);
+
+		assert_ok!(storage_meter.charge(100));
+		assert_eq!(storage_meter.available_storage(), 0);
+		assert_ok!(storage_meter.refund(200));
+		assert_eq!(storage_meter.available_storage(), 100);
+		assert_ok!(storage_meter.child_meter(CONTRACT_2).map(|_| ()));
+		assert_ok!(storage_meter.finish());
+	}
+
+	#[test]
 	fn test_child_meter() {
 		let mut handler = DummyHandler::new();
 		handler.storages.insert(ALICE, 1000);
