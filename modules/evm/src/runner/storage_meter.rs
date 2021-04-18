@@ -99,12 +99,7 @@ impl<'handler> StorageMeter<'handler> {
 			storage
 		);
 		self.handle(|this| {
-			let used = this.total_used.saturating_add(storage);
-			if this.limit < used.saturating_sub(this.total_refunded) {
-				this.result = Err(this.out_of_storage_error());
-				return this.result;
-			}
-			this.total_used = used;
+			this.total_used = this.total_used.saturating_add(storage);
 			this.self_used = this.self_used.saturating_add(storage);
 			Ok(())
 		})
@@ -144,6 +139,10 @@ impl<'handler> StorageMeter<'handler> {
 		);
 		self.handle(|this| {
 			if let Err(x) = (|| {
+				if this.limit < this.total_used.saturating_sub(this.total_refunded) {
+					this.result = Err(this.out_of_storage_error());
+					return this.result;
+				}
 				this.handler
 					.charge_storage(&this.contract, this.self_used, this.self_refunded)?;
 				let new_limit = this
@@ -370,13 +369,29 @@ mod tests {
 		assert_ok!(storage_meter.charge(500));
 		assert_eq!(storage_meter.available_storage(), 0);
 
-		assert_err!(storage_meter.charge(1), DispatchError::Other("OutOfStorage"));
-		assert_err!(storage_meter.refund(1), DispatchError::Other("OutOfStorage"));
-		assert_err!(
-			storage_meter.child_meter(CONTRACT_2).map(|_| ()),
-			DispatchError::Other("OutOfStorage")
-		);
+		assert_ok!(storage_meter.charge(2));
+		assert_ok!(storage_meter.refund(1));
+		assert_ok!(storage_meter.child_meter(CONTRACT_2).map(|_| ()));
 		assert_err!(storage_meter.finish(), DispatchError::Other("OutOfStorage"));
+	}
+
+	#[test]
+	fn test_high_use_and_refund() {
+		let mut handler = DummyHandler::new();
+		handler.storages.insert(ALICE, 1000);
+
+		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
+		assert_eq!(storage_meter.available_storage(), 1000);
+
+		assert_ok!(storage_meter.charge(1000));
+		assert_eq!(storage_meter.available_storage(), 0);
+
+		assert_ok!(storage_meter.charge(100));
+		assert_eq!(storage_meter.available_storage(), 0);
+		assert_ok!(storage_meter.refund(200));
+		assert_eq!(storage_meter.available_storage(), 100);
+		assert_ok!(storage_meter.child_meter(CONTRACT_2).map(|_| ()));
+		assert_ok!(storage_meter.finish());
 	}
 
 	#[test]
