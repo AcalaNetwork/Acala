@@ -175,6 +175,16 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 8; // Ss58AddressFormat::KaruraAccount
 }
 
+pub struct BaseCallFilter;
+impl Filter<Call> for BaseCallFilter {
+	fn filter(call: &Call) -> bool {
+		matches!(
+			call,
+			Call::Sudo(_) | Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_)
+		)
+	}
+}
+
 impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
@@ -198,7 +208,7 @@ impl frame_system::Config for Runtime {
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
 	type DbWeight = RocksDbWeight;
-	type BaseCallFilter = ();
+	type BaseCallFilter = BaseCallFilter;
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
