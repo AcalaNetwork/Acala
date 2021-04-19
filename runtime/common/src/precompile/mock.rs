@@ -128,7 +128,7 @@ impl pallet_balances::Config for Test {
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
@@ -524,7 +524,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			ALICE,
-			XBTC,
+			RENBTC,
 			1_000_000_000_000
 		));
 		assert_ok!(Currencies::update_balance(Origin::root(), ALICE, AUSD, 1_000_000_000));
@@ -532,7 +532,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			MockAddressMapping::get_account_id(&alice()),
-			XBTC,
+			RENBTC,
 			1_000
 		));
 	});

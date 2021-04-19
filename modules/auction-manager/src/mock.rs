@@ -42,7 +42,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CAROL: AccountId = 3;
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 
 mod auction_manager {
 	pub use super::super::*;

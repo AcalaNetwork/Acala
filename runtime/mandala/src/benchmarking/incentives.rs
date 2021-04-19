@@ -33,7 +33,7 @@ use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 const BTC_AUSD_LP: CurrencyId =
-	CurrencyId::DexShare(DexShare::Token(TokenSymbol::XBTC), DexShare::Token(TokenSymbol::AUSD));
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::AUSD));
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
