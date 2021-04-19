@@ -229,19 +229,26 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
-		// token/dex flag(1byte) | evm address(20byte)
-		// token/dex flag(1byte) | dex left(4byte) | dex right(4byte)
-		// v[11] = token/dex flag(1byte)
-		// v[12..16] = dex left(4byte)
-		// v[16..20] = dex right(4byte)
-		// v[12..32] = evm address(20byte)
+		// token/dex/erc20 flag(1 byte) | token(1 byte)
+		// token/dex/erc20 flag(1 byte) | dex left(4 byte) | dex right(4 byte)
+		// token/dex/erc20 flag(1 byte) | evm address(20 byte)
+		//
+		// v[11] = 0: token
+		// - v[31] = token(1 byte)
+		//
+		// v[11] = 1: dex share
+		// - v[12..16] = dex left(4 byte)
+		// - v[16..20] = dex right(4 byte)
+		//
+		// v[11] = 2: erc20
+		// - v[12..32] = evm address(20 byte)
 
 		if !v.starts_with(&[0u8; 11][..]) {
 			return None;
 		}
 
 		// DEX share
-		if v[11] == 1 {
+		if v[11] == 1 && v.ends_with(&[0u8; 12][..]) {
 			let left = {
 				if v[12..15] == [0u8; 3] {
 					// Token
