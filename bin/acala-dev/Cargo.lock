@@ -18,7 +18,6 @@ version = "0.7.11"
 dependencies = [
  "acala-dev-cli",
  "acala-dev-service",
- "funty",
  "futures 0.3.13",
  "parity-util-mem",
 ]
@@ -4940,7 +4939,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "parity-scale-codec",
  "serde",
@@ -4954,7 +4952,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "parity-scale-codec",
  "serde",
@@ -4970,7 +4967,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "funty",
  "parity-scale-codec",
  "paste 0.1.18",
  "serde",
@@ -4994,7 +4990,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -5021,7 +5016,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "orml-utilities",
  "parity-scale-codec",
@@ -5036,7 +5030,6 @@ dependencies = [
 name = "orml-oracle-rpc"
 version = "0.4.1-dev"
 dependencies = [
- "funty",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
@@ -5051,7 +5044,6 @@ dependencies = [
 name = "orml-oracle-rpc-runtime-api"
 version = "0.4.1-dev"
 dependencies = [
- "funty",
  "parity-scale-codec",
  "sp-api",
  "sp-std",
@@ -5063,7 +5055,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "parity-scale-codec",
  "serde",
@@ -5078,7 +5069,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "parity-scale-codec",
  "serde",
@@ -5091,7 +5081,6 @@ name = "orml-traits"
 version = "0.4.1-dev"
 dependencies = [
  "frame-support",
- "funty",
  "impl-trait-for-tuples 0.2.1",
  "num-traits",
  "orml-utilities",
@@ -5121,7 +5110,6 @@ name = "orml-utilities"
 version = "0.4.1-dev"
 dependencies = [
  "frame-support",
- "funty",
  "parity-scale-codec",
  "serde",
  "sp-io",
@@ -5135,7 +5123,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "parity-scale-codec",
  "serde",
  "sp-io",
