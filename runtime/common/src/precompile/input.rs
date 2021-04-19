@@ -266,7 +266,7 @@ mod tests {
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
 
 		let mut raw_input = [0u8; 32];
-		raw_input[15] = 1;
+		raw_input[31] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
 	}

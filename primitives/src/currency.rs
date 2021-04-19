@@ -215,24 +215,31 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	type Error = ();
 
 	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
-		// token/dex flag(1byte) | evm address(20byte)
-		// token/dex flag(1byte) | dex left(4byte) | dex right(4byte)
-		// v[11] = token/dex flag(1byte)
-		// v[12..16] = dex left(4byte)
-		// v[16..20] = dex right(4byte)
-		// v[12..32] = evm address(20byte)
+		// token/dex/erc20 flag(1 byte) | token(1 byte)
+		// token/dex/erc20 flag(1 byte) | dex left(4 byte) | dex right(4 byte)
+		// token/dex/erc20 flag(1 byte) | evm address(20 byte)
+		//
+		// v[11] = 0: token
+		// - v[31] = token(1 byte)
+		//
+		// v[11] = 1: dex share
+		// - v[12..16] = dex left(4 byte)
+		// - v[16..20] = dex right(4 byte)
+		//
+		// v[11] = 2: erc20
+		// - v[12..32] = evm address(20 byte)
 
 		if !v.starts_with(&[0u8; 11][..]) {
 			return Err(());
 		}
 
 		// token
-		if v[11] == 0 && v[12..15] == [0u8; 3] && v[16..32] == [0u8; 16] {
-			return v[15].try_into().map(CurrencyId::Token);
+		if v[11] == 0 && v.starts_with(&[0u8; 31][..]) {
+			return v[31].try_into().map(CurrencyId::Token);
 		}
 
 		// erc20
-		if v[11] == 0 {
+		if v[11] == 2 {
 			return Ok(CurrencyId::Erc20(EvmAddress::from_slice(&v[12..32])));
 		}
 

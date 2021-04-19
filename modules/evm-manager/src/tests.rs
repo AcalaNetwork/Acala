@@ -179,7 +179,7 @@ fn decode_currency_id_works() {
 		);
 
 		// CurrencyId::Erc20
-		currency_id[11] = 0;
+		currency_id[11] = 2;
 		assert_eq!(
 			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&currency_id),
 			Some(CurrencyId::Erc20(
