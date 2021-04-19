@@ -476,7 +476,7 @@ fn mandala_genesis(
 		},
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
-			endowed_accounts: vec![(root_key.clone(), DOT, initial_balance)],
+			endowed_accounts: vec![(root_key, DOT, initial_balance)],
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
