@@ -235,7 +235,7 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 
 		// token
 		if v[11] == 0 && v.starts_with(&[0u8; 31][..]) {
-			return v[15].try_into().map(CurrencyId::Token);
+			return v[31].try_into().map(CurrencyId::Token);
 		}
 
 		// erc20

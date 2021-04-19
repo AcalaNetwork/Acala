@@ -25,7 +25,7 @@ use frame_support::{assert_err, assert_ok};
 #[test]
 fn currency_id_try_from_bytes_works() {
 	let mut bytes = [0u8; 32];
-	bytes[11..16].copy_from_slice(&[0, 0, 0, 0, 1][..]);
+	bytes[31] = 1;
 	assert_ok!(bytes.try_into(), CurrencyId::Token(TokenSymbol::AUSD));
 
 	let mut bytes = [0u8; 32];
@@ -51,6 +51,7 @@ fn currency_id_decode_bytes_works() {
 	let mut bytes = [0u8; 32];
 	assert_ok!(bytes.try_into(), CurrencyId::Token(TokenSymbol::ACA));
 
+	bytes[11] = 2;
 	bytes[12] = 32;
 	assert_ok!(
 		bytes.try_into(),
