@@ -120,8 +120,6 @@ update: update-orml cargo-update check-all
 cargo-update:
 	cargo update
 	cargo update --manifest-path bin/acala-dev/Cargo.toml
-	cargo update --manifest-path bin/acala-dev/cli/Cargo.toml
-	cargo update --manifest-path bin/acala-dev/service/Cargo.toml
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:

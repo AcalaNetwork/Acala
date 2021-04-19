@@ -18,7 +18,6 @@ version = "0.7.11"
 dependencies = [
  "acala-cli",
  "acala-service",
- "funty",
  "futures 0.3.13",
  "mandala-runtime",
  "parity-util-mem",
@@ -5552,7 +5551,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "parity-scale-codec",
  "serde",
@@ -5568,7 +5566,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "pallet-scheduler",
  "parity-scale-codec",
@@ -5586,7 +5583,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "funty",
  "hex-literal 0.2.1",
  "parity-scale-codec",
  "paste 0.1.18",
@@ -5611,7 +5607,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-tokens",
  "orml-traits",
  "orml-utilities",
@@ -5630,7 +5625,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -5645,7 +5639,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -5660,7 +5653,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "orml-utilities",
  "parity-scale-codec",
@@ -5676,7 +5668,6 @@ dependencies = [
 name = "orml-oracle-rpc"
 version = "0.4.1-dev"
 dependencies = [
- "funty",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
@@ -5691,7 +5682,6 @@ dependencies = [
 name = "orml-oracle-rpc-runtime-api"
 version = "0.4.1-dev"
 dependencies = [
- "funty",
  "parity-scale-codec",
  "sp-api",
  "sp-std",
@@ -5703,7 +5693,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "parity-scale-codec",
  "serde",
@@ -5719,7 +5708,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "orml-traits",
  "pallet-elections-phragmen",
  "pallet-treasury",
@@ -5736,7 +5724,6 @@ name = "orml-traits"
 version = "0.4.1-dev"
 dependencies = [
  "frame-support",
- "funty",
  "impl-trait-for-tuples 0.2.1",
  "num-traits",
  "orml-utilities",
@@ -5770,7 +5757,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "parity-scale-codec",
  "serde",
  "serde_json",
@@ -5785,7 +5771,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "funty",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
