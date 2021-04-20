@@ -149,6 +149,7 @@ pub enum CurrencyId {
 	Token(TokenSymbol),
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
+	ChainSafe(chainbridge::ResourceId),
 }
 
 impl CurrencyId {

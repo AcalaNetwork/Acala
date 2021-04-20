@@ -68,6 +68,7 @@ name = "acala-primitives"
 version = "0.7.11"
 dependencies = [
  "bstringify",
+ "chainbridge",
  "evm",
  "frame-support",
  "parity-scale-codec",

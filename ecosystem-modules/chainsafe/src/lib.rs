@@ -28,11 +28,11 @@ use sp_std::vec::Vec;
 
 pub use module::*;
 
+type ResourceId = chainbridge::ResourceId;
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
-
-	type ResourceId = chainbridge::ResourceId;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + chainbridge::Config {
@@ -55,6 +55,7 @@ pub mod module {
 		InvalidDestChainId,
 		ResourceIdAlreadyRegistered,
 		ResourceIdNotRegistered,
+		ResourceIdCurrencyIdNotMatch,
 	}
 
 	#[pallet::event]
@@ -91,6 +92,20 @@ pub mod module {
 				!ResourceIds::<T>::contains_key(currency_id) && !CurrencyIds::<T>::contains_key(resource_id),
 				Error::<T>::ResourceIdAlreadyRegistered,
 			);
+
+			let check_match = if Self::is_origin_chain_resource(resource_id) {
+				match currency_id {
+					CurrencyId::ChainSafe(_) => false,
+					_ => true,
+				}
+			} else {
+				match currency_id {
+					CurrencyId::ChainSafe(r_id) => r_id == resource_id,
+					_ => false,
+				}
+			};
+			ensure!(check_match, Error::<T>::ResourceIdCurrencyIdNotMatch);
+
 			ResourceIds::<T>::insert(currency_id, resource_id);
 			CurrencyIds::<T>::insert(resource_id, currency_id);
 			Self::deposit_event(Event::RegisteredResourceId(resource_id, currency_id));
@@ -144,7 +159,15 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let bridge_account_id = T::BridgeOrigin::ensure_origin(origin)?;
 			let currency_id = Self::currency_ids(resource_id).ok_or(Error::<T>::ResourceIdNotRegistered)?;
-			T::Currency::transfer(currency_id, &bridge_account_id, &to, amount)?;
+
+			if Self::is_origin_chain_resource(resource_id) {
+				// transfer locked tokens from bridge account to receiver
+				T::Currency::transfer(currency_id, &bridge_account_id, &to, amount)?;
+			} else {
+				// issue tokens to receiver
+				T::Currency::deposit(currency_id, &to, amount)?;
+			}
+
 			Ok(().into())
 		}
 	}
@@ -165,12 +188,25 @@ impl<T: Config> Pallet<T> {
 
 		let bridge_account_id = chainbridge::Module::<T>::account_id();
 		let resource_id = Self::resource_ids(currency_id).ok_or(Error::<T>::ResourceIdNotRegistered)?;
-		T::Currency::transfer(currency_id, &from, &bridge_account_id, amount)?;
+
+		if Self::is_origin_chain_resource(resource_id) {
+			// transfer tokens to bridge account to lock
+			T::Currency::transfer(currency_id, &from, &bridge_account_id, amount)?;
+		} else {
+			// burn tokens
+			T::Currency::withdraw(currency_id, &from, amount)?;
+		}
+
 		chainbridge::Module::<T>::transfer_fungible(
 			dest_chain_id,
 			resource_id,
 			recipient,
 			sp_core::U256::from(amount.saturated_into::<u128>()),
 		)
+	}
+
+	fn is_origin_chain_resource(resource_id: ResourceId) -> bool {
+		let origin_chain_id = <T as chainbridge::Config>::ChainId::get();
+		resource_id[31] == origin_chain_id
 	}
 }
