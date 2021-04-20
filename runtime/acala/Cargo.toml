@@ -230,6 +230,8 @@ runtime-benchmarks = [
 
 	"module-dex/runtime-benchmarks",
 	"module-nft/runtime-benchmarks",
+
+	"sp-api/disable-logging",
 ]
 # When enabled, the runtime api will not be build.
 #
