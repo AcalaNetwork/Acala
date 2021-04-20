@@ -31,17 +31,20 @@ use mandala_runtime::{
 	System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, XBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
-use module_support::{CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager};
+use module_support::{
+	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
+	EVM as EVMTrait,
+};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
-pub use primitives::{DexShare, TradingPair};
-use sp_core::{bytes::from_hex, H160, H256};
+pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
+use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
-use std::{collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -51,13 +54,10 @@ const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
 const LPTOKEN: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::XBTC));
-const LPTOKEN_ERC20: CurrencyId =
-	CurrencyId::DexShare(DexShare::Erc20(ERC20_ADDRESS_0), DexShare::Erc20(ERC20_ADDRESS_1));
 
-pub const ERC20_ADDRESS_0: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-pub const ERC20_0: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_0);
-pub const ERC20_ADDRESS_1: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
-pub const ERC20_1: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_1);
+pub fn evm_alice() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+}
 
 pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
 pub type DexModule = module_dex::Pallet<Runtime>;
@@ -81,6 +81,49 @@ fn run_to_block(n: u32) {
 
 fn last_event() -> Event {
 	SystemModule::events().pop().expect("Event expected").event
+}
+
+pub fn erc20_address_0() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+}
+
+pub fn erc20_address_1() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000002000001").unwrap()
+}
+
+pub fn deploy_erc20_contracts() {
+	let code = from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap();
+	assert_ok!(EVM::create_network_contract(
+		<Runtime as frame_system::Config>::Origin::root(),
+		code.clone(),
+		0,
+		2100_000,
+		100000
+	));
+
+	let event = Event::module_evm(module_evm::Event::Created(erc20_address_0()));
+	assert_eq!(System::events().iter().last().unwrap().event, event);
+
+	assert_ok!(EVM::deploy_free(
+		<Runtime as frame_system::Config>::Origin::root(),
+		erc20_address_0()
+	));
+
+	assert_ok!(EVM::create_network_contract(
+		<Runtime as frame_system::Config>::Origin::root(),
+		code,
+		0,
+		2100_000,
+		100000
+	));
+
+	let event = Event::module_evm(module_evm::Event::Created(erc20_address_1()));
+	assert_eq!(System::events().iter().last().unwrap().event, event);
+
+	assert_ok!(EVM::deploy_free(
+		<Runtime as frame_system::Config>::Origin::root(),
+		erc20_address_1()
+	));
 }
 
 pub struct ExtBuilder {
@@ -109,7 +152,10 @@ impl ExtBuilder {
 		let native_currency_id = GetNativeCurrencyId::get();
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let mut initial_enabled_trading_pairs = EnabledTradingPairs::get();
-		initial_enabled_trading_pairs.push(TradingPair::new(ERC20_0, ERC20_1));
+		initial_enabled_trading_pairs.push(TradingPair::new(
+			CurrencyId::Erc20(erc20_address_0()),
+			CurrencyId::Erc20(erc20_address_1()),
+		));
 
 		module_dex::GenesisConfig::<Runtime> {
 			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
@@ -157,35 +203,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		let mut accounts = BTreeMap::new();
-		let mut storage = BTreeMap::new();
-		storage.insert(
-			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		storage.insert(
-			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		accounts.insert(
-			ERC20_ADDRESS_0,
-			module_evm::GenesisAccount {
-				nonce: 1,
-				balance: 0,
-				storage: storage.clone(),
-				code: from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap(),
-			},
-		);
-		accounts.insert(
-			ERC20_ADDRESS_1,
-			module_evm::GenesisAccount {
-				nonce: 1,
-				balance: 0,
-				storage,
-				code: from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap(),
-			},
-		);
-		module_evm::GenesisConfig::<Runtime> { accounts }
+		module_evm::GenesisConfig::<Runtime>::default()
 			.assimilate_storage(&mut t)
 			.unwrap();
 
@@ -439,6 +457,18 @@ fn liquidate_cdp() {
 fn test_dex_module() {
 	ExtBuilder::default()
 		.balances(vec![
+			(
+				// NetworkContractSource
+				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
+				ACA,
+				(1_000_000_000_000_000_000u128),
+			),
+			(
+				// evm alice
+				MockAddressMapping::get_account_id(&evm_alice()),
+				ACA,
+				(1_000_000_000_000_000_000u128),
+			),
 			(AccountId::from(ALICE), AUSD, (1_000_000_000_000_000_000u128)),
 			(AccountId::from(ALICE), XBTC, (1_000_000_000_000_000_000u128)),
 			(AccountId::from(BOB), AUSD, (1_000_000_000_000_000_000u128)),
@@ -446,6 +476,7 @@ fn test_dex_module() {
 		])
 		.build()
 		.execute_with(|| {
+			deploy_erc20_contracts();
 			assert_eq!(DexModule::get_liquidity_pool(XBTC, AUSD), (0, 0));
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 0);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
@@ -524,20 +555,94 @@ fn test_dex_module() {
 				EvmAccounts::eth_address(&alice()),
 				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1), (0, 0));
-			assert_eq!(Currencies::total_issuance(LPTOKEN_ERC20), 0);
-			assert_eq!(Currencies::free_balance(LPTOKEN_ERC20, &AccountId::from(ALICE)), 0);
+			assert_eq!(
+				DexModule::get_liquidity_pool(
+					CurrencyId::Erc20(erc20_address_0()),
+					CurrencyId::Erc20(erc20_address_1())
+				),
+				(0, 0)
+			);
+			assert_eq!(
+				Currencies::total_issuance(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address_0()),
+					DexShare::Erc20(erc20_address_1())
+				)),
+				0
+			);
+			assert_eq!(
+				Currencies::free_balance(
+					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
+					&AccountId::from(ALICE)
+				),
+				0
+			);
 
-			//assert_ok!(DexModule::add_liquidity(
-			//	origin_of(AccountId::from(ALICE)),
-			//	ERC20_0,
-			//	ERC20_1,
-			//	10000,
-			//	10000000,
-			//	false,
-			//));
-			//assert_eq!(DexModule::get_liquidity_pool(ERC20_0, ERC20_1),
-			// (10000, 10000000));
+			// CurrencyId::DexShare(Erc20, Erc20)
+			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&evm_alice()));
+
+			assert_ok!(DexModule::add_liquidity(
+				origin_of(MockAddressMapping::get_account_id(&evm_alice())),
+				CurrencyId::Erc20(erc20_address_0()),
+				CurrencyId::Erc20(erc20_address_1()),
+				1,
+				10,
+				false,
+			));
+			assert_eq!(
+				DexModule::get_liquidity_pool(
+					CurrencyId::Erc20(erc20_address_0()),
+					CurrencyId::Erc20(erc20_address_1())
+				),
+				(1, 10)
+			);
+
+			assert_eq!(
+				Currencies::total_issuance(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address_0()),
+					DexShare::Erc20(erc20_address_1())
+				)),
+				20
+			);
+
+			assert_eq!(
+				Currencies::free_balance(
+					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
+					&MockAddressMapping::get_account_id(&evm_alice())
+				),
+				20
+			);
+
+			assert_ok!(DexModule::remove_liquidity(
+				origin_of(MockAddressMapping::get_account_id(&evm_alice())),
+				CurrencyId::Erc20(erc20_address_0()),
+				CurrencyId::Erc20(erc20_address_1()),
+				1,
+				false,
+			));
+
+			assert_eq!(
+				DexModule::get_liquidity_pool(
+					CurrencyId::Erc20(erc20_address_0()),
+					CurrencyId::Erc20(erc20_address_1())
+				),
+				(1, 10)
+			);
+
+			assert_eq!(
+				Currencies::total_issuance(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address_0()),
+					DexShare::Erc20(erc20_address_1())
+				)),
+				19
+			);
+
+			assert_eq!(
+				Currencies::free_balance(
+					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
+					&MockAddressMapping::get_account_id(&evm_alice())
+				),
+				19
+			);
 		});
 }
 

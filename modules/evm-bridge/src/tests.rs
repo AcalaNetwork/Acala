@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_err, assert_ok};
-use mock::{alice, bob, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
+use mock::{alice, bob, deploy_contracts, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
 use sha3::{Digest, Keccak256};
 use support::AddressMapping;
 
@@ -79,75 +79,113 @@ fn method_hash_works() {
 
 #[test]
 fn should_read_name() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
-			EvmBridgeModule::name(InvokeContext {
-				contract: erc20_address(),
-				sender: Default::default(),
-				origin: Default::default(),
-			}),
-			Ok(b"long string name, long string name, long string name, long string name, long string name".to_vec())
-		);
-	});
+	ExtBuilder::default()
+		.balances(vec![(
+			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
+			1_000_000_000_000,
+		)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_eq!(
+				EvmBridgeModule::name(InvokeContext {
+					contract: erc20_address(),
+					sender: Default::default(),
+					origin: Default::default(),
+				}),
+				Ok(
+					b"long string name, long string name, long string name, long string name, long string name"
+						.to_vec()
+				)
+			);
+		});
 }
 
 #[test]
 fn should_read_symbol() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
-			EvmBridgeModule::symbol(InvokeContext {
-				contract: erc20_address(),
-				sender: Default::default(),
-				origin: Default::default(),
-			}),
-			Ok(b"TestToken".to_vec())
-		);
-	});
+	ExtBuilder::default()
+		.balances(vec![(
+			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
+			1_000_000_000_000,
+		)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_eq!(
+				EvmBridgeModule::symbol(InvokeContext {
+					contract: erc20_address(),
+					sender: Default::default(),
+					origin: Default::default(),
+				}),
+				Ok(b"TestToken".to_vec())
+			);
+		});
 }
 
 #[test]
 fn should_read_decimals() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
-			EvmBridgeModule::decimals(InvokeContext {
-				contract: erc20_address(),
-				sender: Default::default(),
-				origin: Default::default(),
-			}),
-			Ok(17)
-		);
-	});
+	ExtBuilder::default()
+		.balances(vec![(
+			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
+			1_000_000_000_000,
+		)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_eq!(
+				EvmBridgeModule::decimals(InvokeContext {
+					contract: erc20_address(),
+					sender: Default::default(),
+					origin: Default::default(),
+				}),
+				Ok(17)
+			);
+		});
 }
 
 #[test]
 fn should_read_total_supply() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
-			EvmBridgeModule::total_supply(InvokeContext {
-				contract: erc20_address(),
-				sender: Default::default(),
-				origin: Default::default(),
-			}),
-			Ok(u128::max_value())
-		);
-	});
+	ExtBuilder::default()
+		.balances(vec![(
+			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
+			1_000_000_000_000,
+		)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_eq!(
+				EvmBridgeModule::total_supply(InvokeContext {
+					contract: erc20_address(),
+					sender: Default::default(),
+					origin: Default::default(),
+				}),
+				Ok(10000)
+			);
+		});
 }
 
 #[test]
 fn should_read_balance_of() {
-	ExtBuilder::default().build().execute_with(|| {
-		let context = InvokeContext {
-			contract: erc20_address(),
-			sender: Default::default(),
-			origin: Default::default(),
-		};
+	ExtBuilder::default()
+		.balances(vec![(
+			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
+			1_000_000_000_000,
+		)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			let context = InvokeContext {
+				contract: erc20_address(),
+				sender: Default::default(),
+				origin: Default::default(),
+			};
 
-		assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
+			assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
 
-		assert_eq!(EvmBridgeModule::balance_of(context, alice()), Ok(u128::max_value()));
+			assert_eq!(EvmBridgeModule::balance_of(context, alice()), Ok(10000));
 
-		assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
-	});
+			assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
+		});
 }
 
 #[test]
@@ -156,15 +194,16 @@ fn should_transfer() {
 		.balances(vec![
 			(
 				<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-				100000,
+				1_000_000_000_000,
 			),
 			(
 				<Runtime as module_evm::Config>::AddressMapping::get_account_id(&bob()),
-				100000,
+				1_000_000_000_000,
 			),
 		])
 		.build()
 		.execute_with(|| {
+			deploy_contracts();
 			assert_err!(
 				EvmBridgeModule::transfer(
 					InvokeContext {

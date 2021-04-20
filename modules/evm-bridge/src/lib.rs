@@ -146,7 +146,6 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
-		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
 		Ok(U256::from(info.output.as_slice())
 			.saturated_into::<u128>()
 			.saturated_into::<BalanceOf<T>>())
@@ -172,7 +171,11 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 			ExecutionMode::Execute,
 		)?;
 
-		Self::handle_exit_reason(info.exit_reason)
+		Self::handle_exit_reason(info.exit_reason)?;
+
+		// In order to avoid empty contracts, must check for return values
+		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
+		Ok(())
 	}
 
 	fn get_origin() -> Option<AccountIdOf<T>> {
@@ -188,6 +191,7 @@ impl<T: Config> Pallet<T> {
 	fn handle_exit_reason(exit_reason: ExitReason) -> Result<(), DispatchError> {
 		match exit_reason {
 			ExitReason::Succeed(ExitSucceed::Returned) => Ok(()),
+			ExitReason::Succeed(ExitSucceed::Stopped) => Ok(()),
 			ExitReason::Succeed(_) => Err(Error::<T>::ExecutionFail.into()),
 			ExitReason::Revert(_) => Err(Error::<T>::ExecutionRevert.into()),
 			ExitReason::Fatal(_) => Err(Error::<T>::ExecutionFatal.into()),
