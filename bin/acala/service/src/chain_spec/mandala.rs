@@ -72,7 +72,7 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32,
+			para_id: 1000_u32,
 		},
 	))
 }
@@ -124,8 +124,8 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		None,
 		Some(properties),
 		Extensions {
-			relay_chain: "rococo".into(),
-			para_id: 666_u32,
+			relay_chain: "rococo-".into(),
+			para_id: 1000_u32,
 		},
 	))
 }
@@ -205,7 +205,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32,
+			para_id: 1000_u32,
 		},
 	))
 }

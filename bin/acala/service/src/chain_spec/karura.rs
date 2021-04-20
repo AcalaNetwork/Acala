@@ -110,7 +110,7 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32.into(),
+			para_id: 1000_u32.into(),
 		},
 	))
 }
