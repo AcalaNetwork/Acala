@@ -50,16 +50,6 @@ impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(13 as Weight))
 	}
-	fn bid_surplus_auction() -> Weight {
-		(171_650_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-	}
-	fn bid_debit_auction() -> Weight {
-		(146_780_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
-	}
 	fn on_finalize(c: u32) -> Weight {
 		(2_238_000 as Weight)
 			// Standard Error: 33_000

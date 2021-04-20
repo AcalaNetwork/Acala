@@ -43,9 +43,7 @@ pub use precompile::{
 	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
 	StateRentPrecompile,
 };
-pub use primitives::currency::{
-	GetDecimals, ACA, AUSD, DOT, KAR, KILT, KSM, KUSD, LDOT, LKSM, PHA, PLM, POLKABTC, RENBTC, SDN, XBTC,
-};
+pub use primitives::currency::{GetDecimals, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
@@ -367,7 +365,7 @@ impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
 }
 
 pub fn dollar(currency_id: CurrencyId) -> Balance {
-	10u128.saturating_pow(currency_id.decimals())
+	10u128.saturating_pow(currency_id.decimals().expect("Not support Erc20 decimals").into())
 }
 
 pub fn cent(currency_id: CurrencyId) -> Balance {

@@ -16,36 +16,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! DEX module benchmarking.
-
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::*;
-use frame_benchmarking::benchmarks;
-use frame_system::RawOrigin;
-use primitives::{Balance, CurrencyId, TokenSymbol};
+// NOTE: These benchmarks are the same as mandala benchmarks,
+// the only difference is currency ids: ACA -> KAR, AUSD -> KUSD, DOT -> KSM
+//
+// TODO: Make sure to keep those files up-to-date with mandala benchmarks
+// until we implement a better solution
 
-pub fn dollar(d: u32) -> Balance {
-	let d: Balance = d.into();
-	d.saturating_mul(1_000_000_000_000_000_000)
-}
+// module benchmarking
+pub mod auction_manager;
+pub mod cdp_engine;
+pub mod cdp_treasury;
+pub mod dex;
+pub mod emergency_shutdown;
+pub mod evm;
+pub mod evm_accounts;
+pub mod homa;
+pub mod honzon;
+pub mod incentives;
+pub mod prices;
+pub mod transaction_payment;
 
-benchmarks! {
-	set_collateral_auction_maximum_size {
-		let u in 0 .. 1000;
-	}: _(RawOrigin::Root, CurrencyId::Token(TokenSymbol::DOT), dollar(100))
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::mock::{ExtBuilder, Runtime};
-	use frame_support::assert_ok;
-
-	#[test]
-	fn set_collateral_auction_maximum_size() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_collateral_auction_maximum_size::<Runtime>());
-		});
-	}
-}
+// orml benchmarking
+pub mod auction;
+pub mod authority;
+pub mod currencies;
+pub mod oracle;
+pub mod tokens;
+pub mod utils;
+pub mod vesting;

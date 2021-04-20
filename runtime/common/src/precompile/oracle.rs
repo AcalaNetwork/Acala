@@ -18,12 +18,14 @@
 
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use primitives::{evm::AddressMapping as AddressMappingT, CurrencyId};
+use primitives::CurrencyId;
 use sp_core::U256;
 use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT};
-use module_support::{Price, PriceProvider as PriceProviderT};
+use module_support::{
+	AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, Price, PriceProvider as PriceProviderT,
+};
 
 /// The `Oracle` impl precompile.
 ///
@@ -32,8 +34,8 @@ use module_support::{Price, PriceProvider as PriceProviderT};
 ///
 /// Actions:
 /// - Get price. Rest `input` bytes: `currency_id`.
-pub struct OraclePrecompile<AccountId, AddressMapping, PriceProvider>(
-	PhantomData<(AccountId, AddressMapping, PriceProvider)>,
+pub struct OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider>(
+	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, PriceProvider)>,
 );
 
 enum Action {
@@ -51,10 +53,12 @@ impl TryFrom<u8> for Action {
 	}
 }
 
-impl<AccountId, AddressMapping, PriceProvider> Precompile for OraclePrecompile<AccountId, AddressMapping, PriceProvider>
+impl<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider> Precompile
+	for OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
+	CurrencyIdMapping: CurrencyIdMappingT,
 	PriceProvider: PriceProviderT<CurrencyId>,
 {
 	fn execute(
@@ -66,7 +70,7 @@ where
 
 		log::debug!(target: "evm", "input: {:?}", input);
 
-		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
 

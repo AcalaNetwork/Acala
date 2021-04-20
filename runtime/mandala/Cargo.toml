@@ -12,7 +12,7 @@ serde = { version = "1.0.124", optional = true, default-features = false }
 serde_json = "1.0.64"
 hex = { version = "0.4", default-features = false, optional = true }
 hex-literal = { version = "0.3.1" }
-evm = { version = "0.24.0", optional = true, default-features = false }
+evm = { version = "0.26.0", optional = true, default-features = false }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false, optional = true }
 frame-executive = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
@@ -59,6 +59,7 @@ sp-staking = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-version = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-npos-elections = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 libsecp256k1 = { version = "0.3.4", default-features = false, optional = true }
 
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1", default-features = false }
@@ -96,6 +97,7 @@ module-emergency-shutdown = { path = "../../modules/emergency-shutdown", default
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
+module-evm-manager = { path = "../../modules/evm-manager", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
@@ -173,6 +175,7 @@ std = [
 	"sp-std/std",
 	"sp-transaction-pool/std",
 	"sp-version/std",
+	"sp-npos-elections/std",
 	"pallet-bounties/std",
 	"pallet-tips/std",
 
@@ -211,6 +214,7 @@ std = [
 	"module-evm/std",
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",
+	"module-evm-manager/std",
 	"module-honzon/std",
 	"module-loans/std",
 	"module-nft/std",
@@ -242,8 +246,9 @@ runtime-benchmarks = [
 	"sp-runtime/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
 	"chainbridge/runtime-benchmarks",
+	"orml-vesting/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
 
-	"module-cdp-treasury/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
 	"module-nft/runtime-benchmarks",
 ]

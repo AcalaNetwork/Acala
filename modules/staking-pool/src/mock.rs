@@ -76,6 +76,7 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 parameter_type_with_key! {
@@ -339,7 +340,7 @@ parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
-	pub const StakingPoolModuleId: ModuleId = ModuleId(*b"aca/stkp");
+	pub const StakingPoolPalletId: PalletId = PalletId(*b"aca/stkp");
 	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
 }
 
@@ -352,7 +353,7 @@ impl Config for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type DefaultExchangeRate = DefaultExchangeRate;
-	type ModuleId = StakingPoolModuleId;
+	type PalletId = StakingPoolPalletId;
 	type PoolAccountIndexes = PoolAccountIndexes;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type FeeModel = MockFeeModel;

@@ -21,7 +21,10 @@
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::evm::{CallInfo, EvmAddress};
+use primitives::{
+	evm::{CallInfo, EvmAddress},
+	CurrencyId,
+};
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
@@ -35,6 +38,7 @@ use sp_std::{
 };
 
 pub mod homa;
+pub mod mocks;
 pub use homa::{
 	HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
 	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
@@ -88,13 +92,8 @@ pub trait AuctionManager<AccountId> {
 		amount: Self::Balance,
 		target: Self::Balance,
 	) -> DispatchResult;
-	fn new_debit_auction(amount: Self::Balance, fix: Self::Balance) -> DispatchResult;
-	fn new_surplus_auction(amount: Self::Balance) -> DispatchResult;
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult;
-
 	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance;
-	fn get_total_surplus_in_auction() -> Self::Balance;
-	fn get_total_debit_in_auction() -> Self::Balance;
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
@@ -255,18 +254,22 @@ pub trait CDPTreasury<AccountId> {
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn swap_exact_collateral_in_auction_to_stable(
+	fn swap_exact_collateral_to_stable(
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
 		min_target_amount: Self::Balance,
 		price_impact_limit: Option<Ratio>,
+		maybe_path: Option<&[Self::CurrencyId]>,
+		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
 
-	fn swap_collateral_not_in_auction_with_exact_stable(
+	fn swap_collateral_to_exact_stable(
 		currency_id: Self::CurrencyId,
-		target_amount: Self::Balance,
 		max_supply_amount: Self::Balance,
+		target_amount: Self::Balance,
 		price_impact_limit: Option<Ratio>,
+		path: Option<&[Self::CurrencyId]>,
+		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
 
 	fn create_collateral_auctions(
@@ -352,6 +355,12 @@ pub struct InvokeContext {
 
 /// An abstraction of EVMBridge
 pub trait EVMBridge<AccountId, Balance> {
+	/// Execute ERC20.name() to read token name from ERC20 contract
+	fn name(context: InvokeContext) -> Result<Vec<u8>, DispatchError>;
+	/// Execute ERC20.symbol() to read token symbol from ERC20 contract
+	fn symbol(context: InvokeContext) -> Result<Vec<u8>, DispatchError>;
+	/// Execute ERC20.decimals() to read token decimals from ERC20 contract
+	fn decimals(context: InvokeContext) -> Result<u8, DispatchError>;
 	/// Execute ERC20.totalSupply() to read total supply from ERC20 contract
 	fn total_supply(context: InvokeContext) -> Result<Balance, DispatchError>;
 	/// Execute ERC20.balanceOf(address) to read balance of address from ERC20
@@ -363,6 +372,32 @@ pub trait EVMBridge<AccountId, Balance> {
 	fn get_origin() -> Option<AccountId>;
 	/// Provide a method to set origin for `on_initialize`
 	fn set_origin(origin: AccountId);
+}
+
+#[cfg(feature = "std")]
+impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
+	fn name(_context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn symbol(_context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn decimals(_context: InvokeContext) -> Result<u8, DispatchError> {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn get_origin() -> Option<AccountId> {
+		None
+	}
+	fn set_origin(_origin: AccountId) {}
 }
 
 /// An abstraction of EVMStateRentTrait
@@ -440,4 +475,68 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 
 pub trait Contains<T> {
 	fn contains(t: &T) -> bool;
+}
+
+/// A mapping between `AccountId` and `EvmAddress`.
+pub trait AddressMapping<AccountId> {
+	/// Returns the AccountId used go generate the given EvmAddress.
+	fn get_account_id(evm: &EvmAddress) -> AccountId;
+	/// Returns the EvmAddress associated with a given AccountId or the
+	/// underlying EvmAddress of the AccountId.
+	/// Returns None if there is no EvmAddress associated with the AccountId
+	/// and there is no underlying EvmAddress in the AccountId.
+	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
+	/// Returns the EVM address associated with an account ID and generates an
+	/// account mapping if no association exists.
+	fn get_or_create_evm_address(account_id: &AccountId) -> EvmAddress;
+	/// Returns the default EVM address associated with an account ID.
+	fn get_default_evm_address(account_id: &AccountId) -> EvmAddress;
+	/// Returns true if a given AccountId is associated with a given EvmAddress
+	/// and false if is not.
+	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
+}
+
+/// A mapping between u32 and Erc20 address.
+/// provide a way to encode/decode for CurrencyId;
+pub trait CurrencyIdMapping {
+	/// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm
+	/// address.
+	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
+	/// Returns the EvmAddress associated with a given u32.
+	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
+	/// Returns the decimals associated with a given CurrencyId.
+	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// the EvmAddress must have been mapped.
+	fn decimals(currency_id: CurrencyId) -> Option<u8>;
+	/// Encode the CurrencyId to [u8; 32].
+	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// the EvmAddress must have been mapped.
+	fn encode_currency_id(v: CurrencyId) -> Option<[u8; 32]>;
+	/// Decode the [u8; 32] to CurrencyId.
+	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// will use the u32 to get the DexShare::Erc20 from the mapping.
+	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
+}
+
+#[cfg(feature = "std")]
+impl CurrencyIdMapping for () {
+	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
+		Err(DispatchError::Other("unimplemented CurrencyIdMapping"))
+	}
+
+	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
+		None
+	}
+
+	fn decimals(_currency_id: CurrencyId) -> Option<u8> {
+		None
+	}
+
+	fn encode_currency_id(_v: CurrencyId) -> Option<[u8; 32]> {
+		None
+	}
+
+	fn decode_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {
+		None
+	}
 }

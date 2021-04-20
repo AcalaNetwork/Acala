@@ -34,12 +34,12 @@ pub type AccountId = u128;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const AUSD_XBTC_PAIR: TradingPair = TradingPair(AUSD, XBTC);
+pub const AUSD_XBTC_PAIR: TradingPair = TradingPair(AUSD, RENBTC);
 pub const AUSD_DOT_PAIR: TradingPair = TradingPair(AUSD, DOT);
-pub const DOT_XBTC_PAIR: TradingPair = TradingPair(DOT, XBTC);
+pub const DOT_XBTC_PAIR: TradingPair = TradingPair(DOT, RENBTC);
 
 mod dex {
 	pub use super::super::*;
@@ -72,6 +72,7 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 parameter_type_with_key! {
@@ -109,7 +110,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 
 impl Config for Runtime {
@@ -117,7 +118,8 @@ impl Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
-	type ModuleId = DEXModuleId;
+	type PalletId = DEXPalletId;
+	type CurrencyIdMapping = ();
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
@@ -151,8 +153,8 @@ impl Default for ExtBuilder {
 			endowed_accounts: vec![
 				(ALICE, AUSD, 1_000_000_000_000_000_000u128),
 				(BOB, AUSD, 1_000_000_000_000_000_000u128),
-				(ALICE, XBTC, 1_000_000_000_000_000_000u128),
-				(BOB, XBTC, 1_000_000_000_000_000_000u128),
+				(ALICE, RENBTC, 1_000_000_000_000_000_000u128),
+				(BOB, RENBTC, 1_000_000_000_000_000_000u128),
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],

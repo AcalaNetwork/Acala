@@ -122,12 +122,11 @@ fn karura_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-		KAR, KSM, KUSD, LKSM, RENBTC,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, CdpEngineConfig,
+		CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
+		HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
+		ParachainInfoConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -138,6 +137,9 @@ fn karura_genesis(
 
 	let initial_balance: u128 = 1_000_000 * dollar(KAR);
 	let initial_staking: u128 = 100_000 * dollar(KAR);
+
+	let mut unreleased_native = 100_000_000 * dollar(KAR); // 100 million KAR
+													   // if want to config vesting, should handle unreleased_native firstly.
 
 	let balances = initial_authorities
 		.iter()
@@ -159,10 +161,12 @@ fn karura_genesis(
 				} else {
 					acc.insert(account_id.clone(), amount);
 				}
+				unreleased_native = unreleased_native.saturating_sub(amount);
 				acc
 			},
 		)
 		.into_iter()
+		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	karura_runtime::GenesisConfig {
@@ -171,7 +175,6 @@ fn karura_genesis(
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_indices: IndicesConfig { indices: vec![] },
 		pallet_balances: BalancesConfig { balances },
 		pallet_sudo: SudoConfig { key: root_key.clone() },
 		pallet_collective_Instance1: Default::default(),
@@ -198,17 +201,13 @@ fn karura_genesis(
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance6: OperatorMembershipBandConfig {
-			members: endowed_accounts.clone(),
-			phantom: Default::default(),
-		},
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![],
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
-			collateral_auction_maximum_size: vec![
+			expected_collateral_auction_size: vec![
 				(KSM, dollar(KSM)), // (currency_id, max size of a collateral auction)
 				(RENBTC, 5 * cent(RENBTC)),
 			],
@@ -217,7 +216,7 @@ fn karura_genesis(
 			collaterals_params: vec![
 				(
 					KSM,
-					Some(FixedU128::zero()),                             // stability fee for this collateral
+					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
@@ -240,13 +239,12 @@ fn karura_genesis(
 					10_000_000 * dollar(KUSD),
 				),
 			],
-			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
+			global_interest_rate_per_sec: FixedU128::saturating_from_rational(
+				1_547_126_000u128,
+				1_000_000_000_000_000_000u128,
+			), /* 5% APR */
 		},
 		orml_oracle_Instance1: AcalaOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
-		},
-		orml_oracle_Instance2: BandOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
 			phantom: Default::default(),
 		},
@@ -266,7 +264,7 @@ fn karura_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 666.into(),
+			parachain_id: 1000.into(),
 		},
 		// TODO: need RENBTC for Kusama Ecosystem
 		// ecosystem_renvm_bridge: Some(RenVmBridgeConfig {

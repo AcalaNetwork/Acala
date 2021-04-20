@@ -18,7 +18,7 @@
 
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use primitives::evm::AddressMapping as AddressMappingT;
+use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::U256;
 use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
@@ -36,8 +36,8 @@ use primitives::{Balance, CurrencyId};
 /// - Query total issuance.
 /// - Query balance. Rest `input` bytes: `account_id`.
 /// - Transfer. Rest `input` bytes: `from`, `to`, `amount`.
-pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, MultiCurrency>(
-	PhantomData<(AccountId, AddressMapping, MultiCurrency)>,
+pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency>(
+	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
 );
 
 enum Action {
@@ -59,11 +59,12 @@ impl TryFrom<u8> for Action {
 	}
 }
 
-impl<AccountId, AddressMapping, MultiCurrency> Precompile
-	for MultiCurrencyPrecompile<AccountId, AddressMapping, MultiCurrency>
+impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
+	for MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
+	CurrencyIdMapping: CurrencyIdMappingT,
 	MultiCurrency: MultiCurrencyT<AccountId, Balance = Balance, CurrencyId = CurrencyId>,
 {
 	fn execute(
@@ -75,7 +76,7 @@ where
 
 		log::debug!(target: "evm", "input: {:?}", input);
 
-		let input = Input::<Action, AccountId, AddressMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
 		let currency_id = input.currency_id_at(1)?;

@@ -21,15 +21,14 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types, PalletId};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::IdentityLookup,
-	ModuleId,
+	traits::{AccountIdConversion, IdentityLookup},
 };
 use sp_std::cell::RefCell;
 pub use support::Price;
@@ -42,9 +41,8 @@ pub type Amount = i64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CAROL: AccountId = 3;
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 
 mod auction_manager {
 	pub use super::super::*;
@@ -77,6 +75,7 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 parameter_type_with_key! {
@@ -110,7 +109,8 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
-	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -121,7 +121,8 @@ impl cdp_treasury::Config for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
-	type ModuleId = CDPTreasuryModuleId;
+	type PalletId = CDPTreasuryPalletId;
+	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 
@@ -150,7 +151,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub const DEXModuleId: ModuleId = ModuleId(*b"aca/dexm");
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC)];
@@ -161,7 +162,8 @@ impl module_dex::Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
-	type ModuleId = DEXModuleId;
+	type PalletId = DEXPalletId;
+	type CurrencyIdMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
@@ -186,7 +188,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
@@ -198,7 +199,6 @@ impl Config for Runtime {
 	type AuctionTimeToClose = AuctionTimeToClose;
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type DEX = DEXModule;
 	type PriceSource = MockPriceSource;
@@ -249,9 +249,6 @@ impl Default for ExtBuilder {
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
 				(CAROL, BTC, 1000),
-				(ALICE, ACA, 1000),
-				(BOB, ACA, 1000),
-				(CAROL, ACA, 1000),
 			],
 		}
 	}

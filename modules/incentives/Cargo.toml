@@ -20,7 +20,7 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-tokens = { path = "../../orml/tokens" }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
 
 [features]

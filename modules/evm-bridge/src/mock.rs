@@ -24,10 +24,11 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_evm::GenesisAccount;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping};
+use primitives::evm::EvmAddress;
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
+use support::mocks::MockAddressMapping;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -64,6 +65,7 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 parameter_types! {

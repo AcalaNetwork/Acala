@@ -28,14 +28,13 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{evm::EvmAddress, mocks::MockAddressMapping, Amount, BlockNumber, CurrencyId, TokenSymbol};
+use primitives::{Amount, Balance, BlockNumber, CurrencyId, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, DispatchResult,
 };
-use support::{EVMBridge, InvokeContext};
+use support::mocks::MockAddressMapping;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -66,6 +65,7 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
@@ -159,31 +159,6 @@ impl orml_tokens::Config for Runtime {
 	type OnDust = ();
 }
 
-pub struct MockEVMBridge;
-impl<AccountId, Balance> EVMBridge<AccountId, Balance> for MockEVMBridge
-where
-	AccountId: Default,
-	Balance: Default,
-{
-	fn total_supply(_context: InvokeContext) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn balance_of(_context: InvokeContext, _address: EvmAddress) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn transfer(_context: InvokeContext, _to: EvmAddress, _value: Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn get_origin() -> Option<AccountId> {
-		None
-	}
-
-	fn set_origin(_origin: AccountId) {}
-}
-
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 
 parameter_types! {
@@ -197,28 +172,27 @@ impl module_currencies::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
-	type EVMBridge = MockEVMBridge;
+	type EVMBridge = ();
 }
 
 parameter_types! {
 	pub const CreateClassDeposit: Balance = 200;
 	pub const CreateTokenDeposit: Balance = 100;
-	pub const NftModuleId: ModuleId = ModuleId(*b"aca/aNFT");
+	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 }
 impl Config for Runtime {
 	type Event = Event;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
-	type ModuleId = NftModuleId;
-	type Currency = NativeCurrency;
+	type PalletId = NftPalletId;
 	type WeightInfo = ();
 }
 
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
-	type ClassData = ClassData;
-	type TokenData = TokenData;
+	type ClassData = ClassData<Balance>;
+	type TokenData = TokenData<Balance>;
 }
 
 use frame_system::Call as SystemCall;

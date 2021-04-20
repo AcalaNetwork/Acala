@@ -33,17 +33,17 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
 use sp_core::U256;
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug, SaturatedConversion,
+	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{DEXIncentives, DEXManager, Price, Ratio};
+use support::{CurrencyIdMapping, DEXIncentives, DEXManager, Price, Ratio};
 
 mod mock;
 mod tests;
@@ -110,7 +110,11 @@ pub mod module {
 
 		/// The DEX's module id, keep all assets in DEX.
 		#[pallet::constant]
-		type ModuleId: Get<ModuleId>;
+		type PalletId: Get<PalletId>;
+
+		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
+		/// address as LP token.
+		type CurrencyIdMapping: CurrencyIdMapping;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -433,6 +437,13 @@ pub mod module {
 				Error::<T>::NotAllowedList
 			);
 
+			if let CurrencyId::Erc20(address) = currency_id_a {
+				T::CurrencyIdMapping::set_erc20_mapping(address)?;
+			}
+			if let CurrencyId::Erc20(address) = currency_id_b {
+				T::CurrencyIdMapping::set_erc20_mapping(address)?;
+			}
+
 			let (min_contribution, target_provision) = if currency_id_a == trading_pair.0 {
 				(
 					(min_contribution_a, min_contribution_b),
@@ -528,7 +539,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	fn account_id() -> T::AccountId {
-		T::ModuleId::get().into_account()
+		T::PalletId::get().into_account()
 	}
 
 	/// Access status of specific trading_pair,
@@ -570,8 +581,19 @@ impl<T: Config> Pallet<T> {
 					};
 
 					// issue shares to contributor
-					if T::Currency::deposit(lp_share_currency_id, &who, share_amount).is_ok() {
-						total_shares_issued = total_shares_issued.saturating_add(share_amount);
+					let res = T::Currency::deposit(lp_share_currency_id, &who, share_amount);
+					match res {
+						Ok(_) => {
+							total_shares_issued = total_shares_issued.saturating_add(share_amount);
+						}
+						Err(e) => {
+							log::warn!(
+								target: "dex",
+								"deposit: failed to deposit {:?} {:?} to {:?}: {:?}. \
+								This is unexpected but should be safe",
+								share_amount, lp_share_currency_id, who.clone(), e
+							);
+						}
 					}
 
 					// decrease ref count

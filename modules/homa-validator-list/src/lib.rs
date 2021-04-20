@@ -383,7 +383,7 @@ pub mod module {
 
 				for (guarantor, _) in Guarantees::<T>::iter_prefix(&validator) {
 					// NOTE: ignoring result because the closure will not throw err.
-					let _ = Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
+					let res = Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 						let should_slashing = Ratio::checked_from_rational(guarantee.total, total_insurance)
 							.unwrap_or_default()
 							.saturating_mul_int(insurance_loss);
@@ -398,6 +398,7 @@ pub mod module {
 						actual_total_slashing = actual_total_slashing.saturating_add(actual_slashing);
 						Ok(())
 					});
+					debug_assert!(res.is_ok());
 				}
 			}
 

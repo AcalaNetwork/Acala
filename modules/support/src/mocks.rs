@@ -16,13 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{AddressMapping, CurrencyId, CurrencyIdMapping};
 use codec::Encode;
+use frame_support::pallet_prelude::DispatchResult;
+use primitives::{currency::GetDecimals, evm::EvmAddress};
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
+use sp_std::convert::TryInto;
 
 pub struct MockAddressMapping;
 
-impl crate::evm::AddressMapping<AccountId32> for MockAddressMapping {
+impl AddressMapping<AccountId32> for MockAddressMapping {
 	fn get_account_id(address: &H160) -> AccountId32 {
 		let mut data = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
@@ -52,5 +56,29 @@ impl crate::evm::AddressMapping<AccountId32> for MockAddressMapping {
 
 	fn is_linked(account_id: &AccountId32, evm: &H160) -> bool {
 		Self::get_or_create_evm_address(account_id) == *evm
+	}
+}
+
+pub struct MockCurrencyIdMapping;
+
+impl CurrencyIdMapping for MockCurrencyIdMapping {
+	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
+		Ok(())
+	}
+
+	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
+		Some(EvmAddress::default())
+	}
+
+	fn decimals(currency_id: CurrencyId) -> Option<u8> {
+		currency_id.decimals()
+	}
+
+	fn encode_currency_id(_v: CurrencyId) -> Option<[u8; 32]> {
+		Some(Default::default())
+	}
+
+	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
+		(*v).try_into().ok()
 	}
 }

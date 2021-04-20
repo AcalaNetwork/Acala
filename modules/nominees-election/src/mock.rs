@@ -22,7 +22,7 @@
 
 use super::*;
 
-use crate as nominees;
+use crate as nominees_election;
 use frame_support::{construct_runtime, parameter_types};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
@@ -64,6 +64,7 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 parameter_type_with_key! {
@@ -130,8 +131,9 @@ impl Contains<AccountId> for MockRelaychainValidatorFilter {
 }
 
 impl Config for Runtime {
+	type Event = Event;
 	type Currency = LDOTCurrency;
-	type PolkadotAccountId = AccountId;
+	type NomineeId = AccountId;
 	type MinBondThreshold = MinBondThreshold;
 	type BondingDuration = BondingDuration;
 	type NominateesCount = NominateesCount;
@@ -149,7 +151,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		NomineesElectionModule: nominees::{Pallet, Call, Storage},
+		NomineesElectionModule: nominees_election::{Pallet, Call, Storage, Event<T>},
 		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		OrmlCurrencies: orml_currencies::{Pallet, Call, Event<T>},

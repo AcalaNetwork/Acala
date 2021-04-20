@@ -34,11 +34,9 @@ use frame_support::{
 	transactional,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
-use orml_traits::account::MergeAccount;
-use primitives::{
-	evm::{AddressMapping, EvmAddress},
-	AccountIndex,
-};
+use module_support::AddressMapping;
+use orml_traits::{account::MergeAccount, Handler};
+use primitives::{evm::EvmAddress, AccountIndex};
 use sp_core::{crypto::AccountId32, ecdsa};
 use sp_io::{
 	crypto::secp256k1_ecdsa_recover,
@@ -75,6 +73,9 @@ pub mod module {
 
 		/// Merge free balance from source to dest.
 		type MergeAccount: MergeAccount<Self::AccountId>;
+
+		/// On claim account hook.
+		type OnClaim: Handler<Self::AccountId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -158,6 +159,8 @@ pub mod module {
 			Accounts::<T>::insert(eth_address, &who);
 			EvmAddresses::<T>::insert(&who, eth_address);
 
+			T::OnClaim::handle(&who)?;
+
 			Self::deposit_event(Event::ClaimAccount(who, eth_address));
 
 			Ok(().into())
@@ -174,6 +177,8 @@ pub mod module {
 			ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
 
 			let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
+
+			T::OnClaim::handle(&who)?;
 
 			Self::deposit_event(Event::ClaimAccount(who, eth_address));
 
@@ -288,6 +293,7 @@ where
 		})
 	}
 
+	// Returns the default EVM address associated with an account ID.
 	fn get_default_evm_address(account_id: &T::AccountId) -> EvmAddress {
 		account_to_default_evm_address(account_id)
 	}

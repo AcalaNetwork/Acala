@@ -146,5 +146,35 @@ fn on_emergency_shutdown_should_work() {
 			HonzonModule::transfer_loan_from(Origin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::AlreadyShutdown,
 		);
+		assert_noop!(
+			HonzonModule::close_loan_has_debit_by_dex(Origin::signed(ALICE), BTC, None),
+			Error::<Runtime>::AlreadyShutdown,
+		);
+	});
+}
+
+#[test]
+fn close_loan_has_debit_by_dex_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
+
+		assert_ok!(HonzonModule::close_loan_has_debit_by_dex(
+			Origin::signed(ALICE),
+			BTC,
+			None
+		));
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 	});
 }

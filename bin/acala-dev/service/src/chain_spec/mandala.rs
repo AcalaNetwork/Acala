@@ -222,7 +222,7 @@ fn testnet_genesis(
 		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
 		OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig, StakingPoolConfig, SudoConfig,
 		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT,
-		LDOT, RENBTC, XBTC, BABE_GENESIS_EPOCH_CONFIG
+		LDOT, RENBTC, BABE_GENESIS_EPOCH_CONFIG
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -327,16 +327,14 @@ fn testnet_genesis(
 					vec![
 						(x.clone(), AUSD, 1_000_000 * dollar(AUSD)),
 						(x.clone(), DOT, 1_000_000 * dollar(DOT)),
-						(x.clone(), XBTC, 1_000_000 * dollar(XBTC)),
 					]
 				})
 				.collect(),
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
-			collateral_auction_maximum_size: vec![
+			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
-				(XBTC, dollar(XBTC)),
 				(RENBTC, dollar(RENBTC)),
 			],
 		},
@@ -344,19 +342,11 @@ fn testnet_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // stability fee for this collateral
+					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(150, 100)), // required liquidation ratio
 					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
-				),
-				(
-					XBTC,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(150, 100)),
-					Some(FixedU128::saturating_from_rational(10, 100)),
-					Some(FixedU128::saturating_from_rational(150, 100)),
-					10_000_000 * dollar(AUSD),
 				),
 				(
 					LDOT,
@@ -375,7 +365,7 @@ fn testnet_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
+			global_interest_rate_per_sec: FixedU128::saturating_from_rational(1_547_126_000u128, 1_000_000_000_000_000_000u128), /* 5% APR */
 		},
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: vec![],
@@ -407,7 +397,6 @@ fn testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					(TradingPair::new(AUSD, DOT), (1_000_000u128, 2_000_000u128)),
-					(TradingPair::new(AUSD, XBTC), (1_000_000u128, 2_000_000u128)),
 					(TradingPair::new(AUSD, ACA), (1_000_000u128, 2_000_000u128)),
 				],
 			)],
@@ -432,7 +421,7 @@ fn mandala_genesis(
 		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
 		OperatorMembershipBandConfig, OrmlNFTConfig, RenVmBridgeConfig, SessionConfig, StakerStatus, StakingConfig,
 		StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-		ACA, AUSD, DOT, LDOT, RENBTC, XBTC, BABE_GENESIS_EPOCH_CONFIG,
+		ACA, AUSD, DOT, LDOT, RENBTC, BABE_GENESIS_EPOCH_CONFIG, UnreleasedNativeVaultAccountId,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -444,6 +433,7 @@ fn mandala_genesis(
 
 	let evm_genesis_accounts = evm_genesis();
 
+	let mut unreleased_native = 1_000_000_000 * dollar(ACA);	// 1 billion
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -463,10 +453,12 @@ fn mandala_genesis(
 				} else {
 					acc.insert(account_id.clone(), amount);
 				}
+				unreleased_native = unreleased_native.saturating_sub(amount);
 				acc
 			},
 		)
 		.into_iter()
+		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	mandala_runtime::GenesisConfig {
@@ -532,14 +524,12 @@ fn mandala_genesis(
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![
 				(root_key.clone(), DOT, 1_000_000 * dollar(DOT)),
-				(root_key, XBTC, 1_000_000 * dollar(XBTC)),
 			],
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
-			collateral_auction_maximum_size: vec![
+			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
-				(XBTC, 5 * cent(XBTC)),
 				(RENBTC, 5 * cent(RENBTC)),
 			],
 		},
@@ -547,19 +537,11 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // stability fee for this collateral
+					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
 					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
 					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
-				),
-				(
-					XBTC,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(110, 100)),
-					Some(FixedU128::saturating_from_rational(4, 100)),
-					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * dollar(AUSD),
 				),
 				(
 					LDOT,
@@ -578,7 +560,7 @@ fn mandala_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_stability_fee: FixedU128::saturating_from_rational(618_850_393, 100_000_000_000_000_000_u128), /* 5% APR */
+			global_interest_rate_per_sec: FixedU128::saturating_from_rational(1_547_126_000u128, 1_000_000_000_000_000_000u128), /* 5% APR */
 		},
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: {
@@ -636,8 +618,8 @@ fn mandala_genesis(
 				let nft_airdrop: Vec<(
 					AccountId,
 					Vec<u8>,
-					module_nft::ClassData,
-					Vec<(Vec<u8>, module_nft::TokenData, Vec<AccountId>)>,
+					module_nft::ClassData<Balance>,
+					Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
 				)> = serde_json::from_slice(nft_airdrop_json).unwrap();
 
 				let mut tokens = vec![];

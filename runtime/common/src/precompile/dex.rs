@@ -19,8 +19,8 @@
 use super::input::{Input, InputT};
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::DEXManager;
-use primitives::{evm::AddressMapping as AddressMappingT, Balance, CurrencyId};
+use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
+use primitives::{Balance, CurrencyId};
 use sp_core::U256;
 use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
 
@@ -33,7 +33,9 @@ use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, resu
 /// - Get liquidity. Rest `input` bytes: `currency_id_a`, `currency_id_b`.
 /// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`,
 ///   `currency_id_b`, `supply_amount`, `min_target_amount`.
-pub struct DexPrecompile<AccountId, AddressMapping, Dex>(PhantomData<(AccountId, AddressMapping, Dex)>);
+pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
+	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
+);
 
 enum Action {
 	GetLiquidityPool,
@@ -62,10 +64,12 @@ impl TryFrom<u8> for Action {
 	}
 }
 
-impl<AccountId, AddressMapping, Dex> Precompile for DexPrecompile<AccountId, AddressMapping, Dex>
+impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
+	for DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
+	CurrencyIdMapping: CurrencyIdMappingT,
 	Dex: DEXManager<AccountId, CurrencyId, Balance>,
 {
 	fn execute(
@@ -79,7 +83,7 @@ where
 
 		// Solidity dynamic arrays will add the array size to the front of the array,
 		// pre-compile needs to deal with the `size`.
-		let input = Input::<Action, AccountId, AddressMapping>::new(&input[32..]);
+		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(&input[32..]);
 
 		let action = input.action()?;
 
@@ -108,7 +112,7 @@ where
 				for i in 0..path_len {
 					path.push(input.currency_id_at((2 + i) as usize)?);
 				}
-				let supply_amount = input.balance_at((path_len + 1) as usize)?;
+				let supply_amount = input.balance_at((path_len + 2) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: get_swap_target_amount path: {:?}, supply_amount: {:?}",
@@ -130,14 +134,14 @@ where
 				for i in 0..path_len {
 					path.push(input.currency_id_at((2 + i) as usize)?);
 				}
-				let target_amount = input.balance_at((path_len + 1) as usize)?;
+				let target_amount = input.balance_at((path_len + 2) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: get_swap_supply_amount path: {:?}, target_amount: {:?}",
 					path, target_amount
 				);
 
-				let value = Dex::get_swap_target_amount(&path, target_amount, None)
+				let value = Dex::get_swap_supply_amount(&path, target_amount, None)
 					.ok_or_else(|| ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
 
 				// output

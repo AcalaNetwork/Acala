@@ -28,8 +28,8 @@ use frame_support::{
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::TransactionPayment;
-use primitives::{evm::AddressMapping as AddressMappingT, Balance, BlockNumber};
+use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, TransactionPayment};
+use primitives::{Balance, BlockNumber};
 use sp_core::{H160, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -62,6 +62,7 @@ pub struct TaskInfo {
 pub struct ScheduleCallPrecompile<
 	AccountId,
 	AddressMapping,
+	CurrencyIdMapping,
 	Scheduler,
 	ChargeTransactionPayment,
 	Call,
@@ -72,6 +73,7 @@ pub struct ScheduleCallPrecompile<
 	PhantomData<(
 		AccountId,
 		AddressMapping,
+		CurrencyIdMapping,
 		Scheduler,
 		ChargeTransactionPayment,
 		Call,
@@ -105,10 +107,21 @@ type PalletBalanceOf<T> =
 type NegativeImbalanceOf<T> =
 	<<T as module_evm::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
-impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origin, PalletsOrigin, Runtime> Precompile
+impl<
+		AccountId,
+		AddressMapping,
+		CurrencyIdMapping,
+		Scheduler,
+		ChargeTransactionPayment,
+		Call,
+		Origin,
+		PalletsOrigin,
+		Runtime,
+	> Precompile
 	for ScheduleCallPrecompile<
 		AccountId,
 		AddressMapping,
+		CurrencyIdMapping,
 		Scheduler,
 		ChargeTransactionPayment,
 		Call,
@@ -118,6 +131,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 	> where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
+	CurrencyIdMapping: CurrencyIdMappingT,
 	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
 	ChargeTransactionPayment: TransactionPayment<AccountId, PalletBalanceOf<Runtime>, NegativeImbalanceOf<Runtime>>,
 	Call: Dispatchable<Origin = Origin> + Debug + From<module_evm::Call<Runtime>>,
@@ -136,7 +150,7 @@ impl<AccountId, AddressMapping, Scheduler, ChargeTransactionPayment, Call, Origi
 
 		// Solidity dynamic arrays will add the array size to the front of the array,
 		// pre-compile needs to deal with the `size`.
-		let input = Input::<Action, AccountId, AddressMapping>::new(&input[32..]);
+		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(&input[32..]);
 
 		let action = input.action()?;
 

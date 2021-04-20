@@ -20,13 +20,13 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, MaybeDisplay, UniqueSaturatedInto, Zero},
-	DispatchResult, FixedPointNumber, ModuleId, RuntimeDebug,
+	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
@@ -90,6 +90,10 @@ pub mod module {
 		#[pallet::constant]
 		type LiquidCurrencyId: Get<CurrencyId>;
 
+		/// The source account for native token rewards.
+		#[pallet::constant]
+		type NativeRewardsSource: Get<Self::AccountId>;
+
 		/// The vault account to keep rewards.
 		#[pallet::constant]
 		type RewardsVaultAccountId: Get<Self::AccountId>;
@@ -97,7 +101,7 @@ pub mod module {
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-		/// CDP treasury to issue rewards in AUSD
+		/// CDP treasury to issue rewards in stable token
 		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
 		/// Currency for transfer/issue assets
@@ -109,9 +113,9 @@ pub mod module {
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
 
-		/// The module id, keep DEXShare LP.
+		/// The module id, keep DexShare LP.
 		#[pallet::constant]
-		type ModuleId: Get<ModuleId>;
+		type PalletId: Get<PalletId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -131,9 +135,9 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
-		DepositDEXShare(T::AccountId, CurrencyId, Balance),
+		DepositDexShare(T::AccountId, CurrencyId, Balance),
 		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
-		WithdrawDEXShare(T::AccountId, CurrencyId, Balance),
+		WithdrawDexShare(T::AccountId, CurrencyId, Balance),
 		/// Claim rewards. \[who, pool_id\]
 		ClaimRewards(T::AccountId, PoolId<T::RelaychainAccountId>),
 	}
@@ -169,16 +173,29 @@ pub mod module {
 								count += 1;
 								let incentive_reward_amount = Self::incentive_reward_amount(pool_id.clone());
 
-								// TODO: transfer native token from RESERVED TREASURY instead of issuing.
-								if !incentive_reward_amount.is_zero()
-									&& T::Currency::deposit(
+								if !incentive_reward_amount.is_zero() {
+									let res = T::Currency::transfer(
 										native_currency_id,
+										&T::NativeRewardsSource::get(),
 										&T::RewardsVaultAccountId::get(),
 										incentive_reward_amount,
-									)
-									.is_ok()
-								{
-									<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, incentive_reward_amount);
+									);
+									match res {
+										Ok(_) => {
+											<orml_rewards::Pallet<T>>::accumulate_reward(
+												&pool_id,
+												incentive_reward_amount,
+											);
+										}
+										Err(e) => {
+											log::warn!(
+												target: "incentives",
+												"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
+												This is unexpected but should be safe",
+												incentive_reward_amount, native_currency_id, T::NativeRewardsSource::get(), T::RewardsVaultAccountId::get(), e
+											);
+										}
+									}
 								}
 							}
 
@@ -202,18 +219,28 @@ pub mod module {
 											dex_saving_reward_rate.saturating_mul_int(dex_saving_reward_base);
 
 										// issue stable coin without backing.
-										if !dex_saving_reward_amount.is_zero()
-											&& T::CDPTreasury::issue_debit(
+										if !dex_saving_reward_amount.is_zero() {
+											let res = T::CDPTreasury::issue_debit(
 												&T::RewardsVaultAccountId::get(),
 												dex_saving_reward_amount,
 												false,
-											)
-											.is_ok()
-										{
-											<orml_rewards::Pallet<T>>::accumulate_reward(
-												&pool_id,
-												dex_saving_reward_amount,
 											);
+											match res {
+												Ok(_) => {
+													<orml_rewards::Pallet<T>>::accumulate_reward(
+														&pool_id,
+														dex_saving_reward_amount,
+													);
+												}
+												Err(e) => {
+													log::warn!(
+														target: "incentives",
+														"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
+														This is unexpected but should be safe",
+														dex_saving_reward_amount, T::RewardsVaultAccountId::get(), e
+													);
+												}
+											}
 										}
 									}
 								}
@@ -344,7 +371,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
-		T::ModuleId::get().into_account()
+		T::PalletId::get().into_account()
 	}
 }
 
@@ -360,7 +387,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		);
 		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::DexSaving(lp_currency_id), amount);
 
-		Self::deposit_event(Event::DepositDEXShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::DepositDexShare(who.clone(), lp_currency_id, amount));
 		Ok(())
 	}
 
@@ -384,7 +411,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		);
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::DexSaving(lp_currency_id), amount);
 
-		Self::deposit_event(Event::WithdrawDEXShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::WithdrawDexShare(who.clone(), lp_currency_id, amount));
 		Ok(())
 	}
 }
@@ -438,6 +465,15 @@ impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
 		// payout the reward to user from the pool. it should not affect the
 		// process, ignore the result to continue. if it fails, just the user will not
 		// be rewarded, there will not increase user balance.
-		let _ = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, amount);
+		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, amount);
+		if let Err(e) = res {
+			log::warn!(
+				target: "incentives",
+				"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
+				This is unexpected but should be safe",
+				amount, currency_id, T::RewardsVaultAccountId::get(), who, e
+			);
+			debug_assert!(false);
+		}
 	}
 }

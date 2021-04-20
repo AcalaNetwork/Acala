@@ -21,15 +21,15 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types, PalletId};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{Convert, IdentityLookup},
-	DispatchResult, ModuleId,
+	traits::{AccountIdConversion, Convert, IdentityLookup},
+	DispatchResult,
 };
 use support::{AuctionManager, Price, PriceProvider};
 
@@ -41,7 +41,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 mod emergency_shutdown {
@@ -75,6 +75,7 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 parameter_type_with_key! {
@@ -129,7 +130,7 @@ impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
 }
 
 parameter_types! {
-	pub const LoansModuleId: ModuleId = ModuleId(*b"aca/loan");
+	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 }
 
 impl loans::Config for Runtime {
@@ -138,7 +139,7 @@ impl loans::Config for Runtime {
 	type Currency = Tokens;
 	type RiskManager = ();
 	type CDPTreasury = CDPTreasuryModule;
-	type ModuleId = LoansModuleId;
+	type PalletId = LoansPalletId;
 	type OnUpdateLoan = ();
 }
 
@@ -169,34 +170,18 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		_amount: Self::Balance,
 		_target: Self::Balance,
 	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn new_debit_auction(_amount: Self::Balance, _fix: Self::Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn new_surplus_auction(_amount: Self::Balance) -> DispatchResult {
-		Ok(())
+		unimplemented!()
 	}
 
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
-		Ok(())
-	}
-
-	fn get_total_debit_in_auction() -> Self::Balance {
-		Default::default()
+		unimplemented!()
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
-		Default::default()
+		unimplemented!()
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		Default::default()
-	}
-
-	fn get_total_surplus_in_auction() -> Self::Balance {
 		Default::default()
 	}
 }
@@ -208,7 +193,8 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const MaxAuctionsCount: u32 = 10_000;
-	pub const CDPTreasuryModuleId: ModuleId = ModuleId(*b"aca/cdpt");
+	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -219,7 +205,8 @@ impl cdp_treasury::Config for Runtime {
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
 	type MaxAuctionsCount = MaxAuctionsCount;
-	type ModuleId = CDPTreasuryModuleId;
+	type PalletId = CDPTreasuryPalletId;
+	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 

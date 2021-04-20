@@ -23,7 +23,101 @@
 use super::*;
 use frame_support::{assert_err, assert_ok};
 use mock::{alice, bob, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
-use primitives::evm::AddressMapping;
+use sha3::{Digest, Keccak256};
+use support::AddressMapping;
+
+#[test]
+fn method_hash_works() {
+	// create a SHA3-256 object
+	let mut hasher = Keccak256::new();
+	// write input message
+	hasher.update(b"name()");
+	// read hash digest
+	let result = hasher.finalize();
+	assert_eq!(result[..4], METHOD_NAME.to_be_bytes().to_vec());
+
+	// create a SHA3-256 object
+	let mut hasher = Keccak256::new();
+	// write input message
+	hasher.update(b"symbol()");
+	// read hash digest
+	let result = hasher.finalize();
+	assert_eq!(result[..4], METHOD_SYMBOL.to_be_bytes().to_vec());
+
+	// create a SHA3-256 object
+	let mut hasher = Keccak256::new();
+	// write input message
+	hasher.update(b"decimals()");
+	// read hash digest
+	let result = hasher.finalize();
+	assert_eq!(result[..4], METHOD_DECIMALS.to_be_bytes().to_vec());
+
+	// create a SHA3-256 object
+	let mut hasher = Keccak256::new();
+	// write input message
+	hasher.update(b"totalSupply()");
+	// read hash digest
+	let result = hasher.finalize();
+	assert_eq!(result[..4], METHOD_TOTAL_SUPPLY.to_be_bytes().to_vec());
+
+	// create a SHA3-256 object
+	let mut hasher = Keccak256::new();
+	// write input message
+	hasher.update(b"balanceOf(address)");
+	// read hash digest
+	let result = hasher.finalize();
+	assert_eq!(result[..4], METHOD_BALANCE_OF.to_be_bytes().to_vec());
+
+	// create a SHA3-256 object
+	let mut hasher = Keccak256::new();
+	// write input message
+	hasher.update(b"transfer(address,uint256)");
+	// read hash digest
+	let result = hasher.finalize();
+	assert_eq!(result[..4], METHOD_TRANSFER.to_be_bytes().to_vec());
+}
+
+#[test]
+fn should_read_name() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			EvmBridgeModule::name(InvokeContext {
+				contract: erc20_address(),
+				sender: Default::default(),
+				origin: Default::default(),
+			}),
+			Ok(b"long string name, long string name, long string name, long string name, long string name".to_vec())
+		);
+	});
+}
+
+#[test]
+fn should_read_symbol() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			EvmBridgeModule::symbol(InvokeContext {
+				contract: erc20_address(),
+				sender: Default::default(),
+				origin: Default::default(),
+			}),
+			Ok(b"TestToken".to_vec())
+		);
+	});
+}
+
+#[test]
+fn should_read_decimals() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			EvmBridgeModule::decimals(InvokeContext {
+				contract: erc20_address(),
+				sender: Default::default(),
+				origin: Default::default(),
+			}),
+			Ok(17)
+		);
+	});
+}
 
 #[test]
 fn should_read_total_supply() {

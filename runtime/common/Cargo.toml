@@ -38,6 +38,7 @@ orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
+module-evm-manager = { path = "../../modules/evm-manager" }
 module-nft = { path = "../../modules/nft" }
 module-dex = { path = "../../modules/dex" }
 

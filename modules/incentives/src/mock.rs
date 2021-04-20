@@ -28,7 +28,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::TokenSymbol;
+use primitives::{DexShare, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
@@ -40,14 +40,17 @@ pub type BlockNumber = u64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const VAULT: AccountId = 10;
+pub const UNRELEASED: AccountId = 11;
 pub const VALIDATOR: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-pub const BTC_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::XBTC, TokenSymbol::AUSD);
-pub const DOT_AUSD_LP: CurrencyId = CurrencyId::DEXShare(TokenSymbol::DOT, TokenSymbol::AUSD);
+pub const BTC_AUSD_LP: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::AUSD));
+pub const DOT_AUSD_LP: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::DOT), DexShare::Token(TokenSymbol::AUSD));
 
 mod incentives {
 	pub use super::super::*;
@@ -80,6 +83,7 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 parameter_type_with_key! {
@@ -221,11 +225,12 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const RewardsVaultAccountId: AccountId = VAULT;
+	pub const NativeRewardsSource: AccountId = UNRELEASED;
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
 	pub const LiquidCurrencyId: CurrencyId = LDOT;
-	pub const IncentivesModuleId: ModuleId = ModuleId(*b"aca/inct");
+	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 }
 
 ord_parameter_types! {
@@ -236,6 +241,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
 	type RewardsVaultAccountId = RewardsVaultAccountId;
+	type NativeRewardsSource = NativeRewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
 	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
@@ -245,7 +251,7 @@ impl Config for Runtime {
 	type Currency = TokensModule;
 	type DEX = MockDEX;
 	type EmergencyShutdown = MockEmergencyShutdown;
-	type ModuleId = IncentivesModuleId;
+	type PalletId = IncentivesPalletId;
 	type WeightInfo = ();
 }
 
@@ -260,19 +266,33 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
 		IncentivesModule: incentives::{Pallet, Storage, Call, Event<T>},
-		TokensModule: orml_tokens::{Pallet, Storage, Event<T>},
+		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		RewardsModule: orml_rewards::{Pallet, Storage, Call},
 	}
 );
 
-#[derive(Default)]
-pub struct ExtBuilder;
+pub struct ExtBuilder {
+	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			endowed_accounts: vec![(UNRELEASED, ACA, 10_000)],
+		}
+	}
+}
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+		orml_tokens::GenesisConfig::<Runtime> {
+			endowed_accounts: self.endowed_accounts,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 		t.into()
 	}
 }
