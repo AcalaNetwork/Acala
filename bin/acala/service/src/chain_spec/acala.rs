@@ -127,7 +127,7 @@ fn acala_genesis(
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
 		RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC, XBTC,
+		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -212,14 +212,14 @@ fn acala_genesis(
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![
 				(root_key.clone(), DOT, initial_balance),
-				(root_key, XBTC, initial_balance),
+				(root_key, RENBTC, initial_balance),
 			],
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
-				(XBTC, 5 * cent(XBTC)),
+				(RENBTC, 5 * cent(RENBTC)),
 				(RENBTC, 5 * cent(RENBTC)),
 			],
 		},
@@ -234,7 +234,7 @@ fn acala_genesis(
 					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
 				),
 				(
-					XBTC,
+					RENBTC,
 					Some(FixedU128::zero()),
 					Some(FixedU128::saturating_from_rational(110, 100)),
 					Some(FixedU128::saturating_from_rational(4, 100)),

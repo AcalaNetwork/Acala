@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens, ACA, ALICE, AUSD, AUSD_DOT_PAIR,
-	AUSD_XBTC_PAIR, BOB, DOT, XBTC,
+	AUSD_XBTC_PAIR, BOB, DOT, RENBTC,
 };
 use orml_traits::MultiReservableCurrency;
 use sp_runtime::traits::BadOrigin;
@@ -486,7 +486,7 @@ fn get_target_amounts_work() {
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD, XBTC, DOT], 10000, None),
+				DexModule::get_target_amounts(&vec![DOT, AUSD, RENBTC, DOT], 10000, None),
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
@@ -506,15 +506,15 @@ fn get_target_amounts_work() {
 				Error::<Runtime>::ExceedPriceImpactLimit,
 			);
 			assert_eq!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD, XBTC], 10000, None),
+				DexModule::get_target_amounts(&vec![DOT, AUSD, RENBTC], 10000, None),
 				Ok(vec![10000, 24874, 1])
 			);
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD, XBTC], 100, None),
+				DexModule::get_target_amounts(&vec![DOT, AUSD, RENBTC], 100, None),
 				Error::<Runtime>::ZeroTargetAmount,
 			);
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT, XBTC], 100, None),
+				DexModule::get_target_amounts(&vec![DOT, RENBTC], 100, None),
 				Error::<Runtime>::InsufficientLiquidity,
 			);
 		});
@@ -559,7 +559,7 @@ fn get_supply_amounts_work() {
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT, AUSD, XBTC, DOT], 10000, None),
+				DexModule::get_supply_amounts(&vec![DOT, AUSD, RENBTC, DOT], 10000, None),
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
@@ -579,11 +579,11 @@ fn get_supply_amounts_work() {
 				Error::<Runtime>::ExceedPriceImpactLimit,
 			);
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT, AUSD, XBTC], 10000, None),
+				DexModule::get_supply_amounts(&vec![DOT, AUSD, RENBTC], 10000, None),
 				Error::<Runtime>::ZeroSupplyAmount,
 			);
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT, XBTC], 10000, None),
+				DexModule::get_supply_amounts(&vec![DOT, RENBTC], 10000, None),
 				Error::<Runtime>::InsufficientLiquidity,
 			);
 		});
@@ -615,12 +615,12 @@ fn _swap_by_path_work() {
 			LiquidityPool::<Runtime>::insert(AUSD_XBTC_PAIR, (100000, 10));
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
-			assert_eq!(DexModule::get_liquidity(AUSD, XBTC), (100000, 10));
+			assert_eq!(DexModule::get_liquidity(AUSD, RENBTC), (100000, 10));
 			DexModule::_swap_by_path(&vec![DOT, AUSD], &vec![10000, 25000]);
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (25000, 20000));
-			DexModule::_swap_by_path(&vec![DOT, AUSD, XBTC], &vec![4000, 10000, 2]);
+			DexModule::_swap_by_path(&vec![DOT, AUSD, RENBTC], &vec![4000, 10000, 2]);
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (15000, 24000));
-			assert_eq!(DexModule::get_liquidity(AUSD, XBTC), (110000, 8));
+			assert_eq!(DexModule::get_liquidity(AUSD, RENBTC), (110000, 8));
 		});
 }
 
@@ -895,7 +895,7 @@ fn do_swap_with_exact_supply_work() {
 			assert_ok!(DexModule::add_liquidity(
 				Origin::signed(ALICE),
 				AUSD,
-				XBTC,
+				RENBTC,
 				100_000_000_000_000,
 				10_000_000_000,
 				false,
@@ -906,7 +906,7 @@ fn do_swap_with_exact_supply_work() {
 				(500_000_000_000_000, 100_000_000_000_000)
 			);
 			assert_eq!(
-				DexModule::get_liquidity(AUSD, XBTC),
+				DexModule::get_liquidity(AUSD, RENBTC),
 				(100_000_000_000_000, 10_000_000_000)
 			);
 			assert_eq!(
@@ -914,10 +914,10 @@ fn do_swap_with_exact_supply_work() {
 				600_000_000_000_000
 			);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 100_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &DexModule::account_id()), 10_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &DexModule::account_id()), 10_000_000_000);
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &BOB), 1_000_000_000_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &BOB), 1_000_000_000_000_000_000);
 
 			assert_noop!(
 				DexModule::do_swap_with_exact_supply(
@@ -940,7 +940,7 @@ fn do_swap_with_exact_supply_work() {
 				Error::<Runtime>::ExceedPriceImpactLimit,
 			);
 			assert_noop!(
-				DexModule::do_swap_with_exact_supply(&BOB, &[DOT, AUSD, XBTC, DOT], 100_000_000_000_000, 0, None),
+				DexModule::do_swap_with_exact_supply(&BOB, &[DOT, AUSD, RENBTC, DOT], 100_000_000_000_000, 0, None),
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
@@ -968,7 +968,7 @@ fn do_swap_with_exact_supply_work() {
 				(251_256_281_407_036, 200_000_000_000_000)
 			);
 			assert_eq!(
-				DexModule::get_liquidity(AUSD, XBTC),
+				DexModule::get_liquidity(AUSD, RENBTC),
 				(100_000_000_000_000, 10_000_000_000)
 			);
 			assert_eq!(
@@ -976,21 +976,21 @@ fn do_swap_with_exact_supply_work() {
 				351_256_281_407_036
 			);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 200_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &DexModule::account_id()), 10_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &DexModule::account_id()), 10_000_000_000);
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_248_743_718_592_964);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 999_900_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &BOB), 1_000_000_000_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &BOB), 1_000_000_000_000_000_000);
 
 			assert_ok!(DexModule::do_swap_with_exact_supply(
 				&BOB,
-				&[DOT, AUSD, XBTC],
+				&[DOT, AUSD, RENBTC],
 				200_000_000_000_000,
 				1,
 				None
 			));
 			let swap_event_2 = Event::dex(crate::Event::Swap(
 				BOB,
-				vec![DOT, AUSD, XBTC],
+				vec![DOT, AUSD, RENBTC],
 				200_000_000_000_000,
 				5_530_663_837,
 			));
@@ -1001,7 +1001,7 @@ fn do_swap_with_exact_supply_work() {
 				(126_259_437_892_983, 400_000_000_000_000)
 			);
 			assert_eq!(
-				DexModule::get_liquidity(AUSD, XBTC),
+				DexModule::get_liquidity(AUSD, RENBTC),
 				(224_996_843_514_053, 4_469_336_163)
 			);
 			assert_eq!(
@@ -1009,10 +1009,10 @@ fn do_swap_with_exact_supply_work() {
 				351_256_281_407_036
 			);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 400_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &DexModule::account_id()), 4_469_336_163);
+			assert_eq!(Tokens::free_balance(RENBTC, &DexModule::account_id()), 4_469_336_163);
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_248_743_718_592_964);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 999_700_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &BOB), 1_000_000_005_530_663_837);
+			assert_eq!(Tokens::free_balance(RENBTC, &BOB), 1_000_000_005_530_663_837);
 		});
 }
 
@@ -1035,7 +1035,7 @@ fn do_swap_with_exact_target_work() {
 			assert_ok!(DexModule::add_liquidity(
 				Origin::signed(ALICE),
 				AUSD,
-				XBTC,
+				RENBTC,
 				100_000_000_000_000,
 				10_000_000_000,
 				false,
@@ -1046,7 +1046,7 @@ fn do_swap_with_exact_target_work() {
 				(500_000_000_000_000, 100_000_000_000_000)
 			);
 			assert_eq!(
-				DexModule::get_liquidity(AUSD, XBTC),
+				DexModule::get_liquidity(AUSD, RENBTC),
 				(100_000_000_000_000, 10_000_000_000)
 			);
 			assert_eq!(
@@ -1054,10 +1054,10 @@ fn do_swap_with_exact_target_work() {
 				600_000_000_000_000
 			);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 100_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &DexModule::account_id()), 10_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &DexModule::account_id()), 10_000_000_000);
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000);
-			assert_eq!(Tokens::free_balance(XBTC, &BOB), 1_000_000_000_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &BOB), 1_000_000_000_000_000_000);
 
 			assert_noop!(
 				DexModule::do_swap_with_exact_target(
@@ -1082,7 +1082,7 @@ fn do_swap_with_exact_target_work() {
 			assert_noop!(
 				DexModule::do_swap_with_exact_target(
 					&BOB,
-					&[DOT, AUSD, XBTC, DOT],
+					&[DOT, AUSD, RENBTC, DOT],
 					250_000_000_000_000,
 					200_000_000_000_000,
 					None
@@ -1114,7 +1114,7 @@ fn do_swap_with_exact_target_work() {
 				(250_000_000_000_000, 201_010_101_010_102)
 			);
 			assert_eq!(
-				DexModule::get_liquidity(AUSD, XBTC),
+				DexModule::get_liquidity(AUSD, RENBTC),
 				(100_000_000_000_000, 10_000_000_000)
 			);
 			assert_eq!(
@@ -1122,21 +1122,21 @@ fn do_swap_with_exact_target_work() {
 				350_000_000_000_000
 			);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 201_010_101_010_102);
-			assert_eq!(Tokens::free_balance(XBTC, &DexModule::account_id()), 10_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &DexModule::account_id()), 10_000_000_000);
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_250_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 999_898_989_898_989_898);
-			assert_eq!(Tokens::free_balance(XBTC, &BOB), 1_000_000_000_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &BOB), 1_000_000_000_000_000_000);
 
 			assert_ok!(DexModule::do_swap_with_exact_target(
 				&BOB,
-				&[DOT, AUSD, XBTC],
+				&[DOT, AUSD, RENBTC],
 				5_000_000_000,
 				2_000_000_000_000_000,
 				None
 			));
 			let swap_event_2 = Event::dex(crate::Event::Swap(
 				BOB,
-				vec![DOT, AUSD, XBTC],
+				vec![DOT, AUSD, RENBTC],
 				137_654_580_386_993,
 				5_000_000_000,
 			));
@@ -1147,7 +1147,7 @@ fn do_swap_with_exact_target_work() {
 				(148_989_898_989_898, 338_664_681_397_095)
 			);
 			assert_eq!(
-				DexModule::get_liquidity(AUSD, XBTC),
+				DexModule::get_liquidity(AUSD, RENBTC),
 				(201_010_101_010_102, 5_000_000_000)
 			);
 			assert_eq!(
@@ -1155,10 +1155,10 @@ fn do_swap_with_exact_target_work() {
 				350_000_000_000_000
 			);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 338_664_681_397_095);
-			assert_eq!(Tokens::free_balance(XBTC, &DexModule::account_id()), 5_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &DexModule::account_id()), 5_000_000_000);
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_250_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 999_761_335_318_602_905);
-			assert_eq!(Tokens::free_balance(XBTC, &BOB), 1_000_000_005_000_000_000);
+			assert_eq!(Tokens::free_balance(RENBTC, &BOB), 1_000_000_005_000_000_000);
 		});
 }
 
