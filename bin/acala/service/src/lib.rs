@@ -474,6 +474,71 @@ pub fn mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskM
 
 		let prometheus_registry = config.prometheus_registry().cloned();
 		let subscription_task_executor = sc_rpc::SubscriptionTaskExecutor::new(task_manager.spawn_handle());
+		let mut command_sink = None;
+
+		if collator {
+			let env = sc_basic_authorship::ProposerFactory::new(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool.clone(),
+				prometheus_registry.as_ref(),
+				telemetry.as_ref().map(|x| x.handle()),
+			);
+
+			let commands_stream: Box<dyn Stream<Item = EngineCommand<H256>> + Send + Sync + Unpin> = match cmd.sealing {
+				Sealing::Instant => {
+					Box::new(
+						// This bit cribbed from the implementation of instant seal.
+						transaction_pool
+							.pool()
+							.validated_pool()
+							.import_notification_stream()
+							.map(|_| EngineCommand::SealNewBlock {
+								create_empty: false,
+								finalize: false,
+								parent_hash: None,
+								sender: None,
+							}),
+					)
+				}
+				Sealing::Manual => {
+					let (sink, stream) = futures::channel::mpsc::channel(1000);
+					// Keep a reference to the other end of the channel. It goes to the RPC.
+					command_sink = Some(sink);
+					Box::new(stream)
+				}
+				Sealing::Interval(millis) => {
+					Box::new(StreamExt::map(Timer::interval(Duration::from_millis(millis)), |_| {
+						EngineCommand::SealNewBlock {
+							create_empty: true,
+							finalize: false,
+							parent_hash: None,
+							sender: None,
+						}
+					}))
+				}
+			};
+
+			let select_chain = maybe_select_chain.expect(
+				"`new_partial` builds a `LongestChainRule` when building dev service.\
+					We specified the dev service when calling `new_partial`.\
+					Therefore, a `LongestChainRule` is present. qed.",
+			);
+
+			task_manager.spawn_essential_handle().spawn_blocking(
+				"authorship_task",
+				run_manual_seal(ManualSealParams {
+					block_import,
+					env,
+					client: client.clone(),
+					pool: transaction_pool.pool().clone(),
+					commands_stream,
+					select_chain,
+					consensus_data_provider: None,
+					inherent_data_providers,
+				}),
+			);
+		}
 
 		let rpc_extensions_builder = {
 			let client = client.clone();
