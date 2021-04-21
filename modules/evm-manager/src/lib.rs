@@ -63,9 +63,11 @@ pub mod module {
 	/// Mapping between u32 and Erc20 address.
 	/// Erc20 address is 20 byte, take the first 4 non-zero bytes, if it is less
 	/// than 4, add 0 to the left.
+	///
+	/// map u32 => Option<Erc20Info>
 	#[pallet::storage]
 	#[pallet::getter(fn currency_id_map)]
-	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info>;
+	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);

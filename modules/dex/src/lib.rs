@@ -188,17 +188,24 @@ pub mod module {
 	}
 
 	/// Liquidity pool for TradingPair.
+	///
+	/// LiquidityPool: map TradingPair => (Balance, Balance)
 	#[pallet::storage]
 	#[pallet::getter(fn liquidity_pool)]
 	pub type LiquidityPool<T: Config> = StorageMap<_, Twox64Concat, TradingPair, (Balance, Balance), ValueQuery>;
 
 	/// Status for TradingPair.
+	///
+	/// TradingPairStatuses: map TradingPair => TradingPairStatus
 	#[pallet::storage]
 	#[pallet::getter(fn trading_pair_statuses)]
 	pub type TradingPairStatuses<T: Config> =
 		StorageMap<_, Twox64Concat, TradingPair, TradingPairStatus<Balance, T::BlockNumber>, ValueQuery>;
 
 	/// Provision of TradingPair by AccountId.
+	///
+	/// ProvisioningPool: double_map TradingPair, AccountId => (Balance,
+	/// Balance)
 	#[pallet::storage]
 	#[pallet::getter(fn provisioning_pool)]
 	pub type ProvisioningPool<T: Config> =

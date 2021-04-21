@@ -230,33 +230,50 @@ pub mod module {
 		pub code: Vec<u8>,
 	}
 
-	/// Accounts info.
+	/// The EVM accounts info.
+	///
+	/// Accounts: map EvmAddress => Option<AccountInfo<T>>
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T>>;
+	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T>, OptionQuery>;
 
+	/// The storages for EVM contracts.
+	///
+	/// AccountStorages: double_map EvmAddress, H256 => H256
 	#[pallet::storage]
 	#[pallet::getter(fn account_storages)]
 	pub type AccountStorages<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EvmAddress, Blake2_128Concat, H256, H256, ValueQuery>;
 
+	/// The code for EVM contracts.
+	/// Key is Keccak256 hash of code.
+	///
+	/// Codes: H256 => Vec<u8>
 	#[pallet::storage]
 	#[pallet::getter(fn codes)]
 	pub type Codes<T: Config> = StorageMap<_, Identity, H256, Vec<u8>, ValueQuery>;
 
+	/// The code info for EVM contracts.
+	/// Key is Keccak256 hash of code.
+	///
+	/// CodeInfos: H256 => Option<CodeInfo>
 	#[pallet::storage]
 	#[pallet::getter(fn code_infos)]
-	pub type CodeInfos<T: Config> = StorageMap<_, Identity, H256, CodeInfo>;
+	pub type CodeInfos<T: Config> = StorageMap<_, Identity, H256, CodeInfo, OptionQuery>;
 
 	/// Next available system contract address.
+	///
+	/// NetworkContractIndex: u64
 	#[pallet::storage]
 	#[pallet::getter(fn network_contract_index)]
 	pub type NetworkContractIndex<T: Config> = StorageValue<_, u64, ValueQuery>;
 
-	/// Extrinsics origin for the current tx.
+	/// Extrinsics origin for the current transaction.
+	///
+	/// ExtrinsicOrigin: Option<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn extrinsic_origin)]
-	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId>;
+	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {

@@ -113,12 +113,16 @@ pub mod module {
 
 	/// The expected amount size for per lot collateral auction of specific
 	/// collateral type.
+	///
+	/// ExpectedCollateralAuctionSize: map CurrencyId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn expected_collateral_auction_size)]
 	pub type ExpectedCollateralAuctionSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	/// Current total debit value of system. It's not same as debit in CDP
 	/// engine, it is the bad debt of the system.
+	///
+	/// DebitPool: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn debit_pool)]
 	pub type DebitPool<T: Config> = StorageValue<_, Balance, ValueQuery>;

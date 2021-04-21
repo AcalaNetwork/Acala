@@ -269,10 +269,16 @@ pub mod module {
 		Multiplier::saturating_from_integer(1)
 	}
 
+	/// The next fee multiplier.
+	///
+	/// NextFeeMultiplier: Multiplier
 	#[pallet::storage]
 	#[pallet::getter(fn next_fee_multiplier)]
 	pub type NextFeeMultiplier<T: Config> = StorageValue<_, Multiplier, ValueQuery, DefaultFeeMultiplier>;
 
+	/// The default fee currency for accounts.
+	///
+	/// DefaultFeeCurrencyId: AccountId => Option<CurrencyId>
 	#[pallet::storage]
 	#[pallet::getter(fn default_fee_currency_id)]
 	pub type DefaultFeeCurrencyId<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, CurrencyId, OptionQuery>;

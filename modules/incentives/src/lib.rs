@@ -143,12 +143,16 @@ pub mod module {
 	}
 
 	/// Mapping from pool to its fixed reward amount per period.
+	///
+	/// IncentiveRewardAmount: map PoolId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn incentive_reward_amount)]
 	pub type IncentiveRewardAmount<T: Config> =
 		StorageMap<_, Twox64Concat, PoolId<T::RelaychainAccountId>, Balance, ValueQuery>;
 
 	/// Mapping from pool to its fixed reward rate per period.
+	///
+	/// DexSavingRewardRate: map PoolId => Rate
 	#[pallet::storage]
 	#[pallet::getter(fn dex_saving_reward_rate)]
 	pub type DexSavingRewardRate<T: Config> =

@@ -151,25 +151,40 @@ pub mod module {
 		Rebond(T::AccountId, Balance),
 	}
 
+	/// The nominations for nominators.
+	///
+	/// Nominations: map AccountId => Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominations)]
 	pub type Nominations<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Twox64Concat, T::AccountId, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
 
+	/// The nomination bonding ledger.
+	///
+	/// Ledger: map => AccountId, BondingLedger
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Twox64Concat, T::AccountId, BondingLedger, ValueQuery>;
 
+	/// The total voting value for nominees.
+	///
+	/// Votes: map NomineeId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn votes)]
 	pub type Votes<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Twox64Concat, <T as Config<I>>::NomineeId, Balance, ValueQuery>;
 
+	/// The elected nominees.
+	///
+	/// Nominees: Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominees)]
 	pub type Nominees<T: Config<I>, I: 'static = ()> = StorageValue<_, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
 
+	/// Current era index.
+	///
+	/// CurrentEra: EraIndex
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
 	pub type CurrentEra<T: Config<I>, I: 'static = ()> = StorageValue<_, EraIndex, ValueQuery>;

@@ -106,13 +106,19 @@ pub mod module {
 		StillHasActiveReserved,
 	}
 
+	/// The Substrate Account for EvmAddresses
+	///
+	/// Accounts: map EvmAddress => Option<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, T::AccountId>;
+	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, T::AccountId, OptionQuery>;
 
+	/// The EvmAddress for Substrate Accounts
+	///
+	/// EvmAddresses: map AccountId => Option<EvmAddress>
 	#[pallet::storage]
 	#[pallet::getter(fn evm_addresses)]
-	pub type EvmAddresses<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, EvmAddress>;
+	pub type EvmAddresses<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, EvmAddress, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
