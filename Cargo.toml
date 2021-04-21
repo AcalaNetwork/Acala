@@ -33,6 +33,7 @@ members = [
 	"orml/xtokens",
 	"orml/xcm-support",
 	"orml/unknown-tokens",
+	"orml/weight-gen",
 
 	"ecosystem-modules/ren/renvm-bridge",
 ]

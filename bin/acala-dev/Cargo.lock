@@ -4384,6 +4384,9 @@ dependencies = [
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
  "module-support",
+ "orml-bencher",
+ "orml-currencies",
+ "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
@@ -4397,6 +4400,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "substrate-wasm-builder",
  "tiny-keccak",
 ]
 
@@ -4964,6 +4968,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-bencher"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "handlebars",
+ "linregress",
+ "parity-scale-codec",
+ "sc-client-db",
+ "sc-executor",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime-interface",
+ "sp-state-machine",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-benchmarking"
 version = "0.4.1-dev"
 dependencies = [
@@ -4986,6 +5009,22 @@ name = "orml-build-script-utils"
 version = "0.4.1-dev"
 dependencies = [
  "platforms",
+]
+
+[[package]]
+name = "orml-currencies"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "funty",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
