@@ -123,11 +123,12 @@ fn acala_genesis(
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
 		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		BlockNumber, CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs,
+		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
+		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
+		ParachainInfoConfig, RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD,
+		DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -141,7 +142,6 @@ fn acala_genesis(
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let mut unreleased_native = 1_000_000_000 * dollar(ACA); // 1 billion KAR
-														 // if want to config vesting, should handle unreleased_native firstly.
 
 	let balances = initial_authorities
 		.iter()
@@ -170,6 +170,21 @@ fn acala_genesis(
 		.into_iter()
 		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
+
+	let vesting_list_json = &include_bytes!("../../../../../resources/acala-vesting-ACA.json")[..];
+	let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
+		serde_json::from_slice(vesting_list_json).unwrap();
+
+	// ensure no duplicates exist.
+	let unique_vesting_accounts = vesting_list
+		.iter()
+		.map(|(x, _, _, _, _)| x)
+		.cloned()
+		.collect::<std::collections::BTreeSet<_>>();
+	assert!(
+		unique_vesting_accounts.len() == vesting_list.len(),
+		"duplicate vesting accounts in genesis."
+	);
 
 	acala_runtime::GenesisConfig {
 		frame_system: SystemConfig {
@@ -215,7 +230,7 @@ fn acala_genesis(
 				(root_key, RENBTC, initial_balance),
 			],
 		},
-		orml_vesting: VestingConfig { vesting: vec![] },
+		orml_vesting: VestingConfig { vesting: vesting_list },
 		module_cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
