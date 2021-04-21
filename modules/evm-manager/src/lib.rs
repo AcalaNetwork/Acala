@@ -166,6 +166,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 					.filter(|v| v.address == address)
 					.map(|v| v.decimals)
 			}
+			CurrencyId::ChainSafe(_) => None,
 		}
 	}
 
@@ -220,6 +221,9 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			}
 			CurrencyId::Erc20(address) => {
 				bytes[12..32].copy_from_slice(&address[..]);
+			}
+			CurrencyId::ChainSafe(_) => {
+				//TODO:
 			}
 		}
 		Some(bytes)
