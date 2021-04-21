@@ -34,12 +34,12 @@ pub type AccountId = u128;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const XBTC: CurrencyId = CurrencyId::Token(TokenSymbol::XBTC);
+pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const AUSD_XBTC_PAIR: TradingPair = TradingPair(AUSD, XBTC);
+pub const AUSD_XBTC_PAIR: TradingPair = TradingPair(AUSD, RENBTC);
 pub const AUSD_DOT_PAIR: TradingPair = TradingPair(AUSD, DOT);
-pub const DOT_XBTC_PAIR: TradingPair = TradingPair(DOT, XBTC);
+pub const DOT_XBTC_PAIR: TradingPair = TradingPair(DOT, RENBTC);
 
 mod dex {
 	pub use super::super::*;
@@ -153,8 +153,8 @@ impl Default for ExtBuilder {
 			endowed_accounts: vec![
 				(ALICE, AUSD, 1_000_000_000_000_000_000u128),
 				(BOB, AUSD, 1_000_000_000_000_000_000u128),
-				(ALICE, XBTC, 1_000_000_000_000_000_000u128),
-				(BOB, XBTC, 1_000_000_000_000_000_000u128),
+				(ALICE, RENBTC, 1_000_000_000_000_000_000u128),
+				(BOB, RENBTC, 1_000_000_000_000_000_000u128),
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
