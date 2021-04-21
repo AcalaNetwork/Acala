@@ -81,8 +81,7 @@ pub mod module {
 	/// The authorization relationship map from
 	/// Authorizer -> (CollateralType, Authorizee) -> Authorized
 	///
-	/// Authorization: double_map AccountId, (CurrencyId, T::AccountId) =>
-	/// Option<()>
+	/// Authorization: double_map AccountId, (CurrencyId, T::AccountId) => Option<()>
 	#[pallet::storage]
 	#[pallet::getter(fn authorization)]
 	pub type Authorization<T: Config> =

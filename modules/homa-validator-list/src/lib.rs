@@ -193,8 +193,7 @@ pub mod module {
 
 	/// The slash guarantee deposits for relaychain validators.
 	///
-	/// Guarantees: double_map RelaychainAccountId, AccountId =>
-	/// Option<Guarantee>
+	/// Guarantees: double_map RelaychainAccountId, AccountId => Option<Guarantee>
 	#[pallet::storage]
 	#[pallet::getter(fn guarantees)]
 	pub type Guarantees<T: Config> = StorageDoubleMap<
