@@ -125,7 +125,7 @@ fn karura_genesis(
 		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber,
 		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, StakingPoolConfig, SudoConfig, SystemConfig,
+		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM,
 		KUSD, LKSM, RENBTC,
 	};
@@ -264,15 +264,6 @@ fn karura_genesis(
 			phantom: Default::default(),
 		},
 		module_evm: Default::default(),
-		module_staking_pool: StakingPoolConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-			},
-		},
 		module_dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
@@ -281,10 +272,6 @@ fn karura_genesis(
 		parachain_info: ParachainInfoConfig {
 			parachain_id: 1000.into(),
 		},
-		// TODO: need RENBTC for Kusama Ecosystem
-		// ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
-		// 	ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-		// }),
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 	}
 }

@@ -35,21 +35,29 @@ macro_rules! create_currency_id {
 	$vis:vis enum TokenSymbol {
         $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
     }) => {
-        $(#[$meta])*
-        $vis enum TokenSymbol {
-            $($(#[$vmeta])* $symbol = $val,)*
-        }
+		$(#[$meta])*
+		$vis enum TokenSymbol {
+			$($(#[$vmeta])* $symbol = $val,)*
+		}
 
-        impl TryFrom<u8> for TokenSymbol {
-            type Error = ();
+		impl TryFrom<u8> for TokenSymbol {
+			type Error = ();
 
-            fn try_from(v: u8) -> Result<Self, Self::Error> {
-                match v {
-                    $($val => Ok(TokenSymbol::$symbol),)*
-                    _ => Err(()),
-                }
-            }
-        }
+			fn try_from(v: u8) -> Result<Self, Self::Error> {
+				match v {
+					$($val => Ok(TokenSymbol::$symbol),)*
+						_ => Err(()),
+				}
+			}
+		}
+
+		impl Into<u8> for TokenSymbol {
+			fn into(self) -> u8 {
+				match self {
+					$(TokenSymbol::$symbol => ($val),)*
+				}
+			}
+		}
 
 		impl TryFrom<Vec<u8>> for CurrencyId {
 			type Error = ();
@@ -241,7 +249,7 @@ impl TryFrom<CurrencyId> for u32 {
 		let mut bytes = [0u8; 4];
 		match val {
 			CurrencyId::Token(token) => {
-				bytes[3] = token as u8;
+				bytes[3] = token.into();
 			}
 			CurrencyId::Erc20(address) => {
 				let is_zero = |&&d: &&u8| -> bool { d == 0 };

@@ -1,6 +1,6 @@
 # Based from https://github.com/paritytech/substrate/blob/master/.maintain/Dockerfile
 
-FROM phusion/baseimage:0.10.2 as builder
+FROM phusion/baseimage:bionic-1.0.0 as builder
 LABEL maintainer="hello@acala.network"
 LABEL description="This is the build stage for Acala Node. Here we create the binary."
 
@@ -25,7 +25,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 
 # ===== SECOND STAGE ======
 
-FROM phusion/baseimage:0.10.2
+FROM phusion/baseimage:bionic-1.0.0
 LABEL maintainer="hello@acala.network"
 LABEL description="This is the 2nd stage: a very small image where we copy the Acala Node binary."
 ARG PROFILE=release
