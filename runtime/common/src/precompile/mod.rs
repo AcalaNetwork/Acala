@@ -27,7 +27,10 @@ mod tests;
 use crate::is_acala_precompile;
 use frame_support::log;
 use module_evm::{
-	precompiles::{Precompile, Precompiles},
+	precompiles::{
+		ECRecover, ECRecoverPublicKey, EvmPrecompiles, Identity, Precompile, Precompiles, Ripemd160, Sha256,
+		Sha3FIPS256, Sha3FIPS512,
+	},
 	Context, ExitError, ExitSucceed,
 };
 use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
@@ -49,16 +52,6 @@ pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
 pub use schedule_call::ScheduleCallPrecompile;
 pub use state_rent::StateRentPrecompile;
-
-pub type EthereumPrecompiles = (
-	module_evm::precompiles::ECRecover,
-	module_evm::precompiles::Sha256,
-	module_evm::precompiles::Ripemd160,
-	module_evm::precompiles::Identity,
-	module_evm::precompiles::ECRecoverPublicKey,
-	module_evm::precompiles::Sha3FIPS256,
-	module_evm::precompiles::Sha3FIPS512,
-);
 
 pub struct AllPrecompiles<
 	PrecompileCallerFilter,
@@ -113,7 +106,10 @@ impl<
 		target_gas: Option<u64>,
 		context: &Context,
 	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>> {
-		EthereumPrecompiles::execute(address, input, target_gas, context).or_else(|| {
+		EvmPrecompiles::<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512>::execute(
+			address, input, target_gas, context,
+		)
+		.or_else(|| {
 			if is_acala_precompile(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
 				log::debug!(target: "evm", "Precompile no permission");
 				return Some(Err(ExitError::Other("no permission".into())));
