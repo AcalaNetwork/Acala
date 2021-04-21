@@ -35,29 +35,29 @@ macro_rules! create_currency_id {
 	$vis:vis enum TokenSymbol {
         $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
     }) => {
-        $(#[$meta])*
-        $vis enum TokenSymbol {
-            $($(#[$vmeta])* $symbol = $val,)*
-        }
+		$(#[$meta])*
+		$vis enum TokenSymbol {
+			$($(#[$vmeta])* $symbol = $val,)*
+		}
 
-        impl TryFrom<u8> for TokenSymbol {
-            type Error = ();
+		impl TryFrom<u8> for TokenSymbol {
+			type Error = ();
 
-            fn try_from(v: u8) -> Result<Self, Self::Error> {
-                match v {
-                    $($val => Ok(TokenSymbol::$symbol),)*
-                    _ => Err(()),
-                }
-            }
-        }
+			fn try_from(v: u8) -> Result<Self, Self::Error> {
+				match v {
+					$($val => Ok(TokenSymbol::$symbol),)*
+						_ => Err(()),
+				}
+			}
+		}
 
-        impl Into<u8> for TokenSymbol {
-            fn into(self) -> u8 {
-                match self {
+		impl Into<u8> for TokenSymbol {
+			fn into(self) -> u8 {
+				match self {
 					$(TokenSymbol::$symbol => ($val),)*
-                }
-            }
-        }
+				}
+			}
+		}
 
 		impl TryFrom<Vec<u8>> for CurrencyId {
 			type Error = ();
