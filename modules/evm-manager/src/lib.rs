@@ -176,9 +176,8 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	fn encode_currency_id(val: CurrencyId) -> Option<[u8; 32]> {
 		let mut bytes = [0u8; 32];
 		match val {
-			CurrencyId::Token(_) => {
-				let id: u32 = val.try_into().expect("CurrencyId::Token into u32 is success; qed");
-				bytes[12..16].copy_from_slice(&id.to_be_bytes()[..]);
+			CurrencyId::Token(token) => {
+				bytes[31] = token.into();
 			}
 			CurrencyId::DexShare(left, right) => {
 				bytes[11] = 1;
@@ -220,6 +219,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				}
 			}
 			CurrencyId::Erc20(address) => {
+				bytes[11] = 2;
 				bytes[12..32].copy_from_slice(&address[..]);
 			}
 		}

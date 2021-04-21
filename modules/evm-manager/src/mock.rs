@@ -21,14 +21,14 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use module_support::mocks::MockAddressMapping;
+use module_support::{mocks::MockAddressMapping, AddressMapping};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::{bytes::from_hex, crypto::AccountId32, H160, H256};
+use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
-use std::{collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -121,7 +121,7 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub NetworkContractSource: H160 = H160::default();
+	pub NetworkContractSource: EvmAddress = alice_evm_addr();
 }
 
 ord_parameter_types! {
@@ -170,10 +170,21 @@ impl Config for Runtime {
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-pub const ERC20_ADDRESS_NOT_EXISTS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
-pub const ERC20: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS);
-pub const ERC20_NOT_EXISTS: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS_NOT_EXISTS);
+pub fn erc20_address() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+}
+
+pub fn erc20_address_not_exists() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
+}
+
+pub fn alice() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -192,40 +203,52 @@ construct_runtime!(
 	}
 );
 
-pub struct ExtBuilder();
+pub fn deploy_contracts() {
+	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
+	assert_ok!(EVM::create_network_contract(
+		Origin::signed(NetworkContractAccount::get()),
+		code,
+		0,
+		2100_000,
+		10000
+	));
+
+	let event = Event::module_evm(module_evm::Event::Created(erc20_address()));
+	assert_eq!(System::events().iter().last().unwrap().event, event);
+
+	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
+}
+
+pub struct ExtBuilder {
+	endowed_accounts: Vec<(AccountId, Balance)>,
+}
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self()
+		Self {
+			endowed_accounts: vec![],
+		}
 	}
 }
 
 impl ExtBuilder {
+	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, Balance)>) -> Self {
+		self.endowed_accounts = endowed_accounts;
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		let mut accounts = BTreeMap::new();
-		let mut storage = BTreeMap::new();
-		storage.insert(
-			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		storage.insert(
-			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		accounts.insert(
-			ERC20_ADDRESS,
-			module_evm::GenesisAccount {
-				nonce: 1,
-				balance: 0,
-				storage,
-				code: from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap(),
-			},
-		);
-		module_evm::GenesisConfig::<Runtime> { accounts }
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.endowed_accounts.clone().into_iter().collect::<Vec<_>>(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		module_evm::GenesisConfig::<Runtime>::default()
 			.assimilate_storage(&mut t)
 			.unwrap();
 
