@@ -54,7 +54,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
-use module_currencies::{BasicCurrencyAdapter, Currency};
+use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
@@ -637,13 +637,15 @@ impl module_prices::Config for Runtime {
 pub struct LiquidStakingExchangeRateProvider;
 impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		StakingPool::liquid_exchange_rate()
+		ExchangeRate::zero()
 	}
 }
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = KAR;
 	pub const GetStableCurrencyId: CurrencyId = KUSD;
+	pub const GetLiquidCurrencyId: CurrencyId = LKSM;
+	pub const GetStakingCurrencyId: CurrencyId = KSM;
 }
 
 impl module_currencies::Config for Runtime {
@@ -942,84 +944,6 @@ impl module_incentives::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
-}
-
-parameter_types! {
-	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = DAYS;
-}
-
-impl module_polkadot_bridge::Config for Runtime {
-	type DOTCurrency = Currency<Runtime, GetStakingCurrencyId>;
-	type OnNewEra = (NomineesElection, StakingPool);
-	type BondingDuration = PolkadotBondingDuration;
-	type EraLength = EraLength;
-	type PolkadotAccountId = AccountId;
-}
-
-parameter_types! {
-	pub const GetLiquidCurrencyId: CurrencyId = LKSM;
-	pub const GetStakingCurrencyId: CurrencyId = KSM;
-	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
-	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
-}
-
-impl module_staking_pool::Config for Runtime {
-	type Event = Event;
-	type StakingCurrencyId = GetStakingCurrencyId;
-	type LiquidCurrencyId = GetLiquidCurrencyId;
-	type DefaultExchangeRate = DefaultExchangeRate;
-	type PalletId = StakingPoolPalletId;
-	type PoolAccountIndexes = PoolAccountIndexes;
-	type UpdateOrigin = EnsureRootOrHalfHomaCouncil;
-	type FeeModel = CurveFeeModel;
-	type Nominees = NomineesElection;
-	type Bridge = PolkadotBridge;
-	type Currency = Currencies;
-}
-
-impl module_homa::Config for Runtime {
-	type Homa = StakingPool;
-	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
-}
-
-parameter_types! {
-	pub MinCouncilBondThreshold: Balance = dollar(LKSM);
-	pub const NominateesCount: u32 = 7;
-	pub const MaxUnlockingChunks: u32 = 7;
-	pub const NomineesElectionBondingDuration: EraIndex = 7;
-}
-
-impl module_nominees_election::Config for Runtime {
-	type Event = Event;
-	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
-	type NomineeId = AccountId;
-	type MinBondThreshold = MinCouncilBondThreshold;
-	type BondingDuration = NomineesElectionBondingDuration;
-	type NominateesCount = NominateesCount;
-	type MaxUnlockingChunks = MaxUnlockingChunks;
-	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
-}
-
-parameter_types! {
-	pub MinGuaranteeAmount: Balance = dollar(LKSM);
-	pub const ValidatorInsuranceThreshold: Balance = 0;
-}
-
-impl module_homa_validator_list::Config for Runtime {
-	type Event = Event;
-	type RelaychainAccountId = AccountId;
-	type LiquidTokenCurrency = Currency<Runtime, GetLiquidCurrencyId>;
-	type MinBondAmount = MinGuaranteeAmount;
-	type BondingDuration = PolkadotBondingDuration;
-	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
-	type FreezeOrigin = EnsureRootOrHalfHomaCouncil;
-	type SlashOrigin = EnsureRootOrHalfHomaCouncil;
-	type OnSlash = module_staking_pool::OnSlash<Runtime>;
-	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
-	type WeightInfo = ();
-	type OnIncreaseGuarantee = module_incentives::OnIncreaseGuarantee<Runtime>;
-	type OnDecreaseGuarantee = module_incentives::OnDecreaseGuarantee<Runtime>;
 }
 
 parameter_types! {
@@ -1356,11 +1280,11 @@ construct_runtime!(
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 34,
 
 		// Homa
-		Homa: module_homa::{Pallet, Call} = 35,
-		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 36,
-		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 37,
-		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 38,
-		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 39,
+		// Homa: module_homa::{Pallet, Call} = 35,
+		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 36,
+		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 37,
+		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 38,
+		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 39,
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 40,
@@ -1539,14 +1463,14 @@ impl_runtime_apis! {
 		AccountId,
 		Balance,
 	> for Runtime {
-		fn get_available_unbonded(account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
+		fn get_available_unbonded(_account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
 			module_staking_pool_rpc_runtime_api::BalanceInfo {
-				amount: StakingPool::get_available_unbonded(&account)
+				amount: Zero::zero()
 			}
 		}
 
 		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
-			StakingPool::liquid_exchange_rate()
+			ExchangeRate::zero()
 		}
 	}
 
@@ -1681,7 +1605,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
-			orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
+			// orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
