@@ -173,8 +173,15 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
-		// In order to avoid empty contracts, must check for return values
-		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
+		// return value is true.
+		let mut bytes = [0u8; 32];
+		U256::from(1).to_big_endian(&mut bytes);
+
+		// Check return value to make sure not calling on empty contracts.
+		ensure!(
+			!info.output.is_empty() && info.output == bytes,
+			Error::<T>::InvalidReturnValue
+		);
 		Ok(())
 	}
 

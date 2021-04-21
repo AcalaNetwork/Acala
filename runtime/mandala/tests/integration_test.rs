@@ -55,10 +55,6 @@ const BOB: [u8; 32] = [5u8; 32];
 const LPTOKEN: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::RENBTC));
 
-pub fn evm_alice() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
-}
-
 pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
 pub type DexModule = module_dex::Pallet<Runtime>;
 pub type CdpEngineModule = module_cdp_engine::Pallet<Runtime>;
@@ -231,24 +227,28 @@ fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	Ok(())
 }
 
-fn alice() -> secp256k1::SecretKey {
+fn alice_key() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
 
-fn bob() -> secp256k1::SecretKey {
+fn bob_key() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
 }
 
-pub fn evm_alice_account_id() -> AccountId {
-	let address = EvmAccounts::eth_address(&alice());
+pub fn alice() -> AccountId {
+	let address = EvmAccounts::eth_address(&alice_key());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
 	AccountId::from(Into::<[u8; 32]>::into(data))
 }
 
-pub fn evm_bob_account_id() -> AccountId {
-	let address = EvmAccounts::eth_address(&bob());
+pub fn alice_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+}
+
+pub fn bob() -> AccountId {
+	let address = EvmAccounts::eth_address(&bob_key());
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -465,7 +465,7 @@ fn test_dex_module() {
 			),
 			(
 				// evm alice
-				MockAddressMapping::get_account_id(&evm_alice()),
+				MockAddressMapping::get_account_id(&alice_evm_addr()),
 				ACA,
 				(1_000_000_000_000_000_000u128),
 			),
@@ -552,8 +552,8 @@ fn test_dex_module() {
 			// Erc20
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
-				EvmAccounts::eth_address(&alice()),
-				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_address(&alice_key()),
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
 			assert_eq!(
 				DexModule::get_liquidity_pool(
@@ -578,10 +578,10 @@ fn test_dex_module() {
 			);
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&evm_alice()));
+			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
 
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(MockAddressMapping::get_account_id(&evm_alice())),
+				origin_of(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				1,
@@ -607,13 +607,13 @@ fn test_dex_module() {
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
-					&MockAddressMapping::get_account_id(&evm_alice())
+					&MockAddressMapping::get_account_id(&alice_evm_addr())
 				),
 				20
 			);
 
 			assert_ok!(DexModule::remove_liquidity(
-				origin_of(MockAddressMapping::get_account_id(&evm_alice())),
+				origin_of(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				1,
@@ -639,7 +639,7 @@ fn test_dex_module() {
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
-					&MockAddressMapping::get_account_id(&evm_alice())
+					&MockAddressMapping::get_account_id(&alice_evm_addr())
 				),
 				19
 			);
@@ -1110,19 +1110,19 @@ fn test_nft_module() {
 #[test]
 fn test_evm_accounts_module() {
 	ExtBuilder::default()
-		.balances(vec![(evm_bob_account_id(), ACA, 1_000 * dollar(ACA))])
+		.balances(vec![(bob(), ACA, 1_000 * dollar(ACA))])
 		.build()
 		.execute_with(|| {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA));
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
-				EvmAccounts::eth_address(&alice()),
-				EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_address(&alice_key()),
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
 			let event = Event::module_evm_accounts(module_evm_accounts::Event::ClaimAccount(
 				AccountId::from(ALICE),
-				EvmAccounts::eth_address(&alice()),
+				EvmAccounts::eth_address(&alice_key()),
 			));
 			assert_eq!(last_event(), event);
 
@@ -1130,16 +1130,16 @@ fn test_evm_accounts_module() {
 			assert_noop!(
 				EvmAccounts::claim_account(
 					Origin::signed(AccountId::from(ALICE)),
-					EvmAccounts::eth_address(&alice()),
-					EvmAccounts::eth_sign(&alice(), &AccountId::from(ALICE).encode(), &[][..])
+					EvmAccounts::eth_address(&alice_key()),
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 				),
 				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
 			);
 			assert_noop!(
 				EvmAccounts::claim_account(
 					Origin::signed(AccountId::from(BOB)),
-					EvmAccounts::eth_address(&alice()),
-					EvmAccounts::eth_sign(&alice(), &AccountId::from(BOB).encode(), &[][..])
+					EvmAccounts::eth_address(&alice_key()),
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(BOB).encode(), &[][..])
 				),
 				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
 			);
@@ -1151,44 +1151,37 @@ fn test_evm_accounts_module() {
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(evm_alice_account_id(), ACA, 1_000 * dollar(ACA)),
-			(evm_bob_account_id(), ACA, 1_000 * dollar(ACA)),
+			(alice(), ACA, 1_000 * dollar(ACA)),
+			(bob(), ACA, 1_000 * dollar(ACA)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(evm_alice_account_id()), 1_000 * dollar(ACA));
-			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(alice()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA));
 
-			let _alice_address = EvmAccounts::eth_address(&alice());
-			let bob_address = EvmAccounts::eth_address(&bob());
+			let _alice_address = EvmAccounts::eth_address(&alice_key());
+			let bob_address = EvmAccounts::eth_address(&bob_key());
 
-			let contract = deploy_contract(evm_alice_account_id()).unwrap();
+			let contract = deploy_contract(alice()).unwrap();
 			let event = Event::module_evm(module_evm::Event::Created(contract));
 			assert_eq!(last_event(), event);
 
-			assert_ok!(EVM::transfer_maintainer(
-				Origin::signed(evm_alice_account_id()),
-				contract,
-				bob_address
-			));
+			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
 			let event = Event::module_evm(module_evm::Event::TransferredMaintainer(contract, bob_address));
 			assert_eq!(last_event(), event);
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(evm_alice_account_id()), 999_999_896_330_000);
-			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
-			let to = EvmAccounts::eth_address(&alice());
+			assert_eq!(Balances::free_balance(alice()), 999_999_896_330_000);
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA));
+			let to = EvmAccounts::eth_address(&alice_key());
 			assert_ok!(Currencies::transfer(
-				Origin::signed(evm_bob_account_id()),
+				Origin::signed(bob()),
 				MultiAddress::Address20(to.0),
 				ACA,
 				10 * dollar(ACA)
 			));
-			assert_eq!(Balances::free_balance(evm_alice_account_id()), 1_009_999_896_330_000);
-			assert_eq!(
-				Balances::free_balance(evm_bob_account_id()),
-				1_000 * dollar(ACA) - 10 * dollar(ACA)
-			);
+			assert_eq!(Balances::free_balance(alice()), 1_009_999_896_330_000);
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA) - 10 * dollar(ACA));
 		});
 }
 
@@ -1197,13 +1190,13 @@ fn test_evm_module() {
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(evm_alice_account_id(), ACA, 1_000 * dollar(ACA)),
-			(evm_bob_account_id(), ACA, 1_000 * dollar(ACA)),
+			(alice(), ACA, 1_000 * dollar(ACA)),
+			(bob(), ACA, 1_000 * dollar(ACA)),
 		])
 		.build()
 		.execute_with(|| {
-			assert_eq!(Balances::free_balance(evm_alice_account_id()), 1_000 * dollar(ACA));
-			assert_eq!(Balances::free_balance(evm_bob_account_id()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(alice()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA));
 
 			use std::fs::{self, File};
 			use std::io::Read;
@@ -1224,13 +1217,7 @@ fn test_evm_module() {
 				let bytecode_str = bytecode_str.replace("\"", "");
 
 				let bytecode = hex::decode(bytecode_str).unwrap();
-				assert_ok!(EVM::create(
-					Origin::signed(evm_alice_account_id()),
-					bytecode,
-					0,
-					u64::MAX,
-					u32::MAX
-				));
+				assert_ok!(EVM::create(Origin::signed(alice()), bytecode, 0, u64::MAX, u32::MAX));
 
 				match System::events().iter().last().unwrap().event {
 					Event::module_evm(module_evm::Event::Created(_)) => {}

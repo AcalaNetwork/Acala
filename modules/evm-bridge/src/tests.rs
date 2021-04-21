@@ -22,9 +22,10 @@
 
 use super::*;
 use frame_support::{assert_err, assert_ok};
-use mock::{alice, bob, deploy_contracts, erc20_address, EvmBridgeModule, ExtBuilder, Runtime};
+use mock::{
+	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, EvmBridgeModule, ExtBuilder, Runtime,
+};
 use sha3::{Digest, Keccak256};
-use support::AddressMapping;
 
 #[test]
 fn method_hash_works() {
@@ -80,10 +81,7 @@ fn method_hash_works() {
 #[test]
 fn should_read_name() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -104,10 +102,7 @@ fn should_read_name() {
 #[test]
 fn should_read_symbol() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -125,10 +120,7 @@ fn should_read_symbol() {
 #[test]
 fn should_read_decimals() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -146,10 +138,7 @@ fn should_read_decimals() {
 #[test]
 fn should_read_total_supply() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -167,10 +156,7 @@ fn should_read_total_supply() {
 #[test]
 fn should_read_balance_of() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -180,27 +166,18 @@ fn should_read_balance_of() {
 				origin: Default::default(),
 			};
 
-			assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
+			assert_eq!(EvmBridgeModule::balance_of(context, bob_evm_addr()), Ok(0));
 
-			assert_eq!(EvmBridgeModule::balance_of(context, alice()), Ok(10000));
+			assert_eq!(EvmBridgeModule::balance_of(context, alice_evm_addr()), Ok(10000));
 
-			assert_eq!(EvmBridgeModule::balance_of(context, bob()), Ok(0));
+			assert_eq!(EvmBridgeModule::balance_of(context, bob_evm_addr()), Ok(0));
 		});
 }
 
 #[test]
 fn should_transfer() {
 	ExtBuilder::default()
-		.balances(vec![
-			(
-				<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-				1_000_000_000_000,
-			),
-			(
-				<Runtime as module_evm::Config>::AddressMapping::get_account_id(&bob()),
-				1_000_000_000_000,
-			),
-		])
+		.balances(vec![(alice(), 1_000_000_000_000), (bob(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -208,10 +185,10 @@ fn should_transfer() {
 				EvmBridgeModule::transfer(
 					InvokeContext {
 						contract: erc20_address(),
-						sender: bob(),
-						origin: bob(),
+						sender: bob_evm_addr(),
+						origin: bob_evm_addr(),
 					},
-					alice(),
+					alice_evm_addr(),
 					10
 				),
 				Error::<Runtime>::ExecutionRevert
@@ -220,20 +197,20 @@ fn should_transfer() {
 			assert_ok!(EvmBridgeModule::transfer(
 				InvokeContext {
 					contract: erc20_address(),
-					sender: alice(),
-					origin: alice(),
+					sender: alice_evm_addr(),
+					origin: alice_evm_addr(),
 				},
-				bob(),
+				bob_evm_addr(),
 				100
 			));
 			assert_eq!(
 				EvmBridgeModule::balance_of(
 					InvokeContext {
 						contract: erc20_address(),
-						sender: alice(),
-						origin: alice(),
+						sender: alice_evm_addr(),
+						origin: alice_evm_addr(),
 					},
-					bob()
+					bob_evm_addr()
 				),
 				Ok(100)
 			);
@@ -241,10 +218,10 @@ fn should_transfer() {
 			assert_ok!(EvmBridgeModule::transfer(
 				InvokeContext {
 					contract: erc20_address(),
-					sender: bob(),
-					origin: bob(),
+					sender: bob_evm_addr(),
+					origin: bob_evm_addr(),
 				},
-				alice(),
+				alice_evm_addr(),
 				10
 			));
 
@@ -252,10 +229,10 @@ fn should_transfer() {
 				EvmBridgeModule::balance_of(
 					InvokeContext {
 						contract: erc20_address(),
-						sender: alice(),
-						origin: bob(),
+						sender: alice_evm_addr(),
+						origin: bob_evm_addr(),
 					},
-					bob()
+					bob_evm_addr()
 				),
 				Ok(90)
 			);
@@ -264,10 +241,10 @@ fn should_transfer() {
 				EvmBridgeModule::transfer(
 					InvokeContext {
 						contract: erc20_address(),
-						sender: bob(),
-						origin: bob(),
+						sender: bob_evm_addr(),
+						origin: bob_evm_addr(),
 					},
-					alice(),
+					alice_evm_addr(),
 					100
 				),
 				Error::<Runtime>::ExecutionRevert

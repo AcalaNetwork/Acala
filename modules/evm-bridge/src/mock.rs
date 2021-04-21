@@ -27,7 +27,7 @@ use primitives::evm::EvmAddress;
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::str::FromStr;
-use support::mocks::MockAddressMapping;
+use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -94,7 +94,7 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub NetworkContractSource: EvmAddress = alice();
+	pub NetworkContractSource: EvmAddress = alice_evm_addr();
 }
 
 ord_parameter_types! {
@@ -168,11 +168,19 @@ pub fn erc20_address() -> EvmAddress {
 	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
 }
 
-pub fn alice() -> EvmAddress {
+pub fn alice() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn bob() -> EvmAddress {
+pub fn bob() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr())
+}
+
+pub fn bob_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
 }
 

@@ -129,7 +129,7 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub NetworkContractSource: H160 = alice();
+	pub NetworkContractSource: H160 = alice_evm_addr();
 }
 
 ord_parameter_types! {
@@ -203,28 +203,28 @@ frame_support::construct_runtime!(
 	}
 );
 
-pub fn alice() -> EvmAddress {
+pub fn alice() -> AccountId {
+	<Runtime as Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn bob() -> EvmAddress {
+pub fn bob() -> AccountId {
+	<Runtime as Config>::AddressMapping::get_account_id(&bob_evm_addr())
+}
+
+pub fn bob_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
 }
 
-pub fn eva() -> EvmAddress {
+pub fn eva() -> AccountId {
+	<Runtime as Config>::AddressMapping::get_account_id(&eva_evm_addr())
+}
+
+pub fn eva_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000005").unwrap()
-}
-
-pub fn alice_account() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(&alice())
-}
-
-pub fn bob_account() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(&bob())
-}
-
-pub fn eva_account() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(&eva())
 }
 
 pub const ID_1: LockIdentifier = *b"1       ";
@@ -269,10 +269,10 @@ impl ExtBuilder {
 
 	pub fn one_hundred_for_alice_n_bob(self) -> Self {
 		self.balances(vec![
-			(alice_account(), NATIVE_CURRENCY_ID, 100),
-			(bob_account(), NATIVE_CURRENCY_ID, 100),
-			(alice_account(), X_TOKEN_ID, 100),
-			(bob_account(), X_TOKEN_ID, 100),
+			(alice(), NATIVE_CURRENCY_ID, 100),
+			(bob(), NATIVE_CURRENCY_ID, 100),
+			(alice(), X_TOKEN_ID, 100),
+			(bob(), X_TOKEN_ID, 100),
 		])
 	}
 

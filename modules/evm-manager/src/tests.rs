@@ -23,7 +23,6 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{alice, deploy_contracts, erc20_address, erc20_address_not_exists, ExtBuilder, Runtime};
-use module_support::AddressMapping;
 use orml_utilities::with_transaction_result;
 use primitives::TokenSymbol;
 use sp_core::H160;
@@ -32,10 +31,7 @@ use std::str::FromStr;
 #[test]
 fn set_erc20_mapping_works() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -59,10 +55,7 @@ fn set_erc20_mapping_works() {
 #[test]
 fn get_evm_address_works() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -83,10 +76,7 @@ fn get_evm_address_works() {
 #[test]
 fn decimals_works() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -112,10 +102,7 @@ fn decimals_works() {
 #[test]
 fn encode_currency_id_works() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -222,10 +209,7 @@ fn encode_currency_id_works() {
 #[test]
 fn decode_currency_id_works() {
 	ExtBuilder::default()
-		.balances(vec![(
-			<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice()),
-			1_000_000_000_000,
-		)])
+		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();

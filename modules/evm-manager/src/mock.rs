@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use module_support::mocks::MockAddressMapping;
+use module_support::{mocks::MockAddressMapping, AddressMapping};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
@@ -121,7 +121,7 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub NetworkContractSource: EvmAddress = alice();
+	pub NetworkContractSource: EvmAddress = alice_evm_addr();
 }
 
 ord_parameter_types! {
@@ -178,7 +178,11 @@ pub fn erc20_address_not_exists() -> EvmAddress {
 	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
 }
 
-pub fn alice() -> EvmAddress {
+pub fn alice() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
