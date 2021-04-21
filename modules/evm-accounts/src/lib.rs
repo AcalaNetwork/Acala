@@ -48,7 +48,11 @@ use sp_runtime::{
 };
 use sp_std::{marker::PhantomData, vec::Vec};
 
-mod mock;
+#[cfg(feature = "bench")]
+pub mod benches;
+#[cfg(any(feature = "bench", test))]
+pub mod mock;
+
 mod tests;
 pub mod weights;
 
@@ -222,6 +226,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// Returns an Etherum address derived from an Ethereum secret key.
+	// #[orml_weight_meter::weight(0)]
 	pub fn eth_address(secret: &secp256k1::SecretKey) -> EvmAddress {
 		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
 	}

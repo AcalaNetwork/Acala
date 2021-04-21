@@ -18,162 +18,280 @@
 
 //! Mocks for the evm-accounts module.
 
-#![cfg(test)]
-
-use super::*;
-use frame_support::{construct_runtime, parameter_types};
-use orml_traits::parameter_type_with_key;
-use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::{crypto::AccountId32, H256};
-use sp_io::hashing::keccak_256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
-
-pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
-
-pub const ALICE: AccountId = AccountId32::new([0u8; 32]);
-pub const BOB: AccountId = AccountId32::new([1u8; 32]);
-
-mod evm_accounts {
-	pub use super::super::*;
+#[cfg(feature = "std")]
+include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+#[cfg(feature = "std")]
+pub fn wasm_binary_unwrap() -> &'static [u8] {
+	WASM_BINARY.unwrap()
 }
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
+#[cfg(test)]
+pub mod for_tests {
+	use super::super::*;
+	use frame_support::{construct_runtime, parameter_types};
+	use orml_traits::parameter_type_with_key;
+	use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+	use sp_core::{crypto::AccountId32, H256};
+	use sp_io::hashing::keccak_256;
+	use sp_runtime::{testing::Header, traits::IdentityLookup};
 
-impl frame_system::Config for Runtime {
-	type Origin = Origin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
-	type Call = Call;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-}
+	pub type AccountId = AccountId32;
+	pub type BlockNumber = u64;
 
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-}
-impl pallet_balances::Config for Runtime {
-	type Balance = Balance;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = frame_system::Pallet<Runtime>;
-	type MaxLocks = ();
-	type WeightInfo = ();
-}
+	pub const ALICE: AccountId = AccountId32::new([0u8; 32]);
+	pub const BOB: AccountId = AccountId32::new([1u8; 32]);
 
-parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
-	};
-}
-
-impl orml_tokens::Config for Runtime {
-	type Event = Event;
-	type Balance = Balance;
-	type Amount = Amount;
-	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
-	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-}
-
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-}
-
-impl orml_currencies::Config for Runtime {
-	type Event = Event;
-	type MultiCurrency = Tokens;
-	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type WeightInfo = ();
-}
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-
-impl Config for Runtime {
-	type Event = Event;
-	type Currency = Balances;
-	type AddressMapping = EvmAddressMapping<Runtime>;
-	type MergeAccount = Currencies;
-	type OnClaim = ();
-	type WeightInfo = ();
-}
-
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
-construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		EvmAccountsModule: evm_accounts::{Pallet, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call, Event<T>},
+	mod evm_accounts {
+		pub use super::super::super::*;
 	}
-);
 
-pub struct ExtBuilder();
-
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self()
+	parameter_types! {
+		pub const BlockHashCount: u64 = 250;
 	}
-}
 
-impl ExtBuilder {
-	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+	impl frame_system::Config for Runtime {
+		type Origin = Origin;
+		type Index = u64;
+		type BlockNumber = BlockNumber;
+		type Call = Call;
+		type Hash = H256;
+		type Hashing = ::sp_runtime::traits::BlakeTwo256;
+		type AccountId = AccountId;
+		type Lookup = IdentityLookup<Self::AccountId>;
+		type Header = Header;
+		type Event = Event;
+		type BlockHashCount = BlockHashCount;
+		type BlockWeights = ();
+		type BlockLength = ();
+		type Version = ();
+		type PalletInfo = PalletInfo;
+		type AccountData = pallet_balances::AccountData<Balance>;
+		type OnNewAccount = ();
+		type OnKilledAccount = ();
+		type DbWeight = ();
+		type BaseCallFilter = ();
+		type SystemWeightInfo = ();
+		type SS58Prefix = ();
+		type OnSetCode = ();
+	}
+
+	parameter_types! {
+		pub const ExistentialDeposit: u64 = 1;
+	}
+	impl pallet_balances::Config for Runtime {
+		type Balance = Balance;
+		type Event = Event;
+		type DustRemoval = ();
+		type ExistentialDeposit = ExistentialDeposit;
+		type AccountStore = frame_system::Pallet<Runtime>;
+		type MaxLocks = ();
+		type WeightInfo = ();
+	}
+
+	parameter_type_with_key! {
+		pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+			Default::default()
+		};
+	}
+
+	impl orml_tokens::Config for Runtime {
+		type Event = Event;
+		type Balance = Balance;
+		type Amount = Amount;
+		type CurrencyId = CurrencyId;
+		type WeightInfo = ();
+		type ExistentialDeposits = ExistentialDeposits;
+		type OnDust = ();
+	}
+
+	parameter_types! {
+		pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+	}
+
+	impl orml_currencies::Config for Runtime {
+		type Event = Event;
+		type MultiCurrency = Tokens;
+		type NativeCurrency = AdaptedBasicCurrency;
+		type GetNativeCurrencyId = GetNativeCurrencyId;
+		type WeightInfo = ();
+	}
+	pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+
+	impl Config for Runtime {
+		type Event = Event;
+		type Currency = Balances;
+		type AddressMapping = EvmAddressMapping<Runtime>;
+		type MergeAccount = Currencies;
+		type OnClaim = ();
+		type WeightInfo = ();
+	}
+
+	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+	type Block = frame_system::mocking::MockBlock<Runtime>;
+
+	construct_runtime!(
+		pub enum Runtime where
+			Block = Block,
+			NodeBlock = Block,
+			UncheckedExtrinsic = UncheckedExtrinsic,
+		{
+			System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+			EvmAccountsModule: evm_accounts::{Pallet, Call, Storage, Event<T>},
+			Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+			Currencies: orml_currencies::{Pallet, Call, Event<T>},
+		}
+	);
+
+	pub struct ExtBuilder();
+
+	impl Default for ExtBuilder {
+		fn default() -> Self {
+			Self()
+		}
+	}
+
+	impl ExtBuilder {
+		pub fn build(self) -> sp_io::TestExternalities {
+			let mut t = frame_system::GenesisConfig::default()
+				.build_storage::<Runtime>()
+				.unwrap();
+
+			pallet_balances::GenesisConfig::<Runtime> {
+				balances: vec![(bob_account_id(), 100000)],
+			}
+			.assimilate_storage(&mut t)
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(bob_account_id(), 100000)],
+			let mut ext = sp_io::TestExternalities::new(t);
+			ext.execute_with(|| System::set_block_number(1));
+			ext
 		}
-		.assimilate_storage(&mut t)
-		.unwrap();
+	}
 
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
+	pub fn alice() -> secp256k1::SecretKey {
+		secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
+	}
+
+	pub fn bob() -> secp256k1::SecretKey {
+		secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+	}
+
+	pub fn bob_account_id() -> AccountId {
+		let address = EvmAccountsModule::eth_address(&bob());
+		let mut data = [0u8; 32];
+		data[0..4].copy_from_slice(b"evm:");
+		data[4..24].copy_from_slice(&address[..]);
+		AccountId32::from(Into::<[u8; 32]>::into(data))
 	}
 }
 
-pub fn alice() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
-}
+#[cfg_attr(not(feature = "std"), no_std)]
+pub mod for_bench {
+	use super::super::*;
+	use frame_support::{construct_runtime, parameter_types};
+	use orml_traits::parameter_type_with_key;
+	use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+	use sp_core::{crypto::AccountId32, H256};
+	use sp_io::hashing::keccak_256;
+	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+	use sp_std::boxed::Box;
 
-pub fn bob() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
-}
+	pub const ALICE: AccountId = AccountId32::new([0u8; 32]);
 
-pub fn bob_account_id() -> AccountId {
-	let address = EvmAccountsModule::eth_address(&bob());
-	let mut data = [0u8; 32];
-	data[0..4].copy_from_slice(b"evm:");
-	data[4..24].copy_from_slice(&address[..]);
-	AccountId32::from(Into::<[u8; 32]>::into(data))
+	pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+	pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
+	pub type Header = sp_runtime::generic::Header<BlockNumber, Hasher>;
+	pub type Signature = sp_runtime::MultiSignature;
+	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+
+	type Hasher = BlakeTwo256;
+	pub type BlockNumber = u64;
+
+	pub fn alice() -> secp256k1::SecretKey {
+		secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
+	}
+
+	pub fn bob() -> secp256k1::SecretKey {
+		secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+	}
+
+	pub type SignedExtra = (
+		frame_system::CheckSpecVersion<Runtime>,
+		frame_system::CheckTxVersion<Runtime>,
+		frame_system::CheckGenesis<Runtime>,
+		frame_system::CheckEra<Runtime>,
+		frame_system::CheckNonce<Runtime>,
+		frame_system::CheckWeight<Runtime>,
+	);
+
+	frame_support::parameter_types! {
+		pub const BlockHashCount: u64 = 250;
+		pub const SS58Prefix: u8 = 42;
+	}
+
+	mod evm_accounts {
+		pub use super::super::super::*;
+	}
+
+	impl frame_system::Config for Runtime {
+		type Origin = Origin;
+		type Index = u64;
+		type BlockNumber = BlockNumber;
+		type Call = Call;
+		type Hash = H256;
+		type Hashing = ::sp_runtime::traits::BlakeTwo256;
+		type AccountId = AccountId;
+		type Lookup = IdentityLookup<Self::AccountId>;
+		type Header = Header;
+		type Event = Event;
+		type BlockHashCount = BlockHashCount;
+		type BlockWeights = ();
+		type BlockLength = ();
+		type Version = ();
+		type PalletInfo = PalletInfo;
+		type AccountData = pallet_balances::AccountData<Balance>;
+		type OnNewAccount = ();
+		type OnKilledAccount = ();
+		type DbWeight = ();
+		type BaseCallFilter = ();
+		type SystemWeightInfo = ();
+		type SS58Prefix = ();
+		type OnSetCode = ();
+	}
+
+	impl Config for Runtime {
+		type Event = Event;
+		type Currency = Balances;
+		type AddressMapping = EvmAddressMapping<Runtime>;
+		type MergeAccount = ();
+		type OnClaim = ();
+		type WeightInfo = ();
+	}
+
+	parameter_types! {
+		pub const ExistentialDeposit: u64 = 1;
+	}
+	impl pallet_balances::Config for Runtime {
+		type Balance = Balance;
+		type Event = Event;
+		type DustRemoval = ();
+		type ExistentialDeposit = ExistentialDeposit;
+		type AccountStore = frame_system::Pallet<Runtime>;
+		type MaxLocks = ();
+		type WeightInfo = ();
+	}
+
+	construct_runtime!(
+		pub enum Runtime where
+			Block = Block,
+			NodeBlock = Block,
+			UncheckedExtrinsic = UncheckedExtrinsic,
+		{
+			System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+			EvmAccountsModule: evm_accounts::{Pallet, Call, Storage, Event<T>},
+			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		}
+	);
 }

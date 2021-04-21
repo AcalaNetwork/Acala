@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{alice, bob, Event, EvmAccountsModule, ExtBuilder, Origin, Runtime, System, ALICE, BOB};
+use mock::for_tests::{alice, bob, Event, EvmAccountsModule, ExtBuilder, Origin, Runtime, System, ALICE, BOB};
 use std::str::FromStr;
 
 #[test]

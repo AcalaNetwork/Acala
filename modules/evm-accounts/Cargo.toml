@@ -4,6 +4,12 @@ version = "0.7.11"
 authors = ["Acala Developers"]
 edition = "2018"
 
+[[bench]]
+name = "evm-accounts"
+harness = false
+path = "bench_runner.rs"
+required-features = ["bench"]
+
 [dependencies]
 serde = { version = "1.0.124", optional = true }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
@@ -17,14 +23,21 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 orml-traits = { path = "../../orml/traits", default-features = false }
+orml-bencher = { path = "../../orml/bencher", default-features = false }
+orml-weight-meter = { path = "../../orml/weight-meter", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-support = { path = "../support", default-features = false }
+
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-currencies = { path = "../../orml/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+
+[build-dependencies]
+substrate-wasm-builder = "4.0.0"
 
 [features]
 default = ["std"]
@@ -40,5 +53,8 @@ std = [
 	"frame-system/std",
 	"primitives/std",
 	"orml-traits/std",
+	"orml-weight-meter/std",
 	"module-support/std",
 ]
+bench = []
+runtime-benchmarks = ["orml-weight-meter/runtime-benchmarks"]
