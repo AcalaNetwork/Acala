@@ -390,6 +390,22 @@ pub fn run() -> sc_cli::Result<()> {
 				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
 				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
 				let para_id = extension.map(|e| e.para_id);
+				let collator = cli.run.base.validator || cli.collator;
+
+				if chain_spec.is_mandala_dev() {
+					let collator = collator || cli.run.shared_params.dev;
+
+					// // If no author id was supplied, use the one that is staked at genesis
+					// // in the default development spec.
+					// let author_id = author_id.or_else(|| {
+					// 	Some(
+					// 		AccountId::from_str("6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b")
+					// 			.expect("Gerald is a valid account"),
+					// 	)
+					// });
+
+					return acala_service::mandala_dev(config);
+				}
 
 				let polkadot_cli = RelayChainCli::new(
 					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
@@ -409,7 +425,6 @@ pub fn run() -> sc_cli::Result<()> {
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
-				let collator = cli.run.base.validator || cli.collator;
 
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);

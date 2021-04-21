@@ -30,7 +30,7 @@ dependencies = [
  "acala-inspect",
  "acala-service",
  "cumulus-client-service",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "frame-benchmarking-cli",
  "log",
  "orml-build-script-utils",
@@ -109,7 +109,7 @@ dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-executive",
@@ -215,7 +215,9 @@ dependencies = [
  "cumulus-client-consensus-relay-chain",
  "cumulus-client-network",
  "cumulus-client-service",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-parachain-inherent 0.1.0 (git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d)",
+ "cumulus-test-relay-sproof-builder",
  "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
@@ -1503,7 +1505,7 @@ source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad
 dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "futures 0.3.13",
  "parity-scale-codec",
  "parking_lot 0.9.0",
@@ -1552,8 +1554,8 @@ source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad
 dependencies = [
  "async-trait",
  "cumulus-client-consensus-common",
- "cumulus-primitives-core",
- "cumulus-primitives-parachain-inherent",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-parachain-inherent 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "futures 0.3.13",
  "parity-scale-codec",
  "parking_lot 0.9.0",
@@ -1601,7 +1603,7 @@ source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad
 dependencies = [
  "cumulus-client-collator",
  "cumulus-client-consensus-common",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "futures 0.3.13",
  "parity-scale-codec",
  "polkadot-primitives",
@@ -1624,8 +1626,8 @@ name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
 source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core",
- "cumulus-primitives-parachain-inherent",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-parachain-inherent 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "environmental",
  "frame-support",
  "frame-system",
@@ -1654,7 +1656,7 @@ name = "cumulus-pallet-xcm-handler"
 version = "0.1.0"
 source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "frame-support",
  "frame-system",
  "log",
@@ -1681,11 +1683,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-primitives-core"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
+dependencies = [
+ "impl-trait-for-tuples 0.2.1",
+ "parity-scale-codec",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "polkadot-primitives",
+ "sp-runtime",
+ "sp-std",
+ "sp-trie",
+ "xcm",
+]
+
+[[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
 source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "parity-scale-codec",
  "sc-client-api",
  "sp-api",
@@ -1696,6 +1714,37 @@ dependencies = [
  "sp-std",
  "sp-trie",
  "tracing",
+]
+
+[[package]]
+name = "cumulus-primitives-parachain-inherent"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
+dependencies = [
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d)",
+ "parity-scale-codec",
+ "sc-client-api",
+ "sp-api",
+ "sp-core",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-std",
+ "sp-trie",
+ "tracing",
+]
+
+[[package]]
+name = "cumulus-test-relay-sproof-builder"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
+dependencies = [
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d)",
+ "parity-scale-codec",
+ "polkadot-primitives",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-std",
 ]
 
 [[package]]
@@ -3562,7 +3611,7 @@ dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -4403,7 +4452,7 @@ dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "ecosystem-renvm-bridge",
  "evm",
  "frame-benchmarking",
@@ -5786,7 +5835,7 @@ name = "orml-xtokens"
 version = "0.4.1-dev"
 dependencies = [
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "frame-support",
  "frame-system",
  "orml-tokens",
@@ -6484,7 +6533,7 @@ name = "parachain-info"
 version = "0.1.0"
 source = "git+https://github.com/paritytech/cumulus?branch=rococo-v1#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
@@ -12436,7 +12485,7 @@ source = "git+https://github.com/shaunxw/xcm-simulator?branch=master#c52bd64a41a
 dependencies = [
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
  "frame-support",
  "frame-system",
  "pallet-balances",

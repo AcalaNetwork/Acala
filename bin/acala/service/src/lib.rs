@@ -26,7 +26,9 @@ use cumulus_client_network::build_block_announce_validator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
-use cumulus_primitives_core::ParaId;
+use cumulus_primitives_core::{ParaId, PersistedValidationData};
+use cumulus_primitives_parachain_inherent::{ParachainInherentData, INHERENT_IDENTIFIER};
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
 #[cfg(feature = "with-acala-runtime")]
 pub use acala_runtime;
@@ -39,13 +41,17 @@ pub use mandala_runtime;
 
 use acala_primitives::Block;
 use polkadot_primitives::v0::CollatorPair;
+use sc_consensus::LongestChain;
 use sc_executor::native_executor_instance;
 use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
+use sp_inherents::{InherentData, InherentDataProviders, InherentIdentifier, ProvideInherentData};
 use sp_runtime::traits::BlakeTwo256;
+use sp_timestamp::InherentError;
 use sp_trie::PrefixedMemoryDB;
+
 use std::sync::Arc;
 
 pub use client::*;
@@ -88,14 +94,17 @@ native_executor_instance!(
 /// Can be called for a `Configuration` to check if it is a configuration for
 /// the `Acala` network.
 pub trait IdentifyVariant {
-	/// Returns if this is a configuration for the `Acala` network.
+	/// Returns `true` if this is a configuration for the `Acala` network.
 	fn is_acala(&self) -> bool;
 
-	/// Returns if this is a configuration for the `Karura` network.
+	/// Returns `true` if this is a configuration for the `Karura` network.
 	fn is_karura(&self) -> bool;
 
-	/// Returns if this is a configuration for the `Mandala` network.
+	/// Returns `true` if this is a configuration for the `Mandala` network.
 	fn is_mandala(&self) -> bool;
+
+	/// Returns `true` if this is a configuration for the `Mandala` dev network.
+	fn is_mandala_dev(&self) -> bool;
 }
 
 impl IdentifyVariant for Box<dyn ChainSpec> {
@@ -110,6 +119,10 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 	fn is_mandala(&self) -> bool {
 		self.id().starts_with("mandala") || self.id().starts_with("man")
 	}
+
+	fn is_mandala_dev(&self) -> bool {
+		self.id().starts_with("mandala-dev")
+	}
 }
 
 /// Acala's full backend.
@@ -118,14 +131,45 @@ type FullBackend = TFullBackend<Block>;
 /// Acala's full client.
 type FullClient<RuntimeApi, Executor> = TFullClient<Block, RuntimeApi, Executor>;
 
+struct MockDevInherentDataProvider;
+impl ProvideInherentData for MockDevInherentDataProvider {
+	fn inherent_identifier(&self) -> &'static InherentIdentifier {
+		&INHERENT_IDENTIFIER
+	}
+
+	fn provide_inherent_data(&self, inherent_data: &mut InherentData) -> Result<(), sp_inherents::Error> {
+		// Use the "sproof" (spoof proof) builder to build valid mock state root and
+		// proof.
+		let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+
+		let data = ParachainInherentData {
+			validation_data: PersistedValidationData {
+				parent_head: Default::default(),
+				relay_parent_storage_root: relay_storage_root,
+				relay_parent_number: Default::default(),
+				max_pov_size: Default::default(),
+			},
+			downward_messages: Default::default(),
+			horizontal_messages: Default::default(),
+			relay_chain_state: proof,
+		};
+
+		inherent_data.put_data(INHERENT_IDENTIFIER, &data)
+	}
+
+	fn error_to_string(&self, error: &[u8]) -> Option<String> {
+		InherentError::try_from(&INHERENT_IDENTIFIER, error).map(|e| format!("{:?}", e))
+	}
+}
+
 pub fn new_partial<RuntimeApi, Executor>(
 	config: &Configuration,
-	_test: bool,
+	is_dev: bool,
 ) -> Result<
 	PartialComponents<
 		FullClient<RuntimeApi, Executor>,
 		FullBackend,
-		(),
+		Option<LongestChain<FullBackend, Block>>,
 		sp_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
 		(Option<Telemetry>, Option<TelemetryWorkerHandle>),
@@ -137,7 +181,16 @@ where
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	Executor: NativeExecutionDispatch + 'static,
 {
-	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
+	let inherent_data_providers = {
+		let providers = sp_inherents::InherentDataProviders::new();
+		if is_dev {
+			providers
+				.register_provider(MockDevInherentDataProvider)
+				.map_err(Into::into)
+				.map_err(sp_consensus::error::Error::InherentData)?;
+		}
+		providers
+	};
 
 	let telemetry = config
 		.telemetry_endpoints
@@ -173,13 +226,27 @@ where
 		client.clone(),
 	);
 
-	let import_queue = cumulus_client_consensus_relay_chain::import_queue(
-		client.clone(),
-		client.clone(),
-		inherent_data_providers.clone(),
-		&task_manager.spawn_essential_handle(),
-		registry,
-	)?;
+	let select_chain = if is_dev {
+		Some(LongestChain::new(backend.clone()))
+	} else {
+		None
+	};
+
+	let import_queue = if is_dev {
+		sc_consensus_manual_seal::import_queue(
+			Box::new(client.clone()),
+			&task_manager.spawn_essential_handle(),
+			registry,
+		)
+	} else {
+		cumulus_client_consensus_relay_chain::import_queue(
+			client.clone(),
+			client.clone(),
+			inherent_data_providers.clone(),
+			&task_manager.spawn_essential_handle(),
+			registry,
+		)?
+	};
 
 	Ok(PartialComponents {
 		backend,
@@ -189,7 +256,7 @@ where
 		task_manager,
 		transaction_pool,
 		inherent_data_providers,
-		select_chain: (),
+		select_chain,
 		other: (telemetry, telemetry_worker_handle),
 	})
 }
@@ -375,6 +442,78 @@ where
 	.await
 }
 
+pub fn mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
+	#[cfg(feature = "with-mandala-runtime")]
+	{
+		let sc_service::PartialComponents {
+			client,
+			backend,
+			mut task_manager,
+			import_queue,
+			keystore_container,
+			select_chain: maybe_select_chain,
+			transaction_pool,
+			inherent_data_providers,
+			other: (telemetry, telemetry_worker_handle),
+		} = new_partial(&config, author_id, true)?;
+
+		let (network, network_status_sinks, system_rpc_tx, network_starter) =
+			sc_service::build_network(sc_service::BuildNetworkParams {
+				config: &config,
+				client: client.clone(),
+				transaction_pool: transaction_pool.clone(),
+				spawn_handle: task_manager.spawn_handle(),
+				import_queue,
+				on_demand: None,
+				block_announce_validator_builder: None,
+			})?;
+
+		if config.offchain_worker.enabled {
+			sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
+		}
+
+		let prometheus_registry = config.prometheus_registry().cloned();
+		let subscription_task_executor = sc_rpc::SubscriptionTaskExecutor::new(task_manager.spawn_handle());
+
+		let rpc_extensions_builder = {
+			let client = client.clone();
+			let transaction_pool = transaction_pool.clone();
+
+			Box::new(move |deny_unsafe, _| -> acala_rpc::RpcExtension {
+				let deps = acala_rpc::FullDeps {
+					client: client.clone(),
+					pool: transaction_pool.clone(),
+					deny_unsafe,
+				};
+
+				acala_rpc::create_full(deps)
+			})
+		};
+
+		sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+			on_demand: None,
+			remote_blockchain: None,
+			rpc_extensions_builder,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			task_manager: &mut task_manager,
+			config,
+			keystore: keystore_container.sync_keystore(),
+			backend: backend.clone(),
+			network: network.clone(),
+			network_status_sinks,
+			system_rpc_tx,
+			telemetry: telemetry.as_mut(),
+		})?;
+
+		network_starter.start_network();
+
+		Ok(task_manager)
+	}
+	#[cfg(not(feature = "with-mandala-runtime"))]
+	Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
+}
+
 /// Builds a new object suitable for chain operations.
 pub fn new_chain_ops(
 	mut config: &mut Configuration,
@@ -388,7 +527,21 @@ pub fn new_chain_ops(
 	ServiceError,
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	if config.chain_spec.is_mandala() {
+	if config.chain_spec.is_mandala_dev() {
+		#[cfg(feature = "with-mandala-runtime")]
+		{
+			let PartialComponents {
+				client,
+				backend,
+				import_queue,
+				task_manager,
+				..
+			} = new_partial(config, true)?;
+			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
+		}
+		#[cfg(not(feature = "with-mandala-runtime"))]
+		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
+	} else if config.chain_spec.is_mandala() {
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let PartialComponents {

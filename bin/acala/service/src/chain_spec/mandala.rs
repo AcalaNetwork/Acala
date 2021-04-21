@@ -47,8 +47,8 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 
 	Ok(ChainSpec::from_genesis(
-		"Mandala PC Dev",
-		"mandala-pc-dev",
+		"Mandala Dev",
+		"mandala-dev",
 		ChainType::Development,
 		move || {
 			testnet_genesis(
@@ -71,7 +71,7 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 		None,
 		Some(properties),
 		Extensions {
-			relay_chain: "rococo".into(),
+			relay_chain: "rococo-local".into(),
 			para_id: 1000_u32,
 		},
 	))
