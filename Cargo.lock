@@ -2108,7 +2108,7 @@ dependencies = [
 
 [[package]]
 name = "evm-rpc"
-version = "0.1.0"
+version = "0.8.0"
 dependencies = [
  "ethereum-types",
  "frame-support",
@@ -5048,7 +5048,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-validator-list"
-version = "0.7.3"
+version = "0.8.0"
 dependencies = [
  "acala-primitives",
  "clear_on_drop",
