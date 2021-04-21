@@ -102,11 +102,15 @@ pub mod module {
 	}
 
 	/// Emergency shutdown flag
+	///
+	/// IsShutdown: bool
 	#[pallet::storage]
 	#[pallet::getter(fn is_shutdown)]
 	pub type IsShutdown<T: Config> = StorageValue<_, bool, ValueQuery>;
 
 	/// Open final redemption flag
+	///
+	/// CanRefund: bool
 	#[pallet::storage]
 	#[pallet::getter(fn can_refund)]
 	pub type CanRefund<T: Config> = StorageValue<_, bool, ValueQuery>;

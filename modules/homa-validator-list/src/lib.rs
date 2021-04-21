@@ -191,11 +191,14 @@ pub mod module {
 		SlashGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
 	}
 
+	/// The slash guarantee deposits for relaychain validators.
+	///
+	/// Guarantees: double_map RelaychainAccountId, AccountId => Option<Guarantee>
 	#[pallet::storage]
 	#[pallet::getter(fn guarantees)]
 	pub type Guarantees<T: Config> = StorageDoubleMap<
 		_,
-		Twox64Concat,
+		Blake2_128Concat,
 		T::RelaychainAccountId,
 		Twox64Concat,
 		T::AccountId,
@@ -203,14 +206,20 @@ pub mod module {
 		OptionQuery,
 	>;
 
+	/// Total deposits for users.
+	///
+	/// TotalLockedByGuarantor: map AccountId => Option<Balance>
 	#[pallet::storage]
 	#[pallet::getter(fn total_locked_by_guarantor)]
 	pub type TotalLockedByGuarantor<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Balance, OptionQuery>;
 
+	/// Total deposit for validators.
+	///
+	/// ValidatorBackings: map RelaychainAccountId => Option<ValidatorBacking>
 	#[pallet::storage]
 	#[pallet::getter(fn validator_backings)]
 	pub type ValidatorBackings<T: Config> =
-		StorageMap<_, Twox64Concat, T::RelaychainAccountId, ValidatorBacking, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::RelaychainAccountId, ValidatorBacking, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);

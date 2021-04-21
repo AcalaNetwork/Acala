@@ -31,8 +31,8 @@ use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, resu
 ///
 /// Actions:
 /// - Get liquidity. Rest `input` bytes: `currency_id_a`, `currency_id_b`.
-/// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`,
-///   `currency_id_b`, `supply_amount`, `min_target_amount`.
+/// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`, `currency_id_b`,
+///   `supply_amount`, `min_target_amount`.
 pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
 );

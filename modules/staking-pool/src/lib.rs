@@ -223,13 +223,17 @@ pub mod module {
 		RedeemByClaimUnbonding(T::AccountId, EraIndex, Balance, Balance, Balance),
 	}
 
-	/// Current era index of Polkadot.
+	/// Current era index on Relaychain.
+	///
+	/// CurrentEra: EraIndex
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
 	pub type CurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
 	/// Unbond on next era beginning by AccountId.
 	/// AccountId => Unbond
+	///
+	/// NextEraUnbonds: AccountId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn next_era_unbonds)]
 	pub type NextEraUnbonds<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Balance, ValueQuery>;
@@ -237,28 +241,38 @@ pub mod module {
 	/// The records of unbonding.
 	/// ExpiredEraIndex => (TotalUnbounding, ClaimedUnbonding,
 	/// InitialClaimedUnbonding)
+	///
+	/// Unbonding: map EraIndex => (Balance, Balance, Balance)
 	#[pallet::storage]
 	#[pallet::getter(fn unbonding)]
 	pub type Unbonding<T: Config> = StorageMap<_, Twox64Concat, EraIndex, (Balance, Balance, Balance), ValueQuery>;
 
 	/// The records of unbonding by AccountId.
 	/// AccountId, ExpiredEraIndex => Unbounding
+	///
+	/// Unbondings: double_map AccountId, EraIndex => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn unbondings)]
 	pub type Unbondings<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, T::AccountId, Twox64Concat, EraIndex, Balance, ValueQuery>;
 
 	/// The ledger of staking pool.
+	///
+	/// StakingPoolLedger: Ledger
 	#[pallet::storage]
 	#[pallet::getter(fn staking_pool_ledger)]
 	pub type StakingPoolLedger<T: Config> = StorageValue<_, Ledger, ValueQuery>;
 
 	/// The rebalance phase of current era.
+	///
+	/// RebalancePhase: Phase
 	#[pallet::storage]
 	#[pallet::getter(fn rebalance_phase)]
 	pub type RebalancePhase<T: Config> = StorageValue<_, Phase, ValueQuery>;
 
 	/// The params of staking pool.
+	///
+	/// StakingPoolParams: Params
 	#[pallet::storage]
 	#[pallet::getter(fn staking_pool_params)]
 	pub type StakingPoolParams<T: Config> = StorageValue<_, Params, ValueQuery>;

@@ -57,8 +57,8 @@ pub struct TaskInfo {
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - ScheduleCall. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`,
-///   `storage_limit`, `min_delay`, `input_len`, `input_data`.
+/// - ScheduleCall. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`, `storage_limit`,
+///   `min_delay`, `input_len`, `input_data`.
 pub struct ScheduleCallPrecompile<
 	AccountId,
 	AddressMapping,

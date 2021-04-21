@@ -22,8 +22,8 @@
 //!
 //! Auction the assets of the system for maintain the normal operation of the
 //! business. Auction types include:
-//!   - `collateral auction`: sell collateral assets for getting stable currency
-//!     to eliminate the system's bad debit by auction
+//!   - `collateral auction`: sell collateral assets for getting stable currency to eliminate the
+//!     system's bad debit by auction
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -210,6 +210,8 @@ pub mod module {
 	}
 
 	/// Mapping from auction id to collateral auction info
+	///
+	/// CollateralAuctions: map AuctionId => Option<CollateralAuctionItem>
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_auctions)]
 	pub type CollateralAuctions<T: Config> =
@@ -217,11 +219,15 @@ pub mod module {
 
 	/// Record of the total collateral amount of all active collateral auctions
 	/// under specific collateral type CollateralType -> TotalAmount
+	///
+	/// TotalCollateralInAuction: map CurrencyId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn total_collateral_in_auction)]
 	pub type TotalCollateralInAuction<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	/// Record of total target sales of all active collateral auctions
+	///
+	/// TotalTargetInAuction: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn total_target_in_auction)]
 	pub type TotalTargetInAuction<T: Config> = StorageValue<_, Balance, ValueQuery>;

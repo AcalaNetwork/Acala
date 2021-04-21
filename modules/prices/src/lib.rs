@@ -103,6 +103,8 @@ pub mod module {
 	}
 
 	/// Mapping from currency id to it's locked price
+	///
+	/// map CurrencyId => Option<Price>
 	#[pallet::storage]
 	#[pallet::getter(fn locked_price)]
 	pub type LockedPrice<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Price, OptionQuery>;

@@ -241,21 +241,29 @@ pub mod module {
 
 	/// Mapping from collateral type to its exchange rate of debit units and
 	/// debit value
+	///
+	/// DebitExchangeRate: CurrencyId => Option<ExchangeRate>
 	#[pallet::storage]
 	#[pallet::getter(fn debit_exchange_rate)]
 	pub type DebitExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ExchangeRate, OptionQuery>;
 
 	/// Global interest rate per sec for all types of collateral
+	///
+	/// GlobalInterestRatePerSec: Rate
 	#[pallet::storage]
 	#[pallet::getter(fn global_interest_rate_per_sec)]
 	pub type GlobalInterestRatePerSec<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
 	/// Mapping from collateral type to its risk management params
+	///
+	/// CollateralParams: CurrencyId => RiskManagementParams
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_params)]
 	pub type CollateralParams<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, RiskManagementParams, ValueQuery>;
 
 	/// Timestamp in seconds of the last interest accumulation
+	///
+	/// LastAccumulationSecs: u64
 	#[pallet::storage]
 	#[pallet::getter(fn last_accumulation_secs)]
 	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
@@ -409,14 +417,14 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type.
-		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means
-		///   do not update, `Some(None)` means update it to `None`.
-		/// - `liquidation_ratio`: liquidation ratio, `None` means do not
-		///   update, `Some(None)` means update it to `None`.
-		/// - `liquidation_penalty`: liquidation penalty, `None` means do not
-		///   update, `Some(None)` means update it to `None`.
-		/// - `required_collateral_ratio`: required collateral ratio, `None`
-		///   means do not update, `Some(None)` means update it to `None`.
+		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means do not update,
+		///   `Some(None)` means update it to `None`.
+		/// - `liquidation_ratio`: liquidation ratio, `None` means do not update, `Some(None)` means
+		///   update it to `None`.
+		/// - `liquidation_penalty`: liquidation penalty, `None` means do not update, `Some(None)`
+		///   means update it to `None`.
+		/// - `required_collateral_ratio`: required collateral ratio, `None` means do not update,
+		///   `Some(None)` means update it to `None`.
 		/// - `maximum_total_debit_value`: maximum total debit value.
 		#[pallet::weight((<T as Config>::WeightInfo::set_collateral_params(), DispatchClass::Operational))]
 		#[transactional]
