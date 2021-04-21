@@ -22,8 +22,8 @@
 //!
 //! Auction the assets of the system for maintain the normal operation of the
 //! business. Auction types include:
-//!   - `collateral auction`: sell collateral assets for getting stable currency
-//!     to eliminate the system's bad debit by auction
+//!   - `collateral auction`: sell collateral assets for getting stable currency to eliminate the
+//!     system's bad debit by auction
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]

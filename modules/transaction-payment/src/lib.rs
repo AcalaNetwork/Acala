@@ -429,18 +429,16 @@ where
 	/// Compute the final fee value for a particular transaction.
 	///
 	/// The final fee is composed of:
-	///   - `base_fee`: This is the minimum amount a user pays for a
-	///     transaction. It is declared as a base _weight_ in the runtime and
-	///     converted to a fee using `WeightToFee`.
-	///   - `len_fee`: The length fee, the amount paid for the encoded length
-	///     (in bytes) of the transaction.
-	///   - `weight_fee`: This amount is computed based on the weight of the
-	///     transaction. Weight accounts for the execution time of a
+	///   - `base_fee`: This is the minimum amount a user pays for a transaction. It is declared as
+	///     a base _weight_ in the runtime and converted to a fee using `WeightToFee`.
+	///   - `len_fee`: The length fee, the amount paid for the encoded length (in bytes) of the
 	///     transaction.
-	///   - `targeted_fee_adjustment`: This is a multiplier that can tune the
-	///     final fee based on the congestion of the network.
-	///   - (Optional) `tip`: If included in the transaction, the tip will be
-	///     added on top. Only signed transactions can have a tip.
+	///   - `weight_fee`: This amount is computed based on the weight of the transaction. Weight
+	///     accounts for the execution time of a transaction.
+	///   - `targeted_fee_adjustment`: This is a multiplier that can tune the final fee based on the
+	///     congestion of the network.
+	///   - (Optional) `tip`: If included in the transaction, the tip will be added on top. Only
+	///     signed transactions can have a tip.
 	///
 	/// The base fee and adjusted weight and length fees constitute the
 	/// _inclusion fee,_ which is the minimum fee for a transaction to be

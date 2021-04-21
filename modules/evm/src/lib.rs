@@ -404,8 +404,7 @@ pub mod module {
 		/// - `input`: the data supplied for the call
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn call(
 			origin: OriginFor<T>,
@@ -451,8 +450,7 @@ pub mod module {
 		/// - `input`: the data supplied for the call
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
 		pub fn scheduled_call(
@@ -515,8 +513,7 @@ pub mod module {
 		/// - `init`: the data supplied for the contract's constructor
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -551,8 +548,7 @@ pub mod module {
 		/// - `salt`: used for generating the new contract's address
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -587,8 +583,7 @@ pub mod module {
 		/// - `init`: the data supplied for the contract's constructor
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create_network_contract(
 			origin: OriginFor<T>,
@@ -622,8 +617,8 @@ pub mod module {
 
 		/// Transfers Contract maintainership to a new EVM Address.
 		///
-		/// - `contract`: the contract whose maintainership is being
-		///   transferred, the caller must be the contract's maintainer
+		/// - `contract`: the contract whose maintainership is being transferred, the caller must be
+		///   the contract's maintainer
 		/// - `new_maintainer`: the address of the new maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_maintainer())]
 		#[transactional]
@@ -642,8 +637,8 @@ pub mod module {
 
 		/// Mark a given contract as deployed.
 		///
-		/// - `contract`: The contract to mark as deployed, the caller must the
-		///   contract's maintainer
+		/// - `contract`: The contract to mark as deployed, the caller must the contract's
+		///   maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::deploy())]
 		#[transactional]
 		pub fn deploy(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -662,8 +657,8 @@ pub mod module {
 
 		/// Mark a given contract as deployed without paying the deployment fee
 		///
-		/// - `contract`: The contract to mark as deployed, the caller must be
-		///   the contract's maintainer.
+		/// - `contract`: The contract to mark as deployed, the caller must be the contract's
+		///   maintainer.
 		#[pallet::weight(<T as Config>::WeightInfo::deploy_free())]
 		#[transactional]
 		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -722,8 +717,7 @@ pub mod module {
 
 		/// Set the code of a contract at a given address.
 		///
-		/// - `contract`: The contract whose code is being set, must not be
-		///   marked as deployed
+		/// - `contract`: The contract whose code is being set, must not be marked as deployed
 		/// - `code`: The new ABI bundle for the contract
 		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
 		#[transactional]

@@ -417,14 +417,14 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type.
-		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means
-		///   do not update, `Some(None)` means update it to `None`.
-		/// - `liquidation_ratio`: liquidation ratio, `None` means do not
-		///   update, `Some(None)` means update it to `None`.
-		/// - `liquidation_penalty`: liquidation penalty, `None` means do not
-		///   update, `Some(None)` means update it to `None`.
-		/// - `required_collateral_ratio`: required collateral ratio, `None`
-		///   means do not update, `Some(None)` means update it to `None`.
+		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means do not update,
+		///   `Some(None)` means update it to `None`.
+		/// - `liquidation_ratio`: liquidation ratio, `None` means do not update, `Some(None)` means
+		///   update it to `None`.
+		/// - `liquidation_penalty`: liquidation penalty, `None` means do not update, `Some(None)`
+		///   means update it to `None`.
+		/// - `required_collateral_ratio`: required collateral ratio, `None` means do not update,
+		///   `Some(None)` means update it to `None`.
 		/// - `maximum_total_debit_value`: maximum total debit value.
 		#[pallet::weight((<T as Config>::WeightInfo::set_collateral_params(), DispatchClass::Operational))]
 		#[transactional]

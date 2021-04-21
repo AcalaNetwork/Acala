@@ -100,13 +100,11 @@ pub mod module {
 		/// `collateral_adjustment` and `debit_adjustment`
 		///
 		/// - `currency_id`: collateral currency id.
-		/// - `collateral_adjustment`: signed amount, positive means to deposit
-		///   collateral currency into CDP, negative means withdraw collateral
-		///   currency from CDP.
-		/// - `debit_adjustment`: signed amount, positive means to issue some
-		///   amount of stablecoin to caller according to the debit adjustment,
-		///   negative means caller will payback some amount of stablecoin to
-		///   CDP according to to the debit adjustment.
+		/// - `collateral_adjustment`: signed amount, positive means to deposit collateral currency
+		///   into CDP, negative means withdraw collateral currency from CDP.
+		/// - `debit_adjustment`: signed amount, positive means to issue some amount of stablecoin
+		///   to caller according to the debit adjustment, negative means caller will payback some
+		///   amount of stablecoin to CDP according to to the debit adjustment.
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
 		#[transactional]
 		pub fn adjust_loan(

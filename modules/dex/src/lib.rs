@@ -333,21 +333,19 @@ pub mod module {
 
 		/// Add liquidity to Enabled trading pair, or add provision to
 		/// Provisioning trading pair.
-		/// - Add liquidity success will issue shares in current price which
-		///   decided by the liquidity scale. Shares are temporarily not
+		/// - Add liquidity success will issue shares in current price which decided by the
+		///   liquidity scale. Shares are temporarily not
 		/// allowed to transfer and trade, it represents the proportion of
 		/// assets in liquidity pool.
-		/// - Add provision success will record the provision, issue shares to
-		///   caller in the initial price when trading pair convert to Enabled.
+		/// - Add provision success will record the provision, issue shares to caller in the initial
+		///   price when trading pair convert to Enabled.
 		///
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
-		/// - `max_amount_a`: maximum currency A amount allowed to inject to
-		///   liquidity pool.
-		/// - `max_amount_b`: maximum currency A amount allowed to inject to
-		///   liquidity pool.
-		/// - `deposit_increment_share`: this flag indicates whether to deposit
-		///   added lp shares to obtain incentives
+		/// - `max_amount_a`: maximum currency A amount allowed to inject to liquidity pool.
+		/// - `max_amount_b`: maximum currency A amount allowed to inject to liquidity pool.
+		/// - `deposit_increment_share`: this flag indicates whether to deposit added lp shares to
+		///   obtain incentives
 		#[pallet::weight(if *deposit_increment_share {
 			<T as Config>::WeightInfo::add_liquidity_and_deposit()
 		} else {
@@ -391,8 +389,7 @@ pub mod module {
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
 		/// - `remove_share`: liquidity amount to remove.
-		/// - `by_withdraw`: this flag indicates whether to withdraw share which
-		///   is on incentives.
+		/// - `by_withdraw`: this flag indicates whether to withdraw share which is on incentives.
 		#[pallet::weight(if *by_withdraw {
 			<T as Config>::WeightInfo::remove_liquidity_by_withdraw()
 		} else {
