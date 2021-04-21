@@ -26,8 +26,9 @@ use crate::mock::for_bench::{alice, EvmAccountsModule, Runtime, ALICE};
 use module_support::AddressMapping;
 
 fn eth_address(b: &mut Bencher) {
+	let alice_addr = alice();
 	b.bench("eth_address", || {
-		EvmAccountsModule::eth_address(&alice());
+		EvmAccountsModule::eth_address(&alice_addr);
 	});
 }
 
