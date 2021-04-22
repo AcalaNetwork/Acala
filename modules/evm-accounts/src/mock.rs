@@ -25,21 +25,30 @@ pub fn wasm_binary_unwrap() -> &'static [u8] {
 	WASM_BINARY.unwrap()
 }
 
+use frame_support::{construct_runtime, parameter_types};
+use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+use sp_core::{crypto::AccountId32, H256};
+use sp_io::hashing::keccak_256;
+
+pub type BlockNumber = u64;
+pub type AccountId = AccountId32;
+
+pub const ALICE: AccountId = AccountId32::new([0u8; 32]);
+pub const BOB: AccountId = AccountId32::new([1u8; 32]);
+
+pub fn alice() -> secp256k1::SecretKey {
+	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
+}
+
+pub fn bob() -> secp256k1::SecretKey {
+	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+}
+
 #[cfg(test)]
 pub mod for_tests {
-	use super::super::*;
-	use frame_support::{construct_runtime, parameter_types};
+	use super::{super::*, *};
 	use orml_traits::parameter_type_with_key;
-	use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-	use sp_core::{crypto::AccountId32, H256};
-	use sp_io::hashing::keccak_256;
 	use sp_runtime::{testing::Header, traits::IdentityLookup};
-
-	pub type AccountId = AccountId32;
-	pub type BlockNumber = u64;
-
-	pub const ALICE: AccountId = AccountId32::new([0u8; 32]);
-	pub const BOB: AccountId = AccountId32::new([1u8; 32]);
 
 	mod evm_accounts {
 		pub use super::super::super::*;
@@ -169,14 +178,6 @@ pub mod for_tests {
 		}
 	}
 
-	pub fn alice() -> secp256k1::SecretKey {
-		secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
-	}
-
-	pub fn bob() -> secp256k1::SecretKey {
-		secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
-	}
-
 	pub fn bob_account_id() -> AccountId {
 		let address = EvmAccountsModule::eth_address(&bob());
 		let mut data = [0u8; 32];
@@ -188,18 +189,10 @@ pub mod for_tests {
 
 #[cfg_attr(not(feature = "std"), no_std)]
 pub mod for_bench {
-	use super::super::*;
-	use frame_support::{construct_runtime, parameter_types};
-	use orml_traits::parameter_type_with_key;
-	use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-	use sp_core::{crypto::AccountId32, H256};
-	use sp_io::hashing::keccak_256;
-	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+	use super::{super::*, *};
+	use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 	use sp_std::boxed::Box;
 
-	pub const ALICE: AccountId = AccountId32::new([0u8; 32]);
-
-	pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 	pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
 	pub type Header = sp_runtime::generic::Header<BlockNumber, Hasher>;
 	pub type Signature = sp_runtime::MultiSignature;
@@ -208,14 +201,6 @@ pub mod for_bench {
 
 	type Hasher = BlakeTwo256;
 	pub type BlockNumber = u64;
-
-	pub fn alice() -> secp256k1::SecretKey {
-		secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
-	}
-
-	pub fn bob() -> secp256k1::SecretKey {
-		secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
-	}
 
 	pub type SignedExtra = (
 		frame_system::CheckSpecVersion<Runtime>,

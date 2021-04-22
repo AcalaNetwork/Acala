@@ -5,7 +5,7 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [[bench]]
-name = "evm-accounts"
+name = "module-evm-accounts"
 harness = false
 path = "bench_runner.rs"
 required-features = ["bench"]
