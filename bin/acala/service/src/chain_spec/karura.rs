@@ -30,6 +30,8 @@ use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
+pub const PARA_ID: u32 = 1000;
+
 pub fn karura_config() -> Result<ChainSpec, String> {
 	Err("Not available".into())
 }
@@ -110,7 +112,7 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32.into(),
+			para_id: PARA_ID.into(),
 		},
 	))
 }
@@ -270,7 +272,7 @@ fn karura_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 1000.into(),
+			parachain_id: PARA_ID.into(),
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 	}

@@ -30,6 +30,8 @@ use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
 
+pub const PARA_ID: u32 = 1000;
+
 pub fn acala_config() -> Result<ChainSpec, String> {
 	Err("Not available".into())
 }
@@ -110,7 +112,7 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32.into(),
+			para_id: PARA_ID.into(),
 		},
 	))
 }
@@ -302,7 +304,7 @@ fn acala_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 1000.into(),
+			parachain_id: PARA_ID.into(),
 		},
 		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],

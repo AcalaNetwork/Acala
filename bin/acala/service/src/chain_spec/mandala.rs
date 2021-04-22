@@ -32,6 +32,8 @@ use crate::chain_spec::{
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
+pub const PARA_ID: u32 = 1000;
+
 /// Development testnet config (single validator Alice)
 pub fn development_testnet_config() -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
@@ -72,7 +74,7 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32,
+			para_id: PARA_ID,
 		},
 	))
 }
@@ -125,7 +127,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32,
+			para_id: PARA_ID,
 		},
 	))
 }
@@ -205,7 +207,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 666_u32,
+			para_id: PARA_ID,
 		},
 	))
 }
@@ -375,7 +377,7 @@ fn testnet_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 1000.into(),
+			parachain_id: PARA_ID.into(),
 		},
 		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
@@ -565,7 +567,7 @@ fn mandala_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 1000.into(),
+			parachain_id: PARA_ID.into(),
 		},
 		ecosystem_renvm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
