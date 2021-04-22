@@ -36,8 +36,7 @@ use primitives::Balance;
 /// - QueryMaintainer.
 /// - QueryDeveloperDeposit.
 /// - QueryDeploymentFee.
-/// - TransferMaintainer. Rest `input` bytes: `from`, `contract`,
-///   `new_maintainer`.
+/// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
 pub struct StateRentPrecompile<AccountId, AddressMapping, CurrencyIdMapping, EVM>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, EVM)>,
 );

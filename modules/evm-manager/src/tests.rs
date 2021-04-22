@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{ExtBuilder, Runtime, ERC20, ERC20_ADDRESS, ERC20_ADDRESS_NOT_EXISTS, ERC20_NOT_EXISTS};
+use mock::{alice, deploy_contracts, erc20_address, erc20_address_not_exists, ExtBuilder, Runtime};
 use orml_utilities::with_transaction_result;
 use primitives::TokenSymbol;
 use sp_core::H160;
@@ -30,161 +30,235 @@ use std::str::FromStr;
 
 #[test]
 fn set_erc20_mapping_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(with_transaction_result(|| -> DispatchResult {
-			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
-		}));
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
 
-		assert_ok!(with_transaction_result(|| -> DispatchResult {
-			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
-		}));
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
 
-		assert_noop!(
-			with_transaction_result(|| -> DispatchResult {
-				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS_NOT_EXISTS)
-			}),
-			Error::<Runtime>::CurrencyIdExisted,
-		);
-	});
+			assert_noop!(
+				with_transaction_result(|| -> DispatchResult {
+					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address_not_exists())
+				}),
+				Error::<Runtime>::CurrencyIdExisted,
+			);
+		});
 }
 
 #[test]
 fn get_evm_address_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(with_transaction_result(|| -> DispatchResult {
-			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
-		}));
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::get_evm_address(ERC20.try_into().unwrap()),
-			Some(ERC20_ADDRESS)
-		);
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::get_evm_address(
+					CurrencyId::Erc20(erc20_address()).try_into().unwrap()
+				),
+				Some(erc20_address())
+			);
 
-		assert_eq!(EvmCurrencyIdMapping::<Runtime>::get_evm_address(u32::default()), None);
-	});
+			assert_eq!(EvmCurrencyIdMapping::<Runtime>::get_evm_address(u32::default()), None);
+		});
 }
 
 #[test]
 fn decimals_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(with_transaction_result(|| -> DispatchResult {
-			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
-		}));
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::Token(TokenSymbol::ACA)),
-			Some(12)
-		);
-		assert_eq!(EvmCurrencyIdMapping::<Runtime>::decimals(ERC20), Some(17));
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::Token(TokenSymbol::ACA)),
+				Some(12)
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::Erc20(erc20_address())),
+				Some(17)
+			);
 
-		assert_eq!(EvmCurrencyIdMapping::<Runtime>::decimals(ERC20_NOT_EXISTS), None);
-	});
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::Erc20(erc20_address_not_exists())),
+				None
+			);
+		});
 }
 
 #[test]
 fn encode_currency_id_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(with_transaction_result(|| -> DispatchResult {
-			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
-		}));
-		let mut bytes = [0u8; 32];
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::ACA)),
-			Some(bytes)
-		);
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
 
-		bytes[15] = 1;
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::AUSD)),
-			Some(bytes)
-		);
+			// CurrencyId::Token
+			let mut bytes = [0u8; 32];
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::ACA)),
+				Some(bytes)
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::Token(TokenSymbol::ACA))
+			);
 
-		let mut bytes = [0u8; 32];
-		bytes[12..32].copy_from_slice(&ERC20_ADDRESS.as_bytes()[..]);
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Erc20(ERC20_ADDRESS)),
-			Some(bytes)
-		);
+			bytes[31] = 1;
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::AUSD)),
+				Some(bytes)
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::Token(TokenSymbol::AUSD))
+			);
 
-		let mut bytes = [0u8; 32];
-		bytes[11] = 1;
-		let id1: u32 = CurrencyId::Token(TokenSymbol::ACA).try_into().unwrap();
-		let id2: u32 = CurrencyId::Token(TokenSymbol::AUSD).try_into().unwrap();
-		bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
-		bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
-				DexShare::Token(TokenSymbol::ACA),
-				DexShare::Token(TokenSymbol::AUSD)
-			)),
-			Some(bytes)
-		);
+			// CurrencyId::Erc20
+			let mut bytes = [0u8; 32];
+			bytes[11] = 2;
+			bytes[12..32].copy_from_slice(&erc20_address().as_bytes()[..]);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Erc20(erc20_address())),
+				Some(bytes)
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::Erc20(erc20_address()))
+			);
 
-		let mut bytes = [0u8; 32];
-		bytes[11] = 1;
-		let id1: u32 = CurrencyId::Erc20(ERC20_ADDRESS).try_into().unwrap();
-		let id2: u32 = CurrencyId::Erc20(ERC20_ADDRESS).try_into().unwrap();
-		bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
-		bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
-				DexShare::Erc20(ERC20_ADDRESS),
-				DexShare::Erc20(ERC20_ADDRESS)
-			)),
-			Some(bytes)
-		);
+			// CurrencyId::DexShare(Token, Token)
+			let mut bytes = [0u8; 32];
+			bytes[11] = 1;
+			let id1: u32 = CurrencyId::Token(TokenSymbol::ACA).try_into().unwrap();
+			let id2: u32 = CurrencyId::Token(TokenSymbol::AUSD).try_into().unwrap();
+			bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
+			bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Token(TokenSymbol::AUSD)
+				)),
+				Some(bytes)
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Token(TokenSymbol::AUSD)
+				))
+			);
 
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
-				DexShare::Erc20(ERC20_ADDRESS_NOT_EXISTS),
-				DexShare::Erc20(ERC20_ADDRESS_NOT_EXISTS)
-			)),
-			None
-		);
-	});
+			// CurrencyId::DexShare(Erc20, Erc20)
+			let mut bytes = [0u8; 32];
+			bytes[11] = 1;
+			let id1: u32 = CurrencyId::Erc20(erc20_address()).try_into().unwrap();
+			let id2: u32 = CurrencyId::Erc20(erc20_address()).try_into().unwrap();
+			bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
+			bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address())
+				)),
+				Some(bytes)
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address())
+				))
+			);
+
+			// Invalid CurrencyId::DexShare(_, _)
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address_not_exists())
+				)),
+				None
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address_not_exists()),
+					DexShare::Erc20(erc20_address_not_exists())
+				)),
+				None
+			);
+		});
 }
 
 #[test]
 fn decode_currency_id_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(with_transaction_result(|| -> DispatchResult {
-			EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(ERC20_ADDRESS)
-		}));
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
 
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[0u8; 32]),
-			Some(CurrencyId::Token(TokenSymbol::ACA))
-		);
-		assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[255u8; 32]), None);
+			// CurrencyId::Token
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[0u8; 32]),
+				Some(CurrencyId::Token(TokenSymbol::ACA))
+			);
+			assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[255u8; 32]), None);
 
-		let mut currency_id = [0u8; 32];
-		currency_id[11] = 1;
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&currency_id),
-			Some(CurrencyId::DexShare(
-				DexShare::Token(TokenSymbol::ACA),
-				DexShare::Token(TokenSymbol::ACA)
-			))
-		);
+			// CurrencyId::DexShare(Token, Token)
+			let mut bytes = [0u8; 32];
+			bytes[11] = 1;
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Token(TokenSymbol::ACA)
+				))
+			);
 
-		// CurrencyId::DexShare(Erc20, token)
-		let mut currency_id = [0u8; 32];
-		currency_id[11] = 1;
-		let id: u32 = ERC20.try_into().unwrap();
-		currency_id[12..16].copy_from_slice(&id.to_be_bytes()[..]);
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&currency_id),
-			Some(CurrencyId::DexShare(
-				DexShare::Erc20(H160::from_str("0x2000000000000000000000000000000000000001").unwrap()),
-				DexShare::Token(TokenSymbol::ACA)
-			))
-		);
+			// CurrencyId::DexShare(Erc20, Token)
+			let mut bytes = [0u8; 32];
+			bytes[11] = 1;
+			let id: u32 = CurrencyId::Erc20(erc20_address()).try_into().unwrap();
+			bytes[12..16].copy_from_slice(&id.to_be_bytes()[..]);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Token(TokenSymbol::ACA)
+				))
+			);
 
-		// CurrencyId::Erc20
-		currency_id[11] = 2;
-		assert_eq!(
-			EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&currency_id),
-			Some(CurrencyId::Erc20(
-				H160::from_str("0x2000000000000000000000000000000000000000").unwrap()
-			))
-		);
-	});
+			// CurrencyId::Erc20
+			bytes[11] = 2;
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
+				Some(CurrencyId::Erc20(
+					H160::from_str("0x0200000000000000000000000000000000000000").unwrap()
+				))
+			);
+
+			// Invalid
+			bytes[11] = 3;
+			assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes), None);
+		});
 }

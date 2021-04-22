@@ -20,7 +20,7 @@
 
 #![cfg(test)]
 
-use frame_support::{ord_parameter_types, parameter_types, traits::GenesisBuild, PalletId};
+use frame_support::{assert_ok, ord_parameter_types, parameter_types, traits::GenesisBuild, PalletId};
 use orml_traits::parameter_type_with_key;
 use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
@@ -33,9 +33,7 @@ use support::{mocks::MockAddressMapping, AddressMapping};
 
 use super::*;
 use frame_system::EnsureSignedBy;
-use module_evm::GenesisAccount;
 use sp_core::{bytes::from_hex, H160};
-use sp_std::collections::btree_map::BTreeMap;
 use sp_std::str::FromStr;
 
 pub use crate as currencies;
@@ -131,7 +129,7 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub NetworkContractSource: H160 = H160::default();
+	pub NetworkContractSource: H160 = alice_evm_addr();
 }
 
 ord_parameter_types! {
@@ -206,25 +204,50 @@ frame_support::construct_runtime!(
 );
 
 pub fn alice() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(
-		&H160::from_str("1000000000000000000000000000000000000001").unwrap(),
-	)
+	<Runtime as Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
 pub fn bob() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(
-		&H160::from_str("1000000000000000000000000000000000000002").unwrap(),
-	)
+	<Runtime as Config>::AddressMapping::get_account_id(&bob_evm_addr())
 }
 
-pub const ALICE: AccountId = AccountId::new([1u8; 32]);
-pub const BOB: AccountId = AccountId::new([2u8; 32]);
-pub const EVA: AccountId = AccountId::new([5u8; 32]);
+pub fn bob_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
+}
+
+pub fn eva() -> AccountId {
+	<Runtime as Config>::AddressMapping::get_account_id(&eva_evm_addr())
+}
+
+pub fn eva_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000005").unwrap()
+}
 
 pub const ID_1: LockIdentifier = *b"1       ";
 
-pub const ERC20_ADDRESS: H160 = H160([32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-pub const ERC20: CurrencyId = CurrencyId::Erc20(ERC20_ADDRESS);
+pub fn erc20_address() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+}
+
+pub fn deploy_contracts() {
+	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
+	assert_ok!(EVM::create_network_contract(
+		Origin::signed(NetworkContractAccount::get()),
+		code,
+		0,
+		2100_000,
+		10000
+	));
+
+	let event = Event::module_evm(module_evm::Event::Created(erc20_address()));
+	assert_eq!(System::events().iter().last().unwrap().event, event);
+
+	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
+}
 
 pub struct ExtBuilder {
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
@@ -246,10 +269,10 @@ impl ExtBuilder {
 
 	pub fn one_hundred_for_alice_n_bob(self) -> Self {
 		self.balances(vec![
-			(ALICE, NATIVE_CURRENCY_ID, 100),
-			(BOB, NATIVE_CURRENCY_ID, 100),
-			(ALICE, X_TOKEN_ID, 100),
-			(BOB, X_TOKEN_ID, 100),
+			(alice(), NATIVE_CURRENCY_ID, 100),
+			(bob(), NATIVE_CURRENCY_ID, 100),
+			(alice(), X_TOKEN_ID, 100),
+			(bob(), X_TOKEN_ID, 100),
 		])
 	}
 
@@ -280,26 +303,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		let mut accounts = BTreeMap::new();
-		let mut storage = BTreeMap::new();
-		storage.insert(
-			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		storage.insert(
-			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		accounts.insert(
-			ERC20_ADDRESS,
-			GenesisAccount {
-				nonce: 1,
-				balance: 0,
-				storage,
-				code: from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap(),
-			},
-		);
-		module_evm::GenesisConfig::<Runtime> { accounts }
+		module_evm::GenesisConfig::<Runtime>::default()
 			.assimilate_storage(&mut t)
 			.unwrap();
 

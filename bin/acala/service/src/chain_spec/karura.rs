@@ -30,6 +30,8 @@ use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
+pub const PARA_ID: u32 = 1000;
+
 pub fn karura_config() -> Result<ChainSpec, String> {
 	Err("Not available".into())
 }
@@ -110,7 +112,7 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: 1000_u32.into(),
+			para_id: PARA_ID.into(),
 		},
 	))
 }
@@ -122,11 +124,12 @@ fn karura_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, CdpEngineConfig,
-		CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-		HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
-		ParachainInfoConfig, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-		TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber,
+		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM,
+		KUSD, LKSM, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -139,7 +142,6 @@ fn karura_genesis(
 	let initial_staking: u128 = 100_000 * dollar(KAR);
 
 	let mut unreleased_native = 100_000_000 * dollar(KAR); // 100 million KAR
-													   // if want to config vesting, should handle unreleased_native firstly.
 
 	let balances = initial_authorities
 		.iter()
@@ -168,6 +170,21 @@ fn karura_genesis(
 		.into_iter()
 		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
+
+	let vesting_list_json = &include_bytes!("../../../../../resources/karura-vesting-KAR.json")[..];
+	let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
+		serde_json::from_slice(vesting_list_json).unwrap();
+
+	// ensure no duplicates exist.
+	let unique_vesting_accounts = vesting_list
+		.iter()
+		.map(|(x, _, _, _, _)| x)
+		.cloned()
+		.collect::<std::collections::BTreeSet<_>>();
+	assert!(
+		unique_vesting_accounts.len() == vesting_list.len(),
+		"duplicate vesting accounts in genesis."
+	);
 
 	karura_runtime::GenesisConfig {
 		frame_system: SystemConfig {
@@ -205,7 +222,7 @@ fn karura_genesis(
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![],
 		},
-		orml_vesting: VestingConfig { vesting: vec![] },
+		orml_vesting: VestingConfig { vesting: vesting_list },
 		module_cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(KSM, dollar(KSM)), // (currency_id, max size of a collateral auction)
@@ -249,27 +266,14 @@ fn karura_genesis(
 			phantom: Default::default(),
 		},
 		module_evm: Default::default(),
-		module_staking_pool: StakingPoolConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-			},
-		},
 		module_dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
-			parachain_id: 1000.into(),
+			parachain_id: PARA_ID.into(),
 		},
-		// TODO: need RENBTC for Kusama Ecosystem
-		// ecosystem_renvm_bridge: Some(RenVmBridgeConfig {
-		// 	ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-		// }),
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 	}
 }

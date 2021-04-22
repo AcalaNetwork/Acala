@@ -21,14 +21,13 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use module_evm::GenesisAccount;
 use primitives::evm::EvmAddress;
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
-use support::mocks::MockAddressMapping;
+use sp_std::str::FromStr;
+use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -95,11 +94,12 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 1;
-	pub NetworkContractSource: EvmAddress = alice();
+	pub NetworkContractSource: EvmAddress = alice_evm_addr();
 }
 
 ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
+	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = 10;
 	pub const MaxCodeSize: u32 = 60 * 1024;
@@ -125,7 +125,7 @@ impl module_evm::Config for Runtime {
 
 	type DeveloperDeposit = DeveloperDeposit;
 	type DeploymentFee = DeploymentFee;
-	type TreasuryAccount = ();
+	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
 	type WeightInfo = ();
@@ -165,15 +165,39 @@ impl Default for ExtBuilder {
 }
 
 pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("2000000000000000000000000000000000000001").unwrap()
+	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
 }
 
-pub fn alice() -> EvmAddress {
+pub fn alice() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn bob() -> EvmAddress {
+pub fn bob() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr())
+}
+
+pub fn bob_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
+}
+
+pub fn deploy_contracts() {
+	let code = from_hex(include!("./erc20_demo_contract")).unwrap();
+	assert_ok!(EVM::create_network_contract(
+		Origin::signed(NetworkContractAccount::get()),
+		code,
+		0,
+		2100_000,
+		10000
+	));
+
+	let event = Event::module_evm(module_evm::Event::Created(erc20_address()));
+	assert_eq!(System::events().iter().last().unwrap().event, event);
+
+	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }
 
 impl ExtBuilder {
@@ -193,26 +217,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		let mut accounts = BTreeMap::new();
-		let mut storage = BTreeMap::new();
-		storage.insert(
-			H256::from_str("0000000000000000000000000000000000000000000000000000000000000002").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		storage.insert(
-			H256::from_str("e6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d").unwrap(),
-			H256::from_str("00000000000000000000000000000000ffffffffffffffffffffffffffffffff").unwrap(),
-		);
-		accounts.insert(
-			erc20_address(),
-			GenesisAccount {
-				nonce: 1,
-				balance: 0,
-				storage,
-				code: from_hex(include!("./erc20_demo_contract")).unwrap(),
-			},
-		);
-		module_evm::GenesisConfig::<Runtime> { accounts }
+		module_evm::GenesisConfig::<Runtime>::default()
 			.assimilate_storage(&mut t)
 			.unwrap();
 

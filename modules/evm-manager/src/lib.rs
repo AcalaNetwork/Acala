@@ -21,8 +21,7 @@
 //! ## Overview
 //!
 //! Evm manager module provides common support features for Evm, including:
-//! - A two way mapping between `u32` and `Erc20 address` so user can use Erc20
-//!   address as LP token.
+//! - A two way mapping between `u32` and `Erc20 address` so user can use Erc20 address as LP token.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -63,9 +62,11 @@ pub mod module {
 	/// Mapping between u32 and Erc20 address.
 	/// Erc20 address is 20 byte, take the first 4 non-zero bytes, if it is less
 	/// than 4, add 0 to the left.
+	///
+	/// map u32 => Option<Erc20Info>
 	#[pallet::storage]
 	#[pallet::getter(fn currency_id_map)]
-	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info>;
+	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -175,9 +176,8 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	fn encode_currency_id(val: CurrencyId) -> Option<[u8; 32]> {
 		let mut bytes = [0u8; 32];
 		match val {
-			CurrencyId::Token(_) => {
-				let id: u32 = val.try_into().expect("CurrencyId::Token into u32 is success; qed");
-				bytes[12..16].copy_from_slice(&id.to_be_bytes()[..]);
+			CurrencyId::Token(token) => {
+				bytes[31] = token as u8;
 			}
 			CurrencyId::DexShare(left, right) => {
 				bytes[11] = 1;
@@ -219,6 +219,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				}
 			}
 			CurrencyId::Erc20(address) => {
+				bytes[11] = 2;
 				bytes[12..32].copy_from_slice(&address[..]);
 			}
 		}

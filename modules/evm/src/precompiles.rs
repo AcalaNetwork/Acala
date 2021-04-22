@@ -23,7 +23,7 @@ use impl_trait_for_tuples::impl_for_tuples;
 use primitive_types::H160;
 use ripemd160::Digest;
 use sp_runtime::SaturatedConversion;
-use sp_std::{cmp::min, vec::Vec};
+use sp_std::{cmp::min, marker::PhantomData, vec::Vec};
 use tiny_keccak::Hasher;
 
 /// Custom precompiles to be used by EVM engine.
@@ -75,6 +75,59 @@ impl Precompiles for Tuple {
 		)* );
 
 		None
+	}
+}
+
+pub struct EvmPrecompiles<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512>(
+	PhantomData<(
+		ECRecover,
+		Sha256,
+		Ripemd160,
+		Identity,
+		ECRecoverPublicKey,
+		Sha3FIPS256,
+		Sha3FIPS512,
+	)>,
+);
+
+impl<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512> Precompiles
+	for EvmPrecompiles<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512>
+where
+	ECRecover: Precompile,
+	Sha256: Precompile,
+	Ripemd160: Precompile,
+	Identity: Precompile,
+	ECRecoverPublicKey: Precompile,
+	Sha3FIPS256: Precompile,
+	Sha3FIPS512: Precompile,
+{
+	#[allow(clippy::type_complexity)]
+	fn execute(
+		address: H160,
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &Context,
+	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>> {
+		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
+		if address == H160::from_low_u64_be(1) {
+			Some(ECRecover::execute(input, target_gas, context))
+		} else if address == H160::from_low_u64_be(2) {
+			Some(Sha256::execute(input, target_gas, context))
+		} else if address == H160::from_low_u64_be(3) {
+			Some(Ripemd160::execute(input, target_gas, context))
+		} else if address == H160::from_low_u64_be(4) {
+			Some(Identity::execute(input, target_gas, context))
+		}
+		// Non-standard precompile starts with 128
+		else if address == H160::from_low_u64_be(128) {
+			Some(ECRecoverPublicKey::execute(input, target_gas, context))
+		} else if address == H160::from_low_u64_be(129) {
+			Some(Sha3FIPS256::execute(input, target_gas, context))
+		} else if address == H160::from_low_u64_be(130) {
+			Some(Sha3FIPS512::execute(input, target_gas, context))
+		} else {
+			None
+		}
 	}
 }
 
@@ -224,7 +277,7 @@ impl Precompile for Sha3FIPS256 {
 	}
 }
 
-/// The Sha3FIPS256 precompile.
+/// The Sha3FIPS512 precompile.
 pub struct Sha3FIPS512;
 
 impl Precompile for Sha3FIPS512 {

@@ -36,6 +36,7 @@ use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
+use sp_std::vec::Vec;
 use support::EmergencyShutdown;
 
 mod mock;
@@ -80,13 +81,15 @@ pub mod module {
 
 	/// The authorization relationship map from
 	/// Authorizer -> (CollateralType, Authorizee) -> Authorized
+	///
+	/// Authorization: double_map AccountId, (CurrencyId, T::AccountId) => Option<()>
 	#[pallet::storage]
 	#[pallet::getter(fn authorization)]
 	pub type Authorization<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, (CurrencyId, T::AccountId), bool, ValueQuery>;
+		StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, (CurrencyId, T::AccountId), (), OptionQuery>;
 
 	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
+	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
@@ -97,13 +100,11 @@ pub mod module {
 		/// `collateral_adjustment` and `debit_adjustment`
 		///
 		/// - `currency_id`: collateral currency id.
-		/// - `collateral_adjustment`: signed amount, positive means to deposit
-		///   collateral currency into CDP, negative means withdraw collateral
-		///   currency from CDP.
-		/// - `debit_adjustment`: signed amount, positive means to issue some
-		///   amount of stablecoin to caller according to the debit adjustment,
-		///   negative means caller will payback some amount of stablecoin to
-		///   CDP according to to the debit adjustment.
+		/// - `collateral_adjustment`: signed amount, positive means to deposit collateral currency
+		///   into CDP, negative means withdraw collateral currency from CDP.
+		/// - `debit_adjustment`: signed amount, positive means to issue some amount of stablecoin
+		///   to caller according to the debit adjustment, negative means caller will payback some
+		///   amount of stablecoin to CDP according to to the debit adjustment.
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
 		#[transactional]
 		pub fn adjust_loan(
@@ -127,7 +128,7 @@ pub mod module {
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			maybe_path: Option<sp_std::vec::Vec<CurrencyId>>,
+			maybe_path: Option<Vec<CurrencyId>>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
@@ -169,7 +170,7 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			<Authorization<T>>::insert(&from, (currency_id, &to), true);
+			<Authorization<T>>::insert(&from, (currency_id, &to), ());
 			Self::deposit_event(Event::Authorization(from, to, currency_id));
 			Ok(().into())
 		}
@@ -208,7 +209,7 @@ impl<T: Config> Pallet<T> {
 	/// Check if `from` has the authorization of `to` under `currency_id`
 	fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		ensure!(
-			from == to || Self::authorization(from, (currency_id, to)),
+			from == to || Authorization::<T>::contains_key(from, (currency_id, to)),
 			Error::<T>::NoAuthorization
 		);
 		Ok(())
