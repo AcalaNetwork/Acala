@@ -177,7 +177,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 		let mut bytes = [0u8; 32];
 		match val {
 			CurrencyId::Token(token) => {
-				bytes[31] = token.into();
+				bytes[31] = token as u8;
 			}
 			CurrencyId::DexShare(left, right) => {
 				bytes[11] = 1;
