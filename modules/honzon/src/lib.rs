@@ -36,6 +36,7 @@ use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
+use sp_std::vec::Vec;
 use support::EmergencyShutdown;
 
 mod mock;
@@ -127,7 +128,7 @@ pub mod module {
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			maybe_path: Option<sp_std::vec::Vec<CurrencyId>>,
+			maybe_path: Option<Vec<CurrencyId>>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
