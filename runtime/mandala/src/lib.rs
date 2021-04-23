@@ -931,8 +931,14 @@ impl module_cdp_engine::Config for Runtime {
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub DepositPerAuthorization: Balance = dollar(ACA);
+}
+
 impl module_honzon::Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
+	type DepositPerAuthorization = DepositPerAuthorization;
 	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
 }
 

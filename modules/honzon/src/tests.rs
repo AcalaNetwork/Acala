@@ -31,8 +31,9 @@ use support::{Rate, Ratio};
 fn authorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
+		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-
+		assert_eq!(PalletBalances::reserved_balance(ALICE), DepositPerAuthorization::get());
 		let authorization_event = Event::honzon(crate::Event::Authorization(ALICE, BOB, BTC));
 		assert!(System::events()
 			.iter()
@@ -47,9 +48,11 @@ fn unauthorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+		assert_eq!(PalletBalances::reserved_balance(ALICE), 100);
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
-		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
 
+		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
+		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
 		let unauthorization_event = Event::honzon(crate::Event::UnAuthorization(ALICE, BOB, BTC));
 		assert!(System::events()
 			.iter()
@@ -68,7 +71,9 @@ fn unauthorize_all_should_work() {
 		System::set_block_number(1);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, CAROL));
+		assert_eq!(PalletBalances::reserved_balance(ALICE), 200);
 		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
+		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
 
 		let unauthorization_all_event = Event::honzon(crate::Event::UnAuthorizationAll(ALICE));
 		assert!(System::events()
