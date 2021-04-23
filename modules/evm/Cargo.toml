@@ -4,6 +4,12 @@ version = "0.7.11"
 authors = ["Acala Developers"]
 edition = "2018"
 
+[[bench]]
+name = "module-evm"
+harness = false
+path = "bench_runner.rs"
+required-features = ["bench"]
+
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
@@ -32,6 +38,9 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 
+orml-bencher = { path = "../../orml/bencher", default-features = false }
+orml-weight-meter = { path = "../../orml/weight-meter", default-features = false }
+
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
@@ -39,6 +48,9 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 env_logger = "0.7"
 orml-currencies = { path = "../../orml/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+
+[build-dependencies]
+substrate-wasm-builder = "4.0.0"
 
 [features]
 default = ["std"]
@@ -63,6 +75,9 @@ std = [
 	"ripemd160/std",
 	"primitives/std",
 	"orml-traits/std",
+	"orml-weight-meter/std",
 	"support/std",
 ]
 with-ethereum-compatibility = []
+bench = []
+runtime-benchmarks = ["orml-weight-meter/runtime-benchmarks"]

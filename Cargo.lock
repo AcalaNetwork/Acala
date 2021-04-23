@@ -4952,9 +4952,11 @@ dependencies = [
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
  "module-support",
+ "orml-bencher",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
+ "orml-weight-meter",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -4967,6 +4969,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "substrate-wasm-builder 4.0.0",
  "tiny-keccak",
 ]
 

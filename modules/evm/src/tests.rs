@@ -19,7 +19,10 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{Event, *};
+use mock::{
+	for_test::{Event, *},
+	*,
+};
 
 use crate::runner::handler::Handler;
 use frame_support::{assert_noop, assert_ok};

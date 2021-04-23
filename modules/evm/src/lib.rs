@@ -61,7 +61,11 @@ pub use primitives::{
 pub mod precompiles;
 pub mod runner;
 
-mod mock;
+#[cfg(feature = "bench")]
+pub mod benches;
+#[cfg(any(feature = "bench", test))]
+pub mod mock;
+
 mod tests;
 pub mod weights;
 
