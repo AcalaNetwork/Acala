@@ -29,11 +29,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{
-	pallet_prelude::*,
-	traits::{Currency, ReservableCurrency},
-	transactional,
-};
+use frame_support::{pallet_prelude::*, traits::ReservableCurrency, transactional};
 use frame_system::pallet_prelude::*;
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
@@ -59,7 +55,7 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Currency for authorization reserved.
-		type Currency: Currency<Self::AccountId, Balance = Balance> + ReservableCurrency<Self::AccountId>;
+		type Currency: ReservableCurrency<Self::AccountId, Balance = Balance>;
 
 		/// Reserved amount per authorization.
 		type DepositPerAuthorization: Get<Balance>;
@@ -92,7 +88,7 @@ pub mod module {
 	/// The authorization relationship map from
 	/// Authorizer -> (CollateralType, Authorizee) -> Authorized
 	///
-	/// Authorization: double_map AccountId, (CurrencyId, T::AccountId) => Option<()>
+	/// Authorization: double_map AccountId, (CurrencyId, T::AccountId) => Option<Balance>
 	#[pallet::storage]
 	#[pallet::getter(fn authorization)]
 	pub type Authorization<T: Config> = StorageDoubleMap<
@@ -187,12 +183,15 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			if !Authorization::<T>::contains_key(&from, (currency_id, &to)) {
-				let reserve_amount = T::DepositPerAuthorization::get();
-				<T as Config>::Currency::reserve(&from, reserve_amount)?;
-				<Authorization<T>>::insert(&from, (currency_id, &to), reserve_amount);
-				Self::deposit_event(Event::Authorization(from, to, currency_id));
-			}
+			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
+				if maybe_reserved.is_none() {
+					let reserve_amount = T::DepositPerAuthorization::get();
+					<T as Config>::Currency::reserve(&from, reserve_amount)?;
+					*maybe_reserved = Some(reserve_amount);
+					Self::deposit_event(Event::Authorization(from.clone(), to.clone(), currency_id));
+				}
+				Ok(())
+			})?;
 			Ok(().into())
 		}
 
@@ -209,9 +208,8 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			if let Some(reserved) = Self::authorization(&from, (currency_id, &to)) {
+			if let Some(reserved) = Authorization::<T>::take(&from, (currency_id, &to)) {
 				<T as Config>::Currency::unreserve(&from, reserved);
-				Authorization::<T>::remove(&from, (currency_id, &to));
 				Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
 			}
 			Ok(().into())
