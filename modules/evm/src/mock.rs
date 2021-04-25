@@ -27,9 +27,30 @@ use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_io::hashing::keccak_256;
+use sp_std::str::FromStr;
 
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
+
+pub fn contract_a() -> H160 {
+	H160::from_str("2000000000000000000000000000000000000001").unwrap()
+}
+
+pub fn contract_b() -> H160 {
+	H160::from_str("2000000000000000000000000000000000000002").unwrap()
+}
+
+pub fn alice() -> H160 {
+	H160::from_str("1000000000000000000000000000000000000001").unwrap()
+}
+
+pub fn bob() -> H160 {
+	H160::from_str("1000000000000000000000000000000000000002").unwrap()
+}
+
+pub fn charlie() -> H160 {
+	H160::from_str("1000000000000000000000000000000000000003").unwrap()
+}
 
 #[cfg(test)]
 pub mod for_test {
@@ -41,7 +62,7 @@ pub mod for_test {
 		testing::Header,
 		traits::{BlakeTwo256, IdentityLookup},
 	};
-	use std::{collections::BTreeMap, str::FromStr};
+	use std::collections::BTreeMap;
 	use support::mocks::MockAddressMapping;
 
 	mod evm_mod {
@@ -269,26 +290,6 @@ pub mod for_test {
 	pub fn deploy_free(contract: H160) {
 		let _ = EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract);
 	}
-
-	pub fn contract_a() -> H160 {
-		H160::from_str("2000000000000000000000000000000000000001").unwrap()
-	}
-
-	pub fn contract_b() -> H160 {
-		H160::from_str("2000000000000000000000000000000000000002").unwrap()
-	}
-
-	pub fn alice() -> H160 {
-		H160::from_str("1000000000000000000000000000000000000001").unwrap()
-	}
-
-	pub fn bob() -> H160 {
-		H160::from_str("1000000000000000000000000000000000000002").unwrap()
-	}
-
-	pub fn charlie() -> H160 {
-		H160::from_str("1000000000000000000000000000000000000003").unwrap()
-	}
 }
 
 #[cfg_attr(not(feature = "std"), no_std)]
@@ -428,29 +429,29 @@ pub mod for_bench {
 	// 	pub const ChainId: u64 = 1;
 	// }
 
-	// impl Config for Test {
-	// 	type AddressMapping = MockAddressMapping;
-	// 	type Currency = Balances;
-	// 	type MergeAccount = Currencies;
-	// 	type NewContractExtraBytes = NewContractExtraBytes;
-	// 	type StorageDepositPerByte = StorageDepositPerByte;
-	// 	type MaxCodeSize = MaxCodeSize;
+	impl Config for Test {
+		type AddressMapping = MockAddressMapping;
+		type Currency = Balances;
+		type MergeAccount = Currencies;
+		type NewContractExtraBytes = NewContractExtraBytes;
+		type StorageDepositPerByte = StorageDepositPerByte;
+		type MaxCodeSize = MaxCodeSize;
 
-	// 	type Event = Event;
-	// 	type Precompiles = ();
-	// 	type ChainId = ChainId;
-	// 	type GasToWeight = GasToWeight;
-	// 	type ChargeTransactionPayment = ();
+		type Event = Event;
+		type Precompiles = ();
+		type ChainId = ChainId;
+		type GasToWeight = GasToWeight;
+		type ChargeTransactionPayment = ();
 
-	// 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount,
-	// AccountId32>; 	type NetworkContractSource = NetworkContractSource;
-	// 	type DeveloperDeposit = DeveloperDeposit;
-	// 	type DeploymentFee = DeploymentFee;
-	// 	type TreasuryAccount = TreasuryAccount;
-	// 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+		type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
+		type NetworkContractSource = NetworkContractSource;
+		type DeveloperDeposit = DeveloperDeposit;
+		type DeploymentFee = DeploymentFee;
+		type TreasuryAccount = TreasuryAccount;
+		type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
-	// 	type WeightInfo = ();
-	// }
+		type WeightInfo = ();
+	}
 
 	construct_runtime!(
 		pub enum Runtime where
