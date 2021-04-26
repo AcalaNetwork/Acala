@@ -19,7 +19,7 @@
 use crate::{
 	dollar, AcalaOracle, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, Dex, EmergencyShutdown, GetStableCurrencyId, MaxSlippageSwapWithDEX, MinimumDebitValue,
-	Price, Rate, Ratio, Runtime, Timestamp, KSM, KUSD, MILLISECS_PER_BLOCK,
+	Price, Rate, Ratio, Runtime, KSM, KUSD, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::set_balance;
@@ -110,10 +110,18 @@ runtime_benchmarks! {
 			CdpEngine::adjust_position(&owner, currency_id, collateral_amount.try_into().unwrap(), min_debit_amount)?;
 		}
 
-		Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
+		// set timestamp by set storage, this is deprecated,
+		// replace it by following after https://github.com/paritytech/substrate/pull/8601 is available:
+		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
+		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK);
+
 		CdpEngine::on_initialize(1);
 	}: {
-		Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
+		// set timestamp by set storage, this is deprecated,
+		// replace it by following after https://github.com/paritytech/substrate/pull/8601 is available:
+		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
+		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK * 2);
+
 		CdpEngine::on_initialize(2);
 	}
 
