@@ -137,7 +137,7 @@ fn acala_genesis(
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
-	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-ACA.json")[..];
+	let airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
 	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
@@ -173,7 +173,7 @@ fn acala_genesis(
 		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
-	let vesting_list_json = &include_bytes!("../../../../../resources/acala-vesting-ACA.json")[..];
+	let vesting_list_json = &include_bytes!("../../../../resources/acala-vesting-ACA.json")[..];
 	let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
 		serde_json::from_slice(vesting_list_json).unwrap();
 

@@ -2,9 +2,9 @@ cargo-features = ["resolver"]
 
 [workspace]
 members = [
-	"bin/acala",
-	"bin/acala/cli",
-	"bin/acala/service",
+	"node",
+	"node/cli",
+	"node/service",
 
 	"modules/*",
 	"inspect",

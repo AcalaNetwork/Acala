@@ -213,7 +213,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 }
 
 pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../../../resources/mandala-pc-dist.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/mandala-pc-dist.json")[..])
 }
 
 fn testnet_genesis(
@@ -527,12 +527,10 @@ fn mandala_genesis(
 		},
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: {
-				let aca_airdrop_accounts_json =
-					&include_bytes!("../../../../../resources/mandala-airdrop-ACA.json")[..];
+				let aca_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
 				let aca_airdrop_accounts: Vec<(AccountId, Balance)> =
 					serde_json::from_slice(aca_airdrop_accounts_json).unwrap();
-				let kar_airdrop_accounts_json =
-					&include_bytes!("../../../../../resources/mandala-airdrop-KAR.json")[..];
+				let kar_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-KAR.json")[..];
 				let kar_airdrop_accounts: Vec<(AccountId, Balance)> =
 					serde_json::from_slice(kar_airdrop_accounts_json).unwrap();
 
@@ -580,7 +578,7 @@ fn mandala_genesis(
 		},
 		orml_nft: OrmlNFTConfig {
 			tokens: {
-				let nft_airdrop_json = &include_bytes!("../../../../../resources/mandala-airdrop-NFT.json")[..];
+				let nft_airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-NFT.json")[..];
 				let nft_airdrop: Vec<(
 					AccountId,
 					Vec<u8>,

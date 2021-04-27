@@ -60,20 +60,20 @@ cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumul
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 
-ecosystem-renvm-bridge = { path = "../../../ecosystem-modules/ren/renvm-bridge" }
-module-evm = { path = "../../../modules/evm" }
-module-staking-pool = { path = "../../../modules/staking-pool" }
-module-staking-pool-rpc = { path = "../../../modules/staking-pool/rpc" }
-module-nft = { path = "../../../modules/nft" }
-orml-oracle-rpc = { path = "../../../orml/oracle/rpc" }
-acala-primitives = { path = "../../../primitives" }
-acala-rpc = { path = "../../../rpc" }
-module-evm-rpc-runtime-api = { path = "../../../modules/evm/rpc/runtime_api" }
+ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
+module-evm = { path = "../../modules/evm" }
+module-staking-pool = { path = "../../modules/staking-pool" }
+module-staking-pool-rpc = { path = "../../modules/staking-pool/rpc" }
+module-nft = { path = "../../modules/nft" }
+orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
+acala-primitives = { path = "../../primitives" }
+acala-rpc = { path = "../../rpc" }
+module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api" }
 
-runtime-common = { path = "../../../runtime/common" }
-mandala-runtime = { path = "../../../runtime/mandala", optional = true }
-karura-runtime = { path = "../../../runtime/karura", optional = true }
-acala-runtime = { path = "../../../runtime/acala", optional = true }
+runtime-common = { path = "../../runtime/common" }
+mandala-runtime = { path = "../../runtime/mandala", optional = true }
+karura-runtime = { path = "../../runtime/karura", optional = true }
+acala-runtime = { path = "../../runtime/acala", optional = true }
 
 [features]
 default = ["std", "with-mandala-runtime"]
