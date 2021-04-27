@@ -24,7 +24,7 @@ use sp_std::prelude::*;
 use sp_std::vec;
 
 use frame_benchmarking::{account, benchmarks};
-use frame_support::traits::Get;
+use frame_support::{traits::Get, weights::DispatchClass};
 use frame_system::RawOrigin;
 use sp_runtime::traits::{AccountIdConversion, StaticLookup, UniqueSaturatedInto};
 
@@ -95,6 +95,23 @@ benchmarks! {
 		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()))
+
+	// burn NFT token with remark
+	burn_with_remark {
+		let b in 0 .. *T::BlockLength::get().max.get(DispatchClass::Normal) as u32;
+		let remark_message = vec![1; b as usize];
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let to: T::AccountId = account("to", 0, SEED);
+		let to_lookup = T::Lookup::unlookup(to.clone());
+
+		let base_currency_amount = dollar(1000);
+		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+
+		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
+		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
+		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
+	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()), remark_message)
 
 	// destroy NFT class
 	destroy_class {
@@ -319,6 +336,13 @@ mod tests {
 	fn test_burn() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_burn::<Runtime>());
+		});
+	}
+
+	#[test]
+	fn test_burn_with_remark() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_burn_with_remark::<Runtime>());
 		});
 	}
 

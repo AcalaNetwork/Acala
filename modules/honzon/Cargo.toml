@@ -20,8 +20,8 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-currencies = { path = "../../orml/currencies", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury", default-features = false }

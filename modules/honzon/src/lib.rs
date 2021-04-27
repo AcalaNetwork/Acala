@@ -29,13 +29,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{pallet_prelude::*, traits::ReservableCurrency, transactional};
 use frame_system::pallet_prelude::*;
-use primitives::{Amount, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
+use sp_std::vec::Vec;
 use support::EmergencyShutdown;
 
 mod mock;
@@ -52,6 +53,12 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + cdp_engine::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Currency for authorization reserved.
+		type Currency: ReservableCurrency<Self::AccountId, Balance = Balance>;
+
+		/// Reserved amount per authorization.
+		type DepositPerAuthorization: Get<Balance>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -81,11 +88,18 @@ pub mod module {
 	/// The authorization relationship map from
 	/// Authorizer -> (CollateralType, Authorizee) -> Authorized
 	///
-	/// Authorization: double_map AccountId, (CurrencyId, T::AccountId) => Option<()>
+	/// Authorization: double_map AccountId, (CurrencyId, T::AccountId) => Option<Balance>
 	#[pallet::storage]
 	#[pallet::getter(fn authorization)]
-	pub type Authorization<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, (CurrencyId, T::AccountId), (), OptionQuery>;
+	pub type Authorization<T: Config> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		(CurrencyId, T::AccountId),
+		Balance,
+		OptionQuery,
+	>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -127,7 +141,7 @@ pub mod module {
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			maybe_path: Option<sp_std::vec::Vec<CurrencyId>>,
+			maybe_path: Option<Vec<CurrencyId>>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
@@ -169,8 +183,15 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			<Authorization<T>>::insert(&from, (currency_id, &to), ());
-			Self::deposit_event(Event::Authorization(from, to, currency_id));
+			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
+				if maybe_reserved.is_none() {
+					let reserve_amount = T::DepositPerAuthorization::get();
+					<T as Config>::Currency::reserve(&from, reserve_amount)?;
+					*maybe_reserved = Some(reserve_amount);
+					Self::deposit_event(Event::Authorization(from.clone(), to.clone(), currency_id));
+				}
+				Ok(())
+			})?;
 			Ok(().into())
 		}
 
@@ -187,8 +208,10 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			<Authorization<T>>::remove(&from, (currency_id, &to));
-			Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
+			if let Some(reserved) = Authorization::<T>::take(&from, (currency_id, &to)) {
+				<T as Config>::Currency::unreserve(&from, reserved);
+				Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
+			}
 			Ok(().into())
 		}
 
@@ -197,7 +220,11 @@ pub mod module {
 		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
-			<Authorization<T>>::remove_prefix(&from);
+			let total_reserved: Balance = Authorization::<T>::drain_prefix(&from)
+				.fold(Zero::zero(), |total_reserved, (_, reserved)| {
+					total_reserved.saturating_add(reserved)
+				});
+			<T as Config>::Currency::unreserve(&from, total_reserved);
 			Self::deposit_event(Event::UnAuthorizationAll(from));
 			Ok(().into())
 		}

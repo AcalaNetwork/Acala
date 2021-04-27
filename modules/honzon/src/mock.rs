@@ -260,6 +260,17 @@ impl cdp_engine::Config for Runtime {
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+parameter_types! {
+	pub const DepositPerAuthorization: Balance = 100;
+}
+
+impl Config for Runtime {
+	type Event = Event;
+	type Currency = PalletBalances;
+	type DepositPerAuthorization = DepositPerAuthorization;
+	type WeightInfo = ();
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -267,7 +278,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Honzon: honzon::{Pallet, Storage, Call, Event<T>},
+		HonzonModule: honzon::{Pallet, Storage, Call, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call, Event<T>},
@@ -289,19 +300,15 @@ where
 	type Extrinsic = Extrinsic;
 }
 
-impl Config for Runtime {
-	type Event = Event;
-	type WeightInfo = ();
-}
-pub type HonzonModule = Pallet<Runtime>;
-
 pub struct ExtBuilder {
+	endowed_native: Vec<(AccountId, Balance)>,
 	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
+			endowed_native: vec![(ALICE, 1000)],
 			endowed_accounts: vec![
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
@@ -317,6 +324,12 @@ impl ExtBuilder {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.endowed_native,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			endowed_accounts: self.endowed_accounts,

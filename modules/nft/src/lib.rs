@@ -37,9 +37,10 @@ use primitives::NFTBalance;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
-	traits::{AccountIdConversion, Saturating, StaticLookup, Zero},
+	traits::{AccountIdConversion, Hash, Saturating, StaticLookup, Zero},
 	DispatchResult, RuntimeDebug,
 };
+use sp_std::vec::Vec;
 
 pub mod benchmarking;
 mod mock;
@@ -49,7 +50,7 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-pub type CID = sp_std::vec::Vec<u8>;
+pub type CID = Vec<u8>;
 
 #[repr(u8)]
 #[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
@@ -158,6 +159,8 @@ pub mod module {
 		TransferredToken(T::AccountId, T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
 		/// Burned NFT token. \[owner, class_id, token_id\]
 		BurnedToken(T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
+		/// Burned NFT token with remark. \[owner, class_id, token_id, remark_hash\]
+		BurnedTokenWithRemark(T::AccountId, ClassIdOf<T>, TokenIdOf<T>, T::Hash),
 		/// Destroyed NFT class. \[owner, class_id\]
 		DestroyedClass(T::AccountId, ClassIdOf<T>),
 	}
@@ -264,21 +267,26 @@ pub mod module {
 		#[transactional]
 		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-			let data = class_info.data;
-			ensure!(
-				data.properties.0.contains(ClassProperty::Burnable),
-				Error::<T>::NonBurnable
-			);
-
-			let token_info = orml_nft::Pallet::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
-			ensure!(who == token_info.owner, Error::<T>::NoPermission);
-
-			orml_nft::Pallet::<T>::burn(&who, token)?;
-
-			T::Currency::unreserve(&who, token_info.data.deposit);
-
+			Self::do_burn(&who, token)?;
 			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
+			Ok(().into())
+		}
+
+		/// Burn NFT token
+		///
+		/// - `token`: (class_id, token_id)
+		/// - `remark`: Vec<u8>
+		#[pallet::weight(<T as Config>::WeightInfo::burn_with_remark(remark.len() as u32))]
+		#[transactional]
+		pub fn burn_with_remark(
+			origin: OriginFor<T>,
+			token: (ClassIdOf<T>, TokenIdOf<T>),
+			remark: Vec<u8>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			Self::do_burn(&who, token)?;
+			let hash = T::Hashing::hash(&remark[..]);
+			Self::deposit_event(Event::BurnedTokenWithRemark(who, token.0, token.1, hash));
 			Ok(().into())
 		}
 
@@ -340,6 +348,25 @@ impl<T: Config> Pallet<T> {
 		T::Currency::reserve(&to, token_info.data.deposit)?;
 
 		Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
+		Ok(())
+	}
+
+	/// Ensured atomic.
+	#[transactional]
+	fn do_burn(who: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
+		let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+		let data = class_info.data;
+		ensure!(
+			data.properties.0.contains(ClassProperty::Burnable),
+			Error::<T>::NonBurnable
+		);
+
+		let token_info = orml_nft::Pallet::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
+		ensure!(*who == token_info.owner, Error::<T>::NoPermission);
+
+		orml_nft::Pallet::<T>::burn(&who, token)?;
+
+		T::Currency::unreserve(&who, token_info.data.deposit);
 		Ok(())
 	}
 }

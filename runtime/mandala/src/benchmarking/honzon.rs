@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, Dex, Honzon, Indices, Price,
-	Rate, Ratio, Runtime, AUSD, DOT,
+	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
+	Honzon, Indices, Price, Rate, Ratio, Runtime, ACA, AUSD, DOT,
 };
 
 use super::utils::set_balance;
@@ -44,12 +44,18 @@ runtime_benchmarks! {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = Indices::unlookup(to);
+
+		// set balance
+		set_balance(ACA, &caller, DepositPerAuthorization::get());
 	}: _(RawOrigin::Signed(caller), DOT, to_lookup)
 
 	unauthorize {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = Indices::unlookup(to);
+
+		// set balance
+		set_balance(ACA, &caller, DepositPerAuthorization::get());
 		Honzon::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
 			DOT,
@@ -65,6 +71,8 @@ runtime_benchmarks! {
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = Indices::unlookup(to);
 
+		// set balance
+		set_balance(ACA, &caller, DepositPerAuthorization::get().saturating_mul(c.into()));
 		for i in 0 .. c {
 			Honzon::authorize(
 				RawOrigin::Signed(caller.clone()).into(),

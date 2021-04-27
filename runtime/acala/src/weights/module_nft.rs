@@ -69,6 +69,12 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+	fn burn_with_remark(b: u32, ) -> Weight {
+		(152_588_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
+	}
 	fn destroy_class() -> Weight {
 		(135_739_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
