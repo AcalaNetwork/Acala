@@ -19,7 +19,7 @@
 use crate::{AddressMapping, CurrencyId, CurrencyIdMapping};
 use codec::Encode;
 use frame_support::pallet_prelude::DispatchResult;
-use primitives::{currency::GetDecimals, evm::EvmAddress};
+use primitives::{currency::TokenInfo, evm::EvmAddress};
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
 use sp_std::convert::TryInto;

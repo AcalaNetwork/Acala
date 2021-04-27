@@ -78,6 +78,9 @@ pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
 	for (_, address, code_string) in contracts {
+		if code_string.is_empty() {
+			continue;
+		}
 		let account = GenesisAccount {
 			nonce: 0u32,
 			balance: 0u128,

@@ -24,6 +24,7 @@ use crate::{
 	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
 	MergeAccount, Pallet, Vicinity,
 };
+use core::str::FromStr;
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
@@ -304,7 +305,14 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		Pallet::<T>::code_at_address(&address)
+		let mut token = [0u8; 19];
+		token[16] = 1;
+		// 0x0000000000000000000000000000000001000000
+		if address.as_bytes().starts_with(&token) {
+			Pallet::<T>::code_at_address(&H160::from_str("0x0000000000000000000000000000000000000800").unwrap())
+		} else {
+			Pallet::<T>::code_at_address(&address)
+		}
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
