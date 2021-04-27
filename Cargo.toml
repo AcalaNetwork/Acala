@@ -36,11 +36,6 @@ members = [
 
 	"ecosystem-modules/ren/renvm-bridge",
 ]
-exclude = [
-	"bin/acala-dev",
-	"bin/acala-dev/cli",
-	"bin/acala-dev/service",
-]
 
 resolver = "2"
 
