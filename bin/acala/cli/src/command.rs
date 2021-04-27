@@ -380,6 +380,7 @@ pub fn run() -> sc_cli::Result<()> {
 			let runner = cli.create_runner(&*cli.run)?;
 
 			let chain_spec = &runner.config().chain_spec;
+			let is_mandala_dev = chain_spec.is_mandala_dev();
 
 			set_default_ss58_version(chain_spec);
 
@@ -392,19 +393,10 @@ pub fn run() -> sc_cli::Result<()> {
 				let para_id = extension.map(|e| e.para_id);
 				let collator = cli.run.base.validator || cli.collator;
 
-				if chain_spec.is_mandala_dev() {
-					let collator = collator || cli.run.shared_params.dev;
-
-					// // If no author id was supplied, use the one that is staked at genesis
-					// // in the default development spec.
-					// let author_id = author_id.or_else(|| {
-					// 	Some(
-					// 		AccountId::from_str("6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b")
-					// 			.expect("Gerald is a valid account"),
-					// 	)
-					// });
-
-					return acala_service::mandala_dev(config);
+				if is_mandala_dev {
+					return service::mandala_dev(config, cli.instant_sealing).map_err(Into::into);
+				} else if cli.instant_sealing {
+					return Err("Instant sealing can be turned on only in `--dev` mode".into());
 				}
 
 				let polkadot_cli = RelayChainCli::new(

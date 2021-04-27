@@ -30,7 +30,7 @@ dependencies = [
  "acala-inspect",
  "acala-service",
  "cumulus-client-service",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "frame-benchmarking-cli",
  "log",
  "orml-build-script-utils",
@@ -109,7 +109,7 @@ dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-executive",
@@ -215,8 +215,8 @@ dependencies = [
  "cumulus-client-consensus-relay-chain",
  "cumulus-client-network",
  "cumulus-client-service",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
- "cumulus-primitives-parachain-inherent 0.1.0 (git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d)",
+ "cumulus-primitives-core",
+ "cumulus-primitives-parachain-inherent",
  "cumulus-test-relay-sproof-builder",
  "ecosystem-renvm-bridge",
  "frame-benchmarking",
@@ -241,7 +241,7 @@ dependencies = [
  "sc-cli",
  "sc-client-api",
  "sc-consensus",
- "sc-consensus-babe",
+ "sc-consensus-aura",
  "sc-consensus-manual-seal",
  "sc-consensus-slots",
  "sc-executor",
@@ -258,7 +258,7 @@ dependencies = [
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
- "sp-consensus-babe",
+ "sp-consensus-aura",
  "sp-core",
  "sp-finality-grandpa",
  "sp-inherents",
@@ -1505,7 +1505,7 @@ source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca6
 dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "futures 0.3.13",
  "parity-scale-codec",
  "parking_lot 0.9.0",
@@ -1554,8 +1554,8 @@ source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca6
 dependencies = [
  "async-trait",
  "cumulus-client-consensus-common",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
- "cumulus-primitives-parachain-inherent 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
+ "cumulus-primitives-parachain-inherent",
  "futures 0.3.13",
  "parity-scale-codec",
  "parking_lot 0.9.0",
@@ -1603,7 +1603,7 @@ source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca6
 dependencies = [
  "cumulus-client-collator",
  "cumulus-client-consensus-common",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "futures 0.3.13",
  "parity-scale-codec",
  "polkadot-primitives",
@@ -1626,8 +1626,8 @@ name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
- "cumulus-primitives-parachain-inherent 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
+ "cumulus-primitives-parachain-inherent",
  "environmental",
  "frame-support",
  "frame-system",
@@ -1656,7 +1656,7 @@ name = "cumulus-pallet-xcm-handler"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "frame-support",
  "frame-system",
  "log",
@@ -1683,45 +1683,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "cumulus-primitives-core"
-version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
-dependencies = [
- "impl-trait-for-tuples 0.2.1",
- "parity-scale-codec",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
- "sp-runtime",
- "sp-std",
- "sp-trie",
- "xcm",
-]
-
-[[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
- "parity-scale-codec",
- "sc-client-api",
- "sp-api",
- "sp-core",
- "sp-inherents",
- "sp-runtime",
- "sp-state-machine",
- "sp-std",
- "sp-trie",
- "tracing",
-]
-
-[[package]]
-name = "cumulus-primitives-parachain-inherent"
-version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
-dependencies = [
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d)",
+ "cumulus-primitives-core",
  "parity-scale-codec",
  "sc-client-api",
  "sp-api",
@@ -1737,9 +1703,9 @@ dependencies = [
 [[package]]
 name = "cumulus-test-relay-sproof-builder"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
+source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d)",
+ "cumulus-primitives-core",
  "parity-scale-codec",
  "polkadot-primitives",
  "sp-runtime",
@@ -2488,7 +2454,7 @@ dependencies = [
 [[package]]
 name = "frame-system-benchmarking"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#816ed3d4e77a2463c86e69ec5a26fc307ef452b9"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#68cfc326fa0e3d96d0d92509e4db1a104b9da9bb"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3611,7 +3577,7 @@ dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -4452,7 +4418,7 @@ dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "ecosystem-renvm-bridge",
  "evm",
  "frame-benchmarking",
@@ -4502,6 +4468,7 @@ dependencies = [
  "orml-vesting",
  "orml-xcm-support",
  "orml-xtokens",
+ "pallet-aura",
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
@@ -4531,7 +4498,7 @@ dependencies = [
  "sp-api",
  "sp-application-crypto",
  "sp-block-builder",
- "sp-consensus-babe",
+ "sp-consensus-aura",
  "sp-core",
  "sp-inherents",
  "sp-io",
@@ -5835,7 +5802,7 @@ name = "orml-xtokens"
 version = "0.4.1-dev"
 dependencies = [
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "frame-support",
  "frame-system",
  "orml-tokens",
@@ -5864,6 +5831,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ff55baddef9e4ad00f88b6c743a2a8062d4c6ade126c2a528644b8e444d52ce"
 dependencies = [
  "stable_deref_trait",
+]
+
+[[package]]
+name = "pallet-aura"
+version = "3.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=816ed3d4e77a2463c86e69ec5a26fc307ef452b9#816ed3d4e77a2463c86e69ec5a26fc307ef452b9"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-session",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-application-crypto",
+ "sp-consensus-aura",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -6225,7 +6209,7 @@ dependencies = [
 [[package]]
 name = "pallet-offences-benchmarking"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#816ed3d4e77a2463c86e69ec5a26fc307ef452b9"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#68cfc326fa0e3d96d0d92509e4db1a104b9da9bb"
 dependencies = [
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -6327,7 +6311,7 @@ dependencies = [
 [[package]]
 name = "pallet-session-benchmarking"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#816ed3d4e77a2463c86e69ec5a26fc307ef452b9"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-v1#68cfc326fa0e3d96d0d92509e4db1a104b9da9bb"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6533,7 +6517,7 @@ name = "parachain-info"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=3db8a38cfad53c4fe742ca68d7b425b88c61813d#3db8a38cfad53c4fe742ca68d7b425b88c61813d"
 dependencies = [
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
@@ -8943,6 +8927,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc-consensus-aura"
+version = "0.9.0"
+source = "git+https://github.com/paritytech//substrate?rev=816ed3d4e77a2463c86e69ec5a26fc307ef452b9#816ed3d4e77a2463c86e69ec5a26fc307ef452b9"
+dependencies = [
+ "async-trait",
+ "derive_more",
+ "futures 0.3.13",
+ "futures-timer 3.0.2",
+ "log",
+ "parity-scale-codec",
+ "sc-block-builder",
+ "sc-client-api",
+ "sc-consensus-slots",
+ "sc-telemetry",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-block-builder",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-consensus-aura",
+ "sp-consensus-slots",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-timestamp",
+ "sp-version",
+ "substrate-prometheus-endpoint",
+]
+
+[[package]]
 name = "sc-consensus-babe"
 version = "0.9.0"
 source = "git+https://github.com/paritytech//substrate?rev=816ed3d4e77a2463c86e69ec5a26fc307ef452b9#816ed3d4e77a2463c86e69ec5a26fc307ef452b9"
@@ -10279,6 +10295,22 @@ dependencies = [
  "substrate-prometheus-endpoint",
  "thiserror",
  "wasm-timer",
+]
+
+[[package]]
+name = "sp-consensus-aura"
+version = "0.9.0"
+source = "git+https://github.com/paritytech//substrate?rev=816ed3d4e77a2463c86e69ec5a26fc307ef452b9#816ed3d4e77a2463c86e69ec5a26fc307ef452b9"
+dependencies = [
+ "parity-scale-codec",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-consensus",
+ "sp-consensus-slots",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-std",
+ "sp-timestamp",
 ]
 
 [[package]]
@@ -11652,7 +11684,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 
@@ -12485,7 +12517,7 @@ source = "git+https://github.com/shaunxw/xcm-simulator?branch=master#c52bd64a41a
 dependencies = [
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm-handler",
- "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=rococo-v1)",
+ "cumulus-primitives-core",
  "frame-support",
  "frame-system",
  "pallet-balances",
