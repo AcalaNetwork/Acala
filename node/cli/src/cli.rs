@@ -165,7 +165,7 @@ pub struct Cli {
 	/// Instant block sealing
 	///
 	/// Can only be used with `--dev`
-	#[structopt(long = "instant-sealing")]
+	#[structopt(long = "instant-sealing", requires = "dev")]
 	pub instant_sealing: bool,
 }
 
