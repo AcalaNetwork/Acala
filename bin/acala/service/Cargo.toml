@@ -14,7 +14,8 @@ jsonrpc-core = "15.1.0"
 
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -53,8 +54,8 @@ cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
-cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", rev = "3db8a38cfad53c4fe742ca68d7b425b88c61813d" }
-cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", rev = "3db8a38cfad53c4fe742ca68d7b425b88c61813d" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
@@ -73,9 +74,6 @@ runtime-common = { path = "../../../runtime/common" }
 mandala-runtime = { path = "../../../runtime/mandala", optional = true }
 karura-runtime = { path = "../../../runtime/karura", optional = true }
 acala-runtime = { path = "../../../runtime/acala", optional = true }
-
-[dev-dependencies]
-sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
 [features]
 default = ["std", "with-mandala-runtime"]
