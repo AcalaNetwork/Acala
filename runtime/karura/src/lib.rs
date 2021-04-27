@@ -34,6 +34,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::{Decode, Encode};
 use sp_api::impl_runtime_apis;
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4},
@@ -133,7 +134,9 @@ pub fn native_version() -> NativeVersion {
 }
 
 impl_opaque_keys! {
-	pub struct SessionKeys {}
+	pub struct SessionKeys {
+		pub aura: Aura,
+	}
 }
 
 // Pallet accounts of runtime
@@ -211,6 +214,10 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
+}
+
+impl pallet_aura::Config for Runtime {
+	type AuthorityId = AuraId;
 }
 
 parameter_types! {
@@ -1259,56 +1266,57 @@ construct_runtime!(
 
 		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 23,
 
+		// Oracle
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 24,
+		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
+		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 25,
+
 		// ORML Core
-		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 24,
-		Rewards: orml_rewards::{Pallet, Storage, Call} = 25,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 26,
+		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 26,
+		Rewards: orml_rewards::{Pallet, Storage, Call} = 27,
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 28,
 
 		// Acala Core
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 27,
+		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 29,
 
 		// DEX
-		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 28,
+		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 30,
 
 		// Honzon
-		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 29,
-		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 30,
-		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 31,
-		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 32,
-		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 33,
-		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 34,
+		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 31,
+		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 32,
+		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 33,
+		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 34,
+		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 35,
+		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 36,
 
 		// Homa
-		// Homa: module_homa::{Pallet, Call} = 35,
-		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 36,
-		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 37,
-		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 38,
-		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 39,
+		// Homa: module_homa::{Pallet, Call} = 37,
+		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 38,
+		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 39,
+		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 40,
+		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 41,
 
 		// Acala Other
-		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 40,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 41,
+		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 42,
+		NFT: module_nft::{Pallet, Call, Event<T>} = 43,
 
 		// Smart contracts
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 42,
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 43,
-		EVMBridge: module_evm_bridge::{Pallet} = 44,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 45,
+		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 44,
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 45,
+		EVMBridge: module_evm_bridge::{Pallet} = 46,
+		EvmManager: module_evm_manager::{Pallet, Storage} = 47,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 46,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 47,
-		XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 48,
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 49,
-		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 50,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 48,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 49,
+		XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 50,
+		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 51,
+		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 52,
+		Aura: pallet_aura::{Pallet, Config<T>} = 53,
 
 		// Dev
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 51,
-
-		// Oracle
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 52,
-		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 53,
+		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 54,
 	}
 );
 
@@ -1402,6 +1410,16 @@ impl_runtime_apis! {
 	impl sp_offchain::OffchainWorkerApi<Block> for Runtime {
 		fn offchain_worker(header: &<Block as BlockT>::Header) {
 			Executive::offchain_worker(header)
+		}
+	}
+
+	impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
+		fn slot_duration() -> sp_consensus_aura::SlotDuration {
+			sp_consensus_aura::SlotDuration::from_millis(Aura::slot_duration())
+		}
+
+		fn authorities() -> Vec<AuraId> {
+			Aura::authorities()
 		}
 	}
 

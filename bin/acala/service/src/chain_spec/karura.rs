@@ -21,7 +21,7 @@ use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
-use sp_consensus_babe::AuthorityId as BabeId;
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::crypto::UncheckedInto;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{FixedPointNumber, FixedU128};
@@ -119,12 +119,12 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 
 fn karura_genesis(
 	wasm_binary: &[u8],
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, AuraConfig, Balance, BalancesConfig, BlockNumber,
 		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SudoConfig, SystemConfig,
@@ -194,6 +194,9 @@ fn karura_genesis(
 		},
 		pallet_balances: BalancesConfig { balances },
 		pallet_sudo: SudoConfig { key: root_key.clone() },
+		pallet_aura: AuraConfig {
+			authorities: initial_authorities.iter().map(|x| (x.3.clone())).collect(),
+		},
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],

@@ -1,10 +1,10 @@
 .PHONY: run
 run: githooks
-	cargo run --manifest-path bin/acala-dev/Cargo.toml -- --dev -lruntime=debug --instant-sealing
+	cargo run --manifest-path  bin/acala/Cargo.toml -- --dev -lruntime=debug --instant-sealing
 
 .PHONY: run-eth
 run-eth: githooks
-	cargo run --manifest-path bin/acala-dev/Cargo.toml --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
+	cargo run --manifest-path  bin/acala/Cargo.toml --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
 
 .PHONY: toolchain
 toolchain:
@@ -13,13 +13,6 @@ toolchain:
 .PHONY: build-full
 build-full: githooks
 	cargo build
-
-.PHONY: build-all
-build-all: build-dev build-acala
-
-.PHONY: build-dev
-build-dev:
-	cargo build --manifest-path bin/acala-dev/Cargo.toml --locked
 
 .PHONY: build-acala
 build-acala:
@@ -34,11 +27,7 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
 .PHONY: check-all
-check-all: check-dev check-acala check-benchmarks
-
-.PHONY: check-dev
-check-dev:
-	SKIP_WASM_BUILD= cargo check --manifest-path bin/acala-dev/Cargo.toml --tests --all
+check-all: check-acala check-benchmarks
 
 .PHONY: check-acala
 check-acala:
@@ -61,11 +50,7 @@ test-eth: githooks
 	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala/Cargo.toml test_evm_module --features with-ethereum-compatibility -p mandala-runtime
 
 .PHONY: test-all
-test-all: test-dev test-acala test-benchmarking
-
-.PHONY: test-dev
-test-dev:
-	SKIP_WASM_BUILD= cargo test --manifest-path bin/acala-dev/Cargo.toml --all
+test-all: test-acala test-benchmarking
 
 .PHONY: test-acala
 test-acala:
@@ -119,7 +104,6 @@ update: update-orml cargo-update check-all
 .PHONY: cargo-update
 cargo-update:
 	cargo update
-	cargo update --manifest-path bin/acala-dev/Cargo.toml
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
