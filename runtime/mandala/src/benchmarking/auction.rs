@@ -16,10 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, AUSD, DOT};
+use crate::{
+	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, AUSD, DOT,
+};
 
 use super::utils::set_balance;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
@@ -33,16 +35,15 @@ const MAX_AUCTION_ID: u32 = 100;
 runtime_benchmarks! {
 	{ Runtime, orml_auction }
 
-	_ {
-		let d in 1 .. MAX_DOLLARS => ();
-		let c in 1 .. MAX_AUCTION_ID => ();
-	}
+	_ {}
 
 	// `bid` a collateral auction, best cases:
 	// there's no bidder before and bid price doesn't exceed target amount
 	#[extra]
 	bid_collateral_auction_as_first_bidder {
-		let bidder = account("bidder", 0, SEED);
+		let d in 1 .. MAX_DOLLARS;
+
+		let bidder: AccountId = whitelisted_caller();
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
@@ -59,7 +60,9 @@ runtime_benchmarks! {
 	// `bid` a collateral auction, worst cases:
 	// there's bidder before and bid price will exceed target amount
 	bid_collateral_auction {
-		let bidder = account("bidder", 0, SEED);
+		let d in 1 .. MAX_DOLLARS;
+
+		let bidder: AccountId = whitelisted_caller();
 		let previous_bidder = account("previous_bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
@@ -78,7 +81,8 @@ runtime_benchmarks! {
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	on_finalize {
-		let c in ...;
+		let c in 1 .. MAX_AUCTION_ID;
+		let d in 1 .. MAX_DOLLARS;
 
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);

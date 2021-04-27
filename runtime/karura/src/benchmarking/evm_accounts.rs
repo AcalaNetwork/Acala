@@ -50,7 +50,7 @@ runtime_benchmarks! {
 	_ {}
 
 	claim_account {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let eth: AccountId = account("eth", 0, SEED);
 		set_aca_balance(&bob_account_id(), 1_000 * dollar(KAR));
 	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
