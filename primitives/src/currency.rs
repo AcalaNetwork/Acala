@@ -46,7 +46,7 @@ macro_rules! create_currency_id {
 			fn try_from(v: u8) -> Result<Self, Self::Error> {
 				match v {
 					$($val => Ok(TokenSymbol::$symbol),)*
-						_ => Err(()),
+					_ => Err(()),
 				}
 			}
 		}
@@ -73,19 +73,19 @@ macro_rules! create_currency_id {
 			fn currency_id(&self) -> Option<u8> {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($val),)*
-						_ => None,
+					_ => None,
 				}
 			}
 			fn name(&self) -> Option<&str> {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($name),)*
-						_ => None,
+					_ => None,
 				}
 			}
 			fn symbol(&self) -> Option<&str> {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => Some(stringify!($symbol)),)*
-						_ => None,
+					_ => None,
 				}
 			}
 			fn decimals(&self) -> Option<u8> {
@@ -112,23 +112,57 @@ macro_rules! create_currency_id {
 			#[allow(non_snake_case)]
 			#[derive(Serialize, Deserialize)]
 			struct Token {
-				name: String,
 				symbol: String,
-				decimals: u8,
-				currencyId: u8,
+				currency_id: u64,
+			}
+
+			#[allow(non_snake_case)]
+			#[derive(Serialize, Deserialize)]
+			struct TokenList {
+				tokens: Vec<Token>,
+				lp_tokens: Vec<Token>,
 			}
 
 			let tokens = vec![
 				$(
 					Token {
-						name: $name.to_string(),
 						symbol: stringify!($symbol).to_string(),
-						decimals: $deci,
-						currencyId: $val,
+						currency_id: $val,
 					},
 				)*
 			];
-			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/tokens.json", serde_json::to_string_pretty(&tokens).unwrap()));
+
+			let lp_tokens = vec![
+				Token {
+					symbol: "ACAAUSD".to_string(),
+					currency_id: u64::from(CurrencyId::Token(TokenSymbol::ACA).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+				},
+				Token {
+					symbol: "DOTAUSD".to_string(),
+					currency_id: u64::from(CurrencyId::Token(TokenSymbol::DOT).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+				},
+				Token {
+					symbol: "LDOTAUSD".to_string(),
+					currency_id: u64::from(CurrencyId::Token(TokenSymbol::LDOT).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+				},
+				Token {
+					symbol: "RENBTCAUSD".to_string(),
+					currency_id: u64::from(CurrencyId::Token(TokenSymbol::RENBTC).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+				},
+				Token {
+					symbol: "KARKUSD".to_string(),
+					currency_id: u64::from(CurrencyId::Token(TokenSymbol::KAR).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::KUSD).currency_id().unwrap()),
+				},
+				Token {
+					symbol: "KSMKUSD".to_string(),
+					currency_id: u64::from(CurrencyId::Token(TokenSymbol::KSM).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::KUSD).currency_id().unwrap()),
+				},
+				Token {
+					symbol: "LKSMKUSD".to_string(),
+					currency_id: u64::from(CurrencyId::Token(TokenSymbol::LKSM).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::KUSD).currency_id().unwrap()),
+				},
+			];
+			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/tokens.json", serde_json::to_string_pretty(&TokenList{tokens, lp_tokens}).unwrap()));
 		}
     }
 }
@@ -138,6 +172,7 @@ create_currency_id! {
 	// Bit 8 : 0 for Pokladot Ecosystem, 1 for Kusama Ecosystem
 	// Bit 7 : Reserved
 	// Bit 6 - 1 : The token ID
+	// Token name and symbol should not more than 32 bytes, erc20 contract will return it.
 	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[repr(u8)]

@@ -32,7 +32,7 @@ use hex_literal::hex;
 use module_evm::ExitError;
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
-use primitives::{currency::GetDecimals, Balance, PREDEPLOY_ADDRESS_START};
+use primitives::{currency::TokenInfo, Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, H256, U256};
 use sp_runtime::FixedPointNumber;
 
@@ -314,7 +314,7 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999909405);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999899752);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -398,7 +398,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		);
 
 		run_to_block(4);
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999913914);
+		assert_eq!(Balances::free_balance(from_account.clone()), 999999904194);
 		assert_eq!(Balances::reserved_balance(from_account), 0);
 		assert_eq!(Balances::free_balance(to_account), 1000000000000);
 	});

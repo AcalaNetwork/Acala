@@ -258,6 +258,18 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 			false
 		}
 	}
+
+	fn handle_mirrored_token(address: H160) -> H160 {
+		// TODO: update comment.
+		let mut token = [0u8; 19];
+		token[16] = 1;
+		// 0x0000000000000000000000000000000001000000
+		if address.as_bytes().starts_with(&token) {
+			H160::from_str("0x0000000000000000000000000000000000000800").unwrap()
+		} else {
+			address
+		}
+	}
 }
 
 /// Create `try_or_fail` and `try_or_rollback`.
@@ -296,23 +308,19 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		let code_hash = self.code_hash(address);
+		let addr = Self::handle_mirrored_token(address);
+		let code_hash = self.code_hash(addr);
 		U256::from(Codes::<T>::decode_len(&code_hash).unwrap_or(0))
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
-		Pallet::<T>::code_hash_at_address(&address)
+		let addr = Self::handle_mirrored_token(address);
+		Pallet::<T>::code_hash_at_address(&addr)
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		let mut token = [0u8; 19];
-		token[16] = 1;
-		// 0x0000000000000000000000000000000001000000
-		if address.as_bytes().starts_with(&token) {
-			Pallet::<T>::code_at_address(&H160::from_str("0x0000000000000000000000000000000000000800").unwrap())
-		} else {
-			Pallet::<T>::code_at_address(&address)
-		}
+		let addr = Self::handle_mirrored_token(address);
+		Pallet::<T>::code_at_address(&addr)
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
