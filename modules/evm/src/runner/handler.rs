@@ -32,7 +32,7 @@ use frame_support::{
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
-use primitives::PREDEPLOY_ADDRESS_START;
+use primitives::{PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX};
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
 	traits::{One, Saturating, UniqueSaturatedInto, Zero},
@@ -261,7 +261,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 
 	fn handle_mirrored_token(address: H160) -> H160 {
 		let addr = address.as_bytes();
-		if !addr.starts_with(&[0u8; 11]) {
+		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
 			return address;
 		}
 

@@ -163,5 +163,7 @@ pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x200000000;
 /// Mirrored LP Tokens
 /// 0x10000000000000000
 pub const MIRRORED_LP_TOKENS_ADDRESS_START: u128 = 0x10000000000000000;
+/// System contract address prefix
+pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 11] = [0u8; 11];
 
 pub type NFTBalance = u128;

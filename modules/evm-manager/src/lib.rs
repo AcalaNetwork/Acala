@@ -31,7 +31,7 @@ use module_support::{CurrencyIdMapping, EVMBridge, InvokeContext};
 use primitives::{
 	currency::TokenInfo,
 	evm::{Erc20Info, EvmAddress},
-	CurrencyId, DexShare, MIRRORED_LP_TOKENS_ADDRESS_START,
+	CurrencyId, DexShare, MIRRORED_LP_TOKENS_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
 use sp_std::convert::{TryFrom, TryInto};
 
@@ -340,7 +340,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	// TODO: comment
 	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
 		let address = v.as_bytes();
-		if !address.starts_with(&[0u8; 11]) {
+		if !address.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
 			return None;
 		}
 
