@@ -24,7 +24,6 @@ use crate::{
 	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
 	MergeAccount, Pallet, Vicinity,
 };
-use core::str::FromStr;
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
@@ -33,6 +32,7 @@ use frame_support::{
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
+use primitives::PREDEPLOY_ADDRESS_START;
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
 	traits::{One, Saturating, UniqueSaturatedInto, Zero},
@@ -260,12 +260,24 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 	}
 
 	fn handle_mirrored_token(address: H160) -> H160 {
-		// TODO: update comment.
-		let mut token = [0u8; 19];
-		token[16] = 1;
-		// 0x0000000000000000000000000000000001000000
-		if address.as_bytes().starts_with(&token) {
-			H160::from_str("0x0000000000000000000000000000000000000800").unwrap()
+		let addr = address.as_bytes();
+		if !addr.starts_with(&[0u8; 11]) {
+			return address;
+		}
+
+		// Token
+		// MIRRORED_TOKENS_ADDRESS_START = 0x100000000
+		let mut token_prefix = [0u8; 19];
+		token_prefix[14] = 1;
+
+		// DexShare
+		// MIRRORED_LP_TOKENS_ADDRESS_START = 0x10000000000000000
+		let mut lp_token_prefix = [0u8; 12];
+		lp_token_prefix[11] = 1;
+
+		if addr.starts_with(&token_prefix) || addr.starts_with(&lp_token_prefix) {
+			// Token contracts.
+			H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)
 		} else {
 			address
 		}

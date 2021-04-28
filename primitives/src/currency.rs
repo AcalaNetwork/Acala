@@ -18,7 +18,7 @@
 
 #![allow(clippy::from_over_into)]
 
-use crate::evm::EvmAddress;
+use crate::{evm::EvmAddress, MIRRORED_LP_TOKENS_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START};
 use bstringify::bstringify;
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
@@ -113,56 +113,51 @@ macro_rules! create_currency_id {
 			#[derive(Serialize, Deserialize)]
 			struct Token {
 				symbol: String,
-				currency_id: u64,
+				address: EvmAddress,
 			}
 
-			#[allow(non_snake_case)]
-			#[derive(Serialize, Deserialize)]
-			struct TokenList {
-				tokens: Vec<Token>,
-				lp_tokens: Vec<Token>,
-			}
-
-			let tokens = vec![
+			let mut tokens = vec![
 				$(
 					Token {
 						symbol: stringify!($symbol).to_string(),
-						currency_id: $val,
+						address: EvmAddress::try_from(CurrencyId::Token(TokenSymbol::$symbol)).unwrap(),
 					},
 				)*
 			];
 
-			let lp_tokens = vec![
+			let mut lp_tokens = vec![
 				Token {
-					symbol: "ACAAUSD".to_string(),
-					currency_id: u64::from(CurrencyId::Token(TokenSymbol::ACA).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+					symbol: "LP_ACA_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
 				},
 				Token {
-					symbol: "DOTAUSD".to_string(),
-					currency_id: u64::from(CurrencyId::Token(TokenSymbol::DOT).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+					symbol: "LP_DOT_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::DOT), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
 				},
 				Token {
-					symbol: "LDOTAUSD".to_string(),
-					currency_id: u64::from(CurrencyId::Token(TokenSymbol::LDOT).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+					symbol: "LP_LDOT_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::LDOT), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
 				},
 				Token {
-					symbol: "RENBTCAUSD".to_string(),
-					currency_id: u64::from(CurrencyId::Token(TokenSymbol::RENBTC).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::AUSD).currency_id().unwrap()),
+					symbol: "LP_RENBTC_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
 				},
 				Token {
-					symbol: "KARKUSD".to_string(),
-					currency_id: u64::from(CurrencyId::Token(TokenSymbol::KAR).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::KUSD).currency_id().unwrap()),
+					symbol: "LP_KAR_KUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::KAR), DexShare::Token(TokenSymbol::KUSD))).unwrap(),
 				},
 				Token {
-					symbol: "KSMKUSD".to_string(),
-					currency_id: u64::from(CurrencyId::Token(TokenSymbol::KSM).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::KUSD).currency_id().unwrap()),
+					symbol: "LP_KSM_KUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::KSM), DexShare::Token(TokenSymbol::KUSD))).unwrap(),
 				},
 				Token {
-					symbol: "LKSMKUSD".to_string(),
-					currency_id: u64::from(CurrencyId::Token(TokenSymbol::LKSM).currency_id().unwrap()) << 32 | u64::from(CurrencyId::Token(TokenSymbol::KUSD).currency_id().unwrap()),
+					symbol: "LP_LKSM_KUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::LKSM), DexShare::Token(TokenSymbol::KUSD))).unwrap(),
 				},
 			];
-			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/tokens.json", serde_json::to_string_pretty(&TokenList{tokens, lp_tokens}).unwrap()));
+			tokens.append(&mut lp_tokens);
+
+			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/tokens.json", serde_json::to_string_pretty(&tokens).unwrap()));
 		}
     }
 }
@@ -231,14 +226,8 @@ impl CurrencyId {
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
 		match self {
 			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
-				let symbol_0 = match token_symbol_0 {
-					DexShare::Token(token) => CurrencyId::Token(*token),
-					DexShare::Erc20(address) => CurrencyId::Erc20(*address),
-				};
-				let symbol_1 = match token_symbol_1 {
-					DexShare::Token(token) => CurrencyId::Token(*token),
-					DexShare::Erc20(address) => CurrencyId::Erc20(*address),
-				};
+				let symbol_0: CurrencyId = (*token_symbol_0).into();
+				let symbol_1: CurrencyId = (*token_symbol_1).into();
 				Some((symbol_0, symbol_1))
 			}
 			_ => None,
@@ -318,6 +307,46 @@ impl TryFrom<CurrencyId> for u32 {
 			}
 		}
 		Ok(u32::from_be_bytes(bytes))
+	}
+}
+
+/// Generate the EvmAddress from CurrencyId so that evm contracts can call the erc20 contract.
+impl TryFrom<CurrencyId> for EvmAddress {
+	type Error = ();
+
+	fn try_from(val: CurrencyId) -> Result<Self, Self::Error> {
+		let address = match val {
+			CurrencyId::Token(_) => Some(EvmAddress::from_low_u64_be(
+				MIRRORED_TOKENS_ADDRESS_START | u64::from(val.currency_id().unwrap()),
+			)),
+			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
+				let symbol_0: Option<CurrencyId> = match token_symbol_0 {
+					DexShare::Token(_) => Some(token_symbol_0.into()),
+					DexShare::Erc20(_) => None,
+				};
+				let symbol_1: Option<CurrencyId> = match token_symbol_1 {
+					DexShare::Token(_) => Some(token_symbol_1.into()),
+					DexShare::Erc20(_) => None,
+				};
+
+				if symbol_0.is_none() || symbol_1.is_none() {
+					None
+				} else {
+					let mut data = [0u8; 20];
+					data[4..20].copy_from_slice(&MIRRORED_LP_TOKENS_ADDRESS_START.to_be_bytes());
+					let addr_flag = EvmAddress::from_slice(&data);
+					let addr = EvmAddress::from_low_u64_be(
+						u64::from(symbol_0.unwrap().currency_id().unwrap()) << 32
+							| u64::from(symbol_1.unwrap().currency_id().unwrap()),
+					);
+
+					Some(addr_flag | addr)
+				}
+			}
+			CurrencyId::Erc20(address) => Some(address),
+		};
+
+		address.ok_or(())
 	}
 }
 

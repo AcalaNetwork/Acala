@@ -516,6 +516,10 @@ pub trait CurrencyIdMapping {
 	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
+
+	fn encode_evm_address(v: CurrencyId) -> Option<EvmAddress>;
+
+	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId>;
 }
 
 #[cfg(feature = "std")]
@@ -537,6 +541,14 @@ impl CurrencyIdMapping for () {
 	}
 
 	fn decode_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {
+		None
+	}
+
+	fn encode_evm_address(_v: CurrencyId) -> Option<EvmAddress> {
+		None
+	}
+
+	fn decode_evm_address(_v: EvmAddress) -> Option<CurrencyId> {
 		None
 	}
 }

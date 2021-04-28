@@ -31,9 +31,9 @@ use module_support::{CurrencyIdMapping, EVMBridge, InvokeContext};
 use primitives::{
 	currency::TokenInfo,
 	evm::{Erc20Info, EvmAddress},
-	CurrencyId, DexShare,
+	CurrencyId, DexShare, MIRRORED_LP_TOKENS_ADDRESS_START,
 };
-use sp_std::convert::TryInto;
+use sp_std::convert::{TryFrom, TryInto};
 
 mod mock;
 mod tests;
@@ -282,5 +282,113 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 
 		// Token or Erc20
 		(*v).try_into().ok()
+	}
+
+	// TODO: comment
+	fn encode_evm_address(v: CurrencyId) -> Option<EvmAddress> {
+		match v {
+			CurrencyId::DexShare(left, right) => {
+				let symbol_0 = match left {
+					DexShare::Token(token) => {
+						let id: u32 = CurrencyId::Token(token)
+							.try_into()
+							.expect("CurrencyId::Token into u32 is success; qed");
+						id
+					}
+					DexShare::Erc20(address) => {
+						let id: u32 = CurrencyId::Erc20(address)
+							.try_into()
+							.expect("CurrencyId::Erc20 into u32 is success; qed");
+						if CurrencyIdMap::<T>::get(id).is_some() {
+							id
+						} else {
+							return None;
+						}
+					}
+				};
+				let symbol_1 = match right {
+					DexShare::Token(token) => {
+						let id: u32 = CurrencyId::Token(token)
+							.try_into()
+							.expect("CurrencyId::Token into u32 is success; qed");
+						id
+					}
+					DexShare::Erc20(address) => {
+						let id: u32 = CurrencyId::Erc20(address)
+							.try_into()
+							.expect("CurrencyId::Erc20 into u32 is success; qed");
+						if CurrencyIdMap::<T>::get(id).is_some() {
+							id
+						} else {
+							return None;
+						}
+					}
+				};
+
+				let mut data = [0u8; 20];
+				data[4..20].copy_from_slice(&MIRRORED_LP_TOKENS_ADDRESS_START.to_be_bytes());
+				let addr_flag = EvmAddress::from_slice(&data);
+				let addr = EvmAddress::from_low_u64_be(u64::from(symbol_0) << 32 | u64::from(symbol_1));
+
+				Some(addr_flag | addr)
+			}
+			// Token or Erc20
+			_ => EvmAddress::try_from(v).ok(),
+		}
+	}
+
+	// TODO: comment
+	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
+		let address = v.as_bytes();
+		if !address.starts_with(&[0u8; 11]) {
+			return None;
+		}
+
+		// Token
+		// MIRRORED_TOKENS_ADDRESS_START = 0x100000000
+		let mut token_prefix = [0u8; 19];
+		token_prefix[14] = 1;
+		if address.starts_with(&token_prefix) {
+			return address[19].try_into().map(CurrencyId::Token).ok();
+		}
+
+		// DexShare
+		// MIRRORED_LP_TOKENS_ADDRESS_START = 0x10000000000000000
+		let mut lp_token_prefix = [0u8; 12];
+		lp_token_prefix[11] = 1;
+		if address.starts_with(&lp_token_prefix) {
+			let left = {
+				if address[12..15] == [0u8; 3] {
+					// Token
+					address[15].try_into().map(DexShare::Token).ok()
+				} else {
+					// Erc20
+					let mut id = [0u8; 4];
+					id.copy_from_slice(&address[12..16]);
+					let id = u32::from_be_bytes(id);
+					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+				}
+			};
+			let right = {
+				if address[16..19] == [0u8; 3] {
+					// Token
+					address[19].try_into().map(DexShare::Token).ok()
+				} else {
+					// Erc20
+					let mut id = [0u8; 4];
+					id.copy_from_slice(&address[16..20]);
+					let id = u32::from_be_bytes(id);
+					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+				}
+			};
+
+			if left.is_none() || right.is_none() {
+				return None;
+			}
+			return Some(CurrencyId::DexShare(left.unwrap(), right.unwrap()));
+		}
+
+		// Erc20 does not need decode.
+		None
 	}
 }

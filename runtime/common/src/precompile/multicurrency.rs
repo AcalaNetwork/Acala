@@ -25,7 +25,7 @@ use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, resu
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
-use primitives::{currency::TokenInfo, Balance, CurrencyId, TokenSymbol};
+use primitives::{currency::TokenInfo, Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
 ///
@@ -87,10 +87,8 @@ where
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
-		let currency_id = context.caller.as_fixed_bytes()[19];
-		let currency_id = CurrencyId::Token(
-			TokenSymbol::try_from(currency_id).map_err(|_| ExitError::Other("invalid currency id".into()))?,
-		);
+		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
+			.ok_or(ExitError::Other("invalid currency id".into()))?;
 
 		log::debug!(target: "evm", "currency id: {:?}", currency_id);
 
