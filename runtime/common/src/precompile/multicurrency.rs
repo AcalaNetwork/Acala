@@ -25,7 +25,7 @@ use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, resu
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
-use primitives::{currency::TokenInfo, Balance, CurrencyId};
+use primitives::{Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
 ///
@@ -94,32 +94,28 @@ where
 
 		match action {
 			Action::QueryCurrencyId => {
-				let id = currency_id
-					.currency_id()
+				let id = CurrencyIdMapping::encode_currency_id(currency_id)
 					.ok_or_else(|| ExitError::Other("Get currency_id failed".into()))?;
-				log::debug!(target: "evm", "currency id: {:?}", id);
+				log::debug!(target: "evm", "currency id u256: {:?}", id);
 
-				Ok((ExitSucceed::Returned, vec_u8_from_u8(id), 0))
+				Ok((ExitSucceed::Returned, id.to_vec(), 0))
 			}
 			Action::QueryName => {
-				let name = currency_id
-					.name()
-					.ok_or_else(|| ExitError::Other("Get name failed".into()))?;
+				let name =
+					CurrencyIdMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;
 				log::debug!(target: "evm", "name: {:?}", name);
 
-				Ok((ExitSucceed::Returned, vec_u8_from_str(name), 0))
+				Ok((ExitSucceed::Returned, vec_u8_from_str(&name), 0))
 			}
 			Action::QuerySymbol => {
-				let symbol = currency_id
-					.symbol()
+				let symbol = CurrencyIdMapping::symbol(currency_id)
 					.ok_or_else(|| ExitError::Other("Get symbol failed".into()))?;
 				log::debug!(target: "evm", "symbol: {:?}", symbol);
 
-				Ok((ExitSucceed::Returned, vec_u8_from_str(symbol), 0))
+				Ok((ExitSucceed::Returned, vec_u8_from_str(&symbol), 0))
 			}
 			Action::QueryDecimals => {
-				let decimals = currency_id
-					.decimals()
+				let decimals = CurrencyIdMapping::decimals(currency_id)
 					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
 				log::debug!(target: "evm", "decimals: {:?}", decimals);
 
@@ -174,8 +170,8 @@ fn vec_u8_from_u8(b: u8) -> Vec<u8> {
 	be_bytes.to_vec()
 }
 
-fn vec_u8_from_str(b: &str) -> Vec<u8> {
+fn vec_u8_from_str(b: &Vec<u8>) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
-	U256::from_big_endian(b.as_bytes()).to_big_endian(&mut be_bytes[..]);
+	U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
 }

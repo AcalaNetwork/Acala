@@ -230,7 +230,7 @@ pub fn eva_evm_addr() -> EvmAddress {
 pub const ID_1: LockIdentifier = *b"1       ";
 
 pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+	EvmAddress::from_str("0000000000000000000000000000000200000000").unwrap()
 }
 
 pub fn deploy_contracts() {

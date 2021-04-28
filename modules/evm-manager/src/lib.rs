@@ -33,7 +33,10 @@ use primitives::{
 	evm::{Erc20Info, EvmAddress},
 	CurrencyId, DexShare, MIRRORED_LP_TOKENS_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
-use sp_std::convert::{TryFrom, TryInto};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	vec::Vec,
+};
 
 mod mock;
 mod tests;
@@ -123,6 +126,110 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	// Returns the EvmAddress associated with a given u32.
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress> {
 		CurrencyIdMap::<T>::get(currency_id).map(|v| v.address)
+	}
+
+	// Returns the name associated with a given CurrencyId.
+	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	// the EvmAddress must have been mapped.
+	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
+		match currency_id {
+			CurrencyId::Token(_) => currency_id.name().map(|v| v.as_bytes().to_vec()),
+			CurrencyId::DexShare(symbol_0, symbol_1) => {
+				let name_0 = match symbol_0 {
+					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
+					DexShare::Erc20(address) => {
+						let id: u32 = CurrencyId::Erc20(address)
+							.try_into()
+							.expect("CurrencyId::Erc20 into u32 is success; qed");
+						CurrencyIdMap::<T>::get(id)
+							.filter(|v| v.address == address)
+							.map(|v| v.name)
+					}
+				};
+				let name_1 = match symbol_1 {
+					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
+					DexShare::Erc20(address) => {
+						let id: u32 = CurrencyId::Erc20(address)
+							.try_into()
+							.expect("CurrencyId::Erc20 into u32 is success; qed");
+						CurrencyIdMap::<T>::get(id)
+							.filter(|v| v.address == address)
+							.map(|v| v.name)
+					}
+				};
+				if name_0.is_none() || name_1.is_none() {
+					return None;
+				}
+
+				let mut vec = Vec::new();
+				vec.extend_from_slice(&b"LP".to_vec());
+				vec.extend_from_slice(&b" ".to_vec());
+				vec.extend_from_slice(&name_0.unwrap());
+				vec.extend_from_slice(&b"-".to_vec());
+				vec.extend_from_slice(&name_1.unwrap());
+				Some(vec)
+			}
+			CurrencyId::Erc20(address) => {
+				let id: u32 = CurrencyId::Erc20(address)
+					.try_into()
+					.expect("CurrencyId::Erc20 into u32 is success; qed");
+				CurrencyIdMap::<T>::get(id)
+					.filter(|v| v.address == address)
+					.map(|v| v.name)
+			}
+		}
+	}
+
+	// Returns the symbol associated with a given CurrencyId.
+	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	// the EvmAddress must have been mapped.
+	fn symbol(currency_id: CurrencyId) -> Option<Vec<u8>> {
+		match currency_id {
+			CurrencyId::Token(_) => currency_id.symbol().map(|v| v.as_bytes().to_vec()),
+			CurrencyId::DexShare(symbol_0, symbol_1) => {
+				let token_symbol_0 = match symbol_0 {
+					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
+					DexShare::Erc20(address) => {
+						let id: u32 = CurrencyId::Erc20(address)
+							.try_into()
+							.expect("CurrencyId::Erc20 into u32 is success; qed");
+						CurrencyIdMap::<T>::get(id)
+							.filter(|v| v.address == address)
+							.map(|v| v.symbol)
+					}
+				};
+				let token_symbol_1 = match symbol_1 {
+					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
+					DexShare::Erc20(address) => {
+						let id: u32 = CurrencyId::Erc20(address)
+							.try_into()
+							.expect("CurrencyId::Erc20 into u32 is success; qed");
+						CurrencyIdMap::<T>::get(id)
+							.filter(|v| v.address == address)
+							.map(|v| v.symbol)
+					}
+				};
+				if token_symbol_0.is_none() || token_symbol_1.is_none() {
+					return None;
+				}
+
+				let mut vec = Vec::new();
+				vec.extend_from_slice(&b"LP".to_vec());
+				vec.extend_from_slice(&b"_".to_vec());
+				vec.extend_from_slice(&token_symbol_0.unwrap());
+				vec.extend_from_slice(&b"_".to_vec());
+				vec.extend_from_slice(&token_symbol_1.unwrap());
+				Some(vec)
+			}
+			CurrencyId::Erc20(address) => {
+				let id: u32 = CurrencyId::Erc20(address)
+					.try_into()
+					.expect("CurrencyId::Erc20 into u32 is success; qed");
+				CurrencyIdMap::<T>::get(id)
+					.filter(|v| v.address == address)
+					.map(|v| v.symbol)
+			}
+		}
 	}
 
 	// Returns the decimals associated with a given CurrencyId.

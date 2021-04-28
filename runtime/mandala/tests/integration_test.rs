@@ -80,11 +80,11 @@ fn last_event() -> Event {
 }
 
 pub fn erc20_address_0() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+	EvmAddress::from_str("0000000000000000000000000000000200000000").unwrap()
 }
 
 pub fn erc20_address_1() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000001").unwrap()
+	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
 }
 
 pub fn deploy_erc20_contracts() {

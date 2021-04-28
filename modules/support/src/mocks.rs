@@ -22,7 +22,10 @@ use frame_support::pallet_prelude::DispatchResult;
 use primitives::{currency::TokenInfo, evm::EvmAddress};
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
-use sp_std::convert::{TryFrom, TryInto};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	vec::Vec,
+};
 
 pub struct MockAddressMapping;
 
@@ -68,6 +71,14 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 
 	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
 		Some(EvmAddress::default())
+	}
+
+	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
+		currency_id.name().map(|v| v.as_bytes().to_vec())
+	}
+
+	fn symbol(currency_id: CurrencyId) -> Option<Vec<u8>> {
+		currency_id.symbol().map(|v| v.as_bytes().to_vec())
 	}
 
 	fn decimals(currency_id: CurrencyId) -> Option<u8> {

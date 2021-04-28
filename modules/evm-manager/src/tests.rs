@@ -262,3 +262,13 @@ fn decode_currency_id_works() {
 			assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes), None);
 		});
 }
+
+#[test]
+fn encode_evm_address_works() {
+	//TODO
+}
+
+#[test]
+fn decode_evm_address_works() {
+	//TODO
+}
