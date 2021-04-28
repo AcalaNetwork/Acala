@@ -260,6 +260,12 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 	}
 
 	fn handle_mirrored_token(address: H160) -> H160 {
+		log::debug!(
+			target: "evm",
+			"handle_mirrored_token: address: {:?}",
+			address,
+		);
+
 		let addr = address.as_bytes();
 		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
 			return address;
@@ -268,7 +274,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		// Token
 		// MIRRORED_TOKENS_ADDRESS_START = 0x100000000
 		let mut token_prefix = [0u8; 19];
-		token_prefix[14] = 1;
+		token_prefix[15] = 1;
 
 		// DexShare
 		// MIRRORED_LP_TOKENS_ADDRESS_START = 0x10000000000000000
@@ -277,7 +283,14 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 
 		if addr.starts_with(&token_prefix) || addr.starts_with(&lp_token_prefix) {
 			// Token contracts.
-			H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)
+			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
+			log::debug!(
+				target: "evm",
+				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
+				address,
+				token_address
+			);
+			token_address
 		} else {
 			address
 		}

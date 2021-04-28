@@ -347,7 +347,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 		// Token
 		// MIRRORED_TOKENS_ADDRESS_START = 0x100000000
 		let mut token_prefix = [0u8; 19];
-		token_prefix[14] = 1;
+		token_prefix[15] = 1;
 		if address.starts_with(&token_prefix) {
 			return address[19].try_into().map(CurrencyId::Token).ok();
 		}
