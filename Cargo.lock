@@ -19,7 +19,6 @@ dependencies = [
  "acala-cli",
  "acala-service",
  "futures 0.3.14",
- "mandala-runtime",
  "parity-util-mem",
 ]
 
