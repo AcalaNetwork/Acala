@@ -27,15 +27,17 @@ jobs:
         default: true
     - name: Check format
       run: cargo fmt --all -- --check
+    - name: Build
+      run: make build-all
     - name: Install clippy
       run: rustup component add clippy
     - name: Run clippy
       run: cargo clippy -- -D warnings
-    - name: Build
-      run: make build-acala
     - name: Run tests
       run: make test-all
     - name: Run test-eth
       run: make test-eth
     - name: Run benchmarking tests
       run: make test-benchmarking
+    - name: Check benchmarks
+      run: make check-benchmarks
