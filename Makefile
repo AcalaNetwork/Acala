@@ -10,12 +10,16 @@ run-eth: githooks
 toolchain:
 	./scripts/init.sh
 
+.PHONY: build
+build: githooks
+	SKIP_WASM_BUILD= cargo build
+
 .PHONY: build-full
 build-full: githooks
 	cargo build
 
-.PHONY: build-acala
-build-acala:
+.PHONY: build-all
+build-all:
 	cargo build --locked --features with-all-runtime
 
 .PHONY: check
@@ -27,15 +31,16 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
 .PHONY: check-all
-check-all: check-acala check-benchmarks
+check-all: check-runtimes check-benchmarks
 
-.PHONY: check-acala
-check-acala:
+.PHONY: check-runtimes
+check-runtimes:
 	SKIP_WASM_BUILD= cargo check --tests --all --features with-all-runtime
 
 .PHONY: check-benchmarks
 check-benchmarks:
-	SKIP_WASM_BUILD= cargo check --tests --all --features with-all-runtime --features runtime-benchmarks
+	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p mandala-runtime
+	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p karura-runtime
 
 .PHONY: check-debug
 check-debug:
@@ -50,19 +55,15 @@ test-eth: githooks
 	SKIP_WASM_BUILD= cargo test test_evm_module --features with-ethereum-compatibility -p mandala-runtime
 
 .PHONY: test-all
-test-all: test-acala test-benchmarking
+test-all: test-runtimes test-benchmarking
 
-.PHONY: test-acala
-test-acala:
+.PHONY: test-runtimes
+test-runtimes:
 	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
 
 .PHONY: test-benchmarking
 test-benchmarking:
 	SKIP_WASM_BUILD= cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
-
-.PHONY: build
-build: githooks
-	SKIP_WASM_BUILD= cargo build
 
 .PHONY: purge
 purge: target/debug/acala-dev
