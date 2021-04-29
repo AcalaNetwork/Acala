@@ -19,6 +19,8 @@
 #![cfg(test)]
 
 use codec::Encode;
+// use cumulus_primitives_core::{DownwardMessageHandler, InboundDownwardMessage,
+// XcmpMessageHandler};
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait},
@@ -27,8 +29,8 @@ use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
 	CreateTokenDeposit, CurrencyId, DSWFPalletId, EnabledTradingPairs, Event, EvmAccounts, GetNativeCurrencyId,
-	NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller, ParachainInfo, Perbill, Runtime, SevenDays,
-	System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
+	NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller, Perbill, Runtime, SevenDays, System, TokenSymbol,
+	ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_support::{
@@ -37,14 +39,26 @@ use module_support::{
 };
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
+// use polkadot_parachain::primitives::Sibling;
 pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
 use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin},
+	traits::{AccountIdConversion, BadOrigin, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 use std::str::FromStr;
+// use xcm::{
+// 	v0::{
+// 		Junction::{self, *},
+// 		MultiAsset,
+// 		MultiLocation::{self, *},
+// 		NetworkId, Order, Xcm,
+// 	},
+// 	VersionedXcm,
+// };
+
+// use primitives::currency::*;
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -1234,160 +1248,136 @@ fn test_evm_module() {
 		});
 }
 
-#[cfg(not(feature = "standalone"))]
-mod parachain_tests {
-	use super::*;
+// #[test]
+// fn receive_cross_chain_assets() {
+// 	ExtBuilder::default().build().execute_with(|| {
+// 		let dot_amount = 1000 * dollar(DOT);
 
-	use codec::Encode;
-	use cumulus_primitives_core::{DownwardMessageHandler, InboundDownwardMessage, XcmpMessageHandler};
-	use frame_support::traits::Get;
-	use polkadot_parachain::primitives::Sibling;
-	use sp_runtime::traits::Convert;
-	use xcm::{
-		v0::{
-			Junction::{self, *},
-			MultiAsset,
-			MultiLocation::{self, *},
-			NetworkId, Order, Xcm,
-		},
-		VersionedXcm,
-	};
+// 		// receive relay chain token
+// 		let msg: VersionedXcm = Xcm::ReserveAssetDeposit {
+// 			assets: vec![MultiAsset::ConcreteFungible {
+// 				id: MultiLocation::X1(Junction::Parent),
+// 				amount: dot_amount,
+// 			}],
+// 			effects: vec![Order::DepositAsset {
+// 				assets: vec![MultiAsset::All],
+// 				dest: MultiLocation::X1(Junction::AccountId32 {
+// 					network: NetworkId::Named("acala".into()),
+// 					id: ALICE,
+// 				}),
+// 			}],
+// 		}
+// 		.into();
+// 		XcmHandler::handle_downward_message(InboundDownwardMessage {
+// 			sent_at: 10,
+// 			msg: msg.encode(),
+// 		});
+// 		assert_eq!(Tokens::free_balance(DOT, &ALICE.into()), dot_amount);
 
-	use mandala_runtime::{CurrencyIdConvert, Tokens, XcmHandler};
+// 		let sibling_para_id = 5000;
+// 		let sibling_parachain_acc: AccountId = Sibling::from(sibling_para_id).into_account();
 
-	use primitives::currency::*;
+// 		// receive owned token
+// 		let aca_amount = 1000 * dollar(ACA);
+// 		assert_ok!(Currencies::deposit(ACA, &sibling_parachain_acc, 1100 * dollar(ACA)));
 
-	#[test]
-	fn receive_cross_chain_assets() {
-		ExtBuilder::default().build().execute_with(|| {
-			let dot_amount = 1000 * dollar(DOT);
+// 		let para_id: u32 = ParachainInfo::get().into();
+// 		let msg1: VersionedXcm = Xcm::WithdrawAsset {
+// 			assets: vec![MultiAsset::ConcreteFungible {
+// 				id: MultiLocation::X3(
+// 					Junction::Parent,
+// 					Junction::Parachain { id: para_id },
+// 					Junction::GeneralKey(CurrencyId::Token(TokenSymbol::ACA).encode()),
+// 				),
+// 				amount: aca_amount,
+// 			}],
+// 			effects: vec![Order::DepositAsset {
+// 				assets: vec![MultiAsset::All],
+// 				dest: MultiLocation::X1(Junction::AccountId32 {
+// 					network: NetworkId::Named("acala".into()),
+// 					id: ALICE,
+// 				}),
+// 			}],
+// 		}
+// 		.into();
+// 		XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg1);
+// 		assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc), 100 * dollar(ACA));
+// 		assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
+// 	});
+// }
 
-			// receive relay chain token
-			let msg: VersionedXcm = Xcm::ReserveAssetDeposit {
-				assets: vec![MultiAsset::ConcreteFungible {
-					id: MultiLocation::X1(Junction::Parent),
-					amount: dot_amount,
-				}],
-				effects: vec![Order::DepositAsset {
-					assets: vec![MultiAsset::All],
-					dest: MultiLocation::X1(Junction::AccountId32 {
-						network: NetworkId::Named("acala".into()),
-						id: ALICE,
-					}),
-				}],
-			}
-			.into();
-			XcmHandler::handle_downward_message(InboundDownwardMessage {
-				sent_at: 10,
-				msg: msg.encode(),
-			});
-			assert_eq!(Tokens::free_balance(DOT, &ALICE.into()), dot_amount);
+// #[test]
+// fn currency_id_convert() {
+// 	ExtBuilder::default().build().execute_with(|| {
+// 		let id: u32 = ParachainInfo::get().into();
 
-			let sibling_para_id = 5000;
-			let sibling_parachain_acc: AccountId = Sibling::from(sibling_para_id).into_account();
+// 		assert_eq!(CurrencyIdConvert::convert(DOT), Some(X1(Parent)));
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(ACA),
+// 			Some(X3(Parent, Parachain { id }, GeneralKey(ACA.encode())))
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(AUSD),
+// 			Some(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode())))
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(LDOT),
+// 			Some(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode())))
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(RENBTC),
+// 			Some(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode())))
+// 		);
+// 		assert_eq!(CurrencyIdConvert::convert(KAR), None);
+// 		assert_eq!(CurrencyIdConvert::convert(KUSD), None);
+// 		assert_eq!(CurrencyIdConvert::convert(KSM), None);
+// 		assert_eq!(CurrencyIdConvert::convert(LKSM), None);
 
-			// receive owned token
-			let aca_amount = 1000 * dollar(ACA);
-			assert_ok!(Currencies::deposit(ACA, &sibling_parachain_acc, 1100 * dollar(ACA)));
+// 		assert_eq!(CurrencyIdConvert::convert(X1(Parent)), Some(DOT));
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(ACA.encode()))),
+// 			Some(ACA)
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode()))),
+// 			Some(AUSD)
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode()))),
+// 			Some(LDOT)
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode()))),
+// 			Some(RENBTC)
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KAR.encode()))),
+// 			None
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KUSD.encode()))),
+// 			None
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KSM.encode()))),
+// 			None
+// 		);
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LKSM.encode()))),
+// 			None
+// 		);
 
-			let para_id: u32 = ParachainInfo::get().into();
-			let msg1: VersionedXcm = Xcm::WithdrawAsset {
-				assets: vec![MultiAsset::ConcreteFungible {
-					id: MultiLocation::X3(
-						Junction::Parent,
-						Junction::Parachain { id: para_id },
-						Junction::GeneralKey(CurrencyId::Token(TokenSymbol::ACA).encode()),
-					),
-					amount: aca_amount,
-				}],
-				effects: vec![Order::DepositAsset {
-					assets: vec![MultiAsset::All],
-					dest: MultiLocation::X1(Junction::AccountId32 {
-						network: NetworkId::Named("acala".into()),
-						id: ALICE,
-					}),
-				}],
-			}
-			.into();
-			XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg1);
-			assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc), 100 * dollar(ACA));
-			assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
-		});
-	}
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id: id + 1 }, GeneralKey(ACA.encode()))),
+// 			None
+// 		);
 
-	#[test]
-	fn currency_id_convert() {
-		ExtBuilder::default().build().execute_with(|| {
-			let id: u32 = ParachainInfo::get().into();
-
-			assert_eq!(CurrencyIdConvert::convert(DOT), Some(X1(Parent)));
-			assert_eq!(
-				CurrencyIdConvert::convert(ACA),
-				Some(X3(Parent, Parachain { id }, GeneralKey(ACA.encode())))
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(AUSD),
-				Some(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode())))
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(LDOT),
-				Some(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode())))
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(RENBTC),
-				Some(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode())))
-			);
-			assert_eq!(CurrencyIdConvert::convert(KAR), None);
-			assert_eq!(CurrencyIdConvert::convert(KUSD), None);
-			assert_eq!(CurrencyIdConvert::convert(KSM), None);
-			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
-
-			assert_eq!(CurrencyIdConvert::convert(X1(Parent)), Some(DOT));
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(ACA.encode()))),
-				Some(ACA)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode()))),
-				Some(AUSD)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode()))),
-				Some(LDOT)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode()))),
-				Some(RENBTC)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KAR.encode()))),
-				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KUSD.encode()))),
-				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KSM.encode()))),
-				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LKSM.encode()))),
-				None
-			);
-
-			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain { id: id + 1 }, GeneralKey(ACA.encode()))),
-				None
-			);
-
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiAsset::ConcreteFungible {
-					id: X3(Parent, Parachain { id }, GeneralKey(ACA.encode())),
-					amount: 1
-				}),
-				Some(ACA)
-			);
-		});
-	}
-}
+// 		assert_eq!(
+// 			CurrencyIdConvert::convert(MultiAsset::ConcreteFungible {
+// 				id: X3(Parent, Parachain { id }, GeneralKey(ACA.encode())),
+// 				amount: 1
+// 			}),
+// 			Some(ACA)
+// 		);
+// 	});
+// }

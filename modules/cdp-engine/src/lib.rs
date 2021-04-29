@@ -43,7 +43,7 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Bounded, Convert, Hash, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{BlakeTwo256, Bounded, Convert, Hash, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},

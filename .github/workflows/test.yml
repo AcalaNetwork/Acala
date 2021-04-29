@@ -32,7 +32,7 @@ jobs:
     - name: Run clippy
       run: cargo clippy -- -D warnings
     - name: Build
-      run: make build-all
+      run: make build-acala
     - name: Run tests
       run: make test-all
     - name: Run test-eth

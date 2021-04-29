@@ -29,7 +29,11 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup, FixedPointNumber, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{IdentityLookup, One},
+	Perbill,
+};
 use sp_std::cell::RefCell;
 use support::{mocks::MockAddressMapping, Ratio};
 
