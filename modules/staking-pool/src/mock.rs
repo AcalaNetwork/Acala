@@ -28,7 +28,7 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{CheckedAdd, CheckedMul, CheckedSub, IdentityLookup},
+	traits::{CheckedAdd, CheckedMul, CheckedSub, IdentityLookup, One as OneT},
 	FixedPointOperand,
 };
 use sp_std::cell::RefCell;

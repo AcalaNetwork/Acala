@@ -23,7 +23,10 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
-use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+use sp_runtime::{
+	traits::{BadOrigin, Zero},
+	FixedPointNumber,
+};
 
 #[test]
 fn get_price_from_oracle() {

@@ -30,7 +30,7 @@ use mock::{
 	AUSD, BOB, DOT,
 };
 use orml_traits::MultiCurrency;
-use sp_runtime::testing::TestXt;
+use sp_runtime::{testing::TestXt, traits::One};
 
 const CALL: &<Runtime as frame_system::Config>::Call =
 	&Call::Currencies(module_currencies::Call::transfer(BOB, AUSD, 12));

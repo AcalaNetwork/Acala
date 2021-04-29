@@ -86,7 +86,7 @@ fn should_read_name() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_eq!(
-				EvmBridgeModule::name(InvokeContext {
+				<EvmBridgeModule as EVMBridgeTrait<_, _>>::name(InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
 					origin: Default::default(),

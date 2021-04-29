@@ -31,7 +31,7 @@ use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{StaticLookup, UniqueSaturatedInto},
+	traits::{One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;

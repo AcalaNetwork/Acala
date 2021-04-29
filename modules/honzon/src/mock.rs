@@ -28,7 +28,7 @@ use primitives::{Balance, Moment, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{AccountIdConversion, IdentityLookup},
+	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 	FixedPointNumber,
 };
 use sp_std::cell::RefCell;

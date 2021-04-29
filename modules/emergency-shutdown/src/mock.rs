@@ -28,7 +28,7 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, Convert, IdentityLookup},
+	traits::{AccountIdConversion, Convert, IdentityLookup, One as OneT},
 	DispatchResult,
 };
 use support::{AuctionManager, Price, PriceProvider};
