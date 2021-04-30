@@ -54,9 +54,6 @@ test: githooks
 test-eth: githooks
 	SKIP_WASM_BUILD= cargo test test_evm_module --features with-ethereum-compatibility -p mandala-runtime
 
-.PHONY: test-all
-test-all: test-runtimes test-benchmarking
-
 .PHONY: test-runtimes
 test-runtimes:
 	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
@@ -64,6 +61,9 @@ test-runtimes:
 .PHONY: test-benchmarking
 test-benchmarking:
 	SKIP_WASM_BUILD= cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
+
+.PHONY: test-all
+test-all: test-runtimes test-eth test-benchmarking
 
 .PHONY: purge
 purge: target/debug/acala-dev
