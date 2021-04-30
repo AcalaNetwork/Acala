@@ -66,6 +66,7 @@ pub mod module {
 		ExecutionFatal,
 		/// Execution error
 		ExecutionError,
+		/// Invalid return value
 		InvalidReturnValue,
 	}
 
@@ -212,10 +213,7 @@ impl<T: Config> Pallet<T> {
 		// the corresponding parameter or return value.
 		// - part 2: 32 byte, string length
 		// - part 3: string data
-		ensure!(
-			output.len() >= 64 && output.len() % 32 == 0,
-			Error::<T>::InvalidReturnValue
-		);
+		ensure!(output.len() >= 64, Error::<T>::InvalidReturnValue);
 
 		let offset = U256::from_big_endian(&output[0..32]);
 		let length = U256::from_big_endian(&output[offset.as_usize()..offset.as_usize() + 32]);
