@@ -96,23 +96,17 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				if let Some(erc20_info) = maybe_erc20_info.as_mut() {
 					ensure!(erc20_info.address == address, Error::<T>::CurrencyIdExisted);
 				} else {
+					let invoke_context = InvokeContext {
+						contract: address,
+						sender: Default::default(),
+						origin: Default::default(),
+					};
+
 					let info = Erc20Info {
 						address,
-						name: T::EVMBridge::name(InvokeContext {
-							contract: address,
-							sender: Default::default(),
-							origin: Default::default(),
-						})?,
-						symbol: T::EVMBridge::symbol(InvokeContext {
-							contract: address,
-							sender: Default::default(),
-							origin: Default::default(),
-						})?,
-						decimals: T::EVMBridge::decimals(InvokeContext {
-							contract: address,
-							sender: Default::default(),
-							origin: Default::default(),
-						})?,
+						name: T::EVMBridge::name(invoke_context)?,
+						symbol: T::EVMBridge::symbol(invoke_context)?,
+						decimals: T::EVMBridge::decimals(invoke_context)?,
 					};
 
 					*maybe_erc20_info = Some(info);

@@ -312,8 +312,8 @@ impl TryFrom<CurrencyId> for EvmAddress {
 	type Error = ();
 
 	fn try_from(val: CurrencyId) -> Result<Self, Self::Error> {
-		let address = match val {
-			CurrencyId::Token(_) => Some(EvmAddress::from_low_u64_be(
+		match val {
+			CurrencyId::Token(_) => Ok(EvmAddress::from_low_u64_be(
 				MIRRORED_TOKENS_ADDRESS_START | u64::from(val.currency_id().unwrap()),
 			)),
 			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
@@ -331,12 +331,10 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				let addr_flag = EvmAddress::from_slice(&data);
 				let addr = EvmAddress::from_low_u64_be(u64::from(currency_id_0) << 32 | u64::from(currency_id_1));
 
-				Some(addr_flag | addr)
+				Ok(addr_flag | addr)
 			}
-			CurrencyId::Erc20(address) => Some(address),
-		};
-
-		address.ok_or(())
+			CurrencyId::Erc20(address) => Ok(address),
+		}
 	}
 }
 
