@@ -44,7 +44,8 @@ impl AddressMapping<AccountId32> for MockAddressMapping {
 	}
 
 	fn get_default_evm_address(account_id: &AccountId32) -> H160 {
-		H160::from_slice(account_id.as_ref())
+		let slice: &[u8] = account_id.as_ref();
+		H160::from_slice(&slice[0..20])
 	}
 
 	fn get_or_create_evm_address(account_id: &AccountId32) -> H160 {

@@ -21,7 +21,7 @@
 use crate::{
 	precompiles::Precompiles,
 	runner::storage_meter::{StorageMeter, StorageMeterHandler},
-	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, CodeInfos, Codes, Config, ContractInfo, Error, Event, Log,
 	MergeAccount, Pallet, Vicinity,
 };
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
@@ -426,13 +426,25 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		let source = T::AddressMapping::get_account_id(&address);
 		let dest = T::AddressMapping::get_account_id(&target);
 
-		let size = Pallet::<T>::remove_account(&address)?;
+		let size = Accounts::<T>::get(address)
+			.and_then(|a| a.contract_info)
+			.and_then(|info| CodeInfos::<T>::get(info.code_hash))
+			.map(|info| info.code_size)
+			.unwrap_or_default();
 
 		self.storage_meter
 			.refund(size.saturating_add(T::NewContractExtraBytes::get()))
 			.map_err(|_| ExitError::Other("RefundStorageError".into()))?;
 
-		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("MergeAccountError".into()))
+		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("MergeAccountError".into()))?;
+
+		let res = frame_system::Pallet::<T>::dec_providers(&T::AddressMapping::get_account_id(&address));
+		if res == Ok(frame_system::DecRefStatus::Reaped) {
+			Ok(())
+		} else {
+			let err: &str = Error::<T>::CannotKillContract.into();
+			Err(ExitError::Other(err.into()))
+		}
 	}
 
 	fn create(

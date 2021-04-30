@@ -937,6 +937,11 @@ fn should_selfdestruct() {
 			Error::<Test>::NoPermission
 		);
 		assert_ok!(EVM::selfdestruct(Origin::signed(alice_account_id), contract_address));
+
+		let contract_account_id = T::AddressMapping::get_account_id(&contract_address);
+
+		assert!(!System::account_exists(&contract_account_id));
+		assert!(!Accounts::contains(contract_address));
 	});
 }
 

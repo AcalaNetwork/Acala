@@ -387,6 +387,8 @@ pub mod module {
 		OutOfStorage,
 		/// Charge fee failed
 		ChargeFeeFailed,
+		/// Contract cannot be killed due to reference count
+		CannotKillContract,
 	}
 
 	#[pallet::pallet]
@@ -958,37 +960,28 @@ impl<T: Config> Pallet<T> {
 
 	/// Selfdestruct a contract at a given address.
 	fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
-		Accounts::<T>::mutate_exists(contract, |maybe_account_info| -> DispatchResult {
-			let account_info = maybe_account_info.take().ok_or(Error::<T>::ContractNotFound)?;
-			let contract_info = account_info
-				.contract_info
-				.as_ref()
-				.ok_or(Error::<T>::ContractNotFound)?;
+		let account_info = Self::accounts(contract).ok_or(Error::<T>::ContractNotFound)?;
+		let contract_info = account_info
+			.contract_info
+			.as_ref()
+			.ok_or(Error::<T>::ContractNotFound)?;
 
-			ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
-			ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+		ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
+		ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
-			AccountStorages::<T>::remove_prefix(contract);
+		let contract_account_id = T::AddressMapping::get_account_id(&contract);
+		T::Currency::unreserve(
+			&contract_account_id,
+			T::Currency::reserved_balance(&contract_account_id),
+		);
+		T::MergeAccount::merge_account(&contract_account_id, &who)?;
 
-			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
-				if let Some(code_info) = maybe_code_info.as_mut() {
-					code_info.ref_count = code_info.ref_count.saturating_sub(1);
-					if code_info.ref_count == 0 {
-						Codes::<T>::remove(&contract_info.code_hash);
-						*maybe_code_info = None;
-					}
-				}
-			});
-
-			let contract_account_id = T::AddressMapping::get_account_id(&contract);
-			T::Currency::unreserve(
-				&contract_account_id,
-				T::Currency::reserved_balance(&contract_account_id),
-			);
-			T::MergeAccount::merge_account(&contract_account_id, &who)?;
-
-			Ok(())
-		})?;
+		// should should trigger CallKillAccount and remove account
+		let res = frame_system::Pallet::<T>::dec_providers(&contract_account_id);
+		ensure!(
+			res == Ok(frame_system::DecRefStatus::Reaped),
+			Error::<T>::CannotKillContract
+		);
 
 		Ok(())
 	}
