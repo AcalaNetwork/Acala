@@ -46,6 +46,7 @@ module-dex = { path = "../../modules/dex" }
 [features]
 default = ["std"]
 std = [
+	"num_enum/std",
 	"serde",
 	"codec/std",
 	"sp-core/std",
