@@ -88,7 +88,7 @@ where
 
 		let action = input.action()?;
 		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
-			.ok_or(ExitError::Other("invalid currency id".into()))?;
+			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
 
 		log::debug!(target: "evm", "currency id: {:?}", currency_id);
 
@@ -170,7 +170,7 @@ fn vec_u8_from_u8(b: u8) -> Vec<u8> {
 	be_bytes.to_vec()
 }
 
-fn vec_u8_from_str(b: &Vec<u8>) -> Vec<u8> {
+fn vec_u8_from_str(b: &[u8]) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()

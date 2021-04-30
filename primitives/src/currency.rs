@@ -318,15 +318,13 @@ impl TryFrom<CurrencyId> for EvmAddress {
 			)),
 			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
 				let currency_id_0 = match token_symbol_0 {
-					DexShare::Token(token) => CurrencyId::Token(token).currency_id(),
-					DexShare::Erc20(_) => None,
-				}
-				.ok_or_else(|| ())?;
+					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
+					DexShare::Erc20(_) => Err(()),
+				}?;
 				let currency_id_1 = match token_symbol_1 {
-					DexShare::Token(token) => CurrencyId::Token(token).currency_id(),
-					DexShare::Erc20(_) => None,
-				}
-				.ok_or_else(|| ())?;
+					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
+					DexShare::Erc20(_) => Err(()),
+				}?;
 
 				let mut data = [0u8; 20];
 				data[4..20].copy_from_slice(&MIRRORED_LP_TOKENS_ADDRESS_START.to_be_bytes());
