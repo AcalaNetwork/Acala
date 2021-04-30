@@ -19,11 +19,12 @@
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::{H160, U256};
-use sp_std::{borrow::Cow, convert::TryFrom, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
 
 use super::input::{Input, InputT};
+use num_enum::TryFromPrimitive;
 use primitives::NFTBalance;
 
 /// The `NFT` impl precompile.
@@ -38,23 +39,12 @@ pub struct NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, NFT)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	QueryBalance,
-	QueryOwner,
-	Transfer,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::QueryBalance),
-			1 => Ok(Action::QueryOwner),
-			2 => Ok(Action::Transfer),
-			_ => Err(()),
-		}
-	}
+	QueryBalance = 0,
+	QueryOwner = 1,
+	Transfer = 2,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, NFT> Precompile

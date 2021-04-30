@@ -18,9 +18,10 @@
 
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use num_enum::TryFromPrimitive;
 use primitives::CurrencyId;
 use sp_core::U256;
-use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT};
 use module_support::{
@@ -38,19 +39,10 @@ pub struct OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceP
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, PriceProvider)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	GetPrice,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::GetPrice),
-			_ => Err(()),
-		}
-	}
+	GetPrice = 0,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider> Precompile

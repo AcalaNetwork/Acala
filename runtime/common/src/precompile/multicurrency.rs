@@ -20,11 +20,12 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::U256;
-use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
+use num_enum::TryFromPrimitive;
 use primitives::{Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
@@ -40,23 +41,12 @@ pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping,
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	QueryTotalIssuance,
-	QueryBalance,
-	Transfer,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::QueryTotalIssuance),
-			1 => Ok(Action::QueryBalance),
-			2 => Ok(Action::Transfer),
-			_ => Err(()),
-		}
-	}
+	QueryTotalIssuance = 0,
+	QueryBalance = 1,
+	Transfer = 2,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
