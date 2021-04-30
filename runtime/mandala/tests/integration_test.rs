@@ -1248,6 +1248,108 @@ fn test_evm_module() {
 		});
 }
 
+#[test]
+fn should_not_kill_contract_on_transfer_all() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), ACA, 1_000 * dollar(ACA)),
+			(bob(), ACA, 1_000 * dollar(ACA)),
+		])
+		.build()
+		.execute_with(|| {
+			// pragma solidity ^0.5.0;
+			//
+			// contract Test {
+			// 	 constructor() public payable {
+			// 	 }
+			// }
+			let code = hex_literal::hex!("6080604052603e8060116000396000f3fe6080604052600080fdfea265627a7a72315820e816b34c9ce8a2446f3d059b4907b4572645fde734e31dabf5465c801dcb44a964736f6c63430005110032").to_vec();
+
+			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(ACA), 1000000000, 1000000000));
+
+			let contract = if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+				address
+			} else {
+				panic!("deploy contract failed");
+			};
+
+			assert_eq!(Balances::free_balance(MockAddressMapping::get_account_id(&contract)), 2 * dollar(ACA));
+
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			assert_eq!(Balances::free_balance(alice()), 997_999_899_380_000);
+
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert_eq!(Balances::free_balance(alice()), 998 * dollar(ACA));
+
+			assert_ok!(Currencies::transfer(
+				Origin::signed(MockAddressMapping::get_account_id(&contract)),
+				alice().into(),
+				ACA,
+				2 * dollar(ACA)
+			));
+
+			assert_eq!(Balances::free_balance(MockAddressMapping::get_account_id(&contract)), 0);
+
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			assert_eq!(Balances::free_balance(alice()), 999_999_899_380_000);
+
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert_eq!(Balances::free_balance(alice()), 1000 * dollar(ACA));
+
+			// assert the contract account is not purged
+			assert!(EVM::accounts(contract).is_some());
+		});
+}
+
+#[test]
+fn should_not_kill_contract_on_transfer_all_tokens() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), ACA, 1_000 * dollar(ACA)),
+			(alice(), AUSD, 1_000 * dollar(AUSD)),
+			(bob(), ACA, 1_000 * dollar(ACA)),
+		])
+		.build()
+		.execute_with(|| {
+			// pragma solidity ^0.5.0;
+			//
+			// contract Test {
+			// 	 constructor() public payable {
+			// 	 }
+			// }
+			let code = hex_literal::hex!("6080604052603e8060116000396000f3fe6080604052600080fdfea265627a7a72315820e816b34c9ce8a2446f3d059b4907b4572645fde734e31dabf5465c801dcb44a964736f6c63430005110032").to_vec();
+			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 1000000000));
+			let contract = if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+				address
+			} else {
+				panic!("deploy contract failed");
+			};
+			assert_ok!(Currencies::transfer(
+				Origin::signed(alice()),
+				MockAddressMapping::get_account_id(&contract).into(),
+				AUSD,
+				2 * dollar(AUSD)
+			));
+
+			assert_eq!(Currencies::free_balance(AUSD, &alice()), 998 * dollar(AUSD));
+			assert_eq!(Currencies::free_balance(AUSD, &MockAddressMapping::get_account_id(&contract)), 2 * dollar(AUSD));
+			assert_eq!(EVM::accounts(contract).unwrap().nonce, 1);
+			assert_ok!(Currencies::transfer(
+				Origin::signed(MockAddressMapping::get_account_id(&contract)),
+				alice().into(),
+				AUSD,
+				2 * dollar(AUSD)
+			));
+			assert_eq!(Currencies::free_balance(AUSD, &MockAddressMapping::get_account_id(&contract)), 0);
+
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert_eq!(Currencies::free_balance(AUSD, &alice()), 1000 * dollar(AUSD));
+
+			// assert the contract account is not purged
+			assert!(EVM::accounts(contract).is_some());
+		});
+}
+
 // #[test]
 // fn receive_cross_chain_assets() {
 // 	ExtBuilder::default().build().execute_with(|| {
