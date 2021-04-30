@@ -33,9 +33,9 @@ jobs:
       run: rustup component add clippy
     - name: Run clippy
       run: cargo clippy -- -D warnings
-    - name: Run tests
-      run: make test-all
-    - name: Run test-eth
+    - name: Run runtime tests
+      run: make test-runtimes
+    - name: Run eth tests
       run: make test-eth
     - name: Run benchmarking tests
       run: make test-benchmarking
