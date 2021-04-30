@@ -25,7 +25,7 @@ use frame_benchmarking::account;
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
-use sp_runtime::FixedPointNumber;
+use sp_runtime::traits::One;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;

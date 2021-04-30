@@ -28,7 +28,7 @@ use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{AccountIdLookup, StaticLookup, UniqueSaturatedInto},
+	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;

@@ -18,7 +18,10 @@
 
 use frame_support::parameter_types;
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use sp_runtime::{traits::Saturating, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{
+	traits::{One, Saturating, Zero},
+	FixedPointNumber, FixedPointOperand,
+};
 
 parameter_types! {
 	pub FeeRateMatrix: [[Rate; 11]; 11] = [

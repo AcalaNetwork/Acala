@@ -22,7 +22,7 @@ use acala_primitives::{AccountId, AccountPublic, Balance, Nonce};
 use module_evm::GenesisAccount;
 use sc_chain_spec::ChainSpecExtension;
 use serde::{Deserialize, Serialize};
-use sp_consensus_babe::AuthorityId as BabeId;
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{bytes::from_hex, sr25519, Bytes, Pair, Public, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::IdentifyAccount;
@@ -74,18 +74,18 @@ where
 }
 
 /// Generate an Aura authority key.
-pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId) {
+pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, AuraId) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
-		get_from_seed::<BabeId>(seed),
+		get_from_seed::<AuraId>(seed),
 	)
 }
 
 /// Returns `evm_genesis_accounts`
 pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
-	let contracts_json = &include_bytes!("../../../../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
 	for (_, address, code_string) in contracts {

@@ -21,10 +21,10 @@ use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
-use sp_consensus_babe::AuthorityId as BabeId;
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::crypto::UncheckedInto;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{FixedPointNumber, FixedU128};
+use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 
 use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
@@ -119,12 +119,12 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 
 fn karura_genesis(
 	wasm_binary: &[u8],
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, AuraConfig, Balance, BalancesConfig, BlockNumber,
 		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SudoConfig, SystemConfig,
@@ -135,7 +135,7 @@ fn karura_genesis(
 	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
-	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-KAR.json")[..];
+	let airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-KAR.json")[..];
 	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
 	let initial_balance: u128 = 1_000_000 * dollar(KAR);
@@ -171,7 +171,7 @@ fn karura_genesis(
 		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
-	let vesting_list_json = &include_bytes!("../../../../../resources/karura-vesting-KAR.json")[..];
+	let vesting_list_json = &include_bytes!("../../../../resources/karura-vesting-KAR.json")[..];
 	let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
 		serde_json::from_slice(vesting_list_json).unwrap();
 
@@ -194,6 +194,9 @@ fn karura_genesis(
 		},
 		pallet_balances: BalancesConfig { balances },
 		pallet_sudo: SudoConfig { key: root_key.clone() },
+		pallet_aura: AuraConfig {
+			authorities: initial_authorities.iter().map(|x| (x.3.clone())).collect(),
+		},
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],

@@ -26,7 +26,11 @@ use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, DispatchError, FixedPointNumber};
+use sp_runtime::{
+	testing::Header,
+	traits::{IdentityLookup, One as OneT, Zero},
+	DispatchError, FixedPointNumber,
+};
 use support::{mocks::MockCurrencyIdMapping, ExchangeRate, Ratio};
 
 pub type AccountId = u128;

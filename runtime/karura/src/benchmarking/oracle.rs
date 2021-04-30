@@ -16,10 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AcalaDataProvider, AcalaOracle, CollateralCurrencyIds, FixedPointNumber, Origin, Price, Runtime, System};
+use crate::{AcalaDataProvider, AcalaOracle, CollateralCurrencyIds, Origin, Price, Runtime, System};
 
 use frame_support::traits::OnFinalize;
 use orml_benchmarking::runtime_benchmarks_instance;
+use sp_runtime::traits::One;
 use sp_std::prelude::*;
 
 runtime_benchmarks_instance! {

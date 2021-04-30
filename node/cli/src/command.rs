@@ -380,6 +380,7 @@ pub fn run() -> sc_cli::Result<()> {
 			let runner = cli.create_runner(&*cli.run)?;
 
 			let chain_spec = &runner.config().chain_spec;
+			let is_mandala_dev = chain_spec.is_mandala_dev();
 
 			set_default_ss58_version(chain_spec);
 
@@ -390,6 +391,13 @@ pub fn run() -> sc_cli::Result<()> {
 				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
 				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
 				let para_id = extension.map(|e| e.para_id);
+				let collator = cli.run.base.validator || cli.collator;
+
+				if is_mandala_dev {
+					return service::mandala_dev(config, cli.instant_sealing).map_err(Into::into);
+				} else if cli.instant_sealing {
+					return Err("Instant sealing can be turned on only in `--dev` mode".into());
+				}
 
 				let polkadot_cli = RelayChainCli::new(
 					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
@@ -409,7 +417,6 @@ pub fn run() -> sc_cli::Result<()> {
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
-				let collator = cli.run.base.validator || cli.collator;
 
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);

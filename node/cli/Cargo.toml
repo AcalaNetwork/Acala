@@ -23,11 +23,11 @@ polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = 
 polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 
-inspect = { package = "acala-inspect", path = "../../../inspect" }
+inspect = { package = "acala-inspect", path = "../../inspect" }
 service = { package = "acala-service", path = "../service", default-features = false, optional = true }
 
 [build-dependencies]
-orml-build-script-utils = { path = "../../../orml/build-script-utils"}
+orml-build-script-utils = { path = "../../orml/build-script-utils"}
 
 [features]
 default = [ "wasmtime", "cli", "with-mandala-runtime" ]

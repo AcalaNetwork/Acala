@@ -21,10 +21,10 @@ use hex_literal::hex;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
-use sp_consensus_babe::AuthorityId as BabeId;
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::crypto::UncheckedInto;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{FixedPointNumber, FixedU128};
+use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 
 use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
@@ -119,13 +119,13 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 
 fn acala_genesis(
 	wasm_binary: &[u8],
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig,
-		BlockNumber, CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, AuraConfig, Balance, BalancesConfig,
+		BandOracleConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
 		ParachainInfoConfig, RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig,
@@ -137,7 +137,7 @@ fn acala_genesis(
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
-	let airdrop_accounts_json = &include_bytes!("../../../../../resources/mandala-airdrop-ACA.json")[..];
+	let airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
 	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
@@ -173,7 +173,7 @@ fn acala_genesis(
 		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
-	let vesting_list_json = &include_bytes!("../../../../../resources/acala-vesting-ACA.json")[..];
+	let vesting_list_json = &include_bytes!("../../../../resources/acala-vesting-ACA.json")[..];
 	let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
 		serde_json::from_slice(vesting_list_json).unwrap();
 
@@ -197,6 +197,9 @@ fn acala_genesis(
 		pallet_indices: IndicesConfig { indices: vec![] },
 		pallet_balances: BalancesConfig { balances },
 		pallet_sudo: SudoConfig { key: root_key.clone() },
+		pallet_aura: AuraConfig {
+			authorities: initial_authorities.iter().map(|x| (x.3.clone())).collect(),
+		},
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],

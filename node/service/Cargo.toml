@@ -1,5 +1,5 @@
 [package]
-name = "acala-dev-service"
+name = "acala-service"
 version = "0.8.0"
 authors = ["Acala Developers"]
 edition = "2018"
@@ -9,9 +9,13 @@ hex-literal = "0.3.1"
 serde = { version = "1.0.124", features = ["derive"] }
 serde_json = "1.0.64"
 codec = { package = "parity-scale-codec", version = "2.0.0" }
+
+jsonrpc-core = "15.1.0"
+
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -23,15 +27,18 @@ sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "roco
 sc-service = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-executor = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-consensus-manual-seal = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-consensus-slots = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-network = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-trie = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https://github.com/paritytech/substrate", branch = "rococo-v1"}
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -43,22 +50,30 @@ sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch 
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
-module-evm = { path = "../../../modules/evm" }
-module-staking-pool = { path = "../../../modules/staking-pool" }
-module-staking-pool-rpc = { path = "../../../modules/staking-pool/rpc" }
-module-nft = { path = "../../../modules/nft" }
-orml-oracle-rpc = { path = "../../../orml/oracle/rpc" }
-acala-primitives = { path = "../../../primitives" }
-acala-rpc = { path = "../../../rpc", features = ["standalone"]}
-module-evm-rpc-runtime-api = { path = "../../../modules/evm/rpc/runtime_api" }
+cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
+cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 
-runtime-common = { path = "../../../runtime/common" }
-mandala-runtime = { path = "../../../runtime/mandala", features = ["standalone"], optional = true }
-karura-runtime = { path = "../../../runtime/karura", optional = true }
-acala-runtime = { path = "../../../runtime/acala", optional = true }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 
-[dev-dependencies]
-sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
+module-evm = { path = "../../modules/evm" }
+module-staking-pool = { path = "../../modules/staking-pool" }
+module-staking-pool-rpc = { path = "../../modules/staking-pool/rpc" }
+module-nft = { path = "../../modules/nft" }
+orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
+acala-primitives = { path = "../../primitives" }
+acala-rpc = { path = "../../rpc" }
+module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api" }
+
+runtime-common = { path = "../../runtime/common" }
+mandala-runtime = { path = "../../runtime/mandala", optional = true }
+karura-runtime = { path = "../../runtime/karura", optional = true }
+acala-runtime = { path = "../../runtime/acala", optional = true }
 
 [features]
 default = ["std", "with-mandala-runtime"]
@@ -67,10 +82,10 @@ runtime-benchmarks = [
 	"mandala-runtime/runtime-benchmarks",
 	"karura-runtime/runtime-benchmarks",
 	"acala-runtime/runtime-benchmarks",
+	"polkadot-service/runtime-benchmarks",
 ]
 with-mandala-runtime = [
 	"mandala-runtime",
-	"mandala-runtime/standalone",
 ]
 with-karura-runtime = [
 	"karura-runtime",
@@ -82,7 +97,4 @@ with-all-runtime = [
 	"with-mandala-runtime",
 	"with-karura-runtime",
 	"with-acala-runtime",
-]
-with-ethereum-compatibility = [
-	"mandala-runtime/with-ethereum-compatibility"
 ]
