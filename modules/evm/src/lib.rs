@@ -854,6 +854,8 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
+		frame_system::Pallet::<T>::inc_providers(&T::AddressMapping::get_account_id(address));
+
 		Ok(())
 	}
 
