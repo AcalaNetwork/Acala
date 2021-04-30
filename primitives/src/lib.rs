@@ -154,12 +154,12 @@ pub const PRECOMPILE_ADDRESS_START: u64 = 0x400;
 /// Predeployed system contracts (except Mirrored ERC20)
 /// 0x800 - 0x1000
 pub const PREDEPLOY_ADDRESS_START: u64 = 0x800;
-/// Mirrored Tokens
-/// 0x100000000
-pub const MIRRORED_TOKENS_ADDRESS_START: u64 = 0x100000000;
-/// Mirrored NFT
-/// 0x200000000
-pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x200000000;
+/// Mirrored Tokens (ensure length <= 4 bytes, encode to u32 will take the first 4 non-zero bytes)
+/// 0x1000000
+pub const MIRRORED_TOKENS_ADDRESS_START: u64 = 0x1000000;
+/// Mirrored NFT (ensure length <= 4 bytes, encode to u32 will take the first 4 non-zero bytes)
+/// 0x2000000
+pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x2000000;
 /// Mirrored LP Tokens
 /// 0x10000000000000000
 pub const MIRRORED_LP_TOKENS_ADDRESS_START: u128 = 0x10000000000000000;

@@ -97,8 +97,14 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 		EvmAddress::try_from(v).ok()
 	}
 
-	fn decode_evm_address(_v: EvmAddress) -> Option<CurrencyId> {
-		//TODO
-		None
+	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
+		let address = v.as_bytes();
+		let mut token_prefix = [0u8; 19];
+		token_prefix[15] = 1;
+		if address.starts_with(&token_prefix) {
+			address[19].try_into().map(CurrencyId::Token).ok()
+		} else {
+			None
+		}
 	}
 }

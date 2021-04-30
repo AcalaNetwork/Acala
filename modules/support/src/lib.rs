@@ -520,13 +520,17 @@ pub trait CurrencyIdMapping {
 	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// the EvmAddress must have been mapped.
 	fn encode_currency_id(v: CurrencyId) -> Option<[u8; 32]>;
-	/// Decode the [u8; 32] to CurrencyId.
+	/// Decode the CurrencyId from [u8; 32].
 	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
-	// TODO
+	/// Encode the CurrencyId to EvmAddress.
+	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn encode_evm_address(v: CurrencyId) -> Option<EvmAddress>;
-	// TODO
+	/// Decode the CurrencyId from EvmAddress.
+	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId>;
 }
 

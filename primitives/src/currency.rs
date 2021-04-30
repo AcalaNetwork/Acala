@@ -109,6 +109,8 @@ macro_rules! create_currency_id {
 		#[test]
 		#[ignore]
 		fn generate_token_resources() {
+			use crate::TokenSymbol::*;
+
 			#[allow(non_snake_case)]
 			#[derive(Serialize, Deserialize)]
 			struct Token {
@@ -128,31 +130,31 @@ macro_rules! create_currency_id {
 			let mut lp_tokens = vec![
 				Token {
 					symbol: "LP_ACA_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Token(AUSD))).unwrap(),
 				},
 				Token {
 					symbol: "LP_DOT_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::DOT), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(DOT), DexShare::Token(AUSD))).unwrap(),
 				},
 				Token {
 					symbol: "LP_LDOT_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::LDOT), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(LDOT), DexShare::Token(AUSD))).unwrap(),
 				},
 				Token {
 					symbol: "LP_RENBTC_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::AUSD))).unwrap(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(RENBTC), DexShare::Token(AUSD))).unwrap(),
 				},
 				Token {
 					symbol: "LP_KAR_KUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::KAR), DexShare::Token(TokenSymbol::KUSD))).unwrap(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(KAR), DexShare::Token(KUSD))).unwrap(),
 				},
 				Token {
 					symbol: "LP_KSM_KUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::KSM), DexShare::Token(TokenSymbol::KUSD))).unwrap(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(KSM), DexShare::Token(KUSD))).unwrap(),
 				},
 				Token {
 					symbol: "LP_LKSM_KUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(TokenSymbol::LKSM), DexShare::Token(TokenSymbol::KUSD))).unwrap(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(LKSM), DexShare::Token(KUSD))).unwrap(),
 				},
 			];
 			tokens.append(&mut lp_tokens);
@@ -287,26 +289,21 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	}
 }
 
-impl TryFrom<CurrencyId> for u32 {
-	type Error = ();
-
-	fn try_from(val: CurrencyId) -> Result<Self, Self::Error> {
+impl From<DexShare> for u32 {
+	fn from(val: DexShare) -> u32 {
 		let mut bytes = [0u8; 4];
 		match val {
-			CurrencyId::Token(token) => {
+			DexShare::Token(token) => {
 				bytes[3] = token.into();
 			}
-			CurrencyId::Erc20(address) => {
+			DexShare::Erc20(address) => {
 				let is_zero = |&&d: &&u8| -> bool { d == 0 };
 				let leading_zeros = address.as_bytes().iter().take_while(is_zero).count();
 				let index = if leading_zeros > 16 { 16 } else { leading_zeros };
 				bytes[..].copy_from_slice(&address[index..index + 4][..]);
 			}
-			_ => {
-				return Err(());
-			}
 		}
-		Ok(u32::from_be_bytes(bytes))
+		u32::from_be_bytes(bytes)
 	}
 }
 
@@ -320,28 +317,23 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				MIRRORED_TOKENS_ADDRESS_START | u64::from(val.currency_id().unwrap()),
 			)),
 			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
-				let symbol_0: Option<CurrencyId> = match token_symbol_0 {
-					DexShare::Token(_) => Some(token_symbol_0.into()),
+				let currency_id_0 = match token_symbol_0 {
+					DexShare::Token(token) => CurrencyId::Token(token).currency_id(),
 					DexShare::Erc20(_) => None,
-				};
-				let symbol_1: Option<CurrencyId> = match token_symbol_1 {
-					DexShare::Token(_) => Some(token_symbol_1.into()),
-					DexShare::Erc20(_) => None,
-				};
-
-				if symbol_0.is_none() || symbol_1.is_none() {
-					None
-				} else {
-					let mut data = [0u8; 20];
-					data[4..20].copy_from_slice(&MIRRORED_LP_TOKENS_ADDRESS_START.to_be_bytes());
-					let addr_flag = EvmAddress::from_slice(&data);
-					let addr = EvmAddress::from_low_u64_be(
-						u64::from(symbol_0.unwrap().currency_id().unwrap()) << 32
-							| u64::from(symbol_1.unwrap().currency_id().unwrap()),
-					);
-
-					Some(addr_flag | addr)
 				}
+				.ok_or_else(|| ())?;
+				let currency_id_1 = match token_symbol_1 {
+					DexShare::Token(token) => CurrencyId::Token(token).currency_id(),
+					DexShare::Erc20(_) => None,
+				}
+				.ok_or_else(|| ())?;
+
+				let mut data = [0u8; 20];
+				data[4..20].copy_from_slice(&MIRRORED_LP_TOKENS_ADDRESS_START.to_be_bytes());
+				let addr_flag = EvmAddress::from_slice(&data);
+				let addr = EvmAddress::from_low_u64_be(u64::from(currency_id_0) << 32 | u64::from(currency_id_1));
+
+				Some(addr_flag | addr)
 			}
 			CurrencyId::Erc20(address) => Some(address),
 		};

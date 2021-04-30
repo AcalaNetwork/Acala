@@ -272,9 +272,9 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		}
 
 		// Token
-		// MIRRORED_TOKENS_ADDRESS_START = 0x100000000
+		// MIRRORED_TOKENS_ADDRESS_START = 0x1000000
 		let mut token_prefix = [0u8; 19];
-		token_prefix[15] = 1;
+		token_prefix[16] = 1;
 
 		// DexShare
 		// MIRRORED_LP_TOKENS_ADDRESS_START = 0x10000000000000000

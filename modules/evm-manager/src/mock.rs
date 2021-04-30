@@ -171,11 +171,11 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000200000000").unwrap()
+	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
 }
 
 pub fn erc20_address_not_exists() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
+	EvmAddress::from_str("0000000000000000000000000000000002000001").unwrap()
 }
 
 pub fn alice() -> AccountId {
