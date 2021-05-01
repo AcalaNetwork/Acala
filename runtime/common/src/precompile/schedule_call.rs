@@ -32,10 +32,11 @@ use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as Cur
 use primitives::{Balance, BlockNumber};
 use sp_core::{H160, U256};
 use sp_runtime::RuntimeDebug;
-use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, PER_PARAM_BYTES};
 use codec::{Decode, Encode};
+use num_enum::TryFromPrimitive;
 use pallet_scheduler::TaskAddress;
 
 parameter_types! {
@@ -83,23 +84,12 @@ pub struct ScheduleCallPrecompile<
 	)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	Schedule,
-	Cancel,
-	Reschedule,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::Schedule),
-			1 => Ok(Action::Cancel),
-			2 => Ok(Action::Reschedule),
-			_ => Err(()),
-		}
-	}
+	Schedule = 0,
+	Cancel = 1,
+	Reschedule = 2,
 }
 
 type PalletBalanceOf<T> =

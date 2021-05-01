@@ -20,9 +20,10 @@ use super::input::{Input, InputT};
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
+use num_enum::TryFromPrimitive;
 use primitives::{Balance, CurrencyId};
 use sp_core::U256;
-use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 /// The `DEX` impl precompile.
 ///
@@ -37,31 +38,16 @@ pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	GetLiquidityPool,
-	GetSwapTargetAmount,
-	GetSwapSupplyAmount,
-	SwapWithExactSupply,
-	SwapWithExactTarget,
-	AddLiquidity,
-	RemoveLiquidity,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::GetLiquidityPool),
-			1 => Ok(Action::GetSwapTargetAmount),
-			2 => Ok(Action::GetSwapSupplyAmount),
-			3 => Ok(Action::SwapWithExactSupply),
-			4 => Ok(Action::SwapWithExactTarget),
-			5 => Ok(Action::AddLiquidity),
-			6 => Ok(Action::RemoveLiquidity),
-			_ => Err(()),
-		}
-	}
+	GetLiquidityPool = 0,
+	GetSwapTargetAmount = 1,
+	GetSwapSupplyAmount = 2,
+	SwapWithExactSupply = 3,
+	SwapWithExactTarget = 4,
+	AddLiquidity = 5,
+	RemoveLiquidity = 6,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
