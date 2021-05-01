@@ -100,7 +100,7 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
 		let address = v.as_bytes();
 		if address.starts_with(&H160_PREFIX_TOKEN) {
-			return address[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok();
+			address[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok()
 		} else {
 			None
 		}
