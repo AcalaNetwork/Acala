@@ -105,7 +105,7 @@ fn name_works() {
 			);
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::Erc20(erc20_address())),
-				Some(b"long string name, long string name, long string name, long string name, long string name".to_vec())
+				Some(b"long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
 			);
 
 			assert_eq!(
@@ -120,12 +120,12 @@ fn name_works() {
 
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Erc20(erc20_address()), DexShare::Token(TokenSymbol::AUSD))),
-				Some(b"LP long string name, long string name, long string name, long string name, long string name - Acala Dollar".to_vec())
+				Some(b"LP long string name, long string name, long string name, long string name, long string name - Acala Dollar"[..32].to_vec())
 			);
 
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Erc20(erc20_address()), DexShare::Erc20(erc20_address()))),
-				Some(b"LP long string name, long string name, long string name, long string name, long string name - long string name, long string name, long string name, long string name, long string name".to_vec())
+				Some(b"LP long string name, long string name, long string name, long string name, long string name - long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
 			);
 
 			assert_eq!(

@@ -125,7 +125,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	// the EvmAddress must have been mapped.
 	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
-		match currency_id {
+		let name = match currency_id {
 			CurrencyId::Token(_) => currency_id.name().map(|v| v.as_bytes().to_vec()),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let name_0 = match symbol_0 {
@@ -151,6 +151,12 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.name),
+		}?;
+
+		if name.len() > 32 {
+			Some(name[..32].to_vec())
+		} else {
+			Some(name)
 		}
 	}
 
@@ -158,7 +164,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	// the EvmAddress must have been mapped.
 	fn symbol(currency_id: CurrencyId) -> Option<Vec<u8>> {
-		match currency_id {
+		let symbol = match currency_id {
 			CurrencyId::Token(_) => currency_id.symbol().map(|v| v.as_bytes().to_vec()),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let token_symbol_0 = match symbol_0 {
@@ -184,6 +190,12 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.symbol),
+		}?;
+
+		if symbol.len() > 32 {
+			Some(symbol[..32].to_vec())
+		} else {
+			Some(symbol)
 		}
 	}
 

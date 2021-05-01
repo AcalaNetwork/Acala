@@ -41,6 +41,7 @@ module-evm-bridge = { path = "../../modules/evm-bridge" }
 module-evm-manager = { path = "../../modules/evm-manager" }
 module-nft = { path = "../../modules/nft" }
 module-dex = { path = "../../modules/dex" }
+acala-service = {  path = "../../node/service" }
 
 [features]
 default = ["std"]

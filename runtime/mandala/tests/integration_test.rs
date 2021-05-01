@@ -33,7 +33,6 @@ use mandala_runtime::{
 	Perbill, Runtime, SevenDays, System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
-use module_evm_bridge::METHOD_NAME;
 use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, CurrencyIdMapping, DEXManager, EVMBridge as EVMBridgeT,
 	Price, Rate, Ratio, RiskManager, EVM as EVMTrait,
@@ -41,8 +40,9 @@ use module_support::{
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
 // use polkadot_parachain::primitives::Sibling;
+use acala_service::chain_spec::evm_genesis;
 pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
-use sp_core::{bytes::from_hex, H160, U256};
+use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, Zero},
@@ -164,6 +164,8 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
+		let evm_genesis_accounts = evm_genesis();
+
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
@@ -218,9 +220,11 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		module_evm::GenesisConfig::<Runtime>::default()
-			.assimilate_storage(&mut t)
-			.unwrap();
+		module_evm::GenesisConfig::<Runtime> {
+			accounts: evm_genesis_accounts,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| SystemModule::set_block_number(1));
@@ -1366,13 +1370,38 @@ fn test_multicurrency_precompile_module() {
 				origin: alice_evm_addr(),
 			};
 
-			// TODO: need to be fixed.
-			//assert_ok!(EVMBridge::name(invoke_context));
-			//assert_ok!(EVMBridge::symbol(invoke_context));
-			//assert_ok!(EVMBridge::decimals(invoke_context));
-			//assert_ok!(EVMBridge::total_supply(invoke_context));
-			//assert_ok!(EVMBridge::balance_of(invoke_context, alice_evm_addr()));
-			//assert_ok!(EVMBridge::transfer(invoke_context, bob_evm_addr(), 10));
+			assert_eq!(
+				EVMBridge::name(invoke_context),
+				Ok(b"LP long string name, long string name, long string name, long string name, long string name - long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
+			);
+			assert_eq!(
+				EVMBridge::symbol(invoke_context),
+				Ok(b"LP_TestToken_TestToken".to_vec())
+			);
+			assert_eq!(
+				EVMBridge::decimals(invoke_context),
+				Ok(17)
+			);
+			assert_eq!(
+				EVMBridge::total_supply(invoke_context),
+				Ok(2000)
+			);
+			assert_eq!(
+				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
+				Ok(2000)
+			);
+			assert_eq!(
+				EVMBridge::total_supply(invoke_context),
+				Ok(2000)
+			);
+			assert_eq!(
+				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
+				Ok(2000)
+			);
+			assert_eq!(
+				EVMBridge::transfer(invoke_context, bob_evm_addr(), 10),
+				Ok(())
+			);
 		});
 }
 

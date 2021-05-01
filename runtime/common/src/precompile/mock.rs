@@ -19,6 +19,7 @@
 #![cfg(test)]
 
 use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
+use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
@@ -34,7 +35,7 @@ use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	evm::EvmAddress, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce, TokenSymbol, TradingPair,
 };
-use sp_core::{bytes::from_hex, crypto::AccountId32, Bytes, H160, H256};
+use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup, One as OneT},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
@@ -55,7 +56,7 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type Origin = Origin;
 	type Call = Call;
-	type Index = u64;
+	type Index = u32;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -444,28 +445,6 @@ pub fn lp_aca_ausd_evm_address() -> EvmAddress {
 
 pub fn erc20_address_not_exists() -> EvmAddress {
 	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
-}
-
-pub fn evm_genesis() -> BTreeMap<H160, module_evm::GenesisAccount<Balance, u64>> {
-	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
-	let mut accounts = BTreeMap::new();
-	for (_, address, code_string) in contracts {
-		let account = module_evm::GenesisAccount {
-			nonce: 0,
-			balance: 0u128,
-			storage: Default::default(),
-			code: Bytes::from_str(&code_string).unwrap().0,
-		};
-
-		let addr = H160::from_slice(
-			from_hex(address.as_str())
-				.expect("predeploy-contracts must specify address")
-				.as_slice(),
-		);
-		accounts.insert(addr, account);
-	}
-	accounts
 }
 
 pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
