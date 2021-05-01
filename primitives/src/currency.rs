@@ -18,7 +18,7 @@
 
 #![allow(clippy::from_over_into)]
 
-use crate::{evm::EvmAddress, MIRRORED_LP_TOKENS_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START};
+use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
@@ -257,31 +257,17 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	type Error = ();
 
 	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
-		// token/dex/erc20 flag(1 byte) | token(1 byte)
-		// token/dex/erc20 flag(1 byte) | dex left(4 byte) | dex right(4 byte)
-		// token/dex/erc20 flag(1 byte) | evm address(20 byte)
-		//
-		// v[11] = 0: token
-		// - v[31] = token(1 byte)
-		//
-		// v[11] = 1: dex share
-		// - v[12..16] = dex left(4 byte)
-		// - v[16..20] = dex right(4 byte)
-		//
-		// v[11] = 2: erc20
-		// - v[12..32] = evm address(20 byte)
-
-		if !v.starts_with(&[0u8; 11][..]) {
+		if !v.starts_with(&H256_PREFIX) {
 			return Err(());
 		}
 
 		// token
-		if v[11] == 0 && v.starts_with(&[0u8; 31][..]) {
-			return v[31].try_into().map(CurrencyId::Token);
+		if v[U256_TYPE_POSITION] == U256_TYPE_TOKEN && v.starts_with(&H256_PREFIX_TOKEN) {
+			return v[U256_POSITION_TOKEN].try_into().map(CurrencyId::Token);
 		}
 
 		// erc20
-		if v[11] == 2 {
+		if v[U256_TYPE_POSITION] == U256_TYPE_ERC20 {
 			return Ok(CurrencyId::Erc20(EvmAddress::from_slice(&v[12..32])));
 		}
 
@@ -317,21 +303,18 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				MIRRORED_TOKENS_ADDRESS_START | u64::from(val.currency_id().unwrap()),
 			)),
 			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
-				let currency_id_0 = match token_symbol_0 {
+				let symbol_0 = match token_symbol_0 {
 					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
 					DexShare::Erc20(_) => Err(()),
 				}?;
-				let currency_id_1 = match token_symbol_1 {
+				let symbol_1 = match token_symbol_1 {
 					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
 					DexShare::Erc20(_) => Err(()),
 				}?;
 
-				let mut data = [0u8; 20];
-				data[4..20].copy_from_slice(&MIRRORED_LP_TOKENS_ADDRESS_START.to_be_bytes());
-				let addr_flag = EvmAddress::from_slice(&data);
-				let addr = EvmAddress::from_low_u64_be(u64::from(currency_id_0) << 32 | u64::from(currency_id_1));
-
-				Ok(addr_flag | addr)
+				let mut prefix = EvmAddress::default();
+				prefix[0..H160_PREFIX_DEXSHARE.len()].copy_from_slice(&H160_PREFIX_DEXSHARE);
+				Ok(prefix | EvmAddress::from_low_u64_be(u64::from(symbol_0) << 32 | u64::from(symbol_1)))
 			}
 			CurrencyId::Erc20(address) => Ok(address),
 		}

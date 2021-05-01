@@ -32,7 +32,7 @@ use frame_support::{
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
-use primitives::{PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX};
+use primitives::{H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX};
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
 	traits::{One, Saturating, UniqueSaturatedInto, Zero},
@@ -271,17 +271,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 			return address;
 		}
 
-		// Token
-		// MIRRORED_TOKENS_ADDRESS_START = 0x1000000
-		let mut token_prefix = [0u8; 19];
-		token_prefix[16] = 1;
-
-		// DexShare
-		// MIRRORED_LP_TOKENS_ADDRESS_START = 0x10000000000000000
-		let mut lp_token_prefix = [0u8; 12];
-		lp_token_prefix[11] = 1;
-
-		if addr.starts_with(&token_prefix) || addr.starts_with(&lp_token_prefix) {
+		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
 			// Token contracts.
 			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
 			log::debug!(

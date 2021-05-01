@@ -1402,6 +1402,14 @@ fn test_multicurrency_precompile_module() {
 				EVMBridge::transfer(invoke_context, bob_evm_addr(), 10),
 				Ok(())
 			);
+			assert_eq!(
+				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
+				Ok(1990)
+			);
+			assert_eq!(
+				EVMBridge::balance_of(invoke_context, bob_evm_addr()),
+				Ok(10)
+			);
 		});
 }
 
