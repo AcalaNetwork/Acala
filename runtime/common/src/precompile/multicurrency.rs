@@ -20,11 +20,12 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::U256;
-use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
+use num_enum::TryFromPrimitive;
 use primitives::{Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
@@ -40,31 +41,16 @@ pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping,
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	QueryCurrencyId,
-	QueryName,
-	QuerySymbol,
-	QueryDecimals,
-	QueryTotalIssuance,
-	QueryBalance,
-	Transfer,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::QueryCurrencyId),
-			1 => Ok(Action::QueryName),
-			2 => Ok(Action::QuerySymbol),
-			3 => Ok(Action::QueryDecimals),
-			4 => Ok(Action::QueryTotalIssuance),
-			5 => Ok(Action::QueryBalance),
-			6 => Ok(Action::Transfer),
-			_ => Err(()),
-		}
-	}
+	QueryCurrencyId = 0,
+	QueryName = 1,
+	QuerySymbol = 2,
+	QueryDecimals = 3,
+	QueryTotalIssuance = 4,
+	QueryBalance = 5,
+	Transfer = 6,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
