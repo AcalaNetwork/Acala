@@ -352,7 +352,7 @@ impl Convert<u64, Weight> for GasToWeight {
 impl module_evm::Config for Test {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
-	type MergeAccount = Currencies;
+	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

@@ -22,6 +22,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
+use crate::runner::storage_meter::StorageMeterHandler;
 use codec::{Decode, Encode};
 use evm::Config as EvmConfig;
 use frame_support::{
@@ -44,7 +45,8 @@ use sp_runtime::{
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
-use sp_std::{marker::PhantomData, vec::Vec};
+use sp_std::{marker::PhantomData, prelude::*};
+
 pub use support::{
 	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
 };
@@ -52,7 +54,7 @@ pub use support::{
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use orml_traits::account::MergeAccount;
+pub use orml_traits::currency::TransferAll;
 pub use primitives::{
 	evm::{Account, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
 	MIRRORED_NFT_ADDRESS_START,
@@ -114,6 +116,8 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 
 #[frame_support::pallet]
 pub mod module {
+	use crate::runner::handler;
+
 	use super::*;
 
 	/// EVM module trait
@@ -126,7 +130,7 @@ pub mod module {
 		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
 		/// Merge free balance from source to dest.
-		type MergeAccount: MergeAccount<Self::AccountId>;
+		type TransferAll: TransferAll<Self::AccountId>;
 
 		/// Charge extra bytes for creating a contract, would be reserved until
 		/// the contract deleted.
@@ -190,11 +194,18 @@ pub mod module {
 	pub struct ContractInfo {
 		pub code_hash: H256,
 		pub maintainer: EvmAddress,
+		pub storage_size: u32,
 		pub deployed: bool,
 	}
 
 	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
+	pub enum AccountInfoVersion {
+		V0,
+	}
+
+	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 	pub struct AccountInfo<T: Config> {
+		pub version: AccountInfoVersion,
 		pub nonce: T::Index,
 		pub contract_info: Option<ContractInfo>,
 		pub developer_deposit: Option<BalanceOf<T>>,
@@ -203,6 +214,7 @@ pub mod module {
 	impl<T: Config> AccountInfo<T> {
 		pub fn new(nonce: T::Index, contract_info: Option<ContractInfo>) -> Self {
 			Self {
+				version: AccountInfoVersion::V0,
 				nonce,
 				contract_info,
 				developer_deposit: None,
@@ -278,6 +290,7 @@ pub mod module {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
+		pub treasury: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
@@ -285,6 +298,7 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
+				treasury: Default::default(),
 			}
 		}
 	}
@@ -292,6 +306,9 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+			let treasury = T::AddressMapping::get_or_create_evm_address(&self.treasury);
+			let mut handler = handler::StorageMeterHandlerImpl::<T>::new(treasury);
+
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
@@ -308,9 +325,19 @@ pub mod module {
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
 
+					let mut count = 0;
 					for (index, value) in &account.storage {
 						AccountStorages::<T>::insert(address, index, value);
+						count += 1;
 					}
+
+					let storage = count * handler::STORAGE_SIZE;
+					handler
+						.reserve_storage(storage)
+						.expect("Genesis contract failed to reserve storage");
+					handler
+						.charge_storage(address, storage, 0)
+						.expect("Genesis contract failed to charge storage");
 				}
 			});
 			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
@@ -750,6 +777,38 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	pub fn remove_contract(address: &EvmAddress, dest: &EvmAddress) -> Result<u32, DispatchError> {
+		Accounts::<T>::try_mutate_exists(address, |account_info| {
+			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
+
+			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_sub(1);
+					if code_info.ref_count == 0 {
+						Codes::<T>::remove(&contract_info.code_hash);
+						*maybe_code_info = None;
+					}
+				} else {
+					// code info removed while still having reference to it?
+					debug_assert!(false);
+				}
+			});
+
+			AccountStorages::<T>::remove_prefix(address);
+
+			let address_account = T::AddressMapping::get_account_id(&address);
+			let dest_account = T::AddressMapping::get_account_id(&dest);
+
+			T::TransferAll::transfer_all(&address_account, &dest_account)?;
+			frame_system::Pallet::<T>::dec_providers(&address_account).map_err(|e| match e {
+				frame_system::DecRefError::ConsumerRemaining => DispatchError::ConsumerRemaining,
+			})?;
+
+			Ok(contract_info.storage_size)
+		})
+	}
+
 	/// Removes an account from Accounts and AccountStorages.
 	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
 		let mut size = 0u32;
@@ -773,7 +832,6 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Accounts::<T>::remove(address);
-		AccountStorages::<T>::remove_prefix(address);
 
 		Ok(size)
 	}
@@ -809,6 +867,25 @@ impl<T: Config> Pallet<T> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
+	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) -> DispatchResult {
+		if change == 0 {
+			return Ok(());
+		}
+		Accounts::<T>::try_mutate(address, |account_info| {
+			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info
+				.contract_info
+				.as_mut()
+				.ok_or(Error::<T>::ContractNotFound)?;
+			if change > 0 {
+				contract_info.storage_size += change as u32;
+			} else {
+				contract_info.storage_size -= (-change) as u32;
+			}
+			Ok(())
+		})
+	}
+
 	/// Handler on new contract initialization.
 	///
 	/// - Create new account for the contract.
@@ -820,19 +897,22 @@ impl<T: Config> Pallet<T> {
 		code: Vec<u8>,
 	) -> Result<(), ExitError> {
 		let code_hash = code_hash(&code.as_slice());
+		let code_size = code.len() as u32;
+
+		if code_size > T::MaxCodeSize::get() {
+			return Err(ExitError::OutOfGas);
+		}
+
 		let contract_info = ContractInfo {
 			code_hash,
 			maintainer: *maintainer,
+			storage_size: code_size + T::NewContractExtraBytes::get(),
 			#[cfg(feature = "with-ethereum-compatibility")]
 			deployed: true,
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			deployed: false,
 		};
 
-		let code_size = code.len() as u32;
-		if code_size > T::MaxCodeSize::get() {
-			return Err(ExitError::OutOfGas);
-		}
 		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
 				code_info.ref_count = code_info.ref_count.saturating_add(1);
@@ -974,7 +1054,7 @@ impl<T: Config> Pallet<T> {
 			&contract_account_id,
 			T::Currency::reserved_balance(&contract_account_id),
 		);
-		T::MergeAccount::merge_account(&contract_account_id, &who)?;
+		T::TransferAll::transfer_all(&contract_account_id, &who)?;
 
 		// should should trigger CallKillAccount and remove account
 		let res = frame_system::Pallet::<T>::dec_providers(&contract_account_id);

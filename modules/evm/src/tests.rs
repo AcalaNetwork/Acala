@@ -938,10 +938,10 @@ fn should_selfdestruct() {
 		);
 		assert_ok!(EVM::selfdestruct(Origin::signed(alice_account_id), contract_address));
 
-		let contract_account_id = T::AddressMapping::get_account_id(&contract_address);
+		let contract_account_id = <Test as Config>::AddressMapping::get_account_id(&contract_address);
 
 		assert!(!System::account_exists(&contract_account_id));
-		assert!(!Accounts::contains(contract_address));
+		assert!(!Accounts::<Test>::contains_key(contract_address));
 	});
 }
 
@@ -1219,3 +1219,7 @@ fn evm_execute_mode_should_work() {
 		assert_eq!(balance(alice()), alice_balance);
 	});
 }
+
+// TODO: update storage size with storage meter
+// update storage size on new contract
+// remove contract remove correct stroage / two ways

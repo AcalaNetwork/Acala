@@ -29,15 +29,15 @@ use frame_support::{
 		Currency as PalletCurrency, ExistenceRequirement, Get, LockableCurrency as PalletLockableCurrency,
 		ReservableCurrency as PalletReservableCurrency, WithdrawReasons,
 	},
+	transactional,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::{
-	account::MergeAccount,
 	arithmetic::{Signed, SimpleArithmetic},
+	currency::TransferAll,
 	BalanceStatus, BasicCurrency, BasicCurrencyExtended, BasicLockableCurrency, BasicReservableCurrency,
 	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
-use orml_utilities::with_transaction_result;
 use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
 use sp_runtime::{
@@ -72,7 +72,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-		type MultiCurrency: MergeAccount<Self::AccountId>
+		type MultiCurrency: TransferAll<Self::AccountId>
 			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId>
 			+ MultiLockableCurrency<Self::AccountId, CurrencyId = CurrencyId>
 			+ MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId>;
@@ -833,18 +833,14 @@ where
 	}
 }
 
-impl<T: Config> MergeAccount<T::AccountId> for Pallet<T> {
-	fn merge_account(source: &T::AccountId, dest: &T::AccountId) -> DispatchResult {
-		with_transaction_result(|| {
-			// transfer non-native free to dest
-			T::MultiCurrency::merge_account(source, dest)?;
+impl<T: Config> TransferAll<T::AccountId> for Pallet<T> {
+	#[transactional]
+	fn transfer_all(source: &T::AccountId, dest: &T::AccountId) -> DispatchResult {
+		// transfer non-native free to dest
+		T::MultiCurrency::transfer_all(source, dest)?;
 
-			// unreserve all reserved currency
-			T::NativeCurrency::unreserve(source, T::NativeCurrency::reserved_balance(source));
-
-			// transfer all free to dest
-			T::NativeCurrency::transfer(source, dest, T::NativeCurrency::free_balance(source))
-		})
+		// transfer all free to dest
+		T::NativeCurrency::transfer(source, dest, T::NativeCurrency::free_balance(source))
 	}
 }
 

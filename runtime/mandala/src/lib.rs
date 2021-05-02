@@ -1027,7 +1027,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type MergeAccount = Currencies;
+	type TransferAll = Currencies;
 	type OnClaim = EvmAccountsOnClaimHandler;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
@@ -1264,7 +1264,7 @@ static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
-	type MergeAccount = Currencies;
+	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

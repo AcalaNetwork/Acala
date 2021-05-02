@@ -22,13 +22,13 @@ use crate::{
 	precompiles::Precompiles,
 	runner::storage_meter::{StorageMeter, StorageMeterHandler},
 	AccountInfo, AccountStorages, Accounts, AddressMapping, CodeInfos, Codes, Config, ContractInfo, Error, Event, Log,
-	MergeAccount, Pallet, Vicinity,
+	Pallet, TransferAll, Vicinity,
 };
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
-	log, require_transactional,
+	log,
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
@@ -66,10 +66,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		f: F,
 	) -> Result<R, DispatchError> {
 		frame_support::storage::with_transaction(|| {
-			let mut storage_meter_handler = StorageMeterHandlerImpl::<T> {
-				origin: vicinity.origin,
-				_marker: PhantomData,
-			};
+			let mut storage_meter_handler = StorageMeterHandlerImpl::<T>::new(vicinity.origin);
 			let storage_meter = match StorageMeter::new(&mut storage_meter_handler, contract, storage_limit) {
 				Ok(x) => x,
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
@@ -232,25 +229,27 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		}
 	}
 
-	// is contract && not deployed
-	pub fn is_undeployed_contract(address: &H160) -> bool {
+	pub fn can_call_contract(address: &H160, caller: &H160) -> bool {
 		if let Some(AccountInfo {
-			contract_info: Some(ContractInfo { deployed, .. }),
+			contract_info: Some(ContractInfo {
+				deployed, maintainer, ..
+			}),
 			..
 		}) = Accounts::<T>::get(address)
 		{
-			!deployed
+			deployed || maintainer == *caller || Self::is_developer_or_contract(caller)
 		} else {
-			false
+			// contract non exist, we don't override defualt evm behaviour
+			true
 		}
 	}
 
-	pub fn has_permission_to_call(address: &H160) -> bool {
+	pub fn is_developer_or_contract(caller: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info,
 			developer_deposit,
 			..
-		}) = Accounts::<T>::get(address)
+		}) = Accounts::<T>::get(caller)
 		{
 			contract_info.is_some() || developer_deposit.is_some()
 		} else {
@@ -436,15 +435,10 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 			.refund(size.saturating_add(T::NewContractExtraBytes::get()))
 			.map_err(|_| ExitError::Other("RefundStorageError".into()))?;
 
-		T::MergeAccount::merge_account(&source, &dest).map_err(|_| ExitError::Other("MergeAccountError".into()))?;
+		T::TransferAll::transfer_all(&source, &dest).map_err(|_| ExitError::Other("TransferAllError".into()))?;
 
-		let res = frame_system::Pallet::<T>::dec_providers(&T::AddressMapping::get_account_id(&address));
-		if res == Ok(frame_system::DecRefStatus::Reaped) {
-			Ok(())
-		} else {
-			let err: &str = Error::<T>::CannotKillContract.into();
-			Err(ExitError::Other(err.into()))
-		}
+		let _ = frame_system::Pallet::<T>::dec_providers(&T::AddressMapping::get_account_id(&address));
+		Ok(())
 	}
 
 	fn create(
@@ -657,9 +651,18 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	}
 }
 
-struct StorageMeterHandlerImpl<T: Config> {
+pub struct StorageMeterHandlerImpl<T: Config> {
 	origin: H160,
 	_marker: PhantomData<T>,
+}
+
+impl<T: Config> StorageMeterHandlerImpl<T> {
+	pub fn new(origin: H160) -> Self {
+		Self {
+			origin,
+			_marker: Default::default(),
+		}
+	}
 }
 
 impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
@@ -704,7 +707,6 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 		Ok(())
 	}
 
-	#[require_transactional]
 	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult {
 		if used == refunded {
 			return Ok(());
@@ -729,12 +731,16 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			T::Currency::unreserve(&user, amount);
 			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
 			T::Currency::reserve(&contract_acc, amount)?;
+
+			Pallet::<T>::update_contract_storage_size(contract, storage as i32)?;
 		} else {
 			let storage = refunded - used;
 			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
 
 			// user can't be a dead account
 			T::Currency::repatriate_reserved(&contract_acc, &user, amount, BalanceStatus::Reserved)?;
+
+			Pallet::<T>::update_contract_storage_size(contract, -(storage as i32))?;
 		};
 
 		Ok(())

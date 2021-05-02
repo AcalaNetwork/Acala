@@ -195,9 +195,9 @@ impl<T: Config> Runner<T> {
 			origin,
 		};
 
-		// if the contract not deployed, the caller must be developer or contract.
+		// if the contract not deployed, the caller must be developer or contract or maintainer.
 		// if the contract not exists, let evm try to execute it and handle the error.
-		if Handler::<T>::is_undeployed_contract(&target) && !Handler::<T>::has_permission_to_call(&sender) {
+		if !Handler::<T>::can_call_contract(&target, &sender) {
 			return Err(Error::<T>::NoPermission.into());
 		}
 

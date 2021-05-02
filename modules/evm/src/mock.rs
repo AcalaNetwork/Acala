@@ -146,7 +146,7 @@ ord_parameter_types! {
 impl Config for Test {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
-	type MergeAccount = Currencies;
+	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

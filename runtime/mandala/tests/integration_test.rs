@@ -34,7 +34,10 @@ use mandala_runtime::{
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
-use module_support::{AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager, EVM as EVMTrait};
+use module_support::{
+	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
+	EVM as EVMTrait,
+};
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
 // use polkadot_parachain::primitives::Sibling;
@@ -471,13 +474,13 @@ fn test_dex_module() {
 		.balances(vec![
 			(
 				// NetworkContractSource
-				EvmAddressMapping::<Runtime>::get_account_id(&H160::from_low_u64_be(0)),
+				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
 				ACA,
 				(1_000_000_000_000_000_000u128),
 			),
 			(
 				// evm alice
-				EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()),
+				MockAddressMapping::get_account_id(&alice_evm_addr()),
 				ACA,
 				(1_000_000_000_000_000_000u128),
 			),
