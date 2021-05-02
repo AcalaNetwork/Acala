@@ -33,8 +33,6 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, module_currencies }
 
-	_ {}
-
 	// `transfer` non-native currency
 	transfer_non_native_currency {
 		let currency_id = KSM;

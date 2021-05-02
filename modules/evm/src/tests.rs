@@ -677,9 +677,21 @@ fn should_deploy() {
 		// multiply(2, 3)
 		let multiply = from_hex("0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
 
+		// contract maintainer can call
+		assert_ok!(Runner::<Test>::call(
+			alice(),
+			alice(),
+			contract_address,
+			multiply.clone(),
+			0,
+			1000000,
+			1000000,
+			<Test as Config>::config(),
+		));
+
 		// call method `multiply` will fail, not deployed yet
 		assert_noop!(Runner::<Test>::call(
-			alice(),
+			bob(),
 			alice(),
 			contract_address,
 			multiply.clone(),
@@ -753,7 +765,7 @@ fn should_deploy_free() {
 
 		// call method `multiply` will fail, not deployed yet
 		assert_noop!(Runner::<Test>::call(
-			alice(),
+			bob(),
 			alice(),
 			contract_address,
 			multiply.clone(),
@@ -770,7 +782,7 @@ fn should_deploy_free() {
 
 		// call method `multiply`
 		assert_ok!(Runner::<Test>::call(
-			alice(),
+			bob(),
 			alice(),
 			contract_address,
 			multiply.clone(),
@@ -941,7 +953,9 @@ fn should_selfdestruct() {
 		let contract_account_id = <Test as Config>::AddressMapping::get_account_id(&contract_address);
 
 		assert!(!System::account_exists(&contract_account_id));
-		assert!(!Accounts::<Test>::contains_key(contract_address));
+		assert!(!Accounts::<Test>::contains_key(&contract_address));
+		assert!(!ContractStorageSizes::<Test>::contains_key(&contract_address));
+		assert_eq!(AccountStorages::<Test>::iter_prefix(&contract_address).count(), 0);
 	});
 }
 

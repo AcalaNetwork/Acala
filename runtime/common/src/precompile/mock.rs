@@ -512,9 +512,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> { accounts }
-		.assimilate_storage(&mut storage)
-		.unwrap();
+	module_evm::GenesisConfig::<Test> {
+		accounts,
+		treasury: Default::default(),
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {

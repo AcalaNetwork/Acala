@@ -21,8 +21,8 @@
 use crate::{
 	precompiles::Precompiles,
 	runner::storage_meter::{StorageMeter, StorageMeterHandler},
-	AccountInfo, AccountStorages, Accounts, AddressMapping, CodeInfos, Codes, Config, ContractInfo, Error, Event, Log,
-	Pallet, TransferAll, Vicinity,
+	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log, Pallet,
+	Vicinity,
 };
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
@@ -404,9 +404,15 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		}
 
 		match storage_change {
-			StorageChange::Added => self.storage_meter.charge(STORAGE_SIZE),
-			StorageChange::Removed => self.storage_meter.refund(STORAGE_SIZE),
-			_ => Ok(()),
+			StorageChange::Added => {
+				Pallet::<T>::update_contract_storage_size(&address, STORAGE_SIZE as i32);
+				self.storage_meter.charge(STORAGE_SIZE)
+			}
+			StorageChange::Removed => {
+				Pallet::<T>::update_contract_storage_size(&address, -(STORAGE_SIZE as i32));
+				self.storage_meter.refund(STORAGE_SIZE)
+			}
+			StorageChange::None => Ok(()),
 		}
 		.map_err(|_| ExitError::OutOfGas)
 	}
@@ -422,22 +428,13 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 			return Err(ExitError::OutOfGas);
 		}
 
-		let source = T::AddressMapping::get_account_id(&address);
-		let dest = T::AddressMapping::get_account_id(&target);
-
-		let size = Accounts::<T>::get(address)
-			.and_then(|a| a.contract_info)
-			.and_then(|info| CodeInfos::<T>::get(info.code_hash))
-			.map(|info| info.code_size)
-			.unwrap_or_default();
+		let storage = Pallet::<T>::remove_contract(&address, &target)
+			.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))?;
 
 		self.storage_meter
-			.refund(size.saturating_add(T::NewContractExtraBytes::get()))
-			.map_err(|_| ExitError::Other("RefundStorageError".into()))?;
+			.refund(storage)
+			.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))?;
 
-		T::TransferAll::transfer_all(&source, &dest).map_err(|_| ExitError::Other("TransferAllError".into()))?;
-
-		let _ = frame_system::Pallet::<T>::dec_providers(&T::AddressMapping::get_account_id(&address));
 		Ok(())
 	}
 
@@ -731,16 +728,13 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			T::Currency::unreserve(&user, amount);
 			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
 			T::Currency::reserve(&contract_acc, amount)?;
-
-			Pallet::<T>::update_contract_storage_size(contract, storage as i32)?;
 		} else {
 			let storage = refunded - used;
 			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
 
 			// user can't be a dead account
-			T::Currency::repatriate_reserved(&contract_acc, &user, amount, BalanceStatus::Reserved)?;
-
-			Pallet::<T>::update_contract_storage_size(contract, -(storage as i32))?;
+			let val = T::Currency::repatriate_reserved(&contract_acc, &user, amount, BalanceStatus::Reserved)?;
+			debug_assert!(val.is_zero());
 		};
 
 		Ok(())

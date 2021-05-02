@@ -30,7 +30,7 @@ use frame_support::{
 	ensure,
 	error::BadOrigin,
 	pallet_prelude::*,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
+	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
 	RuntimeDebug,
@@ -41,7 +41,9 @@ use primitive_types::{H256, U256};
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
-	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto},
+	traits::{
+		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
+	},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
@@ -194,18 +196,11 @@ pub mod module {
 	pub struct ContractInfo {
 		pub code_hash: H256,
 		pub maintainer: EvmAddress,
-		pub storage_size: u32,
 		pub deployed: bool,
 	}
 
 	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-	pub enum AccountInfoVersion {
-		V0,
-	}
-
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 	pub struct AccountInfo<T: Config> {
-		pub version: AccountInfoVersion,
 		pub nonce: T::Index,
 		pub contract_info: Option<ContractInfo>,
 		pub developer_deposit: Option<BalanceOf<T>>,
@@ -214,7 +209,6 @@ pub mod module {
 	impl<T: Config> AccountInfo<T> {
 		pub fn new(nonce: T::Index, contract_info: Option<ContractInfo>) -> Self {
 			Self {
-				version: AccountInfoVersion::V0,
 				nonce,
 				contract_info,
 				developer_deposit: None,
@@ -248,6 +242,14 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
 	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T>, OptionQuery>;
+
+	/// The storage usage for contracts. Including code size, extra bytes and total AccountStorages
+	/// size.
+	///
+	/// Accounts: map EvmAddress => u32
+	#[pallet::storage]
+	#[pallet::getter(fn contract_storage_sizes)]
+	pub type ContractStorageSizes<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, u32, ValueQuery>;
 
 	/// The storages for EVM contracts.
 	///
@@ -777,10 +779,16 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	#[transactional]
 	pub fn remove_contract(address: &EvmAddress, dest: &EvmAddress) -> Result<u32, DispatchError> {
-		Accounts::<T>::try_mutate_exists(address, |account_info| {
+		let address_account = T::AddressMapping::get_account_id(&address);
+		let dest_account = T::AddressMapping::get_account_id(&dest);
+
+		let size = Accounts::<T>::try_mutate_exists(address, |account_info| -> Result<u32, DispatchError> {
 			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
+
+			T::TransferAll::transfer_all(&address_account, &dest_account)?;
 
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
@@ -797,22 +805,22 @@ impl<T: Config> Pallet<T> {
 
 			AccountStorages::<T>::remove_prefix(address);
 
-			let address_account = T::AddressMapping::get_account_id(&address);
-			let dest_account = T::AddressMapping::get_account_id(&dest);
+			let size = ContractStorageSizes::<T>::take(address);
 
-			T::TransferAll::transfer_all(&address_account, &dest_account)?;
-			frame_system::Pallet::<T>::dec_providers(&address_account).map_err(|e| match e {
-				frame_system::DecRefError::ConsumerRemaining => DispatchError::ConsumerRemaining,
-			})?;
+			Ok(size)
+		})?;
 
-			Ok(contract_info.storage_size)
-		})
+		// this should happen after `Accounts` is updated because this could trigger another updates on
+		// `Accounts`
+		frame_system::Pallet::<T>::dec_providers(&address_account).map_err(|e| match e {
+			frame_system::DecRefError::ConsumerRemaining => DispatchError::ConsumerRemaining,
+		})?;
+
+		Ok(size)
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
-	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
-		let mut size = 0u32;
-
+	pub fn remove_account(address: &EvmAddress) -> Result<(), ExitError> {
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
@@ -821,7 +829,6 @@ impl<T: Config> Pallet<T> {
 		{
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
-					size = code_info.code_size;
 					code_info.ref_count = code_info.ref_count.saturating_sub(1);
 					if code_info.ref_count == 0 {
 						Codes::<T>::remove(&contract_info.code_hash);
@@ -831,9 +838,17 @@ impl<T: Config> Pallet<T> {
 			});
 		}
 
-		Accounts::<T>::remove(address);
+		if let Some(AccountInfo {
+			contract_info: Some(_), ..
+		}) = Accounts::<T>::take(address)
+		{
+			// remove_account can only be called when account is killed. i.e. providers == 0
+			// but contract_info should maintain a provider
+			// so this should never happen
+			debug_assert!(false);
+		}
 
-		Ok(size)
+		Ok(())
 	}
 
 	/// Get the account basic in EVM format.
@@ -867,23 +882,17 @@ impl<T: Config> Pallet<T> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
-	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) -> DispatchResult {
+	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) {
 		if change == 0 {
-			return Ok(());
+			return;
 		}
-		Accounts::<T>::try_mutate(address, |account_info| {
-			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-			let contract_info = account_info
-				.contract_info
-				.as_mut()
-				.ok_or(Error::<T>::ContractNotFound)?;
+		ContractStorageSizes::<T>::mutate(address, |val| {
 			if change > 0 {
-				contract_info.storage_size += change as u32;
+				*val = val.saturating_add(change as u32);
 			} else {
-				contract_info.storage_size -= (-change) as u32;
+				*val = val.saturating_sub((-change) as u32);
 			}
-			Ok(())
-		})
+		});
 	}
 
 	/// Handler on new contract initialization.
@@ -906,12 +915,16 @@ impl<T: Config> Pallet<T> {
 		let contract_info = ContractInfo {
 			code_hash,
 			maintainer: *maintainer,
-			storage_size: code_size + T::NewContractExtraBytes::get(),
 			#[cfg(feature = "with-ethereum-compatibility")]
 			deployed: true,
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			deployed: false,
 		};
+
+		Self::update_contract_storage_size(
+			address,
+			code_size.saturating_add(T::NewContractExtraBytes::get()) as i32,
+		);
 
 		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
@@ -1049,19 +1062,13 @@ impl<T: Config> Pallet<T> {
 		ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
 		ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
-		let contract_account_id = T::AddressMapping::get_account_id(&contract);
-		T::Currency::unreserve(
-			&contract_account_id,
-			T::Currency::reserved_balance(&contract_account_id),
-		);
-		T::TransferAll::transfer_all(&contract_account_id, &who)?;
+		let storage = Self::remove_contract(&contract, &maintainer)?;
 
-		// should should trigger CallKillAccount and remove account
-		let res = frame_system::Pallet::<T>::dec_providers(&contract_account_id);
-		ensure!(
-			res == Ok(frame_system::DecRefStatus::Reaped),
-			Error::<T>::CannotKillContract
-		);
+		let contract_account = T::AddressMapping::get_account_id(&contract);
+
+		let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
+		let val = T::Currency::repatriate_reserved(&contract_account, &who, amount, BalanceStatus::Free)?;
+		debug_assert!(val.is_zero());
 
 		Ok(())
 	}

@@ -26,8 +26,6 @@ use sp_std::prelude::*;
 runtime_benchmarks! {
 	{ Runtime, module_prices }
 
-	_ {}
-
 	lock_price {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 
