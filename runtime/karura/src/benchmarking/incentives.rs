@@ -38,8 +38,6 @@ const BTC_AUSD_LP: CurrencyId =
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
 
-	_ {}
-
 	on_initialize {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();

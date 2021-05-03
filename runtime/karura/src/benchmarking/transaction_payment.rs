@@ -26,8 +26,6 @@ use sp_std::prelude::*;
 runtime_benchmarks! {
 	{ Runtime, module_transaction_payment }
 
-	_ {}
-
 	set_default_fee_token {
 		let caller: AccountId = whitelisted_caller();
 		let currency_id = CurrencyId::Token(TokenSymbol::KUSD);

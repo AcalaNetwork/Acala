@@ -35,8 +35,6 @@ const MAX_AUCTION_ID: u32 = 100;
 runtime_benchmarks! {
 	{ Runtime, orml_auction }
 
-	_ {}
-
 	// `bid` a collateral auction, best cases:
 	// there's no bidder before and bid price doesn't exceed target amount
 	#[extra]

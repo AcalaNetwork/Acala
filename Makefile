@@ -52,7 +52,8 @@ test: githooks
 
 .PHONY: test-eth
 test-eth: githooks
-	SKIP_WASM_BUILD= cargo test test_evm_module --features with-ethereum-compatibility -p mandala-runtime
+	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p mandala-runtime test_evm_module
+	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p mandala-runtime should_not_kill_contract_on_transfer_all
 
 .PHONY: test-runtimes
 test-runtimes:

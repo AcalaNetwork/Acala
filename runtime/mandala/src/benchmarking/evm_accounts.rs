@@ -47,8 +47,6 @@ pub fn bob_account_id() -> AccountId {
 runtime_benchmarks! {
 	{ Runtime, module_evm_accounts }
 
-	_ {}
-
 	claim_account {
 		let caller: AccountId = whitelisted_caller();
 		let eth: AccountId = account("eth", 0, SEED);

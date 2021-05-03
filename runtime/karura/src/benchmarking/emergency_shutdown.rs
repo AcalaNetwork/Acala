@@ -33,8 +33,6 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, module_emergency_shutdown }
 
-	_ {}
-
 	emergency_shutdown {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();

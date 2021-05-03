@@ -67,8 +67,6 @@ fn inject_liquidity(
 runtime_benchmarks! {
 	{ Runtime, module_cdp_engine }
 
-	_ {}
-
 	on_initialize {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let owner: AccountId = account("owner", 0, SEED);

@@ -35,7 +35,7 @@ use frame_support::{
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::AddressMapping;
-use orml_traits::{account::MergeAccount, Handler};
+use orml_traits::{currency::TransferAll, Handler};
 use primitives::{evm::EvmAddress, AccountIndex};
 use sp_core::{crypto::AccountId32, ecdsa};
 use sp_io::{
@@ -72,7 +72,7 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Merge free balance from source to dest.
-		type MergeAccount: MergeAccount<Self::AccountId>;
+		type TransferAll: TransferAll<Self::AccountId>;
 
 		/// On claim account hook.
 		type OnClaim: Handler<Self::AccountId>;
@@ -102,8 +102,6 @@ pub mod module {
 		InvalidSignature,
 		/// Account ref count is not zero
 		NonZeroRefCount,
-		/// Account still has active reserved
-		StillHasActiveReserved,
 	}
 
 	/// The Substrate Account for EvmAddresses
@@ -158,7 +156,7 @@ pub mod module {
 			let account_id = T::AddressMapping::get_account_id(&eth_address);
 			if frame_system::Pallet::<T>::account_exists(&account_id) {
 				// merge balance from `evm padded address` to `origin`
-				T::MergeAccount::merge_account(&account_id, &who)?;
+				T::TransferAll::transfer_all(&account_id, &who)?;
 			}
 
 			Accounts::<T>::insert(eth_address, &who);

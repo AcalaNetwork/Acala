@@ -79,8 +79,6 @@ pub fn bob_account_id() -> AccountId {
 runtime_benchmarks! {
 	{ Runtime, module_evm }
 
-	_ {}
-
 	transfer_maintainer {
 		let alice_account = alice_account_id();
 
