@@ -127,6 +127,7 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(ACA, &sender, DepositPerAuthorization::get());
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
