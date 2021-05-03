@@ -33,6 +33,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+acala-service = {  path = "../../node/service" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }

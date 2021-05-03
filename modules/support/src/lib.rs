@@ -504,6 +504,14 @@ pub trait CurrencyIdMapping {
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
 	/// Returns the EvmAddress associated with a given u32.
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
+	/// Returns the name associated with a given CurrencyId.
+	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// the EvmAddress must have been mapped.
+	fn name(currency_id: CurrencyId) -> Option<Vec<u8>>;
+	/// Returns the symbol associated with a given CurrencyId.
+	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// the EvmAddress must have been mapped.
+	fn symbol(currency_id: CurrencyId) -> Option<Vec<u8>>;
 	/// Returns the decimals associated with a given CurrencyId.
 	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// the EvmAddress must have been mapped.
@@ -512,10 +520,18 @@ pub trait CurrencyIdMapping {
 	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// the EvmAddress must have been mapped.
 	fn encode_currency_id(v: CurrencyId) -> Option<[u8; 32]>;
-	/// Decode the [u8; 32] to CurrencyId.
+	/// Decode the CurrencyId from [u8; 32].
 	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
+	/// Encode the CurrencyId to EvmAddress.
+	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// will use the u32 to get the DexShare::Erc20 from the mapping.
+	fn encode_evm_address(v: CurrencyId) -> Option<EvmAddress>;
+	/// Decode the CurrencyId from EvmAddress.
+	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
+	/// will use the u32 to get the DexShare::Erc20 from the mapping.
+	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId>;
 }
 
 #[cfg(feature = "std")]
@@ -528,6 +544,14 @@ impl CurrencyIdMapping for () {
 		None
 	}
 
+	fn name(_currency_id: CurrencyId) -> Option<Vec<u8>> {
+		None
+	}
+
+	fn symbol(_currency_id: CurrencyId) -> Option<Vec<u8>> {
+		None
+	}
+
 	fn decimals(_currency_id: CurrencyId) -> Option<u8> {
 		None
 	}
@@ -537,6 +561,14 @@ impl CurrencyIdMapping for () {
 	}
 
 	fn decode_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {
+		None
+	}
+
+	fn encode_evm_address(_v: CurrencyId) -> Option<EvmAddress> {
+		None
+	}
+
+	fn decode_evm_address(_v: EvmAddress) -> Option<CurrencyId> {
 		None
 	}
 }

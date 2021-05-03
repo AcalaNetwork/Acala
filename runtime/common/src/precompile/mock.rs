@@ -19,6 +19,7 @@
 #![cfg(test)]
 
 use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
+use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
@@ -31,13 +32,15 @@ use module_support::{
 	mocks::MockAddressMapping, AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider,
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
-pub use primitives::{Amount, BlockNumber, CurrencyId, Header, Nonce, TokenSymbol, TradingPair};
-use sp_core::{bytes::from_hex, crypto::AccountId32, Bytes, H160, H256};
+pub use primitives::{
+	evm::EvmAddress, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce, TokenSymbol, TradingPair,
+};
+use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup, One as OneT},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
+use sp_std::{collections::btree_map::BTreeMap, convert::TryFrom, str::FromStr};
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
@@ -53,7 +56,7 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type Origin = Origin;
 	type Call = Call;
-	type Index = u64;
+	type Index = u32;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -132,6 +135,8 @@ pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const LP_ACA_AUSD: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD));
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
@@ -327,7 +332,7 @@ pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, DexModule>;
 
 parameter_types! {
-	pub NetworkContractSource: H160 = alice();
+	pub NetworkContractSource: H160 = alice_evm_addr();
 }
 
 ord_parameter_types! {
@@ -414,38 +419,35 @@ pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const EVA: AccountId = AccountId::new([5u8; 32]);
 
-pub fn alice() -> H160 {
-	H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+pub fn alice() -> AccountId {
+	<Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
 }
 
-pub fn bob() -> H160 {
-	H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2])
+pub fn alice_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-pub fn evm_genesis() -> BTreeMap<H160, module_evm::GenesisAccount<Balance, u64>> {
-	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
-	let mut accounts = BTreeMap::new();
-	for (_, address, code_string) in contracts {
-		let account = module_evm::GenesisAccount {
-			nonce: 0,
-			balance: 0u128,
-			storage: Default::default(),
-			code: Bytes::from_str(&code_string).unwrap().0,
-		};
+pub fn bob() -> AccountId {
+	<Test as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr())
+}
 
-		let addr = H160::from_slice(
-			from_hex(address.as_str())
-				.expect("predeploy-contracts must specify address")
-				.as_slice(),
-		);
-		accounts.insert(addr, account);
-	}
-	accounts
+pub fn bob_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
+}
+
+pub fn aca_evm_address() -> EvmAddress {
+	EvmAddress::try_from(ACA).unwrap()
+}
+
+pub fn lp_aca_ausd_evm_address() -> EvmAddress {
+	EvmAddress::try_from(LP_ACA_AUSD).unwrap()
+}
+
+pub fn erc20_address_not_exists() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
 }
 
 pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
-pub const ACA_ERC20_ADDRESS: &str = "0x0000000000000000000000000000000001000000";
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -491,7 +493,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	accounts.append(&mut evm_genesis_accounts);
 
 	accounts.insert(
-		alice(),
+		alice_evm_addr(),
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
@@ -500,7 +502,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		},
 	);
 	accounts.insert(
-		bob(),
+		bob_evm_addr(),
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
@@ -534,7 +536,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
-			MockAddressMapping::get_account_id(&alice()),
+			MockAddressMapping::get_account_id(&alice_evm_addr()),
 			RENBTC,
 			1_000
 		));

@@ -19,10 +19,13 @@
 use crate::{AddressMapping, CurrencyId, CurrencyIdMapping};
 use codec::Encode;
 use frame_support::pallet_prelude::DispatchResult;
-use primitives::{currency::GetDecimals, evm::EvmAddress};
+use primitives::{currency::TokenInfo, evm::EvmAddress, H160_POSITION_TOKEN, H160_PREFIX_TOKEN};
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
-use sp_std::convert::TryInto;
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	vec::Vec,
+};
 
 pub struct MockAddressMapping;
 
@@ -71,6 +74,14 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 		Some(EvmAddress::default())
 	}
 
+	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
+		currency_id.name().map(|v| v.as_bytes().to_vec())
+	}
+
+	fn symbol(currency_id: CurrencyId) -> Option<Vec<u8>> {
+		currency_id.symbol().map(|v| v.as_bytes().to_vec())
+	}
+
 	fn decimals(currency_id: CurrencyId) -> Option<u8> {
 		currency_id.decimals()
 	}
@@ -81,5 +92,18 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 
 	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
 		(*v).try_into().ok()
+	}
+
+	fn encode_evm_address(v: CurrencyId) -> Option<EvmAddress> {
+		EvmAddress::try_from(v).ok()
+	}
+
+	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
+		let address = v.as_bytes();
+		if address.starts_with(&H160_PREFIX_TOKEN) {
+			address[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok()
+		} else {
+			None
+		}
 	}
 }

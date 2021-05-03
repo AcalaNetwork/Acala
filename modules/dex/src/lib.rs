@@ -424,6 +424,8 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			T::ListingOrigin::ensure_origin(origin)?;
 
+			ensure!(currency_id_a != currency_id_b, Error::<T>::NotAllowedList);
+
 			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
 				.ok_or(Error::<T>::InvalidCurrencyId)?;
 			let dex_share_currency_id = trading_pair

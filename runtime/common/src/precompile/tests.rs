@@ -20,9 +20,10 @@
 use super::*;
 use crate::precompile::{
 	mock::{
-		alice, bob, get_task_id, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Event as TestEvent,
-		Oracle, OraclePrecompile, Origin, Price, ScheduleCallPrecompile, System, Test, ACA_ERC20_ADDRESS, ALICE, AUSD,
-		RENBTC,
+		aca_evm_address, alice, alice_evm_addr, bob, bob_evm_addr, erc20_address_not_exists, get_task_id,
+		lp_aca_ausd_evm_address, new_test_ext, run_to_block, Balances, DexModule, DexPrecompile, Event as TestEvent,
+		MultiCurrencyPrecompile, Oracle, OraclePrecompile, Origin, Price, ScheduleCallPrecompile, System, Test, ALICE,
+		AUSD, INITIAL_BALANCE, RENBTC,
 	},
 	schedule_call::TaskInfo,
 };
@@ -32,8 +33,8 @@ use hex_literal::hex;
 use module_evm::ExitError;
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
-use primitives::{currency::GetDecimals, Balance, PREDEPLOY_ADDRESS_START};
-use sp_core::{H160, H256, U256};
+use primitives::{currency::TokenInfo, Balance, PREDEPLOY_ADDRESS_START};
+use sp_core::{H160, U256};
 use sp_runtime::FixedPointNumber;
 
 pub struct DummyPrecompile;
@@ -110,11 +111,197 @@ fn precompile_filter_does_not_work_on_non_system_contracts() {
 }
 
 #[test]
+fn multicurrency_precompile_should_work() {
+	new_test_ext().execute_with(|| {
+		let mut context = Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: Default::default(),
+		};
+
+		// call with not exists erc20
+		context.caller = erc20_address_not_exists();
+		assert_noop!(
+			MultiCurrencyPrecompile::execute(&[0u8; 32], None, &context),
+			ExitError::Other("invalid currency id".into())
+		);
+
+		// 0.QueryCurrencyId
+		let mut input = [0u8; 32];
+		// action
+		U256::default().to_big_endian(&mut input[..32]);
+
+		// Token
+		context.caller = aca_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let expected_output = [0u8; 32];
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// DexShare
+		context.caller = lp_aca_ausd_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[11] = 1;
+		expected_output[19] = 1;
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// 1.QueryName
+		let mut input = [0u8; 32];
+		// action
+		U256::from(1).to_big_endian(&mut input[..32]);
+
+		// Token
+		context.caller = aca_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[27..32].copy_from_slice(&b"Acala"[..]);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// DexShare
+		context.caller = lp_aca_ausd_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[9..32].copy_from_slice(&b"LP Acala - Acala Dollar"[..]);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// 2.QuerySymbol
+		let mut input = [0u8; 32];
+		// action
+		U256::from(2).to_big_endian(&mut input[..32]);
+
+		// Token
+		context.caller = aca_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[29..32].copy_from_slice(&b"ACA"[..]);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// DexShare
+		context.caller = lp_aca_ausd_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[21..32].copy_from_slice(&b"LP_ACA_AUSD"[..]);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// 3.QueryDecimals
+		let mut input = [0u8; 32];
+		// action
+		U256::from(3).to_big_endian(&mut input[..32]);
+
+		// Token
+		context.caller = aca_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[31] = 12;
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// DexShare
+		context.caller = lp_aca_ausd_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[31] = 12;
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// 4.QueryTotalIssuance
+		let mut input = [0u8; 32];
+		// action
+		U256::from(4).to_big_endian(&mut input[..32]);
+
+		// Token
+		context.caller = aca_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[16..32].copy_from_slice(&(INITIAL_BALANCE * 2).to_be_bytes()[..]);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// DexShare
+		context.caller = lp_aca_ausd_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let expected_output = [0u8; 32];
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// 5.QueryBalance
+		let mut input = [0u8; 64];
+		// action
+		U256::from(5).to_big_endian(&mut input[..32]);
+		// from
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[1 * 32..2 * 32]);
+
+		// Token
+		context.caller = aca_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let mut expected_output = [0u8; 32];
+		expected_output[16..32].copy_from_slice(&INITIAL_BALANCE.to_be_bytes()[..]);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// DexShare
+		context.caller = lp_aca_ausd_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let expected_output = [0u8; 32];
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// 6.Transfer
+		let mut input = [0u8; 4 * 32];
+		// action
+		U256::from(6).to_big_endian(&mut input[..32]);
+		// from
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[1 * 32..2 * 32]);
+		// to
+		U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		// amount
+		U256::from(1).to_big_endian(&mut input[3 * 32..4 * 32]);
+		let from_balance = Balances::free_balance(alice());
+		let to_balance = Balances::free_balance(bob());
+
+		// Token
+		context.caller = aca_evm_address();
+		let (reason, output, used_gas) = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		let expected_output: Vec<u8> = vec![];
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+		assert_eq!(Balances::free_balance(alice()), from_balance - 1);
+		assert_eq!(Balances::free_balance(bob()), to_balance + 1);
+
+		// DexShare
+		context.caller = lp_aca_ausd_evm_address();
+		assert_noop!(
+			MultiCurrencyPrecompile::execute(&input, None, &context),
+			ExitError::Other("BalanceTooLow".into())
+		);
+	});
+}
+
+#[test]
 fn oracle_precompile_should_work() {
 	new_test_ext().execute_with(|| {
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -165,7 +352,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 				None,
 				&Context {
 					address: Default::default(),
-					caller: alice(),
+					caller: alice_evm_addr(),
 					apparent_value: Default::default()
 				}
 			),
@@ -178,7 +365,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 				None,
 				&Context {
 					address: Default::default(),
-					caller: alice(),
+					caller: alice_evm_addr(),
 					apparent_value: Default::default()
 				}
 			),
@@ -191,7 +378,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 				None,
 				&Context {
 					address: Default::default(),
-					caller: alice(),
+					caller: alice_evm_addr(),
 					apparent_value: Default::default()
 				}
 			),
@@ -205,7 +392,7 @@ fn schedule_call_precompile_should_work() {
 	new_test_ext().execute_with(|| {
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -215,9 +402,9 @@ fn schedule_call_precompile_should_work() {
 		// action
 		U256::default().to_big_endian(&mut input[1 * 32..2 * 32]);
 		// from
-		U256::from(alice().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		// target
-		U256::from(ACA_ERC20_ADDRESS).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[3 * 32..4 * 32]);
 		// value
 		U256::from(0).to_big_endian(&mut input[4 * 32..5 * 32]);
 		// gas_limit
@@ -234,7 +421,7 @@ fn schedule_call_precompile_should_work() {
 		// transfer bytes4(keccak256(signature)) 0xa9059cbb
 		transfer_to_bob[0..4].copy_from_slice(&hex!("a9059cbb"));
 		// to address
-		U256::from(bob().as_bytes()).to_big_endian(&mut transfer_to_bob[4..36]);
+		U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut transfer_to_bob[4..36]);
 		// amount
 		U256::from(1000).to_big_endian(&mut transfer_to_bob[36..68]);
 
@@ -256,7 +443,7 @@ fn schedule_call_precompile_should_work() {
 		// action
 		U256::from(1).to_big_endian(&mut cancel_input[1 * 32..2 * 32]);
 		// from
-		U256::from(alice().as_bytes()).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
 		// task_id_len
 		U256::from(task_id.len()).to_big_endian(&mut cancel_input[3 * 32..4 * 32]);
 		// task_id
@@ -282,7 +469,7 @@ fn schedule_call_precompile_should_work() {
 		// action
 		U256::from(2).to_big_endian(&mut reschedule_input[1 * 32..2 * 32]);
 		// from
-		U256::from(alice().as_bytes()).to_big_endian(&mut reschedule_input[2 * 32..3 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut reschedule_input[2 * 32..3 * 32]);
 		// min_delay
 		U256::from(2).to_big_endian(&mut reschedule_input[3 * 32..4 * 32]);
 		// task_id_len
@@ -296,8 +483,8 @@ fn schedule_call_precompile_should_work() {
 		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(5, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
-		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice());
-		let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob());
+		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr());
+		let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr());
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
 			assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
@@ -314,7 +501,7 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999909405);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999899752);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -332,7 +519,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 	new_test_ext().execute_with(|| {
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -342,9 +529,9 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		// action
 		U256::default().to_big_endian(&mut input[1 * 32..2 * 32]);
 		// from
-		U256::from(alice().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		// target
-		U256::from(ACA_ERC20_ADDRESS).to_big_endian(&mut input[3 * 32..4 * 32]);
+		U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[3 * 32..4 * 32]);
 		// value
 		U256::from(0).to_big_endian(&mut input[4 * 32..5 * 32]);
 		// gas_limit
@@ -363,8 +550,8 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
 
-		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice());
-		let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob());
+		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr());
+		let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr());
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
 			assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
@@ -386,7 +573,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		// action
 		U256::from(1).to_big_endian(&mut cancel_input[1 * 32..2 * 32]);
 		// from
-		U256::from(bob().as_bytes()).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
+		U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[2 * 32..3 * 32]);
 		// task_id_len
 		U256::from(task_id.len()).to_big_endian(&mut cancel_input[3 * 32..4 * 32]);
 		// task_id
@@ -398,7 +585,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		);
 
 		run_to_block(4);
-		assert_eq!(Balances::free_balance(from_account.clone()), 999999913914);
+		assert_eq!(Balances::free_balance(from_account.clone()), 999999904194);
 		assert_eq!(Balances::reserved_balance(from_account), 0);
 		assert_eq!(Balances::free_balance(to_account), 1000000000000);
 	});
@@ -421,7 +608,7 @@ fn dex_precompile_get_liquidity_should_work() {
 
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -465,7 +652,7 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -511,7 +698,7 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -557,7 +744,7 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -567,7 +754,7 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
 		U256::from(3).to_big_endian(&mut input[1 * 32..2 * 32]);
-		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
 		let mut id = [0u8; 32];
 		id[31] = 4; // RENBTC
@@ -605,7 +792,7 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 
 		let context = Context {
 			address: Default::default(),
-			caller: alice(),
+			caller: alice_evm_addr(),
 			apparent_value: Default::default(),
 		};
 
@@ -615,7 +802,7 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
 		U256::from(4).to_big_endian(&mut input[1 * 32..2 * 32]);
-		U256::from(H256::from(alice()).to_fixed_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
 		let mut id = [0u8; 32];
 		id[31] = 4; // RENBTC

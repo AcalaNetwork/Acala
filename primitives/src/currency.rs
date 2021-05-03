@@ -18,7 +18,7 @@
 
 #![allow(clippy::from_over_into)]
 
-use crate::evm::EvmAddress;
+use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
@@ -46,7 +46,7 @@ macro_rules! create_currency_id {
 			fn try_from(v: u8) -> Result<Self, Self::Error> {
 				match v {
 					$($val => Ok(TokenSymbol::$symbol),)*
-						_ => Err(()),
+					_ => Err(()),
 				}
 			}
 		}
@@ -69,7 +69,25 @@ macro_rules! create_currency_id {
 			}
 		}
 
-		impl GetDecimals for CurrencyId {
+		impl TokenInfo for CurrencyId {
+			fn currency_id(&self) -> Option<u8> {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($val),)*
+					_ => None,
+				}
+			}
+			fn name(&self) -> Option<&str> {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($name),)*
+					_ => None,
+				}
+			}
+			fn symbol(&self) -> Option<&str> {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$symbol) => Some(stringify!($symbol)),)*
+					_ => None,
+				}
+			}
 			fn decimals(&self) -> Option<u8> {
 				match self {
 					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($deci),)*
@@ -91,25 +109,56 @@ macro_rules! create_currency_id {
 		#[test]
 		#[ignore]
 		fn generate_token_resources() {
+			use crate::TokenSymbol::*;
+
 			#[allow(non_snake_case)]
 			#[derive(Serialize, Deserialize)]
 			struct Token {
-				name: String,
 				symbol: String,
-				decimals: u8,
-				currencyId: u8,
+				address: EvmAddress,
 			}
 
-			let tokens = vec![
+			let mut tokens = vec![
 				$(
 					Token {
-						name: $name.to_string(),
 						symbol: stringify!($symbol).to_string(),
-						decimals: $deci,
-						currencyId: $val,
+						address: EvmAddress::try_from(CurrencyId::Token(TokenSymbol::$symbol)).unwrap(),
 					},
 				)*
 			];
+
+			let mut lp_tokens = vec![
+				Token {
+					symbol: "LP_ACA_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Token(AUSD))).unwrap(),
+				},
+				Token {
+					symbol: "LP_DOT_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(DOT), DexShare::Token(AUSD))).unwrap(),
+				},
+				Token {
+					symbol: "LP_LDOT_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(LDOT), DexShare::Token(AUSD))).unwrap(),
+				},
+				Token {
+					symbol: "LP_RENBTC_AUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(RENBTC), DexShare::Token(AUSD))).unwrap(),
+				},
+				Token {
+					symbol: "LP_KAR_KUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(KAR), DexShare::Token(KUSD))).unwrap(),
+				},
+				Token {
+					symbol: "LP_KSM_KUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(KSM), DexShare::Token(KUSD))).unwrap(),
+				},
+				Token {
+					symbol: "LP_LKSM_KUSD".to_string(),
+					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(LKSM), DexShare::Token(KUSD))).unwrap(),
+				},
+			];
+			tokens.append(&mut lp_tokens);
+
 			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/tokens.json", serde_json::to_string_pretty(&tokens).unwrap()));
 		}
     }
@@ -140,7 +189,10 @@ create_currency_id! {
 	}
 }
 
-pub trait GetDecimals {
+pub trait TokenInfo {
+	fn currency_id(&self) -> Option<u8>;
+	fn name(&self) -> Option<&str>;
+	fn symbol(&self) -> Option<&str>;
 	fn decimals(&self) -> Option<u8>;
 }
 
@@ -175,14 +227,8 @@ impl CurrencyId {
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
 		match self {
 			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
-				let symbol_0 = match token_symbol_0 {
-					DexShare::Token(token) => CurrencyId::Token(*token),
-					DexShare::Erc20(address) => CurrencyId::Erc20(*address),
-				};
-				let symbol_1 = match token_symbol_1 {
-					DexShare::Token(token) => CurrencyId::Token(*token),
-					DexShare::Erc20(address) => CurrencyId::Erc20(*address),
-				};
+				let symbol_0: CurrencyId = (*token_symbol_0).into();
+				let symbol_1: CurrencyId = (*token_symbol_1).into();
 				Some((symbol_0, symbol_1))
 			}
 			_ => None,
@@ -210,31 +256,17 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	type Error = ();
 
 	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
-		// token/dex/erc20 flag(1 byte) | token(1 byte)
-		// token/dex/erc20 flag(1 byte) | dex left(4 byte) | dex right(4 byte)
-		// token/dex/erc20 flag(1 byte) | evm address(20 byte)
-		//
-		// v[11] = 0: token
-		// - v[31] = token(1 byte)
-		//
-		// v[11] = 1: dex share
-		// - v[12..16] = dex left(4 byte)
-		// - v[16..20] = dex right(4 byte)
-		//
-		// v[11] = 2: erc20
-		// - v[12..32] = evm address(20 byte)
-
-		if !v.starts_with(&[0u8; 11][..]) {
+		if !v.starts_with(&H256_PREFIX) {
 			return Err(());
 		}
 
 		// token
-		if v[11] == 0 && v.starts_with(&[0u8; 31][..]) {
-			return v[31].try_into().map(CurrencyId::Token);
+		if v[U256_TYPE_POSITION] == U256_TYPE_TOKEN && v.starts_with(&H256_PREFIX_TOKEN) {
+			return v[U256_POSITION_TOKEN].try_into().map(CurrencyId::Token);
 		}
 
 		// erc20
-		if v[11] == 2 {
+		if v[U256_TYPE_POSITION] == U256_TYPE_ERC20 {
 			return Ok(CurrencyId::Erc20(EvmAddress::from_slice(&v[12..32])));
 		}
 
@@ -242,26 +274,49 @@ impl TryFrom<[u8; 32]> for CurrencyId {
 	}
 }
 
-impl TryFrom<CurrencyId> for u32 {
-	type Error = ();
-
-	fn try_from(val: CurrencyId) -> Result<Self, Self::Error> {
+impl From<DexShare> for u32 {
+	fn from(val: DexShare) -> u32 {
 		let mut bytes = [0u8; 4];
 		match val {
-			CurrencyId::Token(token) => {
+			DexShare::Token(token) => {
 				bytes[3] = token.into();
 			}
-			CurrencyId::Erc20(address) => {
+			DexShare::Erc20(address) => {
 				let is_zero = |&&d: &&u8| -> bool { d == 0 };
 				let leading_zeros = address.as_bytes().iter().take_while(is_zero).count();
 				let index = if leading_zeros > 16 { 16 } else { leading_zeros };
 				bytes[..].copy_from_slice(&address[index..index + 4][..]);
 			}
-			_ => {
-				return Err(());
-			}
 		}
-		Ok(u32::from_be_bytes(bytes))
+		u32::from_be_bytes(bytes)
+	}
+}
+
+/// Generate the EvmAddress from CurrencyId so that evm contracts can call the erc20 contract.
+impl TryFrom<CurrencyId> for EvmAddress {
+	type Error = ();
+
+	fn try_from(val: CurrencyId) -> Result<Self, Self::Error> {
+		match val {
+			CurrencyId::Token(_) => Ok(EvmAddress::from_low_u64_be(
+				MIRRORED_TOKENS_ADDRESS_START | u64::from(val.currency_id().unwrap()),
+			)),
+			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
+				let symbol_0 = match token_symbol_0 {
+					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
+					DexShare::Erc20(_) => Err(()),
+				}?;
+				let symbol_1 = match token_symbol_1 {
+					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
+					DexShare::Erc20(_) => Err(()),
+				}?;
+
+				let mut prefix = EvmAddress::default();
+				prefix[0..H160_PREFIX_DEXSHARE.len()].copy_from_slice(&H160_PREFIX_DEXSHARE);
+				Ok(prefix | EvmAddress::from_low_u64_be(u64::from(symbol_0) << 32 | u64::from(symbol_1)))
+			}
+			CurrencyId::Erc20(address) => Ok(address),
+		}
 	}
 }
 

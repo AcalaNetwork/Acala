@@ -4412,6 +4412,7 @@ name = "mandala-runtime"
 version = "0.8.0"
 dependencies = [
  "acala-primitives",
+ "acala-service",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
  "ecosystem-renvm-bridge",
@@ -8523,6 +8524,7 @@ name = "runtime-common"
 version = "0.8.0"
 dependencies = [
  "acala-primitives",
+ "acala-service",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.1",

@@ -117,6 +117,20 @@ fn list_new_trading_pair_work() {
 			DexModule::list_trading_pair(
 				Origin::signed(ListingOrigin::get()),
 				AUSD,
+				AUSD,
+				1_000_000_000_000u128,
+				1_000_000_000_000u128,
+				5_000_000_000_000u128,
+				2_000_000_000_000u128,
+				10,
+			),
+			Error::<Runtime>::NotAllowedList
+		);
+
+		assert_noop!(
+			DexModule::list_trading_pair(
+				Origin::signed(ListingOrigin::get()),
+				AUSD,
 				DOT,
 				1_000_000_000_000u128,
 				1_000_000_000_000u128,

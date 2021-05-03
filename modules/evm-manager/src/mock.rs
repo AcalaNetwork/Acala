@@ -175,7 +175,7 @@ pub fn erc20_address() -> EvmAddress {
 }
 
 pub fn erc20_address_not_exists() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
+	EvmAddress::from_str("0000000000000000000000000000000002000001").unwrap()
 }
 
 pub fn alice() -> AccountId {

@@ -24,6 +24,7 @@ pub mod currency;
 pub mod evm;
 
 use codec::{Decode, Encode};
+use core::ops::Range;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
@@ -154,11 +155,64 @@ pub const PRECOMPILE_ADDRESS_START: u64 = 0x400;
 /// Predeployed system contracts (except Mirrored ERC20)
 /// 0x800 - 0x1000
 pub const PREDEPLOY_ADDRESS_START: u64 = 0x800;
-/// Mirrored Tokens
-/// 0x01000000
-pub const MIRRORED_TOKENS_ADDRESS_START: u64 = 0x01000000;
-/// Mirrored NFT
-/// 0x02000000
-pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x02000000;
+/// Mirrored Tokens (ensure length <= 4 bytes, encode to u32 will take the first 4 non-zero bytes)
+/// 0x1000000
+pub const MIRRORED_TOKENS_ADDRESS_START: u64 = 0x1000000;
+/// Mirrored NFT (ensure length <= 4 bytes, encode to u32 will take the first 4 non-zero bytes)
+/// 0x2000000
+pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x2000000;
+/// Mirrored LP Tokens
+/// 0x10000000000000000
+pub const MIRRORED_LP_TOKENS_ADDRESS_START: u128 = 0x10000000000000000;
+/// System contract address prefix
+pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 11] = [0u8; 11];
+
+/// CurrencyId to U256([u8; 32]) bit encoding rule.
+///
+/// Token
+/// v[11] = 0
+/// - v[31] = token(1 byte)
+///
+/// DexShare
+/// v[11] = 1
+/// - v[12..16] = dex left(4 bytes)
+/// - v[16..20] = dex right(4 bytes)
+///
+/// Erc20
+/// v[11] = 2
+/// - v[12..32] = evm address(20 bytes)
+pub const U256_TYPE_TOKEN: u8 = 0;
+pub const U256_TYPE_DEXSHARE: u8 = 1;
+pub const U256_TYPE_ERC20: u8 = 2;
+pub const U256_TYPE_POSITION: usize = 11;
+pub const U256_POSITION_TOKEN: usize = 31;
+pub const U256_POSITION_DEXSHARE_LEFT: Range<usize> = 12..16;
+pub const U256_POSITION_DEXSHARE_RIGHT: Range<usize> = 16..20;
+pub const U256_POSITION_ERC20: Range<usize> = 12..32;
+pub const H256_PREFIX: [u8; 11] = [0u8; 11];
+pub const H256_PREFIX_TOKEN: [u8; 31] = [0u8; 31];
+pub const H256_SUFFIX_DEXSHARE: [u8; 12] = [0u8; 12];
+
+/// CurrencyId to H160([u8; 20]) bit encoding rule.
+///
+/// Token
+/// v[16] = 1 // MIRRORED_TOKENS_ADDRESS_START
+/// - v[19] = token(1 byte)
+///
+/// DexShare
+/// v[11] = 1 // MIRRORED_LP_TOKENS_ADDRESS_START
+/// - v[12..16] = dex left(4 bytes)
+/// - v[16..20] = dex right(4 bytes)
+///
+/// Erc20
+/// - v[0..20] = evm address(20 bytes)
+pub const H160_TYPE_TOKEN: u8 = 1;
+pub const H160_TYPE_DEXSHARE: u8 = 1;
+pub const H160_POSITION_TOKEN: usize = 19;
+pub const H160_POSITION_DEXSHARE_LEFT: Range<usize> = 12..16;
+pub const H160_POSITION_DEXSHARE_RIGHT: Range<usize> = 16..20;
+pub const H160_POSITION_ERC20: Range<usize> = 0..20;
+pub const H160_PREFIX_TOKEN: [u8; 19] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
+pub const H160_PREFIX_DEXSHARE: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 
 pub type NFTBalance = u128;

@@ -66,6 +66,7 @@ pub mod module {
 		ExecutionFatal,
 		/// Execution error
 		ExecutionError,
+		/// Invalid return value
 		InvalidReturnValue,
 	}
 
