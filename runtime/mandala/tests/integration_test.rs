@@ -223,6 +223,7 @@ impl ExtBuilder {
 
 		module_evm::GenesisConfig::<Runtime> {
 			accounts: evm_genesis_accounts,
+			treasury: Default::default(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
