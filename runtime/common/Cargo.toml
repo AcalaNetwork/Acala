@@ -22,18 +22,16 @@ orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 
 module-support = { path = "../../modules/support", default-features = false }
-module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
-module-prices = { path = "../../modules/prices", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 
 [dev-dependencies]
 serde_json = "1.0.64"
 hex-literal = "0.3.1"
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
@@ -42,6 +40,8 @@ module-evm-bridge = { path = "../../modules/evm-bridge" }
 module-evm-manager = { path = "../../modules/evm-manager" }
 module-nft = { path = "../../modules/nft" }
 module-dex = { path = "../../modules/dex" }
+module-prices = { path = "../../modules/prices" }
+module-transaction-payment = { path = "../../modules/transaction-payment" }
 
 [features]
 default = ["std"]
@@ -61,7 +61,5 @@ std = [
 	"module-support/std",
 	"primitives/std",
 	"module-staking-pool/std",
-	"module-transaction-payment/std",
-	"module-prices/std",
 ]
 with-ethereum-compatibility = []

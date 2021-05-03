@@ -16,8 +16,8 @@ support = { package = "module-support", path = "../support", default-features = 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
 [features]
 default = ["std"]

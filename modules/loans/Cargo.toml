@@ -12,16 +12,16 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "roc
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-orml-tokens = { path = "../../orml/tokens", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-orml-currencies = { path = "../../orml/currencies", default-features = false }
-cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+orml-currencies = { path = "../../orml/currencies" }
+orml-tokens = { path = "../../orml/tokens" }
+cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
 
 [features]
 default = ["std"]
@@ -35,5 +35,4 @@ std = [
 	"orml-traits/std",
 	"primitives/std",
 	"support/std",
-	"orml-tokens/std",
 ]

@@ -12,7 +12,6 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "roc
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [features]
@@ -25,5 +24,4 @@ std = [
 	"sp-io/std",
 	"frame-support/std",
 	"primitives/std",
-	"orml-traits/std",
 ]

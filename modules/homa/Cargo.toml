@@ -11,7 +11,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-staking-pool = { package = "module-staking-pool", path = "../staking-pool", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
@@ -24,7 +23,6 @@ std = [
 	"sp-std/std",
 	"frame-support/std",
 	"frame-system/std",
-	"staking-pool/std",
 	"support/std",
 	"primitives/std",
 ]

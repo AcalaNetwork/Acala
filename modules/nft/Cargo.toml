@@ -13,15 +13,12 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
 orml-nft = { path = "../../orml/nft", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-
-module-currencies = { path = "../currencies", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -47,9 +44,7 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"orml-nft/std",
-	"pallet-timestamp/std",
 	"enumflags2/serde",
-	"module-currencies/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",
