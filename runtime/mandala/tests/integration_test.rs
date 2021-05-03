@@ -33,6 +33,7 @@ use mandala_runtime::{
 	ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
+use module_evm_accounts::EvmAddressMapping;
 use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
 	EVM as EVMTrait,
@@ -592,10 +593,10 @@ fn test_dex_module() {
 			);
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
 
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(MockAddressMapping::get_account_id(&alice_evm_addr())),
+				origin_of(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				1,
@@ -621,13 +622,13 @@ fn test_dex_module() {
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
-					&MockAddressMapping::get_account_id(&alice_evm_addr())
+					&EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())
 				),
 				20
 			);
 
 			assert_ok!(DexModule::remove_liquidity(
-				origin_of(MockAddressMapping::get_account_id(&alice_evm_addr())),
+				origin_of(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				1,
@@ -653,7 +654,7 @@ fn test_dex_module() {
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
-					&MockAddressMapping::get_account_id(&alice_evm_addr())
+					&EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())
 				),
 				19
 			);
@@ -1245,6 +1246,121 @@ fn test_evm_module() {
 					}
 				};
 			}
+		});
+}
+
+#[test]
+fn should_not_kill_contract_on_transfer_all() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), ACA, 1_000 * dollar(ACA)),
+			(bob(), ACA, 1_000 * dollar(ACA)),
+		])
+		.build()
+		.execute_with(|| {
+			// pragma solidity ^0.5.0;
+			//
+			// contract Test {
+			// 	 constructor() public payable {
+			// 	 }
+			// }
+			let code = hex_literal::hex!("6080604052603e8060116000396000f3fe6080604052600080fdfea265627a7a72315820e816b34c9ce8a2446f3d059b4907b4572645fde734e31dabf5465c801dcb44a964736f6c63430005110032").to_vec();
+
+			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(ACA), 1000000000, 1000000000));
+
+			let contract = if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+				address
+			} else {
+				panic!("deploy contract failed");
+			};
+
+			assert_eq!(Balances::free_balance(EvmAddressMapping::<Runtime>::get_account_id(&contract)), 2 * dollar(ACA));
+
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			assert_eq!(Balances::free_balance(alice()), 997_999_899_380_000);
+
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert_eq!(Balances::free_balance(alice()), 998 * dollar(ACA));
+
+			assert_ok!(Currencies::transfer(
+				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&contract)),
+				alice().into(),
+				ACA,
+				2 * dollar(ACA)
+			));
+
+			assert_eq!(Balances::free_balance(EvmAddressMapping::<Runtime>::get_account_id(&contract)), 0);
+
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			assert_eq!(Balances::free_balance(alice()), 999_999_899_380_000);
+
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert_eq!(Balances::free_balance(alice()), 1000 * dollar(ACA));
+
+			// assert the contract account is not purged
+			assert!(EVM::accounts(contract).is_some());
+		});
+}
+
+#[test]
+fn should_not_kill_contract_on_transfer_all_tokens() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), ACA, 1_000 * dollar(ACA)),
+			(alice(), AUSD, 1_000 * dollar(AUSD)),
+			(bob(), ACA, 1_000 * dollar(ACA)),
+		])
+		.build()
+		.execute_with(|| {
+			// pragma solidity ^0.5.0;
+			//
+			// contract Test {
+			// 	 constructor() public payable {
+			// 	 }
+			//
+			// 	 function kill() public {
+			// 	     selfdestruct(address(0));
+			// 	 }
+			// }
+			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
+			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 1000000000));
+			let contract = if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+				address
+			} else {
+				panic!("deploy contract failed");
+			};
+
+			let contract_account_id = EvmAddressMapping::<Runtime>::get_account_id(&contract);
+
+			assert_ok!(Currencies::transfer(
+				Origin::signed(alice()),
+				contract_account_id.clone().into(),
+				AUSD,
+				2 * dollar(AUSD)
+			));
+
+			assert_eq!(Currencies::free_balance(AUSD, &alice()), 998 * dollar(AUSD));
+			assert_eq!(Currencies::free_balance(AUSD, &contract_account_id), 2 * dollar(AUSD));
+			assert_eq!(EVM::accounts(contract).unwrap().nonce, 1);
+			assert_ok!(Currencies::transfer(
+				Origin::signed(contract_account_id.clone()),
+				alice().into(),
+				AUSD,
+				2 * dollar(AUSD)
+			));
+			assert_eq!(Currencies::free_balance(AUSD, &contract_account_id), 0);
+
+			assert_eq!(Currencies::free_balance(AUSD, &alice()), 1000 * dollar(AUSD));
+
+			// assert the contract account is not purged
+			assert!(EVM::accounts(contract).is_some());
+
+			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 1000000000));
+
+			assert!(EVM::accounts(contract).is_none());
+
+			// should be gone
+			assert!(!System::account_exists(&contract_account_id));
 		});
 }
 

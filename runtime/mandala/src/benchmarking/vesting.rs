@@ -38,8 +38,6 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, orml_vesting }
 
-	_ {}
-
 	vested_transfer {
 		let schedule = Schedule {
 			start: 0,

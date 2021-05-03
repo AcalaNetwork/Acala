@@ -35,8 +35,6 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, module_auction_manager }
 
-	_ {}
-
 	// `cancel` a collateral auction, worst case:
 	// auction have been already bid
 	cancel_collateral_auction {

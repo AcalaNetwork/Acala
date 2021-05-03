@@ -27,8 +27,6 @@ use sp_std::prelude::*;
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
 
-	_ {}
-
 	auction_collateral {
 		let currency_id: CurrencyId = KSM;
 		Currencies::deposit(currency_id, &CdpTreasury::account_id(), 10_000 * dollar(currency_id))?;

@@ -38,8 +38,6 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, module_honzon }
 
-	_ {}
-
 	authorize {
 		let caller: AccountId = account("caller", 0, SEED);
 		let to: AccountId = account("to", 0, SEED);

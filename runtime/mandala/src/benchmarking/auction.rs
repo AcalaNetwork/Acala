@@ -33,15 +33,12 @@ const MAX_AUCTION_ID: u32 = 100;
 runtime_benchmarks! {
 	{ Runtime, orml_auction }
 
-	_ {
-		let d in 1 .. MAX_DOLLARS => ();
-		let c in 1 .. MAX_AUCTION_ID => ();
-	}
-
 	// `bid` a collateral auction, best cases:
 	// there's no bidder before and bid price doesn't exceed target amount
 	#[extra]
 	bid_collateral_auction_as_first_bidder {
+		let d in 1 .. MAX_DOLLARS;
+
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
@@ -59,6 +56,8 @@ runtime_benchmarks! {
 	// `bid` a collateral auction, worst cases:
 	// there's bidder before and bid price will exceed target amount
 	bid_collateral_auction {
+		let d in 1 .. MAX_DOLLARS;
+
 		let bidder = account("bidder", 0, SEED);
 		let previous_bidder = account("previous_bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
@@ -78,7 +77,8 @@ runtime_benchmarks! {
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	on_finalize {
-		let c in ...;
+		let d in 1 .. MAX_DOLLARS;
+		let c in 1 .. MAX_AUCTION_ID;
 
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);

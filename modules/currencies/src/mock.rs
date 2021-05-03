@@ -145,7 +145,7 @@ ord_parameter_types! {
 impl module_evm::Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = PalletBalances;
-	type MergeAccount = ();
+	type TransferAll = ();
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;

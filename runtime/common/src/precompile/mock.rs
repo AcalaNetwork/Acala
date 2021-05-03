@@ -352,7 +352,7 @@ impl Convert<u64, Weight> for GasToWeight {
 impl module_evm::Config for Test {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
-	type MergeAccount = Currencies;
+	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type MaxCodeSize = MaxCodeSize;
@@ -512,9 +512,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> { accounts }
-		.assimilate_storage(&mut storage)
-		.unwrap();
+	module_evm::GenesisConfig::<Test> {
+		accounts,
+		treasury: Default::default(),
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {
