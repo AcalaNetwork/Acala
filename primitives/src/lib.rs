@@ -200,7 +200,7 @@ pub const H256_SUFFIX_DEXSHARE: [u8; 12] = [0u8; 12];
 /// - v[19] = token(1 byte)
 ///
 /// DexShare
-/// v[11] = 1
+/// v[11] = 1 // MIRRORED_LP_TOKENS_ADDRESS_START
 /// - v[12..16] = dex left(4 bytes)
 /// - v[16..20] = dex right(4 bytes)
 ///
