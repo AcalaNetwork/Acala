@@ -250,6 +250,13 @@ mod tests {
 	}
 
 	#[test]
+	fn test_transfer_loan_from() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_transfer_loan_from());
+		});
+	}
+
+	#[test]
 	fn test_close_loan_has_debit_by_dex() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_close_loan_has_debit_by_dex());
