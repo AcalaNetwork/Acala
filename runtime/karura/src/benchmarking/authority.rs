@@ -28,8 +28,6 @@ use orml_benchmarking::runtime_benchmarks;
 runtime_benchmarks! {
 	{ Runtime, orml_authority }
 
-	_ {}
-
 	// dispatch a dispatchable as other origin
 	dispatch_as {
 		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));

@@ -67,8 +67,6 @@ fn inject_liquidity(
 runtime_benchmarks! {
 	{ Runtime, module_dex }
 
-	_ {}
-
 	// enable a new trading pair
 	enable_trading_pair {
 		let trading_pair = EnabledTradingPairs::get()[0];

@@ -79,8 +79,6 @@ pub fn bob_account_id() -> AccountId {
 runtime_benchmarks! {
 	{ Runtime, module_evm }
 
-	_ {}
-
 	transfer_maintainer {
 		set_aca_balance(&alice_account_id(), 1_000 * dollar(ACA));
 		set_aca_balance(&bob_account_id(), 1_000 * dollar(ACA));

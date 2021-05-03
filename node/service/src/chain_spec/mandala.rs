@@ -302,7 +302,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance6: OperatorMembershipBandConfig {
-			members: vec![root_key],
+			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
 		pallet_treasury: Default::default(),
@@ -364,6 +364,7 @@ fn testnet_genesis(
 		},
 		module_evm: EVMConfig {
 			accounts: evm_genesis_accounts,
+			treasury: root_key,
 		},
 		module_staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -484,7 +485,7 @@ fn mandala_genesis(
 		},
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
-			endowed_accounts: vec![(root_key, DOT, initial_balance)],
+			endowed_accounts: vec![(root_key.clone(), DOT, initial_balance)],
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {
@@ -555,6 +556,7 @@ fn mandala_genesis(
 		},
 		module_evm: EVMConfig {
 			accounts: evm_genesis_accounts,
+			treasury: root_key,
 		},
 		module_staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {

@@ -26,8 +26,6 @@ use sp_std::prelude::*;
 runtime_benchmarks_instance! {
 	{ Runtime, orml_oracle, AcalaDataProvider }
 
-	_ {}
-
 	// feed values
 	feed_values {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;

@@ -27,10 +27,6 @@ const MAX_TARGET_VALUE: u32 = 100;
 runtime_benchmarks! {
 	{ Runtime, orml_gradually_update }
 
-	_ {
-		let u in 2 .. MAX_TARGET_VALUE => ();
-	}
-
 	// gradually update numeric parameter
 	gradually_update {
 		System::set_block_number(1);
@@ -53,7 +49,7 @@ runtime_benchmarks! {
 
 	// execute gradually update
 	on_finalize {
-		let u in ...;
+		let u in 2 .. MAX_TARGET_VALUE;
 
 		System::set_block_number(1);
 		for i in 1..u {
