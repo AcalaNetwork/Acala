@@ -1415,7 +1415,7 @@ fn test_multicurrency_precompile_module() {
 			);
 		});
 }
-      
+
 #[test]
 fn should_not_kill_contract_on_transfer_all() {
 	ExtBuilder::default()
