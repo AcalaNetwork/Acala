@@ -309,7 +309,7 @@ fn testnet_genesis(
 		orml_tokens: TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()
-				.flat_map(|x| vec![(x.clone(), DOT, initial_balance)])
+				.flat_map(|x| vec![(x.clone(), DOT, initial_balance), (x.clone(), AUSD, initial_balance)])
 				.collect(),
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
