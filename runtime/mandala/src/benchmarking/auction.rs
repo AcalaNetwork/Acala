@@ -16,10 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, AUSD, DOT};
+use crate::{
+	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, AUSD, DOT,
+};
 
 use super::utils::set_balance;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
@@ -39,7 +41,7 @@ runtime_benchmarks! {
 	bid_collateral_auction_as_first_bidder {
 		let d in 1 .. MAX_DOLLARS;
 
-		let bidder = account("bidder", 0, SEED);
+		let bidder: AccountId = whitelisted_caller();
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
@@ -58,7 +60,7 @@ runtime_benchmarks! {
 	bid_collateral_auction {
 		let d in 1 .. MAX_DOLLARS;
 
-		let bidder = account("bidder", 0, SEED);
+		let bidder: AccountId = whitelisted_caller();
 		let previous_bidder = account("previous_bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
@@ -77,8 +79,8 @@ runtime_benchmarks! {
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	on_finalize {
-		let d in 1 .. MAX_DOLLARS;
 		let c in 1 .. MAX_AUCTION_ID;
+		let d in 1 .. MAX_DOLLARS;
 
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);

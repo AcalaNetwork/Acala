@@ -17,19 +17,17 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AccountId, CurrencyId, Runtime, System, TokenSymbol, TransactionPayment};
-use frame_benchmarking::account;
+use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
-const SEED: u32 = 0;
-
 runtime_benchmarks! {
 	{ Runtime, module_transaction_payment }
 
 	set_default_fee_token {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let currency_id = CurrencyId::Token(TokenSymbol::KUSD);
 	}: _(RawOrigin::Signed(caller.clone()), Some(currency_id))
 	verify {

@@ -21,7 +21,7 @@ use crate::{dollar, AccountId, Amount, Balance, Currencies, NativeTokenExistenti
 
 use sp_std::prelude::*;
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use sp_runtime::traits::UniqueSaturatedInto;
 
@@ -37,7 +37,7 @@ runtime_benchmarks! {
 	transfer_non_native_currency {
 		let currency_id = KSM;
 		let amount: Balance = 1_000 * dollar(currency_id);
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_balance(currency_id, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -53,7 +53,7 @@ runtime_benchmarks! {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let amount: Balance = existential_deposit.saturating_mul(1000);
 		let native_currency_id = KAR;
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_balance(native_currency_id, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -70,7 +70,7 @@ runtime_benchmarks! {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let amount: Balance = existential_deposit.saturating_mul(1000);
 		let native_currency_id = KAR;
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_balance(native_currency_id, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);

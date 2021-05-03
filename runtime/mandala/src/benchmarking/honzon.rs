@@ -23,7 +23,7 @@ use crate::{
 
 use super::utils::set_balance;
 use core::convert::TryInto;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
@@ -39,7 +39,7 @@ runtime_benchmarks! {
 	{ Runtime, module_honzon }
 
 	authorize {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = Indices::unlookup(to);
 
@@ -48,7 +48,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), DOT, to_lookup)
 
 	unauthorize {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = Indices::unlookup(to);
 
@@ -64,7 +64,7 @@ runtime_benchmarks! {
 	unauthorize_all {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let currency_ids = CollateralCurrencyIds::get();
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = Indices::unlookup(to);
@@ -83,7 +83,7 @@ runtime_benchmarks! {
 	// `adjust_loan`, best case:
 	// adjust both collateral and debit
 	adjust_loan {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let collateral_price = Price::one();		// 1 USD
 		let debit_value = 100 * dollar(AUSD);
@@ -115,7 +115,7 @@ runtime_benchmarks! {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let sender: AccountId = account("sender", 0, SEED);
 		let sender_lookup = Indices::unlookup(sender.clone());
-		let receiver: AccountId = account("receiver", 0, SEED);
+		let receiver: AccountId = whitelisted_caller();
 		let receiver_lookup = Indices::unlookup(receiver.clone());
 
 		let debit_value = 100 * dollar(AUSD);
@@ -160,7 +160,7 @@ runtime_benchmarks! {
 
 	close_loan_has_debit_by_dex {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-		let sender: AccountId = account("sender", 0, SEED);
+		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(AUSD);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);

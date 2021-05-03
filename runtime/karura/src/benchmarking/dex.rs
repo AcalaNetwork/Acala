@@ -21,7 +21,7 @@ use crate::{
 	TradingPathLimit,
 };
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrencyExtended;
@@ -104,7 +104,7 @@ runtime_benchmarks! {
 	// add liquidity but don't staking lp
 	add_liquidity {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
-		let second_maker: AccountId = account("second_maker", 0, SEED);
+		let second_maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		let amount_a = 100 * dollar(trading_pair.0);
 		let amount_b = 10_000 * dollar(trading_pair.1);
@@ -120,7 +120,7 @@ runtime_benchmarks! {
 	// worst: add liquidity and stake lp
 	add_liquidity_and_deposit {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
-		let second_maker: AccountId = account("second_maker", 0, SEED);
+		let second_maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		let amount_a = 100 * dollar(trading_pair.0);
 		let amount_b = 10_000 * dollar(trading_pair.1);
@@ -135,14 +135,14 @@ runtime_benchmarks! {
 
 	// remove liquidity by liquid lp share
 	remove_liquidity {
-		let maker: AccountId = account("maker", 0, SEED);
+		let maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), false)
 
 	// remove liquidity by withdraw staking lp share
 	remove_liquidity_by_withdraw {
-		let maker: AccountId = account("maker", 0, SEED);
+		let maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), true)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), true)
@@ -166,7 +166,7 @@ runtime_benchmarks! {
 		}
 
 		let maker: AccountId = account("maker", 0, SEED);
-		let taker: AccountId = account("taker", 0, SEED);
+		let taker: AccountId = whitelisted_caller();
 		inject_liquidity(maker, trading_pair.0, trading_pair.1, 10_000 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
@@ -191,7 +191,7 @@ runtime_benchmarks! {
 		}
 
 		let maker: AccountId = account("maker", 0, SEED);
-		let taker: AccountId = account("taker", 0, SEED);
+		let taker: AccountId = whitelisted_caller();
 		inject_liquidity(maker, trading_pair.0, trading_pair.1, 10_000 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;

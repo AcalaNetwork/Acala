@@ -24,7 +24,7 @@ use crate::{
 
 use sp_std::prelude::*;
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 
 use orml_benchmarking::runtime_benchmarks;
@@ -74,7 +74,7 @@ runtime_benchmarks! {
 		// extra 1 dollar to pay fees
 		set_aca_balance(&from, schedule.total_amount().unwrap() * i as u128 + dollar(ACA));
 
-		let to: AccountId = account("to", 0, SEED);
+		let to: AccountId = whitelisted_caller();
 		let to_lookup = lookup_of_account(to.clone());
 
 		for _ in 0..i {
