@@ -18,8 +18,9 @@
 
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use num_enum::TryFromPrimitive;
 use sp_core::U256;
-use sp_std::{borrow::Cow, convert::TryFrom, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, EVMStateRentTrait};
 
@@ -41,30 +42,15 @@ pub struct StateRentPrecompile<AccountId, AddressMapping, CurrencyIdMapping, EVM
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, EVM)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	QueryNewContractExtraBytes,
-	QueryStorageDepositPerByte,
-	QueryMaintainer,
-	QueryDeveloperDeposit,
-	QueryDeploymentFee,
-	TransferMaintainer,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		// reserve 0 - 127 for query, 128 - 255 for action
-		match value {
-			0 => Ok(Action::QueryNewContractExtraBytes),
-			1 => Ok(Action::QueryStorageDepositPerByte),
-			2 => Ok(Action::QueryMaintainer),
-			3 => Ok(Action::QueryDeveloperDeposit),
-			4 => Ok(Action::QueryDeploymentFee),
-			128 => Ok(Action::TransferMaintainer),
-			_ => Err(()),
-		}
-	}
+	QueryNewContractExtraBytes = 0,
+	QueryStorageDepositPerByte = 1,
+	QueryMaintainer = 2,
+	QueryDeveloperDeposit = 3,
+	QueryDeploymentFee = 4,
+	TransferMaintainer = 128,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, EVM> Precompile
