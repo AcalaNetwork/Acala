@@ -15,8 +15,6 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1",
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
-orml-traits = { path = "../../orml/traits", default-features = false }
-
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-support = { path = "../support", default-features = false }
 
@@ -25,6 +23,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "r
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-currencies = { path = "../../orml/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+orml-traits = { path = "../../orml/traits" }
 orml-utilities = { path = "../../orml/utilities" }
 module-evm = { path = "../evm" }
 module-evm-bridge = { path = "../evm-bridge" }
@@ -41,6 +40,5 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"primitives/std",
-	"orml-traits/std",
 	"module-support/std",
 ]

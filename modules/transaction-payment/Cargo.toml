@@ -12,20 +12,19 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "roc
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-io= { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-orml-tokens = { path = "../../orml/tokens", default-features = false }
-module-currencies = { path = "../../modules/currencies", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-module-dex = { path = "../dex", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+orml-tokens = { path = "../../orml/tokens" }
 module-staking-pool = { path = "../staking-pool" }
+module-currencies = { path = "../../modules/currencies" }
+module-dex = { path = "../dex" }
 smallvec = "1.4.1"
 
 [features]
@@ -38,14 +37,9 @@ std = [
 	"frame-system/std",
 	"sp-io/std",
 	"sp-std/std",
-	"orml-tokens/std",
-	"module-currencies/std",
-	"pallet-balances/std",
-	"pallet-proxy/std",
 	"pallet-transaction-payment/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"primitives/std",
 	"support/std",
 	"orml-traits/std",
-	"module-dex/std",
 ]
