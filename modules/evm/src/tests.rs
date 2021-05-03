@@ -21,8 +21,8 @@
 use super::*;
 use mock::{Event, *};
 
-use crate::runner::handler::Handler;
-use frame_support::{assert_noop, assert_ok};
+use crate::runner::handler::{Handler, STORAGE_SIZE};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_core::{
 	bytes::{from_hex, to_hex},
 	H160,
@@ -1017,7 +1017,7 @@ fn should_selfdestruct() {
 
 		assert_eq!(
 			ContractStorageSizes::<Test>::get(&contract_address),
-			code_size + NewContractExtraBytes::get() + crate::runner::handler::STORAGE_SIZE
+			code_size + NewContractExtraBytes::get() + STORAGE_SIZE
 		);
 		assert_eq!(
 			CodeInfos::<Test>::get(&code_hash),
@@ -1323,5 +1323,95 @@ fn evm_execute_mode_should_work() {
 		);
 
 		assert_eq!(balance(alice()), alice_balance);
+	});
+}
+
+#[test]
+fn should_update_storage() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//     mapping(address => uint256) public values;
+	//
+	//     constructor() public {
+	//         values[msg.sender] = 42;
+	//     }
+	//
+	//     function set(uint val) public {
+	//      values[msg.sender] = val;
+	//     }
+	// }
+
+	let contract = from_hex(
+		"0x608060405234801561001057600080fd5b50602a6000803373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002081905550610154806100646000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c806354fe9fd71461003b57806360fe47b114610093575b600080fd5b61007d6004803603602081101561005157600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506100c1565b6040518082815260200191505060405180910390f35b6100bf600480360360208110156100a957600080fd5b81019080803590602001909291905050506100d9565b005b60006020528060005260406000206000915090505481565b806000803373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020819055505056fea265627a7a723158207ab6991e97c9c12f57d81df0c7f955435418354adeb26116b581d7f2f035ca8f64736f6c63430005110032"
+	).unwrap();
+
+	new_test_ext().execute_with(|| {
+		// create contract
+		let result = Runner::<Test>::create(alice(), contract, 0, 500000, 100000, <Test as Config>::config()).unwrap();
+
+		let contract_address = result.address;
+
+		let code_size = 340u32;
+
+		let mut used_storage = code_size + NewContractExtraBytes::get() + STORAGE_SIZE;
+
+		assert_eq!(result.used_storage, used_storage as i32);
+
+		assert_eq!(ContractStorageSizes::<Test>::get(&contract_address), used_storage);
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		deploy_free(contract_address);
+
+		// call method `set(123)`
+		assert_err!(
+			Runner::<Test>::call(
+				bob(),
+				alice(),
+				contract_address,
+				from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b").unwrap(),
+				0,
+				1000000,
+				0,
+				<Test as Config>::config(),
+			),
+			DispatchError::Other("OutOfStorage")
+		);
+
+		// call method `set(123)`
+		let result = Runner::<Test>::call(
+			bob(),
+			alice(),
+			contract_address,
+			from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b").unwrap(),
+			0,
+			1000000,
+			STORAGE_SIZE,
+			<Test as Config>::config(),
+		)
+		.unwrap();
+
+		used_storage += STORAGE_SIZE;
+
+		assert_eq!(result.used_storage, STORAGE_SIZE as i32);
+		assert_eq!(ContractStorageSizes::<Test>::get(&contract_address), used_storage);
+
+		// call method `set(0)`
+		let result = Runner::<Test>::call(
+			bob(),
+			alice(),
+			contract_address,
+			from_hex("0x60fe47b10000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+			0,
+			1000000,
+			STORAGE_SIZE,
+			<Test as Config>::config(),
+		)
+		.unwrap();
+
+		used_storage -= STORAGE_SIZE;
+
+		assert_eq!(result.used_storage, -(STORAGE_SIZE as i32));
+		assert_eq!(ContractStorageSizes::<Test>::get(&contract_address), used_storage);
 	});
 }
