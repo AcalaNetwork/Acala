@@ -15,12 +15,12 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 support = { package = "module-support", path = "../../../modules/support", default-features = false }
 orml-traits = { path = "../../../orml/traits", default-features = false }
-orml-tokens = { path = "../../../orml/tokens", default-features = false }
 primitives = { package = "acala-primitives", path = "../../../primitives", default-features = false }
 
 [dev-dependencies]
 hex-literal = "0.3.1"
 orml-currencies = { path = "../../../orml/currencies" }
+orml-tokens = { path = "../../../orml/tokens" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
 [features]
@@ -35,6 +35,5 @@ std = [
 	"sp-runtime/std",
 	"support/std",
 	"orml-traits/std",
-	"orml-tokens/std",
 	"primitives/std",
 ]

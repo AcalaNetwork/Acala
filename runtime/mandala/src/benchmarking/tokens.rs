@@ -21,7 +21,7 @@ use crate::{dollar, AccountId, Balance, Runtime, Tokens, AUSD};
 
 use sp_std::prelude::*;
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 
 use orml_benchmarking::runtime_benchmarks;
@@ -38,7 +38,7 @@ runtime_benchmarks! {
 
 		let amount: Balance = (d as u128) * dollar(AUSD);
 
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_ausd_balance(&from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -53,7 +53,7 @@ runtime_benchmarks! {
 
 		let amount: Balance = (d as u128) * dollar(AUSD);
 
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_ausd_balance(&from, amount);
 
 		let to: AccountId = account("to", 0, SEED);

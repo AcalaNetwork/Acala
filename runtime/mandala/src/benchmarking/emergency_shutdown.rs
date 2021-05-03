@@ -21,7 +21,7 @@ use crate::{
 };
 
 use super::utils::set_balance;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
@@ -52,7 +52,7 @@ runtime_benchmarks! {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let funder: AccountId = account("funder", 0, SEED);
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let mut values = vec![];
 
 		for i in 0 .. c {
