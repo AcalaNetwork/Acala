@@ -28,16 +28,15 @@ use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 
 const SEED: u32 = 0;
+const MAX_DOLLARS: u32 = 1000;
 
 runtime_benchmarks! {
 	{ Runtime, orml_tokens }
 
-	_ {
-		let d in 1 .. MAX_DOLLARS => ();
-	}
-
 	transfer {
-		let amount: Balance = d * dollar(KUSD);
+		let d in 1 .. MAX_DOLLARS;
+
+		let amount: Balance = (d as u128) * dollar(KUSD);
 
 		let from = account("from", 0, SEED);
 		set_ausd_balance(&from, amount);
@@ -50,7 +49,9 @@ runtime_benchmarks! {
 	}
 
 	transfer_all {
-		let amount: Balance = d * dollar(KUSD);
+		let d in 1 .. MAX_DOLLARS;
+
+		let amount: Balance = (d as u128) * dollar(KUSD);
 
 		let from = account("from", 0, SEED);
 		set_ausd_balance(&from, amount);

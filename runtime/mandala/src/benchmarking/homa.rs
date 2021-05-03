@@ -40,8 +40,6 @@ fn new_era() {
 runtime_benchmarks! {
 	{ Runtime, module_homa }
 
-	_ {}
-
 	// inject DOT to staking pool and mint LDOT
 	mint {
 		let caller: AccountId = account("caller", 0, SEED);
