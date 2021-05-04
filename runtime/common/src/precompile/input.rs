@@ -259,9 +259,13 @@ mod tests {
 	#[test]
 	fn currency_id_works() {
 		let input = TestInput::new(&[0u8; 32][..]);
-		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
+		assert_err!(input.currency_id_at(0), ExitError::Other("invalid currency id".into()));
 
 		let mut raw_input = [0u8; 32];
+		raw_input[28] = 1;
+		let input = TestInput::new(&raw_input[..]);
+		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
+
 		raw_input[31] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));

@@ -285,9 +285,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				} else {
 					// Erc20
 					let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT].try_into().ok()?);
-					CurrencyIdMap::<T>::get(id)
-						.filter(|v| v.address == addr)
-						.map(|_| DexShare::Erc20(addr))
+					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
 				}
 			}?;
 			let right = {
@@ -300,9 +298,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				} else {
 					// Erc20
 					let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT].try_into().ok()?);
-					CurrencyIdMap::<T>::get(id)
-						.filter(|v| v.address == addr)
-						.map(|_| DexShare::Erc20(addr))
+					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
 				}
 			}?;
 
@@ -311,8 +307,6 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 
 		// Erc20
 		let id = Into::<u32>::into(DexShare::Erc20(addr));
-		CurrencyIdMap::<T>::get(id)
-			.filter(|v| v.address == addr)
-			.map(|_| CurrencyId::Erc20(addr))
+		CurrencyIdMap::<T>::get(id).map(|v| CurrencyId::Erc20(v.address))
 	}
 }
