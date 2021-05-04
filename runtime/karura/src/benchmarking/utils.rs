@@ -41,3 +41,13 @@ pub fn set_ausd_balance(who: &AccountId, balance: Balance) {
 pub fn set_aca_balance(who: &AccountId, balance: Balance) {
 	set_balance(CurrencyId::Token(TokenSymbol::KAR), who, balance)
 }
+
+#[cfg(test)]
+pub mod tests {
+	pub fn new_test_ext() -> sp_io::TestExternalities {
+		frame_system::GenesisConfig::default()
+			.build_storage::<crate::Runtime>()
+			.unwrap()
+			.into()
+	}
+}

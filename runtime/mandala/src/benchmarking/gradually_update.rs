@@ -70,33 +70,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_gradually_update() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_gradually_update());
-		});
-	}
-
-	#[test]
-	fn test_cancel_gradually_update() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_cancel_gradually_update());
-		});
-	}
-
-	#[test]
-	fn test_on_finalize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_finalize());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

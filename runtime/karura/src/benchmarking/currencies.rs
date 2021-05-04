@@ -125,47 +125,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn transfer_non_native_currency() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer_non_native_currency());
-		});
-	}
-
-	#[test]
-	fn transfer_native_currency_worst_case() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer_native_currency_worst_case());
-		});
-	}
-
-	#[test]
-	fn update_balance_non_native_currency() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_balance_non_native_currency());
-		});
-	}
-
-	#[test]
-	fn update_balance_native_currency_creating() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_balance_native_currency_creating());
-		});
-	}
-
-	#[test]
-	fn update_balance_native_currency_killing() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_balance_native_currency_killing());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

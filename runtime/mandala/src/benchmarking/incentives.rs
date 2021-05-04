@@ -124,54 +124,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_on_initialize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_initialize());
-		});
-	}
-
-	#[test]
-	fn test_deposit_dex_share() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_deposit_dex_share());
-		});
-	}
-
-	#[test]
-	fn test_withdraw_dex_share() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_withdraw_dex_share());
-		});
-	}
-
-	#[test]
-	fn test_claim_rewards() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim_rewards());
-		});
-	}
-
-	#[test]
-	fn test_update_incentive_rewards() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_incentive_rewards());
-		});
-	}
-
-	#[test]
-	fn test_update_dex_saving_rewards() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_dex_saving_rewards());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

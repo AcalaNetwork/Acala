@@ -2308,7 +2308,7 @@ dependencies = [
  "linregress",
  "log",
  "parity-scale-codec",
- "paste 1.0.5",
+ "paste",
  "sp-api",
  "sp-io",
  "sp-runtime",
@@ -2391,7 +2391,7 @@ dependencies = [
  "log",
  "once_cell",
  "parity-scale-codec",
- "paste 1.0.5",
+ "paste",
  "serde",
  "smallvec 1.6.1",
  "sp-arithmetic",
@@ -5631,7 +5631,7 @@ dependencies = [
  "frame-system",
  "hex-literal 0.2.1",
  "parity-scale-codec",
- "paste 0.1.18",
+ "paste",
  "serde",
  "sp-api",
  "sp-io",
@@ -6321,7 +6321,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-session",
  "parity-scale-codec",
- "paste 1.0.5",
+ "paste",
  "rand_chacha 0.2.2",
  "serde",
  "sp-application-crypto",
@@ -6735,28 +6735,9 @@ dependencies = [
 
 [[package]]
 name = "paste"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45ca20c77d80be666aef2b45486da86238fabe33e38306bd3118fe4af33fa880"
-dependencies = [
- "paste-impl",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "paste"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
-
-[[package]]
-name = "paste-impl"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d95a7db200b97ef370c8e6de0088252f7e0dfff7d047a28528e47456c0fc98b6"
-dependencies = [
- "proc-macro-hack",
-]
 
 [[package]]
 name = "pbkdf2"
@@ -10007,7 +9988,7 @@ dependencies = [
  "approx 0.4.0",
  "num-complex 0.3.1",
  "num-traits",
- "paste 1.0.5",
+ "paste",
 ]
 
 [[package]]
@@ -10023,7 +10004,7 @@ source = "git+https://github.com/paritytech//polkadot?rev=127eb17a25bbe2a9f2731f
 dependencies = [
  "enumn",
  "parity-scale-codec",
- "paste 1.0.5",
+ "paste",
  "sp-runtime",
  "sp-std",
 ]
@@ -10548,7 +10529,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "parity-util-mem",
- "paste 1.0.5",
+ "paste",
  "rand 0.7.3",
  "serde",
  "sp-application-crypto",
@@ -12011,7 +11992,7 @@ dependencies = [
  "indexmap",
  "libc",
  "log",
- "paste 1.0.5",
+ "paste",
  "region",
  "rustc-demangle",
  "serde",

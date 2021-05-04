@@ -201,75 +201,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_add_liquidity() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_add_liquidity());
-		});
-	}
-
-	#[test]
-	fn test_add_liquidity_and_deposit() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_add_liquidity_and_deposit());
-		});
-	}
-
-	#[test]
-	fn test_remove_liquidity() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_remove_liquidity());
-		});
-	}
-
-	#[test]
-	fn test_remove_liquidity_by_withdraw() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_remove_liquidity_by_withdraw());
-		});
-	}
-
-	#[test]
-	fn test_swap_with_exact_supply() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_swap_with_exact_supply());
-		});
-	}
-
-	#[test]
-	fn test_swap_with_exact_target() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_swap_with_exact_target());
-		});
-	}
-
-	#[test]
-	fn list_trading_pair() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_list_trading_pair());
-		});
-	}
-
-	#[test]
-	fn enable_trading_pair() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_enable_trading_pair());
-		});
-	}
-
-	#[test]
-	fn disable_trading_pair() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_disable_trading_pair());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

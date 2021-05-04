@@ -149,64 +149,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap();
-
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
-
-	#[test]
-	fn test_transfer_maintainer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer_maintainer());
-		});
-	}
-
-	#[test]
-	fn test_deploy() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_deploy());
-		});
-	}
-
-	#[test]
-	fn test_deploy_free() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_deploy_free());
-		});
-	}
-
-	#[test]
-	fn test_enable_contract_development() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_enable_contract_development());
-		});
-	}
-
-	#[test]
-	fn test_disable_contract_development() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_disable_contract_development());
-		});
-	}
-
-	#[test]
-	fn test_set_code() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_set_code());
-		});
-	}
-
-	#[test]
-	fn test_selfdestruct() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_selfdestruct());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }
