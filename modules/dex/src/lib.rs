@@ -37,7 +37,7 @@ use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
-use sp_core::U256;
+use sp_core::{H160, U256};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
@@ -1074,6 +1074,12 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
 		Self::get_liquidity(currency_id_a, currency_id_b)
+	}
+
+	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160> {
+		let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)?;
+		let dex_share_currency_id = trading_pair.get_dex_share_currency_id()?;
+		T::CurrencyIdMapping::encode_evm_address(dex_share_currency_id)
 	}
 
 	fn get_swap_target_amount(

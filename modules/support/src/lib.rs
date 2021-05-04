@@ -100,6 +100,8 @@ pub trait AuctionManager<AccountId> {
 pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
+	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160>;
+
 	fn get_swap_target_amount(
 		path: &[CurrencyId],
 		supply_amount: Balance,
@@ -152,6 +154,10 @@ where
 {
 	fn get_liquidity_pool(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> (Balance, Balance) {
 		Default::default()
+	}
+
+	fn get_liquidity_token_address(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> Option<H160> {
+		Some(Default::default())
 	}
 
 	fn get_swap_target_amount(

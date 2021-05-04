@@ -36,6 +36,7 @@ use orml_traits::DataFeeder;
 use primitives::{currency::TokenInfo, Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, U256};
 use sp_runtime::FixedPointNumber;
+use std::str::FromStr;
 
 pub struct DummyPrecompile;
 impl Precompile for DummyPrecompile {
@@ -616,6 +617,7 @@ fn dex_precompile_get_liquidity_should_work() {
 		let mut input = [0u8; 4 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action
 		U256::from(0).to_big_endian(&mut input[1 * 32..2 * 32]);
 		let mut id = [0u8; 32];
 		id[31] = 4; // RENBTC
@@ -632,6 +634,60 @@ fn dex_precompile_get_liquidity_should_work() {
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(output, expected_output);
 		assert_eq!(used_gas, 0);
+	});
+}
+
+#[test]
+fn dex_precompile_get_liquidity_token_address_should_work() {
+	new_test_ext().execute_with(|| {
+		// enable RENBTC/AUSD
+		assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+
+		assert_ok!(DexModule::add_liquidity(
+			Origin::signed(ALICE),
+			RENBTC,
+			AUSD,
+			1_000,
+			1_000_000,
+			true
+		));
+
+		let context = Context {
+			address: Default::default(),
+			caller: alice_evm_addr(),
+			apparent_value: Default::default(),
+		};
+
+		// array_size + action + currency_id_a + currency_id_b
+		let mut input = [0u8; 4 * 32];
+		// array size
+		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action
+		U256::from(1).to_big_endian(&mut input[1 * 32..2 * 32]);
+		let mut id = [0u8; 32];
+		id[31] = 4; // RENBTC
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		let mut id = [0u8; 32];
+		id[31] = 1; // AUSD
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[3 * 32..4 * 32]);
+
+		let mut expected_output = [0u8; 32];
+		let address = H160::from_str("0x0000000000000000000000010000000100000004").unwrap();
+		U256::from(address.as_bytes()).to_big_endian(&mut expected_output[..32]);
+
+		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(reason, ExitSucceed::Returned);
+		assert_eq!(output, expected_output);
+		assert_eq!(used_gas, 0);
+
+		// unkonwn token
+		let mut id = [0u8; 32];
+		id[31] = u8::MAX; // not exists
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		assert_noop!(
+			DexPrecompile::execute(&input, None, &context),
+			ExitError::Other("invalid currency id".into())
+		);
 	});
 }
 
@@ -661,7 +717,8 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 		let mut input = [0u8; 6 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
-		U256::from(1).to_big_endian(&mut input[1 * 32..2 * 32]);
+		// action
+		U256::from(2).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(2).to_big_endian(&mut input[2 * 32..3 * 32]);
 		let mut id = [0u8; 32];
 		id[31] = 4; // RENBTC
@@ -707,7 +764,8 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 		let mut input = [0u8; 6 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
-		U256::from(2).to_big_endian(&mut input[1 * 32..2 * 32]);
+		// action
+		U256::from(3).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(2).to_big_endian(&mut input[2 * 32..3 * 32]);
 		let mut id = [0u8; 32];
 		id[31] = 4; // RENBTC
@@ -753,7 +811,8 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		let mut input = [0u8; 8 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
-		U256::from(3).to_big_endian(&mut input[1 * 32..2 * 32]);
+		// action
+		U256::from(4).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
 		let mut id = [0u8; 32];
@@ -801,7 +860,8 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 		let mut input = [0u8; 8 * 32];
 		// array size
 		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
-		U256::from(4).to_big_endian(&mut input[1 * 32..2 * 32]);
+		// action
+		U256::from(5).to_big_endian(&mut input[1 * 32..2 * 32]);
 		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[2 * 32..3 * 32]);
 		U256::from(2).to_big_endian(&mut input[3 * 32..4 * 32]);
 		let mut id = [0u8; 32];

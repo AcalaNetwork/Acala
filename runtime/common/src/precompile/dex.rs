@@ -42,12 +42,13 @@ pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 #[repr(u8)]
 enum Action {
 	GetLiquidityPool = 0,
-	GetSwapTargetAmount = 1,
-	GetSwapSupplyAmount = 2,
-	SwapWithExactSupply = 3,
-	SwapWithExactTarget = 4,
-	AddLiquidity = 5,
-	RemoveLiquidity = 6,
+	GetLiquidityTokenAddress = 1,
+	GetSwapTargetAmount = 2,
+	GetSwapSupplyAmount = 3,
+	SwapWithExactSupply = 4,
+	SwapWithExactTarget = 5,
+	AddLiquidity = 6,
+	RemoveLiquidity = 7,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
@@ -89,6 +90,24 @@ where
 				let mut be_bytes = [0u8; 64];
 				U256::from(balance_a).to_big_endian(&mut be_bytes[..32]);
 				U256::from(balance_b).to_big_endian(&mut be_bytes[32..64]);
+
+				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+			}
+			Action::GetLiquidityTokenAddress => {
+				let currency_id_a = input.currency_id_at(1)?;
+				let currency_id_b = input.currency_id_at(2)?;
+				log::debug!(
+					target: "evm",
+					"dex: get_liquidity_token address currency_id_a: {:?}, currency_id_b: {:?}",
+					currency_id_a, currency_id_b
+				);
+
+				let value = Dex::get_liquidity_token_address(currency_id_a, currency_id_b)
+					.ok_or_else(|| ExitError::Other("Dex get_liquidity_token_address failed".into()))?;
+
+				// output
+				let mut be_bytes = [0u8; 32];
+				U256::from(value.as_bytes()).to_big_endian(&mut be_bytes[..32]);
 
 				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
 			}
