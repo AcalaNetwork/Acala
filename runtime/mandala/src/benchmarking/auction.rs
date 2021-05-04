@@ -29,7 +29,6 @@ use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-const MAX_DOLLARS: u32 = 1000;
 const MAX_AUCTION_ID: u32 = 100;
 
 runtime_benchmarks! {
@@ -39,14 +38,12 @@ runtime_benchmarks! {
 	// there's no bidder before and bid price doesn't exceed target amount
 	#[extra]
 	bid_collateral_auction_as_first_bidder {
-		let d in 1 .. MAX_DOLLARS;
-
 		let bidder: AccountId = whitelisted_caller();
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
 		let target_amount = 10_000 * dollar(AUSD);
-		let bid_price = (5_000u128 + d as u128) * dollar(AUSD);
+		let bid_price = 5_000u128 * dollar(AUSD);
 		let auction_id: AuctionId = 0;
 
 		set_balance(currency_id, &funder, collateral_amount);
@@ -58,16 +55,14 @@ runtime_benchmarks! {
 	// `bid` a collateral auction, worst cases:
 	// there's bidder before and bid price will exceed target amount
 	bid_collateral_auction {
-		let d in 1 .. MAX_DOLLARS;
-
 		let bidder: AccountId = whitelisted_caller();
 		let previous_bidder = account("previous_bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
 		let target_amount = 10_000 * dollar(AUSD);
-		let previous_bid_price = (5_000u128 + d as u128) * dollar(AUSD);
-		let bid_price = (10_000u128 + d as u128) * dollar(AUSD);
+		let previous_bid_price = 5_000u128 * dollar(AUSD);
+		let bid_price = 10_000u128 * dollar(AUSD);
 		let auction_id: AuctionId = 0;
 
 		set_balance(currency_id, &funder, collateral_amount);
@@ -80,14 +75,13 @@ runtime_benchmarks! {
 
 	on_finalize {
 		let c in 1 .. MAX_AUCTION_ID;
-		let d in 1 .. MAX_DOLLARS;
 
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
 		let target_amount = 10_000 * dollar(AUSD);
-		let bid_price = (5_000u128 + d as u128) * dollar(AUSD);
+		let bid_price = 5_000u128 * dollar(AUSD);
 
 		System::set_block_number(1);
 		for auction_id in 0 .. c {

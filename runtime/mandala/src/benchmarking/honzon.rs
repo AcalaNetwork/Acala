@@ -127,6 +127,7 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(ACA, &sender, DepositPerAuthorization::get());
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
@@ -246,6 +247,13 @@ mod tests {
 	fn test_adjust_loan() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_adjust_loan());
+		});
+	}
+
+	#[test]
+	fn test_transfer_loan_from() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_transfer_loan_from());
 		});
 	}
 
