@@ -430,5 +430,29 @@ fn decode_evm_address_works() {
 				),
 				None
 			);
+
+			// decode invalid evm address
+			// Allow non-system contracts
+			let non_system_contracts = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(non_system_contracts),
+				None
+			);
+
+			let id = Into::<u32>::into(DexShare::Erc20(non_system_contracts));
+			CurrencyIdMap::<Runtime>::mutate(id, |maybe_erc20_info| {
+				let info = Erc20Info {
+					address: non_system_contracts,
+					name: b"Test".to_vec(),
+					symbol: b"T".to_vec(),
+					decimals: 17,
+				};
+
+				*maybe_erc20_info = Some(info);
+			});
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(non_system_contracts),
+				Some(CurrencyId::Erc20(non_system_contracts))
+			);
 		});
 }

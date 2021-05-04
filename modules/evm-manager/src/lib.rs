@@ -264,9 +264,6 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_evm_address(addr: EvmAddress) -> Option<CurrencyId> {
 		let address = addr.as_bytes();
-		if !address.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			return None;
-		}
 
 		// Token
 		if address.starts_with(&H160_PREFIX_TOKEN) {
