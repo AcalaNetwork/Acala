@@ -167,32 +167,6 @@ pub const MIRRORED_LP_TOKENS_ADDRESS_START: u128 = 0x10000000000000000;
 /// System contract address prefix
 pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 11] = [0u8; 11];
 
-/// CurrencyId to U256([u8; 32]) bit encoding rule.
-///
-/// Token
-/// v[11] = 0
-/// - v[31] = token(1 byte)
-///
-/// DexShare
-/// v[11] = 1
-/// - v[12..16] = dex left(4 bytes)
-/// - v[16..20] = dex right(4 bytes)
-///
-/// Erc20
-/// v[11] = 2
-/// - v[12..32] = evm address(20 bytes)
-pub const U256_TYPE_TOKEN: u8 = 0;
-pub const U256_TYPE_DEXSHARE: u8 = 1;
-pub const U256_TYPE_ERC20: u8 = 2;
-pub const U256_TYPE_POSITION: usize = 11;
-pub const U256_POSITION_TOKEN: usize = 31;
-pub const U256_POSITION_DEXSHARE_LEFT: Range<usize> = 12..16;
-pub const U256_POSITION_DEXSHARE_RIGHT: Range<usize> = 16..20;
-pub const U256_POSITION_ERC20: Range<usize> = 12..32;
-pub const H256_PREFIX: [u8; 11] = [0u8; 11];
-pub const H256_PREFIX_TOKEN: [u8; 31] = [0u8; 31];
-pub const H256_SUFFIX_DEXSHARE: [u8; 12] = [0u8; 12];
-
 /// CurrencyId to H160([u8; 20]) bit encoding rule.
 ///
 /// Token

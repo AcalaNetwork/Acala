@@ -122,13 +122,9 @@ where
 	}
 
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
-		let param = self.nth_param(index)?;
+		let address = self.evm_address_at(index)?;
 
-		let bytes: &[u8; 32] = param
-			.try_into()
-			.map_err(|_| ExitError::Other("currency id param bytes too short".into()))?;
-
-		CurrencyIdMapping::decode_currency_id(bytes).ok_or_else(|| ExitError::Other("invalid currency id".into()))
+		CurrencyIdMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {

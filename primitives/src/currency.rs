@@ -250,30 +250,6 @@ impl CurrencyId {
 	}
 }
 
-/// Note the pre-deployed Erc20 contracts depend on `CurrencyId` implementation,
-/// and need to be updated if any change.
-impl TryFrom<[u8; 32]> for CurrencyId {
-	type Error = ();
-
-	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
-		if !v.starts_with(&H256_PREFIX) {
-			return Err(());
-		}
-
-		// token
-		if v[U256_TYPE_POSITION] == U256_TYPE_TOKEN && v.starts_with(&H256_PREFIX_TOKEN) {
-			return v[U256_POSITION_TOKEN].try_into().map(CurrencyId::Token);
-		}
-
-		// erc20
-		if v[U256_TYPE_POSITION] == U256_TYPE_ERC20 {
-			return Ok(CurrencyId::Erc20(EvmAddress::from_slice(&v[12..32])));
-		}
-
-		Err(())
-	}
-}
-
 impl From<DexShare> for u32 {
 	fn from(val: DexShare) -> u32 {
 		let mut bytes = [0u8; 4];
