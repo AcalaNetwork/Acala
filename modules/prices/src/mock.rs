@@ -25,7 +25,7 @@ use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{Amount, TokenSymbol};
-use sp_core::H256;
+use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{IdentityLookup, One as OneT, Zero},
@@ -113,6 +113,10 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 			(AUSD, DOT) => (10000, 200),
 			_ => (0, 0),
 		}
+	}
+
+	fn get_liquidity_token_address(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> Option<H160> {
+		unimplemented!()
 	}
 
 	fn get_swap_target_amount(
