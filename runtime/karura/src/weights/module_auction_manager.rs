@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,7 +48,7 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_auction_manager::WeightInfo for WeightInfo<T> {
 	fn cancel_collateral_auction() -> Weight {
-		(158_822_000 as Weight)
+		(159_578_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}

@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,22 +48,22 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	fn transfer_non_native_currency() -> Weight {
-		(121_007_000 as Weight)
+		(121_090_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn transfer_native_currency() -> Weight {
-		(19_798_000 as Weight)
+		(19_642_000 as Weight)
 	}
 	fn update_balance_non_native_currency() -> Weight {
-		(57_656_000 as Weight)
+		(56_682_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn update_balance_native_currency_creating() -> Weight {
-		(24_642_000 as Weight)
+		(24_208_000 as Weight)
 	}
 	fn update_balance_native_currency_killing() -> Weight {
-		(24_473_000 as Weight)
+		(23_936_000 as Weight)
 	}
 }

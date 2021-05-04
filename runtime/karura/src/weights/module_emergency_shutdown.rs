@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,22 +48,22 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightInfo<T> {
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		(99_759_000 as Weight)
-			// Standard Error: 146_000
-			.saturating_add((24_310_000 as Weight).saturating_mul(c as Weight))
+		(98_522_000 as Weight)
+			// Standard Error: 180_000
+			.saturating_add((25_323_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(13 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(c as Weight)))
 	}
 	fn open_collateral_refund() -> Weight {
-		(46_510_000 as Weight)
+		(46_732_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn refund_collaterals(c: u32, ) -> Weight {
-		(134_699_000 as Weight)
-			// Standard Error: 219_000
-			.saturating_add((67_306_000 as Weight).saturating_mul(c as Weight))
+		(135_214_000 as Weight)
+			// Standard Error: 164_000
+			.saturating_add((66_876_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))

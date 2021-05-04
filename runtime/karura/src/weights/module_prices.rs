@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,12 +48,12 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_prices::WeightInfo for WeightInfo<T> {
 	fn lock_price() -> Weight {
-		(73_178_000 as Weight)
+		(73_177_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn unlock_price() -> Weight {
-		(23_212_000 as Weight)
+		(22_862_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }

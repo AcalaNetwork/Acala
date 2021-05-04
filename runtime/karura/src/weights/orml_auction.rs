@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,14 +48,14 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 	fn bid_collateral_auction() -> Weight {
-		(220_915_000 as Weight)
+		(221_592_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
 	fn on_finalize(c: u32, ) -> Weight {
-		(71_292_000 as Weight)
-			// Standard Error: 73_000
-			.saturating_add((114_016_000 as Weight).saturating_mul(c as Weight))
+		(56_253_000 as Weight)
+			// Standard Error: 225_000
+			.saturating_add((117_558_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(10 as Weight))
 			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))

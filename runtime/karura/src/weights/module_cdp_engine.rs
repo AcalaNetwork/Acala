@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,35 +48,35 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	fn on_initialize(c: u32, ) -> Weight {
-		(45_176_000 as Weight)
-			// Standard Error: 267_000
-			.saturating_add((62_387_000 as Weight).saturating_mul(c as Weight))
+		(45_473_000 as Weight)
+			// Standard Error: 118_000
+			.saturating_add((61_925_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(c as Weight)))
 	}
 	fn set_collateral_params() -> Weight {
-		(66_247_000 as Weight)
+		(67_741_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_global_params() -> Weight {
-		(20_965_000 as Weight)
+		(20_832_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn liquidate_by_auction() -> Weight {
-		(351_234_000 as Weight)
+		(355_325_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(22 as Weight))
 			.saturating_add(T::DbWeight::get().writes(17 as Weight))
 	}
 	fn liquidate_by_dex() -> Weight {
-		(451_360_000 as Weight)
+		(450_810_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(23 as Weight))
 			.saturating_add(T::DbWeight::get().writes(15 as Weight))
 	}
 	fn settle() -> Weight {
-		(184_347_000 as Weight)
+		(184_654_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}

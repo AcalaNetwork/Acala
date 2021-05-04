@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,37 +48,37 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	fn create_class() -> Weight {
-		(152_947_000 as Weight)
+		(155_310_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn mint(i: u32, ) -> Weight {
-		(66_952_000 as Weight)
-			// Standard Error: 9_000
-			.saturating_add((17_402_000 as Weight).saturating_mul(i as Weight))
+		(74_940_000 as Weight)
+			// Standard Error: 10_000
+			.saturating_add((17_575_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(i as Weight)))
 	}
 	fn transfer() -> Weight {
-		(146_937_000 as Weight)
+		(147_448_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn burn() -> Weight {
-		(83_523_000 as Weight)
+		(82_727_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn burn_with_remark(b: u32, ) -> Weight {
-		(43_490_000 as Weight)
+		(90_178_000 as Weight)
 			// Standard Error: 0
 			.saturating_add((2_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn destroy_class() -> Weight {
-		(139_615_000 as Weight)
+		(140_842_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}

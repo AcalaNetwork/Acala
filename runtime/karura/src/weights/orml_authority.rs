@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,30 +48,30 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_authority::WeightInfo for WeightInfo<T> {
 	fn dispatch_as() -> Weight {
-		(20_041_000 as Weight)
+		(20_030_000 as Weight)
 	}
 	fn schedule_dispatch_without_delay() -> Weight {
-		(56_916_000 as Weight)
+		(57_675_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn schedule_dispatch_with_delay() -> Weight {
-		(58_735_000 as Weight)
+		(59_184_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn fast_track_scheduled_dispatch() -> Weight {
-		(73_264_000 as Weight)
+		(74_599_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn delay_scheduled_dispatch() -> Weight {
-		(73_202_000 as Weight)
+		(74_565_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn cancel_scheduled_dispatch() -> Weight {
-		(51_645_000 as Weight)
+		(51_998_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}

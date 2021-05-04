@@ -33,10 +33,11 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --header=./HEADER-GPL3
+// --template=./templates/runtime-weight-template.hbs
 // --output=./runtime/karura/src/weights/
 
 
+#![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -47,35 +48,35 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	fn authorize() -> Weight {
-		(58_974_000 as Weight)
+		(59_102_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn unauthorize() -> Weight {
-		(61_513_000 as Weight)
+		(61_468_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn unauthorize_all(c: u32, ) -> Weight {
-		(29_130_000 as Weight)
-			// Standard Error: 81_000
-			.saturating_add((46_597_000 as Weight).saturating_mul(c as Weight))
+		(29_009_000 as Weight)
+			// Standard Error: 73_000
+			.saturating_add((46_110_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn adjust_loan() -> Weight {
-		(275_406_000 as Weight)
+		(277_577_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(20 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
 	}
 	fn transfer_loan_from() -> Weight {
-		(189_733_000 as Weight)
+		(184_868_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn close_loan_has_debit_by_dex() -> Weight {
-		(443_602_000 as Weight)
+		(444_583_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(22 as Weight))
 			.saturating_add(T::DbWeight::get().writes(14 as Weight))
 	}
