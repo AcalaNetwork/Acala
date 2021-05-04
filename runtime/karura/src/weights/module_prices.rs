@@ -47,12 +47,12 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_prices::WeightInfo for WeightInfo<T> {
 	fn lock_price() -> Weight {
-		(71_900_000 as Weight)
+		(70_838_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn unlock_price() -> Weight {
-		(22_156_000 as Weight)
+		(22_336_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
