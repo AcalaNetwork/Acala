@@ -99,8 +99,28 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::benchmarking::utils::tests::new_test_ext;
-	use orml_benchmarking::impl_benchmark_test_suite;
 
-	impl_benchmark_test_suite!(new_test_ext(),);
+	use orml_benchmarking::impl_benchmark_test_suite;
+	use sp_runtime::{FixedPointNumber, FixedU128};
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+
+		module_staking_pool::GenesisConfig {
+			staking_pool_params: module_staking_pool::Params {
+				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
+				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
+				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
+				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
+				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
+			},
+		}
+		.assimilate_storage::<Runtime>(&mut t)
+		.unwrap();
+		t.into()
+	}
+
+	impl_benchmark_test_suite!(super::new_test_ext(),);
 }
