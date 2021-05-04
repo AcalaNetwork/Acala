@@ -265,170 +265,6 @@ fn decimals_works() {
 }
 
 #[test]
-fn encode_currency_id_works() {
-	ExtBuilder::default()
-		.balances(vec![(alice(), 1_000_000_000_000)])
-		.build()
-		.execute_with(|| {
-			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
-
-			// CurrencyId::Token
-			let mut bytes = [0u8; 32];
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::ACA)),
-				Some(bytes)
-			);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::Token(TokenSymbol::ACA))
-			);
-
-			bytes[31] = 1;
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Token(TokenSymbol::AUSD)),
-				Some(bytes)
-			);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::Token(TokenSymbol::AUSD))
-			);
-
-			// CurrencyId::Erc20
-			let mut bytes = [0u8; 32];
-			bytes[11] = 2;
-			bytes[12..32].copy_from_slice(&erc20_address().as_bytes()[..]);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::Erc20(erc20_address())),
-				Some(bytes)
-			);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::Erc20(erc20_address()))
-			);
-
-			// CurrencyId::DexShare(Token, Token)
-			let mut bytes = [0u8; 32];
-			bytes[11] = 1;
-			let id1: u32 = DexShare::Token(TokenSymbol::ACA).into();
-			let id2: u32 = DexShare::Token(TokenSymbol::AUSD).into();
-			bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
-			bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
-					DexShare::Token(TokenSymbol::ACA),
-					DexShare::Token(TokenSymbol::AUSD)
-				)),
-				Some(bytes)
-			);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::DexShare(
-					DexShare::Token(TokenSymbol::ACA),
-					DexShare::Token(TokenSymbol::AUSD)
-				))
-			);
-
-			// CurrencyId::DexShare(Erc20, Erc20)
-			let mut bytes = [0u8; 32];
-			bytes[11] = 1;
-			let id1: u32 = DexShare::Erc20(erc20_address()).into();
-			let id2: u32 = DexShare::Erc20(erc20_address()).into();
-			bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
-			bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
-					DexShare::Erc20(erc20_address()),
-					DexShare::Erc20(erc20_address())
-				)),
-				Some(bytes)
-			);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::DexShare(
-					DexShare::Erc20(erc20_address()),
-					DexShare::Erc20(erc20_address())
-				))
-			);
-
-			// Invalid CurrencyId::DexShare(_, _)
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
-					DexShare::Erc20(erc20_address()),
-					DexShare::Erc20(erc20_address_not_exists())
-				)),
-				None
-			);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::encode_currency_id(CurrencyId::DexShare(
-					DexShare::Erc20(erc20_address_not_exists()),
-					DexShare::Erc20(erc20_address_not_exists())
-				)),
-				None
-			);
-		});
-}
-
-#[test]
-fn decode_currency_id_works() {
-	ExtBuilder::default()
-		.balances(vec![(alice(), 1_000_000_000_000)])
-		.build()
-		.execute_with(|| {
-			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
-
-			// CurrencyId::Token
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[0u8; 32]),
-				Some(CurrencyId::Token(TokenSymbol::ACA))
-			);
-			assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&[255u8; 32]), None);
-
-			// CurrencyId::DexShare(Token, Token)
-			let mut bytes = [0u8; 32];
-			bytes[11] = 1;
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::DexShare(
-					DexShare::Token(TokenSymbol::ACA),
-					DexShare::Token(TokenSymbol::ACA)
-				))
-			);
-
-			// CurrencyId::DexShare(Erc20, Token)
-			let mut bytes = [0u8; 32];
-			bytes[11] = 1;
-			let id: u32 = DexShare::Erc20(erc20_address()).into();
-			bytes[12..16].copy_from_slice(&id.to_be_bytes()[..]);
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::DexShare(
-					DexShare::Erc20(erc20_address()),
-					DexShare::Token(TokenSymbol::ACA)
-				))
-			);
-
-			// CurrencyId::Erc20
-			bytes[11] = 2;
-			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
-				Some(CurrencyId::Erc20(
-					H160::from_str("0x0200000000000000000000000000000000000000").unwrap()
-				))
-			);
-
-			// Invalid
-			bytes[11] = 3;
-			assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes), None);
-		});
-}
-
-#[test]
 fn encode_evm_address_works() {
 	ExtBuilder::default()
 		.balances(vec![(alice(), 1_000_000_000_000)])
@@ -522,7 +358,7 @@ fn decode_evm_address_works() {
 				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
 					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Erc20(erc20_address())).unwrap()
 				),
-				None
+				Some(CurrencyId::Erc20(erc20_address()))
 			);
 
 			assert_eq!(
@@ -593,6 +429,30 @@ fn decode_evm_address_works() {
 					H160::from_str("0x0000000000000000000000010200000002000001").unwrap()
 				),
 				None
+			);
+
+			// decode invalid evm address
+			// Allow non-system contracts
+			let non_system_contracts = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(non_system_contracts),
+				None
+			);
+
+			let id = Into::<u32>::into(DexShare::Erc20(non_system_contracts));
+			CurrencyIdMap::<Runtime>::mutate(id, |maybe_erc20_info| {
+				let info = Erc20Info {
+					address: non_system_contracts,
+					name: b"Test".to_vec(),
+					symbol: b"T".to_vec(),
+					decimals: 17,
+				};
+
+				*maybe_erc20_info = Some(info);
+			});
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(non_system_contracts),
+				Some(CurrencyId::Erc20(non_system_contracts))
 			);
 		});
 }

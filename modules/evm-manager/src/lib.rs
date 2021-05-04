@@ -229,94 +229,6 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 		}
 	}
 
-	// Encode the CurrencyId to [u8; 32].
-	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
-	// the EvmAddress must have been mapped.
-	fn encode_currency_id(val: CurrencyId) -> Option<[u8; 32]> {
-		let mut bytes = [0u8; 32];
-		match val {
-			CurrencyId::Token(token) => {
-				// default is 0, omit it.
-				// bytes[U256_TYPE_POSITION] = U256_TYPE_TOKEN;
-				bytes[U256_POSITION_TOKEN] = token as u8;
-			}
-			CurrencyId::DexShare(left, right) => {
-				bytes[U256_TYPE_POSITION] = U256_TYPE_DEXSHARE;
-				match left {
-					DexShare::Token(_) => {
-						let id: u32 = left.into();
-						bytes[U256_POSITION_DEXSHARE_LEFT].copy_from_slice(&id.to_be_bytes()[..])
-					}
-					DexShare::Erc20(address) => {
-						let id: u32 = left.into();
-						if CurrencyIdMap::<T>::get(id).filter(|v| v.address == address).is_some() {
-							bytes[U256_POSITION_DEXSHARE_LEFT].copy_from_slice(&id.to_be_bytes()[..])
-						} else {
-							return None;
-						}
-					}
-				}
-				match right {
-					DexShare::Token(_) => {
-						let id: u32 = right.into();
-						bytes[U256_POSITION_DEXSHARE_RIGHT].copy_from_slice(&id.to_be_bytes()[..])
-					}
-					DexShare::Erc20(address) => {
-						let id: u32 = right.into();
-						if CurrencyIdMap::<T>::get(id).filter(|v| v.address == address).is_some() {
-							bytes[U256_POSITION_DEXSHARE_RIGHT].copy_from_slice(&id.to_be_bytes()[..])
-						} else {
-							return None;
-						}
-					}
-				}
-			}
-			CurrencyId::Erc20(address) => {
-				bytes[U256_TYPE_POSITION] = U256_TYPE_ERC20;
-				bytes[U256_POSITION_ERC20].copy_from_slice(&address[..]);
-			}
-		}
-		Some(bytes)
-	}
-
-	// Decode the CurrencyId from [u8; 32].
-	// If is CurrencyId::DexShare and contain DexShare::Erc20,
-	// will use the u32 to get the DexShare::Erc20 from the mapping.
-	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
-		if !v.starts_with(&H256_PREFIX) {
-			return None;
-		}
-
-		// DEX share
-		if v[U256_TYPE_POSITION] == U256_TYPE_DEXSHARE && v.ends_with(&H256_SUFFIX_DEXSHARE) {
-			let left = {
-				if v[U256_POSITION_DEXSHARE_LEFT].starts_with(&[0u8; 3]) {
-					// Token
-					v[U256_POSITION_DEXSHARE_LEFT][3].try_into().map(DexShare::Token).ok()
-				} else {
-					// Erc20
-					let id = u32::from_be_bytes(v[H160_POSITION_DEXSHARE_LEFT].try_into().ok()?);
-					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
-				}
-			}?;
-			let right = {
-				if v[U256_POSITION_DEXSHARE_RIGHT].starts_with(&[0u8; 3]) {
-					// Token
-					v[U256_POSITION_DEXSHARE_RIGHT][3].try_into().map(DexShare::Token).ok()
-				} else {
-					// Erc20
-					let id = u32::from_be_bytes(v[H160_POSITION_DEXSHARE_RIGHT].try_into().ok()?);
-					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
-				}
-			}?;
-
-			return Some(CurrencyId::DexShare(left, right));
-		}
-
-		// Token or Erc20
-		(*v).try_into().ok()
-	}
-
 	// Encode the CurrencyId to EvmAddress.
 	// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	// will use the u32 to get the DexShare::Erc20 from the mapping.
@@ -350,11 +262,8 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	// Decode the CurrencyId from EvmAddress.
 	// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	// will use the u32 to get the DexShare::Erc20 from the mapping.
-	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
-		let address = v.as_bytes();
-		if !address.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			return None;
-		}
+	fn decode_evm_address(addr: EvmAddress) -> Option<CurrencyId> {
+		let address = addr.as_bytes();
 
 		// Token
 		if address.starts_with(&H160_PREFIX_TOKEN) {
@@ -393,7 +302,8 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			return Some(CurrencyId::DexShare(left, right));
 		}
 
-		// Erc20 does not need to be decoded.
-		None
+		// Erc20
+		let id = Into::<u32>::into(DexShare::Erc20(addr));
+		CurrencyIdMap::<T>::get(id).map(|v| CurrencyId::Erc20(v.address))
 	}
 }

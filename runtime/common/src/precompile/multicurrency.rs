@@ -44,7 +44,6 @@ pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping,
 #[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u8)]
 enum Action {
-	QueryCurrencyId = 0,
 	QueryName = 1,
 	QuerySymbol = 2,
 	QueryDecimals = 3,
@@ -79,13 +78,6 @@ where
 		log::debug!(target: "evm", "currency id: {:?}", currency_id);
 
 		match action {
-			Action::QueryCurrencyId => {
-				let id = CurrencyIdMapping::encode_currency_id(currency_id)
-					.ok_or_else(|| ExitError::Other("Get currency_id failed".into()))?;
-				log::debug!(target: "evm", "currency id u256: {:?}", id);
-
-				Ok((ExitSucceed::Returned, id.to_vec(), 0))
-			}
 			Action::QueryName => {
 				let name =
 					CurrencyIdMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;

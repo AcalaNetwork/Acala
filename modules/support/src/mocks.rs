@@ -86,14 +86,6 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 		currency_id.decimals()
 	}
 
-	fn encode_currency_id(_v: CurrencyId) -> Option<[u8; 32]> {
-		Some(Default::default())
-	}
-
-	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId> {
-		(*v).try_into().ok()
-	}
-
 	fn encode_evm_address(v: CurrencyId) -> Option<EvmAddress> {
 		EvmAddress::try_from(v).ok()
 	}

@@ -29,7 +29,7 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol};
-use sp_core::H256;
+use sp_core::{H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
 pub use support::{CDPTreasury, DEXManager, Price, Ratio};
@@ -162,6 +162,10 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 			(DOT, AUSD) => (100, 400),
 			_ => (0, 0),
 		}
+	}
+
+	fn get_liquidity_token_address(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> Option<H160> {
+		unimplemented!()
 	}
 
 	fn get_swap_target_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {

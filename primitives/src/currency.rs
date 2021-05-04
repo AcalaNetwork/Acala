@@ -23,7 +23,7 @@ use bstringify::bstringify;
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
 use sp_std::{
-	convert::{Into, TryFrom, TryInto},
+	convert::{Into, TryFrom},
 	prelude::*,
 };
 
@@ -247,30 +247,6 @@ impl CurrencyId {
 			_ => return None,
 		};
 		Some(CurrencyId::DexShare(token_symbol_0, token_symbol_1))
-	}
-}
-
-/// Note the pre-deployed Erc20 contracts depend on `CurrencyId` implementation,
-/// and need to be updated if any change.
-impl TryFrom<[u8; 32]> for CurrencyId {
-	type Error = ();
-
-	fn try_from(v: [u8; 32]) -> Result<Self, Self::Error> {
-		if !v.starts_with(&H256_PREFIX) {
-			return Err(());
-		}
-
-		// token
-		if v[U256_TYPE_POSITION] == U256_TYPE_TOKEN && v.starts_with(&H256_PREFIX_TOKEN) {
-			return v[U256_POSITION_TOKEN].try_into().map(CurrencyId::Token);
-		}
-
-		// erc20
-		if v[U256_TYPE_POSITION] == U256_TYPE_ERC20 {
-			return Ok(CurrencyId::Erc20(EvmAddress::from_slice(&v[12..32])));
-		}
-
-		Err(())
 	}
 }
 

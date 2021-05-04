@@ -100,6 +100,8 @@ pub trait AuctionManager<AccountId> {
 pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
+	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160>;
+
 	fn get_swap_target_amount(
 		path: &[CurrencyId],
 		supply_amount: Balance,
@@ -152,6 +154,10 @@ where
 {
 	fn get_liquidity_pool(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> (Balance, Balance) {
 		Default::default()
+	}
+
+	fn get_liquidity_token_address(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> Option<H160> {
+		Some(Default::default())
 	}
 
 	fn get_swap_target_amount(
@@ -516,14 +522,6 @@ pub trait CurrencyIdMapping {
 	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// the EvmAddress must have been mapped.
 	fn decimals(currency_id: CurrencyId) -> Option<u8>;
-	/// Encode the CurrencyId to [u8; 32].
-	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
-	/// the EvmAddress must have been mapped.
-	fn encode_currency_id(v: CurrencyId) -> Option<[u8; 32]>;
-	/// Decode the CurrencyId from [u8; 32].
-	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
-	/// will use the u32 to get the DexShare::Erc20 from the mapping.
-	fn decode_currency_id(v: &[u8; 32]) -> Option<CurrencyId>;
 	/// Encode the CurrencyId to EvmAddress.
 	/// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// will use the u32 to get the DexShare::Erc20 from the mapping.
@@ -553,14 +551,6 @@ impl CurrencyIdMapping for () {
 	}
 
 	fn decimals(_currency_id: CurrencyId) -> Option<u8> {
-		None
-	}
-
-	fn encode_currency_id(_v: CurrencyId) -> Option<[u8; 32]> {
-		None
-	}
-
-	fn decode_currency_id(_v: &[u8; 32]) -> Option<CurrencyId> {
 		None
 	}
 

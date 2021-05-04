@@ -122,13 +122,9 @@ where
 	}
 
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
-		let param = self.nth_param(index)?;
+		let address = self.evm_address_at(index)?;
 
-		let bytes: &[u8; 32] = param
-			.try_into()
-			.map_err(|_| ExitError::Other("currency id param bytes too short".into()))?;
-
-		CurrencyIdMapping::decode_currency_id(bytes).ok_or_else(|| ExitError::Other("invalid currency id".into()))
+		CurrencyIdMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
@@ -263,9 +259,13 @@ mod tests {
 	#[test]
 	fn currency_id_works() {
 		let input = TestInput::new(&[0u8; 32][..]);
-		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
+		assert_err!(input.currency_id_at(0), ExitError::Other("invalid currency id".into()));
 
 		let mut raw_input = [0u8; 32];
+		raw_input[28] = 1;
+		let input = TestInput::new(&raw_input[..]);
+		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::ACA));
+
 		raw_input[31] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(0), CurrencyId::Token(TokenSymbol::AUSD));
