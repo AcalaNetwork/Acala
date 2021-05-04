@@ -47,51 +47,51 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	fn enable_trading_pair() -> Weight {
-		(29_518_000 as Weight)
+		(29_886_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn disable_trading_pair() -> Weight {
-		(29_414_000 as Weight)
+		(29_772_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn list_trading_pair() -> Weight {
-		(36_022_000 as Weight)
+		(37_557_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn add_liquidity() -> Weight {
-		(194_770_000 as Weight)
+		(202_411_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn add_liquidity_and_deposit() -> Weight {
-		(293_107_000 as Weight)
+		(299_683_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
 	}
 	fn remove_liquidity() -> Weight {
-		(205_055_000 as Weight)
+		(209_243_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn remove_liquidity_by_withdraw() -> Weight {
-		(333_926_000 as Weight)
+		(344_186_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
 	}
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		(160_250_000 as Weight)
-			// Standard Error: 541_000
-			.saturating_add((195_000 as Weight).saturating_mul(u as Weight))
+		(158_863_000 as Weight)
+			// Standard Error: 159_000
+			.saturating_add((468_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn swap_with_exact_target(u: u32, ) -> Weight {
-		(155_359_000 as Weight)
-			// Standard Error: 371_000
-			.saturating_add((1_698_000 as Weight).saturating_mul(u as Weight))
+		(157_081_000 as Weight)
+			// Standard Error: 207_000
+			.saturating_add((1_324_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}

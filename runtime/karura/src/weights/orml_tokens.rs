@@ -47,12 +47,12 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 	fn transfer() -> Weight {
-		(118_106_000 as Weight)
+		(121_223_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn transfer_all() -> Weight {
-		(122_405_000 as Weight)
+		(124_799_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}

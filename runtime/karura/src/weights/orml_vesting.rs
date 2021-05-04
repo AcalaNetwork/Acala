@@ -47,21 +47,21 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 	fn vested_transfer() -> Weight {
-		(137_686_000 as Weight)
+		(141_801_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn claim(i: u32, ) -> Weight {
-		(66_066_000 as Weight)
-			// Standard Error: 6_000
-			.saturating_add((237_000 as Weight).saturating_mul(i as Weight))
+		(67_130_000 as Weight)
+			// Standard Error: 8_000
+			.saturating_add((262_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn update_vesting_schedules(i: u32, ) -> Weight {
-		(58_997_000 as Weight)
-			// Standard Error: 52_000
-			.saturating_add((510_000 as Weight).saturating_mul(i as Weight))
+		(60_162_000 as Weight)
+			// Standard Error: 7_000
+			.saturating_add((287_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}

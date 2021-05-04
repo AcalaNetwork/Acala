@@ -47,22 +47,22 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	fn transfer_non_native_currency() -> Weight {
-		(118_691_000 as Weight)
+		(121_007_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn transfer_native_currency() -> Weight {
-		(19_297_000 as Weight)
+		(19_798_000 as Weight)
 	}
 	fn update_balance_non_native_currency() -> Weight {
-		(56_733_000 as Weight)
+		(57_656_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn update_balance_native_currency_creating() -> Weight {
-		(24_186_000 as Weight)
+		(24_642_000 as Weight)
 	}
 	fn update_balance_native_currency_killing() -> Weight {
-		(24_049_000 as Weight)
+		(24_473_000 as Weight)
 	}
 }

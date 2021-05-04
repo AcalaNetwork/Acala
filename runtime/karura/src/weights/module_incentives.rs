@@ -47,42 +47,42 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	fn on_initialize(c: u32, ) -> Weight {
-		(13_808_000 as Weight)
-			// Standard Error: 98_000
-			.saturating_add((104_058_000 as Weight).saturating_mul(c as Weight))
+		(14_888_000 as Weight)
+			// Standard Error: 253_000
+			.saturating_add((106_251_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().reads((4 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(c as Weight)))
 	}
 	fn deposit_dex_share() -> Weight {
-		(156_581_000 as Weight)
+		(155_846_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn withdraw_dex_share() -> Weight {
-		(157_590_000 as Weight)
+		(160_068_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn claim_rewards() -> Weight {
-		(118_549_000 as Weight)
+		(121_171_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn update_incentive_rewards(c: u32, ) -> Weight {
-		(1_419_000 as Weight)
-			// Standard Error: 9_000
-			.saturating_add((3_343_000 as Weight).saturating_mul(c as Weight))
+		(1_407_000 as Weight)
+			// Standard Error: 14_000
+			.saturating_add((3_336_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn update_dex_saving_rewards(c: u32, ) -> Weight {
-		(1_411_000 as Weight)
-			// Standard Error: 18_000
-			.saturating_add((3_472_000 as Weight).saturating_mul(c as Weight))
+		(1_345_000 as Weight)
+			// Standard Error: 9_000
+			.saturating_add((3_448_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn add_allowance() -> Weight {
-		(79_068_000 as Weight)
+		(80_113_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
