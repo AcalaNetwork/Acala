@@ -118,7 +118,6 @@ runtime_benchmarks! {
 		let receiver: AccountId = whitelisted_caller();
 		let receiver_lookup = AccountIdLookup::unlookup(receiver.clone());
 
-
 		let debit_value = 100 * dollar(KUSD);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
@@ -128,6 +127,7 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(KAR, &sender, DepositPerAuthorization::get());
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
@@ -247,6 +247,13 @@ mod tests {
 	fn test_adjust_loan() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_adjust_loan());
+		});
+	}
+
+	#[test]
+	fn test_transfer_loan_from() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_transfer_loan_from());
 		});
 	}
 
