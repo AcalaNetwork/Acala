@@ -50,19 +50,19 @@ fn should_calculate_contract_address() {
 
 		assert_eq!(
 			Handler::<Test>::create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap()
+			Ok(H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap())
 		);
 
 		Handler::<Test>::inc_nonce(addr);
 		assert_eq!(
 			Handler::<Test>::create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap()
+			Ok(H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap())
 		);
 
 		Handler::<Test>::inc_nonce(addr);
 		assert_eq!(
 			Handler::<Test>::create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap()
+			Ok(H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap())
 		);
 	});
 }

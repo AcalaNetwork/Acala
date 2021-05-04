@@ -65,7 +65,7 @@ impl<T: Config> Runner<T> {
 		};
 
 		let address = if let Some(addr) = assigned_address {
-			addr
+			Ok(addr)
 		} else {
 			let scheme = if let Some(s) = salt {
 				let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
@@ -78,7 +78,7 @@ impl<T: Config> Runner<T> {
 				CreateScheme::Legacy { caller: source }
 			};
 			Handler::<T>::create_address(scheme)
-		};
+		}?;
 
 		Handler::<T>::inc_nonce(source);
 
