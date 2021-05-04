@@ -45,9 +45,27 @@ fn set_erc20_mapping_works() {
 
 			assert_noop!(
 				with_transaction_result(|| -> DispatchResult {
-					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address_not_exists())
+					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(
+						EvmAddress::from_str("0000000000000000000000000000000200000000").unwrap(),
+					)
 				}),
 				Error::<Runtime>::CurrencyIdExisted,
+			);
+
+			assert_noop!(
+				with_transaction_result(|| -> DispatchResult {
+					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(
+						EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap(),
+					)
+				}),
+				Error::<Runtime>::CurrencyIdExisted,
+			);
+
+			assert_noop!(
+				with_transaction_result(|| -> DispatchResult {
+					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address_not_exists())
+				}),
+				module_evm_bridge::Error::<Runtime>::InvalidReturnValue,
 			);
 		});
 }
@@ -63,13 +81,128 @@ fn get_evm_address_works() {
 				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
 			}));
 			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::get_evm_address(
-					CurrencyId::Erc20(erc20_address()).try_into().unwrap()
-				),
+				EvmCurrencyIdMapping::<Runtime>::get_evm_address(DexShare::Erc20(erc20_address()).into()),
 				Some(erc20_address())
 			);
 
 			assert_eq!(EvmCurrencyIdMapping::<Runtime>::get_evm_address(u32::default()), None);
+		});
+}
+
+#[test]
+fn name_works() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::Token(TokenSymbol::ACA)),
+				Some(b"Acala".to_vec())
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::Erc20(erc20_address())),
+				Some(b"long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::Erc20(erc20_address_not_exists())),
+				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD))),
+				Some(b"LP Acala - Acala Dollar".to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Erc20(erc20_address()), DexShare::Token(TokenSymbol::AUSD))),
+				Some(b"LP long string name, long string name, long string name, long string name, long string name - Acala Dollar"[..32].to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Erc20(erc20_address()), DexShare::Erc20(erc20_address()))),
+				Some(b"LP long string name, long string name, long string name, long string name, long string name - long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Erc20(erc20_address_not_exists()))),
+				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Erc20(erc20_address()), DexShare::Erc20(erc20_address_not_exists()))),
+				None
+			);
+		});
+}
+
+#[test]
+fn symbol_works() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::Token(TokenSymbol::ACA)),
+				Some(b"ACA".to_vec())
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::Erc20(erc20_address())),
+				Some(b"TestToken".to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::Erc20(erc20_address_not_exists())),
+				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Token(TokenSymbol::AUSD)
+				)),
+				Some(b"LP_ACA_AUSD".to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Token(TokenSymbol::AUSD)
+				)),
+				Some(b"LP_TestToken_AUSD".to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address())
+				)),
+				Some(b"LP_TestToken_TestToken".to_vec())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Erc20(erc20_address_not_exists())
+				)),
+				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::symbol(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address_not_exists())
+				)),
+				None
+			);
 		});
 }
 
@@ -94,6 +227,38 @@ fn decimals_works() {
 
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::Erc20(erc20_address_not_exists())),
+				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Token(TokenSymbol::AUSD)
+				)),
+				Some(12)
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Token(TokenSymbol::AUSD)
+				)),
+				Some(17)
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address())
+				)),
+				Some(17)
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decimals(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address_not_exists())
+				)),
 				None
 			);
 		});
@@ -147,8 +312,8 @@ fn encode_currency_id_works() {
 			// CurrencyId::DexShare(Token, Token)
 			let mut bytes = [0u8; 32];
 			bytes[11] = 1;
-			let id1: u32 = CurrencyId::Token(TokenSymbol::ACA).try_into().unwrap();
-			let id2: u32 = CurrencyId::Token(TokenSymbol::AUSD).try_into().unwrap();
+			let id1: u32 = DexShare::Token(TokenSymbol::ACA).into();
+			let id2: u32 = DexShare::Token(TokenSymbol::AUSD).into();
 			bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
 			bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
 			assert_eq!(
@@ -169,8 +334,8 @@ fn encode_currency_id_works() {
 			// CurrencyId::DexShare(Erc20, Erc20)
 			let mut bytes = [0u8; 32];
 			bytes[11] = 1;
-			let id1: u32 = CurrencyId::Erc20(erc20_address()).try_into().unwrap();
-			let id2: u32 = CurrencyId::Erc20(erc20_address()).try_into().unwrap();
+			let id1: u32 = DexShare::Erc20(erc20_address()).into();
+			let id2: u32 = DexShare::Erc20(erc20_address()).into();
 			bytes[12..16].copy_from_slice(&id1.to_be_bytes()[..]);
 			bytes[16..20].copy_from_slice(&id2.to_be_bytes()[..]);
 			assert_eq!(
@@ -238,7 +403,7 @@ fn decode_currency_id_works() {
 			// CurrencyId::DexShare(Erc20, Token)
 			let mut bytes = [0u8; 32];
 			bytes[11] = 1;
-			let id: u32 = CurrencyId::Erc20(erc20_address()).try_into().unwrap();
+			let id: u32 = DexShare::Erc20(erc20_address()).into();
 			bytes[12..16].copy_from_slice(&id.to_be_bytes()[..]);
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes),
@@ -260,5 +425,174 @@ fn decode_currency_id_works() {
 			// Invalid
 			bytes[11] = 3;
 			assert_eq!(EvmCurrencyIdMapping::<Runtime>::decode_currency_id(&bytes), None);
+		});
+}
+
+#[test]
+fn encode_evm_address_works() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Token(TokenSymbol::ACA)),
+				H160::from_str("0x0000000000000000000000000000000001000000").ok()
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Erc20(erc20_address())),
+				Some(erc20_address())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Erc20(erc20_address_not_exists())),
+				Some(erc20_address_not_exists())
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Token(TokenSymbol::AUSD)
+				)),
+				H160::from_str("0x0000000000000000000000010000000000000001").ok()
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Token(TokenSymbol::AUSD)
+				)),
+				H160::from_str("0x0000000000000000000000010200000000000001").ok()
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::AUSD),
+					DexShare::Erc20(erc20_address())
+				)),
+				H160::from_str("0x0000000000000000000000010000000102000000").ok()
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address())
+				)),
+				H160::from_str("0x0000000000000000000000010200000002000000").ok()
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Erc20(erc20_address_not_exists())
+				)),
+				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address_not_exists())
+				)),
+				None
+			);
+		});
+}
+
+#[test]
+fn decode_evm_address_works() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			assert_ok!(with_transaction_result(|| -> DispatchResult {
+				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			}));
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Token(TokenSymbol::ACA)).unwrap()
+				),
+				Some(CurrencyId::Token(TokenSymbol::ACA))
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Erc20(erc20_address())).unwrap()
+				),
+				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Erc20(erc20_address_not_exists()))
+						.unwrap()
+				),
+				None,
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+						DexShare::Token(TokenSymbol::ACA),
+						DexShare::Token(TokenSymbol::AUSD)
+					))
+					.unwrap(),
+				),
+				Some(CurrencyId::DexShare(
+					DexShare::Token(TokenSymbol::ACA),
+					DexShare::Token(TokenSymbol::AUSD)
+				))
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+						DexShare::Erc20(erc20_address()),
+						DexShare::Token(TokenSymbol::AUSD)
+					))
+					.unwrap()
+				),
+				Some(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Token(TokenSymbol::AUSD)
+				))
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+						DexShare::Erc20(erc20_address()),
+						DexShare::Erc20(erc20_address())
+					))
+					.unwrap()
+				),
+				Some(CurrencyId::DexShare(
+					DexShare::Erc20(erc20_address()),
+					DexShare::Erc20(erc20_address())
+				))
+			);
+
+			// decode invalid evm address
+			// CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA),
+			// DexShare::Erc20(erc20_address_not_exists()))
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					H160::from_str("0x0000000000000000000000010000000002000001").unwrap()
+				),
+				None
+			);
+
+			// decode invalid evm address
+			// CurrencyId::DexShare(DexShare::Erc20(erc20_address()),
+			// DexShare::Erc20(erc20_address_not_exists()))
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					H160::from_str("0x0000000000000000000000010200000002000001").unwrap()
+				),
+				None
+			);
 		});
 }

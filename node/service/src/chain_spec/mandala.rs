@@ -228,7 +228,7 @@ fn testnet_genesis(
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
 		ParachainInfoConfig, RenVmBridgeConfig, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -309,7 +309,7 @@ fn testnet_genesis(
 		orml_tokens: TokensConfig {
 			endowed_accounts: endowed_accounts
 				.iter()
-				.flat_map(|x| vec![(x.clone(), DOT, initial_balance)])
+				.flat_map(|x| vec![(x.clone(), DOT, initial_balance), (x.clone(), AUSD, initial_balance)])
 				.collect(),
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
@@ -378,7 +378,13 @@ fn testnet_genesis(
 		module_dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
-			initial_added_liquidity_pools: vec![],
+			initial_added_liquidity_pools: vec![(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(TradingPair::new(AUSD, DOT), (1_000_000u128, 2_000_000u128)),
+					(TradingPair::new(AUSD, ACA), (1_000_000u128, 2_000_000u128)),
+				],
+			)],
 		},
 		parachain_info: ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),

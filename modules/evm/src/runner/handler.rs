@@ -32,6 +32,7 @@ use frame_support::{
 	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
+use primitives::{H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX};
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
 	traits::{One, Saturating, UniqueSaturatedInto, Zero},
@@ -256,6 +257,33 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 			false
 		}
 	}
+
+	fn handle_mirrored_token(address: H160) -> H160 {
+		log::debug!(
+			target: "evm",
+			"handle_mirrored_token: address: {:?}",
+			address,
+		);
+
+		let addr = address.as_bytes();
+		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
+			return address;
+		}
+
+		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
+			// Token contracts.
+			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
+			log::debug!(
+				target: "evm",
+				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
+				address,
+				token_address
+			);
+			token_address
+		} else {
+			address
+		}
+	}
 }
 
 /// Create `try_or_fail` and `try_or_rollback`.
@@ -294,16 +322,19 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		let code_hash = self.code_hash(address);
+		let addr = Self::handle_mirrored_token(address);
+		let code_hash = self.code_hash(addr);
 		U256::from(Codes::<T>::decode_len(&code_hash).unwrap_or(0))
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
-		Pallet::<T>::code_hash_at_address(&address)
+		let addr = Self::handle_mirrored_token(address);
+		Pallet::<T>::code_hash_at_address(&addr)
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		Pallet::<T>::code_at_address(&address)
+		let addr = Self::handle_mirrored_token(address);
+		Pallet::<T>::code_at_address(&addr)
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {

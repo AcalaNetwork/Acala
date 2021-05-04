@@ -29,7 +29,9 @@ use frame_support::{
 };
 use frame_system::limits;
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{Balance, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
+use primitives::{
+	Balance, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
+};
 use sp_core::H160;
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
 use static_assertions::const_assert;
@@ -42,7 +44,7 @@ pub use precompile::{
 	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
 	StateRentPrecompile,
 };
-pub use primitives::currency::{GetDecimals, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC};
+pub use primitives::currency::{TokenInfo, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
@@ -54,13 +56,11 @@ parameter_types! {
 	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
 }
 
-pub const SYSTEM_CONTRACT_LEADING_ZERO_BYTES: usize = 12;
-
 /// Check if the given `address` is a system contract.
 ///
-/// It's system contract if the address starts with 12 zero bytes.
+/// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.
 pub fn is_system_contract(address: H160) -> bool {
-	address[..SYSTEM_CONTRACT_LEADING_ZERO_BYTES] == [0u8; SYSTEM_CONTRACT_LEADING_ZERO_BYTES]
+	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
 }
 
 pub fn is_acala_precompile(address: H160) -> bool {
@@ -168,11 +168,11 @@ mod tests {
 		assert!(SystemContractsFilter::is_allowed(H160::from_low_u64_be(1)));
 
 		let mut max_allowed_addr = [0u8; 20];
-		max_allowed_addr[SYSTEM_CONTRACT_LEADING_ZERO_BYTES] = 127u8;
+		max_allowed_addr[SYSTEM_CONTRACT_ADDRESS_PREFIX.len()] = 127u8;
 		assert!(SystemContractsFilter::is_allowed(max_allowed_addr.into()));
 
 		let mut min_blocked_addr = [0u8; 20];
-		min_blocked_addr[SYSTEM_CONTRACT_LEADING_ZERO_BYTES - 1] = 1u8;
+		min_blocked_addr[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
 		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
 	}
 
@@ -182,7 +182,7 @@ mod tests {
 		assert!(is_system_contract(H160::from_low_u64_be(u64::max_value())));
 
 		let mut bytes = [0u8; 20];
-		bytes[SYSTEM_CONTRACT_LEADING_ZERO_BYTES - 1] = 1u8;
+		bytes[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
 
 		assert!(!is_system_contract(bytes.into()));
 
