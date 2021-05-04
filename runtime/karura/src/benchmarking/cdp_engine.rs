@@ -278,47 +278,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_set_collateral_params() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_set_collateral_params());
-		});
-	}
-
-	#[test]
-	fn test_set_global_params() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_set_global_params());
-		});
-	}
-
-	#[test]
-	fn test_liquidate_by_auction() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_liquidate_by_auction());
-		});
-	}
-
-	#[test]
-	fn test_liquidate_by_dex() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_liquidate_by_dex());
-		});
-	}
-
-	#[test]
-	fn test_settle() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_settle());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

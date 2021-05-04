@@ -121,33 +121,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn vested_transfer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_vested_transfer());
-		});
-	}
-
-	#[test]
-	fn claim() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim());
-		});
-	}
-
-	#[test]
-	fn update_vesting_shedules() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_vesting_schedules());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

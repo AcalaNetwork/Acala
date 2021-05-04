@@ -99,60 +99,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
-	use sp_runtime::{FixedPointNumber, FixedU128};
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap();
-
-		module_staking_pool::GenesisConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-			},
-		}
-		.assimilate_storage::<Runtime>(&mut t)
-		.unwrap();
-		t.into()
-	}
-
-	#[test]
-	fn test_mint() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_mint());
-		});
-	}
-
-	#[test]
-	fn test_redeem_immediately() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_redeem_immediately());
-		});
-	}
-
-	#[test]
-	fn test_redeem_wait_for_unbonding() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_redeem_wait_for_unbonding());
-		});
-	}
-
-	#[test]
-	fn test_redeem_by_claim_unbonding() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_redeem_by_claim_unbonding());
-		});
-	}
-
-	#[test]
-	fn test_withdraw_redemption() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_withdraw_redemption());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }
