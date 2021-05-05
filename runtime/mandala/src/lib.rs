@@ -1590,7 +1590,7 @@ construct_runtime! {
 		EvmManager: module_evm_manager::{Pallet, Storage} = 193,
 
 		// Dev
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 1000,
+		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
 	}
 }
 
