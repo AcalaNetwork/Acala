@@ -1547,47 +1547,46 @@ construct_runtime! {
 
 		// Acala Core
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 110,
-
-		// DEX
-		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 120,
+		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 111,
 
 		// Honzon
-		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 130,
-		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 131,
-		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 132,
-		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 133,
-		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 134,
-		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 135,
+		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 120,
+		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 121,
+		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 122,
+		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 123,
+		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 124,
+		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 125,
 
 		// Homa
-		Homa: module_homa::{Pallet, Call} = 140,
-		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 141,
-		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 142,
-		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 143,
-		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 144,
+		Homa: module_homa::{Pallet, Call} = 130,
+		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 131,
+		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 132,
+		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 133,
+		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 134,
 
 		// Acala Other
-		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 150,
-		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 151,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 152,
+		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
+		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 141,
+		NFT: module_nft::{Pallet, Call, Event<T>} = 142,
 
 		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 160,
+		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 
 		// Parachain
-		Aura: pallet_aura::{Pallet, Config<T>} = 170,
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 171,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 172,
+		Aura: pallet_aura::{Pallet, Config<T>} = 160,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 161,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 162,
 
-		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 180,
-		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 181,
-		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 182,
+		// // XCM
+		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 170,
+		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 171,
+		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 172,
 
 		// Smart contracts
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 190,
-		EVMBridge: module_evm_bridge::{Pallet} = 191,
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 192,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 193,
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 180,
+		EVMBridge: module_evm_bridge::{Pallet} = 181,
+		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 182,
+		EvmManager: module_evm_manager::{Pallet, Storage} = 183,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
