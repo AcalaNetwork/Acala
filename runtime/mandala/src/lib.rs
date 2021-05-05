@@ -1498,6 +1498,7 @@ construct_runtime! {
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage} = 2,
+		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 3,
 
 		// Tokens & Related
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
@@ -1506,6 +1507,7 @@ construct_runtime! {
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 14,
 
+		// Treasury
 		AcalaTreasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
 		Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 21,
 		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
@@ -1515,7 +1517,6 @@ construct_runtime! {
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
 		Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 32,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
 		GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 41,
@@ -1534,10 +1535,11 @@ construct_runtime! {
 		ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 71,
 
 		// Oracle
+		//
+		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 80,
-		BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Config<T>, Event<T>} = 81,
-		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 82,
+		BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Config<T>, Event<T>} = 81,
 		OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 83,
 
 		// ORML Core
@@ -1566,8 +1568,8 @@ construct_runtime! {
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
-		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 141,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 142,
+		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
+		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 142,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,

@@ -1260,86 +1260,86 @@ construct_runtime!(
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 3,
 
 		// Tokens & Related
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 5,
-		Currencies: module_currencies::{Pallet, Call, Event<T>} = 6,
-
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 7,
-		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 8,
-
-		// Utility
-		Utility: pallet_utility::{Pallet, Call, Event} = 9,
-		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 10,
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 11,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
+		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
+		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 14,
 
 		// Treasury
-		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 12,
-		Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 13,
-		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 14,
+		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
+		Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 21,
+		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
+
+		// Utility
+		Utility: pallet_utility::{Pallet, Call, Event} = 30,
+		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
+		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 32,
 
 		// Governance
-		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 15,
-		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 16,
-		HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 17,
-		HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
-		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 19,
-		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 20,
-		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 21,
-		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 22,
+		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 40,
+		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 41,
+		HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 42,
+		HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 43,
+		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 44,
+		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 45,
+		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 46,
+		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 47,
 
-		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 23,
+		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 60,
 
 		// Oracle
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 24,
-		// OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 25,
+		//
+		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 70,
+		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
 
 		// ORML Core
-		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 26,
-		Rewards: orml_rewards::{Pallet, Storage, Call} = 27,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 28,
+		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 90,
+		Rewards: orml_rewards::{Pallet, Storage, Call} = 91,
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 92,
 
-		// Acala Core
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 29,
-
-		// DEX
-		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 30,
+		// Karura Core
+		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 100,
+		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 101,
 
 		// Honzon
-		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 31,
-		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 32,
-		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 33,
-		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 34,
-		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 35,
-		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 36,
+		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 110,
+		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 111,
+		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 112,
+		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 113,
+		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 114,
+		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 115,
 
 		// Homa
-		// Homa: module_homa::{Pallet, Call} = 37,
-		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 38,
-		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 39,
-		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 40,
-		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 41,
+		// Homa: module_homa::{Pallet, Call} = 120,
+		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 121,
+		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 122,
+		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 123,
+		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 124,
 
-		// Acala Other
-		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 42,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 43,
-
-		// Smart contracts
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 44,
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 45,
-		EVMBridge: module_evm_bridge::{Pallet} = 46,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 47,
+		// Karura Other
+		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 130,
+		NFT: module_nft::{Pallet, Call, Event<T>} = 131,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 48,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 49,
-		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 50,
-		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 51,
-		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 52,
-		Aura: pallet_aura::{Pallet, Config<T>} = 53,
+		Aura: pallet_aura::{Pallet, Config<T>} = 140,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 141,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 142,
+
+		// // XCM
+		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 150,
+		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 151,
+		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 152,
+
+		// Smart contracts
+		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 160,
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 161,
+		EVMBridge: module_evm_bridge::{Pallet} = 162,
+		EvmManager: module_evm_manager::{Pallet, Storage} = 163,
 
 		// Dev
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 54,
+		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
 	}
 );
 
