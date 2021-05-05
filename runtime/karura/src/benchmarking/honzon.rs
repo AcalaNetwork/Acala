@@ -213,54 +213,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_authorize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_authorize());
-		});
-	}
-
-	#[test]
-	fn test_unauthorize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_unauthorize());
-		});
-	}
-
-	#[test]
-	fn test_unauthorize_all() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_unauthorize_all());
-		});
-	}
-
-	#[test]
-	fn test_adjust_loan() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_adjust_loan());
-		});
-	}
-
-	#[test]
-	fn test_transfer_loan_from() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer_loan_from());
-		});
-	}
-
-	#[test]
-	fn test_close_loan_has_debit_by_dex() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_close_loan_has_debit_by_dex());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }
