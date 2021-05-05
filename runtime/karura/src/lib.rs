@@ -1277,66 +1277,66 @@ construct_runtime!(
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 32,
 
 		// Governance
-		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 40,
-		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 41,
-		HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 42,
-		HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 43,
-		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 44,
-		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 45,
-		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 46,
-		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 47,
+		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 50,
+		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 51,
+		HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 52,
+		HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 53,
+		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 54,
+		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 55,
+		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 56,
+		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 57,
 
-		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 60,
+		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 70,
 
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 70,
-		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 80,
+		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 81,
 
 		// ORML Core
-		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 90,
-		Rewards: orml_rewards::{Pallet, Storage, Call} = 91,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 92,
+		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 100,
+		Rewards: orml_rewards::{Pallet, Storage, Call} = 101,
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 102,
 
 		// Karura Core
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 100,
-		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 101,
+		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 110,
+		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 111,
 
 		// Honzon
-		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 110,
-		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 111,
-		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 112,
-		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 113,
-		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 114,
-		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 115,
+		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 120,
+		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 121,
+		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 122,
+		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 123,
+		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 124,
+		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 125,
 
 		// Homa
-		// Homa: module_homa::{Pallet, Call} = 120,
-		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 121,
-		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 122,
-		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 123,
-		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 124,
+		// Homa: module_homa::{Pallet, Call} = 130,
+		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 131,
+		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 132,
+		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 133,
+		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 134,
 
 		// Karura Other
-		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 130,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 131,
+		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
+		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
 
 		// Parachain
-		Aura: pallet_aura::{Pallet, Config<T>} = 140,
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 141,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 142,
+		Aura: pallet_aura::{Pallet, Config<T>} = 160,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 161,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 162,
 
-		// // XCM
-		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 150,
-		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 151,
-		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 152,
+		// XCM
+		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 170,
+		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 171,
+		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 172,
 
 		// Smart contracts
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 160,
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 161,
-		EVMBridge: module_evm_bridge::{Pallet} = 162,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 163,
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 180,
+		EVMBridge: module_evm_bridge::{Pallet} = 181,
+		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 182,
+		EvmManager: module_evm_manager::{Pallet, Storage} = 183,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
