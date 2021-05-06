@@ -219,6 +219,7 @@ runtime-benchmarks = [
 	"orml-vesting/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
+	"primitives/runtime-benchmarks",
 
 	"module-nft/runtime-benchmarks",
 

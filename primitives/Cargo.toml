@@ -30,3 +30,6 @@ std = [
 	"evm/with-serde",
 	"chainbridge/std",
 ]
+runtime-benchmarks = [
+	"chainbridge/runtime-benchmarks",
+]
