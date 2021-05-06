@@ -54,6 +54,8 @@ test: githooks
 test-eth: githooks
 	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p mandala-runtime test_evm_module
 	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p mandala-runtime should_not_kill_contract_on_transfer_all
+	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p runtime-common schedule_call_precompile_should_work
+	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p runtime-common schedule_call_precompile_should_handle_invalid_input
 
 .PHONY: test-runtimes
 test-runtimes:

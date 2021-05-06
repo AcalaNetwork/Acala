@@ -5,6 +5,7 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
+sha3 = { version = "0.9.1", default-features = false }
 bstringify = "0.1.2"
 serde = { version = "1.0.124", optional = true }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
@@ -14,13 +15,14 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1"
 evm = { version = "0.26.0", default-features = false, features = ["with-codec"] }
 
 [dev-dependencies]
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 serde_json = { version = "1.0.64" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 
 [features]
 default = ["std"]
 std = [
 	"serde",
+	"sha3/std",
 	"codec/std",
 	"sp-runtime/std",
 	"sp-core/std",

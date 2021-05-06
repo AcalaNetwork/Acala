@@ -17,7 +17,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 primitive-types = { version = "0.9.0", default-features = false, features = ["rlp", "byteorder"] }
-sha3 = { version = "0.9.1", default-features = false }
 impl-trait-for-tuples = "0.2.1"
 ethereum-types = { version = "0.11.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
@@ -39,7 +38,6 @@ std = [
 	"frame-system/std",
 	"sp-io/std",
 	"sp-std/std",
-	"sha3/std",
 	"ethereum-types/std",
 	"primitives/std",
 	"primitive-types/std",
