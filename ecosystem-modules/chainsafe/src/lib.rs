@@ -28,6 +28,9 @@ use sp_std::vec::Vec;
 
 pub use module::*;
 
+mod mock;
+mod tests;
+
 type ResourceId = chainbridge::ResourceId;
 
 #[frame_support::pallet]
@@ -61,7 +64,8 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		RegisteredResourceId(ResourceId, CurrencyId),
+		RegisterResourceId(ResourceId, CurrencyId),
+		UnregisterResourceId(ResourceId, CurrencyId),
 	}
 
 	#[pallet::pallet]
@@ -94,7 +98,7 @@ pub mod module {
 			);
 
 			let check_match = if Self::is_origin_chain_resource(resource_id) {
-				matches!(currency_id, CurrencyId::ChainSafe(_))
+				!matches!(currency_id, CurrencyId::ChainSafe(_))
 			} else {
 				match currency_id {
 					CurrencyId::ChainSafe(r_id) => r_id == resource_id,
@@ -105,7 +109,7 @@ pub mod module {
 
 			ResourceIds::<T>::insert(currency_id, resource_id);
 			CurrencyIds::<T>::insert(resource_id, currency_id);
-			Self::deposit_event(Event::RegisteredResourceId(resource_id, currency_id));
+			Self::deposit_event(Event::RegisterResourceId(resource_id, currency_id));
 			Ok(().into())
 		}
 
@@ -115,6 +119,7 @@ pub mod module {
 			T::RegistorOrigin::ensure_origin(origin)?;
 			if let Some(currency_id) = CurrencyIds::<T>::take(resource_id) {
 				ResourceIds::<T>::remove(currency_id);
+				Self::deposit_event(Event::UnregisterResourceId(resource_id, currency_id));
 			}
 			Ok(().into())
 		}

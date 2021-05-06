@@ -1106,7 +1106,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/AcalaNetwork/chainbridge-substrate#03e6805d9871cb96155f9adf39c6a67c1bf129c1"
+source = "git+https://github.com/AcalaNetwork/chainbridge-substrate#6929c6a2d0e81d6dac0280a2e43f0e9510e8fa0c"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1899,6 +1899,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
+ "orml-tokens",
  "orml-traits",
  "parity-scale-codec",
  "serde",
