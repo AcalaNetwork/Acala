@@ -47,10 +47,8 @@ pub fn bob_account_id() -> AccountId {
 runtime_benchmarks! {
 	{ Runtime, module_evm_accounts }
 
-	_ {}
-
 	claim_account {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let eth: AccountId = account("eth", 0, SEED);
 		set_aca_balance(&bob_account_id(), 1_000 * dollar(KAR));
 	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
@@ -63,26 +61,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_claim_account() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim_account());
-		});
-	}
-
-	#[test]
-	fn test_claim_default_account() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim_account());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

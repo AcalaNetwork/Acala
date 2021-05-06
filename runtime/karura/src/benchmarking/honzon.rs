@@ -17,18 +17,18 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, Dex, Honzon, Price, Rate,
-	Ratio, Runtime, KSM, KUSD,
+	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
+	Honzon, Price, Rate, Ratio, Runtime, KAR, KSM, KUSD,
 };
 
 use super::utils::set_balance;
 use core::convert::TryInto;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{AccountIdLookup, StaticLookup, UniqueSaturatedInto},
+	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;
@@ -38,18 +38,22 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, module_honzon }
 
-	_ {}
-
 	authorize {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = AccountIdLookup::unlookup(to);
+
+		// set balance
+		set_balance(KAR, &caller, DepositPerAuthorization::get());
 	}: _(RawOrigin::Signed(caller), KSM, to_lookup)
 
 	unauthorize {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = AccountIdLookup::unlookup(to);
+
+		// set balance
+		set_balance(KAR, &caller, DepositPerAuthorization::get());
 		Honzon::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
 			KSM,
@@ -60,11 +64,13 @@ runtime_benchmarks! {
 	unauthorize_all {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let currency_ids = CollateralCurrencyIds::get();
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = AccountIdLookup::unlookup(to);
 
+		// set balance
+		set_balance(KAR, &caller, DepositPerAuthorization::get().saturating_mul(c.into()));
 		for i in 0 .. c {
 			Honzon::authorize(
 				RawOrigin::Signed(caller.clone()).into(),
@@ -77,7 +83,7 @@ runtime_benchmarks! {
 	// `adjust_loan`, best case:
 	// adjust both collateral and debit
 	adjust_loan {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let collateral_price = Price::one();		// 1 USD
 		let debit_value = 100 * dollar(KUSD);
@@ -109,9 +115,8 @@ runtime_benchmarks! {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let sender: AccountId = account("sender", 0, SEED);
 		let sender_lookup = AccountIdLookup::unlookup(sender.clone());
-		let receiver: AccountId = account("receiver", 0, SEED);
+		let receiver: AccountId = whitelisted_caller();
 		let receiver_lookup = AccountIdLookup::unlookup(receiver.clone());
-
 
 		let debit_value = 100 * dollar(KUSD);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
@@ -122,6 +127,7 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(KAR, &sender, DepositPerAuthorization::get());
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
@@ -155,7 +161,7 @@ runtime_benchmarks! {
 
 	close_loan_has_debit_by_dex {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-		let sender: AccountId = account("sender", 0, SEED);
+		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(KUSD);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
@@ -207,47 +213,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_authorize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_authorize());
-		});
-	}
-
-	#[test]
-	fn test_unauthorize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_unauthorize());
-		});
-	}
-
-	#[test]
-	fn test_unauthorize_all() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_unauthorize_all());
-		});
-	}
-
-	#[test]
-	fn test_adjust_loan() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_adjust_loan());
-		});
-	}
-
-	#[test]
-	fn test_close_loan_has_debit_by_dex() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_close_loan_has_debit_by_dex());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

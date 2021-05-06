@@ -19,7 +19,7 @@
 use crate::{
 	dollar, AcalaOracle, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, Dex, EmergencyShutdown, GetStableCurrencyId, Indices, MaxSlippageSwapWithDEX,
-	MinimumDebitValue, Price, Rate, Ratio, Runtime, Timestamp, AUSD, DOT, MILLISECS_PER_BLOCK,
+	MinimumDebitValue, Price, Rate, Ratio, Runtime, AUSD, DOT, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::set_balance;
@@ -31,7 +31,7 @@ use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::Change;
 use sp_runtime::{
-	traits::{StaticLookup, UniqueSaturatedInto},
+	traits::{One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;
@@ -66,8 +66,6 @@ fn inject_liquidity(
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_engine }
-
-	_ {}
 
 	on_initialize {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
@@ -110,10 +108,18 @@ runtime_benchmarks! {
 			CdpEngine::adjust_position(&owner, currency_id, collateral_amount.try_into().unwrap(), min_debit_amount)?;
 		}
 
-		Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
+		// set timestamp by set storage, this is deprecated,
+		// replace it by following after https://github.com/paritytech/substrate/pull/8601 is available:
+		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
+		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK);
+
 		CdpEngine::on_initialize(1);
 	}: {
-		Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
+		// set timestamp by set storage, this is deprecated,
+		// replace it by following after https://github.com/paritytech/substrate/pull/8601 is available:
+		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
+		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK * 2);
+
 		CdpEngine::on_initialize(2);
 	}
 
@@ -272,54 +278,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_on_initialize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_initialize());
-		});
-	}
-
-	#[test]
-	fn test_set_collateral_params() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_set_collateral_params());
-		});
-	}
-
-	#[test]
-	fn test_set_global_params() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_set_global_params());
-		});
-	}
-
-	#[test]
-	fn test_liquidate_by_auction() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_liquidate_by_auction());
-		});
-	}
-
-	#[test]
-	fn test_liquidate_by_dex() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_liquidate_by_dex());
-		});
-	}
-
-	#[test]
-	fn test_settle() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_settle());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

@@ -21,7 +21,7 @@ use crate::{dollar, AccountId, Amount, Balance, Currencies, NativeTokenExistenti
 
 use sp_std::prelude::*;
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use sp_runtime::traits::UniqueSaturatedInto;
 
@@ -33,13 +33,11 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, module_currencies }
 
-	_ {}
-
 	// `transfer` non-native currency
 	transfer_non_native_currency {
 		let currency_id = KSM;
 		let amount: Balance = 1_000 * dollar(currency_id);
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_balance(currency_id, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -55,7 +53,7 @@ runtime_benchmarks! {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let amount: Balance = existential_deposit.saturating_mul(1000);
 		let native_currency_id = KAR;
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_balance(native_currency_id, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -72,7 +70,7 @@ runtime_benchmarks! {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let amount: Balance = existential_deposit.saturating_mul(1000);
 		let native_currency_id = KAR;
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_balance(native_currency_id, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -127,47 +125,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn transfer_non_native_currency() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer_non_native_currency());
-		});
-	}
-
-	#[test]
-	fn transfer_native_currency_worst_case() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer_native_currency_worst_case());
-		});
-	}
-
-	#[test]
-	fn update_balance_non_native_currency() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_balance_non_native_currency());
-		});
-	}
-
-	#[test]
-	fn update_balance_native_currency_creating() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_balance_native_currency_creating());
-		});
-	}
-
-	#[test]
-	fn update_balance_native_currency_killing() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_balance_native_currency_killing());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

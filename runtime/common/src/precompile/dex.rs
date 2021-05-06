@@ -20,9 +20,10 @@ use super::input::{Input, InputT};
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
+use num_enum::TryFromPrimitive;
 use primitives::{Balance, CurrencyId};
 use sp_core::U256;
-use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 /// The `DEX` impl precompile.
 ///
@@ -31,37 +32,23 @@ use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, resu
 ///
 /// Actions:
 /// - Get liquidity. Rest `input` bytes: `currency_id_a`, `currency_id_b`.
-/// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`,
-///   `currency_id_b`, `supply_amount`, `min_target_amount`.
+/// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`, `currency_id_b`,
+///   `supply_amount`, `min_target_amount`.
 pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	GetLiquidityPool,
-	GetSwapTargetAmount,
-	GetSwapSupplyAmount,
-	SwapWithExactSupply,
-	SwapWithExactTarget,
-	AddLiquidity,
-	RemoveLiquidity,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::GetLiquidityPool),
-			1 => Ok(Action::GetSwapTargetAmount),
-			2 => Ok(Action::GetSwapSupplyAmount),
-			3 => Ok(Action::SwapWithExactSupply),
-			4 => Ok(Action::SwapWithExactTarget),
-			5 => Ok(Action::AddLiquidity),
-			6 => Ok(Action::RemoveLiquidity),
-			_ => Err(()),
-		}
-	}
+	GetLiquidityPool = 0,
+	GetLiquidityTokenAddress = 1,
+	GetSwapTargetAmount = 2,
+	GetSwapSupplyAmount = 3,
+	SwapWithExactSupply = 4,
+	SwapWithExactTarget = 5,
+	AddLiquidity = 6,
+	RemoveLiquidity = 7,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
@@ -103,6 +90,24 @@ where
 				let mut be_bytes = [0u8; 64];
 				U256::from(balance_a).to_big_endian(&mut be_bytes[..32]);
 				U256::from(balance_b).to_big_endian(&mut be_bytes[32..64]);
+
+				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+			}
+			Action::GetLiquidityTokenAddress => {
+				let currency_id_a = input.currency_id_at(1)?;
+				let currency_id_b = input.currency_id_at(2)?;
+				log::debug!(
+					target: "evm",
+					"dex: get_liquidity_token address currency_id_a: {:?}, currency_id_b: {:?}",
+					currency_id_a, currency_id_b
+				);
+
+				let value = Dex::get_liquidity_token_address(currency_id_a, currency_id_b)
+					.ok_or_else(|| ExitError::Other("Dex get_liquidity_token_address failed".into()))?;
+
+				// output
+				let mut be_bytes = [0u8; 32];
+				U256::from(value.as_bytes()).to_big_endian(&mut be_bytes[..32]);
 
 				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
 			}

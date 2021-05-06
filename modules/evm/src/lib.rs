@@ -22,6 +22,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
+use crate::runner::storage_meter::StorageMeterHandler;
 use codec::{Decode, Encode};
 use evm::Config as EvmConfig;
 use frame_support::{
@@ -29,7 +30,7 @@ use frame_support::{
 	ensure,
 	error::BadOrigin,
 	pallet_prelude::*,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
+	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
 	RuntimeDebug,
@@ -40,11 +41,14 @@ use primitive_types::{H256, U256};
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
-	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto},
+	traits::{
+		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
+	},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
-use sp_std::{marker::PhantomData, vec::Vec};
+use sp_std::{marker::PhantomData, prelude::*};
+
 pub use support::{
 	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
 };
@@ -52,7 +56,7 @@ pub use support::{
 pub use crate::precompiles::{Precompile, Precompiles};
 pub use crate::runner::Runner;
 pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use orml_traits::account::MergeAccount;
+pub use orml_traits::currency::TransferAll;
 pub use primitives::{
 	evm::{Account, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
 	MIRRORED_NFT_ADDRESS_START,
@@ -114,6 +118,8 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 
 #[frame_support::pallet]
 pub mod module {
+	use crate::runner::handler;
+
 	use super::*;
 
 	/// EVM module trait
@@ -126,7 +132,7 @@ pub mod module {
 		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
 		/// Merge free balance from source to dest.
-		type MergeAccount: MergeAccount<Self::AccountId>;
+		type TransferAll: TransferAll<Self::AccountId>;
 
 		/// Charge extra bytes for creating a contract, would be reserved until
 		/// the contract deleted.
@@ -230,37 +236,63 @@ pub mod module {
 		pub code: Vec<u8>,
 	}
 
-	/// Accounts info.
+	/// The EVM accounts info.
+	///
+	/// Accounts: map EvmAddress => Option<AccountInfo<T>>
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T>>;
+	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T>, OptionQuery>;
 
+	/// The storage usage for contracts. Including code size, extra bytes and total AccountStorages
+	/// size.
+	///
+	/// Accounts: map EvmAddress => u32
+	#[pallet::storage]
+	#[pallet::getter(fn contract_storage_sizes)]
+	pub type ContractStorageSizes<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, u32, ValueQuery>;
+
+	/// The storages for EVM contracts.
+	///
+	/// AccountStorages: double_map EvmAddress, H256 => H256
 	#[pallet::storage]
 	#[pallet::getter(fn account_storages)]
 	pub type AccountStorages<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EvmAddress, Blake2_128Concat, H256, H256, ValueQuery>;
 
+	/// The code for EVM contracts.
+	/// Key is Keccak256 hash of code.
+	///
+	/// Codes: H256 => Vec<u8>
 	#[pallet::storage]
 	#[pallet::getter(fn codes)]
 	pub type Codes<T: Config> = StorageMap<_, Identity, H256, Vec<u8>, ValueQuery>;
 
+	/// The code info for EVM contracts.
+	/// Key is Keccak256 hash of code.
+	///
+	/// CodeInfos: H256 => Option<CodeInfo>
 	#[pallet::storage]
 	#[pallet::getter(fn code_infos)]
-	pub type CodeInfos<T: Config> = StorageMap<_, Identity, H256, CodeInfo>;
+	pub type CodeInfos<T: Config> = StorageMap<_, Identity, H256, CodeInfo, OptionQuery>;
 
 	/// Next available system contract address.
+	///
+	/// NetworkContractIndex: u64
 	#[pallet::storage]
 	#[pallet::getter(fn network_contract_index)]
 	pub type NetworkContractIndex<T: Config> = StorageValue<_, u64, ValueQuery>;
 
-	/// Extrinsics origin for the current tx.
+	/// Extrinsics origin for the current transaction.
+	///
+	/// ExtrinsicOrigin: Option<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn extrinsic_origin)]
-	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId>;
+	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
+		pub treasury: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
@@ -268,6 +300,7 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
+				treasury: Default::default(),
 			}
 		}
 	}
@@ -275,6 +308,9 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+			let treasury = T::AddressMapping::get_or_create_evm_address(&self.treasury);
+			let mut handler = handler::StorageMeterHandlerImpl::<T>::new(treasury);
+
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
@@ -291,9 +327,19 @@ pub mod module {
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
 
+					let mut count = 0;
 					for (index, value) in &account.storage {
 						AccountStorages::<T>::insert(address, index, value);
+						count += 1;
 					}
+
+					let storage = count * handler::STORAGE_SIZE;
+					handler
+						.reserve_storage(storage)
+						.expect("Genesis contract failed to reserve storage");
+					handler
+						.charge_storage(address, storage, 0)
+						.expect("Genesis contract failed to charge storage");
 				}
 			});
 			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
@@ -370,10 +416,12 @@ pub mod module {
 		OutOfStorage,
 		/// Charge fee failed
 		ChargeFeeFailed,
+		/// Contract cannot be killed due to reference count
+		CannotKillContract,
 	}
 
 	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
+	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
@@ -387,8 +435,7 @@ pub mod module {
 		/// - `input`: the data supplied for the call
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn call(
 			origin: OriginFor<T>,
@@ -434,8 +481,7 @@ pub mod module {
 		/// - `input`: the data supplied for the call
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
 		pub fn scheduled_call(
@@ -498,8 +544,7 @@ pub mod module {
 		/// - `init`: the data supplied for the contract's constructor
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -534,8 +579,7 @@ pub mod module {
 		/// - `salt`: used for generating the new contract's address
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -570,8 +614,7 @@ pub mod module {
 		/// - `init`: the data supplied for the contract's constructor
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
-		/// - `storage_limit`: the total bytes the contract's storage can
-		///   increase by
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		pub fn create_network_contract(
 			origin: OriginFor<T>,
@@ -605,8 +648,8 @@ pub mod module {
 
 		/// Transfers Contract maintainership to a new EVM Address.
 		///
-		/// - `contract`: the contract whose maintainership is being
-		///   transferred, the caller must be the contract's maintainer
+		/// - `contract`: the contract whose maintainership is being transferred, the caller must be
+		///   the contract's maintainer
 		/// - `new_maintainer`: the address of the new maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_maintainer())]
 		#[transactional]
@@ -625,8 +668,8 @@ pub mod module {
 
 		/// Mark a given contract as deployed.
 		///
-		/// - `contract`: The contract to mark as deployed, the caller must the
-		///   contract's maintainer
+		/// - `contract`: The contract to mark as deployed, the caller must the contract's
+		///   maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::deploy())]
 		#[transactional]
 		pub fn deploy(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -645,8 +688,8 @@ pub mod module {
 
 		/// Mark a given contract as deployed without paying the deployment fee
 		///
-		/// - `contract`: The contract to mark as deployed, the caller must be
-		///   the contract's maintainer.
+		/// - `contract`: The contract to mark as deployed, the caller must be the contract's
+		///   maintainer.
 		#[pallet::weight(<T as Config>::WeightInfo::deploy_free())]
 		#[transactional]
 		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -705,8 +748,7 @@ pub mod module {
 
 		/// Set the code of a contract at a given address.
 		///
-		/// - `contract`: The contract whose code is being set, must not be
-		///   marked as deployed
+		/// - `contract`: The contract whose code is being set, must not be marked as deployed
 		/// - `code`: The new ABI bundle for the contract
 		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
 		#[transactional]
@@ -737,10 +779,48 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Removes an account from Accounts and AccountStorages.
-	pub fn remove_account(address: &EvmAddress) -> Result<u32, ExitError> {
-		let mut size = 0u32;
+	#[transactional]
+	pub fn remove_contract(address: &EvmAddress, dest: &EvmAddress) -> Result<u32, DispatchError> {
+		let address_account = T::AddressMapping::get_account_id(&address);
+		let dest_account = T::AddressMapping::get_account_id(&dest);
 
+		let size = Accounts::<T>::try_mutate_exists(address, |account_info| -> Result<u32, DispatchError> {
+			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
+
+			T::TransferAll::transfer_all(&address_account, &dest_account)?;
+
+			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_sub(1);
+					if code_info.ref_count == 0 {
+						Codes::<T>::remove(&contract_info.code_hash);
+						*maybe_code_info = None;
+					}
+				} else {
+					// code info removed while still having reference to it?
+					debug_assert!(false);
+				}
+			});
+
+			AccountStorages::<T>::remove_prefix(address);
+
+			let size = ContractStorageSizes::<T>::take(address);
+
+			Ok(size)
+		})?;
+
+		// this should happen after `Accounts` is updated because this could trigger another updates on
+		// `Accounts`
+		frame_system::Pallet::<T>::dec_providers(&address_account).map_err(|e| match e {
+			frame_system::DecRefError::ConsumerRemaining => DispatchError::ConsumerRemaining,
+		})?;
+
+		Ok(size)
+	}
+
+	/// Removes an account from Accounts and AccountStorages.
+	pub fn remove_account(address: &EvmAddress) -> Result<(), ExitError> {
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
@@ -749,7 +829,6 @@ impl<T: Config> Pallet<T> {
 		{
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
-					size = code_info.code_size;
 					code_info.ref_count = code_info.ref_count.saturating_sub(1);
 					if code_info.ref_count == 0 {
 						Codes::<T>::remove(&contract_info.code_hash);
@@ -759,10 +838,17 @@ impl<T: Config> Pallet<T> {
 			});
 		}
 
-		Accounts::<T>::remove(address);
-		AccountStorages::<T>::remove_prefix(address);
+		if let Some(AccountInfo {
+			contract_info: Some(_), ..
+		}) = Accounts::<T>::take(address)
+		{
+			// remove_account can only be called when account is killed. i.e. providers == 0
+			// but contract_info should maintain a provider
+			// so this should never happen
+			debug_assert!(false);
+		}
 
-		Ok(size)
+		Ok(())
 	}
 
 	/// Get the account basic in EVM format.
@@ -796,6 +882,19 @@ impl<T: Config> Pallet<T> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
+	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) {
+		if change == 0 {
+			return;
+		}
+		ContractStorageSizes::<T>::mutate(address, |val| {
+			if change > 0 {
+				*val = val.saturating_add(change as u32);
+			} else {
+				*val = val.saturating_sub((-change) as u32);
+			}
+		});
+	}
+
 	/// Handler on new contract initialization.
 	///
 	/// - Create new account for the contract.
@@ -807,6 +906,12 @@ impl<T: Config> Pallet<T> {
 		code: Vec<u8>,
 	) -> Result<(), ExitError> {
 		let code_hash = code_hash(&code.as_slice());
+		let code_size = code.len() as u32;
+
+		if code_size > T::MaxCodeSize::get() {
+			return Err(ExitError::OutOfGas);
+		}
+
 		let contract_info = ContractInfo {
 			code_hash,
 			maintainer: *maintainer,
@@ -816,10 +921,11 @@ impl<T: Config> Pallet<T> {
 			deployed: false,
 		};
 
-		let code_size = code.len() as u32;
-		if code_size > T::MaxCodeSize::get() {
-			return Err(ExitError::OutOfGas);
-		}
+		Self::update_contract_storage_size(
+			address,
+			code_size.saturating_add(T::NewContractExtraBytes::get()) as i32,
+		);
+
 		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
 				code_info.ref_count = code_info.ref_count.saturating_add(1);
@@ -842,6 +948,8 @@ impl<T: Config> Pallet<T> {
 				*maybe_account_info = Some(account_info);
 			}
 		});
+
+		frame_system::Pallet::<T>::inc_providers(&T::AddressMapping::get_account_id(address));
 
 		Ok(())
 	}
@@ -945,37 +1053,22 @@ impl<T: Config> Pallet<T> {
 
 	/// Selfdestruct a contract at a given address.
 	fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
-		Accounts::<T>::mutate_exists(contract, |maybe_account_info| -> DispatchResult {
-			let account_info = maybe_account_info.take().ok_or(Error::<T>::ContractNotFound)?;
-			let contract_info = account_info
-				.contract_info
-				.as_ref()
-				.ok_or(Error::<T>::ContractNotFound)?;
+		let account_info = Self::accounts(contract).ok_or(Error::<T>::ContractNotFound)?;
+		let contract_info = account_info
+			.contract_info
+			.as_ref()
+			.ok_or(Error::<T>::ContractNotFound)?;
 
-			ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
-			ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+		ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
+		ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
-			AccountStorages::<T>::remove_prefix(contract);
+		let storage = Self::remove_contract(&contract, &maintainer)?;
 
-			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
-				if let Some(code_info) = maybe_code_info.as_mut() {
-					code_info.ref_count = code_info.ref_count.saturating_sub(1);
-					if code_info.ref_count == 0 {
-						Codes::<T>::remove(&contract_info.code_hash);
-						*maybe_code_info = None;
-					}
-				}
-			});
+		let contract_account = T::AddressMapping::get_account_id(&contract);
 
-			let contract_account_id = T::AddressMapping::get_account_id(&contract);
-			T::Currency::unreserve(
-				&contract_account_id,
-				T::Currency::reserved_balance(&contract_account_id),
-			);
-			T::MergeAccount::merge_account(&contract_account_id, &who)?;
-
-			Ok(())
-		})?;
+		let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
+		let val = T::Currency::repatriate_reserved(&contract_account, &who, amount, BalanceStatus::Free)?;
+		debug_assert!(val.is_zero());
 
 		Ok(())
 	}

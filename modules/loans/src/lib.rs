@@ -112,6 +112,8 @@ pub mod module {
 
 	/// The collateralized debit positions, map from
 	/// Owner -> CollateralType -> Position
+	///
+	/// Positions: double_map CurrencyId, AccountId => Position
 	#[pallet::storage]
 	#[pallet::getter(fn positions)]
 	pub type Positions<T: Config> =
@@ -119,12 +121,14 @@ pub mod module {
 
 	/// The total collateralized debit positions, map from
 	/// CollateralType -> Position
+	///
+	/// TotalPositions: CurrencyId => Position
 	#[pallet::storage]
 	#[pallet::getter(fn total_positions)]
 	pub type TotalPositions<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Position, ValueQuery>;
 
 	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
+	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}

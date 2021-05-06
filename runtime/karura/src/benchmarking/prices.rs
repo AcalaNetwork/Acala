@@ -20,13 +20,11 @@ use crate::{AcalaOracle, CollateralCurrencyIds, CurrencyId, Origin, Price, Price
 
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use sp_runtime::FixedPointNumber;
+use sp_runtime::traits::One;
 use sp_std::prelude::*;
 
 runtime_benchmarks! {
 	{ Runtime, module_prices }
-
-	_ {}
 
 	lock_price {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
@@ -47,26 +45,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_lock_price() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_lock_price());
-		});
-	}
-
-	#[test]
-	fn test_unlock_price() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_unlock_price());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

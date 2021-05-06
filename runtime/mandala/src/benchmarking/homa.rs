@@ -40,8 +40,6 @@ fn new_era() {
 runtime_benchmarks! {
 	{ Runtime, module_homa }
 
-	_ {}
-
 	// inject DOT to staking pool and mint LDOT
 	mint {
 		let caller: AccountId = account("caller", 0, SEED);
@@ -101,7 +99,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+
+	use orml_benchmarking::impl_benchmark_test_suite;
 	use sp_runtime::{FixedPointNumber, FixedU128};
 
 	fn new_test_ext() -> sp_io::TestExternalities {
@@ -123,38 +122,5 @@ mod tests {
 		t.into()
 	}
 
-	#[test]
-	fn test_mint() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_mint());
-		});
-	}
-
-	#[test]
-	fn test_redeem_immediately() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_redeem_immediately());
-		});
-	}
-
-	#[test]
-	fn test_redeem_wait_for_unbonding() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_redeem_wait_for_unbonding());
-		});
-	}
-
-	#[test]
-	fn test_redeem_by_claim_unbonding() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_redeem_by_claim_unbonding());
-		});
-	}
-
-	#[test]
-	fn test_withdraw_redemption() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_withdraw_redemption());
-		});
-	}
+	impl_benchmark_test_suite!(super::new_test_ext(),);
 }

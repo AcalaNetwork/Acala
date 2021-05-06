@@ -16,10 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, AUSD, DOT};
+use crate::{
+	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, AUSD, DOT,
+};
 
 use super::utils::set_balance;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
@@ -27,27 +29,21 @@ use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-const MAX_DOLLARS: u32 = 1000;
 const MAX_AUCTION_ID: u32 = 100;
 
 runtime_benchmarks! {
 	{ Runtime, orml_auction }
 
-	_ {
-		let d in 1 .. MAX_DOLLARS => ();
-		let c in 1 .. MAX_AUCTION_ID => ();
-	}
-
 	// `bid` a collateral auction, best cases:
 	// there's no bidder before and bid price doesn't exceed target amount
 	#[extra]
 	bid_collateral_auction_as_first_bidder {
-		let bidder = account("bidder", 0, SEED);
+		let bidder: AccountId = whitelisted_caller();
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
 		let target_amount = 10_000 * dollar(AUSD);
-		let bid_price = (5_000u128 + d as u128) * dollar(AUSD);
+		let bid_price = 5_000u128 * dollar(AUSD);
 		let auction_id: AuctionId = 0;
 
 		set_balance(currency_id, &funder, collateral_amount);
@@ -59,14 +55,14 @@ runtime_benchmarks! {
 	// `bid` a collateral auction, worst cases:
 	// there's bidder before and bid price will exceed target amount
 	bid_collateral_auction {
-		let bidder = account("bidder", 0, SEED);
+		let bidder: AccountId = whitelisted_caller();
 		let previous_bidder = account("previous_bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
 		let target_amount = 10_000 * dollar(AUSD);
-		let previous_bid_price = (5_000u128 + d as u128) * dollar(AUSD);
-		let bid_price = (10_000u128 + d as u128) * dollar(AUSD);
+		let previous_bid_price = 5_000u128 * dollar(AUSD);
+		let bid_price = 10_000u128 * dollar(AUSD);
 		let auction_id: AuctionId = 0;
 
 		set_balance(currency_id, &funder, collateral_amount);
@@ -78,14 +74,14 @@ runtime_benchmarks! {
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	on_finalize {
-		let c in ...;
+		let c in 1 .. MAX_AUCTION_ID;
 
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
 		let currency_id = DOT;
 		let collateral_amount = 100 * dollar(currency_id);
 		let target_amount = 10_000 * dollar(AUSD);
-		let bid_price = (5_000u128 + d as u128) * dollar(AUSD);
+		let bid_price = 5_000u128 * dollar(AUSD);
 
 		System::set_block_number(1);
 		for auction_id in 0 .. c {
@@ -103,33 +99,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn bid_collateral_auction_as_first_bidder() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_bid_collateral_auction_as_first_bidder());
-		});
-	}
-
-	#[test]
-	fn bid_collateral_auction() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_bid_collateral_auction());
-		});
-	}
-
-	#[test]
-	fn on_finalize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_finalize());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

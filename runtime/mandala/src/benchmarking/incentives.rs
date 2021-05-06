@@ -18,11 +18,11 @@
 
 use crate::{
 	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetNativeCurrencyId,
-	GetStableCurrencyId, Incentives, Rate, Rewards, Runtime, System, TokenSymbol, ACA, AUSD, DOT,
+	GetStableCurrencyId, Incentives, Rate, Rewards, Runtime, System, TokenSymbol, ACA, AUSD, DOT, LDOT,
 };
 
 use super::utils::set_balance;
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_incentives::PoolId;
@@ -37,8 +37,6 @@ const BTC_AUSD_LP: CurrencyId =
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
-
-	_ {}
 
 	on_initialize {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
@@ -62,12 +60,12 @@ runtime_benchmarks! {
 	}
 
 	deposit_dex_share {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		set_balance(BTC_AUSD_LP, &caller, 10_000 * dollar(AUSD));
 	}: _(RawOrigin::Signed(caller), BTC_AUSD_LP, 10_000 * dollar(AUSD))
 
 	withdraw_dex_share {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		set_balance(BTC_AUSD_LP, &caller, 10_000 * dollar(AUSD));
 		Incentives::deposit_dex_share(
 			RawOrigin::Signed(caller.clone()).into(),
@@ -77,7 +75,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), BTC_AUSD_LP, 8000 * dollar(AUSD))
 
 	claim_rewards {
-		let caller: AccountId = account("caller", 0, SEED);
+		let caller: AccountId = whitelisted_caller();
 		let pool_id = PoolId::LoansIncentive(DOT);
 		let native_currency_id = GetNativeCurrencyId::get();
 
@@ -115,59 +113,19 @@ runtime_benchmarks! {
 			values.push((PoolId::DexSaving(lp_share_currency_id), Rate::default()));
 		}
 	}: _(RawOrigin::Root, values)
+
+	add_allowance {
+		let caller: AccountId = whitelisted_caller();
+		set_balance(LDOT, &caller, 10_000 * dollar(AUSD));
+		let pool_id = PoolId::HomaValidatorAllowance(caller.clone());
+	}: _(RawOrigin::Signed(caller), pool_id, 1_000)
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_on_initialize() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_on_initialize());
-		});
-	}
-
-	#[test]
-	fn test_deposit_dex_share() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_deposit_dex_share());
-		});
-	}
-
-	#[test]
-	fn test_withdraw_dex_share() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_withdraw_dex_share());
-		});
-	}
-
-	#[test]
-	fn test_claim_rewards() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim_rewards());
-		});
-	}
-
-	#[test]
-	fn test_update_incentive_rewards() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_incentive_rewards());
-		});
-	}
-
-	#[test]
-	fn test_update_dex_saving_rewards() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_dex_saving_rewards());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

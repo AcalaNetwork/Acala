@@ -21,7 +21,7 @@ use crate::{
 	TradingPathLimit,
 };
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrencyExtended;
@@ -67,8 +67,6 @@ fn inject_liquidity(
 runtime_benchmarks! {
 	{ Runtime, module_dex }
 
-	_ {}
-
 	// enable a new trading pair
 	enable_trading_pair {
 		let trading_pair = EnabledTradingPairs::get()[0];
@@ -106,7 +104,7 @@ runtime_benchmarks! {
 	// add liquidity but don't staking lp
 	add_liquidity {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
-		let second_maker: AccountId = account("second_maker", 0, SEED);
+		let second_maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		let amount_a = 100 * dollar(trading_pair.0);
 		let amount_b = 10_000 * dollar(trading_pair.1);
@@ -122,7 +120,7 @@ runtime_benchmarks! {
 	// worst: add liquidity and stake lp
 	add_liquidity_and_deposit {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
-		let second_maker: AccountId = account("second_maker", 0, SEED);
+		let second_maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		let amount_a = 100 * dollar(trading_pair.0);
 		let amount_b = 10_000 * dollar(trading_pair.1);
@@ -137,14 +135,14 @@ runtime_benchmarks! {
 
 	// remove liquidity by liquid lp share
 	remove_liquidity {
-		let maker: AccountId = account("maker", 0, SEED);
+		let maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), false)
 
 	// remove liquidity by withdraw staking lp share
 	remove_liquidity_by_withdraw {
-		let maker: AccountId = account("maker", 0, SEED);
+		let maker: AccountId = whitelisted_caller();
 		let trading_pair = EnabledTradingPairs::get()[0];
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), true)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), true)
@@ -168,7 +166,7 @@ runtime_benchmarks! {
 		}
 
 		let maker: AccountId = account("maker", 0, SEED);
-		let taker: AccountId = account("taker", 0, SEED);
+		let taker: AccountId = whitelisted_caller();
 		inject_liquidity(maker, trading_pair.0, trading_pair.1, 10_000 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
@@ -193,7 +191,7 @@ runtime_benchmarks! {
 		}
 
 		let maker: AccountId = account("maker", 0, SEED);
-		let taker: AccountId = account("taker", 0, SEED);
+		let taker: AccountId = whitelisted_caller();
 		inject_liquidity(maker, trading_pair.0, trading_pair.1, 10_000 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
@@ -203,75 +201,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_add_liquidity() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_add_liquidity());
-		});
-	}
-
-	#[test]
-	fn test_add_liquidity_and_deposit() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_add_liquidity_and_deposit());
-		});
-	}
-
-	#[test]
-	fn test_remove_liquidity() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_remove_liquidity());
-		});
-	}
-
-	#[test]
-	fn test_remove_liquidity_by_withdraw() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_remove_liquidity_by_withdraw());
-		});
-	}
-
-	#[test]
-	fn test_swap_with_exact_supply() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_swap_with_exact_supply());
-		});
-	}
-
-	#[test]
-	fn test_swap_with_exact_target() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_swap_with_exact_target());
-		});
-	}
-
-	#[test]
-	fn list_trading_pair() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_list_trading_pair());
-		});
-	}
-
-	#[test]
-	fn enable_trading_pair() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_enable_trading_pair());
-		});
-	}
-
-	#[test]
-	fn disable_trading_pair() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_disable_trading_pair());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

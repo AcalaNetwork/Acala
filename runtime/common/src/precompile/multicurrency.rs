@@ -20,11 +20,12 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::U256;
-use sp_std::{convert::TryFrom, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
+use num_enum::TryFromPrimitive;
 use primitives::{Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
@@ -40,23 +41,15 @@ pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping,
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
 );
 
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 enum Action {
-	QueryTotalIssuance,
-	QueryBalance,
-	Transfer,
-}
-
-impl TryFrom<u8> for Action {
-	type Error = ();
-
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			0 => Ok(Action::QueryTotalIssuance),
-			1 => Ok(Action::QueryBalance),
-			2 => Ok(Action::Transfer),
-			_ => Err(()),
-		}
-	}
+	QueryName = 1,
+	QuerySymbol = 2,
+	QueryDecimals = 3,
+	QueryTotalIssuance = 4,
+	QueryBalance = 5,
+	Transfer = 6,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
@@ -70,7 +63,7 @@ where
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<u64>,
-		_context: &Context,
+		context: &Context,
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		//TODO: evaluate cost
 
@@ -79,11 +72,33 @@ where
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
-		let currency_id = input.currency_id_at(1)?;
+		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
+			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
 
 		log::debug!(target: "evm", "currency id: {:?}", currency_id);
 
 		match action {
+			Action::QueryName => {
+				let name =
+					CurrencyIdMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;
+				log::debug!(target: "evm", "name: {:?}", name);
+
+				Ok((ExitSucceed::Returned, vec_u8_from_str(&name), 0))
+			}
+			Action::QuerySymbol => {
+				let symbol = CurrencyIdMapping::symbol(currency_id)
+					.ok_or_else(|| ExitError::Other("Get symbol failed".into()))?;
+				log::debug!(target: "evm", "symbol: {:?}", symbol);
+
+				Ok((ExitSucceed::Returned, vec_u8_from_str(&symbol), 0))
+			}
+			Action::QueryDecimals => {
+				let decimals = CurrencyIdMapping::decimals(currency_id)
+					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
+				log::debug!(target: "evm", "decimals: {:?}", decimals);
+
+				Ok((ExitSucceed::Returned, vec_u8_from_u8(decimals), 0))
+			}
 			Action::QueryTotalIssuance => {
 				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id));
 				log::debug!(target: "evm", "total issuance: {:?}", total_issuance);
@@ -91,7 +106,7 @@ where
 				Ok((ExitSucceed::Returned, total_issuance, 0))
 			}
 			Action::QueryBalance => {
-				let who = input.account_id_at(2)?;
+				let who = input.account_id_at(1)?;
 				log::debug!(target: "evm", "who: {:?}", who);
 
 				let balance = vec_u8_from_balance(MultiCurrency::total_balance(currency_id, &who));
@@ -100,9 +115,9 @@ where
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
 			Action::Transfer => {
-				let from = input.account_id_at(2)?;
-				let to = input.account_id_at(3)?;
-				let amount = input.balance_at(4)?;
+				let from = input.account_id_at(1)?;
+				let to = input.account_id_at(2)?;
+				let amount = input.balance_at(3)?;
 
 				log::debug!(target: "evm", "from: {:?}", from);
 				log::debug!(target: "evm", "to: {:?}", to);
@@ -124,5 +139,17 @@ where
 fn vec_u8_from_balance(balance: Balance) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(balance).to_big_endian(&mut be_bytes[..]);
+	be_bytes.to_vec()
+}
+
+fn vec_u8_from_u8(b: u8) -> Vec<u8> {
+	let mut be_bytes = [0u8; 32];
+	U256::from(b).to_big_endian(&mut be_bytes[..]);
+	be_bytes.to_vec()
+}
+
+fn vec_u8_from_str(b: &[u8]) -> Vec<u8> {
+	let mut be_bytes = [0u8; 32];
+	U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
 }

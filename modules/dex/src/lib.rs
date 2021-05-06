@@ -37,7 +37,7 @@ use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
-use sp_core::U256;
+use sp_core::{H160, U256};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
@@ -188,17 +188,24 @@ pub mod module {
 	}
 
 	/// Liquidity pool for TradingPair.
+	///
+	/// LiquidityPool: map TradingPair => (Balance, Balance)
 	#[pallet::storage]
 	#[pallet::getter(fn liquidity_pool)]
 	pub type LiquidityPool<T: Config> = StorageMap<_, Twox64Concat, TradingPair, (Balance, Balance), ValueQuery>;
 
 	/// Status for TradingPair.
+	///
+	/// TradingPairStatuses: map TradingPair => TradingPairStatus
 	#[pallet::storage]
 	#[pallet::getter(fn trading_pair_statuses)]
 	pub type TradingPairStatuses<T: Config> =
 		StorageMap<_, Twox64Concat, TradingPair, TradingPairStatus<Balance, T::BlockNumber>, ValueQuery>;
 
 	/// Provision of TradingPair by AccountId.
+	///
+	/// ProvisioningPool: double_map TradingPair, AccountId => (Balance,
+	/// Balance)
 	#[pallet::storage]
 	#[pallet::getter(fn provisioning_pool)]
 	pub type ProvisioningPool<T: Config> =
@@ -281,7 +288,7 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
+	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
@@ -310,7 +317,7 @@ pub mod module {
 		///
 		/// - `path`: trading path.
 		/// - `target_amount`: exact target amount.
-		/// - `max_supply_amount`: acceptable maxmum supply amount.
+		/// - `max_supply_amount`: acceptable maximum supply amount.
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len().try_into().unwrap()))]
 		#[transactional]
 		pub fn swap_with_exact_target(
@@ -326,21 +333,19 @@ pub mod module {
 
 		/// Add liquidity to Enabled trading pair, or add provision to
 		/// Provisioning trading pair.
-		/// - Add liquidity success will issue shares in current price which
-		///   decided by the liquidity scale. Shares are temporarily not
+		/// - Add liquidity success will issue shares in current price which decided by the
+		///   liquidity scale. Shares are temporarily not
 		/// allowed to transfer and trade, it represents the proportion of
 		/// assets in liquidity pool.
-		/// - Add provision success will record the provision, issue shares to
-		///   caller in the initial price when trading pair convert to Enabled.
+		/// - Add provision success will record the provision, issue shares to caller in the initial
+		///   price when trading pair convert to Enabled.
 		///
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
-		/// - `max_amount_a`: maximum currency A amount allowed to inject to
-		///   liquidity pool.
-		/// - `max_amount_b`: maximum currency A amount allowed to inject to
-		///   liquidity pool.
-		/// - `deposit_increment_share`: this flag indicates whether to deposit
-		///   added lp shares to obtain incentives
+		/// - `max_amount_a`: maximum currency A amount allowed to inject to liquidity pool.
+		/// - `max_amount_b`: maximum currency A amount allowed to inject to liquidity pool.
+		/// - `deposit_increment_share`: this flag indicates whether to deposit added lp shares to
+		///   obtain incentives
 		#[pallet::weight(if *deposit_increment_share {
 			<T as Config>::WeightInfo::add_liquidity_and_deposit()
 		} else {
@@ -384,8 +389,7 @@ pub mod module {
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
 		/// - `remove_share`: liquidity amount to remove.
-		/// - `by_withdraw`: this flag indicates whether to withdraw share which
-		///   is on incentives.
+		/// - `by_withdraw`: this flag indicates whether to withdraw share which is on incentives.
 		#[pallet::weight(if *by_withdraw {
 			<T as Config>::WeightInfo::remove_liquidity_by_withdraw()
 		} else {
@@ -419,6 +423,8 @@ pub mod module {
 			not_before: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
 			T::ListingOrigin::ensure_origin(origin)?;
+
+			ensure!(currency_id_a != currency_id_b, Error::<T>::NotAllowedList);
 
 			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
 				.ok_or(Error::<T>::InvalidCurrencyId)?;
@@ -1068,6 +1074,12 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
 		Self::get_liquidity(currency_id_a, currency_id_b)
+	}
+
+	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160> {
+		let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)?;
+		let dex_share_currency_id = trading_pair.get_dex_share_currency_id()?;
+		T::CurrencyIdMapping::encode_evm_address(dex_share_currency_id)
 	}
 
 	fn get_swap_target_amount(

@@ -28,8 +28,6 @@ use orml_benchmarking::runtime_benchmarks;
 runtime_benchmarks! {
 	{ Runtime, orml_authority }
 
-	_ {}
-
 	// dispatch a dispatchable as other origin
 	dispatch_as {
 		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
@@ -142,40 +140,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_dispatch_as() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_dispatch_as());
-		});
-	}
-
-	#[test]
-	fn test_scheduled_dispatch_without_delay() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_schedule_dispatch_without_delay());
-		});
-	}
-
-	#[test]
-	fn test_scheduled_dispatch_with_delay() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_schedule_dispatch_with_delay());
-		});
-	}
-
-	#[test]
-	fn test_cancel_scheduled_dispatch() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_cancel_scheduled_dispatch());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

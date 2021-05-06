@@ -35,8 +35,6 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, module_auction_manager }
 
-	_ {}
-
 	// `cancel` a collateral auction, worst case:
 	// auction have been already bid
 	cancel_collateral_auction {
@@ -67,19 +65,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn test_cancel_collateral_auction() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_cancel_collateral_auction());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

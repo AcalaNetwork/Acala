@@ -21,7 +21,7 @@ use crate::{dollar, AccountId, Balance, Runtime, Tokens, AUSD};
 
 use sp_std::prelude::*;
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 
 use orml_benchmarking::runtime_benchmarks;
@@ -32,14 +32,10 @@ const SEED: u32 = 0;
 runtime_benchmarks! {
 	{ Runtime, orml_tokens }
 
-	_ {
-		let d in 1 .. MAX_DOLLARS => ();
-	}
-
 	transfer {
-		let amount: Balance = d * dollar(AUSD);
+		let amount: Balance = dollar(AUSD);
 
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_ausd_balance(&from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -50,9 +46,9 @@ runtime_benchmarks! {
 	}
 
 	transfer_all {
-		let amount: Balance = d * dollar(AUSD);
+		let amount: Balance = dollar(AUSD);
 
-		let from = account("from", 0, SEED);
+		let from: AccountId = whitelisted_caller();
 		set_ausd_balance(&from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
@@ -66,26 +62,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn transfer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer());
-		});
-	}
-
-	#[test]
-	fn transfer_all() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_transfer_all());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

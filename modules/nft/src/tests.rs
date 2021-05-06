@@ -26,6 +26,7 @@ use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use orml_nft::TokenInfo;
 use primitives::Balance;
+use sp_runtime::traits::BlakeTwo256;
 
 fn free_balance(who: &AccountId) -> Balance {
 	<Runtime as pallet_proxy::Config>::Currency::free_balance(who)
@@ -370,6 +371,49 @@ fn burn_should_fail() {
 		assert_noop!(
 			NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)),
 			Error::<Runtime>::NonBurnable
+		);
+	});
+}
+
+#[test]
+fn burn_with_remark_should_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(NFTModule::create_class(
+			Origin::signed(ALICE),
+			vec![1],
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+		));
+		assert_eq!(
+			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
+				.is_ok(),
+			true
+		);
+		assert_ok!(NFTModule::mint(
+			Origin::signed(class_id_account()),
+			BOB,
+			CLASS_ID,
+			vec![1],
+			1
+		));
+
+		let remark = "remark info".as_bytes().to_vec();
+		let remark_hash = BlakeTwo256::hash(&remark[..]);
+		assert_ok!(NFTModule::burn_with_remark(
+			Origin::signed(BOB),
+			(CLASS_ID, TOKEN_ID),
+			remark
+		));
+		let event = Event::nft(crate::Event::BurnedTokenWithRemark(
+			BOB,
+			CLASS_ID,
+			TOKEN_ID,
+			remark_hash,
+		));
+		assert_eq!(last_event(), event);
+
+		assert_eq!(
+			reserved_balance(&class_id_account()),
+			<Runtime as Config>::CreateClassDeposit::get() + Proxy::deposit(1u32)
 		);
 	});
 }

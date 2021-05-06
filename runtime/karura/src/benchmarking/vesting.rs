@@ -24,7 +24,7 @@ use crate::{
 
 use sp_std::prelude::*;
 
-use frame_benchmarking::account;
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 
 use orml_benchmarking::runtime_benchmarks;
@@ -37,8 +37,6 @@ const SEED: u32 = 0;
 
 runtime_benchmarks! {
 	{ Runtime, orml_vesting }
-
-	_ {}
 
 	vested_transfer {
 		let schedule = Schedule {
@@ -76,7 +74,7 @@ runtime_benchmarks! {
 		// extra 1 dollar to pay fees
 		set_aca_balance(&from, schedule.total_amount().unwrap() * i as u128 + dollar(KAR));
 
-		let to: AccountId = account("to", 0, SEED);
+		let to: AccountId = whitelisted_caller();
 		let to_lookup = lookup_of_account(to.clone());
 
 		for _ in 0..i {
@@ -123,33 +121,8 @@ runtime_benchmarks! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_ok;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
-	}
-
-	#[test]
-	fn vested_transfer() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_vested_transfer());
-		});
-	}
-
-	#[test]
-	fn claim() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim());
-		});
-	}
-
-	#[test]
-	fn update_vesting_shedules() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_vesting_schedules());
-		});
-	}
+	impl_benchmark_test_suite!(new_test_ext(),);
 }
