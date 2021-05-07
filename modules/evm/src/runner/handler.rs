@@ -205,7 +205,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		});
 	}
 
-	pub fn create_address(scheme: CreateScheme) -> Result<H160, DispatchError> {
+	pub fn create_address(scheme: CreateScheme) -> Result<H160, ExitError> {
 		let address = match scheme {
 			CreateScheme::Create2 {
 				caller,
@@ -230,9 +230,10 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		};
 
 		if address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			Err(DispatchError::Other(
+			use sp_std::borrow::Cow;
+			Err(ExitError::Other(Cow::Borrowed(
 				"contract address conflicts with the system contract",
-			))
+			)))
 		} else {
 			Ok(address)
 		}
@@ -507,11 +508,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 
 		let maybe_address = Self::create_address(scheme);
 		let address = if let Err(e) = maybe_address {
-			return Capture::Exit((
-				ExitReason::Error(ExitError::Other(Into::<&'static str>::into(e).into())),
-				None,
-				Vec::new(),
-			));
+			return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
 		} else {
 			maybe_address.unwrap()
 		};
