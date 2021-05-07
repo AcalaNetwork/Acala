@@ -134,7 +134,7 @@ fn vec_u8_from_u32(b: u32) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use primitives::get_function_selector;
+	use crate::precompile::mock::get_function_selector;
 
 	#[test]
 	fn function_selector_match() {

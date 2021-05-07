@@ -25,14 +25,6 @@ use std::{
 };
 
 #[test]
-fn function_selector_match() {
-	assert_eq!(
-		u32::from_be_bytes(get_function_selector("getPrice(address)")),
-		0x41976E09
-	);
-}
-
-#[test]
 fn currency_id_try_from_vec_u8_works() {
 	assert_ok!(
 		"ACA".as_bytes().to_vec().try_into(),

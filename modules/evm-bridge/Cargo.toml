@@ -24,6 +24,7 @@ support = { package = "module-support", path = "../support", default-features = 
 module-evm = { path = "../evm", default-features = false }
 
 [dev-dependencies]
+sha3 = { version = "0.9.1" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 

@@ -23,9 +23,9 @@
 use super::*;
 use frame_support::{assert_err, assert_ok};
 use mock::{
-	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, EvmBridgeModule, ExtBuilder, Runtime,
+	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, get_function_selector, EvmBridgeModule,
+	ExtBuilder, Runtime,
 };
-use primitives::get_function_selector;
 
 #[test]
 fn method_hash_works() {
