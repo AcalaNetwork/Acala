@@ -1301,6 +1301,27 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+parameter_types! {
+	pub const LocalChainId: chainbridge::ChainId = 2;
+	pub const ProposalLifetime: BlockNumber = 15 * MINUTES;
+}
+
+impl chainbridge::Config for Runtime {
+	type Event = Event;
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type Proposal = Call;
+	type ChainId = LocalChainId;
+	type ProposalLifetime = ProposalLifetime;
+}
+
+impl ecosystem_chainsafe::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type RegistorOrigin = EnsureRootOrHalfGeneralCouncil;
+	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+}
+
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
@@ -1573,6 +1594,8 @@ construct_runtime! {
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
+		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
 
 		// Parachain
 		Aura: pallet_aura::{Pallet, Config<T>} = 160,

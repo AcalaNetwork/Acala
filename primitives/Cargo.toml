@@ -12,6 +12,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 evm = { version = "0.26.0", default-features = false, features = ["with-codec"] }
+chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
@@ -27,4 +28,8 @@ std = [
 	"sp-std/std",
 	"evm/std",
 	"evm/with-serde",
+	"chainbridge/std",
+]
+runtime-benchmarks = [
+	"chainbridge/runtime-benchmarks",
 ]

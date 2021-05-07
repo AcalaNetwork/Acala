@@ -67,6 +67,7 @@ name = "acala-primitives"
 version = "0.8.0"
 dependencies = [
  "bstringify",
+ "chainbridge",
  "evm",
  "frame-support",
  "parity-scale-codec",
@@ -1103,6 +1104,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "chainbridge"
+version = "0.0.2"
+source = "git+https://github.com/AcalaNetwork/chainbridge-substrate#6929c6a2d0e81d6dac0280a2e43f0e9510e8fa0c"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1872,6 +1889,25 @@ name = "dyn-clone"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
+
+[[package]]
+name = "ecosystem-chainsafe"
+version = "0.7.11"
+dependencies = [
+ "acala-primitives",
+ "chainbridge",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "ecosystem-renvm-bridge"
@@ -4413,8 +4449,10 @@ version = "0.8.0"
 dependencies = [
  "acala-primitives",
  "acala-service",
+ "chainbridge",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
+ "ecosystem-chainsafe",
  "ecosystem-renvm-bridge",
  "evm",
  "frame-benchmarking",

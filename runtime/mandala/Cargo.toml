@@ -109,6 +109,8 @@ runtime-common = { path = "../common", default-features = false }
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
+ecosystem-chainsafe = { path = "../../ecosystem-modules/chainsafe", default-features = false }
+chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "4.0.0"
@@ -219,6 +221,8 @@ std = [
 	"module-evm-rpc-runtime-api/std",
 
 	"ecosystem-renvm-bridge/std",
+	"ecosystem-chainsafe/std",
+	"chainbridge/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",
@@ -230,6 +234,7 @@ runtime-benchmarks = [
 	"pallet-collective/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
+	"chainbridge/runtime-benchmarks",
 	"orml-vesting/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",

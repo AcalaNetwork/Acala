@@ -35,6 +35,7 @@ members = [
 	# "orml/unknown-tokens",
 
 	"ecosystem-modules/ren/renvm-bridge",
+	"ecosystem-modules/chainsafe",
 ]
 
 resolver = "2"
