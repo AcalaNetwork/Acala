@@ -230,10 +230,9 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		};
 
 		if address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			use sp_std::borrow::Cow;
-			Err(ExitError::Other(Cow::Borrowed(
-				"contract address conflicts with the system contract",
-			)))
+			Err(ExitError::Other(
+				Into::<&str>::into(Error::<T>::ConflictContractAddress).into(),
+			))
 		} else {
 			Ok(address)
 		}

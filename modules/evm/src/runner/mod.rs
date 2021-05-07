@@ -77,8 +77,7 @@ impl<T: Config> Runner<T> {
 			} else {
 				CreateScheme::Legacy { caller: source }
 			};
-			Handler::<T>::create_address(scheme)
-				.map_err(|_| DispatchError::Other("contract address conflicts with the system contract"))
+			Handler::<T>::create_address(scheme).map_err(|_| Error::<T>::ConflictContractAddress)
 		}?;
 
 		Handler::<T>::inc_nonce(source);
