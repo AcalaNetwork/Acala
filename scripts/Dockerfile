@@ -9,6 +9,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG PROFILE=release
 ARG GIT_COMMIT=
 ENV GIT_COMMIT=$GIT_COMMIT
+ARG CARGO_BUILD_ARGS=
+ENV CARGO_BUILD_ARGS=$CARGO_BUILD_ARGS
 WORKDIR /acala
 
 COPY . /acala
@@ -21,7 +23,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \
 	rustup default nightly-2021-03-04 && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-04 && \
-	cargo build "--$PROFILE" --manifest-path bin/acala/Cargo.toml
+	cargo build "--$PROFILE" $BUILD_ARGS
 
 # ===== SECOND STAGE ======
 
