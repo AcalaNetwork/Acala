@@ -22,7 +22,6 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-currencies = { path = "../../orml/currencies" }
-clear_on_drop = { version = "0.2.4", features = ["no_cc"] }	# https://github.com/paritytech/substrate/issues/4179
 
 [features]
 default = ["std"]
