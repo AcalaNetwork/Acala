@@ -245,7 +245,7 @@ try-runtime = [
 	"frame-executive/try-runtime",
 	"frame-system/try-runtime",
 
-    "pallet-aura/try-runtime",
+	"pallet-aura/try-runtime",
     "pallet-balances/try-runtime",
     "pallet-bounties/try-runtime",
     "pallet-collective/try-runtime",
