@@ -16,6 +16,7 @@ sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "rococo
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
 
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
@@ -38,8 +39,13 @@ cli = [
 	"sc-cli",
 	"sc-service",
 	"frame-benchmarking-cli",
+	"try-runtime-cli",
 ]
 runtime-benchmarks = [ "service/runtime-benchmarks" ]
+try-runtime = [
+	"try-runtime-cli",
+	"service/try-runtime",
+]
 with-mandala-runtime = [
 	"service/with-mandala-runtime",
 ]

@@ -376,6 +376,55 @@ pub fn run() -> sc_cli::Result<()> {
 			Ok(())
 		}
 
+		#[cfg(feature = "try-runtime")]
+		Some(Subcommand::TryRuntime(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			set_default_ss58_version(chain_spec);
+
+			if chain_spec.is_acala() {
+				#[cfg(feature = "with-acala-runtime")]
+				return runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+					Ok((
+						cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config),
+						task_manager,
+					))
+				});
+				#[cfg(not(feature = "with-acala-runtime"))]
+				return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+			} else if chain_spec.is_karura() {
+				#[cfg(feature = "with-karura-runtime")]
+				return runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+					Ok((
+						cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config),
+						task_manager,
+					))
+				});
+				#[cfg(not(feature = "with-karura-runtime"))]
+				return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+			} else {
+				#[cfg(feature = "with-mandala-runtime")]
+				return runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+					Ok((
+						cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config),
+						task_manager,
+					))
+				});
+				#[cfg(not(feature = "with-mandala-runtime"))]
+				return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+			}
+		}
+
 		None => {
 			let runner = cli.create_runner(&*cli.run)?;
 
