@@ -19,6 +19,7 @@ frame-executive = { git = "https://github.com/paritytech/substrate", branch = "r
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-try-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false, optional = true }
 pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false}
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-bounties = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
@@ -129,11 +130,12 @@ std = [
 	"serde",
 	"hex/std",
 
+	"frame-benchmarking/std",
 	"frame-executive/std",
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
-	"frame-benchmarking/std",
+	"frame-try-runtime/std",
 	"pallet-aura/std",
 	"pallet-balances/std",
 	"pallet-bounties/std",
@@ -253,4 +255,62 @@ with-ethereum-compatibility = [
 	"evm",
 	"module-evm/with-ethereum-compatibility",
 	"runtime-common/with-ethereum-compatibility",
+]
+try-runtime = [
+	"frame-try-runtime",
+	"frame-executive/try-runtime",
+	"frame-system/try-runtime",
+
+	"pallet-aura/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-bounties/try-runtime",
+	"pallet-collective/try-runtime",
+	"pallet-elections-phragmen/try-runtime",
+	"pallet-indices/try-runtime",
+	"pallet-membership/try-runtime",
+	"pallet-multisig/try-runtime",
+	"pallet-proxy/try-runtime",
+	"pallet-randomness-collective-flip/try-runtime",
+	"pallet-recovery/try-runtime",
+	"pallet-scheduler/try-runtime",
+	"pallet-sudo/try-runtime",
+	"pallet-timestamp/try-runtime",
+	"pallet-tips/try-runtime",
+	"pallet-transaction-payment/try-runtime",
+	"pallet-treasury/try-runtime",
+	"pallet-utility/try-runtime",
+
+	"orml-auction/try-runtime",
+	"orml-authority/try-runtime",
+	"orml-oracle/try-runtime",
+	"orml-gradually-update/try-runtime",
+	"orml-tokens/try-runtime",
+	"orml-vesting/try-runtime",
+	"orml-rewards/try-runtime",
+	"orml-nft/try-runtime",
+
+	"module-transaction-payment/try-runtime",
+	"module-airdrop/try-runtime",
+	"module-auction-manager/try-runtime",
+	"module-cdp-engine/try-runtime",
+	"module-cdp-treasury/try-runtime",
+	"module-dex/try-runtime",
+	"module-currencies/try-runtime",
+	"module-emergency-shutdown/try-runtime",
+	"module-evm/try-runtime",
+	"module-evm-accounts/try-runtime",
+	"module-evm-bridge/try-runtime",
+	"module-evm-manager/try-runtime",
+	"module-honzon/try-runtime",
+	"module-loans/try-runtime",
+	"module-nft/try-runtime",
+	"module-prices/try-runtime",
+	"module-incentives/try-runtime",
+	"module-homa/try-runtime",
+	"module-nominees-election/try-runtime",
+	"module-staking-pool/try-runtime",
+	"module-polkadot-bridge/try-runtime",
+
+	"ecosystem-renvm-bridge/try-runtime",
+	"ecosystem-chainsafe/try-runtime",
 ]

@@ -46,6 +46,10 @@ check-benchmarks:
 check-debug:
 	RUSTFLAGS="-Z macro-backtrace" SKIP_WASM_BUILD= cargo +nightly check
 
+.PHONY: check-try-runtime
+check-try-runtime:
+	SKIP_WASM_BUILD= cargo check --features try-runtime --features with-all-runtime
+
 .PHONY: test
 test: githooks
 	SKIP_WASM_BUILD= cargo test --all
@@ -67,13 +71,13 @@ test-benchmarking:
 test-all: test-runtimes test-eth test-benchmarking
 
 .PHONY: purge
-purge: target/debug/acala-dev
-	target/debug/acala-dev purge-chain --dev -y
+purge: target/debug/acala
+	target/debug/acala purge-chain --dev -y
 
 .PHONY: restart
 restart: purge run
 
-target/debug/acala-dev:
+target/debug/acala:
 	SKIP_WASM_BUILD= cargo build
 
 GITHOOKS_SRC = $(wildcard githooks/*)

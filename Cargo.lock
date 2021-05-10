@@ -44,6 +44,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "structopt",
+ "try-runtime-cli",
 ]
 
 [[package]]
@@ -114,6 +115,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
  "hex-literal 0.3.1",
  "module-airdrop",
  "module-auction-manager",
@@ -3611,6 +3613,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
  "hex-literal 0.3.1",
  "libsecp256k1",
  "module-airdrop",
@@ -4451,6 +4454,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
  "hex",
  "hex-literal 0.3.1",
  "libsecp256k1",

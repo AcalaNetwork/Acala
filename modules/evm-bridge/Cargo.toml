@@ -46,3 +46,4 @@ std = [
 	"support/std",
 	"module-evm/std",
 ]
+try-runtime = ["frame-support/try-runtime"]
