@@ -213,7 +213,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 }
 
 pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/mandala-pc-dist.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/mandala-dist.json")[..])
 }
 
 fn testnet_genesis(
