@@ -32,10 +32,12 @@ LABEL maintainer="hello@acala.network"
 LABEL description="This is the 2nd stage: a very small image where we copy the Acala Node binary."
 ARG PROFILE=release
 
-RUN mv /usr/share/ca* /tmp && \
-	rm -rf /usr/share/*  && \
-	mv /tmp/ca-certificates /usr/share/ && \
-	useradd -m -u 1000 -U -s /bin/sh -d /acala acala
+# RUN mv /usr/share/ca* /tmp && \
+# 	rm -rf /usr/share/*  && \
+# 	mv /tmp/ca-certificates /usr/share/ && \
+# 	useradd -m -u 1000 -U -s /bin/sh -d /acala acala
+
+RUN useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
 COPY --from=builder /acala/target/$PROFILE/acala /usr/local/bin
 
