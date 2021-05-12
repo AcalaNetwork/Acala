@@ -256,24 +256,15 @@ impl pallet_session::Config for Runtime {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	pub const MaxCandidates: u32 = 1000;
+	pub const MaxCandidates: u32 = 200;
 	pub const SessionLength: BlockNumber = DAYS;
-	pub const MaxInvulnerables: u32 = 100;
-}
-
-frame_support::ord_parameter_types! {
-	pub const RelayChainCouncilOrigin: AccountId = <
-		frame_support::PalletId
-		as
-		AccountIdConversion<AccountId>
-	>::into_account(&frame_support::PalletId(*b"TODOTODO"));
+	pub const MaxInvulnerables: u32 = 50;
 }
 
 impl module_collator_selection::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	// TODO: replace it
-	type UpdateOrigin = frame_system::EnsureSignedBy<RelayChainCouncilOrigin, AccountId>;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
