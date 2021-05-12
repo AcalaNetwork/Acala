@@ -9,20 +9,20 @@ log = "0.4.8"
 structopt = "0.3.8"
 codec = { package = "parity-scale-codec", version = "2.0.0" }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
-sc-service = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
-sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
-try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "statemint", optional = true }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "statemint", optional = true }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "statemint", optional = true }
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "statemint", optional = true }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "statemint", optional = true }
 
-cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "rococo-v1" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
-polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "statemint" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "statemint" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "statemint" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "statemint" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "statemint" }
 
 inspect = { package = "acala-inspect", path = "../../inspect" }
 service = { package = "acala-service", path = "../service", default-features = false, optional = true }
