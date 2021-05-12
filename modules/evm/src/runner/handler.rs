@@ -69,7 +69,7 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 			config,
 			is_static,
 			gasometer: Gasometer::new(gas_limit, config),
-			storage_meter: storage_meter,
+			storage_meter,
 			_marker: PhantomData,
 		}
 	}
