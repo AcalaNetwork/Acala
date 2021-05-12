@@ -327,9 +327,19 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		/// Issue interest in stable currency for all types of collateral has
 		/// debit when block end, and update their debit exchange rate
-		fn on_initialize(_: T::BlockNumber) -> Weight {
-			let count: u32 = Self::accumulate_interest(T::UnixTime::now().as_secs(), Self::last_accumulation_secs());
-			<T as Config>::WeightInfo::on_initialize(count)
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			// only after the block #1, `T::UnixTime::now()` will not report error.
+			// https://github.com/paritytech/substrate/blob/4ff92f10058cfe1b379362673dd369e33a919e66/frame/timestamp/src/lib.rs#L276
+			// so accumulate interest at the beginning of the block #2
+			let now_as_secs: u64 = if now > One::one() {
+				T::UnixTime::now().as_secs()
+			} else {
+				Default::default()
+			};
+			<T as Config>::WeightInfo::on_initialize(Self::accumulate_interest(
+				now_as_secs,
+				Self::last_accumulation_secs(),
+			))
 		}
 
 		/// Runs after every block. Start offchain worker to check CDP and

@@ -113,14 +113,14 @@ runtime_benchmarks! {
 		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
 		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK);
 
-		CdpEngine::on_initialize(1);
+		CdpEngine::on_initialize(2);
 	}: {
 		// set timestamp by set storage, this is deprecated,
 		// replace it by following after https://github.com/paritytech/substrate/pull/8601 is available:
 		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
 		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK * 2);
 
-		CdpEngine::on_initialize(2);
+		CdpEngine::on_initialize(3);
 	}
 
 	set_collateral_params {

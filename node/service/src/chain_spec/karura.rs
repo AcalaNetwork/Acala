@@ -124,12 +124,12 @@ fn karura_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, AuraConfig, Balance, BalancesConfig, BlockNumber,
-		CdpEngineConfig, CdpTreasuryConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM,
-		KUSD, LKSM, RENBTC,
+		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber,
+		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EnabledTradingPairs,
+		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
+		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
+		SessionConfig, SessionKeys, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+		UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -194,9 +194,6 @@ fn karura_genesis(
 		},
 		pallet_balances: BalancesConfig { balances },
 		pallet_sudo: SudoConfig { key: root_key.clone() },
-		pallet_aura: AuraConfig {
-			authorities: initial_authorities.iter().map(|x| (x.3.clone())).collect(),
-		},
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -278,5 +275,26 @@ fn karura_genesis(
 			parachain_id: PARA_ID.into(),
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
+		module_collator_selection: CollatorSelectionConfig {
+			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
+			candidacy_bond: initial_staking,
+			..Default::default()
+		},
+		pallet_session: SessionConfig {
+			keys: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _, _, aura)| {
+					(
+						acc.clone(),          // account id
+						acc,                  // validator id
+						SessionKeys { aura }, // session keys
+					)
+				})
+				.collect(),
+		},
+		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
+		// of this.
+		pallet_aura: Default::default(),
 	}
 }

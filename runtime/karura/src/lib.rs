@@ -221,6 +221,68 @@ impl pallet_aura::Config for Runtime {
 }
 
 parameter_types! {
+	pub const UncleGenerations: u32 = 0;
+}
+
+impl pallet_authorship::Config for Runtime {
+	// TODO https://github.com/paritytech/statemint/issues/23
+	// Add FindAccountFromAuthorIndex when Aura is integrated
+	type FindAuthor = ();
+	type UncleGenerations = UncleGenerations;
+	type FilterUncle = ();
+	type EventHandler = ();
+}
+
+parameter_types! {
+	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
+	pub const Period: BlockNumber = DAYS;
+	pub const Offset: BlockNumber = 0;
+}
+
+impl pallet_session::Config for Runtime {
+	type Event = Event;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	// we don't have stash and controller, thus we don't need the convert as well.
+	type ValidatorIdOf = module_collator_selection::IdentityCollator;
+	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
+	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	type SessionManager = CollatorSelection;
+	// Essentially just Aura, but lets be pedantic.
+	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = SessionKeys;
+	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const MaxCandidates: u32 = 1000;
+	pub const SessionLength: BlockNumber = DAYS;
+	pub const MaxInvulnerables: u32 = 100;
+}
+
+frame_support::ord_parameter_types! {
+	pub const RelayChainCouncilOrigin: AccountId = <
+		frame_support::PalletId
+		as
+		AccountIdConversion<AccountId>
+	>::into_account(&frame_support::PalletId(*b"TODOTODO"));
+}
+
+impl module_collator_selection::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	// TODO: replace it
+	type UpdateOrigin = frame_system::EnsureSignedBy<RelayChainCouncilOrigin, AccountId>;
+	type PotId = PotId;
+	type MaxCandidates = MaxCandidates;
+	type MaxInvulnerables = MaxInvulnerables;
+	// should be a multiple of session or things will get inconsistent
+	type KickThreshold = Period;
+	type WeightInfo = ();
+}
+
+parameter_types! {
 	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
 }
 
@@ -1323,7 +1385,6 @@ construct_runtime!(
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
 
 		// Parachain
-		Aura: pallet_aura::{Pallet, Config<T>} = 160,
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 161,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 162,
 
@@ -1337,6 +1398,12 @@ construct_runtime!(
 		EVMBridge: module_evm_bridge::{Pallet} = 181,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 182,
 		EvmManager: module_evm_manager::{Pallet, Storage} = 183,
+
+		// Collator support. the order of these 4 are important and shall not change.
+		Authorship: pallet_authorship::{Pallet, Call, Storage} = 190,
+		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 191,
+		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 192,
+		Aura: pallet_aura::{Pallet, Config<T>} = 193,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
