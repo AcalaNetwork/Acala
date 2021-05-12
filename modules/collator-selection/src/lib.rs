@@ -86,7 +86,10 @@ pub mod pallet {
 		PalletId,
 	};
 	use frame_support::{
-		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
+		sp_runtime::{
+			traits::{AccountIdConversion, CheckedSub, Zero},
+			RuntimeDebug,
+		},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
@@ -381,11 +384,15 @@ pub mod pallet {
 		for Pallet<T>
 	{
 		fn note_author(author: T::AccountId) {
-			let treasury = Self::account_id();
-			let reward = T::Currency::free_balance(&treasury).div(2u32.into());
+			let pot = Self::account_id();
+			// assumes an ED will be sent to pot.
+			let reward = T::Currency::free_balance(&pot)
+				.checked_sub(&T::Currency::minimum_balance())
+				.unwrap_or_else(Zero::zero)
+				.div(2u32.into());
 
-			// `reward` is half of treasury account, this should never fail.
-			let _success = T::Currency::transfer(&treasury, &author, reward, KeepAlive);
+			// `reward` is half of pot account, this should never fail.
+			let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
 			debug_assert!(_success.is_ok());
 			let candidates_len = <Candidates<T>>::mutate(|candidates| -> usize {
 				if let Some(found) = candidates.iter_mut().find(|candidate| candidate.who == author) {

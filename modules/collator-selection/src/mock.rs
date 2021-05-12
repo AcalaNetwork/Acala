@@ -84,7 +84,7 @@ impl system::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	pub const ExistentialDeposit: u64 = 5;
 }
 
 impl pallet_balances::Config for Test {
