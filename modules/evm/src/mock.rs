@@ -217,9 +217,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			nonce: 1,
 			balance: Default::default(),
 			storage: Default::default(),
-			code: vec![
-				0x00, // STOP
-			],
+			code: Default::default(),
 		},
 	);
 	accounts.insert(
@@ -228,9 +226,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			nonce: 1,
 			balance: Default::default(),
 			storage: Default::default(),
-			code: vec![
-				0xff, // INVALID
-			],
+			code: Default::default(),
 		},
 	);
 
