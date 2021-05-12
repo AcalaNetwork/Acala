@@ -38,7 +38,7 @@ pub use karura_runtime;
 pub use mandala_runtime;
 
 use acala_primitives::Block;
-use mock_inherent_data_provider::{MockParachainInherentDataProvider, MockTimestampInherentDataProvider};
+use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
@@ -48,6 +48,7 @@ use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
+use sp_consensus::SlotData;
 use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
 use sp_runtime::traits::BlakeTwo256;
 use sp_trie::PrefixedMemoryDB;
@@ -155,8 +156,6 @@ where
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 	Executor: NativeExecutionDispatch + 'static,
 {
-	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
-
 	let telemetry = config
 		.telemetry_endpoints
 		.clone()
@@ -198,15 +197,6 @@ where
 	};
 
 	let import_queue = if dev {
-		inherent_data_providers
-			.register_provider(MockParachainInherentDataProvider)
-			.map_err(Into::into)
-			.map_err(sp_consensus::error::Error::InherentData)?;
-		inherent_data_providers
-			.register_provider(MockTimestampInherentDataProvider)
-			.map_err(Into::into)
-			.map_err(sp_consensus::error::Error::InherentData)?;
-
 		if instant_sealing {
 			// instance sealing
 			sc_consensus_manual_seal::import_queue(
@@ -218,16 +208,26 @@ where
 			// aura import queue
 			let block_import =
 				sc_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
-			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+
+			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
 				block_import,
 				justification_import: None,
 				client: client.clone(),
-				inherent_data_providers: inherent_data_providers.clone(),
+				create_inherent_data_providers: move |_, ()| async move {
+					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						*timestamp,
+						slot_duration,
+					);
+
+					Ok((timestamp, slot, MockParachainInherentDataProvider))
+				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
 				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 				check_for_equivocation: Default::default(),
-				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?
 		}
@@ -235,7 +235,7 @@ where
 		cumulus_client_consensus_relay_chain::import_queue(
 			client.clone(),
 			client.clone(),
-			inherent_data_providers.clone(),
+			|_, _| async { Ok(sp_timestamp::InherentDataProvider::from_system_time()) },
 			&task_manager.spawn_essential_handle(),
 			registry,
 		)?
@@ -248,7 +248,6 @@ where
 		keystore_container,
 		task_manager,
 		transaction_pool,
-		inherent_data_providers,
 		select_chain,
 		other: (telemetry, telemetry_worker_handle),
 	})
@@ -282,10 +281,6 @@ where
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&parachain_config, false, false)?;
-	params
-		.inherent_data_providers
-		.register_provider(sp_timestamp::InherentDataProvider)
-		.unwrap();
 	let (mut telemetry, telemetry_worker_handle) = params.other;
 
 	let polkadot_full_node = cumulus_client_service::build_polkadot_full_node(
@@ -380,7 +375,7 @@ where
 		let parachain_consensus = build_relay_chain_consensus(BuildRelayChainConsensusParams {
 			para_id: id,
 			proposer_factory,
-			inherent_data_providers: params.inherent_data_providers,
+			create_inherent_data_providers: |_, _| async { Ok(sp_timestamp::InherentDataProvider::from_system_time()) },
 			block_import: client.clone(),
 			relay_chain_client: polkadot_full_node.client.clone(),
 			relay_chain_backend: polkadot_full_node.backend.clone(),
@@ -518,7 +513,6 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		keystore_container,
 		select_chain: maybe_select_chain,
 		transaction_pool,
-		inherent_data_providers,
 		other: (mut telemetry, _),
 	} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(&config, true, instant_sealing)?;
 
@@ -564,7 +558,12 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					pool: transaction_pool.pool().clone(),
 					select_chain,
 					consensus_data_provider: None,
-					inherent_data_providers,
+					create_inherent_data_providers: |_, _| async {
+						Ok((
+							sp_timestamp::InherentDataProvider::from_system_time(),
+							MockParachainInherentDataProvider,
+						))
+					},
 				});
 			// we spawn the future on a background thread managed by service.
 			task_manager
@@ -575,13 +574,23 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 			let block_import =
 				sc_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
-			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _>(StartAuraParams {
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
 				block_import,
 				proposer_factory,
-				inherent_data_providers,
+				create_inherent_data_providers: move |_, ()| async move {
+					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						*timestamp,
+						slot_duration,
+					);
+
+					Ok((timestamp, slot, MockParachainInherentDataProvider))
+				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
