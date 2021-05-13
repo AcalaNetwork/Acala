@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -xe
+set -e
 
 VERSION=$1
 NODE_NAME=acala/karura-node
@@ -11,6 +11,6 @@ if [[ -z "$1" ]] ; then
     exit 1
 fi
 
-docker build -f scripts/Dockerfile . -t $NODE_NAME:$1 -t $NODE_NAME:latest --build-arg GIT_COMMIT=${VERSION} --build-arg BUILD_ARGS="$BUILD_ARGS"
-docker push $NODE_NAME:$1
+docker build -f scripts/Dockerfile . -t $NODE_NAME:$VERSION -t $NODE_NAME:latest --build-arg GIT_COMMIT=${VERSION} --build-arg BUILD_ARGS="$BUILD_ARGS"
+docker push $NODE_NAME:$VERSION
 docker push $NODE_NAME:latest
