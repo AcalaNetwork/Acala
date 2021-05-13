@@ -2,7 +2,7 @@
 
 # Script for building only the WASM binary of the given project.
 
-set -e
+set -xe
 
 PROJECT_ROOT=`git rev-parse --show-toplevel`
 
@@ -11,10 +11,10 @@ if [ "$#" -lt 1 ]; then
   exit 1
 fi
 
-if [ -z "$2" ]; then
-  export WASM_TARGET_DIRECTORY=$(pwd)
-else
-  export WASM_TARGET_DIRECTORY=$2
-fi
+#if [ -z "$2" ]; then
+#  export WASM_TARGET_DIRECTORY=$(pwd)
+#else
+#  export WASM_TARGET_DIRECTORY=$2
+#fi
 
-cargo build --manifest-path bin/acala/Cargo.toml --release -p $1 --features with-ethereum-compatibility
+cargo build --release $*

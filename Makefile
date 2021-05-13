@@ -1,10 +1,10 @@
 .PHONY: run
 run: githooks
-	cargo run -- --dev -lruntime=debug --instant-sealing
+	cargo run --features with-mandala-runtime -- --dev -lruntime=debug --instant-sealing
 
 .PHONY: run-eth
 run-eth: githooks
-	cargo run --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
+	cargo run --features with-mandala-runtime --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
 
 .PHONY: toolchain
 toolchain:
@@ -12,11 +12,11 @@ toolchain:
 
 .PHONY: build
 build: githooks
-	SKIP_WASM_BUILD= cargo build
+	SKIP_WASM_BUILD= cargo build --features with-mandala-runtime
 
 .PHONY: build-full
 build-full: githooks
-	cargo build
+	cargo build --features with-mandala-runtime
 
 .PHONY: build-all
 build-all:
@@ -24,18 +24,18 @@ build-all:
 
 .PHONY: check
 check: githooks
-	SKIP_WASM_BUILD= cargo check
+	SKIP_WASM_BUILD= cargo check --features with-mandala-runtime
 
 .PHONY: check-tests
 check-tests: githooks
-	SKIP_WASM_BUILD= cargo check --tests --all
+	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
 
 .PHONY: check-all
 check-all: check-runtimes check-benchmarks
 
 .PHONY: check-runtimes
 check-runtimes:
-	SKIP_WASM_BUILD= cargo check --tests --all --features with-all-runtime
+	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
 
 .PHONY: check-benchmarks
 check-benchmarks:
@@ -44,7 +44,7 @@ check-benchmarks:
 
 .PHONY: check-debug
 check-debug:
-	RUSTFLAGS="-Z macro-backtrace" SKIP_WASM_BUILD= cargo +nightly check
+	RUSTFLAGS="-Z macro-backtrace" SKIP_WASM_BUILD= cargo +nightly check --features with-mandala-runtime
 
 .PHONY: check-try-runtime
 check-try-runtime:
@@ -56,8 +56,8 @@ test: githooks
 
 .PHONY: test-eth
 test-eth: githooks
-	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p mandala-runtime test_evm_module
-	SKIP_WASM_BUILD= cargo test --features with-ethereum-compatibility -p mandala-runtime should_not_kill_contract_on_transfer_all
+	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --features with-ethereum-compatibility test_evm_module
+	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
 
 .PHONY: test-runtimes
 test-runtimes:
@@ -78,7 +78,7 @@ purge: target/debug/acala
 restart: purge run
 
 target/debug/acala:
-	SKIP_WASM_BUILD= cargo build
+	SKIP_WASM_BUILD= cargo build --features with-mandala-runtime
 
 GITHOOKS_SRC = $(wildcard githooks/*)
 GITHOOKS_DEST = $(patsubst githooks/%, .git/hooks/%, $(GITHOOKS_SRC))
@@ -113,7 +113,19 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh mandala-runtime
+	./scripts/build-only-wasm.sh -p mandala-runtime --features=with-ethereum-compatibility
+
+.PHONY: build-wasm-karura
+build-wasm-karura:
+	./scripts/build-only-wasm.sh -p karura-runtime --features=on-chain-release-build
+
+.PHONY: srtool-build-wasm-mandala
+srtool-build-wasm-mandala:
+	PACKAGE=mandala-runtime BUILD_OPTS="--features with-ethereum-compatibility" ./scripts/srtool-build.sh
+
+.PHONY: srtool-build-wasm-karura
+srtool-build-wasm-karura:
+	PACKAGE=karura-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
 
 .PHONY: generate-tokens
 generate-tokens:

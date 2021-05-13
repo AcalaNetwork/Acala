@@ -78,7 +78,7 @@ karura-runtime = { path = "../../runtime/karura", optional = true }
 acala-runtime = { path = "../../runtime/acala", optional = true }
 
 [features]
-default = ["std", "with-mandala-runtime"]
+default = [ "std" ]
 std = []
 runtime-benchmarks = [
 	"mandala-runtime/runtime-benchmarks",

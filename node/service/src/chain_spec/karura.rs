@@ -112,7 +112,7 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: PARA_ID.into(),
+			para_id: PARA_ID,
 		},
 	))
 }
@@ -211,11 +211,11 @@ fn karura_genesis(
 		},
 		pallet_collective_Instance4: Default::default(),
 		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
-			members: vec![root_key.clone()],
+			members: vec![root_key],
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
-			members: endowed_accounts.clone(),
+			members: endowed_accounts,
 			phantom: Default::default(),
 		},
 		pallet_treasury: Default::default(),

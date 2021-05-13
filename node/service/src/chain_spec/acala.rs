@@ -112,7 +112,7 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo".into(),
-			para_id: PARA_ID.into(),
+			para_id: PARA_ID,
 		},
 	))
 }
@@ -222,7 +222,7 @@ fn acala_genesis(
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance6: OperatorMembershipBandConfig {
-			members: endowed_accounts.clone(),
+			members: endowed_accounts,
 			phantom: Default::default(),
 		},
 		pallet_treasury: Default::default(),
