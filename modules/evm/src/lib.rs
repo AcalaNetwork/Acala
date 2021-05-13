@@ -1062,8 +1062,16 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::ContractExceedsMaxCodeSize
 			);
 
-			Runner::<T>::create_at_address(source, code, Default::default(), contract, 2_100_000, 1000, T::config())
-				.map(|_| ())
+			Runner::<T>::create_at_address(
+				source,
+				code,
+				Default::default(),
+				contract,
+				2_100_000,
+				100_000,
+				T::config(),
+			)
+			.map(|_| ())
 		})
 	}
 
