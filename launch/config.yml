@@ -1,0 +1,20 @@
+relaychain:
+  image: parity/rococo:rococo-v1
+  chain: rococo-local
+  nodes:
+  - name: alice
+  - name: bob
+  - name: charlie
+  - name: dave
+  runtime_genesis_config:
+    parachainsConfiguration:
+      config:
+        validation_upgrade_frequency: 1
+        validation_upgrade_delay: 1
+
+parachains:
+- image: acala/acala-node:5ee43f48
+  chain: mandala
+  id: 2000
+  nodes:
+  - {}
