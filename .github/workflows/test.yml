@@ -31,9 +31,11 @@ jobs:
       run: make build-all
     - name: Install clippy
       run: rustup component add clippy
-    - name: Run clippy
+    - name: Run mandala-runtime clippy
       run: cargo clippy --features with-mandala-runtime -- -D warnings
+    - name: Run karura-runtime clippy
       run: cargo clippy --features with-karura-runtime -- -D warnings
+    - name: Run acala-runtime clippy
       run: cargo clippy --features with-acala-runtime -- -D warnings
     - name: Run runtime tests
       run: make test-runtimes
