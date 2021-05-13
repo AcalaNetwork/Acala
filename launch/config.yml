@@ -1,0 +1,28 @@
+relaychain:
+  image: parity/rococo:rococo-v1
+  chain: rococo-local
+  runtime_genesis_config:
+    parachainsConfiguration:
+      config:
+        validation_upgrade_frequency: 1
+        validation_upgrade_delay: 1
+  env:
+    RUST_LOG: candidate_backing=trace
+  flags:
+    - --rpc-methods=unsafe
+  nodes:
+  - name: alice
+  - name: bob
+  - name: charlie
+  - name: dave
+
+parachains:
+- image: acala/acala-node:5ee43f48
+  chain: mandala
+  id: 2000
+  flags:
+    - --rpc-methods=unsafe
+  env:
+    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace
+  nodes:
+  - {}
