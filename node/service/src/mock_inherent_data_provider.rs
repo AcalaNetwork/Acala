@@ -19,42 +19,13 @@
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::{ParachainInherentData, INHERENT_IDENTIFIER};
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use sp_inherents::{InherentData, InherentIdentifier, ProvideInherentData};
+use sp_inherents::{InherentData, InherentDataProvider, InherentIdentifier};
 use sp_timestamp::InherentError;
-use std::cell::RefCell;
-
-/// Provide a mock duration starting at 0 in millisecond for timestamp inherent.
-/// Each call will increment timestamp by slot_duration making block importer
-/// think time has passed.
-pub struct MockTimestampInherentDataProvider;
-
-pub const TIMESTAMP_INHERENT_IDENTIFIER: InherentIdentifier = *b"timstap0";
-
-thread_local!(static TIMESTAMP: RefCell<u64> = RefCell::new(0));
-
-impl ProvideInherentData for MockTimestampInherentDataProvider {
-	fn inherent_identifier(&self) -> &'static InherentIdentifier {
-		&TIMESTAMP_INHERENT_IDENTIFIER
-	}
-
-	fn provide_inherent_data(&self, inherent_data: &mut InherentData) -> Result<(), sp_inherents::Error> {
-		TIMESTAMP.with(|x| {
-			*x.borrow_mut() += 4_000;
-			inherent_data.put_data(TIMESTAMP_INHERENT_IDENTIFIER, &*x.borrow())
-		})
-	}
-
-	fn error_to_string(&self, error: &[u8]) -> Option<String> {
-		Some(String::from_utf8_lossy(error).into())
-	}
-}
 
 pub struct MockParachainInherentDataProvider;
-impl ProvideInherentData for MockParachainInherentDataProvider {
-	fn inherent_identifier(&self) -> &'static InherentIdentifier {
-		&INHERENT_IDENTIFIER
-	}
 
+#[async_trait::async_trait]
+impl InherentDataProvider for MockParachainInherentDataProvider {
 	fn provide_inherent_data(&self, inherent_data: &mut InherentData) -> Result<(), sp_inherents::Error> {
 		// Use the "sproof" (spoof proof) builder to build valid mock state root and
 		// proof.
@@ -75,7 +46,16 @@ impl ProvideInherentData for MockParachainInherentDataProvider {
 		inherent_data.put_data(INHERENT_IDENTIFIER, &data)
 	}
 
-	fn error_to_string(&self, error: &[u8]) -> Option<String> {
-		InherentError::try_from(&INHERENT_IDENTIFIER, error).map(|e| format!("{:?}", e))
+	async fn try_handle_error(
+		&self,
+		identifier: &InherentIdentifier,
+		error: &[u8],
+	) -> Option<Result<(), sp_inherents::Error>> {
+		if *identifier != INHERENT_IDENTIFIER {
+			return None;
+		}
+
+		let err = InherentError::try_from(identifier, error)?;
+		Some(Err(sp_inherents::Error::Application(Box::from(err))))
 	}
 }

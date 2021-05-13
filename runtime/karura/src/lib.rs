@@ -515,6 +515,7 @@ parameter_types! {
 	pub BountyValueMinimum: Balance = 5 * dollar(KAR);
 	pub DataDepositPerByte: Balance = cent(KAR);
 	pub const MaximumReasonLength: u32 = 16384;
+	pub const MaxApprovals: u32 = 100;
 }
 
 impl pallet_treasury::Config for Runtime {
@@ -531,6 +532,7 @@ impl pallet_treasury::Config for Runtime {
 	type BurnDestination = ();
 	type SpendFunds = Bounties;
 	type WeightInfo = ();
+	type MaxApprovals = MaxApprovals;
 }
 
 impl pallet_bounties::Config for Runtime {
@@ -1091,11 +1093,16 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+parameter_types! {
+	pub ReservedDmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
+}
+
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = ParachainInfo;
-	type DownwardMessageHandlers = ();
+	type DmpMessageHandler = ();
+	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = ();
 	type XcmpMessageHandler = ();
 	type ReservedXcmpWeight = ();
@@ -1256,8 +1263,7 @@ construct_runtime!(
 		// Core
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage} = 2,
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 3,
+		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 2,
 
 		// Tokens & Related
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
@@ -1414,10 +1420,6 @@ impl_runtime_apis! {
 			data: sp_inherents::InherentData,
 		) -> sp_inherents::CheckInherentsResult {
 			data.check_extrinsics(&block)
-		}
-
-		fn random_seed() -> <Block as BlockT>::Hash {
-			RandomnessCollectiveFlip::random_seed().0
 		}
 	}
 
