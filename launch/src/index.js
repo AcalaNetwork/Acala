@@ -90,7 +90,7 @@ const generate = async (config, { output, yes }) => {
   await cryptoWaitReady();
 
   if (!config.relaychain.chain) {
-    return fatal('Missing relaychain.chain')
+    return fatal('Missing relaychain.chain');
   }
 
   const relaychainGenesisFilePath = path.join(output, `${config.relaychain.chain}.json`);
@@ -165,22 +165,19 @@ const generate = async (config, { output, yes }) => {
   const dockerCompose = {
     version: '3.7',
     services: {},
-    volumes: {}
-  }
+    volumes: {},
+  };
 
-  let idx = 0
+  let idx = 0;
   for (const node of config.relaychain.nodes) {
-    const name = `relaychain-${_.kebabCase(node.name)}`
+    const name = `relaychain-${_.kebabCase(node.name)}`;
     const nodeConfig = {
       ports: [
-        `${node.wsPort || (9944 + idx)}:9944`,
-        `${node.rpcPort || (9933 + idx)}:9933`,
-        `${node.port || (30333 + idx)}:30333`,
+        `${node.wsPort || 9944 + idx}:9944`,
+        `${node.rpcPort || 9933 + idx}:9933`,
+        `${node.port || 30333 + idx}:30333`,
       ],
-      volumes: [
-        `${name}:/data`,
-        '.:/app'
-      ],
+      volumes: [`${name}:/data`, '.:/app'],
       image: config.relaychain.image,
       command: [
         '--base-path=/data',
@@ -190,29 +187,26 @@ const generate = async (config, { output, yes }) => {
         '--rpc-cors=all',
         `--name=${node.name}`,
         `--${node.name.toLowerCase()}`,
-        ...(node.flags || [])
-      ]
-    }
-    dockerCompose.services[name] = nodeConfig
-    dockerCompose.volumes[name] = null
+        ...(node.flags || []),
+      ],
+    };
+    dockerCompose.services[name] = nodeConfig;
+    dockerCompose.volumes[name] = null;
 
-    ++idx
+    ++idx;
   }
 
   for (const para of config.parachains) {
-    let nodeIdx = 0
+    let nodeIdx = 0;
     for (const paraNode of para.nodes) {
-      const name = `parachain-${para.id || para.chain}-${nodeIdx}`
+      const name = `parachain-${para.id || para.chain}-${nodeIdx}`;
       const nodeConfig = {
         ports: [
-          `${paraNode.wsPort || (9944 + idx)}:9944`,
-          `${paraNode.rpcPort || (9933 + idx)}:9933`,
-          `${paraNode.port || (30333 + idx)}:30333`,
+          `${paraNode.wsPort || 9944 + idx}:9944`,
+          `${paraNode.rpcPort || 9933 + idx}:9933`,
+          `${paraNode.port || 30333 + idx}:30333`,
         ],
-        volumes: [
-          `${name}:/data`,
-          '.:/app'
-        ],
+        volumes: [`${name}:/data`, '.:/app'],
         image: para.image,
         command: [
           '--base-path=/data',
@@ -226,15 +220,15 @@ const generate = async (config, { output, yes }) => {
           ...(paraNode.flags || []),
           '--',
           `--chain=/app/${config.relaychain.chain}.json`,
-          ...(paraNode.relaychainFlags || [])
-        ]
-      }
+          ...(paraNode.relaychainFlags || []),
+        ],
+      };
 
-      dockerCompose.services[name] = nodeConfig
-      dockerCompose.volumes[name] = null
+      dockerCompose.services[name] = nodeConfig;
+      dockerCompose.volumes[name] = null;
 
-      ++nodeIdx
-      ++idx
+      ++nodeIdx;
+      ++idx;
     }
   }
 
