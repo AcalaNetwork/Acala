@@ -17,7 +17,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "statem
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 primitive-types = { version = "0.9.0", default-features = false, features = ["rlp", "byteorder"] }
-sha3 = { version = "0.9.1", default-features = false }
 impl-trait-for-tuples = "0.2.1"
 ethereum-types = { version = "0.11.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
@@ -25,6 +24,7 @@ support = { package = "module-support", path = "../support", default-features = 
 module-evm = { path = "../evm", default-features = false }
 
 [dev-dependencies]
+sha3 = { version = "0.9.1" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
 
@@ -39,7 +39,6 @@ std = [
 	"frame-system/std",
 	"sp-io/std",
 	"sp-std/std",
-	"sha3/std",
 	"ethereum-types/std",
 	"primitives/std",
 	"primitive-types/std",

@@ -22,7 +22,10 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use crate::runner::storage_meter::StorageMeterHandler;
+use crate::runner::{
+	handler::{Handler, StorageMeterHandlerImpl},
+	storage_meter::{StorageMeter, StorageMeterHandler},
+};
 use codec::{Decode, Encode};
 use evm::Config as EvmConfig;
 use frame_support::{
@@ -321,11 +324,34 @@ pub mod module {
 
 				if !account.code.is_empty() {
 					// if code len > 0 then it's a contract
-					<Pallet<T>>::on_contract_initialization(address, &EvmAddress::default(), account.code.clone())
-						.expect("Genesis contract shouldn't fail");
+					let source = T::NetworkContractSource::get();
+					let vicinity = Vicinity {
+						gas_price: U256::one(),
+						origin: source,
+					};
+					let storage_limit = 0;
+					let contract_address = *address;
+					let code = account.code.clone();
+
+					let mut storage_meter_handler = StorageMeterHandlerImpl::<T>::new(vicinity.origin);
+					let storage_meter = StorageMeter::new(&mut storage_meter_handler, contract_address, storage_limit)
+						.expect("Genesis contract failed to new storage_meter");
+
+					let mut substate = Handler::<T>::new(&vicinity, 2_100_000, storage_meter, false, T::config());
+					let (reason, out) =
+						substate.execute(source, contract_address, Default::default(), code, Vec::new());
+
+					assert!(
+						reason.is_succeed(),
+						"Genesis contract failed to execute, error: {:?}",
+						reason
+					);
+
+					<Pallet<T>>::on_contract_initialization(&contract_address, &source, out)
+						.expect("Genesis contract failed to initialize");
 
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
-					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract shouldn't fail");
+					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract failed to deploy");
 
 					let mut count = 0;
 					for (index, value) in &account.storage {
@@ -1016,11 +1042,14 @@ impl<T: Config> Pallet<T> {
 				.as_ref()
 				.ok_or(Error::<T>::ContractNotFound)?;
 
-			if let Either::Right(signer) = root_or_signed {
+			let source = if let Either::Right(signer) = root_or_signed {
 				let maintainer = T::AddressMapping::get_evm_address(&signer).ok_or(Error::<T>::AddressNotMapped)?;
 				ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
 				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
-			}
+				maintainer
+			} else {
+				T::NetworkContractSource::get()
+			};
 
 			let code_size = code.len() as u32;
 			let code_hash = code_hash(&code.as_slice());
@@ -1033,24 +1062,17 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::ContractExceedsMaxCodeSize
 			);
 
-			CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
-				if let Some(code_info) = maybe_code_info.as_mut() {
-					code_info.ref_count = code_info.ref_count.saturating_add(1);
-				} else {
-					let new = CodeInfo {
-						code_size,
-						ref_count: 1,
-					};
-					*maybe_code_info = Some(new);
-
-					Codes::<T>::insert(&code_hash, code);
-				}
-			});
-
-			Ok(())
-		})?;
-
-		Ok(())
+			Runner::<T>::create_at_address(
+				source,
+				code,
+				Default::default(),
+				contract,
+				2_100_000,
+				100_000,
+				T::config(),
+			)
+			.map(|_| ())
+		})
 	}
 
 	/// Selfdestruct a contract at a given address.

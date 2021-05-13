@@ -56,7 +56,24 @@ fn l64(gas: u64) -> u64 {
 	gas - gas / 64
 }
 
-impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
+impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, T> {
+	pub fn new(
+		vicinity: &'vicinity Vicinity,
+		gas_limit: u64,
+		storage_meter: StorageMeter<'meter>,
+		is_static: bool,
+		config: &'config EvmRuntimeConfig,
+	) -> Self {
+		Handler::<'vicinity, 'config, '_, T> {
+			vicinity,
+			config,
+			is_static,
+			gasometer: Gasometer::new(gas_limit, config),
+			storage_meter,
+			_marker: PhantomData,
+		}
+	}
+
 	pub fn run_transaction<R, F: FnOnce(&mut Handler<'vicinity, 'config, '_, T>) -> TransactionOutcome<R>>(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: u64,
@@ -73,14 +90,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
 			};
 
-			let mut substate = Handler::<'vicinity, 'config, '_, T> {
-				vicinity,
-				config,
-				is_static,
-				gasometer: Gasometer::new(gas_limit, config),
-				storage_meter,
-				_marker: PhantomData,
-			};
+			let mut substate = Handler::new(vicinity, gas_limit, storage_meter, is_static, config);
 
 			match f(&mut substate) {
 				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {
@@ -111,14 +121,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
 			};
 
-			let mut substate = Handler::<'vicinity, 'config, '_, T> {
-				vicinity,
-				config,
-				is_static,
-				gasometer: Gasometer::new(gas_limit, config),
-				storage_meter,
-				_marker: PhantomData,
-			};
+			let mut substate = Handler::new(vicinity, gas_limit, storage_meter, is_static, config);
 
 			match f(&mut substate, &mut self.gasometer) {
 				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {

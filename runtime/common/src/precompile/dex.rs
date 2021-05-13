@@ -20,7 +20,7 @@ use super::input::{Input, InputT};
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
-use num_enum::TryFromPrimitive;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 use sp_core::U256;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -38,17 +38,17 @@ pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
-#[repr(u8)]
-enum Action {
-	GetLiquidityPool = 0,
-	GetLiquidityTokenAddress = 1,
-	GetSwapTargetAmount = 2,
-	GetSwapSupplyAmount = 3,
-	SwapWithExactSupply = 4,
-	SwapWithExactTarget = 5,
-	AddLiquidity = 6,
-	RemoveLiquidity = 7,
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	GetLiquidityPool = 0xf4f31ede,
+	GetLiquidityTokenAddress = 0xffd73c4a,
+	GetSwapTargetAmount = 0x4d60beb1,
+	GetSwapSupplyAmount = 0xdbcd19a2,
+	SwapWithExactSupply = 0x579baa18,
+	SwapWithExactTarget = 0x9782ac81,
+	AddLiquidity = 0x4ea5efef,
+	RemoveLiquidity = 0xda613b51,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
@@ -66,11 +66,9 @@ where
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		//TODO: evaluate cost
 
-		log::debug!(target: "evm", "input: {:?}", input);
+		log::debug!(target: "evm", "dex: input: {:?}", input);
 
-		// Solidity dynamic arrays will add the array size to the front of the array,
-		// pre-compile needs to deal with the `size`.
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(&input[32..]);
+		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
 
@@ -112,12 +110,13 @@ where
 				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
 			}
 			Action::GetSwapTargetAmount => {
-				let path_len = input.u32_at(1)?;
+				// solidity abi enocde array will add an offset at input[1]
+				let supply_amount = input.balance_at(2)?;
+				let path_len = input.u32_at(3)?;
 				let mut path = vec![];
 				for i in 0..path_len {
-					path.push(input.currency_id_at((2 + i) as usize)?);
+					path.push(input.currency_id_at((4 + i) as usize)?);
 				}
-				let supply_amount = input.balance_at((path_len + 2) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: get_swap_target_amount path: {:?}, supply_amount: {:?}",
@@ -134,12 +133,13 @@ where
 				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
 			}
 			Action::GetSwapSupplyAmount => {
-				let path_len = input.u32_at(1)?;
+				// solidity abi enocde array will add an offset at input[1]
+				let target_amount = input.balance_at(2)?;
+				let path_len = input.u32_at(3)?;
 				let mut path = vec![];
 				for i in 0..path_len {
-					path.push(input.currency_id_at((2 + i) as usize)?);
+					path.push(input.currency_id_at((4 + i) as usize)?);
 				}
-				let target_amount = input.balance_at((path_len + 2) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: get_swap_supply_amount path: {:?}, target_amount: {:?}",
@@ -157,13 +157,14 @@ where
 			}
 			Action::SwapWithExactSupply => {
 				let who = input.account_id_at(1)?;
-				let path_len = input.u32_at(2)?;
+				// solidity abi enocde array will add an offset at input[2]
+				let supply_amount = input.balance_at(3)?;
+				let min_target_amount = input.balance_at(4)?;
+				let path_len = input.u32_at(5)?;
 				let mut path = vec![];
 				for i in 0..path_len {
-					path.push(input.currency_id_at((3 + i) as usize)?);
+					path.push(input.currency_id_at((6 + i) as usize)?);
 				}
-				let supply_amount = input.balance_at((path_len + 3) as usize)?;
-				let min_target_amount = input.balance_at((path_len + 4) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: swap_with_exact_supply who: {:?}, path: {:?}, supply_amount: {:?}, min_target_amount: {:?}",
@@ -184,13 +185,14 @@ where
 			}
 			Action::SwapWithExactTarget => {
 				let who = input.account_id_at(1)?;
-				let path_len = input.u32_at(2)?;
+				// solidity abi enocde array will add an offset at input[2]
+				let target_amount = input.balance_at(3)?;
+				let max_supply_amount = input.balance_at(4)?;
+				let path_len = input.u32_at(5)?;
 				let mut path = vec![];
 				for i in 0..path_len {
-					path.push(input.currency_id_at((3 + i) as usize)?);
+					path.push(input.currency_id_at((6 + i) as usize)?);
 				}
-				let target_amount = input.balance_at((path_len + 3) as usize)?;
-				let max_supply_amount = input.balance_at((path_len + 4) as usize)?;
 				log::debug!(
 					target: "evm",
 					"dex: swap_with_exact_target who: {:?}, path: {:?}, target_amount: {:?}, max_supply_amount: {:?}",
@@ -249,5 +251,62 @@ where
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::precompile::mock::get_function_selector;
+
+	#[test]
+	fn function_selector_match() {
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("getLiquidityPool(address,address)")),
+			Into::<u32>::into(Action::GetLiquidityPool)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("getLiquidityTokenAddress(address,address)")),
+			Into::<u32>::into(Action::GetLiquidityTokenAddress)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("getSwapTargetAmount(address[],uint256)")),
+			Into::<u32>::into(Action::GetSwapTargetAmount)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("getSwapSupplyAmount(address[],uint256)")),
+			Into::<u32>::into(Action::GetSwapSupplyAmount)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector(
+				"swapWithExactSupply(address,address[],uint256,uint256)"
+			)),
+			Into::<u32>::into(Action::SwapWithExactSupply)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector(
+				"swapWithExactTarget(address,address[],uint256,uint256)"
+			)),
+			Into::<u32>::into(Action::SwapWithExactTarget)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector(
+				"addLiquidity(address,address,address,uint256,uint256)"
+			)),
+			Into::<u32>::into(Action::AddLiquidity)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector(
+				"removeLiquidity(address,address,address,uint256)"
+			)),
+			Into::<u32>::into(Action::RemoveLiquidity)
+		);
 	}
 }

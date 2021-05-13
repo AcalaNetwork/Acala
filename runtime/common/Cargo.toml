@@ -27,6 +27,7 @@ module-staking-pool = { path = "../../modules/staking-pool", default-features = 
 
 [dev-dependencies]
 serde_json = "1.0.64"
+sha3 = { version = "0.9.1" }
 hex-literal = "0.3.1"
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "statemint" }

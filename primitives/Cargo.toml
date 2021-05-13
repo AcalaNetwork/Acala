@@ -15,8 +15,8 @@ evm = { version = "0.26.0", default-features = false, features = ["with-codec"] 
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 
 [dev-dependencies]
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
 serde_json = { version = "1.0.64" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
 
 [features]
 default = ["std"]
