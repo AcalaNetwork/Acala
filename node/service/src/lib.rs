@@ -36,13 +36,15 @@ pub use karura_runtime;
 
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;
+#[cfg(feature = "with-mandala-runtime")]
+use sc_consensus_aura::{SlotProportion, StartAuraParams};
 
 use acala_primitives::Block;
 use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
-use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
+use sc_consensus_aura::ImportQueueParams;
 use sc_executor::native_executor_instance;
 use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
@@ -445,7 +447,7 @@ pub fn new_chain_ops(
 	ServiceError,
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	if config.chain_spec.is_mandala_dev() {
+	if config.chain_spec.is_mandala_dev() || config.chain_spec.is_mandala() {
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let PartialComponents {
@@ -454,21 +456,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial(config, true, false)?;
-			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
-		}
-		#[cfg(not(feature = "with-mandala-runtime"))]
-		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
-	} else if config.chain_spec.is_mandala() {
-		#[cfg(feature = "with-mandala-runtime")]
-		{
-			let PartialComponents {
-				client,
-				backend,
-				import_queue,
-				task_manager,
-				..
-			} = new_partial(config, false, false)?;
+			} = new_partial(config, config.chain_spec.is_mandala_dev(), false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -504,6 +492,7 @@ pub fn new_chain_ops(
 	}
 }
 
+#[cfg(feature = "with-mandala-runtime")]
 fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
 	let sc_service::PartialComponents {
 		client,
@@ -642,11 +631,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 	Ok(task_manager)
 }
 
+#[cfg(feature = "with-mandala-runtime")]
 pub fn mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
-	#[cfg(feature = "with-mandala-runtime")]
-	{
-		inner_mandala_dev(config, instant_sealing)
-	}
-	#[cfg(not(feature = "with-mandala-runtime"))]
-	Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
+	inner_mandala_dev(config, instant_sealing)
 }

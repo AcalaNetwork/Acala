@@ -31,7 +31,7 @@ service = { package = "acala-service", path = "../service", default-features = f
 orml-build-script-utils = { path = "../../orml/build-script-utils"}
 
 [features]
-default = [ "wasmtime", "cli", "with-mandala-runtime" ]
+default = [ "wasmtime", "cli" ]
 wasmtime = [ "sc-cli/wasmtime" ]
 cli = [
 	"service",
@@ -56,5 +56,8 @@ with-acala-runtime = [
 	"service/with-acala-runtime",
 ]
 with-all-runtime = [
+	"with-mandala-runtime",
+	"with-karura-runtime",
+	"with-acala-runtime",
 	"service/with-all-runtime",
 ]
