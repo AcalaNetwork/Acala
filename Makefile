@@ -52,7 +52,7 @@ check-try-runtime:
 
 .PHONY: test
 test: githooks
-	SKIP_WASM_BUILD= cargo test --all
+	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --all
 
 .PHONY: test-eth
 test-eth: githooks
