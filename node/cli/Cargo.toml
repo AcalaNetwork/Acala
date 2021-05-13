@@ -56,5 +56,8 @@ with-acala-runtime = [
 	"service/with-acala-runtime",
 ]
 with-all-runtime = [
+	"with-mandala-runtime",
+	"with-karura-runtime",
+	"with-acala-runtime",
 	"service/with-all-runtime",
 ]
