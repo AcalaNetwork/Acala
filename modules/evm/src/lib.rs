@@ -444,6 +444,8 @@ pub mod module {
 		ChargeFeeFailed,
 		/// Contract cannot be killed due to reference count
 		CannotKillContract,
+		/// Contract address conflicts with the system contract
+		ConflictContractAddress,
 	}
 
 	#[pallet::pallet]
