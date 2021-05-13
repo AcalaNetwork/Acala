@@ -187,8 +187,10 @@ const generate = async (config, { output, yes }) => {
         '--rpc-cors=all',
         `--name=${node.name}`,
         `--${node.name.toLowerCase()}`,
+        ...(config.relaychain.flags || []),
         ...(node.flags || []),
       ],
+      environment: _.assign({}, config.relaychain.env, node.env)
     };
     dockerCompose.services[name] = nodeConfig;
     dockerCompose.volumes[name] = null;
@@ -217,11 +219,14 @@ const generate = async (config, { output, yes }) => {
           `--name=${name}`,
           '--collator',
           `--parachain-id=${para.id}`,
+          ...(para.flags || []),
           ...(paraNode.flags || []),
           '--',
           `--chain=/app/${config.relaychain.chain}.json`,
+          ...(para.relaychainFlags || []),
           ...(paraNode.relaychainFlags || []),
         ],
+        environment: _.assign({}, para.env, paraNode.env)
       };
 
       dockerCompose.services[name] = nodeConfig;
