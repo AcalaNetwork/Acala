@@ -32,7 +32,9 @@ jobs:
     - name: Install clippy
       run: rustup component add clippy
     - name: Run clippy
-      run: cargo clippy -- -D warnings
+      run: cargo clippy --features with-mandala-runtime -- -D warnings
+      run: cargo clippy --features with-karura-runtime -- -D warnings
+      run: cargo clippy --features with-acala-runtime -- -D warnings
     - name: Run runtime tests
       run: make test-runtimes
     - name: Run eth tests

@@ -447,7 +447,7 @@ pub fn new_chain_ops(
 	ServiceError,
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	if config.chain_spec.is_mandala_dev() {
+	if config.chain_spec.is_mandala_dev() || config.chain_spec.is_mandala() {
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let PartialComponents {
@@ -456,21 +456,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial(config, true, false)?;
-			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
-		}
-		#[cfg(not(feature = "with-mandala-runtime"))]
-		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
-	} else if config.chain_spec.is_mandala() {
-		#[cfg(feature = "with-mandala-runtime")]
-		{
-			let PartialComponents {
-				client,
-				backend,
-				import_queue,
-				task_manager,
-				..
-			} = new_partial(config, false, false)?;
+			} = new_partial(config, config.chain_spec.is_mandala_dev(), false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]

@@ -37,7 +37,7 @@ use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
 fn chain_name() -> String {
-	return "Acala".into();
+	"Acala".into()
 }
 
 impl SubstrateCli for Cli {
