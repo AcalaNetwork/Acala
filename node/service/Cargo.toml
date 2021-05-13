@@ -62,6 +62,7 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "statemint" }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
+module-collator-selection = { path = "../../modules/collator-selection" }
 module-evm = { path = "../../modules/evm" }
 module-staking-pool = { path = "../../modules/staking-pool" }
 module-staking-pool-rpc = { path = "../../modules/staking-pool/rpc" }

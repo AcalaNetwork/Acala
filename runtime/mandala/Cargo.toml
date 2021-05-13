@@ -21,6 +21,7 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "stat
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 frame-try-runtime = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false, optional = true }
 pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false}
+pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false}
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 pallet-bounties = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
@@ -31,6 +32,7 @@ pallet-multisig = { git = "https://github.com/paritytech/substrate", branch = "s
 pallet-offences = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 pallet-recovery = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
+pallet-session = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false, features = ["historical"] }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 pallet-sudo = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
@@ -53,6 +55,7 @@ sp-staking = { git = "https://github.com/paritytech/substrate", branch = "statem
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
 sp-version = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
+
 libsecp256k1 = { version = "0.3.4", default-features = false, optional = true }
 
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "statemint", default-features = false }
@@ -84,8 +87,9 @@ module-airdrop = { path = "../../modules/airdrop", default-features = false }
 module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
 module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false }
-module-dex = { path = "../../modules/dex", default-features = false }
+module-collator-selection = { path = "../../modules/collator-selection", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
+module-dex = { path = "../../modules/dex", default-features = false }
 module-emergency-shutdown = { path = "../../modules/emergency-shutdown", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
@@ -136,6 +140,7 @@ std = [
 	"frame-system/std",
 	"frame-try-runtime/std",
 	"pallet-aura/std",
+	"pallet-authorship/std",
 	"pallet-balances/std",
 	"pallet-bounties/std",
 	"pallet-collective/std",
@@ -145,6 +150,7 @@ std = [
 	"pallet-multisig/std",
 	"pallet-proxy/std",
 	"pallet-recovery/std",
+	"pallet-session/std",
 	"pallet-scheduler/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
@@ -197,8 +203,9 @@ std = [
 	"module-auction-manager/std",
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
-	"module-dex/std",
+	"module-collator-selection/std",
 	"module-currencies/std",
+	"module-dex/std",
 	"module-emergency-shutdown/std",
 	"module-evm/std",
 	"module-evm-accounts/std",
@@ -260,6 +267,7 @@ try-runtime = [
 	"frame-system/try-runtime",
 
 	"pallet-aura/try-runtime",
+	"pallet-authorship/try-runtime",
 	"pallet-balances/try-runtime",
 	"pallet-bounties/try-runtime",
 	"pallet-collective/try-runtime",
@@ -270,6 +278,7 @@ try-runtime = [
 	"pallet-proxy/try-runtime",
 	"pallet-recovery/try-runtime",
 	"pallet-scheduler/try-runtime",
+	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
 	"pallet-timestamp/try-runtime",
 	"pallet-tips/try-runtime",
@@ -291,8 +300,9 @@ try-runtime = [
 	"module-auction-manager/try-runtime",
 	"module-cdp-engine/try-runtime",
 	"module-cdp-treasury/try-runtime",
-	"module-dex/try-runtime",
+	"module-collator-selection/try-runtime",
 	"module-currencies/try-runtime",
+	"module-dex/try-runtime",
 	"module-emergency-shutdown/try-runtime",
 	"module-evm/try-runtime",
 	"module-evm-accounts/try-runtime",
