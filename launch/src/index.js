@@ -206,10 +206,10 @@ const generate = async (config, { output, yes }) => {
           `${paraNode.rpcPort || 9933 + idx}:9933`,
           `${paraNode.port || 30333 + idx}:30333`,
         ],
-        volumes: [`${name}:/data`, '.:/app'],
+        volumes: [`${name}:/acala/data`, '.:/app'],
         image: para.image,
         command: [
-          '--base-path=/data',
+          '--base-path=/acala/data',
           `--chain=${para.chain}`,
           '--ws-external',
           '--rpc-external',
