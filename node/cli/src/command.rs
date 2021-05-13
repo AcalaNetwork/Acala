@@ -25,6 +25,11 @@ use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use service::{chain_spec, IdentifyVariant};
 
+#[cfg(feature = "with-acala-runtime")]
+pub use service::acala_runtime::Block;
+#[cfg(feature = "with-karura-runtime")]
+pub use service::karura_runtime::Block;
+#[cfg(feature = "with-mandala-runtime")]
 pub use service::mandala_runtime::Block;
 
 use log::info;
@@ -427,7 +432,6 @@ pub fn run() -> sc_cli::Result<()> {
 
 		None => {
 			let runner = cli.create_runner(&*cli.run)?;
-
 			let chain_spec = &runner.config().chain_spec;
 			let is_mandala_dev = chain_spec.is_mandala_dev();
 
@@ -443,7 +447,10 @@ pub fn run() -> sc_cli::Result<()> {
 				let collator = cli.run.base.validator || cli.collator;
 
 				if is_mandala_dev {
+					#[cfg(feature = "with-mandala-runtime")]
 					return service::mandala_dev(config, cli.instant_sealing).map_err(Into::into);
+					#[cfg(not(feature = "with-mandala-runtime"))]
+					return Err("Mandala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
 				} else if cli.instant_sealing {
 					return Err("Instant sealing can be turned on only in `--dev` mode".into());
 				}
@@ -472,17 +479,45 @@ pub fn run() -> sc_cli::Result<()> {
 				info!("Parachain genesis state: {}", genesis_state);
 				info!("Is collating: {}", if collator { "yes" } else { "no" });
 
-				// TODO: support Karura & Acala
-				service::start_node::<service::mandala_runtime::RuntimeApi, service::MandalaExecutor>(
-					config,
-					key,
-					polkadot_config,
-					id,
-					collator,
-				)
-				.await
-				.map(|r| r.0)
-				.map_err(Into::into)
+				#[cfg(feature = "with-acala-runtime")]
+				{
+					service::start_node::<service::acala_runtime::RuntimeApi, service::AcalaExecutor>(
+						config,
+						key,
+						polkadot_config,
+						id,
+						collator,
+					)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+				}
+				#[cfg(feature = "with-karura-runtime")]
+				{
+					service::start_node::<service::karura_runtime::RuntimeApi, service::KaruraExecutor>(
+						config,
+						key,
+						polkadot_config,
+						id,
+						collator,
+					)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+				}
+				#[cfg(feature = "with-mandala-runtime")]
+				{
+					service::start_node::<service::mandala_runtime::RuntimeApi, service::MandalaExecutor>(
+						config,
+						key,
+						polkadot_config,
+						id,
+						collator,
+					)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+				}
 			})
 		}
 	}

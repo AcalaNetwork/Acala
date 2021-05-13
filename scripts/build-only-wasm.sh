@@ -17,4 +17,4 @@ else
   export WASM_TARGET_DIRECTORY=$2
 fi
 
-cargo build --manifest-path bin/acala/Cargo.toml --release -p $1 --features with-ethereum-compatibility
+cargo build --release -p $1

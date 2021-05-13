@@ -113,7 +113,11 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh mandala-runtime
+	./scripts/build-only-wasm.sh mandala-runtime --features=with-ethereum-compatibility
+
+.PHONY: build-wasm-karura
+build-wasm-karura:
+	./scripts/build-only-wasm.sh karura-runtime --features=on-chain-release-build
 
 .PHONY: generate-tokens
 generate-tokens:
