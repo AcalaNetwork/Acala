@@ -102,9 +102,9 @@ pub use primitives::{
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	cent, deposit, dollar, microcent, millicent, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit,
-	Price, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TimeStampedPrice, ACA, AUSD,
-	DOT, LDOT, RENBTC,
+	cent, dollar, microcent, millicent, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit, Price,
+	Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TimeStampedPrice, ACA, AUSD, DOT,
+	LDOT, RENBTC,
 };
 
 mod authority;
@@ -1200,12 +1200,12 @@ impl orml_nft::Config for Runtime {
 
 parameter_types! {
 	// One storage item; key size 32, value size 8; .
-	pub ProxyDepositBase: Balance = deposit(1, 8, ACA);
+	pub ProxyDepositBase: Balance = deposit(1, 8);
 	// Additional storage item size of 33 bytes.
-	pub ProxyDepositFactor: Balance = deposit(0, 33, ACA);
+	pub ProxyDepositFactor: Balance = deposit(0, 33);
 	pub const MaxProxies: u16 = 32;
-	pub AnnouncementDepositBase: Balance = deposit(1, 8, ACA);
-	pub AnnouncementDepositFactor: Balance = deposit(0, 66, ACA);
+	pub AnnouncementDepositBase: Balance = deposit(1, 8);
+	pub AnnouncementDepositFactor: Balance = deposit(0, 66);
 	pub const MaxPending: u16 = 32;
 }
 
