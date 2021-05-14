@@ -20,8 +20,8 @@
 
 // use service::chain_spec;
 
-use std::path::PathBuf;
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 /// Possible subcommands of the main binary.

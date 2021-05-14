@@ -325,12 +325,9 @@ pub fn run() -> sc_cli::Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let polkadot_config = SubstrateCli::create_configuration(
-					&polkadot_cli,
-					&polkadot_cli,
-					config.task_executor.clone(),
-				)
-				.map_err(|err| format!("Relay chain argument error: {}", err))?;
+				let polkadot_config =
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 				cmd.run(config, polkadot_config)
 			})

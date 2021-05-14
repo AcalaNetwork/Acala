@@ -23,17 +23,16 @@ use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519};
-use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
+use sp_runtime::traits::Zero;
 
-use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
+use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
 pub const PARA_ID: u32 = 2000;
 
 pub fn karura_config() -> Result<ChainSpec, String> {
-	Err("Not available".into())
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-dist.json")[..])
 }
 
 pub fn latest_karura_config() -> Result<ChainSpec, String> {
@@ -50,68 +49,41 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Karura runtime wasm binary not available")?;
 
 	Ok(ChainSpec::from_genesis(
-		"Acala Karura",
+		"Karura",
 		"karura",
 		ChainType::Live,
-		// SECRET="..."
-		// ./target/debug/subkey inspect "$SECRET//acala//root"
-		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//oracle"
-		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//validator"
-		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//1//babe"
-		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//1//grandpa"
-		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//validator"
-		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//2//babe"
-		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//2//grandpa"
-		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//validator"
-		// ./target/debug/subkey --sr25519 inspect "$SECRET//acala//3//babe"
-		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
 		move || {
 			karura_genesis(
 				wasm_binary,
 				vec![
 					(
-						// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
-						hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
-						hex!["0c2df85f943312fc853059336627d0b7a08669629ebd99b4debc6e58c1b35c2b"].into(),
-						hex!["21b5a771b99ef0f059c476502c018c4b817fb0e48858e95a238850d2b7828556"].unchecked_into(),
-						hex!["948f15728a5fd66e36503c048cc7b448cb360a825240c48ff3f89efe050de608"].unchecked_into(),
+						// qkFZUE2Dod2Y9LX8ZQzkvF5T2wE5hpBuPe9hT1gpP3drH1v
+						hex!["6c47c55604029bd43ed443ddaad370d5f4c10fa439d22dddb8120a9615444b6b"].into(),
+						hex!["36589a134ccdbeb45a3ac535cc2c8cd71ae45ffc3af86d4a020cc2e411a98875"].unchecked_into(),
 					),
 					(
-						// 5FnLzAUmXeTZg5J9Ao5psKU68oA5PBekXqhrZCKDbhSCQi88
-						hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
-						hex!["a476c0050065dafac1e9ff7bf602fe628ceadacf67650f8317554bd571b73507"].into(),
-						hex!["77f3c27e98da7849ed0749e1dea449321a4a5a36a1dccf3f08fc0ab3af24c62e"].unchecked_into(),
-						hex!["b4f5713322656d29930aa89efa5509554a36c40fb50a226eae0f38fc1a6ceb25"].unchecked_into(),
+						// pSCWXtDyPZsyfTQNbVkmubVRGyoSi9N2a6AxpWHWFsxLjXs
+						hex!["3246d9cb076cd554f250fc03bf70988cbaa9cbb2c4b1b8e015dd97fd19405d43"].into(),
+						hex!["3266d0febeacc5d111c9df7f2ced2f533e7732dda46b2b84f104be5d6e395b76"].unchecked_into(),
 					),
 					(
-						// 5Gn5LuLuWNcY21Vue4QcFFD3hLvjQY3weMHXuEyejUbUnArt
-						hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
-						hex!["d07e538fee7c42be9b2627ea5caac9a30f1869d65af2a19df70138d5fcc34310"].into(),
-						hex!["c5dfcf68ccf1a64ed4145383e4bbbb8bbcc50f654d87187c39df2b88a9683b7f"].unchecked_into(),
-						hex!["4cc54799f38715771605a21e8272a7a1344667e4681611988a913412755a8a04"].unchecked_into(),
+						// qZhHE2FJGGAJtvu9f21PPFVDxvcnm65ebezZBsAJjGFa4kn
+						hex!["643aa70071341b904e6e5b4e41d6dfc02b4cfcdc4c9c7a66f41fc0e59c07e24c"].into(),
+						hex!["60fdcbd860869ee9b1230731b82604e8cf63c6c66e69277b59e337f1f25af225"].unchecked_into(),
 					),
 				],
-				// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-				hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-				vec![
-					// 5F98oWfz2r5rcRVnP9VCndg33DAAsky3iuoBSpaPUbgN9AJn
-					hex!["8815a8024b06a5b4c8703418f52125c923f939a5c40a717f6ae3011ba7719019"].into(),
-					// 5Fe3jZRbKes6aeuQ6HkcTvQeNhkkRPTXBwmNkuAPoimGEv45
-					hex!["9e22b64c980329ada2b46a783623bcf1f1d0418f6a2b5fbfb7fb68dbac5abf0f"].into(),
-				],
+				// sWcq8FAQXPdXGSaxSTBKS614hCB8YutkVWWacBKG1GbGS23
+				hex!["ba5a672d05b5db2ff433ee3dc24cf021e301bc9d44232046ce7bd45a9360fa50"].into(),
 			)
 		},
 		vec![
-			//TODO
-			"/dns/testnet-bootnode-1.karura.laminar.one/tcp/30333/p2p/12D3KooWAFUNUowRqCV4c5so58Q8iGpypVf3L5ak91WrHf7rPuKz"
-				.parse()
-				.unwrap(),
+			// no bootnode yet
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("karura"),
 		Some(properties),
 		Extensions {
-			relay_chain: "rococo".into(),
+			relay_chain: "kusama".into(),
 			para_id: PARA_ID,
 		},
 	))
@@ -138,16 +110,9 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 			karura_genesis(
 				wasm_binary,
 				// Initial PoA authorities
-				vec![get_authority_keys_from_seed("Alice")],
+				vec![get_karura_authority_keys_from_seed("Alice")],
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				// Pre-funded accounts
-				vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-				],
 			)
 		},
 		vec![],
@@ -163,43 +128,40 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 
 fn karura_genesis(
 	wasm_binary: &[u8],
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
+	initial_authorities: Vec<(AccountId, AuraId)>,
 	root_key: AccountId,
-	endowed_accounts: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	use karura_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber,
-		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EnabledTradingPairs,
-		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
-		SessionConfig, SessionKeys, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		UnreleasedNativeVaultAccountId, VestingConfig, KAR, KSM, KUSD, LKSM, RENBTC,
+		dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber, CdpEngineConfig,
+		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SessionConfig, SessionKeys, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR,
 	};
-	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
+	let mut total_allocated: Balance = Zero::zero();
+
 	let airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-KAR.json")[..];
 	let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
+	let other_allocation_json = &include_bytes!("../../../../resources/karura-allocation-KAR.json")[..];
+	let other_allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(other_allocation_json).unwrap();
 
-	let initial_balance: u128 = 1_000_000 * dollar(KAR);
-	let initial_staking: u128 = 100_000 * dollar(KAR);
-
-	let mut unreleased_native = 100_000_000 * dollar(KAR); // 100 million KAR
-
-	let balances = initial_authorities
+	let initial_allocation = initial_authorities
 		.iter()
-		.map(|x| (x.0.clone(), initial_staking + dollar(KAR))) // bit more for fee
-		.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
+		.map(|x| (x.0.clone(), existential_deposit))
+		.chain(airdrop_accounts)
+		.chain(other_allocation)
 		.chain(
 			get_all_module_accounts()
 				.iter()
-				.map(|x| (x.clone(), existential_deposit)),
+				.map(|x| (x.clone(), existential_deposit)), // add ED for module accounts
 		)
-		.chain(airdrop_accounts)
 		.fold(
 			BTreeMap::<AccountId, Balance>::new(),
 			|mut acc, (account_id, amount)| {
+				// merge duplicated accounts
 				if let Some(balance) = acc.get_mut(&account_id) {
 					*balance = balance
 						.checked_add(amount)
@@ -207,13 +169,19 @@ fn karura_genesis(
 				} else {
 					acc.insert(account_id.clone(), amount);
 				}
-				unreleased_native = unreleased_native.saturating_sub(amount);
+
+				total_allocated = total_allocated.saturating_add(amount);
 				acc
 			},
 		)
 		.into_iter()
-		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
+
+	// check total allocated
+	assert!(
+		total_allocated == 100_000_000 * dollar(KAR), // 100 million KAR
+		"total allocation must be equal to 100 million KAR"
+	);
 
 	let vesting_list_json = &include_bytes!("../../../../resources/karura-vesting-KAR.json")[..];
 	let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
@@ -236,30 +204,32 @@ fn karura_genesis(
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_balances: BalancesConfig { balances },
-		pallet_sudo: SudoConfig { key: root_key.clone() },
+		pallet_balances: BalancesConfig {
+			balances: initial_allocation,
+		},
+		pallet_sudo: SudoConfig { key: root_key },
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: vec![],
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance2: Default::default(),
 		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: vec![],
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance3: Default::default(),
 		pallet_membership_Instance3: HomaCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: vec![],
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance4: Default::default(),
 		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
-			members: vec![root_key],
+			members: vec![],
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
-			members: endowed_accounts,
+			members: vec![],
 			phantom: Default::default(),
 		},
 		pallet_treasury: Default::default(),
@@ -268,42 +238,11 @@ fn karura_genesis(
 		},
 		orml_vesting: VestingConfig { vesting: vesting_list },
 		module_cdp_treasury: CdpTreasuryConfig {
-			expected_collateral_auction_size: vec![
-				(KSM, dollar(KSM)), // (currency_id, max size of a collateral auction)
-				(RENBTC, 5 * cent(RENBTC)),
-			],
+			expected_collateral_auction_size: vec![],
 		},
 		module_cdp_engine: CdpEngineConfig {
-			collaterals_params: vec![
-				(
-					KSM,
-					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
-					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
-					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
-					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
-					10_000_000 * dollar(KUSD),                           // maximum debit value in aUSD (cap)
-				),
-				(
-					LKSM,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(120, 100)),
-					Some(FixedU128::saturating_from_rational(10, 100)),
-					Some(FixedU128::saturating_from_rational(130, 100)),
-					10_000_000 * dollar(KUSD),
-				),
-				(
-					RENBTC,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(110, 100)),
-					Some(FixedU128::saturating_from_rational(4, 100)),
-					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * dollar(KUSD),
-				),
-			],
-			global_interest_rate_per_sec: FixedU128::saturating_from_rational(
-				1_547_126_000u128,
-				1_000_000_000_000_000_000u128,
-			), /* 5% APR */
+			collaterals_params: vec![],
+			global_interest_rate_per_sec: Default::default(),
 		},
 		orml_oracle_Instance1: AcalaOracleConfig {
 			members: Default::default(), // initialized by OperatorMembership
@@ -312,7 +251,7 @@ fn karura_genesis(
 		module_evm: Default::default(),
 		module_dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
-			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			initial_enabled_trading_pairs: vec![],
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
@@ -320,7 +259,7 @@ fn karura_genesis(
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		module_collator_selection: CollatorSelectionConfig {
-			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
+			invulnerables: initial_authorities.iter().cloned().map(|(acc, _)| acc).collect(),
 			candidacy_bond: Zero::zero(),
 			..Default::default()
 		},
@@ -328,7 +267,7 @@ fn karura_genesis(
 			keys: initial_authorities
 				.iter()
 				.cloned()
-				.map(|(acc, _, _, aura)| {
+				.map(|(acc, aura)| {
 					(
 						acc.clone(),          // account id
 						acc,                  // validator id

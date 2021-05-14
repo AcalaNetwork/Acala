@@ -21,9 +21,7 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
-use cumulus_client_consensus_aura::{
-	build_aura_consensus, BuildAuraConsensusParams, SlotProportion,
-};
+use cumulus_client_consensus_aura::{build_aura_consensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::build_block_announce_validator;
 use cumulus_client_service::{
@@ -40,7 +38,7 @@ pub use karura_runtime;
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;
 #[cfg(feature = "with-mandala-runtime")]
-use sc_consensus_aura::{StartAuraParams};
+use sc_consensus_aura::StartAuraParams;
 
 use acala_primitives::{Block, Hash};
 use mock_inherent_data_provider::MockParachainInherentDataProvider;
@@ -48,8 +46,8 @@ use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
-use sc_network::NetworkService;
 use sc_executor::native_executor_instance;
+use sc_network::NetworkService;
 use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
 };
