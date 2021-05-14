@@ -30,7 +30,7 @@ use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, 
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 1000;
+pub const PARA_ID: u32 = 2000;
 
 pub fn karura_config() -> Result<ChainSpec, String> {
 	Err("Not available".into())
@@ -321,7 +321,7 @@ fn karura_genesis(
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		module_collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
-			candidacy_bond: initial_staking,
+			candidacy_bond: Zero::zero(),
 			..Default::default()
 		},
 		pallet_session: SessionConfig {
