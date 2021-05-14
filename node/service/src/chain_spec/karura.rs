@@ -173,7 +173,9 @@ fn karura_genesis(
 					acc.insert(account_id.clone(), amount);
 				}
 
-				total_allocated = total_allocated.saturating_add(amount);
+				total_allocated = total_allocated
+					.checked_add(amount)
+					.expect("total insurance cannot overflow when building genesis");
 				acc
 			},
 		)
