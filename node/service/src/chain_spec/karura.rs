@@ -22,10 +22,10 @@ use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::crypto::UncheckedInto;
+use sp_core::{crypto::UncheckedInto, sr25519};
 use sp_runtime::traits::Zero;
 
-use crate::chain_spec::{Extensions, TELEMETRY_URL};
+use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
@@ -84,6 +84,43 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 		Some(properties),
 		Extensions {
 			relay_chain: "kusama".into(),
+			para_id: PARA_ID,
+		},
+	))
+}
+
+pub fn karura_dev_config() -> Result<ChainSpec, String> {
+	let mut properties = Map::new();
+	let mut token_symbol: Vec<String> = vec![];
+	let mut token_decimals: Vec<u32> = vec![];
+	TokenSymbol::get_info().iter().for_each(|(symbol_name, decimals)| {
+		token_symbol.push(symbol_name.to_string());
+		token_decimals.push(*decimals);
+	});
+	properties.insert("tokenSymbol".into(), token_symbol.into());
+	properties.insert("tokenDecimals".into(), token_decimals.into());
+
+	let wasm_binary = karura_runtime::WASM_BINARY.unwrap_or_default();
+
+	Ok(ChainSpec::from_genesis(
+		"Acala Karura Dev",
+		"karura-dev",
+		ChainType::Development,
+		move || {
+			karura_genesis(
+				wasm_binary,
+				// Initial PoA authorities
+				vec![get_karura_authority_keys_from_seed("Alice")],
+				// Sudo account
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+			)
+		},
+		vec![],
+		None,
+		None,
+		Some(properties),
+		Extensions {
+			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
 		},
 	))

@@ -18,9 +18,8 @@
 
 //! Acala CLI library.
 
-use std::path::PathBuf;
-
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 /// Possible subcommands of the main binary.
@@ -79,7 +78,7 @@ pub enum Subcommand {
 	ImportBlocks(sc_cli::ImportBlocksCmd),
 
 	/// Remove the whole chain.
-	PurgeChain(sc_cli::PurgeChainCmd),
+	PurgeChain(cumulus_client_cli::PurgeChainCmd),
 
 	/// Revert the chain to a previous state.
 	Revert(sc_cli::RevertCmd),
@@ -93,7 +92,7 @@ pub struct ExportGenesisStateCommand {
 	pub output: Option<PathBuf>,
 
 	/// Id of the parachain this state is for.
-	#[structopt(long, default_value = "100")]
+	#[structopt(long, default_value = "2000")]
 	pub parachain_id: u32,
 
 	/// Write output in binary. Default is to write in hex.
@@ -121,26 +120,6 @@ pub struct ExportGenesisWasmCommand {
 	pub chain: Option<String>,
 }
 
-/// Run command.
-#[derive(Debug, StructOpt)]
-pub struct RunCmd {
-	/// The base run command.
-	#[structopt(flatten)]
-	pub base: sc_cli::RunCmd,
-
-	/// Id of the parachain this collator collates for.
-	#[structopt(long)]
-	pub parachain_id: Option<u32>,
-}
-
-impl std::ops::Deref for RunCmd {
-	type Target = sc_cli::RunCmd;
-
-	fn deref(&self) -> &Self::Target {
-		&self.base
-	}
-}
-
 /// An overarching CLI command definition.
 #[derive(Debug, StructOpt)]
 #[structopt(settings = &[
@@ -155,13 +134,7 @@ pub struct Cli {
 
 	#[allow(missing_docs)]
 	#[structopt(flatten)]
-	pub run: RunCmd,
-
-	/// Run node as collator.
-	///
-	/// Note that this is the same as running with `--validator`.
-	#[structopt(long, conflicts_with = "validator")]
-	pub collator: bool,
+	pub run: cumulus_client_cli::RunCmd,
 
 	/// Relaychain arguments
 	#[structopt(raw = true)]

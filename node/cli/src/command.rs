@@ -83,6 +83,8 @@ impl SubstrateCli for Cli {
 			"karura" => Box::new(chain_spec::karura::karura_config()?),
 			#[cfg(feature = "with-karura-runtime")]
 			"karura-latest" => Box::new(chain_spec::karura::latest_karura_config()?),
+			#[cfg(feature = "with-karura-runtime")]
+			"karura-dev" => Box::new(chain_spec::karura::karura_dev_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
@@ -311,7 +313,24 @@ pub fn run() -> sc_cli::Result<()> {
 
 		Some(Subcommand::PurgeChain(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
-			runner.sync_run(|config| cmd.run(config.database))
+			runner.sync_run(|config| {
+				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
+				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
+
+				let polkadot_cli = RelayChainCli::new(
+					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
+					relay_chain_id,
+					[RelayChainCli::executable_name().to_string()]
+						.iter()
+						.chain(cli.relaychain_args.iter()),
+				);
+
+				let polkadot_config =
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+
+				cmd.run(config, polkadot_config)
+			})
 		}
 
 		Some(Subcommand::Revert(cmd)) => {
@@ -458,7 +477,7 @@ pub fn run() -> sc_cli::Result<()> {
 		}
 
 		None => {
-			let runner = cli.create_runner(&*cli.run)?;
+			let runner = cli.create_runner(&cli.run.normalize())?;
 			let chain_spec = &runner.config().chain_spec;
 			let is_mandala_dev = chain_spec.is_mandala_dev();
 
@@ -471,7 +490,6 @@ pub fn run() -> sc_cli::Result<()> {
 				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
 				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
 				let para_id = extension.map(|e| e.para_id);
-				let collator = cli.run.base.validator || cli.collator;
 
 				if is_mandala_dev {
 					#[cfg(feature = "with-mandala-runtime")]
@@ -527,7 +545,7 @@ pub fn run() -> sc_cli::Result<()> {
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
 				info!("Parachain genesis state: {}", genesis_state);
-				info!("Is collating: {}", if collator { "yes" } else { "no" });
+				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
 				if config.chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
@@ -537,7 +555,6 @@ pub fn run() -> sc_cli::Result<()> {
 							key,
 							polkadot_config,
 							id,
-							collator,
 						)
 							.await
 							.map(|r| r.0)
@@ -553,7 +570,6 @@ pub fn run() -> sc_cli::Result<()> {
 							key,
 							polkadot_config,
 							id,
-							collator,
 						)
 							.await
 							.map(|r| r.0)
@@ -569,7 +585,6 @@ pub fn run() -> sc_cli::Result<()> {
 							key,
 							polkadot_config,
 							id,
-							collator,
 						)
 							.await
 							.map(|r| r.0)

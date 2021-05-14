@@ -19,6 +19,7 @@ frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", bran
 try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", optional = true }
 
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1" }
+cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1" }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }

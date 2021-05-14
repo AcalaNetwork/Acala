@@ -55,6 +55,7 @@ cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", branc
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1", default-features = false }
 parachain-info = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1", default-features = false }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1", default-features = false }
+cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1", default-features = false }
 # xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1", default-features = false }
 # xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1", default-features = false }
 # xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1", default-features = false }
@@ -164,6 +165,7 @@ std = [
 	"cumulus-primitives-core/std",
 	"parachain-info/std",
 	"polkadot-parachain/std",
+	"cumulus-pallet-aura-ext/std",
 	# "xcm/std",
 	# "xcm-executor/std",
 	# "xcm-builder/std",
