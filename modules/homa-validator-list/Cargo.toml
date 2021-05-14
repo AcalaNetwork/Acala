@@ -7,22 +7,21 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.111", optional = true }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-utilities = { path = "../../orml/utilities", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-currencies = { path = "../../orml/currencies" }
-clear_on_drop = { version = "0.2.4", features = ["no_cc"] }	# https://github.com/paritytech/substrate/issues/4179
 
 [features]
 default = ["std"]
@@ -38,3 +37,4 @@ std = [
 	"primitives/std",
 	"support/std",
 ]
+try-runtime = ["frame-support/try-runtime"]

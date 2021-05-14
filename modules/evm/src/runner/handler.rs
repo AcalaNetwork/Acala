@@ -56,7 +56,24 @@ fn l64(gas: u64) -> u64 {
 	gas - gas / 64
 }
 
-impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
+impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, T> {
+	pub fn new(
+		vicinity: &'vicinity Vicinity,
+		gas_limit: u64,
+		storage_meter: StorageMeter<'meter>,
+		is_static: bool,
+		config: &'config EvmRuntimeConfig,
+	) -> Self {
+		Handler::<'vicinity, 'config, '_, T> {
+			vicinity,
+			config,
+			is_static,
+			gasometer: Gasometer::new(gas_limit, config),
+			storage_meter,
+			_marker: PhantomData,
+		}
+	}
+
 	pub fn run_transaction<R, F: FnOnce(&mut Handler<'vicinity, 'config, '_, T>) -> TransactionOutcome<R>>(
 		vicinity: &'vicinity Vicinity,
 		gas_limit: u64,
@@ -73,14 +90,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
 			};
 
-			let mut substate = Handler::<'vicinity, 'config, '_, T> {
-				vicinity,
-				config,
-				is_static,
-				gasometer: Gasometer::new(gas_limit, config),
-				storage_meter,
-				_marker: PhantomData,
-			};
+			let mut substate = Handler::new(vicinity, gas_limit, storage_meter, is_static, config);
 
 			match f(&mut substate) {
 				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {
@@ -111,14 +121,7 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				Err(e) => return TransactionOutcome::Rollback(Err(e)),
 			};
 
-			let mut substate = Handler::<'vicinity, 'config, '_, T> {
-				vicinity,
-				config,
-				is_static,
-				gasometer: Gasometer::new(gas_limit, config),
-				storage_meter,
-				_marker: PhantomData,
-			};
+			let mut substate = Handler::new(vicinity, gas_limit, storage_meter, is_static, config);
 
 			match f(&mut substate, &mut self.gasometer) {
 				TransactionOutcome::Commit(r) => match substate.storage_meter.finish() {
@@ -205,8 +208,8 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 		});
 	}
 
-	pub fn create_address(scheme: CreateScheme) -> H160 {
-		match scheme {
+	pub fn create_address(scheme: CreateScheme) -> Result<H160, ExitError> {
+		let address = match scheme {
 			CreateScheme::Create2 {
 				caller,
 				code_hash,
@@ -227,6 +230,14 @@ impl<'vicinity, 'config, T: Config> Handler<'vicinity, 'config, '_, T> {
 				H256::from_slice(Keccak256::digest(&stream.out()).as_slice()).into()
 			}
 			CreateScheme::Fixed(naddress) => naddress,
+		};
+
+		if address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
+			Err(ExitError::Other(
+				Into::<&str>::into(Error::<T>::ConflictContractAddress).into(),
+			))
+		} else {
+			Ok(address)
 		}
 	}
 
@@ -497,7 +508,12 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 		target_gas = min(target_gas, after_gas);
 		try_or_fail!(self.gasometer.record_cost(target_gas));
 
-		let address = Self::create_address(scheme);
+		let maybe_address = Self::create_address(scheme);
+		let address = if let Err(e) = maybe_address {
+			return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+		} else {
+			maybe_address.unwrap()
+		};
 		Self::inc_nonce(caller);
 
 		let origin = &self.vicinity.origin;

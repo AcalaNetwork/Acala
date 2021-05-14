@@ -15,7 +15,7 @@ acala-cli = { path = "cli" }
 acala-service = { path = "service" }
 
 [features]
-default = [ "with-mandala-runtime" ]
+default = []
 runtime-benchmarks = [
 	"acala-cli/runtime-benchmarks",
 ]

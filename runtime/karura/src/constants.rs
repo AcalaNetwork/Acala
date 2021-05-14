@@ -20,9 +20,10 @@
 
 /// Time and blocks.
 pub mod time {
-	use primitives::{BlockNumber, Moment};
+	use primitives::{Balance, BlockNumber, Moment};
+	use runtime_common::{dollar, millicent, KAR};
 
-	pub const SECS_PER_BLOCK: Moment = 6;
+	pub const SECS_PER_BLOCK: Moment = 12;
 	pub const MILLISECS_PER_BLOCK: Moment = SECS_PER_BLOCK * 1000;
 
 	// These time units are defined in number of blocks.
@@ -32,16 +33,9 @@ pub mod time {
 
 	pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
-	// 1 in 4 blocks (on average, not counting collisions) will be primary BABE
-	// blocks.
-	pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
-
-	pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = HOURS;
-	pub const EPOCH_DURATION_IN_SLOTS: u64 = {
-		const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;
-
-		(EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
-	};
+	pub fn deposit(items: u32, bytes: u32) -> Balance {
+		items as Balance * 2 * dollar(KAR) + (bytes as Balance) * 10 * millicent(KAR)
+	}
 }
 
 /// Fee-related
@@ -72,15 +66,14 @@ pub mod fee {
 	impl WeightToFeePolynomial for WeightToFee {
 		type Balance = Balance;
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10
-			// CENT:
-			let p = cent(KAR) / 10; // 1_000_000_000;
-			let q = Balance::from(ExtrinsicBaseWeight::get()); // 125_000_000
+			// in Karura, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
+			let p = cent(KAR) / 10;
+			let q = Balance::from(ExtrinsicBaseWeight::get());
 			smallvec![WeightToFeeCoefficient {
 				degree: 1,
 				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q), // zero
-				coeff_integer: p / q,                         // 8
+				coeff_frac: Perbill::from_rational(p % q, q),
+				coeff_integer: p / q,
 			}]
 		}
 	}

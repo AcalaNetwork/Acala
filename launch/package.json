@@ -1,0 +1,18 @@
+{
+  "name": "acala-launch",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "license": "GPL-3.0",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@polkadot/api": "^4.9.2",
+    "@polkadot/util-crypto": "^6.3.1",
+    "lodash": "^4.17.21",
+    "readline-sync": "^1.4.10",
+    "shelljs": "^0.8.4",
+    "yaml": "^1.10.2",
+    "yargs": "^17.0.1"
+  }
+}

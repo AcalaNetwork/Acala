@@ -25,8 +25,6 @@ use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use service::{chain_spec, IdentifyVariant};
 
-pub use service::mandala_runtime::Block;
-
 use log::info;
 use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
@@ -39,12 +37,7 @@ use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
 fn chain_name() -> String {
-	#[cfg(feature = "with-acala-runtime")]
-	return "Acala".into();
-	#[cfg(feature = "with-karura-runtime")]
-	return "Karura".into();
-	#[cfg(feature = "with-mandala-runtime")]
-	return "Mandala".into();
+	"Acala".into()
 }
 
 impl SubstrateCli for Cli {
@@ -90,6 +83,8 @@ impl SubstrateCli for Cli {
 			"karura" => Box::new(chain_spec::karura::karura_config()?),
 			#[cfg(feature = "with-karura-runtime")]
 			"karura-latest" => Box::new(chain_spec::karura::latest_karura_config()?),
+			#[cfg(feature = "with-karura-runtime")]
+			"karura-dev" => Box::new(chain_spec::karura::karura_dev_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
@@ -318,7 +313,24 @@ pub fn run() -> sc_cli::Result<()> {
 
 		Some(Subcommand::PurgeChain(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
-			runner.sync_run(|config| cmd.run(config.database))
+			runner.sync_run(|config| {
+				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
+				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
+
+				let polkadot_cli = RelayChainCli::new(
+					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
+					relay_chain_id,
+					[RelayChainCli::executable_name()]
+						.iter()
+						.chain(cli.relaychain_args.iter()),
+				);
+
+				let polkadot_config =
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+
+				cmd.run(config, polkadot_config)
+			})
 		}
 
 		Some(Subcommand::Revert(cmd)) => {
@@ -338,12 +350,51 @@ pub fn run() -> sc_cli::Result<()> {
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 
-			let block: Block = generate_genesis_block(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
-			let raw_header = block.header().encode();
-			let output_buf = if params.raw {
-				raw_header
+			let chain_spec = cli.load_spec(&params.chain.clone().unwrap_or_default())?;
+			let output_buf = if chain_spec.is_acala() {
+				#[cfg(feature = "with-acala-runtime")]
+				{
+					let block: service::acala_runtime::Block =
+						generate_genesis_block(&chain_spec).map_err(|e| format!("{:?}", e))?;
+					let raw_header = block.header().encode();
+					let output_buf = if params.raw {
+						raw_header
+					} else {
+						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
+					};
+					output_buf
+				}
+				#[cfg(not(feature = "with-acala-runtime"))]
+				return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+			} else if chain_spec.is_karura() {
+				#[cfg(feature = "with-karura-runtime")]
+				{
+					let block: service::karura_runtime::Block =
+						generate_genesis_block(&chain_spec).map_err(|e| format!("{:?}", e))?;
+					let raw_header = block.header().encode();
+					let output_buf = if params.raw {
+						raw_header
+					} else {
+						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
+					};
+					output_buf
+				}
+				#[cfg(not(feature = "with-karura-runtime"))]
+				return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
 			} else {
-				format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
+				#[cfg(feature = "with-mandala-runtime")]
+				{
+					let block: service::mandala_runtime::Block = generate_genesis_block(&chain_spec)?;
+					let raw_header = block.header().encode();
+					let output_buf = if params.raw {
+						raw_header
+					} else {
+						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
+					};
+					output_buf
+				}
+				#[cfg(not(feature = "with-mandala-runtime"))]
+				return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
 			};
 
 			if let Some(output) = &params.output {
@@ -376,9 +427,57 @@ pub fn run() -> sc_cli::Result<()> {
 			Ok(())
 		}
 
-		None => {
-			let runner = cli.create_runner(&*cli.run)?;
+		#[cfg(feature = "try-runtime")]
+		Some(Subcommand::TryRuntime(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
 
+			set_default_ss58_version(chain_spec);
+
+			if chain_spec.is_acala() {
+				#[cfg(feature = "with-acala-runtime")]
+				return runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+					Ok((
+						cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config),
+						task_manager,
+					))
+				});
+				#[cfg(not(feature = "with-acala-runtime"))]
+				return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+			} else if chain_spec.is_karura() {
+				#[cfg(feature = "with-karura-runtime")]
+				return runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+					Ok((
+						cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config),
+						task_manager,
+					))
+				});
+				#[cfg(not(feature = "with-karura-runtime"))]
+				return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+			} else {
+				#[cfg(feature = "with-mandala-runtime")]
+				return runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+					Ok((
+						cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config),
+						task_manager,
+					))
+				});
+				#[cfg(not(feature = "with-mandala-runtime"))]
+				return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+			}
+		}
+
+		None => {
+			let runner = cli.create_runner(&cli.run.normalize())?;
 			let chain_spec = &runner.config().chain_spec;
 			let is_mandala_dev = chain_spec.is_mandala_dev();
 
@@ -391,10 +490,12 @@ pub fn run() -> sc_cli::Result<()> {
 				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
 				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
 				let para_id = extension.map(|e| e.para_id);
-				let collator = cli.run.base.validator || cli.collator;
 
 				if is_mandala_dev {
+					#[cfg(feature = "with-mandala-runtime")]
 					return service::mandala_dev(config, cli.instant_sealing).map_err(Into::into);
+					#[cfg(not(feature = "with-mandala-runtime"))]
+					return Err("Mandala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
 				} else if cli.instant_sealing {
 					return Err("Instant sealing can be turned on only in `--dev` mode".into());
 				}
@@ -411,8 +512,31 @@ pub fn run() -> sc_cli::Result<()> {
 
 				let parachain_account = AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
 
-				let block: Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
-				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
+				let genesis_state = if config.chain_spec.is_acala() {
+					#[cfg(feature = "with-acala-runtime")]
+					{
+						let block: service::acala_runtime::Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
+					}
+					#[cfg(not(feature = "with-acala-runtime"))]
+					return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+				} else if config.chain_spec.is_karura() {
+					#[cfg(feature = "with-karura-runtime")]
+					{
+						let block: service::karura_runtime::Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
+					}
+					#[cfg(not(feature = "with-karura-runtime"))]
+					return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+				} else {
+					#[cfg(feature = "with-mandala-runtime")]
+					{
+						let block: service::mandala_runtime::Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
+					}
+					#[cfg(not(feature = "with-mandala-runtime"))]
+					return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+				};
 
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
@@ -421,19 +545,54 @@ pub fn run() -> sc_cli::Result<()> {
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
 				info!("Parachain genesis state: {}", genesis_state);
-				info!("Is collating: {}", if collator { "yes" } else { "no" });
+				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
-				// TODO: support Karura & Acala
-				service::start_node::<service::mandala_runtime::RuntimeApi, service::MandalaExecutor>(
-					config,
-					key,
-					polkadot_config,
-					id,
-					collator,
-				)
-				.await
-				.map(|r| r.0)
-				.map_err(Into::into)
+				if config.chain_spec.is_acala() {
+					#[cfg(feature = "with-acala-runtime")]
+					{
+						service::start_node::<service::acala_runtime::RuntimeApi, service::AcalaExecutor>(
+							config,
+							key,
+							polkadot_config,
+							id,
+						)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
+					#[cfg(not(feature = "with-acala-runtime"))]
+					return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+				} else if config.chain_spec.is_karura() {
+					#[cfg(feature = "with-karura-runtime")]
+					{
+						service::start_node::<service::karura_runtime::RuntimeApi, service::KaruraExecutor>(
+							config,
+							key,
+							polkadot_config,
+							id,
+						)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
+					#[cfg(not(feature = "with-karura-runtime"))]
+					return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+				} else {
+					#[cfg(feature = "with-mandala-runtime")]
+					{
+						service::start_node::<service::mandala_runtime::RuntimeApi, service::MandalaExecutor>(
+							config,
+							key,
+							polkadot_config,
+							id,
+						)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
+					#[cfg(not(feature = "with-mandala-runtime"))]
+					return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+				}
 			})
 		}
 	}
