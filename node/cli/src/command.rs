@@ -471,7 +471,6 @@ pub fn run() -> sc_cli::Result<()> {
 				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
 				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
 				let para_id = extension.map(|e| e.para_id);
-				let collator = cli.run.base.validator || cli.collator;
 
 				if is_mandala_dev {
 					#[cfg(feature = "with-mandala-runtime")]
@@ -527,7 +526,7 @@ pub fn run() -> sc_cli::Result<()> {
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
 				info!("Parachain genesis state: {}", genesis_state);
-				info!("Is collating: {}", if collator { "yes" } else { "no" });
+				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
 				if config.chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
@@ -537,7 +536,6 @@ pub fn run() -> sc_cli::Result<()> {
 							key,
 							polkadot_config,
 							id,
-							collator,
 						)
 							.await
 							.map(|r| r.0)
@@ -553,7 +551,6 @@ pub fn run() -> sc_cli::Result<()> {
 							key,
 							polkadot_config,
 							id,
-							collator,
 						)
 							.await
 							.map(|r| r.0)
@@ -569,7 +566,6 @@ pub fn run() -> sc_cli::Result<()> {
 							key,
 							polkadot_config,
 							id,
-							collator,
 						)
 							.await
 							.map(|r| r.0)
