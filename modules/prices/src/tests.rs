@@ -33,12 +33,12 @@ fn get_price_from_oracle() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			PricesModule::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			Some(Price::saturating_from_integer(5000000000000u128))
 		); // 50000 USD, right shift the decimal point (18-10) places
 		assert_eq!(
 			PricesModule::get_price(DOT),
-			Some(Price::saturating_from_integer(10000000000u128))
-		); // 100 USD, right shift the decimal point (18-12) places
+			Some(Price::saturating_from_integer(1000000000000u128))
+		); // 100 USD, right shift the decimal point (18-8) places
 		assert_eq!(PricesModule::get_price(ACA), Some(Price::zero()));
 	});
 }
@@ -48,8 +48,8 @@ fn get_price_of_stable_currency_id() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			PricesModule::get_price(AUSD),
-			Some(Price::saturating_from_integer(1000000))
-		); // 1 USD, right shift the decimal point (18-12) places
+			Some(Price::saturating_from_integer(1000000000000u128))
+		); // 1 USD, right shift the decimal point (18-6) places
 	});
 }
 
@@ -58,7 +58,7 @@ fn get_price_of_liquid_currency_id() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			PricesModule::get_price(LDOT),
-			Some(Price::saturating_from_integer(5000000000u128))
+			Some(Price::saturating_from_integer(500000000000u128))
 		); // 50 USD, right shift the decimal point (18-12) places
 	});
 }
@@ -73,10 +73,10 @@ fn get_price_of_lp_token_currency_id() {
 		);
 		assert_ok!(Tokens::deposit(LP_AUSD_DOT, &1, 100));
 		assert_eq!(Tokens::total_issuance(LP_AUSD_DOT), 100);
-		assert_eq!(PricesModule::get_price(AUSD), Some(Price::saturating_from_rational(1000000u128, 1)));
+		assert_eq!(PricesModule::get_price(AUSD), Some(Price::saturating_from_rational(1000000000000u128, 1)));
 		assert_eq!(
 			PricesModule::get_price(LP_AUSD_DOT),
-			Some(Price::saturating_from_rational(200000000u128, 1))	// 10000/100 * Price::saturating_from_rational(1000000u128, 1) * 2
+			Some(Price::saturating_from_rational(200000000000000u128, 1))	// 100/1 * Price::saturating_from_rational(1000000000000u128, 1) * 2
 		);
 
 		assert_eq!(MockDEX::get_liquidity_pool(BTC, AUSD), (0, 0));
@@ -92,13 +92,13 @@ fn get_relative_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			PricesModule::get_relative_price(DOT, AUSD),
-			Some(Price::saturating_from_rational(10000, 1)) /* 1DOT = 100AUSD, right shift the decimal point (12-10)
-			                                                 * places */
+			Some(Price::saturating_from_rational(1, 1)) /* 1DOT = 100AUSD, right shift the decimal point (12-10)
+			                                             * places */
 		);
 		assert_eq!(
 			PricesModule::get_relative_price(BTC, AUSD),
-			Some(Price::saturating_from_rational(500000000, 1)) /* 1BTC = 50000AUSD, right shift the decimal point
-			                                                     * (12-8) places */
+			Some(Price::saturating_from_rational(5, 1)) /* 1BTC = 50000AUSD, right shift the decimal point
+			                                             * (12-8) places */
 		);
 		assert_eq!(
 			PricesModule::get_relative_price(LDOT, DOT),
@@ -117,12 +117,12 @@ fn lock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			PricesModule::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			Some(Price::saturating_from_integer(5000000000000u128))
 		);
 		LockedPrice::<Runtime>::insert(BTC, Price::saturating_from_integer(80000));
 		assert_eq!(
 			PricesModule::get_price(BTC),
-			Some(Price::saturating_from_integer(800000000000000u128))
+			Some(Price::saturating_from_integer(8000000000000u128))
 		);
 	});
 }

@@ -197,7 +197,8 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			// if locked price exists, return it, otherwise return latest price from oracle.
 			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
 		};
-		let maybe_adjustment_multiplier = 10u128.checked_pow(T::CurrencyIdMapping::decimals(currency_id)?.into());
+		let maybe_adjustment_multiplier =
+			10u128.checked_pow(18u8.checked_sub(T::CurrencyIdMapping::decimals(currency_id)?)?.into());
 
 		if let (Some(feed_price), Some(adjustment_multiplier)) = (maybe_feed_price, maybe_adjustment_multiplier) {
 			Price::checked_from_rational(feed_price.into_inner(), adjustment_multiplier)

@@ -79,6 +79,6 @@ where
 
 fn vec_u8_from_price(value: Price) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
-	U256::from(value.into_inner()).to_big_endian(&mut be_bytes[..32]);
+	U256::from(value.into_inner().wrapping_div(Price::DIV)).to_big_endian(&mut be_bytes[..32]);
 	be_bytes.to_vec()
 }
