@@ -138,6 +138,7 @@ impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
 	}
 }
 
+// TODO: make those const fn
 pub fn dollar(currency_id: CurrencyId) -> Balance {
 	10u128.saturating_pow(currency_id.decimals().expect("Not support Erc20 decimals").into())
 }
@@ -152,11 +153,6 @@ pub fn millicent(currency_id: CurrencyId) -> Balance {
 
 pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
-}
-
-pub fn deposit(items: u32, bytes: u32, currency_id: CurrencyId) -> Balance {
-	// TODO: come out some value for this
-	items as Balance * 15 * cent(currency_id) + (bytes as Balance) * 6 * cent(currency_id)
 }
 
 #[cfg(test)]
