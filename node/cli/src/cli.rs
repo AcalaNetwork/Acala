@@ -18,8 +18,6 @@
 
 //! Acala CLI library.
 
-// use service::chain_spec;
-
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
 use std::path::PathBuf;
 use structopt::StructOpt;
