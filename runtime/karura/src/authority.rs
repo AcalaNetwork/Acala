@@ -32,7 +32,6 @@ use orml_authority::EnsureDelayed;
 
 parameter_types! {
 	pub const SevenDays: BlockNumber = 7 * DAYS;
-	pub const ZeroDay: BlockNumber = 0;
 	pub const OneDay: BlockNumber = DAYS;
 }
 
@@ -101,38 +100,33 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	fn check_dispatch_from(&self, origin: Origin) -> DispatchResult {
 		ensure_root(origin.clone()).or_else(|_| {
 			match self {
-			AuthoritysOriginId::Root => <EnsureDelayed<
-				SevenDays,
-				EnsureRootOrThreeFourthsGeneralCouncil,
-				BlockNumber,
-				OriginCaller,
-			> as EnsureOrigin<Origin>>::ensure_origin(origin)
-			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
-			AuthoritysOriginId::AcalaTreasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-			}
-			AuthoritysOriginId::HonzonTreasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfHonzonCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-			}
-			AuthoritysOriginId::HomaTreasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-			}
-			AuthoritysOriginId::DSWF => {
-				<EnsureDelayed<ZeroDay, EnsureRoot<AccountId>, BlockNumber, OriginCaller> as EnsureOrigin<
+				AuthoritysOriginId::Root => <EnsureDelayed<
+					SevenDays,
+					EnsureRootOrThreeFourthsGeneralCouncil,
+					BlockNumber,
+					OriginCaller,
+				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
+				AuthoritysOriginId::AcalaTreasury => {
+					<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
 						Origin,
 					>>::ensure_origin(origin)
 					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+				}
+				AuthoritysOriginId::HonzonTreasury => {
+					<EnsureDelayed<OneDay, EnsureRootOrHalfHonzonCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
+						Origin,
+					>>::ensure_origin(origin)
+					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+				}
+				AuthoritysOriginId::HomaTreasury => {
+					<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
+						Origin,
+					>>::ensure_origin(origin)
+					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+				}
+				AuthoritysOriginId::DSWF => Err(BadOrigin.into()), // only allow root
 			}
-		}
 		})
 	}
 }
