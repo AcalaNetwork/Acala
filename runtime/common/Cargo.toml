@@ -10,12 +10,12 @@ num_enum = { version = "0.5.1", default-features = false }
 
 serde = { version = "1.0.124", optional = true, default-features = false }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
-pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "statemint", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
+pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -29,11 +29,11 @@ module-staking-pool = { path = "../../modules/staking-pool", default-features = 
 serde_json = "1.0.64"
 sha3 = { version = "0.9.1" }
 hex-literal = "0.3.1"
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
-pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
-pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "statemint" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
 acala-service = {  path = "../../node/service" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
