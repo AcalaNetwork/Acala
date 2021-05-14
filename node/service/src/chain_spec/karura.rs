@@ -32,7 +32,7 @@ pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig,
 pub const PARA_ID: u32 = 2000;
 
 pub fn karura_config() -> Result<ChainSpec, String> {
-	Err("Not available".into())
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-dist.json")[..])
 }
 
 pub fn latest_karura_config() -> Result<ChainSpec, String> {
