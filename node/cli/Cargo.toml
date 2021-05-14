@@ -20,9 +20,9 @@ try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "p
 
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.1" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "polkadot-v0.9.1" }
-polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "polkadot-v0.9.1" }
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "polkadot-v0.9.1" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.1" }
 
 inspect = { package = "acala-inspect", path = "../../inspect" }
 service = { package = "acala-service", path = "../service", default-features = false, optional = true }
