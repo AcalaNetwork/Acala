@@ -262,6 +262,7 @@ polkadot-node-core-pvf = { git = "https://github.com/paritytech//polkadot", rev 
 [patch."https://github.com/paritytech/cumulus"]
 cumulus-primitives-core = { git = "https://github.com/paritytech//cumulus", rev = "95d81d499927e508769690fc43a480f00ddd131e" }
 cumulus-pallet-parachain-system  = { git = "https://github.com/paritytech//cumulus", rev = "95d81d499927e508769690fc43a480f00ddd131e" }
+cumulus-pallet-aura-ext = { git = "https://github.com/paritytech//cumulus", rev = "95d81d499927e508769690fc43a480f00ddd131e" }
 parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "95d81d499927e508769690fc43a480f00ddd131e" }
 cumulus-client-network = { git = "https://github.com/paritytech//cumulus", rev = "95d81d499927e508769690fc43a480f00ddd131e" }
 cumulus-client-service = { git = "https://github.com/paritytech//cumulus", rev = "95d81d499927e508769690fc43a480f00ddd131e" }

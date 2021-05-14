@@ -1638,6 +1638,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-pallet-aura-ext"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+dependencies = [
+ "frame-executive",
+ "frame-support",
+ "frame-system",
+ "pallet-aura",
+ "parity-scale-codec",
+ "serde",
+ "sp-application-crypto",
+ "sp-consensus-aura",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
@@ -3611,6 +3628,7 @@ name = "karura-runtime"
 version = "0.8.0"
 dependencies = [
  "acala-primitives",
+ "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
  "frame-benchmarking",

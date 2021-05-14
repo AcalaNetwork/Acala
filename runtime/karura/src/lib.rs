@@ -1181,6 +1181,8 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 
 impl parachain_info::Config for Runtime {}
 
+impl cumulus_pallet_aura_ext::Config for Runtime {}
+
 // parameter_types! {
 // 	pub const PolkadotNetworkId: NetworkId = NetworkId::Polkadot;
 // }
@@ -1360,6 +1362,7 @@ construct_runtime!(
 		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 41,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 42,
 		Aura: pallet_aura::{Pallet, Config<T>} = 43,
+		AuraExt: cumulus_pallet_aura_ext::{Pallet, Config} = 44,
 
 		// XCM
 		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 50,
@@ -1744,7 +1747,10 @@ impl_runtime_apis! {
 	}
 }
 
-cumulus_pallet_parachain_system::register_validate_block!(Runtime, Executive);
+cumulus_pallet_parachain_system::register_validate_block!(
+	Runtime,
+	cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+);
 
 #[cfg(test)]
 mod tests {
