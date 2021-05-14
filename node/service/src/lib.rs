@@ -191,7 +191,7 @@ where
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
 		config.role.is_authority().into(),
-		config.prometheus_registry(),
+		registry,
 		task_manager.spawn_handle(),
 		client.clone(),
 	);
@@ -256,7 +256,7 @@ where
 
 					Ok((time, slot))
 				},
-				registry: config.prometheus_registry().clone(),
+				registry,
 				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 				spawner: &task_manager.spawn_essential_handle(),
 				telemetry: telemetry.as_ref().map(|telemetry| telemetry.handle()),
@@ -478,7 +478,7 @@ where
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool,
-				prometheus_registry.clone(),
+				prometheus_registry,
 				telemetry.clone(),
 			);
 
@@ -513,7 +513,7 @@ where
 					block_import: client.clone(),
 					relay_chain_client: relay_chain_node.client.clone(),
 					relay_chain_backend: relay_chain_node.backend.clone(),
-					para_client: client.clone(),
+					para_client: client,
 					backoff_authoring_blocks: Option::<()>::None,
 					sync_oracle,
 					keystore,
