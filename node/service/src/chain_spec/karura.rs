@@ -136,8 +136,9 @@ fn karura_genesis(
 		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, GeneralCouncilMembershipConfig,
 		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SessionConfig, SessionKeys, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TreasuryPalletId, VestingConfig, KAR,
 	};
+	use sp_runtime::traits::AccountIdConversion;
 	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -153,6 +154,8 @@ fn karura_genesis(
 		.map(|x| (x.0.clone(), existential_deposit))
 		.chain(airdrop_accounts)
 		.chain(other_allocation)
+		// Put all the remaining to treasury for now. Remove this later.
+		.chain(vec![(TreasuryPalletId::get().into_account(), 96322899587000000000)])
 		.chain(
 			get_all_module_accounts()
 				.iter()
@@ -178,8 +181,9 @@ fn karura_genesis(
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	// check total allocated
-	assert!(
-		total_allocated == 100_000_000 * dollar(KAR), // 100 million KAR
+	assert_eq!(
+		total_allocated,
+		100_000_000 * dollar(KAR), // 100 million KAR
 		"total allocation must be equal to 100 million KAR"
 	);
 
