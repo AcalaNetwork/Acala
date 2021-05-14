@@ -68,17 +68,30 @@ where
 
 		match action {
 			Action::GetPrice => {
-				let key = input.currency_id_at(1)?;
-				let value = PriceProvider::get_price(key).unwrap_or_else(Default::default);
-				log::debug!(target: "evm", "oracle currency_id: {:?}, price: {:?}", key, value);
-				Ok((ExitSucceed::Returned, vec_u8_from_price(value), 0))
+				let currency_id = input.currency_id_at(1)?;
+				let price = PriceProvider::get_price(currency_id).unwrap_or_else(Default::default);
+				let decimals = CurrencyIdMapping::decimals(currency_id)
+					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
+
+				// price_precision = 18 + (18 - decimals) = 36 - decimals
+				// right_shift = price_precision - decimals = 36 - decimals - decimals = (18 - decimals) * 2
+				let adjustment_multiplier = 10u128
+					.checked_pow(((18 - decimals) * 2).into())
+					.ok_or_else(|| ExitError::Other("Get adjustment_multiplier failed".into()))?;
+
+				log::debug!(target: "evm", "oracle currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}", currency_id, price, adjustment_multiplier);
+				Ok((
+					ExitSucceed::Returned,
+					vec_u8_from_price(price, adjustment_multiplier),
+					0,
+				))
 			}
 		}
 	}
 }
 
-fn vec_u8_from_price(value: Price) -> Vec<u8> {
+fn vec_u8_from_price(price: Price, adjustment_multiplier: u128) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
-	U256::from(value.into_inner().wrapping_div(Price::DIV)).to_big_endian(&mut be_bytes[..32]);
+	U256::from(price.into_inner().wrapping_div(adjustment_multiplier)).to_big_endian(&mut be_bytes[..32]);
 	be_bytes.to_vec()
 }
