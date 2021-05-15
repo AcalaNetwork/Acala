@@ -50,7 +50,7 @@ const generateRelaychainGenesis = (config) => {
     return fatal('Missing relaychain.image');
   }
   const res = exec(
-    `docker run --rm ${relaychain.image} build-spec --chain=${relaychain.chain} --disable-default-bootnode`
+    `docker run --rm ${relaychain.image} polkadot build-spec --chain=${relaychain.chain} --disable-default-bootnode`
   );
 
   let spec;
@@ -158,7 +158,15 @@ const generate = async (config, { output, yes }) => {
     spec.genesis.runtime.runtime_genesis_config.parachainsParas.paras.push(para);
   }
 
-  fs.writeFileSync(relaychainGenesisFilePath, JSON.stringify(spec, null, 2));
+
+  let tmpfile = `${shell.tempdir()}/${config.relaychain.chain}.json`
+  fs.writeFileSync(tmpfile, JSON.stringify(spec, null, 2));
+
+  exec(
+    `docker run --rm -v "${tmpfile}":/${config.relaychain.chain}.json ${config.relaychain.image} polkadot build-spec --raw --chain=/${config.relaychain.chain}.json --disable-default-bootnode > ${relaychainGenesisFilePath}`
+  );
+
+  shell.rm(tmpfile);
 
   console.log('Relaychain genesis generated at', relaychainGenesisFilePath);
 
