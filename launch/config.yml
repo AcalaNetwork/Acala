@@ -1,5 +1,5 @@
 relaychain:
-  image: parity/rococo:rococo-v1
+  image: parity/polkadot:v0.9.1
   chain: rococo-local
   runtime_genesis_config:
     parachainsConfiguration:
@@ -17,12 +17,18 @@ relaychain:
   - name: dave
 
 parachains:
-- image: acala/acala-node:5ee43f48
-  chain: mandala
+- image: acala/karura-node:7ebe9b1c
+  chain: karura-dev
   id: 2000
   flags:
     - --rpc-methods=unsafe
+    - --force-authoring
   env:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace
   nodes:
-  - {}
+  - flags:
+    - --alice
+  - flags:
+    - --bob
+  - flags:
+    - --charlie
