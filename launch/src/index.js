@@ -142,7 +142,7 @@ const generate = async (config, { output, yes }) => {
   }
 
   // genesis parachains
-  for (const parachain of config.parachains) {
+  for (const parachain of config.paras) {
     const { wasm, state } = exportParachainGenesis(parachain);
     if (!parachain.id) {
       return fatal('Missing parachains[].id');
@@ -152,7 +152,7 @@ const generate = async (config, { output, yes }) => {
       {
         genesis_head: state,
         validation_code: wasm,
-        parachain: true,
+        parachain: parachain.parachain,
       },
     ];
     spec.genesis.runtime.runtime_genesis_config.parachainsParas.paras.push(para);
@@ -198,7 +198,7 @@ const generate = async (config, { output, yes }) => {
     ++idx;
   }
 
-  for (const para of config.parachains) {
+  for (const para of config.paras) {
     let nodeIdx = 0;
     for (const paraNode of para.nodes) {
       const name = `parachain-${para.id || para.chain}-${nodeIdx}`;
