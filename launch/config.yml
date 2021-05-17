@@ -19,7 +19,7 @@ relaychain:
   # - name: dave
 
 paras:
-- image: acala/karura-node:85677f77
+- image: acala/karura-node:latest
   chain: karura-dev
   id: 2000
   parachain: true
