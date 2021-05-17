@@ -23,7 +23,10 @@ use crate::cli::{Cli, RelayChainCli, Subcommand};
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
-use service::{chain_spec, IdentifyVariant};
+use service::{
+	chain_spec, IdentifyVariant, ACALA_RUNTIME_NOT_AVAILABLE, KARURA_RUNTIME_NOT_AVAILABLE,
+	MANDALA_RUNTIME_NOT_AVAILABLE,
+};
 
 use log::info;
 use polkadot_parachain::primitives::AccountIdConversion;
@@ -106,21 +109,21 @@ impl SubstrateCli for Cli {
 					}
 
 					#[cfg(not(feature = "with-karura-runtime"))]
-					return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+					return Err(KARURA_RUNTIME_NOT_AVAILABLE.into());
 				} else if starts_with("acala") {
 					#[cfg(feature = "with-acala-runtime")]
 					{
 						Box::new(chain_spec::acala::ChainSpec::from_json_file(path)?)
 					}
 					#[cfg(not(feature = "with-acala-runtime"))]
-					return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+					return Err(ACALA_RUNTIME_NOT_AVAILABLE.into());
 				} else {
 					#[cfg(feature = "with-mandala-runtime")]
 					{
 						Box::new(chain_spec::mandala::ChainSpec::from_json_file(path)?)
 					}
 					#[cfg(not(feature = "with-mandala-runtime"))]
-					return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+					return Err(MANDALA_RUNTIME_NOT_AVAILABLE.into());
 				}
 			}
 		})
@@ -131,17 +134,17 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-acala-runtime")]
 			return &service::acala_runtime::VERSION;
 			#[cfg(not(feature = "with-acala-runtime"))]
-			panic!("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.");
+			panic!(ACALA_RUNTIME_NOT_AVAILABLE);
 		} else if spec.is_karura() {
 			#[cfg(feature = "with-karura-runtime")]
 			return &service::karura_runtime::VERSION;
 			#[cfg(not(feature = "with-karura-runtime"))]
-			panic!("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.");
+			panic!(KARURA_RUNTIME_NOT_AVAILABLE);
 		} else {
 			#[cfg(feature = "with-mandala-runtime")]
 			return &service::mandala_runtime::VERSION;
 			#[cfg(not(feature = "with-mandala-runtime"))]
-			panic!("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.");
+			panic!(MANDALA_RUNTIME_NOT_AVAILABLE);
 		}
 	}
 }
@@ -237,19 +240,19 @@ pub fn run() -> sc_cli::Result<()> {
 				return runner
 					.sync_run(|config| cmd.run::<service::acala_runtime::Block, service::AcalaExecutor>(config));
 				#[cfg(not(feature = "with-acala-runtime"))]
-				return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+				return Err(ACALA_RUNTIME_NOT_AVAILABLE.into());
 			} else if chain_spec.is_karura() {
 				#[cfg(feature = "with-karura-runtime")]
 				return runner
 					.sync_run(|config| cmd.run::<service::karura_runtime::Block, service::KaruraExecutor>(config));
 				#[cfg(not(feature = "with-karura-runtime"))]
-				return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+				return Err(KARURA_RUNTIME_NOT_AVAILABLE.into());
 			} else {
 				#[cfg(feature = "with-mandala-runtime")]
 				return runner
 					.sync_run(|config| cmd.run::<service::mandala_runtime::Block, service::MandalaExecutor>(config));
 				#[cfg(not(feature = "with-mandala-runtime"))]
-				return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+				return Err(MANDALA_RUNTIME_NOT_AVAILABLE.into());
 			}
 		}
 
@@ -361,7 +364,7 @@ pub fn run() -> sc_cli::Result<()> {
 					output_buf
 				}
 				#[cfg(not(feature = "with-acala-runtime"))]
-				return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+				return Err(ACALA_RUNTIME_NOT_AVAILABLE.into());
 			} else if chain_spec.is_karura() {
 				#[cfg(feature = "with-karura-runtime")]
 				{
@@ -376,7 +379,7 @@ pub fn run() -> sc_cli::Result<()> {
 					output_buf
 				}
 				#[cfg(not(feature = "with-karura-runtime"))]
-				return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+				return Err(KARURA_RUNTIME_NOT_AVAILABLE.into());
 			} else {
 				#[cfg(feature = "with-mandala-runtime")]
 				{
@@ -390,7 +393,7 @@ pub fn run() -> sc_cli::Result<()> {
 					output_buf
 				}
 				#[cfg(not(feature = "with-mandala-runtime"))]
-				return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+				return Err(MANDALA_RUNTIME_NOT_AVAILABLE.into());
 			};
 
 			if let Some(output) = &params.output {
@@ -442,7 +445,7 @@ pub fn run() -> sc_cli::Result<()> {
 					))
 				});
 				#[cfg(not(feature = "with-acala-runtime"))]
-				return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+				return Err(ACALA_RUNTIME_NOT_AVAILABLE.into());
 			} else if chain_spec.is_karura() {
 				#[cfg(feature = "with-karura-runtime")]
 				return runner.async_run(|config| {
@@ -455,7 +458,7 @@ pub fn run() -> sc_cli::Result<()> {
 					))
 				});
 				#[cfg(not(feature = "with-karura-runtime"))]
-				return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+				return Err(KARURA_RUNTIME_NOT_AVAILABLE.into());
 			} else {
 				#[cfg(feature = "with-mandala-runtime")]
 				return runner.async_run(|config| {
@@ -468,7 +471,7 @@ pub fn run() -> sc_cli::Result<()> {
 					))
 				});
 				#[cfg(not(feature = "with-mandala-runtime"))]
-				return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+				return Err(MANDALA_RUNTIME_NOT_AVAILABLE.into());
 			}
 		}
 
@@ -489,7 +492,7 @@ pub fn run() -> sc_cli::Result<()> {
 					#[cfg(feature = "with-mandala-runtime")]
 					return service::mandala_dev(config, cli.instant_sealing).map_err(Into::into);
 					#[cfg(not(feature = "with-mandala-runtime"))]
-					return Err("Mandala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+					return Err(MANDALA_RUNTIME_NOT_AVAILABLE.into());
 				} else if cli.instant_sealing {
 					return Err("Instant sealing can be turned on only in `--dev` mode".into());
 				}
@@ -508,27 +511,30 @@ pub fn run() -> sc_cli::Result<()> {
 				let genesis_state = if config.chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
 					{
-						let block: service::acala_runtime::Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+						let block: service::acala_runtime::Block =
+							generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
 						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
 					}
 					#[cfg(not(feature = "with-acala-runtime"))]
-					return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+					return Err(ACALA_RUNTIME_NOT_AVAILABLE.into());
 				} else if config.chain_spec.is_karura() {
 					#[cfg(feature = "with-karura-runtime")]
 					{
-						let block: service::karura_runtime::Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+						let block: service::karura_runtime::Block =
+							generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
 						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
 					}
 					#[cfg(not(feature = "with-karura-runtime"))]
-					return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+					return Err(KARURA_RUNTIME_NOT_AVAILABLE.into());
 				} else {
 					#[cfg(feature = "with-mandala-runtime")]
 					{
-						let block: service::mandala_runtime::Block = generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+						let block: service::mandala_runtime::Block =
+							generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
 						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
 					}
 					#[cfg(not(feature = "with-mandala-runtime"))]
-					return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+					return Err(MANDALA_RUNTIME_NOT_AVAILABLE.into());
 				};
 
 				let polkadot_config =
@@ -538,7 +544,10 @@ pub fn run() -> sc_cli::Result<()> {
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
 				info!("Parachain genesis state: {}", genesis_state);
-				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
+				info!(
+					"Is collating: {}",
+					if config.role.is_authority() { "yes" } else { "no" }
+				);
 
 				if config.chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
@@ -549,12 +558,12 @@ pub fn run() -> sc_cli::Result<()> {
 							polkadot_config,
 							id,
 						)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
 					}
 					#[cfg(not(feature = "with-acala-runtime"))]
-					return Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into());
+					return Err(ACALA_RUNTIME_NOT_AVAILABLE.into());
 				} else if config.chain_spec.is_karura() {
 					#[cfg(feature = "with-karura-runtime")]
 					{
@@ -564,12 +573,12 @@ pub fn run() -> sc_cli::Result<()> {
 							polkadot_config,
 							id,
 						)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
 					}
 					#[cfg(not(feature = "with-karura-runtime"))]
-					return Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into());
+					return Err(KARURA_RUNTIME_NOT_AVAILABLE.into());
 				} else {
 					#[cfg(feature = "with-mandala-runtime")]
 					{
@@ -579,12 +588,12 @@ pub fn run() -> sc_cli::Result<()> {
 							polkadot_config,
 							id,
 						)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
 					}
 					#[cfg(not(feature = "with-mandala-runtime"))]
-					return Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into());
+					return Err(MANDALA_RUNTIME_NOT_AVAILABLE.into());
 				}
 			})
 		}
