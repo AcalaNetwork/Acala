@@ -529,6 +529,13 @@ where
 	.await
 }
 
+pub const MANDALA_RUNTIME_NOT_AVAILABLE: &str =
+	"Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.";
+pub const KARURA_RUNTIME_NOT_AVAILABLE: &str =
+	"Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.";
+pub const ACALA_RUNTIME_NOT_AVAILABLE: &str =
+	"Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.";
+
 /// Builds a new object suitable for chain operations.
 pub fn new_chain_ops(
 	mut config: &mut Configuration,
@@ -555,7 +562,7 @@ pub fn new_chain_ops(
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
-		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
+		Err(MANDALA_RUNTIME_NOT_AVAILABLE.into())
 	} else if config.chain_spec.is_karura() {
 		#[cfg(feature = "with-karura-runtime")]
 		{
@@ -569,7 +576,7 @@ pub fn new_chain_ops(
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-karura-runtime"))]
-		Err("Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.".into())
+		Err(KARURA_RUNTIME_NOT_AVAILABLE.into())
 	} else {
 		#[cfg(feature = "with-acala-runtime")]
 		{
@@ -583,7 +590,7 @@ pub fn new_chain_ops(
 			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
-		Err("Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.".into())
+		Err(ACALA_RUNTIME_NOT_AVAILABLE.into())
 	}
 }
 
