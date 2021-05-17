@@ -529,11 +529,11 @@ where
 	.await
 }
 
-pub const MANDALA_RUNTIME_NOT_AVAILABLE: &'static str =
+pub const MANDALA_RUNTIME_NOT_AVAILABLE: &str =
 	"Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.";
-pub const KARURA_RUNTIME_NOT_AVAILABLE: &'static str =
+pub const KARURA_RUNTIME_NOT_AVAILABLE: &str =
 	"Karura runtime is not available. Please compile the node with `--features with-karura-runtime` to enable it.";
-pub const ACALA_RUNTIME_NOT_AVAILABLE: &'static str =
+pub const ACALA_RUNTIME_NOT_AVAILABLE: &str =
 	"Acala runtime is not available. Please compile the node with `--features with-acala-runtime` to enable it.";
 
 /// Builds a new object suitable for chain operations.

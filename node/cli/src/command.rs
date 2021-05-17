@@ -131,17 +131,17 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-acala-runtime")]
 			return &service::acala_runtime::VERSION;
 			#[cfg(not(feature = "with-acala-runtime"))]
-			panic!(service::ACALA_RUNTIME_NOT_AVAILABLE);
+			panic!("{}", service::ACALA_RUNTIME_NOT_AVAILABLE);
 		} else if spec.is_karura() {
 			#[cfg(feature = "with-karura-runtime")]
 			return &service::karura_runtime::VERSION;
 			#[cfg(not(feature = "with-karura-runtime"))]
-			panic!(service::KARURA_RUNTIME_NOT_AVAILABLE);
+			panic!("{}", service::KARURA_RUNTIME_NOT_AVAILABLE);
 		} else {
 			#[cfg(feature = "with-mandala-runtime")]
 			return &service::mandala_runtime::VERSION;
 			#[cfg(not(feature = "with-mandala-runtime"))]
-			panic!(service::MANDALA_RUNTIME_NOT_AVAILABLE);
+			panic!("{}", service::MANDALA_RUNTIME_NOT_AVAILABLE);
 		}
 	}
 }
