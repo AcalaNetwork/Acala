@@ -19,7 +19,7 @@ RUN apt-get update && \
 	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
 COPY . .
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json $BUILD_ARGS
+RUN cargo chef cook --recipe-path recipe.json "--$PROFILE" $BUILD_ARGS
 
 # =============
 
@@ -62,7 +62,7 @@ ARG PROFILE=release
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
-COPY --from=builder /acala/target/$PROFILE/acala /usr/local/bin
+COPY --from=builder /app/target/$PROFILE/acala /usr/local/bin
 
 # checks
 RUN ldd /usr/local/bin/acala && \

@@ -7,11 +7,11 @@ relaychain:
         validation_upgrade_frequency: 1
         validation_upgrade_delay: 1
   env:
-    RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace
+    RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
   flags:
     - --rpc-methods=unsafe
     - --wasm-execution=compiled
-    - --execution=native
+    - --execution=wasm
   nodes:
   - name: alice
   - name: bob
@@ -27,17 +27,17 @@ paras:
     - --rpc-methods=unsafe
     - --force-authoring
     - --wasm-execution=compiled
-    - --execution=native
+    - --execution=wasm
   relaychainFlags:
     - --wasm-execution=compiled
-    - --execution=native
+    - --execution=wasm
   env:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   nodes:
   - wsPort: 19944
   - flags:
     - --alice
-  # - flags:
-  #   - --bob
-  # - flags:
-  #   - --charlie
+  - flags:
+    - --bob
+  - flags:
+    - --charlie

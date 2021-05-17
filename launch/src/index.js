@@ -50,7 +50,7 @@ const generateRelaychainGenesis = (config) => {
     return fatal('Missing relaychain.image');
   }
   const res = exec(
-    `docker run --rm ${relaychain.image} polkadot build-spec --chain=${relaychain.chain} --disable-default-bootnode`
+    `docker run --rm ${relaychain.image} build-spec --chain=${relaychain.chain} --disable-default-bootnode`
   );
 
   let spec;
@@ -163,7 +163,7 @@ const generate = async (config, { output, yes }) => {
   fs.writeFileSync(tmpfile, JSON.stringify(spec, null, 2));
 
   exec(
-    `docker run --rm -v "${tmpfile}":/${config.relaychain.chain}.json ${config.relaychain.image} polkadot build-spec --raw --chain=/${config.relaychain.chain}.json --disable-default-bootnode > ${relaychainGenesisFilePath}`
+    `docker run --rm -v "${tmpfile}":/${config.relaychain.chain}.json ${config.relaychain.image} build-spec --raw --chain=/${config.relaychain.chain}.json --disable-default-bootnode > ${relaychainGenesisFilePath}`
   );
 
   shell.rm(tmpfile);
@@ -175,6 +175,13 @@ const generate = async (config, { output, yes }) => {
     services: {},
     volumes: {},
   };
+
+  const ulimits = {
+    nofile: {
+      soft: 65536,
+      hard: 65536
+    }
+  }
 
   let idx = 0;
   for (const node of config.relaychain.nodes) {
@@ -198,7 +205,8 @@ const generate = async (config, { output, yes }) => {
         ...(config.relaychain.flags || []),
         ...(node.flags || []),
       ],
-      environment: _.assign({}, config.relaychain.env, node.env)
+      environment: _.assign({}, config.relaychain.env, node.env),
+      ulimits,
     };
     dockerCompose.services[name] = nodeConfig;
     dockerCompose.volumes[name] = null;
@@ -234,7 +242,8 @@ const generate = async (config, { output, yes }) => {
           ...(para.relaychainFlags || []),
           ...(paraNode.relaychainFlags || []),
         ],
-        environment: _.assign({}, para.env, paraNode.env)
+        environment: _.assign({}, para.env, paraNode.env),
+        ulimits,
       };
 
       dockerCompose.services[name] = nodeConfig;
