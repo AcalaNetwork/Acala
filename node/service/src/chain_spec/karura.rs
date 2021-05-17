@@ -188,7 +188,14 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 				],
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![(get_account_id_from_seed::<sr25519::Public>("Alice"), 10u128.pow(20))],
+				vec![
+					(get_account_id_from_seed::<sr25519::Public>("Alice"), 1000 * dollar(KAR)),
+					(get_account_id_from_seed::<sr25519::Public>("Bob"), 1000 * dollar(KAR)),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						1000 * dollar(KAR),
+					),
+				],
 				vec![],
 			)
 		},
