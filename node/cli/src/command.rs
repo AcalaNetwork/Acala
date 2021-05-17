@@ -314,12 +314,8 @@ pub fn run() -> sc_cli::Result<()> {
 		Some(Subcommand::PurgeChain(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| {
-				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
-				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
-
 				let polkadot_cli = RelayChainCli::new(
-					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
-					relay_chain_id,
+					&config,
 					[RelayChainCli::executable_name()]
 						.iter()
 						.chain(cli.relaychain_args.iter()),
@@ -487,9 +483,7 @@ pub fn run() -> sc_cli::Result<()> {
 				// TODO
 				let key = sp_core::Pair::generate().0;
 
-				let extension = chain_spec::Extensions::try_get(&*config.chain_spec);
-				let relay_chain_id = extension.map(|e| e.relay_chain.clone());
-				let para_id = extension.map(|e| e.para_id);
+				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec).map(|e| e.para_id);
 
 				if is_mandala_dev {
 					#[cfg(feature = "with-mandala-runtime")]
@@ -501,14 +495,13 @@ pub fn run() -> sc_cli::Result<()> {
 				}
 
 				let polkadot_cli = RelayChainCli::new(
-					config.base_path.as_ref().map(|x| x.path().join("polkadot")),
-					relay_chain_id,
+					&config,
 					[RelayChainCli::executable_name()]
 						.iter()
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(1000));
+				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(2000));
 
 				let parachain_account = AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
 
