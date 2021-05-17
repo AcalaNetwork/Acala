@@ -50,7 +50,7 @@ fn karura_properties() -> Properties {
 	let mut token_symbol: Vec<String> = vec![];
 	let mut token_decimals: Vec<u32> = vec![];
 	[KAR, KUSD, KSM, LKSM].iter().for_each(|token| {
-		token_symbol.push(token.name().unwrap().to_string());
+		token_symbol.push(token.symbol().unwrap().to_string());
 		token_decimals.push(token.decimals().unwrap() as u32);
 	});
 	properties.insert("tokenSymbol".into(), token_symbol.into());
