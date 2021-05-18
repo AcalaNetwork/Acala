@@ -36,18 +36,18 @@ fn debits_key() {
 }
 
 #[test]
-fn check_update_loan_overflow_work() {
+fn check_update_loan_underflow_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		// collateral underflow
 		assert_noop!(
 			LoansModule::update_loan(&ALICE, BTC, -100, 0),
-			Error::<Runtime>::CollateralTooLow,
+			ArithmeticError::Underflow,
 		);
 
 		// debit underflow
 		assert_noop!(
 			LoansModule::update_loan(&ALICE, BTC, 0, -100),
-			Error::<Runtime>::DebitTooLow,
+			ArithmeticError::Underflow,
 		);
 	});
 }

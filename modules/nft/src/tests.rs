@@ -346,7 +346,7 @@ fn burn_should_fail() {
 		});
 		assert_noop!(
 			NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)),
-			orml_nft::Error::<Runtime>::NumOverflow
+			ArithmeticError::Overflow,
 		);
 	});
 

@@ -89,10 +89,6 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		DebitOverflow,
-		DebitTooLow,
-		CollateralOverflow,
-		CollateralTooLow,
 		AmountConvertFailed,
 	}
 
@@ -278,16 +274,16 @@ impl<T: Config> Pallet<T> {
 			let new_collateral = if collateral_adjustment.is_positive() {
 				p.collateral
 					.checked_add(collateral_balance)
-					.ok_or(Error::<T>::CollateralOverflow)
+					.ok_or(ArithmeticError::Overflow)
 			} else {
 				p.collateral
 					.checked_sub(collateral_balance)
-					.ok_or(Error::<T>::CollateralTooLow)
+					.ok_or(ArithmeticError::Underflow)
 			}?;
 			let new_debit = if debit_adjustment.is_positive() {
-				p.debit.checked_add(debit_balance).ok_or(Error::<T>::DebitOverflow)
+				p.debit.checked_add(debit_balance).ok_or(ArithmeticError::Overflow)
 			} else {
-				p.debit.checked_sub(debit_balance).ok_or(Error::<T>::DebitTooLow)
+				p.debit.checked_sub(debit_balance).ok_or(ArithmeticError::Underflow)
 			}?;
 
 			// increase account ref if new position
@@ -326,24 +322,24 @@ impl<T: Config> Pallet<T> {
 				total_positions
 					.collateral
 					.checked_add(collateral_balance)
-					.ok_or(Error::<T>::CollateralOverflow)
+					.ok_or(ArithmeticError::Overflow)
 			} else {
 				total_positions
 					.collateral
 					.checked_sub(collateral_balance)
-					.ok_or(Error::<T>::CollateralTooLow)
+					.ok_or(ArithmeticError::Underflow)
 			}?;
 
 			total_positions.debit = if debit_adjustment.is_positive() {
 				total_positions
 					.debit
 					.checked_add(debit_balance)
-					.ok_or(Error::<T>::DebitOverflow)
+					.ok_or(ArithmeticError::Overflow)
 			} else {
 				total_positions
 					.debit
 					.checked_sub(debit_balance)
-					.ok_or(Error::<T>::DebitTooLow)
+					.ok_or(ArithmeticError::Underflow)
 			}?;
 
 			Ok(())
