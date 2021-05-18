@@ -151,6 +151,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.name),
+			CurrencyId::ChainSafe(_) => None,
 		}?;
 
 		// More than 32 bytes will be truncated.
@@ -191,6 +192,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.symbol),
+			CurrencyId::ChainSafe(_) => None,
 		}?;
 
 		// More than 32 bytes will be truncated.
@@ -226,6 +228,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.decimals),
+			CurrencyId::ChainSafe(_) => None,
 		}
 	}
 
@@ -254,7 +257,8 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				prefix[0..H160_PREFIX_DEXSHARE.len()].copy_from_slice(&H160_PREFIX_DEXSHARE);
 				Some(prefix | EvmAddress::from_low_u64_be(u64::from(symbol_0) << 32 | u64::from(symbol_1)))
 			}
-			// Token or Erc20
+
+			// Token or Erc20 or ChainSafe
 			_ => EvmAddress::try_from(v).ok(),
 		}
 	}

@@ -21,7 +21,8 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
-use cumulus_client_consensus_relay_chain::{build_relay_chain_consensus, BuildRelayChainConsensusParams};
+use cumulus_client_consensus_aura::{build_aura_consensus, BuildAuraConsensusParams, SlotProportion};
+use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::build_block_announce_validator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
@@ -36,21 +37,27 @@ pub use karura_runtime;
 
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_runtime;
+#[cfg(feature = "with-mandala-runtime")]
+use sc_consensus_aura::StartAuraParams;
 
-use acala_primitives::Block;
-use mock_inherent_data_provider::{MockParachainInherentDataProvider, MockTimestampInherentDataProvider};
+use acala_primitives::{Block, Hash};
+use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
-use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
+use sc_consensus_aura::ImportQueueParams;
 use sc_executor::native_executor_instance;
+use sc_network::NetworkService;
 use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
 };
-use sc_telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
+use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
+use sp_consensus::SlotData;
 use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
+use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use sp_trie::PrefixedMemoryDB;
+use substrate_prometheus_endpoint::Registry;
 
 use std::sync::Arc;
 
@@ -155,8 +162,6 @@ where
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 	Executor: NativeExecutionDispatch + 'static,
 {
-	let inherent_data_providers = sp_inherents::InherentDataProviders::new();
-
 	let telemetry = config
 		.telemetry_endpoints
 		.clone()
@@ -186,7 +191,7 @@ where
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
 		config.role.is_authority().into(),
-		config.prometheus_registry(),
+		registry,
 		task_manager.spawn_handle(),
 		client.clone(),
 	);
@@ -198,15 +203,6 @@ where
 	};
 
 	let import_queue = if dev {
-		inherent_data_providers
-			.register_provider(MockParachainInherentDataProvider)
-			.map_err(Into::into)
-			.map_err(sp_consensus::error::Error::InherentData)?;
-		inherent_data_providers
-			.register_provider(MockTimestampInherentDataProvider)
-			.map_err(Into::into)
-			.map_err(sp_consensus::error::Error::InherentData)?;
-
 		if instant_sealing {
 			// instance sealing
 			sc_consensus_manual_seal::import_queue(
@@ -218,26 +214,53 @@ where
 			// aura import queue
 			let block_import =
 				sc_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
-			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+
+			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
 				block_import,
 				justification_import: None,
 				client: client.clone(),
-				inherent_data_providers: inherent_data_providers.clone(),
+				create_inherent_data_providers: move |_, ()| async move {
+					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						*timestamp,
+						slot_duration,
+					);
+
+					Ok((timestamp, slot, MockParachainInherentDataProvider))
+				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
 				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 				check_for_equivocation: Default::default(),
-				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?
 		}
 	} else {
-		cumulus_client_consensus_relay_chain::import_queue(
-			client.clone(),
-			client.clone(),
-			inherent_data_providers.clone(),
-			&task_manager.spawn_essential_handle(),
-			registry,
+		let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+		let block_import =
+			cumulus_client_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
+
+		cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
+			cumulus_client_consensus_aura::ImportQueueParams {
+				block_import,
+				client: client.clone(),
+				create_inherent_data_providers: move |_, _| async move {
+					let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						*time,
+						slot_duration.slot_duration(),
+					);
+
+					Ok((time, slot))
+				},
+				registry,
+				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+				spawner: &task_manager.spawn_essential_handle(),
+				telemetry: telemetry.as_ref().map(|telemetry| telemetry.handle()),
+			},
 		)?
 	};
 
@@ -248,7 +271,6 @@ where
 		keystore_container,
 		task_manager,
 		transaction_pool,
-		inherent_data_providers,
 		select_chain,
 		other: (telemetry, telemetry_worker_handle),
 	})
@@ -260,13 +282,13 @@ where
 /// This is the actual implementation that is abstract over the executor and the
 /// runtime api.
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
-async fn start_node_impl<RB, RuntimeApi, Executor>(
+async fn start_node_impl<RB, RuntimeApi, Executor, BIC>(
 	parachain_config: Configuration,
 	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
-	validator: bool,
 	_rpc_ext_builder: RB,
+	build_consensus: BIC,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
 where
 	RB: Fn(Arc<FullClient<RuntimeApi, Executor>>) -> jsonrpc_core::IoHandler<sc_rpc::Metadata> + Send + 'static,
@@ -274,6 +296,17 @@ where
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 	Executor: NativeExecutionDispatch + 'static,
+	BIC: FnOnce(
+		Arc<TFullClient<Block, RuntimeApi, Executor>>,
+		Option<&Registry>,
+		Option<TelemetryHandle>,
+		&TaskManager,
+		&polkadot_service::NewFull<polkadot_service::Client>,
+		Arc<sc_transaction_pool::FullPool<Block, TFullClient<Block, RuntimeApi, Executor>>>,
+		Arc<NetworkService<Block, Hash>>,
+		SyncCryptoStorePtr,
+		bool,
+	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
 	if matches!(parachain_config.role, Role::Light) {
 		return Err("Light client not supported!".into());
@@ -282,13 +315,9 @@ where
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&parachain_config, false, false)?;
-	params
-		.inherent_data_providers
-		.register_provider(sp_timestamp::InherentDataProvider)
-		.unwrap();
 	let (mut telemetry, telemetry_worker_handle) = params.other;
 
-	let polkadot_full_node = cumulus_client_service::build_polkadot_full_node(
+	let relay_chain_full_node = cumulus_client_service::build_polkadot_full_node(
 		polkadot_config,
 		collator_key.clone(),
 		telemetry_worker_handle,
@@ -301,12 +330,14 @@ where
 	let client = params.client.clone();
 	let backend = params.backend.clone();
 	let block_announce_validator = build_block_announce_validator(
-		polkadot_full_node.client.clone(),
+		relay_chain_full_node.client.clone(),
 		id,
-		Box::new(polkadot_full_node.network.clone()),
-		polkadot_full_node.backend.clone(),
+		Box::new(relay_chain_full_node.network.clone()),
+		relay_chain_full_node.backend.clone(),
 	);
 
+	let force_authoring = parachain_config.force_authoring;
+	let validator = parachain_config.role.is_authority();
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let mut task_manager = params.task_manager;
@@ -368,23 +399,19 @@ where
 	};
 
 	if validator {
-		let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
-			task_manager.spawn_handle(),
+		let parachain_consensus = build_consensus(
 			client.clone(),
-			transaction_pool,
 			prometheus_registry.as_ref(),
-			telemetry.as_ref().map(|x| x.handle()),
-		);
-		let spawner = task_manager.spawn_handle();
+			telemetry.as_ref().map(|t| t.handle()),
+			&task_manager,
+			&relay_chain_full_node,
+			transaction_pool,
+			network,
+			params.keystore_container.sync_keystore(),
+			force_authoring,
+		)?;
 
-		let parachain_consensus = build_relay_chain_consensus(BuildRelayChainConsensusParams {
-			para_id: id,
-			proposer_factory,
-			inherent_data_providers: params.inherent_data_providers,
-			block_import: client.clone(),
-			relay_chain_client: polkadot_full_node.client.clone(),
-			relay_chain_backend: polkadot_full_node.backend.clone(),
-		});
+		let spawner = task_manager.spawn_handle();
 
 		let params = StartCollatorParams {
 			para_id: id,
@@ -393,7 +420,7 @@ where
 			client: client.clone(),
 			task_manager: &mut task_manager,
 			collator_key,
-			relay_chain_full_node: polkadot_full_node,
+			relay_chain_full_node,
 			spawner,
 			backend,
 			parachain_consensus,
@@ -406,7 +433,7 @@ where
 			announce_block,
 			task_manager: &mut task_manager,
 			para_id: id,
-			polkadot_full_node,
+			polkadot_full_node: relay_chain_full_node,
 		};
 
 		start_full_node(params)?;
@@ -423,7 +450,6 @@ pub async fn start_node<RuntimeApi, Executor>(
 	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
-	validator: bool,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
@@ -431,9 +457,75 @@ where
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 	Executor: NativeExecutionDispatch + 'static,
 {
-	start_node_impl(parachain_config, collator_key, polkadot_config, id, validator, |_| {
-		Default::default()
-	})
+	start_node_impl(
+		parachain_config,
+		collator_key,
+		polkadot_config,
+		id,
+		|_| Default::default(),
+		|client,
+		 prometheus_registry,
+		 telemetry,
+		 task_manager,
+		 relay_chain_node,
+		 transaction_pool,
+		 sync_oracle,
+		 keystore,
+		 force_authoring| {
+			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool,
+				prometheus_registry,
+				telemetry.clone(),
+			);
+
+			let relay_chain_backend = relay_chain_node.backend.clone();
+			let relay_chain_client = relay_chain_node.client.clone();
+			Ok(build_aura_consensus::<AuraPair, _, _, _, _, _, _, _, _, _>(
+				BuildAuraConsensusParams {
+					proposer_factory,
+					create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
+						let parachain_inherent =
+							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at_with_client(
+								relay_parent,
+								&relay_chain_client,
+								&*relay_chain_backend,
+								&validation_data,
+								id,
+							);
+						async move {
+							let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+							let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+								*time,
+								slot_duration.slot_duration(),
+							);
+
+							let parachain_inherent = parachain_inherent.ok_or_else(|| {
+								Box::<dyn std::error::Error + Send + Sync>::from("Failed to create parachain inherent")
+							})?;
+							Ok((time, slot, parachain_inherent))
+						}
+					},
+					block_import: client.clone(),
+					relay_chain_client: relay_chain_node.client.clone(),
+					relay_chain_backend: relay_chain_node.backend.clone(),
+					para_client: client,
+					backoff_authoring_blocks: Option::<()>::None,
+					sync_oracle,
+					keystore,
+					force_authoring,
+					slot_duration,
+					// We got around 500ms for proposing
+					block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+					telemetry,
+				},
+			))
+		},
+	)
 	.await
 }
 
@@ -450,7 +542,7 @@ pub fn new_chain_ops(
 	ServiceError,
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	if config.chain_spec.is_mandala_dev() {
+	if config.chain_spec.is_mandala_dev() || config.chain_spec.is_mandala() {
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let PartialComponents {
@@ -459,21 +551,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial(config, true, false)?;
-			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
-		}
-		#[cfg(not(feature = "with-mandala-runtime"))]
-		Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
-	} else if config.chain_spec.is_mandala() {
-		#[cfg(feature = "with-mandala-runtime")]
-		{
-			let PartialComponents {
-				client,
-				backend,
-				import_queue,
-				task_manager,
-				..
-			} = new_partial(config, false, false)?;
+			} = new_partial(config, config.chain_spec.is_mandala_dev(), false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -509,6 +587,7 @@ pub fn new_chain_ops(
 	}
 }
 
+#[cfg(feature = "with-mandala-runtime")]
 fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
 	let sc_service::PartialComponents {
 		client,
@@ -518,7 +597,6 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		keystore_container,
 		select_chain: maybe_select_chain,
 		transaction_pool,
-		inherent_data_providers,
 		other: (mut telemetry, _),
 	} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(&config, true, instant_sealing)?;
 
@@ -564,7 +642,12 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					pool: transaction_pool.pool().clone(),
 					select_chain,
 					consensus_data_provider: None,
-					inherent_data_providers,
+					create_inherent_data_providers: |_, _| async {
+						Ok((
+							sp_timestamp::InherentDataProvider::from_system_time(),
+							MockParachainInherentDataProvider,
+						))
+					},
 				});
 			// we spawn the future on a background thread managed by service.
 			task_manager
@@ -575,13 +658,23 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 			let block_import =
 				sc_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
-			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _>(StartAuraParams {
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
 				block_import,
 				proposer_factory,
-				inherent_data_providers,
+				create_inherent_data_providers: move |_, ()| async move {
+					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						*timestamp,
+						slot_duration,
+					);
+
+					Ok((timestamp, slot, MockParachainInherentDataProvider))
+				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
@@ -633,11 +726,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 	Ok(task_manager)
 }
 
+#[cfg(feature = "with-mandala-runtime")]
 pub fn mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
-	#[cfg(feature = "with-mandala-runtime")]
-	{
-		inner_mandala_dev(config, instant_sealing)
-	}
-	#[cfg(not(feature = "with-mandala-runtime"))]
-	Err("Mandala runtime is not available. Please compile the node with `--features with-mandala-runtime` to enable it.".into())
+	inner_mandala_dev(config, instant_sealing)
 }

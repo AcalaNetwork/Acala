@@ -83,6 +83,14 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 	)
 }
 
+/// Generate an Aura authority key for Karura.
+pub fn get_karura_authority_keys_from_seed(seed: &str) -> (AccountId, AuraId) {
+	(
+		get_account_id_from_seed::<sr25519::Public>(seed),
+		get_from_seed::<AuraId>(seed),
+	)
+}
+
 /// Returns `evm_genesis_accounts`
 pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];

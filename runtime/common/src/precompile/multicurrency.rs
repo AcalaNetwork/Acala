@@ -25,7 +25,7 @@ use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
-use num_enum::TryFromPrimitive;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
@@ -41,15 +41,15 @@ pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping,
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
-#[repr(u8)]
-enum Action {
-	QueryName = 1,
-	QuerySymbol = 2,
-	QueryDecimals = 3,
-	QueryTotalIssuance = 4,
-	QueryBalance = 5,
-	Transfer = 6,
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	QueryName = 0x06fdde03,
+	QuerySymbol = 0x95d89b41,
+	QueryDecimals = 0x313ce567,
+	QueryTotalIssuance = 0x18160ddd,
+	QueryBalance = 0x70a08231,
+	Transfer = 0xbeabacc8,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
@@ -67,7 +67,7 @@ where
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		//TODO: evaluate cost
 
-		log::debug!(target: "evm", "input: {:?}", input);
+		log::debug!(target: "evm", "multicurrency: input: {:?}", input);
 
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
@@ -75,42 +75,42 @@ where
 		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
 			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
 
-		log::debug!(target: "evm", "currency id: {:?}", currency_id);
+		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);
 
 		match action {
 			Action::QueryName => {
 				let name =
 					CurrencyIdMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;
-				log::debug!(target: "evm", "name: {:?}", name);
+				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
 				Ok((ExitSucceed::Returned, vec_u8_from_str(&name), 0))
 			}
 			Action::QuerySymbol => {
 				let symbol = CurrencyIdMapping::symbol(currency_id)
 					.ok_or_else(|| ExitError::Other("Get symbol failed".into()))?;
-				log::debug!(target: "evm", "symbol: {:?}", symbol);
+				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
 				Ok((ExitSucceed::Returned, vec_u8_from_str(&symbol), 0))
 			}
 			Action::QueryDecimals => {
 				let decimals = CurrencyIdMapping::decimals(currency_id)
 					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
-				log::debug!(target: "evm", "decimals: {:?}", decimals);
+				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
 				Ok((ExitSucceed::Returned, vec_u8_from_u8(decimals), 0))
 			}
 			Action::QueryTotalIssuance => {
 				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id));
-				log::debug!(target: "evm", "total issuance: {:?}", total_issuance);
+				log::debug!(target: "evm", "multicurrency: total issuance: {:?}", total_issuance);
 
 				Ok((ExitSucceed::Returned, total_issuance, 0))
 			}
 			Action::QueryBalance => {
 				let who = input.account_id_at(1)?;
-				log::debug!(target: "evm", "who: {:?}", who);
+				log::debug!(target: "evm", "multicurrency: who: {:?}", who);
 
 				let balance = vec_u8_from_balance(MultiCurrency::total_balance(currency_id, &who));
-				log::debug!(target: "evm", "balance: {:?}", balance);
+				log::debug!(target: "evm", "multicurrency: balance: {:?}", balance);
 
 				Ok((ExitSucceed::Returned, balance, 0))
 			}
@@ -119,16 +119,16 @@ where
 				let to = input.account_id_at(2)?;
 				let amount = input.balance_at(3)?;
 
-				log::debug!(target: "evm", "from: {:?}", from);
-				log::debug!(target: "evm", "to: {:?}", to);
-				log::debug!(target: "evm", "amount: {:?}", amount);
+				log::debug!(target: "evm", "multicurrency: from: {:?}", from);
+				log::debug!(target: "evm", "multicurrency: to: {:?}", to);
+				log::debug!(target: "evm", "multicurrency: amount: {:?}", amount);
 
 				MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
 					let err_msg: &str = e.into();
 					ExitError::Other(err_msg.into())
 				})?;
 
-				log::debug!(target: "evm", "transfer success!");
+				log::debug!(target: "evm", "multicurrency: transfer success!");
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
@@ -152,4 +152,43 @@ fn vec_u8_from_str(b: &[u8]) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::precompile::mock::get_function_selector;
+
+	#[test]
+	fn function_selector_match() {
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("name()")),
+			Into::<u32>::into(Action::QueryName)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("symbol()")),
+			Into::<u32>::into(Action::QuerySymbol)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("decimals()")),
+			Into::<u32>::into(Action::QueryDecimals)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("totalSupply()")),
+			Into::<u32>::into(Action::QueryTotalIssuance)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("balanceOf(address)")),
+			Into::<u32>::into(Action::QueryBalance)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("transfer(address,address,uint256)")),
+			Into::<u32>::into(Action::Transfer)
+		);
+	}
 }

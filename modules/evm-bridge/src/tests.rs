@@ -23,59 +23,32 @@
 use super::*;
 use frame_support::{assert_err, assert_ok};
 use mock::{
-	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, EvmBridgeModule, ExtBuilder, Runtime,
+	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, get_function_selector, EvmBridgeModule,
+	ExtBuilder, Runtime,
 };
-use sha3::{Digest, Keccak256};
 
 #[test]
 fn method_hash_works() {
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(b"name()");
-	// read hash digest
-	let result = hasher.finalize();
-	assert_eq!(result[..4], METHOD_NAME.to_be_bytes().to_vec());
+	assert_eq!(u32::from_be_bytes(get_function_selector("name()")), METHOD_NAME);
 
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(b"symbol()");
-	// read hash digest
-	let result = hasher.finalize();
-	assert_eq!(result[..4], METHOD_SYMBOL.to_be_bytes().to_vec());
+	assert_eq!(u32::from_be_bytes(get_function_selector("symbol()")), METHOD_SYMBOL);
 
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(b"decimals()");
-	// read hash digest
-	let result = hasher.finalize();
-	assert_eq!(result[..4], METHOD_DECIMALS.to_be_bytes().to_vec());
+	assert_eq!(u32::from_be_bytes(get_function_selector("decimals()")), METHOD_DECIMALS);
 
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(b"totalSupply()");
-	// read hash digest
-	let result = hasher.finalize();
-	assert_eq!(result[..4], METHOD_TOTAL_SUPPLY.to_be_bytes().to_vec());
+	assert_eq!(
+		u32::from_be_bytes(get_function_selector("totalSupply()")),
+		METHOD_TOTAL_SUPPLY
+	);
 
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(b"balanceOf(address)");
-	// read hash digest
-	let result = hasher.finalize();
-	assert_eq!(result[..4], METHOD_BALANCE_OF.to_be_bytes().to_vec());
+	assert_eq!(
+		u32::from_be_bytes(get_function_selector("balanceOf(address)")),
+		METHOD_BALANCE_OF
+	);
 
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(b"transfer(address,uint256)");
-	// read hash digest
-	let result = hasher.finalize();
-	assert_eq!(result[..4], METHOD_TRANSFER.to_be_bytes().to_vec());
+	assert_eq!(
+		u32::from_be_bytes(get_function_selector("transfer(address,uint256)")),
+		METHOD_TRANSFER
+	);
 }
 
 #[test]

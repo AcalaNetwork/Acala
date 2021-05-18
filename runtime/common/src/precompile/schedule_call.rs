@@ -34,9 +34,9 @@ use sp_core::{H160, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use super::input::{Input, InputT, PER_PARAM_BYTES};
+use super::input::{Input, InputT};
 use codec::{Decode, Encode};
-use num_enum::TryFromPrimitive;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use pallet_scheduler::TaskAddress;
 
 parameter_types! {
@@ -84,12 +84,12 @@ pub struct ScheduleCallPrecompile<
 	)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
-#[repr(u8)]
-enum Action {
-	Schedule = 0,
-	Cancel = 1,
-	Reschedule = 2,
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	Schedule = 0x64c91905,
+	Cancel = 0x93e32661,
+	Reschedule = 0x28302f34,
 }
 
 type PalletBalanceOf<T> =
@@ -138,9 +138,7 @@ impl<
 	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
 		log::debug!(target: "evm", "schedule call: input: {:?}", input);
 
-		// Solidity dynamic arrays will add the array size to the front of the array,
-		// pre-compile needs to deal with the `size`.
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(&input[32..]);
+		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
 
@@ -153,8 +151,9 @@ impl<
 				let gas_limit = input.u64_at(4)?;
 				let storage_limit = input.u32_at(5)?;
 				let min_delay = input.u32_at(6)?;
-				let input_len = input.u32_at(7)?;
-				let input_data = input.bytes_at(8 * PER_PARAM_BYTES, input_len as usize)?;
+				// solidity abi enocde bytes will add an length at input[7]
+				let input_len = input.u32_at(8)?;
+				let input_data = input.bytes_at(9, input_len as usize)?;
 
 				log::debug!(
 					target: "evm",
@@ -231,8 +230,9 @@ impl<
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
-				let task_id_len = input.u32_at(2)?;
-				let task_id = input.bytes_at(3 * PER_PARAM_BYTES, task_id_len as usize)?;
+				// solidity abi enocde bytes will add an length at input[2]
+				let task_id_len = input.u32_at(3)?;
+				let task_id = input.bytes_at(4, task_id_len as usize)?;
 
 				log::debug!(
 					target: "evm",
@@ -259,8 +259,9 @@ impl<
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
 				let min_delay = input.u32_at(2)?;
-				let task_id_len = input.u32_at(3)?;
-				let task_id = input.bytes_at(4 * PER_PARAM_BYTES, task_id_len as usize)?;
+				// solidity abi enocde bytes will add an length at input[3]
+				let task_id_len = input.u32_at(4)?;
+				let task_id = input.bytes_at(5, task_id_len as usize)?;
 
 				log::debug!(
 					target: "evm",
@@ -282,5 +283,31 @@ impl<
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::precompile::mock::get_function_selector;
+
+	#[test]
+	fn function_selector_match() {
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector(
+				"scheduleCall(address,address,uint256,uint256,uint256,bytes)"
+			)),
+			Into::<u32>::into(Action::Schedule)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("cancelCall(address,bytes)")),
+			Into::<u32>::into(Action::Cancel)
+		);
+
+		assert_eq!(
+			u32::from_be_bytes(get_function_selector("rescheduleCall(address,uint256,bytes)")),
+			Into::<u32>::into(Action::Reschedule)
+		);
 	}
 }
