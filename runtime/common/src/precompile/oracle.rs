@@ -69,15 +69,29 @@ where
 		match action {
 			Action::GetPrice => {
 				let currency_id = input.currency_id_at(1)?;
-				let price = PriceProvider::get_price(currency_id).unwrap_or_else(Default::default);
-				let decimals = CurrencyIdMapping::decimals(currency_id)
-					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
+				let mut price = PriceProvider::get_price(currency_id).unwrap_or_default();
 
-				// price_precision = 18 + (18 - decimals) = 36 - decimals
-				// right_shift = price_precision - decimals = 36 - decimals - decimals = (18 - decimals) * 2
-				let adjustment_multiplier = 10u128
-					.checked_pow(((18 - decimals) * 2).into())
-					.ok_or_else(|| ExitError::Other("Get adjustment_multiplier failed".into()))?;
+				let maybe_decimals = CurrencyIdMapping::decimals(currency_id);
+				let decimals = match maybe_decimals {
+					Some(decimals) => decimals,
+					None => {
+						// If the option is none, let price = 0 to return 0.
+						// Solidity should handle the situation of price 0.
+						price = Default::default();
+						Default::default()
+					}
+				};
+
+				let maybe_adjustment_multiplier = 10u128.checked_pow((18 - decimals).into());
+				let adjustment_multiplier = match maybe_adjustment_multiplier {
+					Some(adjustment_multiplier) => adjustment_multiplier,
+					None => {
+						// If the option is none, let price = 0 to return 0.
+						// Solidity should handle the situation of price 0.
+						price = Default::default();
+						Default::default()
+					}
+				};
 
 				log::debug!(target: "evm", "oracle currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}", currency_id, price, adjustment_multiplier);
 				Ok((

@@ -312,10 +312,7 @@ fn oracle_precompile_should_work() {
 
 		// returned price + timestamp
 		let mut expected_output = [0u8; 32];
-
-		let decimals = RENBTC.decimals().unwrap();
-		let adjustment_multiplier = 10u128.checked_pow((18 - decimals).into()).unwrap();
-		U256::from(price.into_inner().wrapping_div(adjustment_multiplier)).to_big_endian(&mut expected_output[..]);
+		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..]);
 
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
