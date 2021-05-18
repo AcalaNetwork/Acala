@@ -58,11 +58,11 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 	match reason {
 		ExitReason::Succeed(_) => Ok(()),
 		ExitReason::Error(e) => {
-			if *e == ExitError::OutOfGas || *e == ExitError::OutOfFund {
+			if *e == ExitError::OutOfGas {
 				// `ServerError(0)` will be useful in estimate gas
 				return Err(Error {
 					code: ErrorCode::ServerError(0),
-					message: "out of gas or fund".to_string(),
+					message: "out of gas".to_string(),
 					data: None,
 				});
 			}
@@ -344,17 +344,17 @@ where
 							lower, upper, mid
 						);
 
-						// if Err == OutofGas or OutofFund, we need more gas
+						// if Err == OutofGas, we need more gas
 						if err.code == ErrorCode::ServerError(0) {
 							lower = mid;
 							mid = (lower + upper + 1) / 2;
 							if mid == lower {
 								break;
 							}
+						} else {
+							// Other errors, return directly
+							return Err(err);
 						}
-
-						// Other errors, return directly
-						return Err(err);
 					}
 				}
 			}
