@@ -1,5 +1,5 @@
 relaychain:
-  image: polkadot:patch
+  image: parity/polkadot:v0.9.1
   chain: rococo-local
   runtime_genesis_config:
     parachainsConfiguration:
@@ -20,7 +20,14 @@ relaychain:
 
 paras:
 - image: acala/karura-node:latest
-  chain: karura-dev
+  chain:
+    base: karura-latest
+    collators:
+      - alice
+      - bob
+      - charlie
+    sudo:
+      - alice
   id: 2000
   parachain: true
   flags:
