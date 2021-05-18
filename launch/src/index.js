@@ -142,7 +142,7 @@ const generate = async (config, { output, yes }) => {
   }
 
   // genesis parachains
-  for (const parachain of config.parachains) {
+  for (const parachain of config.paras) {
     const { wasm, state } = exportParachainGenesis(parachain);
     if (!parachain.id) {
       return fatal('Missing parachains[].id');
@@ -152,13 +152,21 @@ const generate = async (config, { output, yes }) => {
       {
         genesis_head: state,
         validation_code: wasm,
-        parachain: true,
+        parachain: parachain.parachain,
       },
     ];
     spec.genesis.runtime.runtime_genesis_config.parachainsParas.paras.push(para);
   }
 
-  fs.writeFileSync(relaychainGenesisFilePath, JSON.stringify(spec, null, 2));
+
+  let tmpfile = `${shell.tempdir()}/${config.relaychain.chain}.json`
+  fs.writeFileSync(tmpfile, JSON.stringify(spec, null, 2));
+
+  exec(
+    `docker run --rm -v "${tmpfile}":/${config.relaychain.chain}.json ${config.relaychain.image} build-spec --raw --chain=/${config.relaychain.chain}.json --disable-default-bootnode > ${relaychainGenesisFilePath}`
+  );
+
+  shell.rm(tmpfile);
 
   console.log('Relaychain genesis generated at', relaychainGenesisFilePath);
 
@@ -167,6 +175,13 @@ const generate = async (config, { output, yes }) => {
     services: {},
     volumes: {},
   };
+
+  const ulimits = {
+    nofile: {
+      soft: 65536,
+      hard: 65536
+    }
+  }
 
   let idx = 0;
   for (const node of config.relaychain.nodes) {
@@ -190,7 +205,8 @@ const generate = async (config, { output, yes }) => {
         ...(config.relaychain.flags || []),
         ...(node.flags || []),
       ],
-      environment: _.assign({}, config.relaychain.env, node.env)
+      environment: _.assign({}, config.relaychain.env, node.env),
+      ulimits,
     };
     dockerCompose.services[name] = nodeConfig;
     dockerCompose.volumes[name] = null;
@@ -198,7 +214,7 @@ const generate = async (config, { output, yes }) => {
     ++idx;
   }
 
-  for (const para of config.parachains) {
+  for (const para of config.paras) {
     let nodeIdx = 0;
     for (const paraNode of para.nodes) {
       const name = `parachain-${para.id || para.chain}-${nodeIdx}`;
@@ -226,7 +242,8 @@ const generate = async (config, { output, yes }) => {
           ...(para.relaychainFlags || []),
           ...(paraNode.relaychainFlags || []),
         ],
-        environment: _.assign({}, para.env, paraNode.env)
+        environment: _.assign({}, para.env, paraNode.env),
+        ulimits,
       };
 
       dockerCompose.services[name] = nodeConfig;

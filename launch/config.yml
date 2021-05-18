@@ -1,5 +1,5 @@
 relaychain:
-  image: parity/polkadot:v0.9.1
+  image: polkadot:patch
   chain: rococo-local
   runtime_genesis_config:
     parachainsConfiguration:
@@ -7,25 +7,34 @@ relaychain:
         validation_upgrade_frequency: 1
         validation_upgrade_delay: 1
   env:
-    RUST_LOG: candidate_backing=trace
+    RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
   flags:
     - --rpc-methods=unsafe
+    - --wasm-execution=compiled
+    - --execution=wasm
   nodes:
   - name: alice
   - name: bob
-  - name: charlie
-  - name: dave
+  # - name: charlie
+  # - name: dave
 
-parachains:
-- image: acala/karura-node:7ebe9b1c
+paras:
+- image: acala/karura-node:latest
   chain: karura-dev
   id: 2000
+  parachain: true
   flags:
     - --rpc-methods=unsafe
     - --force-authoring
+    - --wasm-execution=compiled
+    - --execution=wasm
+  relaychainFlags:
+    - --wasm-execution=compiled
+    - --execution=wasm
   env:
-    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace
+    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   nodes:
+  - wsPort: 19944
   - flags:
     - --alice
   - flags:

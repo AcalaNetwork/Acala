@@ -1,10 +1,34 @@
-# Based from https://github.com/paritytech/substrate/blob/master/.maintain/Dockerfile
+FROM rust as planner
+WORKDIR app
+# We only pay the installation cost once,
+# it will be cached from the second build onwards
+RUN rustup default nightly-2021-03-04
+RUN cargo install cargo-chef
+COPY . .
+RUN cargo chef prepare  --recipe-path recipe.json
 
-FROM phusion/baseimage:bionic-1.0.0 as builder
-LABEL maintainer="hello@acala.network"
-LABEL description="This is the build stage for Acala Node. Here we create the binary."
+# =============
 
-ENV DEBIAN_FRONTEND=noninteractive
+FROM rust as cacher
+WORKDIR app
+RUN rustup default nightly-2021-03-04 && \
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-04
+RUN cargo install cargo-chef
+RUN apt-get update && \
+	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
+	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
+COPY . .
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --recipe-path recipe.json "--$PROFILE" $BUILD_ARGS
+
+# =============
+
+FROM rust as builder
+WORKDIR app
+RUN rustup default nightly-2021-03-04 && \
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-04
+
+# ENV DEBIAN_FRONTEND=noninteractive
 
 ARG PROFILE=release
 ARG GIT_COMMIT=
@@ -18,21 +42,17 @@ RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
 	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
-	export PATH="$PATH:$HOME/.cargo/bin" && \
-	rustup default nightly-2021-03-04 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-04
+COPY . .
 
-WORKDIR /acala
-COPY . /acala
-RUN export PATH="$PATH:$HOME/.cargo/bin" && \
-        cargo build "--$PROFILE" $BUILD_ARGS
+COPY --from=cacher /app/target target
+COPY --from=cacher $CARGO_HOME $CARGO_HOME
 
-# ===== SECOND STAGE ======
+RUN cargo build "--$PROFILE" $BUILD_ARGS
+
+# =============
 
 FROM phusion/baseimage:bionic-1.0.0
 LABEL maintainer="hello@acala.network"
-LABEL description="This is the 2nd stage: a very small image where we copy the Acala Node binary."
 ARG PROFILE=release
 
 # RUN mv /usr/share/ca* /tmp && \
@@ -42,7 +62,7 @@ ARG PROFILE=release
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
-COPY --from=builder /acala/target/$PROFILE/acala /usr/local/bin
+COPY --from=builder /app/target/$PROFILE/acala /usr/local/bin
 
 # checks
 RUN ldd /usr/local/bin/acala && \
