@@ -32,7 +32,7 @@ use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
-	DispatchResult, RuntimeDebug,
+	ArithmeticError, DispatchResult, RuntimeDebug,
 };
 use sp_std::{convert::TryInto, result};
 use support::{CDPTreasury, RiskManager};

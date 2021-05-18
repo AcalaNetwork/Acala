@@ -26,7 +26,7 @@ use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use orml_nft::TokenInfo;
 use primitives::Balance;
-use sp_runtime::traits::BlakeTwo256;
+use sp_runtime::{traits::BlakeTwo256, ArithmeticError};
 
 fn free_balance(who: &AccountId) -> Balance {
 	<Runtime as pallet_proxy::Config>::Currency::free_balance(who)

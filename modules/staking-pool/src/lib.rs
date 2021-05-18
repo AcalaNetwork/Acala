@@ -27,7 +27,7 @@ use primitives::{Balance, CurrencyId, EraIndex};
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, Saturating, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 use support::{
