@@ -35,6 +35,8 @@ pub mod karura;
 #[cfg(feature = "with-mandala-runtime")]
 pub mod mandala;
 
+mod tests;
+
 // The URL for the telemetry server.
 pub const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
