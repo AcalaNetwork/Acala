@@ -275,6 +275,7 @@ const generate = async (config, { output, yes }) => {
       command: [
         '--base-path=/data',
         `--chain=/app/${config.relaychain.chain}.json`,
+        '--validator',
         '--ws-external',
         '--rpc-external',
         '--rpc-cors=all',
