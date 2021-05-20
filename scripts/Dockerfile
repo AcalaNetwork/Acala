@@ -36,6 +36,11 @@ RUN rustup default nightly-2021-03-15 && \
 
 ARG GIT_COMMIT=
 ENV GIT_COMMIT=$GIT_COMMIT
+ARG PROFILE=release
+ARG CARGO_BUILD_ARGS=
+ENV CARGO_BUILD_ARGS=$CARGO_BUILD_ARGS
+ARG BUILD_ARGS
+ENV BUILD_ARGS=$BUILD_ARGS
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
