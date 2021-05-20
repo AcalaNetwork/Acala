@@ -42,7 +42,7 @@ paras:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   nodes:
   - wsPort: 19944
-  - flags:
+    flags:
     - --alice
   - flags:
     - --bob
