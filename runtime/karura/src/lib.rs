@@ -785,6 +785,7 @@ impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
 
 parameter_types! {
 	pub MinVestedTransfer: Balance = 100 * dollar(KAR);
+	pub const MaxVestingSchedules: u32 = 100;
 }
 
 impl orml_vesting::Config for Runtime {
@@ -793,6 +794,7 @@ impl orml_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureRootOrTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
+	type MaxVestingSchedules = MaxVestingSchedules;
 }
 
 parameter_types! {
