@@ -9,7 +9,6 @@ RUN cargo chef prepare  --recipe-path recipe.json
 
 # =============
 
-ARG PROFILE=release
 ARG CARGO_BUILD_ARGS=
 ENV CARGO_BUILD_ARGS=$CARGO_BUILD_ARGS
 ARG BUILD_ARGS
@@ -25,7 +24,7 @@ RUN apt-get update && \
 	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
 COPY . .
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --recipe-path recipe.json "--$PROFILE" $BUILD_ARGS
+RUN cargo chef cook --recipe-path recipe.json --release $BUILD_ARGS
 
 # =============
 
@@ -36,7 +35,6 @@ RUN rustup default nightly-2021-03-15 && \
 
 ARG GIT_COMMIT=
 ENV GIT_COMMIT=$GIT_COMMIT
-ARG PROFILE=release
 ARG CARGO_BUILD_ARGS=
 ENV CARGO_BUILD_ARGS=$CARGO_BUILD_ARGS
 ARG BUILD_ARGS
@@ -51,13 +49,12 @@ COPY . .
 COPY --from=cacher /app/target target
 COPY --from=cacher $CARGO_HOME $CARGO_HOME
 
-RUN cargo build "--$PROFILE" $BUILD_ARGS
+RUN cargo build --release $BUILD_ARGS
 
 # =============
 
 FROM phusion/baseimage:bionic-1.0.0
 LABEL maintainer="hello@acala.network"
-ARG PROFILE=release
 
 # RUN mv /usr/share/ca* /tmp && \
 # 	rm -rf /usr/share/*  && \
@@ -66,7 +63,7 @@ ARG PROFILE=release
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
-COPY --from=builder /app/target/$PROFILE/acala /usr/local/bin
+COPY --from=builder /app/target/release/acala /usr/local/bin
 
 # checks
 RUN ldd /usr/local/bin/acala && \
