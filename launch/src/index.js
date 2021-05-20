@@ -95,8 +95,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath) => {
 
   // add authorities from config
   const keyring = new Keyring();
-  for (const node of config.relaychain.nodes) {
-    const { name } = node;
+  for (const name of config.relaychain.validators) {
     const srAcc = keyring.createFromUri(`//${_.startCase(name)}`, null, 'sr25519');
     const srStash = keyring.createFromUri(`//${_.startCase(name)}//stash`, null, 'sr25519');
 
