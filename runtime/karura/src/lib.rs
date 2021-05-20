@@ -703,6 +703,7 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub const MaxTokenLocks: u32 = 1000;
 }
 
 impl orml_tokens::Config for Runtime {
@@ -713,6 +714,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, KaruraTreasuryAccount>;
+	type MaxLocks = MaxTokenLocks;
 }
 
 parameter_types! {
@@ -784,6 +786,7 @@ impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
 
 parameter_types! {
 	pub MinVestedTransfer: Balance = 100 * dollar(KAR);
+	pub const MaxVestingSchedules: u32 = 1000;
 }
 
 impl orml_vesting::Config for Runtime {
@@ -792,6 +795,7 @@ impl orml_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureRootOrTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
+	type MaxVestingSchedules = MaxVestingSchedules;
 }
 
 parameter_types! {
@@ -1060,11 +1064,18 @@ impl module_nft::Config for Runtime {
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub const MaxClassMetadata: u32 = 1000;
+	pub const MaxTokenMetadata: u32 = 1000;
+}
+
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
+	type MaxClassMetadata = MaxClassMetadata;
+	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
 parameter_types! {

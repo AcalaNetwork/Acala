@@ -148,6 +148,9 @@ parameter_type_with_key! {
 		Default::default()
 	};
 }
+parameter_types! {
+	pub const MaxLocks: u32 = 1000;
+}
 
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
@@ -157,6 +160,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type MaxLocks = MaxLocks;
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -188,11 +192,17 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxMetadata: u32 = 1000;
+}
+
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = ClassData<Balance>;
 	type TokenData = TokenData<Balance>;
+	type MaxClassMetadata = MaxMetadata;
+	type MaxTokenMetadata = MaxMetadata;
 }
 
 use frame_system::Call as SystemCall;

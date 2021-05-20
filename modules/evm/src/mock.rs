@@ -96,6 +96,10 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_types! {
+	pub const MaxLocks: u32 = 1000;
+}
+
 impl orml_tokens::Config for Test {
 	type Event = Event;
 	type Balance = u64;
@@ -104,6 +108,7 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type MaxLocks = MaxLocks;
 }
 
 parameter_types! {

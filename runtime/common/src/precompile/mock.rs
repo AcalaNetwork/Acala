@@ -111,6 +111,10 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_types! {
+	pub const MaxLocks: u32 = 1000;
+}
+
 impl orml_tokens::Config for Test {
 	type Event = Event;
 	type Balance = Balance;
@@ -119,6 +123,7 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type MaxLocks = MaxLocks;
 }
 
 parameter_types! {
@@ -179,11 +184,18 @@ impl module_nft::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxClassMetadata: u32 = 1000;
+	pub const MaxTokenMetadata: u32 = 1000;
+}
+
 impl orml_nft::Config for Test {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
+	type MaxClassMetadata = MaxClassMetadata;
+	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
 parameter_types! {

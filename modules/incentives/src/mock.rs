@@ -92,6 +92,10 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_types! {
+	pub const MaxLocks: u32 = 1000;
+}
+
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -100,6 +104,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type MaxLocks = MaxLocks;
 }
 
 pub struct MockCDPTreasury;

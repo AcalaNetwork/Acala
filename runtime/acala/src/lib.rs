@@ -740,6 +740,7 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub AcalaTreasuryAccount: AccountId = AcalaTreasuryPalletId::get().into_account();
+	pub const MaxTokenLocks: u32 = 1000;
 }
 
 impl orml_tokens::Config for Runtime {
@@ -750,6 +751,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, AcalaTreasuryAccount>;
+	type MaxLocks = MaxTokenLocks;
 }
 
 parameter_types! {
@@ -819,6 +821,7 @@ impl EnsureOrigin<Origin> for EnsureRootOrAcalaTreasury {
 
 parameter_types! {
 	pub MinVestedTransfer: Balance = 100 * dollar(ACA);
+	pub const MaxVestingSchedules: u32 = 1000;
 }
 
 impl orml_vesting::Config for Runtime {
@@ -827,6 +830,7 @@ impl orml_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureRootOrAcalaTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
+	type MaxVestingSchedules = MaxVestingSchedules;
 }
 
 parameter_types! {
@@ -848,6 +852,9 @@ impl pallet_scheduler::Config for Runtime {
 
 parameter_types! {
 	pub const UpdateFrequency: BlockNumber = 10;
+	pub const MaxGraduallyUpdate: u32 = 1000;
+	pub const MaxStorageKeyBytes: u32 = 1000;
+	pub const MaxStorageValueBytes: u32 = 1000;
 }
 
 impl orml_gradually_update::Config for Runtime {
@@ -855,6 +862,9 @@ impl orml_gradually_update::Config for Runtime {
 	type UpdateFrequency = UpdateFrequency;
 	type DispatchOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
+	type MaxGraduallyUpdate = MaxGraduallyUpdate;
+	type MaxStorageKeyBytes = MaxStorageKeyBytes;
+	type MaxStorageValueBytes = MaxStorageValueBytes;
 }
 
 parameter_types! {
@@ -1191,11 +1201,18 @@ impl module_nft::Config for Runtime {
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub const MaxClassMetadata: u32 = 1000;
+	pub const MaxTokenMetadata: u32 = 1000;
+}
+
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
+	type MaxClassMetadata = MaxClassMetadata;
+	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
 parameter_types! {
