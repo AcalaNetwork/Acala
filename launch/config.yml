@@ -10,6 +10,8 @@ relaychain:
     - alice
     - bob
     - charlie
+  env:
+    RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
   flags:
     - --rpc-methods=unsafe
     - --wasm-execution=compiled
@@ -36,6 +38,8 @@ paras:
   relaychainFlags:
     - --wasm-execution=compiled
     - --execution=wasm
+  env:
+    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   nodes:
   - wsPort: 19944
     flags:
