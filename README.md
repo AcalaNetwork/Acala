@@ -158,3 +158,33 @@ Comment on a PR `/bench runtime <runtime> <module_name>` i.e.: `/bench runtime m
 To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *`
 
 Bench bot will do the benchmarking, generate weights file push changes into your branch.
+
+# 7. Migration testing runtime
+If we modify the storage, we should test the data migration before upgrade the runtime.
+
+## Run local node(Optional. If the mainnet launch, can skip the step)
+
+```bash
+cd launch
+# install dependencies
+yarn
+# generate docker-compose.yml and genesis
+yarn run start generate
+
+cd output
+# start relaychain and parachain
+docker-compose up
+```
+
+## Try testing runtime
+
+```bash
+# Use a state snapshot as state to run the migration.
+# TODO: test the command.
+# Stop node and export the state:
+# acala export-state --chain karura-dev > snapshot.bin
+# cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime snap snapshot.bin
+
+# Use a live chain to run the migration.
+cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime live "http://localhost:9936" [--modules EVM]
+```
