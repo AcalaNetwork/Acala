@@ -61,7 +61,7 @@ const exportParachainGenesis = (paraConfig) => {
 
   const args = [];
   if (paraConfig.chain) {
-    args.push(`--chain=${paraConfig.chain.base || paraConfig.chain}`);
+    args.push(`--chain=/app/${paraConfig.chain.base || paraConfig.chain}-${paraConfig.id}.json`);
   }
 
   const res2 = exec(`docker run --rm ${paraConfig.image} export-genesis-wasm ${args.join(' ')}`);
@@ -169,7 +169,7 @@ const getAddress = (val) => {
 
 const generateParachainGenesisFile = (id, image, chain, output, yes) => {
   if (typeof chain === 'string') {
-    return chain
+    chain = { base: chain }
   }
 
   if (!image) {
@@ -182,7 +182,7 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
     return fatal('Missing paras[].chain.base');
   }
 
-  const specname = `${chain.base}.json`;
+  const specname = `${chain.base}-${id}.json`;
   const filepath = path.join(output, specname)
 
   checkOverrideFile(filepath, yes);
@@ -226,8 +226,6 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
   }
 
   fs.writeFileSync(filepath, JSON.stringify(spec, null, 2));
-
-  return `/app/${specname}`
 }
 
 const generate = async (config, { output, yes }) => {
@@ -235,6 +233,10 @@ const generate = async (config, { output, yes }) => {
 
   if (!config.relaychain.chain) {
     return fatal('Missing relaychain.chain');
+  }
+
+  for (const para of config.paras) {
+    generateParachainGenesisFile(para.id, para.image, para.chain, output, yes);
   }
 
   const relaychainGenesisFilePath = path.join(output, `${config.relaychain.chain}.json`);
@@ -293,9 +295,6 @@ const generate = async (config, { output, yes }) => {
   }
 
   for (const para of config.paras) {
-
-    const chain = generateParachainGenesisFile(para.id, para.image, para.chain, output, yes);
-
     let nodeIdx = 0;
     for (const paraNode of para.nodes) {
       const name = `parachain-${para.id}-${nodeIdx}`;
@@ -309,7 +308,7 @@ const generate = async (config, { output, yes }) => {
         image: para.image,
         command: [
           '--base-path=/acala/data',
-          `--chain=${chain}`,
+          `--chain=/app/${para.chain.base || para.chain}-${para.id}.json`,
           '--ws-external',
           '--rpc-external',
           '--rpc-cors=all',
