@@ -43,16 +43,7 @@ paras:
   - wsPort: 19944
     flags:
     - --alice
-    relaychainFlags:
-    - --alice
-    - --validator
   - flags:
     - --bob
-    relaychainFlags:
-    - --bob
-    - --validator
   - flags:
     - --charlie
-    relaychainFlags:
-    - --charlie
-    - --validator
