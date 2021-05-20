@@ -6,10 +6,6 @@ relaychain:
       config:
         validation_upgrade_frequency: 1
         validation_upgrade_delay: 1
-  validators:
-    - alice
-    - bob
-    - charlie
   env:
     RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
   flags:
@@ -17,6 +13,9 @@ relaychain:
     - --wasm-execution=compiled
     - --execution=wasm
   nodes:
+    - name: alice
+    - name: bob
+    - name: charlie
 
 paras:
 - image: acala/karura-node:latest

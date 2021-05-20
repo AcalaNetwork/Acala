@@ -95,7 +95,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath) => {
 
   // add authorities from config
   const keyring = new Keyring();
-  for (const name of config.relaychain.validators) {
+  for (const { name } of config.relaychain.nodes) {
     const srAcc = keyring.createFromUri(`//${_.startCase(name)}`, null, 'sr25519');
     const srStash = keyring.createFromUri(`//${_.startCase(name)}//stash`, null, 'sr25519');
 
@@ -182,7 +182,7 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
     return fatal('Missing paras[].chain.base');
   }
 
-  const specname = `${id}-${chain.base}.json`;
+  const specname = `${chain.base}.json`;
   const filepath = path.join(output, specname)
 
   checkOverrideFile(filepath, yes);
