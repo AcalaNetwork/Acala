@@ -84,11 +84,7 @@ fn adjust_position_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 300);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
-
-		let update_position_event = Event::loans(crate::Event::PositionUpdated(ALICE, BTC, 500, 300));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == update_position_event));
+		System::assert_last_event(Event::loans(crate::Event::PositionUpdated(ALICE, BTC, 500, 300)));
 	});
 }
 
@@ -150,11 +146,7 @@ fn transfer_loan_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &BOB).debit, 1100);
 		assert_eq!(LoansModule::positions(BTC, &BOB).collateral, 500);
-
-		let transfer_loan_event = Event::loans(crate::Event::TransferLoan(ALICE, BOB, BTC));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == transfer_loan_event));
+		System::assert_last_event(Event::loans(crate::Event::TransferLoan(ALICE, BOB, BTC)));
 	});
 }
 
@@ -182,8 +174,8 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 200);
-
-		let confiscate_event = Event::loans(crate::Event::ConfiscateCollateralAndDebit(ALICE, BTC, 300, 200));
-		assert!(System::events().iter().any(|record| record.event == confiscate_event));
+		System::assert_last_event(Event::loans(crate::Event::ConfiscateCollateralAndDebit(
+			ALICE, BTC, 300, 200,
+		)));
 	});
 }

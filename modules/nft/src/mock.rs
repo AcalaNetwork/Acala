@@ -256,10 +256,3 @@ impl ExtBuilder {
 		ext
 	}
 }
-
-pub fn last_event() -> Event {
-	frame_system::Pallet::<Runtime>::events()
-		.pop()
-		.expect("Event expected")
-		.event
-}

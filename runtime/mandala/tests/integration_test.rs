@@ -91,10 +91,6 @@ fn run_to_block(n: u32) {
 	}
 }
 
-fn last_event() -> Event {
-	SystemModule::events().pop().expect("Event expected").event
-}
-
 pub fn erc20_address_0() -> EvmAddress {
 	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
 }
@@ -959,15 +955,13 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-
-			let event = Event::orml_authority(orml_authority::Event::Scheduled(
+			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
 				1,
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			run_to_block(2);
 			assert_eq!(
@@ -980,12 +974,11 @@ fn test_authority_module() {
 			);
 
 			// delay < SevenDays
-			let event = Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+			System::assert_last_event(Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
 				(2, 1),
 				Some([AUTHORITY_ORIGIN_ID, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
 				Err(DispatchError::BadOrigin),
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			// delay = SevenDays
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -997,12 +990,11 @@ fn test_authority_module() {
 			));
 
 			run_to_block(SevenDays::get() + 2);
-			let event = Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+			System::assert_last_event(Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
 				(100802, 0),
 				Some([AUTHORITY_ORIGIN_ID, 192, 137, 1, 0, 0, 0, 2, 0, 0, 0].to_vec()),
 				Ok(()),
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			// with_delayed_origin = false
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -1012,19 +1004,17 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::Event::Scheduled(
+			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				3,
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			run_to_block(SevenDays::get() + 3);
-			let event = Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+			System::assert_last_event(Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
 				(100803, 0),
 				Some([0, 0, 3, 0, 0, 0].to_vec()),
 				Ok(()),
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			assert_ok!(AuthorityModule::schedule_dispatch(
 				Origin::root(),
@@ -1058,14 +1048,13 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::Event::Scheduled(
+			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
 				5,
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			let schedule_origin = {
 				let origin: <Runtime as orml_authority::Config>::Origin = From::from(Origin::root());
@@ -1085,14 +1074,13 @@ fn test_authority_module() {
 				pallets_origin,
 				5
 			));
-			let event = Event::orml_authority(orml_authority::Event::Cancelled(
+			System::assert_last_event(Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::orml_authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
 				5,
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			assert_ok!(AuthorityModule::schedule_dispatch(
 				Origin::root(),
@@ -1101,22 +1089,20 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			let event = Event::orml_authority(orml_authority::Event::Scheduled(
+			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
 				6
 			));
-			let event = Event::orml_authority(orml_authority::Event::Cancelled(
+			System::assert_last_event(Event::orml_authority(orml_authority::Event::Cancelled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
-			));
-			assert_eq!(last_event(), event);
+			)));
 		});
 }
 
@@ -1178,11 +1164,10 @@ fn test_evm_accounts_module() {
 				EvmAccounts::eth_address(&alice_key()),
 				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			let event = Event::module_evm_accounts(module_evm_accounts::Event::ClaimAccount(
+			System::assert_last_event(Event::module_evm_accounts(module_evm_accounts::Event::ClaimAccount(
 				AccountId::from(ALICE),
 				EvmAccounts::eth_address(&alice_key()),
-			));
-			assert_eq!(last_event(), event);
+			)));
 
 			// claim another eth address
 			assert_noop!(
@@ -1221,12 +1206,13 @@ fn test_evm_module() {
 			let bob_address = EvmAccounts::eth_address(&bob_key());
 
 			let contract = deploy_contract(alice()).unwrap();
-			let event = Event::module_evm(module_evm::Event::Created(contract));
-			assert_eq!(last_event(), event);
+			System::assert_last_event(Event::module_evm(module_evm::Event::Created(contract)));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
-			let event = Event::module_evm(module_evm::Event::TransferredMaintainer(contract, bob_address));
-			assert_eq!(last_event(), event);
+			System::assert_last_event(Event::module_evm(module_evm::Event::TransferredMaintainer(
+				contract,
+				bob_address,
+			)));
 
 			// test EvmAccounts Lookup
 			assert_eq!(Balances::free_balance(alice()), 999_999_896_330_000);

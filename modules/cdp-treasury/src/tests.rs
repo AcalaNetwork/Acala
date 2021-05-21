@@ -393,12 +393,9 @@ fn set_expected_collateral_auction_size_work() {
 			BTC,
 			200
 		));
-
-		let update_expected_collateral_auction_size_event =
-			Event::cdp_treasury(crate::Event::ExpectedCollateralAuctionSizeUpdated(BTC, 200));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == update_expected_collateral_auction_size_event));
+		System::assert_last_event(Event::cdp_treasury(crate::Event::ExpectedCollateralAuctionSizeUpdated(
+			BTC, 200,
+		)));
 	});
 }
 

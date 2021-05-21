@@ -33,11 +33,10 @@ fn claim_account_work() {
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE.encode(), &[][..])
 		));
-		let event = Event::evm_accounts(crate::Event::ClaimAccount(
+		System::assert_last_event(Event::evm_accounts(crate::Event::ClaimAccount(
 			ALICE,
 			EvmAccountsModule::eth_address(&alice()),
-		));
-		assert!(System::events().iter().any(|record| record.event == event));
+		)));
 		assert!(
 			Accounts::<Runtime>::contains_key(EvmAccountsModule::eth_address(&alice()))
 				&& EvmAddresses::<Runtime>::contains_key(ALICE)
