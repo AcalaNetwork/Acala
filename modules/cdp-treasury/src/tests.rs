@@ -55,7 +55,7 @@ fn on_system_debit_work() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 1000);
 		assert_noop!(
 			CDPTreasuryModule::on_system_debit(Balance::max_value()),
-			Error::<Runtime>::DebitPoolOverflow,
+			ArithmeticError::Overflow,
 		);
 	});
 }
