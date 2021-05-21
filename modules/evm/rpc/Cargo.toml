@@ -8,15 +8,15 @@ edition = "2018"
 jsonrpc-core = "15.0.0"
 jsonrpc-derive = "15.0.0"
 ethereum-types = "0.11.0"
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-storage = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+sp-storage = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.2" }
 rustc-hex = "2.1.0"
 serde = { version = "1.0.124", features = ["derive"] }
 module-evm-rpc-runtime-api = { path = "runtime_api" }
