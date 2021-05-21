@@ -223,7 +223,7 @@ fn rebalance_work() {
 		));
 		assert_eq!(NomineesElectionModule::nominees(), vec![]);
 		assert_eq!(NomineesElectionModule::nominees().len(), 0);
-		NomineesElectionModule::rebalance();
+		NomineesElectionModule::rebalance().unwrap();
 		assert_eq!(NomineesElectionModule::nominees().len(), 5);
 		assert_eq!(NomineesElectionModule::nominees().contains(&1), true);
 		assert_ok!(NomineesElectionModule::bond(Origin::signed(BOB), 600));
@@ -231,7 +231,7 @@ fn rebalance_work() {
 			Origin::signed(ALICE),
 			vec![2, 3, 4, 5, 6]
 		));
-		NomineesElectionModule::rebalance();
+		NomineesElectionModule::rebalance().unwrap();
 		assert_eq!(NomineesElectionModule::nominees().len(), 5);
 		assert_eq!(NomineesElectionModule::nominees().contains(&1), false);
 	});

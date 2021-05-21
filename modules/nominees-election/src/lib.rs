@@ -132,6 +132,7 @@ pub mod module {
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
 		type RelaychainValidatorFilter: Contains<Self::NomineeId>;
+		type MaxNominees: Get<u32>;
 	}
 
 	#[pallet::error]
@@ -142,7 +143,7 @@ pub mod module {
 		NoBonded,
 		NoUnlockChunk,
 		InvalidRelaychainValidator,
-		MaxNominationsExceeded,
+		MaxNomineesExceeded,
 	}
 
 	#[pallet::event]
@@ -186,7 +187,8 @@ pub mod module {
 	/// Nominees: Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominees)]
-	pub type Nominees<T: Config<I>, I: 'static = ()> = StorageValue<_, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
+	pub type Nominees<T: Config<I>, I: 'static = ()> =
+		StorageValue<_, BoundedVec<<T as Config<I>>::NomineeId, T::MaxNominees>, ValueQuery>;
 
 	/// Current era index.
 	///
@@ -396,30 +398,40 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 	}
 
-	fn rebalance() {
+	fn rebalance() -> Result<(), Error<T, I>> {
 		let mut voters = Votes::<T, I>::iter().collect::<Vec<(T::NomineeId, Balance)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 
-		let new_nominees = voters
+		let new_nominees: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::MaxNominees> = voters
 			.into_iter()
 			.take(T::NominateesCount::get().saturated_into())
 			.map(|(nominee, _)| nominee)
-			.collect::<Vec<_>>();
+			.collect::<Vec<_>>()
+			.try_into()
+			.map_err(|_| Error::<T, I>::MaxNomineesExceeded)?;
 
 		Nominees::<T, I>::put(new_nominees);
+
+		Ok(())
 	}
 }
 
 impl<T: Config<I>, I: 'static> NomineesProvider<T::NomineeId> for Pallet<T, I> {
 	fn nominees() -> Vec<T::NomineeId> {
-		Nominees::<T, I>::get()
+		Nominees::<T, I>::get().into_inner()
 	}
 }
 
 impl<T: Config<I>, I: 'static> OnNewEra<EraIndex> for Pallet<T, I> {
 	fn on_new_era(era: EraIndex) {
 		CurrentEra::<T, I>::put(era);
-		Self::rebalance();
+		Self::rebalance().map_or_else(
+			|_| {
+				debug_assert!(false);
+				()
+			},
+			|_| (),
+		);
 	}
 }
