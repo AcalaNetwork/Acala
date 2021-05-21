@@ -77,19 +77,15 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	pub use crate::weights::WeightInfo;
-	use core::ops::Div;
 	use frame_support::{
 		dispatch::DispatchResultWithPostInfo,
 		inherent::Vec,
 		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, ReservableCurrency},
+		traits::{Currency, EnsureOrigin, ReservableCurrency},
 		PalletId,
 	};
 	use frame_support::{
-		sp_runtime::{
-			traits::{AccountIdConversion, CheckedSub, Zero},
-			RuntimeDebug,
-		},
+		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
