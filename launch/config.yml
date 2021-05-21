@@ -1,5 +1,5 @@
 relaychain:
-  image: polkadot:patch
+  image: acala/polkadot:latest
   chain: rococo-local
   runtime_genesis_config:
     parachainsConfiguration:
@@ -13,14 +13,20 @@ relaychain:
     - --wasm-execution=compiled
     - --execution=wasm
   nodes:
-  - name: alice
-  - name: bob
-  # - name: charlie
-  # - name: dave
+    - name: alice
+    - name: bob
+    - name: charlie
 
 paras:
 - image: acala/karura-node:latest
-  chain: karura-dev
+  chain:
+    base: karura-latest
+    collators:
+      - alice
+      - bob
+      - charlie
+    sudo:
+      - alice
   id: 2000
   parachain: true
   flags:
@@ -35,7 +41,7 @@ paras:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   nodes:
   - wsPort: 19944
-  - flags:
+    flags:
     - --alice
   - flags:
     - --bob
