@@ -87,7 +87,7 @@ where
 	io.extend_with(SystemApi::to_delegate(FullSystem::new(
 		client.clone(),
 		pool,
-		deny_unsafe,
+		deny_unsafe.clone(),
 	)));
 	io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
 		client.clone(),
@@ -97,7 +97,7 @@ where
 	// These RPCs should use an asynchronous caller instead.
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 	io.extend_with(StakingPoolApi::to_delegate(StakingPool::new(client.clone())));
-	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client)));
+	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client, deny_unsafe)));
 
 	io
 }

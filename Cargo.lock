@@ -2230,6 +2230,7 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "pallet-transaction-payment-rpc-runtime-api",
  "rustc-hex",
+ "sc-rpc-api",
  "serde",
  "serde_json",
  "sp-api",
