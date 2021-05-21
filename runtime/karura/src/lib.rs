@@ -227,12 +227,10 @@ parameter_types! {
 }
 
 impl pallet_authorship::Config for Runtime {
-	// TODO https://github.com/paritytech/statemint/issues/23
-	// Add FindAccountFromAuthorIndex when Aura is integrated
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = ();
+	type EventHandler = CollatorSelection;
 }
 
 parameter_types! {
@@ -508,7 +506,7 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = AcalaOracle;
+	type MembershipInitialized = ();
 	type MembershipChanged = AcalaOracle;
 	type MaxMembers = OracleMaxMembers;
 	type WeightInfo = ();
@@ -548,7 +546,7 @@ impl SortedMembers<AccountId> for GeneralCouncilProvider {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn add(_: &AccountId) {
-		todo!()
+		unimplemented!()
 	}
 }
 
@@ -654,6 +652,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
+	type Members = OperatorMembershipAcala;
 	type WeightInfo = ();
 }
 
@@ -1013,7 +1012,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type OnClaim = (); // TODO: update implementation to something similar to Mandala
+	type OnClaim = (); // TODO: update implementation to something similar to Mandala before we enable EVM
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1394,7 +1393,7 @@ construct_runtime!(
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 70,
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 70,
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
 
 		// ORML Core

@@ -23,6 +23,7 @@ use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
 use rustc_hex::ToHex;
+use sc_rpc_api::DenyUnsafe;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_core::{Bytes, Decode};
@@ -106,13 +107,15 @@ fn decode_revert_message(data: &[u8]) -> Option<String> {
 
 pub struct EVMApi<B, C, Balance> {
 	client: Arc<C>,
+	deny_unsafe: DenyUnsafe,
 	_marker: PhantomData<(B, Balance)>,
 }
 
 impl<B, C, Balance> EVMApi<B, C, Balance> {
-	pub fn new(client: Arc<C>) -> Self {
+	pub fn new(client: Arc<C>, deny_unsafe: DenyUnsafe) -> Self {
 		Self {
 			client,
+			deny_unsafe,
 			_marker: Default::default(),
 		}
 	}
@@ -131,6 +134,8 @@ where
 	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> Result<Bytes> {
+		self.deny_unsafe.check_if_safe()?;
+
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		let CallRequest {
@@ -207,6 +212,8 @@ where
 		unsigned_extrinsic: Bytes,
 		at: Option<<B as BlockT>::Hash>,
 	) -> Result<EstimateResourcesResponse> {
+		self.deny_unsafe.check_if_safe()?;
+
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 		let request = self
 			.client

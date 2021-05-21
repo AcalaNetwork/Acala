@@ -29,8 +29,8 @@ use sp_std::collections::btree_map::BTreeMap;
 use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 use karura_runtime::{
-	dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BlockNumber, CdpEngineConfig,
-	CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
+	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
+	CollatorSelectionConfig, DexConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
 	HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
 	ParachainInfoConfig, SessionConfig, SessionKeys, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
 	TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
@@ -262,10 +262,6 @@ fn karura_genesis(
 		module_cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![],
 			global_interest_rate_per_sec: Default::default(),
-		},
-		orml_oracle_Instance1: AcalaOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
 		},
 		module_evm: Default::default(),
 		module_dex: DexConfig {
