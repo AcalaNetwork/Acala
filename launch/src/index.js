@@ -61,7 +61,7 @@ const exportParachainGenesis = (paraConfig) => {
 
   const args = [];
   if (paraConfig.chain) {
-    args.push(`--chain=/app/${paraConfig.chain.base || paraConfig.chain}-${paraConfig.id}.json`);
+    args.push(`--chain=${paraConfig.chain.base || paraConfig.chain}`);
   }
 
   const res2 = exec(`docker run --rm ${paraConfig.image} export-genesis-wasm ${args.join(' ')}`);
@@ -235,10 +235,6 @@ const generate = async (config, { output, yes }) => {
     return fatal('Missing relaychain.chain');
   }
 
-  for (const para of config.paras) {
-    generateParachainGenesisFile(para.id, para.image, para.chain, output, yes);
-  }
-
   const relaychainGenesisFilePath = path.join(output, `${config.relaychain.chain}.json`);
   checkOverrideFile(relaychainGenesisFilePath, yes);
 
@@ -246,6 +242,10 @@ const generate = async (config, { output, yes }) => {
   checkOverrideFile(dockerComposePath, yes);
 
   fs.mkdirSync(output, { recursive: true });
+
+  for (const para of config.paras) {
+    generateParachainGenesisFile(para.id, para.image, para.chain, output, yes);
+  }
 
   generateRelaychainGenesisFile(config, relaychainGenesisFilePath);
 
