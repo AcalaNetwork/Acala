@@ -19,7 +19,7 @@
 use crate::{AccountId, Balance, Currencies, CurrencyId, Runtime, TokenSymbol};
 
 use frame_support::assert_ok;
-use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_traits::MultiCurrencyExtended;
 use sp_runtime::traits::{SaturatedConversion, StaticLookup};
 
 pub fn lookup_of_account(who: AccountId) -> <<Runtime as frame_system::Config>::Lookup as StaticLookup>::Source {

@@ -24,7 +24,6 @@ use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
-use sp_std::{prelude::*, vec};
 
 fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
@@ -148,9 +147,9 @@ runtime_benchmarks! {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::benchmarking::utils::tests::new_test_ext;
-	use orml_benchmarking::impl_benchmark_test_suite;
+	// use super::*;
+	// use crate::benchmarking::utils::tests::new_test_ext;
+	// use orml_benchmarking::impl_benchmark_test_suite;
 
 	// impl_benchmark_test_suite!(new_test_ext(),);
 }

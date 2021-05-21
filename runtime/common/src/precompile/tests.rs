@@ -33,7 +33,7 @@ use hex_literal::hex;
 use module_evm::ExitError;
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
-use primitives::{currency::TokenInfo, Balance, PREDEPLOY_ADDRESS_START};
+use primitives::{Balance, PREDEPLOY_ADDRESS_START};
 use sp_core::{H160, U256};
 use sp_runtime::FixedPointNumber;
 use std::str::FromStr;

@@ -28,7 +28,6 @@ use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
-use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
@@ -64,9 +63,9 @@ runtime_benchmarks! {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::benchmarking::utils::tests::new_test_ext;
-	use orml_benchmarking::impl_benchmark_test_suite;
+	// use super::*;
+	// use crate::benchmarking::utils::tests::new_test_ext;
+	// use orml_benchmarking::impl_benchmark_test_suite;
 
 	// impl_benchmark_test_suite!(new_test_ext(),);
 }
