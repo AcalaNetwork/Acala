@@ -4,7 +4,7 @@ const path = require('path');
 const readline = require('readline-sync');
 const shell = require('shelljs');
 const { Keyring } = require('@polkadot/api');
-const { cryptoWaitReady, encodeAddress } = require('@polkadot/util-crypto');
+const { cryptoWaitReady, encodeAddress, decodeAddress } = require('@polkadot/util-crypto');
 const _ = require('lodash');
 
 const yargs = require('yargs/yargs');
@@ -38,19 +38,9 @@ const fatal = (...args) => {
   process.exit(1);
 };
 
-const generateRelaychainGenesis = (config) => {
-  const relaychain = config.relaychain;
-  if (!relaychain) {
-    return fatal('Missing relaychain');
-  }
-  if (!relaychain.chain) {
-    return fatal('Missing relaychain.chain');
-  }
-  if (!relaychain.image) {
-    return fatal('Missing relaychain.image');
-  }
+const getChainspec = (image, chain) => {
   const res = exec(
-    `docker run --rm ${relaychain.image} build-spec --chain=${relaychain.chain} --disable-default-bootnode`
+    `docker run --rm ${image} build-spec --chain=${chain} --disable-default-bootnode`
   );
 
   let spec;
@@ -58,7 +48,7 @@ const generateRelaychainGenesis = (config) => {
   try {
     spec = JSON.parse(res.stdout);
   } catch (e) {
-    return fatal('build spec for relaychain failed', e);
+    return fatal('build spec failed', e);
   }
 
   return spec;
@@ -71,7 +61,7 @@ const exportParachainGenesis = (paraConfig) => {
 
   const args = [];
   if (paraConfig.chain) {
-    args.push(`--chain=${paraConfig.chain}`);
+    args.push(`--chain=/app/${paraConfig.chain.base || paraConfig.chain}-${paraConfig.id}.json`);
   }
 
   const res2 = exec(`docker run --rm ${paraConfig.image} export-genesis-wasm ${args.join(' ')}`);
@@ -86,22 +76,18 @@ const exportParachainGenesis = (paraConfig) => {
   return { state, wasm };
 };
 
-const generate = async (config, { output, yes }) => {
-  await cryptoWaitReady();
-
-  if (!config.relaychain.chain) {
+const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath) => {
+  const relaychain = config.relaychain;
+  if (!relaychain) {
+    return fatal('Missing relaychain');
+  }
+  if (!relaychain.chain) {
     return fatal('Missing relaychain.chain');
   }
-
-  const relaychainGenesisFilePath = path.join(output, `${config.relaychain.chain}.json`);
-  checkOverrideFile(relaychainGenesisFilePath, yes);
-
-  const dockerComposePath = path.join(output, 'docker-compose.yml');
-  checkOverrideFile(dockerComposePath, yes);
-
-  fs.mkdirSync(output, { recursive: true });
-
-  const spec = generateRelaychainGenesis(config, relaychainGenesisFilePath);
+  if (!relaychain.image) {
+    return fatal('Missing relaychain.image');
+  }
+  const spec = getChainspec(relaychain.image, relaychain.chain);
 
   // clear authorities
   const sessionKeys = spec.genesis.runtime.runtime_genesis_config.palletSession.keys;
@@ -109,8 +95,7 @@ const generate = async (config, { output, yes }) => {
 
   // add authorities from config
   const keyring = new Keyring();
-  for (const node of config.relaychain.nodes) {
-    const { name } = node;
+  for (const { name } of config.relaychain.nodes) {
     const srAcc = keyring.createFromUri(`//${_.startCase(name)}`, null, 'sr25519');
     const srStash = keyring.createFromUri(`//${_.startCase(name)}//stash`, null, 'sr25519');
 
@@ -158,7 +143,6 @@ const generate = async (config, { output, yes }) => {
     spec.genesis.runtime.runtime_genesis_config.parachainsParas.paras.push(para);
   }
 
-
   let tmpfile = `${shell.tempdir()}/${config.relaychain.chain}.json`
   fs.writeFileSync(tmpfile, JSON.stringify(spec, null, 2));
 
@@ -169,6 +153,101 @@ const generate = async (config, { output, yes }) => {
   shell.rm(tmpfile);
 
   console.log('Relaychain genesis generated at', relaychainGenesisFilePath);
+}
+
+const getAddress = (val) => {
+  try {
+    const addr = decodeAddress(val);
+    return encodeAddress(addr);
+  } catch { }
+
+  const keyring = new Keyring();
+  const pair = keyring.createFromUri(`//${_.startCase(val)}`, null, 'sr25519');
+
+  return pair.address
+}
+
+const generateParachainGenesisFile = (id, image, chain, output, yes) => {
+  if (typeof chain === 'string') {
+    chain = { base: chain }
+  }
+
+  if (!image) {
+    return fatal('Missing paras[].image');
+  }
+  if (!chain) {
+    return fatal('Missing paras[].chain');
+  }
+  if (!chain.base) {
+    return fatal('Missing paras[].chain.base');
+  }
+
+  const specname = `${chain.base}-${id}.json`;
+  const filepath = path.join(output, specname)
+
+  checkOverrideFile(filepath, yes);
+
+  const spec = getChainspec(image, chain.base);
+
+  const runtime = spec.genesis.runtime;
+
+  runtime.parachainInfo.parachainId = id;
+
+  const endowed = []
+
+  if (chain.sudo && runtime.palletSudo) {
+    runtime.palletSudo.key = getAddress(chain.sudo)
+    endowed.push(runtime.palletSudo.key)
+  }
+
+  if (chain.collators) {
+    runtime.moduleCollatorSelection.invulnerables = chain.collators.map(getAddress)
+    runtime.palletSession.keys = chain.collators.map(x => {
+      const addr = getAddress(x);
+      return [
+        addr, addr, { aura: addr }
+      ]
+    })
+
+    endowed.push(...runtime.moduleCollatorSelection.invulnerables)
+  }
+
+  if (endowed.length) {
+    const decimals = _.get(spec, 'properties.tokenDecimals[0]') || _.get(spec, 'properties.tokenDecimals') || 15
+    const balances = runtime.palletBalances.balances
+    const balObj = {}
+    for (const [addr, val] of balances) {
+      balObj[addr] = val
+    }
+    for (const addr of endowed) {
+      balObj[addr] = (balObj[addr] || 0) + Math.pow(10, decimals)
+    }
+    runtime.palletBalances.balances = Object.entries(balObj).map(x => x)
+  }
+
+  fs.writeFileSync(filepath, JSON.stringify(spec, null, 2));
+}
+
+const generate = async (config, { output, yes }) => {
+  await cryptoWaitReady();
+
+  if (!config.relaychain.chain) {
+    return fatal('Missing relaychain.chain');
+  }
+
+  for (const para of config.paras) {
+    generateParachainGenesisFile(para.id, para.image, para.chain, output, yes);
+  }
+
+  const relaychainGenesisFilePath = path.join(output, `${config.relaychain.chain}.json`);
+  checkOverrideFile(relaychainGenesisFilePath, yes);
+
+  const dockerComposePath = path.join(output, 'docker-compose.yml');
+  checkOverrideFile(dockerComposePath, yes);
+
+  fs.mkdirSync(output, { recursive: true });
+
+  generateRelaychainGenesisFile(config, relaychainGenesisFilePath);
 
   const dockerCompose = {
     version: '3.7',
@@ -197,6 +276,7 @@ const generate = async (config, { output, yes }) => {
       command: [
         '--base-path=/data',
         `--chain=/app/${config.relaychain.chain}.json`,
+        '--validator',
         '--ws-external',
         '--rpc-external',
         '--rpc-cors=all',
@@ -217,7 +297,7 @@ const generate = async (config, { output, yes }) => {
   for (const para of config.paras) {
     let nodeIdx = 0;
     for (const paraNode of para.nodes) {
-      const name = `parachain-${para.id || para.chain}-${nodeIdx}`;
+      const name = `parachain-${para.id}-${nodeIdx}`;
       const nodeConfig = {
         ports: [
           `${paraNode.wsPort || 9944 + idx}:9944`,
@@ -228,7 +308,7 @@ const generate = async (config, { output, yes }) => {
         image: para.image,
         command: [
           '--base-path=/acala/data',
-          `--chain=${para.chain}`,
+          `--chain=/app/${para.chain.base || para.chain}-${para.id}.json`,
           '--ws-external',
           '--rpc-external',
           '--rpc-cors=all',
