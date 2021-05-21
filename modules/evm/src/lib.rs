@@ -36,7 +36,7 @@ use frame_support::{
 	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
-	RuntimeDebug,
+	BoundedVec, RuntimeDebug,
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
 use primitive_types::{H256, U256};
@@ -50,7 +50,7 @@ use sp_runtime::{
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::{convert::TryInto, marker::PhantomData, prelude::*};
 
 pub use support::{
 	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
@@ -268,7 +268,7 @@ pub mod module {
 	/// Codes: H256 => Vec<u8>
 	#[pallet::storage]
 	#[pallet::getter(fn codes)]
-	pub type Codes<T: Config> = StorageMap<_, Identity, H256, Vec<u8>, ValueQuery>;
+	pub type Codes<T: Config> = StorageMap<_, Identity, H256, BoundedVec<u8, T::MaxCodeSize>, ValueQuery>;
 
 	/// The code info for EVM contracts.
 	/// Key is Keccak256 hash of code.
@@ -906,7 +906,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Get code at given address.
-	pub fn code_at_address(address: &EvmAddress) -> Vec<u8> {
+	pub fn code_at_address(address: &EvmAddress) -> BoundedVec<u8, T::MaxCodeSize> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
@@ -933,12 +933,9 @@ impl<T: Config> Pallet<T> {
 		maintainer: &EvmAddress,
 		code: Vec<u8>,
 	) -> Result<(), ExitError> {
-		let code_hash = code_hash(&code.as_slice());
-		let code_size = code.len() as u32;
-
-		if code_size > T::MaxCodeSize::get() {
-			return Err(ExitError::OutOfGas);
-		}
+		let bounded_code: BoundedVec<u8, T::MaxCodeSize> = code.try_into().map_err(|_| ExitError::OutOfGas)?;
+		let code_hash = code_hash(&bounded_code.as_slice());
+		let code_size = bounded_code.len() as u32;
 
 		let contract_info = ContractInfo {
 			code_hash,
@@ -964,7 +961,7 @@ impl<T: Config> Pallet<T> {
 				};
 				*maybe_code_info = Some(new);
 
-				Codes::<T>::insert(&code_hash, code);
+				Codes::<T>::insert(&code_hash, bounded_code);
 			}
 		});
 
