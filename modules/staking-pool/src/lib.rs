@@ -27,7 +27,7 @@ use primitives::{Balance, CurrencyId, EraIndex};
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, Saturating, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 use support::{
@@ -192,8 +192,6 @@ pub mod module {
 	pub enum Error<T> {
 		/// The era index is invalid.
 		InvalidEra,
-		/// Overflow.
-		Overflow,
 		/// Failed to calculate redemption fee.
 		GetFeeFailed,
 		/// Invalid config.
@@ -736,7 +734,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				.reciprocal()
 				.unwrap_or_default()
 				.checked_mul_int(amount)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			T::Currency::transfer(T::StakingCurrencyId::get(), who, &Self::account_id(), amount)?;
 			T::Currency::deposit(T::LiquidCurrencyId::get(), who, liquid_amount_to_issue)?;
@@ -764,7 +762,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 			let liquid_exchange_rate = Self::liquid_exchange_rate();
 			let mut staking_amount_to_unbond = liquid_exchange_rate
 				.checked_mul_int(liquid_amount_to_burn)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 			let communal_bonded_staking_amount = ledger.bonded_belong_to_liquid_holders();
 
 			if !staking_amount_to_unbond.is_zero() && !communal_bonded_staking_amount.is_zero() {
@@ -817,7 +815,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 			let liquid_exchange_rate = Self::liquid_exchange_rate();
 			let mut demand_staking_amount = liquid_exchange_rate
 				.checked_mul_int(liquid_amount_to_burn)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 			let staking_pool_params = Self::staking_pool_params();
 			let available_free_pool = ledger.free_pool.saturating_sub(
 				staking_pool_params
@@ -899,7 +897,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 			let mut liquid_amount_to_burn = amount;
 			let mut demand_staking_amount = Self::liquid_exchange_rate()
 				.checked_mul_int(liquid_amount_to_burn)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 			let (unbonding, claimed_unbonding, initial_claimed_unbonding) = Self::unbonding(target_era);
 			let initial_unclaimed = unbonding.saturating_sub(initial_claimed_unbonding);
 			let unclaimed = unbonding.saturating_sub(claimed_unbonding);
