@@ -20,7 +20,7 @@
 #![allow(clippy::unused_unit)]
 
 use codec::Encode;
-use frame_support::{log, pallet_prelude::*, traits::LockIdentifier, transactional};
+use frame_support::{log, pallet_prelude::*, traits::Get, traits::LockIdentifier, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains};
 use primitives::{Balance, EraIndex};
@@ -28,7 +28,7 @@ use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{fmt::Debug, prelude::*};
+use sp_std::{convert::TryInto, fmt::Debug, prelude::*};
 use support::{NomineesProvider, OnNewEra};
 
 mod mock;
@@ -142,6 +142,7 @@ pub mod module {
 		NoBonded,
 		NoUnlockChunk,
 		InvalidRelaychainValidator,
+		MaxNominationsExceeded,
 	}
 
 	#[pallet::event]
@@ -156,8 +157,13 @@ pub mod module {
 	/// Nominations: map AccountId => Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominations)]
-	pub type Nominations<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Twox64Concat, T::AccountId, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
+	pub type Nominations<T: Config<I>, I: 'static = ()> = StorageMap<
+		_,
+		Twox64Concat,
+		T::AccountId,
+		BoundedVec<<T as Config<I>>::NomineeId, T::NominateesCount>,
+		ValueQuery,
+	>;
 
 	/// The nomination bonding ledger.
 	///
@@ -290,19 +296,26 @@ pub mod module {
 		#[transactional]
 		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			ensure!(
-				!targets.is_empty() && targets.len() <= T::NominateesCount::get().saturated_into(),
-				Error::<T, I>::InvalidTargetsLength,
-			);
+
+			let bounded_targets: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = {
+				if targets.is_empty() {
+					Err(Error::<T, I>::InvalidTargetsLength)
+				} else {
+					targets.try_into().map_err(|_| Error::<T, I>::InvalidTargetsLength)
+				}
+			}?;
+
+			let bounded_targets = bounded_targets
+				.try_mutate(|targets| {
+					targets.sort();
+					targets.dedup();
+				})
+				.ok_or(Error::<T, I>::InvalidTargetsLength)?;
 
 			let ledger = Self::ledger(&who);
 			ensure!(!ledger.total.is_zero(), Error::<T, I>::NoBonded);
 
-			let mut targets = targets;
-			targets.sort();
-			targets.dedup();
-
-			for validator in &targets {
+			for validator in bounded_targets.iter() {
 				ensure!(
 					T::RelaychainValidatorFilter::contains(&validator),
 					Error::<T, I>::InvalidRelaychainValidator
@@ -312,8 +325,8 @@ pub mod module {
 			let old_nominations = Self::nominations(&who);
 			let old_active = Self::ledger(&who).active;
 
-			Self::update_votes(old_active, &old_nominations, old_active, &targets);
-			Nominations::<T, I>::insert(&who, &targets);
+			Self::update_votes(old_active, &old_nominations, old_active, &bounded_targets);
+			Nominations::<T, I>::insert(&who, &bounded_targets);
 			Ok(().into())
 		}
 
