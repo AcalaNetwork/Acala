@@ -111,7 +111,7 @@ impl pallet_authorship::Config for Test {
 	type FindAuthor = Author4;
 	type UncleGenerations = ();
 	type FilterUncle = ();
-	type EventHandler = ();
+	type EventHandler = CollatorSelection;
 }
 
 parameter_types! {

@@ -374,6 +374,27 @@ pub mod pallet {
 		}
 	}
 
+	/// Keep track of number of authored blocks per authority, uncles are counted as well since
+	/// they're a valid proof of being online.
+	impl<T: Config + pallet_authorship::Config> pallet_authorship::EventHandler<T::AccountId, T::BlockNumber>
+		for Pallet<T>
+	{
+		fn note_author(author: T::AccountId) {
+			let candidates_len = <Candidates<T>>::mutate(|candidates| -> usize {
+				if let Some(found) = candidates.iter_mut().find(|candidate| candidate.who == author) {
+					found.last_block = frame_system::Pallet::<T>::block_number();
+				}
+				candidates.len()
+			});
+			frame_system::Pallet::<T>::register_extra_weight_unchecked(
+				T::WeightInfo::note_author(candidates_len as u32),
+				DispatchClass::Mandatory,
+			);
+		}
+
+		fn note_uncle(_author: T::AccountId, _age: T::BlockNumber) {}
+	}
+
 	/// Play the role of the session manager.
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(index: SessionIndex) -> Option<Vec<T::AccountId>> {
