@@ -87,7 +87,7 @@ where
 	io.extend_with(SystemApi::to_delegate(FullSystem::new(
 		client.clone(),
 		pool,
-		deny_unsafe.clone(),
+		deny_unsafe,
 	)));
 	io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
 		client.clone(),
