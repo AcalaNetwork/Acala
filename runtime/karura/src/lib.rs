@@ -761,8 +761,10 @@ impl module_currencies::Config for Runtime {
 }
 
 parameter_types! {
-	pub KaruraRewardAccount: AccountId = hex_literal::hex!["efd29d0d6e63911ae3727fc71506bc3365c5d3b39e3a1680c857b4457cf8afad"].into();	// tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH
-	pub KaruraSalesAccount: AccountId = hex_literal::hex!["41dd2515ea11692c02306b68a2c6ff69b6606ebddaac40682789cfab300971c4"].into();	// pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd
+	pub KaruraFoundationAccounts: Vec<AccountId> = vec![
+		hex_literal::hex!["efd29d0d6e63911ae3727fc71506bc3365c5d3b39e3a1680c857b4457cf8afad"].into(),	// tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH
+		hex_literal::hex!["41dd2515ea11692c02306b68a2c6ff69b6606ebddaac40682789cfab300971c4"].into(),	// pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd
+	];
 }
 
 pub struct EnsureKaruraSalesOrReward;
@@ -772,7 +774,7 @@ impl EnsureOrigin<Origin> for EnsureKaruraSalesOrReward {
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
 			RawOrigin::Signed(caller) => {
-				if caller == KaruraRewardAccount::get() || caller == KaruraSalesAccount::get() {
+				if KaruraFoundationAccounts::get().contains(&caller) {
 					Ok(caller)
 				} else {
 					Err(Origin::from(Some(caller)))

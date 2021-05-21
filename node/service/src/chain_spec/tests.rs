@@ -24,15 +24,12 @@ use acala_primitives::{AccountId, Balance, BlockNumber};
 use sp_core::crypto::Ss58Codec;
 
 #[test]
-fn karura_accounts_config_is_correct() {
-	assert_eq!(
-		AccountId::from_string("tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH").unwrap(),
-		karura_runtime::KaruraRewardAccount::get()
-	);
-	assert_eq!(
-		AccountId::from_string("pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd").unwrap(),
-		karura_runtime::KaruraSalesAccount::get()
-	);
+fn karura_foundation_accounts_config_is_correct() {
+	let karura_foundation_accounts = karura_runtime::KaruraFoundationAccounts::get();
+	assert!(karura_foundation_accounts
+		.contains(&AccountId::from_string("tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH").unwrap()),);
+	assert!(karura_foundation_accounts
+		.contains(&AccountId::from_string("pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd").unwrap()),);
 }
 
 #[test]
