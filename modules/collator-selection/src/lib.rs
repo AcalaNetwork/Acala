@@ -81,7 +81,7 @@ pub mod pallet {
 		dispatch::DispatchResultWithPostInfo,
 		inherent::Vec,
 		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, ReservableCurrency},
+		traits::{Currency, EnsureOrigin, MaxEncodedLen, ReservableCurrency},
 		PalletId,
 	};
 	use frame_support::{
@@ -138,7 +138,7 @@ pub mod pallet {
 	}
 
 	/// Basic information about a collation candidate.
-	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 	pub struct CandidateInfo<AccountId, Balance, BlockNumber> {
 		/// Account identifier.
 		pub who: AccountId,
