@@ -124,13 +124,13 @@ fn acala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, Balance, BalancesConfig, BandOracleConfig,
-		BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EnabledTradingPairs,
-		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig,
-		ACA, AUSD, DOT, LDOT, RENBTC,
+		cent, dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig,
+		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
+		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD,
+		DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -279,14 +279,6 @@ fn acala_genesis(
 				1_547_126_000u128,
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
-		},
-		orml_oracle_Instance1: AcalaOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
-		},
-		orml_oracle_Instance2: BandOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
 		},
 		module_evm: Default::default(),
 		module_staking_pool: StakingPoolConfig {

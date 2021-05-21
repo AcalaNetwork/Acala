@@ -505,7 +505,7 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = AcalaOracle;
+	type MembershipInitialized = ();
 	type MembershipChanged = AcalaOracle;
 	type MaxMembers = OracleMaxMembers;
 	type WeightInfo = ();
@@ -651,6 +651,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
+	type Members = OperatorMembershipAcala;
 	type WeightInfo = ();
 }
 
@@ -1391,7 +1392,7 @@ construct_runtime!(
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 70,
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 70,
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
 
 		// ORML Core

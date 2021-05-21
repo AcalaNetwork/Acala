@@ -18,6 +18,7 @@ members = [
 
 	"orml/auction",
 	"orml/authority",
+	"orml/bencher",
 	"orml/benchmarking",
 	"orml/currencies",
 	"orml/gradually-update",
@@ -30,6 +31,8 @@ members = [
 	"orml/traits",
 	"orml/utilities",
 	"orml/vesting",
+	"orml/weight-gen",
+	"orml/weight-meter",
 	# "orml/xtokens",
 	# "orml/xcm-support",
 	# "orml/unknown-tokens",
