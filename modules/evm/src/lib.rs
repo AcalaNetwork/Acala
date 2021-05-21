@@ -33,7 +33,10 @@ use frame_support::{
 	ensure,
 	error::BadOrigin,
 	pallet_prelude::*,
-	traits::{BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, OnKilledAccount, ReservableCurrency},
+	traits::{
+		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, MaxEncodedLen, OnKilledAccount,
+		ReservableCurrency,
+	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
 	BoundedVec, RuntimeDebug,
@@ -219,7 +222,7 @@ pub mod module {
 		}
 	}
 
-	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
+	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen)]
 	pub struct CodeInfo {
 		pub code_size: u32,
 		pub ref_count: u32,
