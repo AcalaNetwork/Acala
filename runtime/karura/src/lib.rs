@@ -226,9 +226,7 @@ parameter_types! {
 }
 
 impl pallet_authorship::Config for Runtime {
-	// TODO https://github.com/paritytech/statemint/issues/23
-	// Add FindAccountFromAuthorIndex when Aura is integrated
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
 	type EventHandler = ();
