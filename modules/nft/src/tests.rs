@@ -26,7 +26,8 @@ use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use orml_nft::TokenInfo;
 use primitives::Balance;
-use sp_runtime::traits::BlakeTwo256;
+use sp_runtime::{traits::BlakeTwo256, ArithmeticError};
+use sp_std::convert::TryInto;
 
 fn free_balance(who: &AccountId) -> Balance {
 	<Runtime as pallet_proxy::Config>::Currency::free_balance(who)
@@ -111,7 +112,7 @@ fn mint_should_work() {
 		assert_eq!(
 			orml_nft::Pallet::<Runtime>::tokens(0, 0).unwrap(),
 			TokenInfo {
-				metadata: vec![2],
+				metadata: vec![2].try_into().unwrap(),
 				owner: BOB,
 				data: TokenData {
 					deposit: <Runtime as Config>::CreateTokenDeposit::get()
@@ -122,7 +123,7 @@ fn mint_should_work() {
 		assert_eq!(
 			orml_nft::Pallet::<Runtime>::tokens(0, 1).unwrap(),
 			TokenInfo {
-				metadata: vec![2],
+				metadata: vec![2].try_into().unwrap(),
 				owner: BOB,
 				data: TokenData {
 					deposit: <Runtime as Config>::CreateTokenDeposit::get()
@@ -346,7 +347,7 @@ fn burn_should_fail() {
 		});
 		assert_noop!(
 			NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)),
-			orml_nft::Error::<Runtime>::NumOverflow
+			ArithmeticError::Overflow,
 		);
 	});
 

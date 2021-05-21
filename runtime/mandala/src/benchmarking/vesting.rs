@@ -18,8 +18,8 @@
 
 use super::utils::{lookup_of_account, set_aca_balance};
 use crate::{
-	dollar, AcalaTreasuryPalletId, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, MinVestedTransfer,
-	Runtime, System, Vesting, ACA,
+	dollar, AcalaTreasuryPalletId, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies,
+	MaxVestingSchedules, MinVestedTransfer, Runtime, System, Vesting, ACA,
 };
 
 use sp_std::prelude::*;
@@ -61,7 +61,7 @@ runtime_benchmarks! {
 	}
 
 	claim {
-		let i in 1 .. orml_vesting::MAX_VESTINGS as u32;
+		let i in 1 .. MaxVestingSchedules::get();
 
 		let mut schedule = Schedule {
 			start: 0,
@@ -91,7 +91,7 @@ runtime_benchmarks! {
 	}
 
 	update_vesting_schedules {
-		let i in 1 .. orml_vesting::MAX_VESTINGS as u32;
+		let i in 1 .. MaxVestingSchedules::get();
 
 		let mut schedule = Schedule {
 			start: 0,

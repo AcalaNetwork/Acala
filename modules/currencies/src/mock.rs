@@ -82,6 +82,7 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account();
+	pub const MaxLocks: u32 = 100;
 }
 
 impl tokens::Config for Runtime {
@@ -92,6 +93,7 @@ impl tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
+	type MaxLocks = MaxLocks;
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);

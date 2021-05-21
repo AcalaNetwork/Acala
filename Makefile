@@ -1,10 +1,14 @@
 .PHONY: run
-run: githooks
+run:
 	cargo run --features with-mandala-runtime -- --dev -lruntime=debug --instant-sealing
 
 .PHONY: run-eth
-run-eth: githooks
+run-eth:
 	cargo run --features with-mandala-runtime --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
+
+.PHONY: run-karura
+run-karura:
+	cargo run --features with-karura-runtime --chain=karura
 
 .PHONY: toolchain
 toolchain:

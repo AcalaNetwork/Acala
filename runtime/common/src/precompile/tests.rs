@@ -315,9 +315,6 @@ fn oracle_precompile_should_work() {
 
 		// returned price + timestamp
 		let mut expected_output = [0u8; 32];
-
-		let maybe_adjustment_multiplier = 10u128.checked_pow(RENBTC.decimals().unwrap().into()).unwrap();
-		let price = Price::checked_from_rational(price.into_inner(), maybe_adjustment_multiplier).unwrap();
 		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..]);
 
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
@@ -417,7 +414,7 @@ fn schedule_call_precompile_should_work() {
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
-		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(3, 0));
+		let event = TestEvent::pallet_scheduler(pallet_scheduler::Event::<Test>::Scheduled(3, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
 		// cancel schedule
@@ -439,7 +436,7 @@ fn schedule_call_precompile_should_work() {
 		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&cancel_input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
-		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Canceled(3, 0));
+		let event = TestEvent::pallet_scheduler(pallet_scheduler::Event::<Test>::Canceled(3, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
@@ -469,7 +466,7 @@ fn schedule_call_precompile_should_work() {
 		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&reschedule_input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
-		let event = TestEvent::pallet_scheduler(pallet_scheduler::RawEvent::Scheduled(5, 0));
+		let event = TestEvent::pallet_scheduler(pallet_scheduler::Event::<Test>::Scheduled(5, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
 		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr());
