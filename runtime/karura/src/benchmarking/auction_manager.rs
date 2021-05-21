@@ -28,6 +28,7 @@ use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
+use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
