@@ -767,8 +767,8 @@ parameter_types! {
 	];
 }
 
-pub struct EnsureKaruraSalesOrReward;
-impl EnsureOrigin<Origin> for EnsureKaruraSalesOrReward {
+pub struct EnsureKaruraFoundation;
+impl EnsureOrigin<Origin> for EnsureKaruraFoundation {
 	type Success = AccountId;
 
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
@@ -799,7 +799,7 @@ impl orml_vesting::Config for Runtime {
 	type Event = Event;
 	type Currency = pallet_balances::Pallet<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
-	type VestedTransferOrigin = EnsureKaruraSalesOrReward;
+	type VestedTransferOrigin = EnsureKaruraFoundation;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = MaxVestingSchedules;
 }
