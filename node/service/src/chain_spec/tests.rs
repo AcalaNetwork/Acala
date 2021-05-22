@@ -23,6 +23,18 @@
 use acala_primitives::{AccountId, Balance, BlockNumber};
 
 #[test]
+#[cfg(feature = "with-karura-runtime")]
+fn karura_foundation_accounts_config_is_correct() {
+	use sp_core::crypto::Ss58Codec;
+
+	let karura_foundation_accounts = karura_runtime::KaruraFoundationAccounts::get();
+	assert!(karura_foundation_accounts
+		.contains(&AccountId::from_string("tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH").unwrap()),);
+	assert!(karura_foundation_accounts
+		.contains(&AccountId::from_string("pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd").unwrap()),);
+}
+
+#[test]
 fn check_karura_vesting() {
 	let vesting_json = &include_bytes!("../../../../resources/karura-vesting-KAR.json")[..];
 	let vesting: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =

@@ -18,8 +18,8 @@
 
 use super::utils::{lookup_of_account, set_aca_balance};
 use crate::{
-	dollar, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, MaxVestingSchedules, MinVestedTransfer,
-	Runtime, System, TreasuryPalletId, Vesting, KAR,
+	dollar, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, KaruraFoundationAccounts,
+	MaxVestingSchedules, MinVestedTransfer, Runtime, System, Vesting, KAR,
 };
 
 use sp_std::prelude::*;
@@ -47,7 +47,7 @@ runtime_benchmarks! {
 		};
 
 		// extra 1 dollar to pay fees
-		let from: AccountId = TreasuryPalletId::get().into_account();
+		let from: AccountId = KaruraFoundationAccounts::get()[0].clone();
 		set_aca_balance(&from, schedule.total_amount().unwrap() + dollar(KAR));
 
 		let to: AccountId = account("to", 0, SEED);
@@ -70,7 +70,7 @@ runtime_benchmarks! {
 			per_period: MinVestedTransfer::get(),
 		};
 
-		let from: AccountId = TreasuryPalletId::get().into_account();
+		let from: AccountId = KaruraFoundationAccounts::get()[0].clone();
 		// extra 1 dollar to pay fees
 		set_aca_balance(&from, schedule.total_amount().unwrap() * i as u128 + dollar(KAR));
 
