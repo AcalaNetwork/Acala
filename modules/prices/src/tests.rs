@@ -34,11 +34,11 @@ fn get_price_from_oracle() {
 		assert_eq!(
 			PricesModule::get_price(BTC),
 			Some(Price::saturating_from_integer(500000000000000u128))
-		); // 50000 USD, right shift the decimal point (18-10) places
+		); // 50000 USD, right shift the decimal point (18-8) places
 		assert_eq!(
 			PricesModule::get_price(DOT),
 			Some(Price::saturating_from_integer(10000000000u128))
-		); // 100 USD, right shift the decimal point (18-12) places
+		); // 100 USD, right shift the decimal point (18-10) places
 		assert_eq!(PricesModule::get_price(ACA), Some(Price::zero()));
 	});
 }
@@ -48,7 +48,7 @@ fn get_price_of_stable_currency_id() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			PricesModule::get_price(AUSD),
-			Some(Price::saturating_from_integer(1000000))
+			Some(Price::saturating_from_integer(1000000u128))
 		); // 1 USD, right shift the decimal point (18-12) places
 	});
 }
@@ -59,7 +59,7 @@ fn get_price_of_liquid_currency_id() {
 		assert_eq!(
 			PricesModule::get_price(LDOT),
 			Some(Price::saturating_from_integer(5000000000u128))
-		); // 50 USD, right shift the decimal point (18-12) places
+		); // 50 USD, right shift the decimal point (18-10) places
 	});
 }
 
@@ -133,9 +133,10 @@ fn lock_price_call_work() {
 		System::set_block_number(1);
 		assert_noop!(PricesModule::lock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
-
-		let lock_price_event = Event::prices(crate::Event::LockPrice(BTC, Price::saturating_from_integer(50000)));
-		assert!(System::events().iter().any(|record| record.event == lock_price_event));
+		System::assert_last_event(Event::prices(crate::Event::LockPrice(
+			BTC,
+			Price::saturating_from_integer(50000),
+		)));
 		assert_eq!(
 			PricesModule::locked_price(BTC),
 			Some(Price::saturating_from_integer(50000))
@@ -150,10 +151,7 @@ fn unlock_price_call_work() {
 		LockedPrice::<Runtime>::insert(BTC, Price::saturating_from_integer(80000));
 		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
-
-		let unlock_price_event = Event::prices(crate::Event::UnlockPrice(BTC));
-		assert!(System::events().iter().any(|record| record.event == unlock_price_event));
-
+		System::assert_last_event(Event::prices(crate::Event::UnlockPrice(BTC)));
 		assert_eq!(PricesModule::locked_price(BTC), None);
 	});
 }

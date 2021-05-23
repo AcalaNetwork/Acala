@@ -127,9 +127,7 @@ fn rebond_work() {
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).active, 700);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unlocking.len(), 3);
 		assert_ok!(NomineesElectionModule::rebond(Origin::signed(ALICE), 150));
-		let rebond_event = mock::Event::nominees_election(crate::Event::Rebond(ALICE, 150));
-		assert!(System::events().iter().any(|record| record.event == rebond_event));
-
+		System::assert_last_event(mock::Event::nominees_election(crate::Event::Rebond(ALICE, 150)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).total, 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).active, 850);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unlocking.len(), 2);

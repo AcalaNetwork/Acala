@@ -157,6 +157,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type MaxLocks = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -188,11 +189,18 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxClassMetadata: u32 = 1024;
+	pub const MaxTokenMetadata: u32 = 1024;
+}
+
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = ClassData<Balance>;
 	type TokenData = TokenData<Balance>;
+	type MaxClassMetadata = MaxClassMetadata;
+	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
 use frame_system::Call as SystemCall;
@@ -247,11 +255,4 @@ impl ExtBuilder {
 		ext.execute_with(|| System::set_block_number(1));
 		ext
 	}
-}
-
-pub fn last_event() -> Event {
-	frame_system::Pallet::<Runtime>::events()
-		.pop()
-		.expect("Event expected")
-		.event
 }

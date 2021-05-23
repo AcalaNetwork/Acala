@@ -25,7 +25,7 @@ use orml_traits::BasicCurrency;
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, StaticLookup, Zero},
-	DispatchResult, FixedPointNumber, RuntimeDebug,
+	ArithmeticError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, prelude::*};
 use support::{
@@ -65,7 +65,6 @@ pub mod module {
 	#[pallet::error]
 	pub enum Error<T> {
 		NotEnough,
-		Overflow,
 	}
 
 	#[pallet::storage]
@@ -246,7 +245,7 @@ impl<T: Config> Pallet<T> {
 		if !amount.is_zero() {
 			SubAccounts::<T>::try_mutate(account_index, |status| -> DispatchResult {
 				status.available = status.available.checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
-				status.bonded = status.bonded.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+				status.bonded = status.bonded.checked_add(amount).ok_or(ArithmeticError::Overflow)?;
 				Ok(())
 			})?;
 		}

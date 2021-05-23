@@ -114,6 +114,7 @@ mod benchmarking;
 mod constants;
 
 /// This runtime version.
+#[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
@@ -226,12 +227,10 @@ parameter_types! {
 }
 
 impl pallet_authorship::Config for Runtime {
-	// TODO https://github.com/paritytech/statemint/issues/23
-	// Add FindAccountFromAuthorIndex when Aura is integrated
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = ();
+	type EventHandler = CollatorSelection;
 }
 
 parameter_types! {
@@ -507,7 +506,7 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = AcalaOracle;
+	type MembershipInitialized = ();
 	type MembershipChanged = AcalaOracle;
 	type MaxMembers = OracleMaxMembers;
 	type WeightInfo = ();
@@ -547,7 +546,7 @@ impl SortedMembers<AccountId> for GeneralCouncilProvider {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn add(_: &AccountId) {
-		todo!()
+		unimplemented!()
 	}
 }
 
@@ -653,6 +652,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
+	type Members = OperatorMembershipAcala;
 	type WeightInfo = ();
 }
 
@@ -713,6 +713,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, KaruraTreasuryAccount>;
+	type MaxLocks = MaxLocks;
 }
 
 parameter_types! {
@@ -758,15 +759,21 @@ impl module_currencies::Config for Runtime {
 	type EVMBridge = EVMBridge;
 }
 
-pub struct EnsureRootOrTreasury;
-impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
+parameter_types! {
+	pub KaruraFoundationAccounts: Vec<AccountId> = vec![
+		hex_literal::hex!["efd29d0d6e63911ae3727fc71506bc3365c5d3b39e3a1680c857b4457cf8afad"].into(),	// tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH
+		hex_literal::hex!["41dd2515ea11692c02306b68a2c6ff69b6606ebddaac40682789cfab300971c4"].into(),	// pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd
+	];
+}
+
+pub struct EnsureKaruraFoundation;
+impl EnsureOrigin<Origin> for EnsureKaruraFoundation {
 	type Success = AccountId;
 
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
-			RawOrigin::Root => Ok(TreasuryPalletId::get().into_account()),
 			RawOrigin::Signed(caller) => {
-				if caller == TreasuryPalletId::get().into_account() {
+				if KaruraFoundationAccounts::get().contains(&caller) {
 					Ok(caller)
 				} else {
 					Err(Origin::from(Some(caller)))
@@ -784,14 +791,16 @@ impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
 
 parameter_types! {
 	pub MinVestedTransfer: Balance = 100 * dollar(KAR);
+	pub const MaxVestingSchedules: u32 = 100;
 }
 
 impl orml_vesting::Config for Runtime {
 	type Event = Event;
 	type Currency = pallet_balances::Pallet<Runtime>;
 	type MinVestedTransfer = MinVestedTransfer;
-	type VestedTransferOrigin = EnsureRootOrTreasury;
+	type VestedTransferOrigin = EnsureKaruraFoundation;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
+	type MaxVestingSchedules = MaxVestingSchedules;
 }
 
 parameter_types! {
@@ -1009,7 +1018,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type OnClaim = (); // TODO: update implementation to something similar to Mandala
+	type OnClaim = (); // TODO: update implementation to something similar to Mandala before we enable EVM
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1060,11 +1069,18 @@ impl module_nft::Config for Runtime {
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub MaxClassMetadata: u32 = 1024;
+	pub MaxTokenMetadata: u32 = 1024;
+}
+
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
+	type MaxClassMetadata = MaxClassMetadata;
+	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
 parameter_types! {
@@ -1383,7 +1399,7 @@ construct_runtime!(
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 70,
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 70,
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
 
 		// ORML Core

@@ -68,18 +68,45 @@ where
 
 		match action {
 			Action::GetPrice => {
-				let key = input.currency_id_at(1)?;
-				let value = PriceProvider::get_price(key).unwrap_or_else(Default::default);
-				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}", key, value);
-				Ok((ExitSucceed::Returned, vec_u8_from_price(value), 0))
+				let currency_id = input.currency_id_at(1)?;
+				let mut price = PriceProvider::get_price(currency_id).unwrap_or_default();
+
+				let maybe_decimals = CurrencyIdMapping::decimals(currency_id);
+				let decimals = match maybe_decimals {
+					Some(decimals) => decimals,
+					None => {
+						// If the option is none, let price = 0 to return 0.
+						// Solidity should handle the situation of price 0.
+						price = Default::default();
+						Default::default()
+					}
+				};
+
+				let maybe_adjustment_multiplier = 10u128.checked_pow((18 - decimals).into());
+				let adjustment_multiplier = match maybe_adjustment_multiplier {
+					Some(adjustment_multiplier) => adjustment_multiplier,
+					None => {
+						// If the option is none, let price = 0 to return 0.
+						// Solidity should handle the situation of price 0.
+						price = Default::default();
+						Default::default()
+					}
+				};
+
+				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}", currency_id, price, adjustment_multiplier);
+				Ok((
+					ExitSucceed::Returned,
+					vec_u8_from_price(price, adjustment_multiplier),
+					0,
+				))
 			}
 		}
 	}
 }
 
-fn vec_u8_from_price(value: Price) -> Vec<u8> {
+fn vec_u8_from_price(price: Price, adjustment_multiplier: u128) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
-	U256::from(value.into_inner()).to_big_endian(&mut be_bytes[..32]);
+	U256::from(price.into_inner().wrapping_div(adjustment_multiplier)).to_big_endian(&mut be_bytes[..32]);
 	be_bytes.to_vec()
 }
 

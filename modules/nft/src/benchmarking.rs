@@ -267,11 +267,18 @@ mod mock {
 		type WeightInfo = ();
 	}
 
+	parameter_types! {
+		pub const MaxClassMetadata: u32 = 1024;
+		pub const MaxTokenMetadata: u32 = 1024;
+	}
+
 	impl orml_nft::Config for Runtime {
 		type ClassId = u32;
 		type TokenId = u64;
 		type ClassData = ClassData<Balance>;
 		type TokenData = TokenData<Balance>;
+		type MaxClassMetadata = MaxClassMetadata;
+		type MaxTokenMetadata = MaxTokenMetadata;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

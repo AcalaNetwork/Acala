@@ -130,12 +130,15 @@ fn freeze_work() {
 				.is_frozen,
 			true
 		);
-		let freeze_event_0 = mock::Event::homa_validator_list(crate::Event::FreezeValidator(VALIDATOR_1));
-		let freeze_event_1 = mock::Event::homa_validator_list(crate::Event::FreezeValidator(VALIDATOR_2));
-		let freeze_event_2 = mock::Event::homa_validator_list(crate::Event::FreezeValidator(VALIDATOR_3));
-		assert!(System::events().iter().any(|record| record.event == freeze_event_0));
-		assert!(System::events().iter().any(|record| record.event == freeze_event_1));
-		assert!(System::events().iter().any(|record| record.event == freeze_event_2));
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::FreezeValidator(
+			VALIDATOR_1,
+		)));
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::FreezeValidator(
+			VALIDATOR_2,
+		)));
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::FreezeValidator(
+			VALIDATOR_3,
+		)));
 	});
 }
 
@@ -192,12 +195,12 @@ fn thaw_work() {
 				.is_frozen,
 			false
 		);
-		let thaw_event_0 = mock::Event::homa_validator_list(crate::Event::ThawValidator(VALIDATOR_1));
-		let thaw_event_1 = mock::Event::homa_validator_list(crate::Event::ThawValidator(VALIDATOR_2));
-		let thaw_event_2 = mock::Event::homa_validator_list(crate::Event::ThawValidator(VALIDATOR_3));
-		assert!(System::events().iter().any(|record| record.event == thaw_event_0));
-		assert!(System::events().iter().any(|record| record.event == thaw_event_1));
-		assert!(System::events().iter().all(|record| record.event != thaw_event_2));
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::ThawValidator(
+			VALIDATOR_1,
+		)));
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::ThawValidator(
+			VALIDATOR_2,
+		)));
 	});
 }
 
@@ -232,9 +235,11 @@ fn bond_work() {
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		let bond_event_0 = mock::Event::homa_validator_list(crate::Event::BondGuarantee(ALICE, VALIDATOR_1, 100));
-		assert!(System::events().iter().any(|record| record.event == bond_event_0));
-
+		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::BondGuarantee(
+			ALICE,
+			VALIDATOR_1,
+			100,
+		)));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -281,9 +286,11 @@ fn bond_work() {
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_1)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_1, 300));
-		let bond_event_1 = mock::Event::homa_validator_list(crate::Event::BondGuarantee(BOB, VALIDATOR_1, 300));
-		assert!(System::events().iter().any(|record| record.event == bond_event_1));
-
+		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::BondGuarantee(
+			BOB,
+			VALIDATOR_1,
+			300,
+		)));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, BOB).unwrap_or_default(),
 			Guarantee {
@@ -327,9 +334,11 @@ fn bond_work() {
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_2)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_2, 200));
-		let bond_event_2 = mock::Event::homa_validator_list(crate::Event::BondGuarantee(BOB, VALIDATOR_2, 200));
-		assert!(System::events().iter().any(|record| record.event == bond_event_2));
-
+		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::BondGuarantee(
+			BOB,
+			VALIDATOR_2,
+			200,
+		)));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_2, BOB).unwrap_or_default(),
 			Guarantee {
@@ -389,9 +398,11 @@ fn unbond_work() {
 		);
 
 		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		let unbond_event_0 = mock::Event::homa_validator_list(crate::Event::UnbondGuarantee(ALICE, VALIDATOR_1, 100));
-		assert!(System::events().iter().any(|record| record.event == unbond_event_0));
-
+		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::UnbondGuarantee(
+			ALICE,
+			VALIDATOR_1,
+			100,
+		)));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -550,12 +561,11 @@ fn withdraw_unbonded_work() {
 			Origin::signed(ALICE),
 			VALIDATOR_1
 		));
-		let withdraw_unbonded_event_0 =
-			mock::Event::homa_validator_list(crate::Event::WithdrawnGuarantee(ALICE, VALIDATOR_1, 100));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == withdraw_unbonded_event_0));
-
+		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::WithdrawnGuarantee(
+			ALICE,
+			VALIDATOR_1,
+			100,
+		)));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -684,22 +694,21 @@ fn slash_work() {
 				},
 			]
 		));
-		let slash_alice_for_validator_1 =
-			mock::Event::homa_validator_list(crate::Event::SlashGuarantee(ALICE, VALIDATOR_1, 59));
-		let slash_bob_for_validator_1 =
-			mock::Event::homa_validator_list(crate::Event::SlashGuarantee(BOB, VALIDATOR_1, 119));
-		let slash_bob_for_validator_2 =
-			mock::Event::homa_validator_list(crate::Event::SlashGuarantee(BOB, VALIDATOR_2, 100));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == slash_alice_for_validator_1));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == slash_bob_for_validator_1));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == slash_bob_for_validator_2));
-
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::SlashGuarantee(
+			ALICE,
+			VALIDATOR_1,
+			59,
+		)));
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::SlashGuarantee(
+			BOB,
+			VALIDATOR_1,
+			119,
+		)));
+		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::SlashGuarantee(
+			BOB,
+			VALIDATOR_2,
+			100,
+		)));
 		assert_eq!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
