@@ -54,7 +54,7 @@ const getChainspec = (image, chain) => {
   return spec;
 };
 
-const exportParachainGenesis = (paraConfig) => {
+const exportParachainGenesis = (paraConfig, output) => {
   if (!paraConfig.image) {
     return fatal('Missing parachains[].image');
   }
@@ -64,19 +64,19 @@ const exportParachainGenesis = (paraConfig) => {
     args.push(`--chain=/app/${paraConfig.chain.base || paraConfig.chain}-${paraConfig.id}.json`);
   }
 
-  const res2 = exec(`docker run --rm ${paraConfig.image} export-genesis-wasm ${args.join(' ')}`);
+  const res2 = exec(`docker run -v $(pwd)/"${output}":/app --rm ${paraConfig.image} export-genesis-wasm ${args.join(' ')}`);
   const wasm = res2.stdout.trim();
 
   if (paraConfig.id) {
     args.push(`--parachain-id=${paraConfig.id}`);
   }
-  const res = exec(`docker run --rm ${paraConfig.image} export-genesis-state ${args.join(' ')}`);
+  const res = exec(`docker run -v $(pwd)/"${output}":/app --rm ${paraConfig.image} export-genesis-state ${args.join(' ')}`);
   const state = res.stdout.trim();
 
   return { state, wasm };
 };
 
-const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath) => {
+const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output) => {
   const relaychain = config.relaychain;
   if (!relaychain) {
     return fatal('Missing relaychain');
@@ -128,7 +128,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath) => {
 
   // genesis parachains
   for (const parachain of config.paras) {
-    const { wasm, state } = exportParachainGenesis(parachain);
+    const { wasm, state } = exportParachainGenesis(parachain, output);
     if (!parachain.id) {
       return fatal('Missing parachains[].id');
     }
@@ -165,6 +165,14 @@ const getAddress = (val) => {
   const pair = keyring.createFromUri(`//${_.startCase(val)}`, null, 'sr25519');
 
   return pair.address
+}
+
+const generateNodeKey = (image) => {
+  const res = exec(`docker run --rm ${image} key generate-node-key`)
+  return {
+    key: res.stdout.trim(),
+    address: res.stderr.trim()
+  }
 }
 
 const generateParachainGenesisFile = (id, image, chain, output, yes) => {
@@ -247,7 +255,7 @@ const generate = async (config, { output, yes }) => {
 
   fs.mkdirSync(output, { recursive: true });
 
-  generateRelaychainGenesisFile(config, relaychainGenesisFilePath);
+  generateRelaychainGenesisFile(config, relaychainGenesisFilePath, output);
 
   const dockerCompose = {
     version: '3.7',
@@ -296,8 +304,12 @@ const generate = async (config, { output, yes }) => {
 
   for (const para of config.paras) {
     let nodeIdx = 0;
+
+    const { key: nodeKey, address: nodeAddress } = generateNodeKey(para.image);
+
     for (const paraNode of para.nodes) {
       const name = `parachain-${para.id}-${nodeIdx}`;
+
       const nodeConfig = {
         ports: [
           `${paraNode.wsPort || 9944 + idx}:9944`,
@@ -317,6 +329,8 @@ const generate = async (config, { output, yes }) => {
           `--parachain-id=${para.id}`,
           ...(para.flags || []),
           ...(paraNode.flags || []),
+          nodeIdx === 0 ? `--node-key=${nodeKey}` : `--bootnodes=/dns/parachain-${para.id}-0/tcp/30333/p2p/${nodeAddress}`,
+          '--listen-addr=/ip4/0.0.0.0/tcp/30333',
           '--',
           `--chain=/app/${config.relaychain.chain}.json`,
           ...(para.relaychainFlags || []),
