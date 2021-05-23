@@ -45,6 +45,7 @@ pub trait RuntimeApiCollection:
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
+	+ cumulus_primitives_core::CollectCollationInfo<Block>
 where
 	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
 {
@@ -62,7 +63,8 @@ where
 		+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_session::SessionKeys<Block>,
+		+ sp_session::SessionKeys<Block>
+		+ cumulus_primitives_core::CollectCollationInfo<Block>,
 	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
 {
 }
