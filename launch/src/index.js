@@ -243,10 +243,6 @@ const generate = async (config, { output, yes }) => {
     return fatal('Missing relaychain.chain');
   }
 
-  for (const para of config.paras) {
-    generateParachainGenesisFile(para.id, para.image, para.chain, output, yes);
-  }
-
   const relaychainGenesisFilePath = path.join(output, `${config.relaychain.chain}.json`);
   checkOverrideFile(relaychainGenesisFilePath, yes);
 
@@ -254,6 +250,10 @@ const generate = async (config, { output, yes }) => {
   checkOverrideFile(dockerComposePath, yes);
 
   fs.mkdirSync(output, { recursive: true });
+
+  for (const para of config.paras) {
+    generateParachainGenesisFile(para.id, para.image, para.chain, output, yes);
+  }
 
   generateRelaychainGenesisFile(config, relaychainGenesisFilePath, output);
 

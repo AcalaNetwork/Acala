@@ -1,6 +1,6 @@
 [package]
 name = "ecosystem-chainsafe"
-version = "0.7.11"
+version = "1.0.0"
 authors = ["Acala Developers"]
 edition = "2018"
 
