@@ -24,7 +24,7 @@ use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
-use sp_std::{prelude::*, vec};
+use sp_std::prelude::*;
 
 fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()

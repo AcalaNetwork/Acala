@@ -52,11 +52,7 @@ fn enable_new_trading_pair_work() {
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 			TradingPairStatus::<_, _>::Enabled
 		);
-
-		let enable_trading_pair_event = Event::dex(crate::Event::EnableTradingPair(AUSD_DOT_PAIR));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == enable_trading_pair_event));
+		System::assert_last_event(Event::dex(crate::Event::EnableTradingPair(AUSD_DOT_PAIR)));
 
 		assert_noop!(
 			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), DOT, AUSD),
@@ -107,11 +103,7 @@ fn list_new_trading_pair_work() {
 				not_before: 10,
 			})
 		);
-
-		let list_trading_pair_event = Event::dex(crate::Event::ListTradingPair(AUSD_DOT_PAIR));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == list_trading_pair_event));
+		System::assert_last_event(Event::dex(crate::Event::ListTradingPair(AUSD_DOT_PAIR)));
 
 		assert_noop!(
 			DexModule::list_trading_pair(
@@ -172,11 +164,7 @@ fn disable_enabled_trading_pair_work() {
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 			TradingPairStatus::<_, _>::NotEnabled
 		);
-
-		let disable_trading_pair_event = Event::dex(crate::Event::DisableTradingPair(AUSD_DOT_PAIR));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == disable_trading_pair_event));
+		System::assert_last_event(Event::dex(crate::Event::DisableTradingPair(AUSD_DOT_PAIR)));
 
 		assert_noop!(
 			DexModule::disable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, DOT),
@@ -331,12 +319,13 @@ fn add_provision_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
 			let alice_ref_count_1 = System::consumers(&ALICE);
 			assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
-
-			let add_provision_event_0 =
-				Event::dex(crate::Event::AddProvision(ALICE, AUSD, 5_000_000_000_000u128, DOT, 0));
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == add_provision_event_0));
+			System::assert_last_event(Event::dex(crate::Event::AddProvision(
+				ALICE,
+				AUSD,
+				5_000_000_000_000u128,
+				DOT,
+				0,
+			)));
 
 			// bob add provision
 			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
@@ -377,12 +366,13 @@ fn add_provision_work() {
 			);
 			let bob_ref_count_1 = System::consumers(&BOB);
 			assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
-
-			let add_provision_event_1 =
-				Event::dex(crate::Event::AddProvision(BOB, AUSD, 0, DOT, 1_000_000_000_000_000u128));
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == add_provision_event_1));
+			System::assert_last_event(Event::dex(crate::Event::AddProvision(
+				BOB,
+				AUSD,
+				0,
+				DOT,
+				1_000_000_000_000_000u128,
+			)));
 
 			// alice add provision again and trigger trading pair convert to Enabled from
 			// Provisioning
@@ -438,16 +428,12 @@ fn add_provision_work() {
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 				TradingPairStatus::<_, _>::Enabled
 			);
-
-			let provisioning_to_enabled_event = Event::dex(crate::Event::ProvisioningToEnabled(
+			System::assert_last_event(Event::dex(crate::Event::ProvisioningToEnabled(
 				AUSD_DOT_PAIR,
 				1_000_000_000_000_000u128,
 				2_000_000_000_000_000u128,
 				4_000_000_000_000_000u128,
-			));
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == provisioning_to_enabled_event));
+			)));
 		});
 }
 
@@ -677,18 +663,14 @@ fn add_liquidity_work() {
 				1_000_000_000_000,
 				false,
 			));
-			let add_liquidity_event_1 = Event::dex(crate::Event::AddLiquidity(
+			System::assert_last_event(Event::dex(crate::Event::AddLiquidity(
 				ALICE,
 				AUSD,
 				5_000_000_000_000,
 				DOT,
 				1_000_000_000_000,
 				10_000_000_000_000,
-			));
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == add_liquidity_event_1));
-
+			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(5_000_000_000_000, 1_000_000_000_000)
@@ -724,18 +706,14 @@ fn add_liquidity_work() {
 				8_000_000_000_000,
 				true,
 			));
-			let add_liquidity_event_2 = Event::dex(crate::Event::AddLiquidity(
+			System::assert_last_event(Event::dex(crate::Event::AddLiquidity(
 				BOB,
 				AUSD,
 				40_000_000_000_000,
 				DOT,
 				8_000_000_000_000,
 				80_000_000_000_000,
-			));
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == add_liquidity_event_2));
-
+			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(45_000_000_000_000, 9_000_000_000_000)
@@ -802,18 +780,14 @@ fn remove_liquidity_work() {
 				8_000_000_000_000,
 				false,
 			));
-			let remove_liquidity_event_1 = Event::dex(crate::Event::RemoveLiquidity(
+			System::assert_last_event(Event::dex(crate::Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				4_000_000_000_000,
 				DOT,
 				800_000_000_000,
 				8_000_000_000_000,
-			));
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == remove_liquidity_event_1));
-
+			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(1_000_000_000_000, 200_000_000_000)
@@ -834,18 +808,14 @@ fn remove_liquidity_work() {
 				2_000_000_000_000,
 				false,
 			));
-			let remove_liquidity_event_2 = Event::dex(crate::Event::RemoveLiquidity(
+			System::assert_last_event(Event::dex(crate::Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				1_000_000_000_000,
 				DOT,
 				200_000_000_000,
 				2_000_000_000_000,
-			));
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == remove_liquidity_event_2));
-
+			)));
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (0, 0));
 			assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 0);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
@@ -969,14 +939,12 @@ fn do_swap_with_exact_supply_work() {
 				200_000_000_000_000,
 				None
 			));
-			let swap_event_1 = Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				100_000_000_000_000,
 				248_743_718_592_964,
-			));
-			assert!(System::events().iter().any(|record| record.event == swap_event_1));
-
+			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(251_256_281_407_036, 200_000_000_000_000)
@@ -1002,14 +970,12 @@ fn do_swap_with_exact_supply_work() {
 				1,
 				None
 			));
-			let swap_event_2 = Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, RENBTC],
 				200_000_000_000_000,
 				5_530_663_837,
-			));
-			assert!(System::events().iter().any(|record| record.event == swap_event_2));
-
+			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(126_259_437_892_983, 400_000_000_000_000)
@@ -1115,14 +1081,12 @@ fn do_swap_with_exact_target_work() {
 				200_000_000_000_000,
 				None
 			));
-			let swap_event_1 = Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				101_010_101_010_102,
 				250_000_000_000_000,
-			));
-			assert!(System::events().iter().any(|record| record.event == swap_event_1));
-
+			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(250_000_000_000_000, 201_010_101_010_102)
@@ -1148,14 +1112,12 @@ fn do_swap_with_exact_target_work() {
 				2_000_000_000_000_000,
 				None
 			));
-			let swap_event_2 = Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::dex(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, RENBTC],
 				137_654_580_386_993,
 				5_000_000_000,
-			));
-			assert!(System::events().iter().any(|record| record.event == swap_event_2));
-
+			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(148_989_898_989_898, 338_664_681_397_095)

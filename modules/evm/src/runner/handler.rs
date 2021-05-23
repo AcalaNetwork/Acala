@@ -345,7 +345,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 
 	fn code(&self, address: H160) -> Vec<u8> {
 		let addr = Self::handle_mirrored_token(address);
-		Pallet::<T>::code_at_address(&addr)
+		Pallet::<T>::code_at_address(&addr).into_inner()
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {

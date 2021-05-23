@@ -23,7 +23,7 @@ use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{GenesisBuild, InstanceFilter, OnFinalize, OnInitialize},
+	traits::{GenesisBuild, InstanceFilter, OnFinalize, OnInitialize, SortedMembers},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
@@ -85,6 +85,15 @@ parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
+	pub static OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
+}
+
+pub struct Members;
+
+impl SortedMembers<AccountId> for Members {
+	fn sorted_members() -> Vec<AccountId> {
+		OracleMembers::get()
+	}
 }
 
 impl orml_oracle::Config for Test {
@@ -95,6 +104,7 @@ impl orml_oracle::Config for Test {
 	type OracleKey = Key;
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
+	type Members = Members;
 	type WeightInfo = ();
 }
 
@@ -480,7 +490,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Oracle: orml_oracle::{Pallet, Storage, Call, Config<T>, Event<T>},
+		Oracle: orml_oracle::{Pallet, Storage, Call, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -502,12 +512,6 @@ frame_support::construct_runtime!(
 // according to our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-
-	let _ = orml_oracle::GenesisConfig::<Test> {
-		members: vec![ALICE, BOB, EVA].into(),
-		phantom: Default::default(),
-	}
-	.assimilate_storage(&mut storage);
 
 	let mut accounts = BTreeMap::new();
 	let mut evm_genesis_accounts = evm_genesis();

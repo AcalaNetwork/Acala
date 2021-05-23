@@ -277,9 +277,9 @@ runtime_benchmarks! {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::benchmarking::utils::tests::new_test_ext;
-	use orml_benchmarking::impl_benchmark_test_suite;
+	// use super::*;
+	// use crate::benchmarking::utils::tests::new_test_ext;
+	// use orml_benchmarking::impl_benchmark_test_suite;
 
 	// impl_benchmark_test_suite!(new_test_ext(),);
 }

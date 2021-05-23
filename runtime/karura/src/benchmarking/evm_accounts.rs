@@ -24,7 +24,6 @@ use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_io::hashing::keccak_256;
-use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 

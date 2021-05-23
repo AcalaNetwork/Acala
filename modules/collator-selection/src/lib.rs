@@ -77,19 +77,15 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	pub use crate::weights::WeightInfo;
-	use core::ops::Div;
 	use frame_support::{
 		dispatch::DispatchResultWithPostInfo,
 		inherent::Vec,
 		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, ReservableCurrency},
+		traits::{Currency, EnsureOrigin, ReservableCurrency},
 		PalletId,
 	};
 	use frame_support::{
-		sp_runtime::{
-			traits::{AccountIdConversion, CheckedSub, Zero},
-			RuntimeDebug,
-		},
+		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
@@ -384,16 +380,6 @@ pub mod pallet {
 		for Pallet<T>
 	{
 		fn note_author(author: T::AccountId) {
-			let pot = Self::account_id();
-			// assumes an ED will be sent to pot.
-			let reward = T::Currency::free_balance(&pot)
-				.checked_sub(&T::Currency::minimum_balance())
-				.unwrap_or_else(Zero::zero)
-				.div(2u32.into());
-
-			// `reward` is half of pot account, this should never fail.
-			let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
-			debug_assert!(_success.is_ok());
 			let candidates_len = <Candidates<T>>::mutate(|candidates| -> usize {
 				if let Some(found) = candidates.iter_mut().find(|candidate| candidate.who == author) {
 					found.last_block = frame_system::Pallet::<T>::block_number();
@@ -406,9 +392,7 @@ pub mod pallet {
 			);
 		}
 
-		fn note_uncle(_author: T::AccountId, _age: T::BlockNumber) {
-			//TODO can we ignore this?
-		}
+		fn note_uncle(_author: T::AccountId, _age: T::BlockNumber) {}
 	}
 
 	/// Play the role of the session manager.

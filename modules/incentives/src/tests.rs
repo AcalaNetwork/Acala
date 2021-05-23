@@ -67,11 +67,11 @@ fn deposit_dex_share_works() {
 			BTC_AUSD_LP,
 			10000
 		));
-		let deposit_dex_share_event = Event::incentives(crate::Event::DepositDexShare(ALICE, BTC_AUSD_LP, 10000));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == deposit_dex_share_event));
-
+		System::assert_last_event(Event::incentives(crate::Event::DepositDexShare(
+			ALICE,
+			BTC_AUSD_LP,
+			10000,
+		)));
 		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 0);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
@@ -155,11 +155,11 @@ fn withdraw_dex_share_works() {
 			BTC_AUSD_LP,
 			8000
 		));
-		let withdraw_dex_share_event = Event::incentives(crate::Event::WithdrawDexShare(ALICE, BTC_AUSD_LP, 8000));
-		assert!(System::events()
-			.iter()
-			.any(|record| record.event == withdraw_dex_share_event));
-
+		System::assert_last_event(Event::incentives(crate::Event::WithdrawDexShare(
+			ALICE,
+			BTC_AUSD_LP,
+			8000,
+		)));
 		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 8000);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),

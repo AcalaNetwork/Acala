@@ -211,33 +211,6 @@ fn leave_intent() {
 }
 
 #[test]
-fn authorship_event_handler() {
-	new_test_ext().execute_with(|| {
-		// put 100 in the pot + 5 for ED
-		Balances::make_free_balance_be(&CollatorSelection::account_id(), 105);
-
-		// 4 is the default author.
-		assert_eq!(Balances::free_balance(4), 100);
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
-		// triggers `note_author`
-		Authorship::on_initialize(1);
-
-		let collator = CandidateInfo {
-			who: 4,
-			deposit: 10,
-			last_block: 0,
-		};
-
-		assert_eq!(CollatorSelection::candidates(), vec![collator]);
-
-		// half of the pot goes to the collator who's the author (4 in tests).
-		assert_eq!(Balances::free_balance(4), 140);
-		// half + ED stays.
-		assert_eq!(Balances::free_balance(CollatorSelection::account_id()), 55);
-	});
-}
-
-#[test]
 fn fees_edgecases() {
 	new_test_ext().execute_with(|| {
 		// Nothing panics, no reward when no ED in balance
