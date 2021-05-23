@@ -2091,7 +2091,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "ecosystem-chainsafe"
-version = "0.7.11"
+version = "1.0.0"
 dependencies = [
  "acala-primitives",
  "chainbridge",
