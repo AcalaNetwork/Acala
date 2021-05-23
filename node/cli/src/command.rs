@@ -26,7 +26,6 @@ use cumulus_primitives_core::ParaId;
 use service::{chain_spec, IdentifyVariant};
 
 use log::info;
-use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
 	RuntimeVersion, SharedParams, SubstrateCli,
