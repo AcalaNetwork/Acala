@@ -1662,7 +1662,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-cli"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "sc-cli",
  "sc-service",
@@ -1672,7 +1672,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-collator"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
@@ -1685,18 +1685,18 @@ dependencies = [
  "polkadot-overseer",
  "polkadot-primitives",
  "sc-client-api",
+ "sp-api",
  "sp-consensus",
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-state-machine",
  "tracing",
 ]
 
 [[package]]
 name = "cumulus-client-consensus-aura"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "async-trait",
  "cumulus-client-consensus-common",
@@ -1726,7 +1726,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-consensus-common"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "async-trait",
  "dyn-clone",
@@ -1751,7 +1751,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-consensus-relay-chain"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "async-trait",
  "cumulus-client-consensus-common",
@@ -1775,7 +1775,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-network"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "derive_more",
  "futures 0.3.14",
@@ -1799,7 +1799,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-service"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "cumulus-client-collator",
  "cumulus-client-consensus-common",
@@ -1824,7 +1824,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-aura-ext"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -1841,7 +1841,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
@@ -1871,7 +1871,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-core"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples 0.2.1",
@@ -1879,6 +1879,7 @@ dependencies = [
  "polkadot-core-primitives",
  "polkadot-parachain",
  "polkadot-primitives",
+ "sp-api",
  "sp-runtime",
  "sp-std",
  "sp-trie",
@@ -1888,7 +1889,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -1908,7 +1909,7 @@ dependencies = [
 [[package]]
 name = "cumulus-test-relay-sproof-builder"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "cumulus-primitives-core",
  "parity-scale-codec",
@@ -6853,7 +6854,7 @@ dependencies = [
 [[package]]
 name = "parachain-info"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=95d81d499927e508769690fc43a480f00ddd131e#95d81d499927e508769690fc43a480f00ddd131e"
+source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
