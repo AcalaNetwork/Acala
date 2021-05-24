@@ -1154,6 +1154,7 @@ parameter_types! {
 	pub const NominateesCount: u32 = 7;
 	pub const MaxUnlockingChunks: u32 = 7;
 	pub const NomineesElectionBondingDuration: EraIndex = 7;
+	pub const MaxNominees: u32 = 100;
 }
 
 impl module_nominees_election::Config for Runtime {
@@ -1165,6 +1166,7 @@ impl module_nominees_election::Config for Runtime {
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
 	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
+	type MaxNominees = MaxNominees;
 }
 
 parameter_types! {
