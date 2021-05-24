@@ -82,7 +82,7 @@ pub mod pallet {
 		inherent::Vec,
 		pallet_prelude::*,
 		traits::{Currency, EnsureOrigin, MaxEncodedLen, ReservableCurrency},
-		PalletId,
+		BoundedVec, PalletId,
 	};
 	use frame_support::{
 		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
@@ -92,6 +92,7 @@ pub mod pallet {
 	use frame_system::Config as SystemConfig;
 	use pallet_session::SessionManager;
 	use sp_staking::SessionIndex;
+	use sp_std::convert::TryInto;
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
 
@@ -155,13 +156,16 @@ pub mod pallet {
 	/// The invulnerable, fixed collators.
 	#[pallet::storage]
 	#[pallet::getter(fn invulnerables)]
-	pub type Invulnerables<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+	pub type Invulnerables<T: Config> = StorageValue<_, BoundedVec<T::AccountId, T::MaxInvulnerables>, ValueQuery>;
 
 	/// The (community, limited) collation candidates.
 	#[pallet::storage]
 	#[pallet::getter(fn candidates)]
-	pub type Candidates<T: Config> =
-		StorageValue<_, Vec<CandidateInfo<T::AccountId, BalanceOf<T>, T::BlockNumber>>, ValueQuery>;
+	pub type Candidates<T: Config> = StorageValue<
+		_,
+		BoundedVec<CandidateInfo<T::AccountId, BalanceOf<T>, T::BlockNumber>, T::MaxCandidates>,
+		ValueQuery,
+	>;
 
 	/// Desired number of candidates.
 	///
@@ -202,10 +206,11 @@ pub mod pallet {
 				"duplicate invulnerables in genesis."
 			);
 
-			assert!(
-				T::MaxInvulnerables::get() >= (self.invulnerables.len() as u32),
-				"genesis invulnerables are more than T::MaxInvulnerables",
-			);
+			let bounded_invulnerables: BoundedVec<T::AccountId, T::MaxInvulnerables> = self
+				.invulnerables
+				.clone()
+				.try_into()
+				.expect("genesis invulnerables are more than T::MaxInvulnerables");
 			assert!(
 				T::MaxCandidates::get() >= self.desired_candidates,
 				"genesis desired_candidates are more than T::MaxCandidates",
@@ -213,7 +218,7 @@ pub mod pallet {
 
 			<DesiredCandidates<T>>::put(&self.desired_candidates);
 			<CandidacyBond<T>>::put(&self.candidacy_bond);
-			<Invulnerables<T>>::put(&self.invulnerables);
+			<Invulnerables<T>>::put(&bounded_invulnerables);
 		}
 	}
 
@@ -238,6 +243,7 @@ pub mod pallet {
 		NotCandidate,
 		AlreadyInvulnerable,
 		InvalidProof,
+		MaxInvulnerablesExceeded,
 	}
 
 	#[pallet::hooks]
@@ -249,11 +255,10 @@ pub mod pallet {
 		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			// we trust origin calls, this is just a for more accurate benchmarking
-			if (new.len() as u32) > T::MaxInvulnerables::get() {
-				log::warn!("invulnerables > T::MaxInvulnerables; you might need to run benchmarks again");
-			}
-			<Invulnerables<T>>::put(&new);
-			Self::deposit_event(Event::NewInvulnerables(new));
+			let bounded_new: BoundedVec<T::AccountId, T::MaxInvulnerables> =
+				new.try_into().map_err(|_| Error::<T>::MaxInvulnerablesExceeded)?;
+			<Invulnerables<T>>::put(&bounded_new);
+			Self::deposit_event(Event::NewInvulnerables(bounded_new.to_vec()));
 			Ok(().into())
 		}
 
@@ -296,18 +301,20 @@ pub mod pallet {
 				last_block: frame_system::Pallet::<T>::block_number(),
 			};
 
-			let current_count = <Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
-				if candidates.into_iter().any(|candidate| candidate.who == who) {
-					Err(Error::<T>::AlreadyCandidate)?
-				} else {
-					T::Currency::reserve(&who, deposit)?;
-					candidates.push(incoming);
-					Ok(candidates.len())
-				}
-			})?;
+			let mut bounded_candidates = Self::candidates();
+
+			if bounded_candidates.iter().any(|candidate| candidate.who == who) {
+				Err(Error::<T>::AlreadyCandidate)?;
+			} else {
+				bounded_candidates
+					.try_push(incoming)
+					.map_err(|_| Error::<T>::TooManyCandidates)?;
+				T::Currency::reserve(&who, deposit)?;
+				<Candidates<T>>::put(&bounded_candidates);
+			}
 
 			Self::deposit_event(Event::CandidateAdded(who, deposit));
-			Ok(Some(T::WeightInfo::register_as_candidate(current_count as u32)).into())
+			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates.len() as u32)).into())
 		}
 
 		#[pallet::weight(T::WeightInfo::leave_intent(T::MaxCandidates::get()))]
@@ -344,7 +351,7 @@ pub mod pallet {
 		///
 		/// This is done on the fly, as frequent as we are told to do so, as the session manager.
 		pub fn assemble_collators(candidates: Vec<T::AccountId>) -> Vec<T::AccountId> {
-			let mut collators = Self::invulnerables();
+			let mut collators = Self::invulnerables().to_vec();
 			collators.extend(candidates.into_iter().collect::<Vec<_>>());
 			collators
 		}
@@ -381,11 +388,14 @@ pub mod pallet {
 	{
 		fn note_author(author: T::AccountId) {
 			let candidates_len = <Candidates<T>>::mutate(|candidates| -> usize {
-				if let Some(found) = candidates.iter_mut().find(|candidate| candidate.who == author) {
+				let mut candidates_inner = candidates.to_vec();
+				if let Some(found) = candidates_inner.iter_mut().find(|candidate| candidate.who == author) {
 					found.last_block = frame_system::Pallet::<T>::block_number();
 				}
+				*candidates = candidates_inner.try_into().unwrap();
 				candidates.len()
 			});
+
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
 				T::WeightInfo::note_author(candidates_len as u32),
 				DispatchClass::Mandatory,
@@ -406,7 +416,7 @@ pub mod pallet {
 
 			let candidates = Self::candidates();
 			let candidates_len_before = candidates.len();
-			let active_candidates = Self::kick_stale_candidates(candidates);
+			let active_candidates = Self::kick_stale_candidates(candidates.to_vec());
 			let active_candidates_len = active_candidates.len();
 			let result = Self::assemble_collators(active_candidates);
 			let removed = candidates_len_before - active_candidates_len;
