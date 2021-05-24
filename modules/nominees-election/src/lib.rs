@@ -20,7 +20,13 @@
 #![allow(clippy::unused_unit)]
 
 use codec::Encode;
-use frame_support::{log, pallet_prelude::*, traits::Get, traits::LockIdentifier, transactional, BoundedVec};
+use frame_support::{
+	log,
+	pallet_prelude::*,
+	traits::Get,
+	traits::{LockIdentifier, MaxEncodedLen},
+	transactional, BoundedVec,
+};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains};
 use primitives::{Balance, EraIndex};
@@ -40,7 +46,7 @@ pub const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be
 /// unlocked.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub struct UnlockChunk {
 	/// Amount of funds to be unlocked.
 	value: Balance,
@@ -49,8 +55,11 @@ pub struct UnlockChunk {
 }
 
 /// The ledger of a (bonded) account.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
-pub struct BondingLedger {
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+pub struct BondingLedger<T>
+where
+	T: Get<u32>,
+{
 	/// The total amount of the account's balance that we are currently
 	/// accounting for. It's just `active` plus all the `unlocking`
 	/// balances.
@@ -60,15 +69,18 @@ pub struct BondingLedger {
 	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be
 	/// transferred out of the account.
-	pub unlocking: Vec<UnlockChunk>,
+	pub unlocking: BoundedVec<UnlockChunk, T>,
 }
 
-impl BondingLedger {
+impl<T> BondingLedger<T>
+where
+	T: Get<u32>,
+{
 	/// Remove entries from `unlocking` that are sufficiently old and reduce
 	/// the total by the sum of their balances.
 	fn consolidate_unlocked(self, current_era: EraIndex) -> Self {
 		let mut total = self.total;
-		let unlocking = self
+		let unlocking: BoundedVec<UnlockChunk, T> = self
 			.unlocking
 			.into_iter()
 			.filter(|chunk| {
@@ -79,7 +91,9 @@ impl BondingLedger {
 					false
 				}
 			})
-			.collect();
+			.collect::<Vec<UnlockChunk>>()
+			.try_into()
+			.expect("Maximum UnlockChunks exceeded");
 
 		Self {
 			total,
@@ -91,12 +105,12 @@ impl BondingLedger {
 	/// Re-bond funds that were scheduled for unlocking.
 	fn rebond(mut self, value: Balance) -> Self {
 		let mut unlocking_balance: Balance = Zero::zero();
-
-		while let Some(last) = self.unlocking.last_mut() {
+		let mut inner_vec = self.unlocking.into_inner();
+		while let Some(last) = inner_vec.last_mut() {
 			if unlocking_balance + last.value <= value {
 				unlocking_balance += last.value;
 				self.active += last.value;
-				self.unlocking.pop();
+				inner_vec.pop();
 			} else {
 				let diff = value - unlocking_balance;
 
@@ -110,7 +124,23 @@ impl BondingLedger {
 			}
 		}
 
+		self.unlocking = inner_vec.try_into().expect("Maximum UnlockChunks exceeded");
 		self
+	}
+}
+
+impl<T> Default for BondingLedger<T>
+where
+	T: Get<u32>,
+{
+	fn default() -> Self {
+		let unlocking: BoundedVec<UnlockChunk, T> = vec![].try_into().expect("Maximum UnlockChunks exceeded");
+
+		Self {
+			unlocking,
+			total: 0_u128,
+			active: 0_u128,
+		}
 	}
 }
 
@@ -139,7 +169,7 @@ pub mod module {
 	pub enum Error<T, I = ()> {
 		BelowMinBondThreshold,
 		InvalidTargetsLength,
-		TooManyChunks,
+		MaxUnlockChunksExceeded,
 		NoBonded,
 		NoUnlockChunk,
 		InvalidRelaychainValidator,
@@ -166,13 +196,15 @@ pub mod module {
 		ValueQuery,
 	>;
 
+	// type Unlocking<T> = BoundedVec<UnlockChunk, <T as Config>::Max>
+
 	/// The nomination bonding ledger.
 	///
 	/// Ledger: map => AccountId, BondingLedger
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Twox64Concat, T::AccountId, BondingLedger, ValueQuery>;
+		StorageMap<_, Twox64Concat, T::AccountId, BondingLedger<T::MaxUnlockingChunks>, ValueQuery>;
 
 	/// The total voting value for nominees.
 	///
@@ -235,10 +267,6 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 
 			let mut ledger = Self::ledger(&who);
-			ensure!(
-				ledger.unlocking.len() < T::MaxUnlockingChunks::get().saturated_into(),
-				Error::<T, I>::TooManyChunks,
-			);
 
 			let amount = amount.min(ledger.active);
 
@@ -253,7 +281,10 @@ pub mod module {
 
 				// Note: in case there is no current era it is fine to bond one era more.
 				let era = Self::current_era() + T::BondingDuration::get();
-				ledger.unlocking.push(UnlockChunk { value: amount, era });
+				ledger
+					.unlocking
+					.try_push(UnlockChunk { value: amount, era })
+					.map_err(|_| Error::<T, I>::MaxUnlockChunksExceeded)?;
 				let old_nominations = Self::nominations(&who);
 
 				Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
@@ -348,7 +379,7 @@ pub mod module {
 }
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
-	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
+	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger<T::MaxUnlockingChunks>) {
 		let res = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
 		if let Err(e) = res {
 			log::warn!(

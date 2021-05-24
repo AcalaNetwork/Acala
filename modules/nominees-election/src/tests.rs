@@ -81,7 +81,7 @@ fn unbond_exceed_max_unlock_chunk() {
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unlocking.len(), 3);
 		assert_noop!(
 			NomineesElectionModule::unbond(Origin::signed(ALICE), 100),
-			Error::<Runtime>::TooManyChunks,
+			Error::<Runtime>::MaxUnlockChunksExceeded,
 		);
 	});
 }
