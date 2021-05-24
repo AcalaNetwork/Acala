@@ -11,10 +11,6 @@ if [ "$#" -lt 1 ]; then
   exit 1
 fi
 
-#if [ -z "$2" ]; then
-#  export WASM_TARGET_DIRECTORY=$(pwd)
-#else
-#  export WASM_TARGET_DIRECTORY=$2
-#fi
+export WASM_TARGET_DIRECTORY=$(pwd)
 
 cargo build --release $*
