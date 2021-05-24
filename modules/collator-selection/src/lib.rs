@@ -127,8 +127,6 @@ pub mod pallet {
 		type MaxCandidates: Get<u32>;
 
 		/// Maximum number of invulnerables.
-		///
-		/// Used only for benchmarking.
 		type MaxInvulnerables: Get<u32>;
 
 		// Will be kicked if block is not produced in threshold.
@@ -149,6 +147,9 @@ pub mod pallet {
 		pub last_block: BlockNumber,
 	}
 
+	type CandidateInfoOf<T> =
+		CandidateInfo<<T as SystemConfig>::AccountId, BalanceOf<T>, <T as SystemConfig>::BlockNumber>;
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -161,18 +162,11 @@ pub mod pallet {
 	/// The (community, limited) collation candidates.
 	#[pallet::storage]
 	#[pallet::getter(fn candidates)]
-	pub type Candidates<T: Config> = StorageValue<
-		_,
-		BoundedVec<CandidateInfo<T::AccountId, BalanceOf<T>, T::BlockNumber>, T::MaxCandidates>,
-		ValueQuery,
-	>;
+	pub type Candidates<T: Config> = StorageValue<_, BoundedVec<CandidateInfoOf<T>, T::MaxCandidates>, ValueQuery>;
 
 	/// Desired number of candidates.
 	///
 	/// This should ideally always be less than [`Config::MaxCandidates`] for weights to be correct.
-	#[pallet::storage]
-	#[pallet::getter(fn desired_candidates)]
-	pub type DesiredCandidates<T> = StorageValue<_, u32, ValueQuery>;
 
 	/// Fixed deposit bond for each candidate.
 	#[pallet::storage]
@@ -183,7 +177,6 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub invulnerables: Vec<T::AccountId>,
 		pub candidacy_bond: BalanceOf<T>,
-		pub desired_candidates: u32,
 	}
 
 	#[cfg(feature = "std")]
@@ -192,7 +185,6 @@ pub mod pallet {
 			Self {
 				invulnerables: Default::default(),
 				candidacy_bond: Default::default(),
-				desired_candidates: Default::default(),
 			}
 		}
 	}
@@ -201,8 +193,9 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			let duplicate_invulnerables = self.invulnerables.iter().collect::<std::collections::BTreeSet<_>>();
-			assert!(
-				duplicate_invulnerables.len() == self.invulnerables.len(),
+			assert_eq!(
+				duplicate_invulnerables.len(),
+				self.invulnerables.len(),
 				"duplicate invulnerables in genesis."
 			);
 
@@ -211,12 +204,7 @@ pub mod pallet {
 				.clone()
 				.try_into()
 				.expect("genesis invulnerables are more than T::MaxInvulnerables");
-			assert!(
-				T::MaxCandidates::get() >= self.desired_candidates,
-				"genesis desired_candidates are more than T::MaxCandidates",
-			);
 
-			<DesiredCandidates<T>>::put(&self.desired_candidates);
 			<CandidacyBond<T>>::put(&self.candidacy_bond);
 			<Invulnerables<T>>::put(&bounded_invulnerables);
 		}
@@ -236,7 +224,7 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		TooManyCandidates,
+		MaxCandidatesExceeded,
 		Unknown,
 		Permission,
 		AlreadyCandidate,
@@ -262,18 +250,6 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
-		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResultWithPostInfo {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			// we trust origin calls, this is just a for more accurate benchmarking
-			if max > T::MaxCandidates::get() {
-				log::warn!("max > T::MaxCandidates; you might need to run benchmarks again");
-			}
-			<DesiredCandidates<T>>::put(&max);
-			Self::deposit_event(Event::NewDesiredCandidates(max));
-			Ok(().into())
-		}
-
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
 		pub fn set_candidacy_bond(origin: OriginFor<T>, bond: BalanceOf<T>) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -286,12 +262,6 @@ pub mod pallet {
 		pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			// ensure we are below limit.
-			let length = <Candidates<T>>::decode_len().unwrap_or_default();
-			ensure!(
-				(length as u32) < Self::desired_candidates(),
-				Error::<T>::TooManyCandidates
-			);
 			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
 
 			let deposit = Self::candidacy_bond();
@@ -308,7 +278,7 @@ pub mod pallet {
 			} else {
 				bounded_candidates
 					.try_push(incoming)
-					.map_err(|_| Error::<T>::TooManyCandidates)?;
+					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
 				T::Currency::reserve(&who, deposit)?;
 				<Candidates<T>>::put(&bounded_candidates);
 			}
