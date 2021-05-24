@@ -276,7 +276,6 @@ fn karura_genesis(
 		module_collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _)| acc).collect(),
 			candidacy_bond: Zero::zero(),
-			..Default::default()
 		},
 		pallet_session: SessionConfig {
 			keys: initial_authorities
