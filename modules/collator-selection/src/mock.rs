@@ -187,8 +187,8 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	pub const MaxCandidates: u32 = 20;
-	pub const MaxInvulnerables: u32 = 20;
+	pub const MaxCandidates: u32 = 2;
+	pub const MaxInvulnerables: u32 = 4;
 }
 
 impl Config for Test {
@@ -223,7 +223,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)],
 	};
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
-		desired_candidates: 2,
 		candidacy_bond: 10,
 		invulnerables,
 	};

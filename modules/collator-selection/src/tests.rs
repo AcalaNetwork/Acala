@@ -28,7 +28,6 @@ use sp_runtime::traits::BadOrigin;
 #[test]
 fn basic_setup_works() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(CollatorSelection::desired_candidates(), 2);
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
 
 		assert!(CollatorSelection::candidates().is_empty());
@@ -55,27 +54,6 @@ fn it_should_set_invulnerables() {
 }
 
 #[test]
-fn set_desired_candidates_works() {
-	new_test_ext().execute_with(|| {
-		// given
-		assert_eq!(CollatorSelection::desired_candidates(), 2);
-
-		// can set
-		assert_ok!(CollatorSelection::set_desired_candidates(
-			Origin::signed(RootAccount::get()),
-			7
-		));
-		assert_eq!(CollatorSelection::desired_candidates(), 7);
-
-		// rejects bad origin
-		assert_noop!(
-			CollatorSelection::set_desired_candidates(Origin::signed(1), 8),
-			BadOrigin
-		);
-	});
-}
-
-#[test]
 fn set_candidacy_bond() {
 	new_test_ext().execute_with(|| {
 		// given
@@ -96,23 +74,11 @@ fn set_candidacy_bond() {
 #[test]
 fn cannot_register_candidate_if_too_many() {
 	new_test_ext().execute_with(|| {
-		// reset desired candidates:
-		<crate::DesiredCandidates<Test>>::put(0);
-
-		// can't accept anyone anymore.
-		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(3)),
-			Error::<Test>::TooManyCandidates,
-		);
-
-		// reset desired candidates:
-		<crate::DesiredCandidates<Test>>::put(1);
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
-
-		// but no more
 		assert_noop!(
 			CollatorSelection::register_as_candidate(Origin::signed(5)),
-			Error::<Test>::TooManyCandidates,
+			Error::<Test>::MaxCandidatesExceeded
 		);
 	})
 }
@@ -172,7 +138,6 @@ fn cannot_register_as_candidate_if_poor() {
 fn register_as_candidate_works() {
 	new_test_ext().execute_with(|| {
 		// given
-		assert_eq!(CollatorSelection::desired_candidates(), 2);
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
 		assert_eq!(CollatorSelection::candidates(), vec![]);
 		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
@@ -301,6 +266,21 @@ fn kick_mechanism() {
 }
 
 #[test]
+fn exceeding_max_invulnerables_should_fail() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(CollatorSelection::set_invulnerables(
+			Origin::signed(RootAccount::get()),
+			vec![1, 2, 3, 4]
+		));
+
+		assert_noop!(
+			CollatorSelection::set_invulnerables(Origin::signed(RootAccount::get()), vec![1, 2, 3, 4, 5]),
+			Error::<Test>::MaxInvulnerablesExceeded
+		);
+	});
+}
+
+#[test]
 #[should_panic = "duplicate invulnerables in genesis."]
 fn cannot_set_genesis_value_twice() {
 	sp_tracing::try_init_simple();
@@ -308,7 +288,6 @@ fn cannot_set_genesis_value_twice() {
 	let invulnerables = vec![1, 1];
 
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
-		desired_candidates: 2,
 		candidacy_bond: 10,
 		invulnerables,
 	};
