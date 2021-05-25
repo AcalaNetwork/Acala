@@ -103,8 +103,6 @@ fn cannot_register_candidate_if_too_many() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
-
-		// but no more
 		assert_noop!(
 			CollatorSelection::register_as_candidate(Origin::signed(5)),
 			Error::<Test>::MaxCandidatesExceeded
