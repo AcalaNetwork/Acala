@@ -114,7 +114,7 @@ where
 			}
 		}
 
-		self.unlocking = inner_vec.try_into().expect("Maximum UnlockChunks exceeded");
+		self.unlocking = inner_vec.try_into().expect("Only popped elements from inner_vec");
 		self
 	}
 }
