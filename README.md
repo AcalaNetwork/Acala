@@ -174,6 +174,13 @@ yarn run start generate
 cd output
 # start relaychain and parachain
 docker-compose up
+
+# remove volume
+docker-compose rm
+docker volume ls
+docker volume rm [your_volume]
+# or prune
+docker volume prune
 ```
 
 ## Try testing runtime
