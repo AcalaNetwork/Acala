@@ -127,8 +127,6 @@ pub mod pallet {
 		type MaxCandidates: Get<u32>;
 
 		/// Maximum number of invulnerables.
-		///
-		/// Used only for benchmarking.
 		type MaxInvulnerables: Get<u32>;
 
 		// Will be kicked if block is not produced in threshold.
@@ -149,6 +147,9 @@ pub mod pallet {
 		pub last_block: BlockNumber,
 	}
 
+	type CandidateInfoOf<T> =
+		CandidateInfo<<T as SystemConfig>::AccountId, BalanceOf<T>, <T as SystemConfig>::BlockNumber>;
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -161,11 +162,7 @@ pub mod pallet {
 	/// The (community, limited) collation candidates.
 	#[pallet::storage]
 	#[pallet::getter(fn candidates)]
-	pub type Candidates<T: Config> = StorageValue<
-		_,
-		BoundedVec<CandidateInfo<T::AccountId, BalanceOf<T>, T::BlockNumber>, T::MaxCandidates>,
-		ValueQuery,
-	>;
+	pub type Candidates<T: Config> = StorageValue<_, BoundedVec<CandidateInfoOf<T>, T::MaxCandidates>, ValueQuery>;
 
 	/// Desired number of candidates.
 	///
@@ -201,8 +198,9 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			let duplicate_invulnerables = self.invulnerables.iter().collect::<std::collections::BTreeSet<_>>();
-			assert!(
-				duplicate_invulnerables.len() == self.invulnerables.len(),
+			assert_eq!(
+				duplicate_invulnerables.len(),
+				self.invulnerables.len(),
 				"duplicate invulnerables in genesis."
 			);
 
@@ -236,7 +234,7 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		TooManyCandidates,
+		MaxCandidatesExceeded,
 		Unknown,
 		Permission,
 		AlreadyCandidate,
@@ -254,20 +252,18 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_invulnerables(new.len() as u32))]
 		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			// we trust origin calls, this is just a for more accurate benchmarking
 			let bounded_new: BoundedVec<T::AccountId, T::MaxInvulnerables> =
 				new.try_into().map_err(|_| Error::<T>::MaxInvulnerablesExceeded)?;
 			<Invulnerables<T>>::put(&bounded_new);
-			Self::deposit_event(Event::NewInvulnerables(bounded_new.to_vec()));
+			Self::deposit_event(Event::NewInvulnerables(bounded_new.into_inner()));
 			Ok(().into())
 		}
 
 		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
 		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			// we trust origin calls, this is just a for more accurate benchmarking
 			if max > T::MaxCandidates::get() {
-				log::warn!("max > T::MaxCandidates; you might need to run benchmarks again");
+				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
 			<DesiredCandidates<T>>::put(&max);
 			Self::deposit_event(Event::NewDesiredCandidates(max));
@@ -290,7 +286,7 @@ pub mod pallet {
 			let length = <Candidates<T>>::decode_len().unwrap_or_default();
 			ensure!(
 				(length as u32) < Self::desired_candidates(),
-				Error::<T>::TooManyCandidates
+				Error::<T>::MaxCandidatesExceeded
 			);
 			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
 
@@ -308,7 +304,7 @@ pub mod pallet {
 			} else {
 				bounded_candidates
 					.try_push(incoming)
-					.map_err(|_| Error::<T>::TooManyCandidates)?;
+					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
 				T::Currency::reserve(&who, deposit)?;
 				<Candidates<T>>::put(&bounded_candidates);
 			}
@@ -351,7 +347,7 @@ pub mod pallet {
 		///
 		/// This is done on the fly, as frequent as we are told to do so, as the session manager.
 		pub fn assemble_collators(candidates: Vec<T::AccountId>) -> Vec<T::AccountId> {
-			let mut collators = Self::invulnerables().to_vec();
+			let mut collators = Self::invulnerables().into_inner();
 			collators.extend(candidates.into_iter().collect::<Vec<_>>());
 			collators
 		}
@@ -416,7 +412,7 @@ pub mod pallet {
 
 			let candidates = Self::candidates();
 			let candidates_len_before = candidates.len();
-			let active_candidates = Self::kick_stale_candidates(candidates.to_vec());
+			let active_candidates = Self::kick_stale_candidates(candidates.into_inner());
 			let active_candidates_len = active_candidates.len();
 			let result = Self::assemble_collators(active_candidates);
 			let removed = candidates_len_before - active_candidates_len;
