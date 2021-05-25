@@ -123,7 +123,6 @@ parameter_types! {
 	pub const BondingDuration: EraIndex = 4;
 	pub const NominateesCount: u32 = 5;
 	pub const MaxUnlockingChunks: u32 = 3;
-	pub const MaxNominees: u32 = 5;
 }
 
 pub struct MockRelaychainValidatorFilter;
@@ -145,7 +144,6 @@ impl Config for Runtime {
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
 	type RelaychainValidatorFilter = MockRelaychainValidatorFilter;
-	type MaxNominees = MaxNominees;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

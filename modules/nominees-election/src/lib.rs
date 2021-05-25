@@ -162,7 +162,6 @@ pub mod module {
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
 		type RelaychainValidatorFilter: Contains<Self::NomineeId>;
-		type MaxNominees: Get<u32>;
 	}
 
 	#[pallet::error]
@@ -173,7 +172,7 @@ pub mod module {
 		NoBonded,
 		NoUnlockChunk,
 		InvalidRelaychainValidator,
-		MaxNomineesExceeded,
+		NominateesCountExceeded,
 	}
 
 	#[pallet::event]
@@ -195,8 +194,6 @@ pub mod module {
 		BoundedVec<<T as Config<I>>::NomineeId, T::NominateesCount>,
 		ValueQuery,
 	>;
-
-	// type Unlocking<T> = BoundedVec<UnlockChunk, <T as Config>::Max>
 
 	/// The nomination bonding ledger.
 	///
@@ -220,7 +217,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn nominees)]
 	pub type Nominees<T: Config<I>, I: 'static = ()> =
-		StorageValue<_, BoundedVec<<T as Config<I>>::NomineeId, T::MaxNominees>, ValueQuery>;
+		StorageValue<_, BoundedVec<<T as Config<I>>::NomineeId, T::NominateesCount>, ValueQuery>;
 
 	/// Current era index.
 	///
@@ -434,13 +431,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 
-		let new_nominees: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::MaxNominees> = voters
+		let new_nominees: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = voters
 			.into_iter()
 			.take(T::NominateesCount::get().saturated_into())
 			.map(|(nominee, _)| nominee)
 			.collect::<Vec<_>>()
 			.try_into()
-			.map_err(|_| Error::<T, I>::MaxNomineesExceeded)?;
+			.map_err(|_| Error::<T, I>::NominateesCountExceeded)?;
 
 		Nominees::<T, I>::put(new_nominees);
 
