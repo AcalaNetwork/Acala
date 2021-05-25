@@ -28,7 +28,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{pallet_prelude::*, traits::MaxEncodedLen, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains, Happened, LockIdentifier};
 use primitives::Balance;
@@ -83,7 +83,7 @@ impl WeightInfo for () {
 	}
 }
 
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen)]
 pub struct Guarantee<BlockNumber> {
 	total: Balance,
 	bonded: Balance,
@@ -136,14 +136,14 @@ impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
 	}
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SlashInfo<Balance, RelaychainAccountId> {
 	validator: RelaychainAccountId,
 	relaychain_token_amount: Balance,
 }
 
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen)]
 pub struct ValidatorBacking {
 	total_insurance: Balance,
 	is_frozen: bool,
