@@ -36,26 +36,15 @@ use support::{
 pub use module::*;
 
 /// The params related to rebalance per era
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub struct SubAccountStatus<T: Config> {
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+pub struct SubAccountStatus<Unbonding> {
 	/// Bonded amount
 	pub bonded: Balance,
 	/// Free amount
 	pub available: Balance,
 	/// Unbonding list
-	pub unbonding: BoundedVec<(EraIndex, Balance), T::MaxUnbonding>,
+	pub unbonding: Unbonding,
 	pub mock_reward_rate: Rate,
-}
-
-impl<T: Config> Default for SubAccountStatus<T> {
-	fn default() -> Self {
-		Self {
-			bonded: Balance::default(),
-			available: Balance::default(),
-			mock_reward_rate: Rate::default(),
-			unbonding: vec![].try_into().expect("Exceeded MaxUnbonding"),
-		}
-	}
 }
 
 #[frame_support::pallet]
@@ -81,6 +70,8 @@ pub mod module {
 		MaxUnbondingExceeded,
 	}
 
+	type Unbonding<T> = BoundedVec<(EraIndex, Balance), <T as Config>::MaxUnbonding>;
+
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
 	pub type CurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
@@ -95,7 +86,7 @@ pub mod module {
 
 	#[pallet::storage]
 	#[pallet::getter(fn sub_accounts)]
-	pub type SubAccounts<T: Config> = StorageMap<_, Twox64Concat, u32, SubAccountStatus<T>, ValueQuery>;
+	pub type SubAccounts<T: Config> = StorageMap<_, Twox64Concat, u32, SubAccountStatus<Unbonding<T>>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
