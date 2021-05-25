@@ -385,6 +385,7 @@ fn testnet_genesis(
 		module_collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
 			candidacy_bond: initial_staking,
+			..Default::default()
 		},
 		pallet_session: SessionConfig {
 			keys: initial_authorities
@@ -615,6 +616,7 @@ fn mandala_genesis(
 		module_collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
 			candidacy_bond: initial_staking,
+			..Default::default()
 		},
 		pallet_session: SessionConfig {
 			keys: initial_authorities
