@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, traits::Get, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 use orml_traits::BasicCurrency;
 use primitives::{Balance, EraIndex};
@@ -27,7 +27,7 @@ use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, StaticLookup, Zero},
 	ArithmeticError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
-use sp_std::{fmt::Debug, prelude::*};
+use sp_std::{convert::TryInto, fmt::Debug, prelude::*};
 use support::{
 	OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState, PolkadotBridgeType, PolkadotStakingLedger,
 	PolkadotUnlockChunk, Rate,
@@ -36,15 +36,26 @@ use support::{
 pub use module::*;
 
 /// The params related to rebalance per era
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
-pub struct SubAccountStatus {
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+pub struct SubAccountStatus<T: Config> {
 	/// Bonded amount
 	pub bonded: Balance,
 	/// Free amount
 	pub available: Balance,
 	/// Unbonding list
-	pub unbonding: Vec<(EraIndex, Balance)>,
+	pub unbonding: BoundedVec<(EraIndex, Balance), T::MaxUnbonding>,
 	pub mock_reward_rate: Rate,
+}
+
+impl<T: Config> Default for SubAccountStatus<T> {
+	fn default() -> Self {
+		Self {
+			bonded: Balance::default(),
+			available: Balance::default(),
+			mock_reward_rate: Rate::default(),
+			unbonding: vec![].try_into().expect("Exceeded MaxUnbonding"),
+		}
+	}
 }
 
 #[frame_support::pallet]
@@ -60,11 +71,14 @@ pub mod module {
 		#[pallet::constant]
 		type EraLength: Get<Self::BlockNumber>;
 		type PolkadotAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
+		#[pallet::constant]
+		type MaxUnbonding: Get<u32>;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		NotEnough,
+		MaxUnbondingExceeded,
 	}
 
 	#[pallet::storage]
@@ -81,7 +95,7 @@ pub mod module {
 
 	#[pallet::storage]
 	#[pallet::getter(fn sub_accounts)]
-	pub type SubAccounts<T: Config> = StorageMap<_, Twox64Concat, u32, SubAccountStatus, ValueQuery>;
+	pub type SubAccounts<T: Config> = StorageMap<_, Twox64Concat, u32, SubAccountStatus<T>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -260,7 +274,10 @@ impl<T: Config> Pallet<T> {
 				status.bonded = status.bonded.checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
 				let current_era = Self::current_era();
 				let unbonded_era_index = current_era + T::BondingDuration::get();
-				status.unbonding.push((unbonded_era_index, amount));
+				status
+					.unbonding
+					.try_push((unbonded_era_index, amount))
+					.map_err(|_| Error::<T>::MaxUnbondingExceeded)?;
 				log::debug!(
 					target: "polkadot bridge simulator",
 					"sub account {:?} unbond: {:?} at {:?}",
@@ -277,7 +294,7 @@ impl<T: Config> Pallet<T> {
 	/// simulate rebond by sub account
 	fn sub_account_rebond(account_index: u32, amount: Balance) -> DispatchResult {
 		SubAccounts::<T>::try_mutate(account_index, |status| -> DispatchResult {
-			let mut unbonding = status.unbonding.clone();
+			let mut unbonding = status.unbonding.clone().into_inner();
 			let mut bonded = status.bonded;
 			let mut rebond_balance: Balance = Zero::zero();
 
@@ -301,7 +318,7 @@ impl<T: Config> Pallet<T> {
 			ensure!(rebond_balance >= amount, Error::<T>::NotEnough);
 			if !rebond_balance.is_zero() {
 				status.bonded = bonded;
-				status.unbonding = unbonding;
+				status.unbonding = unbonding.try_into().map_err(|_| Error::<T>::MaxUnbondingExceeded)?;
 
 				log::debug!(
 					target: "polkadot bridge simulator",
@@ -334,7 +351,7 @@ impl<T: Config> Pallet<T> {
 				.collect::<Vec<_>>();
 
 			status.available = available;
-			status.unbonding = unbonding;
+			status.unbonding = unbonding.try_into().expect("Exceeded MaxUnBonding");
 		});
 	}
 
