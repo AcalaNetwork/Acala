@@ -28,7 +28,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{pallet_prelude::*, traits::MaxEncodedLen, transactional};
 use frame_system::pallet_prelude::*;
 use primitives::{Balance, EraIndex};
 use sp_runtime::RuntimeDebug;
@@ -47,7 +47,7 @@ pub use weights::WeightInfo;
 /// get back the DOT. 3. WaitForUnbonding: User request unbond, the staking
 /// pool will process unbonding in the next era, and user needs to wait for
 /// the complete unbonding era which determined by Polkadot.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, MaxEncodedLen)]
 pub enum RedeemStrategy {
 	Immediately,
 	Target(EraIndex),
