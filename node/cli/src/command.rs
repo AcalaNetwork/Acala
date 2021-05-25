@@ -26,7 +26,6 @@ use cumulus_primitives_core::ParaId;
 use service::{chain_spec, IdentifyVariant};
 
 use log::info;
-use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
 	RuntimeVersion, SharedParams, SubstrateCli,
@@ -432,7 +431,6 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.run_node_until_exit(|config| async move {
-				// TODO
 				let key = sp_core::Pair::generate().0;
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec).map(|e| e.para_id);
@@ -455,23 +453,11 @@ pub fn run() -> sc_cli::Result<()> {
 
 				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(2000));
 
-				let parachain_account = AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
-
-				let genesis_state = with_runtime_or_err!(config.chain_spec, {
-					{
-						let block: Block =
-							generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
-						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
-					}
-				});
-
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 				info!("Parachain id: {:?}", id);
-				info!("Parachain Account: {}", parachain_account);
-				info!("Parachain genesis state: {}", genesis_state);
 				info!(
 					"Is collating: {}",
 					if config.role.is_authority() { "yes" } else { "no" }

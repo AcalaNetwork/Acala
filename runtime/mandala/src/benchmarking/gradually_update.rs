@@ -20,7 +20,7 @@ use crate::{GraduallyUpdate, Origin, Runtime, System, UpdateFrequency};
 
 use frame_support::traits::OnFinalize;
 use orml_benchmarking::runtime_benchmarks;
-use sp_std::prelude::*;
+use sp_std::{convert::TryInto, prelude::*};
 
 const MAX_TARGET_VALUE: u32 = 100;
 
@@ -31,18 +31,18 @@ runtime_benchmarks! {
 	gradually_update {
 		System::set_block_number(1);
 		let update = orml_gradually_update::GraduallyUpdate {
-			key: vec![1],
-			target_value: vec![10],
-			per_block: vec![1],
+			key: vec![1].try_into().unwrap(),
+			target_value: vec![10].try_into().unwrap(),
+			per_block: vec![1].try_into().unwrap(),
 		};
 	}: _(Origin::root(), update)
 
 	// cancel gradually update
 	cancel_gradually_update {
 		let update = orml_gradually_update::GraduallyUpdate {
-			key: vec![1],
-			target_value: vec![10],
-			per_block: vec![1],
+			key: vec![1].try_into().unwrap(),
+			target_value: vec![10].try_into().unwrap(),
+			per_block: vec![1].try_into().unwrap(),
 		};
 		GraduallyUpdate::gradually_update(Origin::root(), update.clone())?;
 	}: _(Origin::root(), update.key)
@@ -54,9 +54,9 @@ runtime_benchmarks! {
 		System::set_block_number(1);
 		for i in 1..u {
 			let update = orml_gradually_update::GraduallyUpdate {
-				key: vec![1],
-				target_value: vec![200],
-				per_block: vec![i as u8],
+				key: vec![1].try_into().unwrap(),
+				target_value: vec![200].try_into().unwrap(),
+				per_block: vec![i as u8].try_into().unwrap(),
 			};
 			GraduallyUpdate::gradually_update(Origin::root(), update)?;
 		}

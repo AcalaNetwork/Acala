@@ -35,7 +35,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchResult,
+	ArithmeticError, DispatchResult,
 };
 use sp_std::vec::Vec;
 use support::TransactionPayment;
@@ -85,8 +85,6 @@ pub mod module {
 		InvalidMintSignature,
 		/// The mint signature has already been used.
 		SignatureAlreadyUsed,
-		/// Burn ID overflow.
-		BurnIdOverflow,
 	}
 
 	#[pallet::event]
@@ -212,7 +210,7 @@ pub mod module {
 
 			NextBurnEventId::<T>::try_mutate(|id| -> DispatchResult {
 				let this_id = *id;
-				*id = id.checked_add(1).ok_or(Error::<T>::BurnIdOverflow)?;
+				*id = id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
 				T::BridgedTokenCurrency::withdraw(&sender, amount)?;
 				BurnEvents::<T>::insert(this_id, (frame_system::Pallet::<T>::block_number(), &to, amount));

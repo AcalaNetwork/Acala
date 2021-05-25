@@ -120,6 +120,7 @@ mod benchmarking;
 mod constants;
 
 /// This runtime version.
+#[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
@@ -222,12 +223,10 @@ parameter_types! {
 }
 
 impl pallet_authorship::Config for Runtime {
-	// TODO https://github.com/paritytech/statemint/issues/23
-	// Add FindAccountFromAuthorIndex when Aura is integrated
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = ();
+	type EventHandler = CollatorSelection;
 }
 
 parameter_types! {
@@ -506,7 +505,7 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = AcalaOracle;
+	type MembershipInitialized = ();
 	type MembershipChanged = AcalaOracle;
 	type MaxMembers = OracleMaxMembers;
 	type WeightInfo = ();
@@ -520,7 +519,7 @@ impl pallet_membership::Config<OperatorMembershipInstanceBand> for Runtime {
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = BandOracle;
+	type MembershipInitialized = ();
 	type MembershipChanged = BandOracle;
 	type MaxMembers = OracleMaxMembers;
 	type WeightInfo = ();
@@ -708,6 +707,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
+	type Members = OperatorMembershipAcala;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
@@ -720,6 +720,7 @@ impl orml_oracle::Config<BandDataProvider> for Runtime {
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
+	type Members = OperatorMembershipBand;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
@@ -755,6 +756,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, AcalaTreasuryAccount>;
+	type MaxLocks = MaxLocks;
 }
 
 parameter_types! {
@@ -824,6 +826,7 @@ impl EnsureOrigin<Origin> for EnsureRootOrAcalaTreasury {
 
 parameter_types! {
 	pub MinVestedTransfer: Balance = 100 * dollar(ACA);
+	pub const MaxVestingSchedules: u32 = 100;
 }
 
 impl orml_vesting::Config for Runtime {
@@ -832,6 +835,7 @@ impl orml_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureRootOrAcalaTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
+	type MaxVestingSchedules = MaxVestingSchedules;
 }
 
 parameter_types! {
@@ -852,6 +856,9 @@ impl pallet_scheduler::Config for Runtime {
 
 parameter_types! {
 	pub const UpdateFrequency: BlockNumber = 10;
+	pub const MaxGraduallyUpdate: u32 = 100;
+	pub const MaxStorageKeyBytes: u32 = 1024;
+	pub const MaxStorageValueBytes: u32 = 1024;
 }
 
 impl orml_gradually_update::Config for Runtime {
@@ -859,6 +866,9 @@ impl orml_gradually_update::Config for Runtime {
 	type UpdateFrequency = UpdateFrequency;
 	type DispatchOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
+	type MaxGraduallyUpdate = MaxGraduallyUpdate;
+	type MaxStorageKeyBytes = MaxStorageKeyBytes;
+	type MaxStorageValueBytes = MaxStorageValueBytes;
 }
 
 parameter_types! {
@@ -1215,11 +1225,18 @@ impl module_nft::Config for Runtime {
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub MaxClassMetadata: u32 = 1024;
+	pub MaxTokenMetadata: u32 = 1024;
+}
+
 impl orml_nft::Config for Runtime {
 	type ClassId = u32;
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
+	type MaxClassMetadata = MaxClassMetadata;
+	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
 parameter_types! {
@@ -1617,9 +1634,9 @@ construct_runtime! {
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Config<T>, Event<T>} = 80,
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 80,
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 82,
-		BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Config<T>, Event<T>} = 81,
+		BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Event<T>} = 81,
 		OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 83,
 
 		// ORML Core
@@ -1902,6 +1919,12 @@ impl_runtime_apis! {
 			};
 
 			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+		}
+	}
+
+	impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
+		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
+			ParachainSystem::collect_collation_info()
 		}
 	}
 

@@ -34,7 +34,7 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
-	DispatchError, DispatchResult, FixedPointNumber,
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
@@ -95,8 +95,6 @@ pub mod module {
 		CollateralNotEnough,
 		/// The surplus pool of CDP treasury is not enough
 		SurplusPoolNotEnough,
-		/// debit pool overflow
-		DebitPoolOverflow,
 		/// The debit pool of CDP treasury is not enough
 		DebitPoolNotEnough,
 		/// The swap path is invalid
@@ -292,7 +290,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult {
 		DebitPool::<T>::try_mutate(|debit_pool| -> DispatchResult {
-			*debit_pool = debit_pool.checked_add(amount).ok_or(Error::<T>::DebitPoolOverflow)?;
+			*debit_pool = debit_pool.checked_add(amount).ok_or(ArithmeticError::Overflow)?;
 			Ok(())
 		})
 	}

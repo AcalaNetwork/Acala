@@ -3,6 +3,7 @@ name = "acala"
 version = "1.0.0"
 authors = ["Acala Developers"]
 edition = "2018"
+default-run = "acala"
 
 [[bin]]
 name = "acala"

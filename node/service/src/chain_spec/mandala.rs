@@ -223,13 +223,12 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		dollar, get_all_module_accounts, AcalaOracleConfig, AirDropConfig, Balance, BalancesConfig, BandOracleConfig,
-		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
-		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT,
-		LDOT, RENBTC,
+		dollar, get_all_module_accounts, AirDropConfig, Balance, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
+		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -352,14 +351,6 @@ fn testnet_genesis(
 		module_airdrop: AirDropConfig {
 			airdrop_accounts: vec![],
 		},
-		orml_oracle_Instance1: AcalaOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
-		},
-		orml_oracle_Instance2: BandOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
-		},
 		module_evm: EVMConfig {
 			accounts: evm_genesis_accounts,
 			treasury: root_key,
@@ -422,13 +413,13 @@ fn mandala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		cent, dollar, get_all_module_accounts, AcalaOracleConfig, AirDropConfig, AirDropCurrencyId, Balance,
-		BalancesConfig, BandOracleConfig, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig,
-		EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-		HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
-		OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, RenVmBridgeConfig, SessionConfig,
-		SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		cent, dollar, get_all_module_accounts, AirDropConfig, AirDropCurrencyId, Balance, BalancesConfig,
+		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
+		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
+		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
+		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig,
+		ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -567,14 +558,6 @@ fn mandala_genesis(
 					)
 					.collect::<Vec<_>>()
 			},
-		},
-		orml_oracle_Instance1: AcalaOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
-		},
-		orml_oracle_Instance2: BandOracleConfig {
-			members: Default::default(), // initialized by OperatorMembership
-			phantom: Default::default(),
 		},
 		module_evm: EVMConfig {
 			accounts: evm_genesis_accounts,
