@@ -417,7 +417,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 	}
 
-	fn rebalance() -> Result<(), Error<T, I>> {
+	fn rebalance() {
 		let mut voters = Votes::<T, I>::iter().collect::<Vec<(T::NomineeId, Balance)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
@@ -428,11 +428,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.map(|(nominee, _)| nominee)
 			.collect::<Vec<_>>()
 			.try_into()
-			.map_err(|_| Error::<T, I>::NominateesCountExceeded)?;
+			.expect("Only took from voters");
 
 		Nominees::<T, I>::put(new_nominees);
-
-		Ok(())
 	}
 }
 
@@ -445,12 +443,6 @@ impl<T: Config<I>, I: 'static> NomineesProvider<T::NomineeId> for Pallet<T, I> {
 impl<T: Config<I>, I: 'static> OnNewEra<EraIndex> for Pallet<T, I> {
 	fn on_new_era(era: EraIndex) {
 		CurrentEra::<T, I>::put(era);
-		Self::rebalance().map_or_else(
-			|_| {
-				debug_assert!(false);
-				()
-			},
-			|_| (),
-		);
+		Self::rebalance();
 	}
 }
