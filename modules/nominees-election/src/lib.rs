@@ -78,28 +78,18 @@ where
 {
 	/// Remove entries from `unlocking` that are sufficiently old and reduce
 	/// the total by the sum of their balances.
-	fn consolidate_unlocked(self, current_era: EraIndex) -> Self {
+	fn consolidate_unlocked(&mut self, current_era: EraIndex) {
 		let mut total = self.total;
-		let unlocking: BoundedVec<UnlockChunk, T> = self
-			.unlocking
-			.into_iter()
-			.filter(|chunk| {
-				if chunk.era > current_era {
-					true
-				} else {
-					total = total.saturating_sub(chunk.value);
-					false
-				}
-			})
-			.collect::<Vec<UnlockChunk>>()
-			.try_into()
-			.expect("Maximum UnlockChunks exceeded");
+		self.unlocking.retain(|chunk| {
+			if chunk.era > current_era {
+				true
+			} else {
+				total = total.saturating_sub(chunk.value);
+				false
+			}
+		});
 
-		Self {
-			total,
-			active: self.active,
-			unlocking,
-		}
+		self.total = total;
 	}
 
 	/// Re-bond funds that were scheduled for unlocking.
@@ -310,7 +300,8 @@ pub mod module {
 		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let ledger = Self::ledger(&who).consolidate_unlocked(Self::current_era());
+			let mut ledger = Self::ledger(&who);
+			ledger.consolidate_unlocked(Self::current_era());
 
 			if ledger.unlocking.is_empty() && ledger.active.is_zero() {
 				Self::remove_ledger(&who);
