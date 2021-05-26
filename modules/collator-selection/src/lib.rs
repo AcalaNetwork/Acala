@@ -382,7 +382,18 @@ pub mod pallet {
 		fn note_author(author: T::AccountId) {
 			let candidates_len = <Candidates<T>>::mutate(|candidates| -> usize {
 				if let Some(found) = candidates.iter_mut().find(|candidate| candidate.who == author) {
+					log::debug!(
+						"note author {:?} authored a block at #{:?}",
+						author,
+						<frame_system::Pallet<T>>::block_number(),
+					);
 					found.last_block = frame_system::Pallet::<T>::block_number();
+				} else {
+					log::debug!(
+						"note author {:?} authored a block at #{:?}, not in candidates",
+						author,
+						<frame_system::Pallet<T>>::block_number(),
+					);
 				}
 				candidates.len()
 			});
@@ -398,18 +409,21 @@ pub mod pallet {
 	/// Play the role of the session manager.
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(index: SessionIndex) -> Option<Vec<T::AccountId>> {
-			log::info!(
-				"assembling new collators for new session {} at #{:?}",
-				index,
-				<frame_system::Pallet<T>>::block_number(),
-			);
-
 			let candidates = Self::candidates();
 			let candidates_len_before = candidates.len();
-			let active_candidates = Self::kick_stale_candidates(candidates);
+			let active_candidates = Self::kick_stale_candidates(candidates.clone());
 			let active_candidates_len = active_candidates.len();
-			let result = Self::assemble_collators(active_candidates);
+			let result = Self::assemble_collators(active_candidates.clone());
 			let removed = candidates_len_before - active_candidates_len;
+
+			log::debug!(
+				"assembling new collators for new session {:?} at #{:?}, candidates: {:?}, active_candidates: {:?}, result: {:?}",
+				index,
+				<frame_system::Pallet<T>>::block_number(),
+				candidates,
+				active_candidates,
+				result,
+			);
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
 				T::WeightInfo::new_session(candidates_len_before as u32, removed as u32),
