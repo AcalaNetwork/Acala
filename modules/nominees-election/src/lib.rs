@@ -124,12 +124,10 @@ where
 	T: Get<u32>,
 {
 	fn default() -> Self {
-		let unlocking: BoundedVec<UnlockChunk, T> = vec![].try_into().expect("Maximum UnlockChunks exceeded");
-
 		Self {
-			unlocking,
-			total: 0_u128,
-			active: 0_u128,
+			unlocking: Default::default(),
+			total: Default::default(),
+			active: Default::default(),
 		}
 	}
 }
