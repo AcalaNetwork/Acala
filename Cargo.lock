@@ -1839,6 +1839,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-pallet-dmp-queue"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.2#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "rand 0.8.3",
+ "rand_chacha 0.3.0",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
+]
+
+[[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=4b7120636b9ece6c756ecaf3b26dbc23387a135f#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
@@ -1866,6 +1885,40 @@ dependencies = [
  "sp-version",
  "trie-db",
  "xcm",
+]
+
+[[package]]
+name = "cumulus-pallet-xcm"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.2#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "cumulus-pallet-xcmp-queue"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.2#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "rand 0.8.3",
+ "rand_chacha 0.3.0",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -1904,6 +1957,24 @@ dependencies = [
  "sp-std",
  "sp-trie",
  "tracing",
+]
+
+[[package]]
+name = "cumulus-primitives-utility"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.2#4b7120636b9ece6c756ecaf3b26dbc23387a135f"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "impl-trait-for-tuples 0.2.1",
+ "parity-scale-codec",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "polkadot-primitives",
+ "sp-runtime",
+ "sp-std",
+ "sp-trie",
+ "xcm",
 ]
 
 [[package]]
@@ -3971,7 +4042,7 @@ dependencies = [
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
- "pallet-xcm",
+ "pallet-xcm 0.1.0 (git+https://github.com/paritytech//polkadot?rev=f36bb820120e7ed460071acbdd512850348ae901)",
  "parity-scale-codec",
  "polkadot-primitives",
  "polkadot-runtime-common",
@@ -4661,8 +4732,12 @@ dependencies = [
  "acala-primitives",
  "acala-service",
  "chainbridge",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
+ "cumulus-primitives-utility",
  "ecosystem-chainsafe",
  "ecosystem-renvm-bridge",
  "evm",
@@ -4733,6 +4808,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
+ "pallet-xcm 0.1.0 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.2)",
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
@@ -4755,6 +4831,9 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder 4.0.0",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -6839,6 +6918,21 @@ dependencies = [
 [[package]]
 name = "pallet-xcm"
 version = "0.1.0"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.2#f36bb820120e7ed460071acbdd512850348ae901"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
+]
+
+[[package]]
+name = "pallet-xcm"
+version = "0.1.0"
 source = "git+https://github.com/paritytech//polkadot?rev=f36bb820120e7ed460071acbdd512850348ae901#f36bb820120e7ed460071acbdd512850348ae901"
 dependencies = [
  "frame-support",
@@ -8832,7 +8926,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-utility",
- "pallet-xcm",
+ "pallet-xcm 0.1.0 (git+https://github.com/paritytech//polkadot?rev=f36bb820120e7ed460071acbdd512850348ae901)",
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-primitives",
@@ -12096,7 +12190,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 
@@ -12768,7 +12862,7 @@ dependencies = [
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
- "pallet-xcm",
+ "pallet-xcm 0.1.0 (git+https://github.com/paritytech//polkadot?rev=f36bb820120e7ed460071acbdd512850348ae901)",
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-primitives",
