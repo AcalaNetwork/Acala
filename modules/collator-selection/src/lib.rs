@@ -388,7 +388,9 @@ pub mod pallet {
 				if let Some(found) = candidates_inner.iter_mut().find(|candidate| candidate.who == author) {
 					found.last_block = frame_system::Pallet::<T>::block_number();
 				}
-				*candidates = candidates_inner.try_into().unwrap();
+				*candidates = candidates_inner
+					.try_into()
+					.expect("Only modified existing elements of candidates_inner");
 				candidates.len()
 			});
 
