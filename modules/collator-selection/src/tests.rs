@@ -63,9 +63,14 @@ fn set_desired_candidates_works() {
 		// can set
 		assert_ok!(CollatorSelection::set_desired_candidates(
 			Origin::signed(RootAccount::get()),
-			7
+			4
 		));
-		assert_eq!(CollatorSelection::desired_candidates(), 7);
+		assert_eq!(CollatorSelection::desired_candidates(), 4);
+
+		assert_noop!(
+			CollatorSelection::set_desired_candidates(Origin::signed(RootAccount::get()), 5),
+			Error::<Test>::MaxCandidatesExceeded
+		);
 
 		// rejects bad origin
 		assert_noop!(
@@ -96,23 +101,11 @@ fn set_candidacy_bond() {
 #[test]
 fn cannot_register_candidate_if_too_many() {
 	new_test_ext().execute_with(|| {
-		// reset desired candidates:
-		<crate::DesiredCandidates<Test>>::put(0);
-
-		// can't accept anyone anymore.
-		assert_noop!(
-			CollatorSelection::register_as_candidate(Origin::signed(3)),
-			Error::<Test>::TooManyCandidates,
-		);
-
-		// reset desired candidates:
-		<crate::DesiredCandidates<Test>>::put(1);
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
-
-		// but no more
 		assert_noop!(
 			CollatorSelection::register_as_candidate(Origin::signed(5)),
-			Error::<Test>::TooManyCandidates,
+			Error::<Test>::MaxCandidatesExceeded
 		);
 	})
 }
@@ -297,6 +290,21 @@ fn kick_mechanism() {
 		assert_eq!(CollatorSelection::candidates(), vec![collator]);
 		// kicked collator gets funds back
 		assert_eq!(Balances::free_balance(3), 100);
+	});
+}
+
+#[test]
+fn exceeding_max_invulnerables_should_fail() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(CollatorSelection::set_invulnerables(
+			Origin::signed(RootAccount::get()),
+			vec![1, 2, 3, 4]
+		));
+
+		assert_noop!(
+			CollatorSelection::set_invulnerables(Origin::signed(RootAccount::get()), vec![1, 2, 3, 4, 5]),
+			Error::<Test>::MaxInvulnerablesExceeded
+		);
 	});
 }
 
