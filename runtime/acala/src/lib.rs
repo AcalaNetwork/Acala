@@ -1113,6 +1113,7 @@ impl module_incentives::Config for Runtime {
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
 	pub const EraLength: BlockNumber = DAYS;
+	pub const MaxUnbonding: u32 = 1000;
 }
 
 impl module_polkadot_bridge::Config for Runtime {
@@ -1121,6 +1122,7 @@ impl module_polkadot_bridge::Config for Runtime {
 	type BondingDuration = PolkadotBondingDuration;
 	type EraLength = EraLength;
 	type PolkadotAccountId = AccountId;
+	type MaxUnbonding = MaxUnbonding;
 }
 
 parameter_types! {
