@@ -301,9 +301,9 @@ fn kick_mechanism() {
 
 		initialize_to_block(31);
 		// 4 authored this block, gets to stay 3 was kicked
-		assert_eq!(SessionChangeBlock::get(), 20);
+		assert_eq!(SessionChangeBlock::get(), 30);
 		assert_eq!(CollatorSelection::candidates().len(), 1);
-		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 4]);
+		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
 		let collators = vec![CandidateInfo {
 			who: 4,
 			deposit: 10,

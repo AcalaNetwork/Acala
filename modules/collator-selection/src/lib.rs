@@ -70,8 +70,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
 pub mod weights;
 
 #[frame_support::pallet]
@@ -430,7 +428,10 @@ pub mod pallet {
 					} else {
 						candidate.validator = true;
 					}
-				})
+				});
+				*candidates = candidates_inner
+					.try_into()
+					.expect("Only modified existing elements of candidates_inner");
 			});
 
 			log::debug!(
