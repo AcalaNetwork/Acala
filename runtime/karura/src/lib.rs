@@ -237,9 +237,6 @@ parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
 	pub const Period: u32 = 6 * HOURS;
 	pub const Offset: BlockNumber = 0;
-	// Should be a multiple of session or things will get inconsistent.
-	// After 2 Period, it becomes a validator to author blocks.
-	pub const KickThreshold: BlockNumber = 2 * 6 * HOURS;
 }
 
 impl pallet_session::Config for Runtime {
@@ -270,7 +267,6 @@ impl module_collator_selection::Config for Runtime {
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
-	type KickThreshold = KickThreshold;
 	type WeightInfo = ();
 }
 

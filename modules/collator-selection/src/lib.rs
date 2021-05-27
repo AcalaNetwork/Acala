@@ -130,9 +130,6 @@ pub mod pallet {
 		/// Used only for benchmarking.
 		type MaxInvulnerables: Get<u32>;
 
-		// Will be kicked if block is not produced in threshold.
-		type KickThreshold: Get<Self::BlockNumber>;
-
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
 	}
@@ -144,6 +141,8 @@ pub mod pallet {
 		pub who: AccountId,
 		/// Reserved deposit.
 		pub deposit: Balance,
+		/// The status of validator.
+		pub validator: bool,
 		/// Last block at which they authored a block.
 		pub last_block: BlockNumber,
 	}
@@ -174,6 +173,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn candidacy_bond)]
 	pub type CandidacyBond<T> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+
+	/// Session points for each candidate.
+	#[pallet::storage]
+	#[pallet::getter(fn session_points)]
+	pub type SessionPoints<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, u32, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -293,6 +297,7 @@ pub mod pallet {
 			let incoming = CandidateInfo {
 				who: who.clone(),
 				deposit,
+				validator: false,
 				last_block: frame_system::Pallet::<T>::block_number(),
 			};
 
@@ -348,30 +353,6 @@ pub mod pallet {
 			collators.extend(candidates.into_iter().collect::<Vec<_>>());
 			collators
 		}
-		/// Kicks out and candidates that did not produce a block in the kick threshold.
-		pub fn kick_stale_candidates(
-			candidates: Vec<CandidateInfo<T::AccountId, BalanceOf<T>, T::BlockNumber>>,
-		) -> Vec<T::AccountId> {
-			let now = frame_system::Pallet::<T>::block_number();
-			let kick_threshold = T::KickThreshold::get();
-			let new_candidates = candidates
-				.into_iter()
-				.filter_map(|c| {
-					let since_last = now - c.last_block;
-					if since_last < kick_threshold {
-						Some(c.who)
-					} else {
-						let outcome = Self::try_remove_candidate(&c.who);
-						if let Err(why) = outcome {
-							log::warn!("Failed to remove candidate {:?}", why);
-							debug_assert!(false, "failed to remove candidate {:?}", why);
-						}
-						None
-					}
-				})
-				.collect::<Vec<_>>();
-			new_candidates
-		}
 	}
 
 	/// Keep track of number of authored blocks per authority, uncles are counted as well since
@@ -388,6 +369,7 @@ pub mod pallet {
 						<frame_system::Pallet<T>>::block_number(),
 					);
 					found.last_block = frame_system::Pallet::<T>::block_number();
+					<SessionPoints<T>>::mutate(author, |point| *point += 1);
 				} else {
 					log::debug!(
 						"note author {:?} authored a block at #{:?}, not in candidates",
@@ -409,33 +391,78 @@ pub mod pallet {
 	/// Play the role of the session manager.
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(index: SessionIndex) -> Option<Vec<T::AccountId>> {
-			let candidates = Self::candidates();
-			let candidates_len_before = candidates.len();
-			let active_candidates = Self::kick_stale_candidates(candidates.clone());
-			let active_candidates_len = active_candidates.len();
-			let result = Self::assemble_collators(active_candidates.clone());
-			let removed = candidates_len_before - active_candidates_len;
+			let candidates = Self::candidates()
+				.iter()
+				.map(|candidate| candidate.who.clone())
+				.collect::<Vec<_>>();
+			let result = Self::assemble_collators(candidates);
 
 			log::debug!(
-				"assembling new collators for new session {:?} at #{:?}, candidates: {:?}, active_candidates: {:?}, result: {:?}",
+				"assembling new collators for new session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
-				candidates,
-				active_candidates,
 				result,
 			);
 
-			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::new_session(candidates_len_before as u32, removed as u32),
-				DispatchClass::Mandatory,
-			);
+			//TODO
+			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
+			//	T::WeightInfo::new_session(candidates_len_before as u32, removed as u32),
+			//	DispatchClass::Mandatory,
+			//);
+
 			Some(result)
 		}
-		fn start_session(_: SessionIndex) {
-			// we don't care.
+
+		fn start_session(index: SessionIndex) {
+			<Candidates<T>>::mutate(|candidates| {
+				candidates.iter_mut().for_each(|candidate| {
+					if candidate.validator {
+						<SessionPoints<T>>::insert(&candidate.who, 0);
+					} else {
+						candidate.validator = true;
+					}
+				});
+			});
+
+			log::debug!(
+				"start session {:?} at #{:?}, candidates: {:?}",
+				index,
+				<frame_system::Pallet<T>>::block_number(),
+				<SessionPoints<T>>::iter().map(|(who, _)| who).collect::<Vec<_>>()
+			);
+			//TODO
+			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
+			//	T::WeightInfo::start_session(candidates_len_before as u32, removed as u32),
+			//	DispatchClass::Mandatory,
+			//);
 		}
-		fn end_session(_: SessionIndex) {
-			// we don't care.
+
+		fn end_session(index: SessionIndex) {
+			let candidates_len_before = Self::candidates().len();
+			<SessionPoints<T>>::iter().for_each(|(who, point)| {
+				if point == 0 {
+					log::debug!(
+						"end session {:?} at #{:?}, remove candidate: {:?}",
+						index,
+						<frame_system::Pallet<T>>::block_number(),
+						who,
+					);
+
+					let outcome = Self::try_remove_candidate(&who);
+					if let Err(why) = outcome {
+						log::warn!("Failed to remove candidate {:?}", why);
+						debug_assert!(false, "failed to remove candidate {:?}", why);
+					}
+				}
+			});
+
+			<SessionPoints<T>>::remove_all();
+			//TODO
+			//let removed = candidates_len_before - Self::candidates().len();
+			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
+			//	T::WeightInfo::end_session(candidates_len_before as u32, removed as u32),
+			//	DispatchClass::Mandatory,
+			//);
 		}
 	}
 }

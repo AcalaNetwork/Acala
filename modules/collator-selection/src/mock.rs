@@ -198,7 +198,6 @@ impl Config for Test {
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
-	type KickThreshold = Period;
 	type WeightInfo = ();
 }
 
