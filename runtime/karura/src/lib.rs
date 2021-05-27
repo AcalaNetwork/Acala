@@ -184,7 +184,19 @@ impl Filter<Call> for BaseCallFilter {
 	fn filter(call: &Call) -> bool {
 		matches!(
 			call,
-			Call::Sudo(_) | Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_)
+			// Core
+			Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
+			// Utility
+			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) |
+			// Sudo
+			Call::Sudo(_) |
+			// PoA
+			Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
+			Call::HonzonCouncil(_) | Call::HonzonCouncilMembership(_) |
+			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
+			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
+			// Oracle
+			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_)
 		)
 	}
 }
