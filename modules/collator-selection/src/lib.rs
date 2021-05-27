@@ -365,8 +365,8 @@ pub mod pallet {
 	{
 		fn note_author(author: T::AccountId) {
 			let candidates_len = <Candidates<T>>::mutate(|candidates| -> usize {
-        let mut candidates_inner = candidates.to_vec();
-				if let Some(found) = candidates.iter_mut().find(|candidate| candidate.who == author) {
+				let mut candidates_inner = candidates.to_vec();
+				if let Some(found) = candidates_inner.iter_mut().find(|candidate| candidate.who == author) {
 					log::debug!(
 						"note author {:?} authored a block at #{:?}",
 						author,
@@ -412,7 +412,6 @@ pub mod pallet {
 				result,
 			);
 
-
 			//TODO
 			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
 			//	T::WeightInfo::new_session(candidates_len_before as u32, removed as u32),
@@ -424,13 +423,14 @@ pub mod pallet {
 
 		fn start_session(index: SessionIndex) {
 			<Candidates<T>>::mutate(|candidates| {
-				candidates.iter_mut().for_each(|candidate| {
+				let mut candidates_inner = candidates.to_vec();
+				candidates_inner.iter_mut().for_each(|candidate| {
 					if candidate.validator {
 						<SessionPoints<T>>::insert(&candidate.who, 0);
 					} else {
 						candidate.validator = true;
 					}
-				});
+				})
 			});
 
 			log::debug!(
@@ -439,6 +439,7 @@ pub mod pallet {
 				<frame_system::Pallet<T>>::block_number(),
 				<SessionPoints<T>>::iter().map(|(who, _)| who).collect::<Vec<_>>()
 			);
+
 			//TODO
 			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
 			//	T::WeightInfo::start_session(candidates_len_before as u32, removed as u32),
@@ -467,7 +468,7 @@ pub mod pallet {
 
 			<SessionPoints<T>>::remove_all();
 			//TODO
-			//let removed = candidates_len_before - Self::candidates().len();
+			let _removed = candidates_len_before - Self::candidates().len();
 			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
 			//	T::WeightInfo::end_session(candidates_len_before as u32, removed as u32),
 			//	DispatchClass::Mandatory,
