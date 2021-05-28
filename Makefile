@@ -8,7 +8,7 @@ run-eth:
 
 .PHONY: run-karura
 run-karura:
-	cargo run --features with-karura-runtime --chain=karura
+	cargo run --features with-karura-runtime -- --chain=karura
 
 .PHONY: toolchain
 toolchain:
@@ -29,6 +29,10 @@ build-all:
 .PHONY: check
 check: githooks
 	SKIP_WASM_BUILD= cargo check --features with-mandala-runtime
+
+.PHONY: check
+check-karura: githooks
+	SKIP_WASM_BUILD= cargo check --features with-karura-runtime
 
 .PHONY: check-tests
 check-tests: githooks

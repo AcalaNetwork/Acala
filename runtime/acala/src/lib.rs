@@ -319,10 +319,10 @@ type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
 	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, GeneralCouncilInstance>,
 >;
 
-type EnsureRootOrHalfHonzonCouncil = EnsureOneOf<
+type EnsureRootOrHalfFinancialCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, HonzonCouncilInstance>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, FinancialCouncilInstance>,
 >;
 
 type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
@@ -388,34 +388,34 @@ impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const HonzonCouncilMotionDuration: BlockNumber = 7 * DAYS;
-	pub const HonzonCouncilMaxProposals: u32 = 100;
-	pub const HonzonCouncilMaxMembers: u32 = 100;
+	pub const FinancialCouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const FinancialCouncilMaxProposals: u32 = 100;
+	pub const FinancialCouncilMaxMembers: u32 = 100;
 }
 
-type HonzonCouncilInstance = pallet_collective::Instance2;
-impl pallet_collective::Config<HonzonCouncilInstance> for Runtime {
+type FinancialCouncilInstance = pallet_collective::Instance2;
+impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
-	type MotionDuration = HonzonCouncilMotionDuration;
-	type MaxProposals = HonzonCouncilMaxProposals;
-	type MaxMembers = HonzonCouncilMaxMembers;
+	type MotionDuration = FinancialCouncilMotionDuration;
+	type MaxProposals = FinancialCouncilMaxProposals;
+	type MaxMembers = FinancialCouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
 
-type HonzonCouncilMembershipInstance = pallet_membership::Instance2;
-impl pallet_membership::Config<HonzonCouncilMembershipInstance> for Runtime {
+type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
+impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = HonzonCouncil;
-	type MembershipChanged = HonzonCouncil;
-	type MaxMembers = HonzonCouncilMaxMembers;
+	type MembershipInitialized = FinancialCouncil;
+	type MembershipChanged = FinancialCouncil;
+	type MaxMembers = FinancialCouncilMaxMembers;
 	type WeightInfo = ();
 }
 
@@ -977,7 +977,7 @@ impl module_cdp_engine::Config for Runtime {
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
-	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
+	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
@@ -1039,7 +1039,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManager;
-	type UpdateOrigin = EnsureRootOrHalfHonzonCouncil;
+	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
 	type DEX = Dex;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
@@ -1525,8 +1525,8 @@ construct_runtime!(
 		// Governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 50,
 		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 51,
-		HonzonCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 52,
-		HonzonCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 53,
+		FinancialCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 52,
+		FinancialCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 53,
 		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 54,
 		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 55,
 		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 56,
