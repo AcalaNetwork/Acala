@@ -131,8 +131,7 @@ fn cannot_register_dupe_candidate() {
 		let addition = CandidateInfo {
 			who: 3,
 			deposit: 10,
-			validator: false,
-			last_block: 0,
+			collator: false,
 		};
 		assert_eq!(CollatorSelection::candidates(), vec![addition]);
 		assert_eq!(Balances::free_balance(3), 90);
@@ -220,8 +219,7 @@ fn fees_edgecases() {
 		let collator = CandidateInfo {
 			who: 4,
 			deposit: 10,
-			validator: false,
-			last_block: 0,
+			collator: false,
 		};
 
 		assert_eq!(CollatorSelection::candidates(), vec![collator]);
@@ -287,14 +285,12 @@ fn kick_mechanism() {
 			CandidateInfo {
 				who: 3,
 				deposit: 10,
-				validator: true,
-				last_block: 0,
+				collator: true,
 			},
 			CandidateInfo {
 				who: 4,
 				deposit: 10,
-				validator: true,
-				last_block: 21,
+				collator: true,
 			},
 		];
 		assert_eq!(CollatorSelection::candidates(), collators);
@@ -307,8 +303,7 @@ fn kick_mechanism() {
 		let collators = vec![CandidateInfo {
 			who: 4,
 			deposit: 10,
-			validator: true,
-			last_block: 31,
+			collator: true,
 		}];
 		assert_eq!(CollatorSelection::candidates(), collators);
 		// kicked collator gets funds back

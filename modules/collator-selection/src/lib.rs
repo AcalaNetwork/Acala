@@ -133,19 +133,16 @@ pub mod pallet {
 
 	/// Basic information about a collation candidate.
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
-	pub struct CandidateInfo<AccountId, Balance, BlockNumber> {
+	pub struct CandidateInfo<AccountId, Balance> {
 		/// Account identifier.
 		pub who: AccountId,
 		/// Reserved deposit.
 		pub deposit: Balance,
-		/// The status of validator.
-		pub validator: bool,
-		/// Last block at which they authored a block.
-		pub last_block: BlockNumber,
+		/// The status of parachain node.
+		pub collator: bool,
 	}
 
-	type CandidateInfoOf<T> =
-		CandidateInfo<<T as SystemConfig>::AccountId, BalanceOf<T>, <T as SystemConfig>::BlockNumber>;
+	type CandidateInfoOf<T> = CandidateInfo<<T as SystemConfig>::AccountId, BalanceOf<T>>;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -296,8 +293,7 @@ pub mod pallet {
 			let incoming = CandidateInfo {
 				who: who.clone(),
 				deposit,
-				validator: false,
-				last_block: frame_system::Pallet::<T>::block_number(),
+				collator: false,
 			};
 
 			let mut bounded_candidates = Self::candidates();
@@ -362,31 +358,15 @@ pub mod pallet {
 		for Pallet<T>
 	{
 		fn note_author(author: T::AccountId) {
-			let candidates_len = <Candidates<T>>::mutate(|candidates| -> usize {
-				let mut candidates_inner = candidates.to_vec();
-				if let Some(found) = candidates_inner.iter_mut().find(|candidate| candidate.who == author) {
-					log::debug!(
-						"note author {:?} authored a block at #{:?}",
-						author,
-						<frame_system::Pallet<T>>::block_number(),
-					);
-					found.last_block = frame_system::Pallet::<T>::block_number();
-					<SessionPoints<T>>::mutate(author, |point| *point += 1);
-				} else {
-					log::debug!(
-						"note author {:?} authored a block at #{:?}, not in candidates",
-						author,
-						<frame_system::Pallet<T>>::block_number(),
-					);
-				}
-				*candidates = candidates_inner
-					.try_into()
-					.expect("Only modified existing elements of candidates_inner");
-				candidates.len()
-			});
+			log::debug!(
+				"note author {:?} authored a block at #{:?}",
+				author,
+				<frame_system::Pallet<T>>::block_number(),
+			);
+			<SessionPoints<T>>::mutate(author, |point| *point += 1);
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::note_author(candidates_len as u32),
+				T::WeightInfo::note_author(1u32),
 				DispatchClass::Mandatory,
 			);
 		}
@@ -398,8 +378,8 @@ pub mod pallet {
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(index: SessionIndex) -> Option<Vec<T::AccountId>> {
 			let candidates = Self::candidates()
-				.iter()
-				.map(|candidate| candidate.who.clone())
+				.into_iter()
+				.map(|candidate| candidate.who)
 				.collect::<Vec<_>>();
 			let result = Self::assemble_collators(candidates);
 
@@ -423,10 +403,10 @@ pub mod pallet {
 			<Candidates<T>>::mutate(|candidates| {
 				let mut candidates_inner = candidates.to_vec();
 				candidates_inner.iter_mut().for_each(|candidate| {
-					if candidate.validator {
+					if candidate.collator {
 						<SessionPoints<T>>::insert(&candidate.who, 0);
 					} else {
-						candidate.validator = true;
+						candidate.collator = true;
 					}
 				});
 				*candidates = candidates_inner
@@ -449,8 +429,9 @@ pub mod pallet {
 		}
 
 		fn end_session(index: SessionIndex) {
-			let candidates_len_before = Self::candidates().len();
-			<SessionPoints<T>>::iter().for_each(|(who, point)| {
+			let mut candidates_len = 0;
+			let mut removed = 0;
+			<SessionPoints<T>>::drain().for_each(|(who, point)| {
 				if point == 0 {
 					log::debug!(
 						"end session {:?} at #{:?}, remove candidate: {:?}",
@@ -458,6 +439,7 @@ pub mod pallet {
 						<frame_system::Pallet<T>>::block_number(),
 						who,
 					);
+					removed += 1;
 
 					let outcome = Self::try_remove_candidate(&who);
 					if let Err(why) = outcome {
@@ -465,11 +447,10 @@ pub mod pallet {
 						debug_assert!(false, "failed to remove candidate {:?}", why);
 					}
 				}
+				candidates_len += 1;
 			});
 
-			<SessionPoints<T>>::remove_all();
 			//TODO
-			let _removed = candidates_len_before - Self::candidates().len();
 			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
 			//	T::WeightInfo::end_session(candidates_len_before as u32, removed as u32),
 			//	DispatchClass::Mandatory,
