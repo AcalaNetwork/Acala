@@ -30,8 +30,8 @@ use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from
 
 use karura_runtime::{
 	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
-	CollatorSelectionConfig, DexConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-	HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
+	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
 	ParachainInfoConfig, SessionConfig, SessionKeys, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
 	TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
 };
@@ -233,7 +233,7 @@ fn karura_genesis(
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
+		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
 			members: vec![],
 			phantom: Default::default(),
 		},

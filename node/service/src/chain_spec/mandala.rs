@@ -224,8 +224,8 @@ fn testnet_genesis(
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
 		dollar, get_all_module_accounts, AirDropConfig, Balance, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
+		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
 		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
@@ -280,7 +280,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
+		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
@@ -415,7 +415,7 @@ fn mandala_genesis(
 	use mandala_runtime::{
 		cent, dollar, get_all_module_accounts, AirDropConfig, AirDropCurrencyId, Balance, BalancesConfig,
 		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
-		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig,
+		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
 		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig,
 		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig,
@@ -474,7 +474,7 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
+		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
