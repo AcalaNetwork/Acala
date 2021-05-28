@@ -194,6 +194,7 @@ parameter_types! {
 impl Config for Test {
 	type Event = Event;
 	type Currency = Balances;
+	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureSignedBy<RootAccount, u64>;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;

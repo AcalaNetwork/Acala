@@ -263,6 +263,7 @@ parameter_types! {
 impl module_collator_selection::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;

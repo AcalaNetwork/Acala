@@ -79,7 +79,7 @@ pub mod pallet {
 		dispatch::DispatchResultWithPostInfo,
 		inherent::Vec,
 		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, MaxEncodedLen, ReservableCurrency},
+		traits::{Currency, EnsureOrigin, MaxEncodedLen, ReservableCurrency, ValidatorSet},
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
@@ -112,6 +112,9 @@ pub mod pallet {
 		/// The currency mechanism.
 		type Currency: ReservableCurrency<Self::AccountId>;
 
+		/// A type for retrieving the validators supposed to be online in a session.
+		type ValidatorSet: ValidatorSet<Self::AccountId>;
+
 		/// Origin that can dictate updating parameters of this pallet.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
@@ -138,8 +141,8 @@ pub mod pallet {
 		pub who: AccountId,
 		/// Reserved deposit.
 		pub deposit: Balance,
-		/// The status of parachain node.
-		pub collator: bool,
+		/// The session when parachain node become collators.
+		pub start_session: SessionIndex,
 	}
 
 	type CandidateInfoOf<T> = CandidateInfo<<T as SystemConfig>::AccountId, BalanceOf<T>>;
@@ -293,7 +296,7 @@ pub mod pallet {
 			let incoming = CandidateInfo {
 				who: who.clone(),
 				deposit,
-				collator: false,
+				start_session: T::ValidatorSet::session_index() + 2,
 			};
 
 			let mut bounded_candidates = Self::candidates();
@@ -401,17 +404,11 @@ pub mod pallet {
 
 		fn start_session(index: SessionIndex) {
 			<Candidates<T>>::mutate(|candidates| {
-				let mut candidates_inner = candidates.to_vec();
-				candidates_inner.iter_mut().for_each(|candidate| {
-					if candidate.collator {
+				candidates.iter().for_each(|candidate| {
+					if index >= candidate.start_session {
 						<SessionPoints<T>>::insert(&candidate.who, 0);
-					} else {
-						candidate.collator = true;
 					}
 				});
-				*candidates = candidates_inner
-					.try_into()
-					.expect("Only modified existing elements of candidates_inner");
 			});
 
 			log::debug!(
