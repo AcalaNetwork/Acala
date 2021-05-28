@@ -20,7 +20,13 @@
 #![allow(clippy::unused_unit)]
 
 use codec::Encode;
-use frame_support::{log, pallet_prelude::*, traits::LockIdentifier, transactional};
+use frame_support::{
+	log,
+	pallet_prelude::*,
+	traits::Get,
+	traits::{LockIdentifier, MaxEncodedLen},
+	transactional, BoundedVec,
+};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains};
 use primitives::{Balance, EraIndex};
@@ -28,7 +34,7 @@ use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{fmt::Debug, prelude::*};
+use sp_std::{convert::TryInto, fmt::Debug, prelude::*};
 use support::{NomineesProvider, OnNewEra};
 
 mod mock;
@@ -40,7 +46,7 @@ pub const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be
 /// unlocked.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub struct UnlockChunk {
 	/// Amount of funds to be unlocked.
 	value: Balance,
@@ -49,8 +55,11 @@ pub struct UnlockChunk {
 }
 
 /// The ledger of a (bonded) account.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
-pub struct BondingLedger {
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+pub struct BondingLedger<T>
+where
+	T: Get<u32>,
+{
 	/// The total amount of the account's balance that we are currently
 	/// accounting for. It's just `active` plus all the `unlocking`
 	/// balances.
@@ -60,43 +69,38 @@ pub struct BondingLedger {
 	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be
 	/// transferred out of the account.
-	pub unlocking: Vec<UnlockChunk>,
+	pub unlocking: BoundedVec<UnlockChunk, T>,
 }
 
-impl BondingLedger {
+impl<T> BondingLedger<T>
+where
+	T: Get<u32>,
+{
 	/// Remove entries from `unlocking` that are sufficiently old and reduce
 	/// the total by the sum of their balances.
-	fn consolidate_unlocked(self, current_era: EraIndex) -> Self {
+	fn consolidate_unlocked(&mut self, current_era: EraIndex) {
 		let mut total = self.total;
-		let unlocking = self
-			.unlocking
-			.into_iter()
-			.filter(|chunk| {
-				if chunk.era > current_era {
-					true
-				} else {
-					total = total.saturating_sub(chunk.value);
-					false
-				}
-			})
-			.collect();
+		self.unlocking.retain(|chunk| {
+			if chunk.era > current_era {
+				true
+			} else {
+				total = total.saturating_sub(chunk.value);
+				false
+			}
+		});
 
-		Self {
-			total,
-			active: self.active,
-			unlocking,
-		}
+		self.total = total;
 	}
 
 	/// Re-bond funds that were scheduled for unlocking.
 	fn rebond(mut self, value: Balance) -> Self {
 		let mut unlocking_balance: Balance = Zero::zero();
-
-		while let Some(last) = self.unlocking.last_mut() {
+		let mut inner_vec = self.unlocking.into_inner();
+		while let Some(last) = inner_vec.last_mut() {
 			if unlocking_balance + last.value <= value {
 				unlocking_balance += last.value;
 				self.active += last.value;
-				self.unlocking.pop();
+				inner_vec.pop();
 			} else {
 				let diff = value - unlocking_balance;
 
@@ -110,7 +114,21 @@ impl BondingLedger {
 			}
 		}
 
+		self.unlocking = inner_vec.try_into().expect("Only popped elements from inner_vec");
 		self
+	}
+}
+
+impl<T> Default for BondingLedger<T>
+where
+	T: Get<u32>,
+{
+	fn default() -> Self {
+		Self {
+			unlocking: Default::default(),
+			total: Default::default(),
+			active: Default::default(),
+		}
 	}
 }
 
@@ -138,10 +156,11 @@ pub mod module {
 	pub enum Error<T, I = ()> {
 		BelowMinBondThreshold,
 		InvalidTargetsLength,
-		TooManyChunks,
+		MaxUnlockChunksExceeded,
 		NoBonded,
 		NoUnlockChunk,
 		InvalidRelaychainValidator,
+		NominateesCountExceeded,
 	}
 
 	#[pallet::event]
@@ -156,8 +175,13 @@ pub mod module {
 	/// Nominations: map AccountId => Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominations)]
-	pub type Nominations<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Twox64Concat, T::AccountId, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
+	pub type Nominations<T: Config<I>, I: 'static = ()> = StorageMap<
+		_,
+		Twox64Concat,
+		T::AccountId,
+		BoundedVec<<T as Config<I>>::NomineeId, T::NominateesCount>,
+		ValueQuery,
+	>;
 
 	/// The nomination bonding ledger.
 	///
@@ -165,7 +189,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Twox64Concat, T::AccountId, BondingLedger, ValueQuery>;
+		StorageMap<_, Twox64Concat, T::AccountId, BondingLedger<T::MaxUnlockingChunks>, ValueQuery>;
 
 	/// The total voting value for nominees.
 	///
@@ -180,7 +204,8 @@ pub mod module {
 	/// Nominees: Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominees)]
-	pub type Nominees<T: Config<I>, I: 'static = ()> = StorageValue<_, Vec<<T as Config<I>>::NomineeId>, ValueQuery>;
+	pub type Nominees<T: Config<I>, I: 'static = ()> =
+		StorageValue<_, BoundedVec<<T as Config<I>>::NomineeId, T::NominateesCount>, ValueQuery>;
 
 	/// Current era index.
 	///
@@ -227,10 +252,6 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 
 			let mut ledger = Self::ledger(&who);
-			ensure!(
-				ledger.unlocking.len() < T::MaxUnlockingChunks::get().saturated_into(),
-				Error::<T, I>::TooManyChunks,
-			);
 
 			let amount = amount.min(ledger.active);
 
@@ -245,7 +266,10 @@ pub mod module {
 
 				// Note: in case there is no current era it is fine to bond one era more.
 				let era = Self::current_era() + T::BondingDuration::get();
-				ledger.unlocking.push(UnlockChunk { value: amount, era });
+				ledger
+					.unlocking
+					.try_push(UnlockChunk { value: amount, era })
+					.map_err(|_| Error::<T, I>::MaxUnlockChunksExceeded)?;
 				let old_nominations = Self::nominations(&who);
 
 				Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
@@ -274,7 +298,8 @@ pub mod module {
 		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let ledger = Self::ledger(&who).consolidate_unlocked(Self::current_era());
+			let mut ledger = Self::ledger(&who);
+			ledger.consolidate_unlocked(Self::current_era());
 
 			if ledger.unlocking.is_empty() && ledger.active.is_zero() {
 				Self::remove_ledger(&who);
@@ -290,19 +315,26 @@ pub mod module {
 		#[transactional]
 		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			ensure!(
-				!targets.is_empty() && targets.len() <= T::NominateesCount::get().saturated_into(),
-				Error::<T, I>::InvalidTargetsLength,
-			);
+
+			let bounded_targets: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = {
+				if targets.is_empty() {
+					Err(Error::<T, I>::InvalidTargetsLength)
+				} else {
+					targets.try_into().map_err(|_| Error::<T, I>::InvalidTargetsLength)
+				}
+			}?;
+
+			let bounded_targets = bounded_targets
+				.try_mutate(|targets| {
+					targets.sort();
+					targets.dedup();
+				})
+				.ok_or(Error::<T, I>::InvalidTargetsLength)?;
 
 			let ledger = Self::ledger(&who);
 			ensure!(!ledger.total.is_zero(), Error::<T, I>::NoBonded);
 
-			let mut targets = targets;
-			targets.sort();
-			targets.dedup();
-
-			for validator in &targets {
+			for validator in bounded_targets.iter() {
 				ensure!(
 					T::RelaychainValidatorFilter::contains(&validator),
 					Error::<T, I>::InvalidRelaychainValidator
@@ -312,8 +344,8 @@ pub mod module {
 			let old_nominations = Self::nominations(&who);
 			let old_active = Self::ledger(&who).active;
 
-			Self::update_votes(old_active, &old_nominations, old_active, &targets);
-			Nominations::<T, I>::insert(&who, &targets);
+			Self::update_votes(old_active, &old_nominations, old_active, &bounded_targets);
+			Nominations::<T, I>::insert(&who, &bounded_targets);
 			Ok(().into())
 		}
 
@@ -333,7 +365,7 @@ pub mod module {
 }
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
-	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger) {
+	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger<T::MaxUnlockingChunks>) {
 		let res = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
 		if let Err(e) = res {
 			log::warn!(
@@ -388,11 +420,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 
-		let new_nominees = voters
+		let new_nominees: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = voters
 			.into_iter()
 			.take(T::NominateesCount::get().saturated_into())
 			.map(|(nominee, _)| nominee)
-			.collect::<Vec<_>>();
+			.collect::<Vec<_>>()
+			.try_into()
+			.expect("Only took from voters");
 
 		Nominees::<T, I>::put(new_nominees);
 	}
@@ -400,7 +434,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 impl<T: Config<I>, I: 'static> NomineesProvider<T::NomineeId> for Pallet<T, I> {
 	fn nominees() -> Vec<T::NomineeId> {
-		Nominees::<T, I>::get()
+		Nominees::<T, I>::get().into_inner()
 	}
 }
 
