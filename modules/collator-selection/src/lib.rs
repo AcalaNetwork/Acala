@@ -296,6 +296,8 @@ pub mod pallet {
 			let incoming = CandidateInfo {
 				who: who.clone(),
 				deposit,
+				// pallet-session have 1 session delay so this will be applied on 1 session after next session
+				// Tracking issue: https://github.com/paritytech/substrate/issues/8650
 				start_session: T::ValidatorSet::session_index() + 2,
 			};
 
@@ -368,6 +370,7 @@ pub mod pallet {
 			);
 			<SessionPoints<T>>::mutate(author, |point| *point += 1);
 
+			//TODO
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
 				T::WeightInfo::note_author(1u32),
 				DispatchClass::Mandatory,
