@@ -244,19 +244,17 @@ impl pallet_session::Config for Runtime {
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
 	pub const MaxCandidates: u32 = 200;
-	pub const SessionLength: BlockNumber = DAYS;
 	pub const MaxInvulnerables: u32 = 50;
 }
 
 impl module_collator_selection::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
-	// should be a multiple of session or things will get inconsistent
-	type KickThreshold = Period;
 	type WeightInfo = ();
 }
 
