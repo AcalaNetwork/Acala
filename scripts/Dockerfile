@@ -25,21 +25,23 @@ RUN cargo chef cook --recipe-path recipe.json --release
 
 FROM rust as builder
 WORKDIR app
+
+COPY --from=cacher $CARGO_HOME $CARGO_HOME
+
 RUN rustup default nightly-2021-03-01 && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-01
-
-ARG GIT_COMMIT=
-ENV GIT_COMMIT=$GIT_COMMIT
-ARG BUILD_ARGS
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
 	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
 
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT
+ARG BUILD_ARGS
+
 COPY . .
 
 COPY --from=cacher /app/target target
-COPY --from=cacher $CARGO_HOME $CARGO_HOME
 
 RUN cargo build --release $BUILD_ARGS
 
