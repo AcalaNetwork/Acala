@@ -85,7 +85,8 @@ runtime_benchmarks! {
 
 	// list a Enabled trading pair
 	list_trading_pair {
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let enable_trading_pairs = EnabledTradingPairs::get();
+		let trading_pair = enable_trading_pairs.last().unwrap();
 		let currency_id_a = trading_pair.0;
 		let currency_id_b = trading_pair.1;
 		let min_contribution_a = dollar(currency_id_a);

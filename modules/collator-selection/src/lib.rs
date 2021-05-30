@@ -370,9 +370,8 @@ pub mod pallet {
 			);
 			<SessionPoints<T>>::mutate(author, |point| *point += 1);
 
-			//TODO
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::note_author(1u32),
+				T::WeightInfo::note_author(),
 				DispatchClass::Mandatory,
 			);
 		}
@@ -396,22 +395,24 @@ pub mod pallet {
 				result,
 			);
 
-			//TODO
-			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
-			//	T::WeightInfo::new_session(candidates_len_before as u32, removed as u32),
-			//	DispatchClass::Mandatory,
-			//);
+			frame_system::Pallet::<T>::register_extra_weight_unchecked(
+				T::WeightInfo::new_session(),
+				DispatchClass::Mandatory,
+			);
 
 			Some(result)
 		}
 
 		fn start_session(index: SessionIndex) {
-			<Candidates<T>>::mutate(|candidates| {
+			let (candidates_len, collator_len) = <Candidates<T>>::mutate(|candidates| -> (usize, usize) {
+				let mut collator = 0;
 				candidates.iter().for_each(|candidate| {
 					if index >= candidate.start_session {
+						collator += 1;
 						<SessionPoints<T>>::insert(&candidate.who, 0);
 					}
 				});
+				(candidates.len(), collator)
 			});
 
 			log::debug!(
@@ -421,16 +422,15 @@ pub mod pallet {
 				<SessionPoints<T>>::iter().map(|(who, _)| who).collect::<Vec<_>>()
 			);
 
-			//TODO
-			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
-			//	T::WeightInfo::start_session(candidates_len_before as u32, removed as u32),
-			//	DispatchClass::Mandatory,
-			//);
+			frame_system::Pallet::<T>::register_extra_weight_unchecked(
+				T::WeightInfo::start_session(candidates_len as u32, collator_len as u32),
+				DispatchClass::Mandatory,
+			);
 		}
 
 		fn end_session(index: SessionIndex) {
 			let mut candidates_len = 0;
-			let mut removed = 0;
+			let mut removed_len = 0;
 			<SessionPoints<T>>::drain().for_each(|(who, point)| {
 				if point == 0 {
 					log::debug!(
@@ -439,7 +439,7 @@ pub mod pallet {
 						<frame_system::Pallet<T>>::block_number(),
 						who,
 					);
-					removed += 1;
+					removed_len += 1;
 
 					let outcome = Self::try_remove_candidate(&who);
 					if let Err(why) = outcome {
@@ -450,11 +450,10 @@ pub mod pallet {
 				candidates_len += 1;
 			});
 
-			//TODO
-			//frame_system::Pallet::<T>::register_extra_weight_unchecked(
-			//	T::WeightInfo::end_session(candidates_len_before as u32, removed as u32),
-			//	DispatchClass::Mandatory,
-			//);
+			frame_system::Pallet::<T>::register_extra_weight_unchecked(
+				T::WeightInfo::end_session(candidates_len as u32, removed_len as u32),
+				DispatchClass::Mandatory,
+			);
 		}
 	}
 }

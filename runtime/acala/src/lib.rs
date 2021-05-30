@@ -255,7 +255,7 @@ impl module_collator_selection::Config for Runtime {
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_collator_selection::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1902,6 +1902,7 @@ impl_runtime_apis! {
 			// orml_add_benchmark!(params, batches, dex, benchmarking::dex);
 			// orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
 			// orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
+			// orml_add_benchmark!(params, batches, collator_selection, benchmarking::collator_selection);
 			// orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
 			// orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
 			// orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
