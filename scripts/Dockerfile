@@ -9,11 +9,6 @@ RUN cargo chef prepare  --recipe-path recipe.json
 
 # =============
 
-ARG CARGO_BUILD_ARGS=
-ENV CARGO_BUILD_ARGS=$CARGO_BUILD_ARGS
-ARG BUILD_ARGS
-ENV BUILD_ARGS=$BUILD_ARGS
-
 FROM rust as cacher
 WORKDIR app
 RUN rustup default nightly-2021-03-01 && \
@@ -22,9 +17,9 @@ RUN cargo install cargo-chef
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
 	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
-COPY . .
+
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --recipe-path recipe.json --release $BUILD_ARGS
+RUN cargo chef cook --recipe-path recipe.json --release
 
 # =============
 
@@ -35,10 +30,7 @@ RUN rustup default nightly-2021-03-01 && \
 
 ARG GIT_COMMIT=
 ENV GIT_COMMIT=$GIT_COMMIT
-ARG CARGO_BUILD_ARGS=
-ENV CARGO_BUILD_ARGS=$CARGO_BUILD_ARGS
 ARG BUILD_ARGS
-ENV BUILD_ARGS=$BUILD_ARGS
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
