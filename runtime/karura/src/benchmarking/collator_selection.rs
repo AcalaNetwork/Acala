@@ -124,7 +124,7 @@ runtime_benchmarks! {
 
 	// worse case is paying a non-existing candidate account.
 	note_author {
-		let c in 1 .. MaxCandidates::get();
+		let c = MaxCandidates::get();
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
@@ -137,35 +137,21 @@ runtime_benchmarks! {
 		assert!(Balances::free_balance(&author) == 0u32.into());
 	}: {
 		CollatorSelection::note_author(author.clone())
-	} verify {
-		assert!(Balances::free_balance(&author) == 0u32.into());
 	}
 
 	// worse case is on new session.
-	// TODO review this benchmark
 	new_session {
-		let r in 1 .. MaxCandidates::get();
-		let c in 1 .. MaxCandidates::get();
-
+		let c = MaxCandidates::get();
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
-		let candidates = module_collator_selection::Candidates::<Runtime>::get();
-		let non_removals = if c > r { c - r } else { 0 };
-
-		module_collator_selection::Candidates::<Runtime>::put(candidates.clone());
-
-		let pre_length = module_collator_selection::Candidates::<Runtime>::get().len();
 		System::set_block_number(20u32.into());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
-
 	}: {
 		CollatorSelection::new_session(0)
-	} verify {
-		assert!(module_collator_selection::Candidates::<Runtime>::get().len() <= pre_length);
 	}
 
 	start_session {
@@ -177,20 +163,19 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
-		let candidates = module_collator_selection::Candidates::<Runtime>::get();
-		let non_removals = if c > r { c - r } else { 0 };
+		let mut candidates = module_collator_selection::Candidates::<Runtime>::get();
+		let non_collator = if c > r { c - r } else { 0 };
 
+		for i in 0..non_collator {
+			candidates[i as usize].start_session = 10;
+		}
 		module_collator_selection::Candidates::<Runtime>::put(candidates.clone());
 
-		let pre_length = module_collator_selection::Candidates::<Runtime>::get().len();
 		System::set_block_number(20u32.into());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
-
 	}: {
-		CollatorSelection::start_session(0)
-	} verify {
-		assert!(module_collator_selection::Candidates::<Runtime>::get().len() <= pre_length);
+		CollatorSelection::start_session(2)
 	}
 
 	end_session {
@@ -205,17 +190,24 @@ runtime_benchmarks! {
 		let candidates = module_collator_selection::Candidates::<Runtime>::get();
 		let non_removals = if c > r { c - r } else { 0 };
 
-		module_collator_selection::Candidates::<Runtime>::put(candidates.clone());
+		let mut count = 0;
+		candidates.iter().for_each(|candidate| {
+			if count < non_removals {
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate.who, 1);
+			} else {
+				// point = 0, will be removed.
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate.who, 0);
+			}
+			count += 1;
+		});
 
-		let pre_length = module_collator_selection::Candidates::<Runtime>::get().len();
 		System::set_block_number(20u32.into());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
-
 	}: {
 		CollatorSelection::end_session(0)
 	} verify {
-		assert!(module_collator_selection::Candidates::<Runtime>::get().len() <= pre_length);
+		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == non_removals as usize);
 	}
 }
 
