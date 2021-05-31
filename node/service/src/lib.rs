@@ -41,6 +41,7 @@ pub use mandala_runtime;
 use sc_consensus_aura::StartAuraParams;
 
 use acala_primitives::{Block, Hash};
+#[cfg(feature = "with-mandala-runtime")]
 use futures::stream::StreamExt;
 use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use polkadot_primitives::v0::CollatorPair;
