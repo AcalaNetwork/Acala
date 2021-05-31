@@ -85,9 +85,6 @@ runtime_benchmarks! {
 
 		set_aca_balance(&alice_account, 1_000_000 * dollar(KAR));
 		set_aca_balance(&bob_account_id(), 1_000 * dollar(KAR));
-		use crate::Balances;
-		use frame_support::traits::Currency;
-		let b = Balances::total_balance(&alice_account);
 		let contract = deploy_contract(alice_account_id())?;
 		let bob_address = EvmAccounts::eth_address(&bob());
 
