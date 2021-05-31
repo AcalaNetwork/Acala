@@ -84,7 +84,7 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
 orml-nft= { path = "../../orml/nft", default-features = false }
-# orml-xtokens = { path = "../../orml/xtokens", default-features = false }
+orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 
@@ -205,7 +205,7 @@ std = [
 	"orml-vesting/std",
 	"orml-rewards/std",
 	"orml-nft/std",
-	# "orml-xtokens/std",
+	"orml-xtokens/std",
 	"orml-xcm-support/std",
 	"orml-unknown-tokens/std",
 

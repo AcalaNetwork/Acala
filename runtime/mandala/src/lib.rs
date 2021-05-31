@@ -83,7 +83,7 @@ pub use polkadot_parachain::primitives::Sibling;
 pub use sp_runtime::traits::{Convert, Identity};
 pub use sp_std::collections::btree_set::BTreeSet;
 pub use xcm::v0::{
-	Junction::{GeneralKey, Parachain, Parent},
+	Junction::{AccountId32, GeneralKey, Parachain, Parent},
 	MultiAsset,
 	MultiLocation::{self, X1, X2, X3},
 	NetworkId, Xcm,
@@ -1618,19 +1618,29 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
-// parameter_types! {
-// 	pub SelfLocation: MultiLocation = X2(Parent, Parachain { id: ParachainInfo::get().into() });
-// }
+parameter_types! {
+	pub SelfLocation: MultiLocation = X2(Parent, Parachain(ParachainInfo::get().into()));
+}
 
-// impl orml_xtokens::Config for Runtime {
-// 	type Event = Event;
-// 	type Balance = Balance;
-// 	type CurrencyId = CurrencyId;
-// 	type CurrencyIdConvert = CurrencyIdConvert;
-// 	type AccountId32Convert = AccountId32Convert;
-// 	type SelfLocation = SelfLocation;
-// 	type XcmHandler = HandleXcm;
-// }
+pub struct AccountIdToMultiLocation;
+impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+	fn convert(account: AccountId) -> MultiLocation {
+		X1(AccountId32 {
+			network: NetworkId::Any,
+			id: account.into(),
+		})
+	}
+}
+
+impl orml_xtokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type CurrencyIdConvert = CurrencyIdConvert;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type SelfLocation = SelfLocation;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
 
 impl orml_unknown_tokens::Config for Runtime {
 	type Event = Event;
@@ -1764,7 +1774,7 @@ construct_runtime! {
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 171,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 172,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 173,
-		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 174,
+		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 174,
 		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 175,
 
 		// Smart contracts
