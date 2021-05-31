@@ -41,6 +41,8 @@ pub use mandala_runtime;
 use sc_consensus_aura::StartAuraParams;
 
 use acala_primitives::{Block, Hash};
+#[cfg(feature = "with-mandala-runtime")]
+use futures::stream::StreamExt;
 use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
@@ -637,12 +639,23 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		);
 
 		if instant_sealing {
+			let pool = transaction_pool.pool().clone();
+			let commands_stream = pool.validated_pool().import_notification_stream().map(|_| {
+				sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
+					create_empty: false,
+					finalize: true,
+					parent_hash: None,
+					sender: None,
+				}
+			});
+
 			let authorship_future =
-				sc_consensus_manual_seal::run_instant_seal(sc_consensus_manual_seal::InstantSealParams {
+				sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
 					block_import: client.clone(),
 					env: proposer_factory,
 					client: client.clone(),
-					pool: transaction_pool.pool().clone(),
+					pool,
+					commands_stream,
 					select_chain,
 					consensus_data_provider: None,
 					create_inherent_data_providers: |_, _| async {
