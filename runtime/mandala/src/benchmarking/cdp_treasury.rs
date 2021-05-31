@@ -22,7 +22,6 @@ use frame_system::RawOrigin;
 use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-use sp_std::prelude::*;
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }

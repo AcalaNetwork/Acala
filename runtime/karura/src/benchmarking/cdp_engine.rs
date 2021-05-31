@@ -17,12 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
+	dollar, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, Dex, EmergencyShutdown, GetStableCurrencyId, MaxSlippageSwapWithDEX, MinimumDebitValue,
 	Price, Rate, Ratio, Runtime, KSM, KUSD, MILLISECS_PER_BLOCK,
 };
 
-use super::utils::set_balance;
+use super::utils::{feed_price, set_balance};
 use core::convert::TryInto;
 use frame_benchmarking::account;
 use frame_support::traits::OnInitialize;
@@ -79,13 +79,11 @@ runtime_benchmarks! {
 		let collateral_value = 2 * min_debit_value;
 
 		// feed price
-		let mut feed_data: Vec<(CurrencyId, Price)> = vec![];
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
 			let collateral_price = Price::one();
-			feed_data.push((currency_id, collateral_price));
+			feed_price(currency_id, collateral_price)?;
 		}
-		AcalaOracle::feed_values(RawOrigin::Root.into(), feed_data)?;
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
@@ -154,7 +152,7 @@ runtime_benchmarks! {
 		set_balance(currency_id, &owner, collateral_amount);
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, collateral_price)])?;
+		feed_price(currency_id, collateral_price)?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
@@ -205,7 +203,7 @@ runtime_benchmarks! {
 		set_balance(KSM, &owner, collateral_amount);
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(KSM, collateral_price)])?;
+		feed_price(KSM, collateral_price)?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
@@ -254,7 +252,7 @@ runtime_benchmarks! {
 		set_balance(currency_id, &owner, collateral_amount);
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, collateral_price)])?;
+		feed_price(currency_id, collateral_price)?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(

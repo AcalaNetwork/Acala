@@ -24,6 +24,11 @@ use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
+use sp_std::str::FromStr;
+
+fn contract_addr() -> H160 {
+	H160::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
+}
 
 fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
@@ -52,11 +57,8 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 	EVM::create(Origin::signed(caller), contract, 0, 1000000000, 1000000000)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
-		Ok(address)
-	} else {
-		Err("deploy_contract failed".into())
-	}
+	System::assert_last_event(Event::module_evm(module_evm::Event::Created(contract_addr())));
+	Ok(contract_addr())
 }
 
 pub fn alice_account_id() -> AccountId {
@@ -81,8 +83,11 @@ runtime_benchmarks! {
 	transfer_maintainer {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(KAR));
+		set_aca_balance(&alice_account, 1_000_000 * dollar(KAR));
 		set_aca_balance(&bob_account_id(), 1_000 * dollar(KAR));
+		use crate::Balances;
+		use frame_support::traits::Currency;
+		let b = Balances::total_balance(&alice_account);
 		let contract = deploy_contract(alice_account_id())?;
 		let bob_address = EvmAccounts::eth_address(&bob());
 
@@ -92,7 +97,7 @@ runtime_benchmarks! {
 	deploy {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(KAR));
+		set_aca_balance(&alice_account, 1_000_000 * dollar(KAR));
 		set_aca_balance(&bob_account_id(), 1_000 * dollar(KAR));
 		let contract = deploy_contract(alice_account_id())?;
 
@@ -138,7 +143,7 @@ runtime_benchmarks! {
 	selfdestruct {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(KAR));
+		set_aca_balance(&alice_account, 1_000_000 * dollar(KAR));
 		let contract = deploy_contract(alice_account_id())?;
 
 		whitelist_account!(alice_account);

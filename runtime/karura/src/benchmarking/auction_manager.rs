@@ -17,10 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, AuctionId, AuctionManager, CdpTreasury, Currencies, EmergencyShutdown,
-	GetStableCurrencyId, Price, Runtime, KSM,
+	dollar, AccountId, AuctionId, AuctionManager, CdpTreasury, Currencies, EmergencyShutdown, GetStableCurrencyId,
+	Price, Runtime, KSM,
 };
 
+use super::utils::feed_price;
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
 use module_support::AuctionManager as AuctionManagerTrait;
@@ -28,7 +29,6 @@ use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
-use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
@@ -48,7 +48,7 @@ runtime_benchmarks! {
 		CdpTreasury::deposit_collateral(&funder, KSM, dollar(KSM))?;
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(KSM, Price::saturating_from_integer(120))])?;
+		feed_price(KSM, Price::saturating_from_integer(120))?;
 
 		// create collateral auction
 		AuctionManager::new_collateral_auction(&funder, KSM, dollar(KSM), 100 * dollar(stable_currency_id))?;

@@ -26,7 +26,7 @@ use frame_system::RawOrigin;
 use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use sp_runtime::traits::One;
-use sp_std::prelude::*;
+use sp_std::vec;
 
 const SEED: u32 = 0;
 
