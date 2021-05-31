@@ -108,6 +108,7 @@ name = "acala-runtime"
 version = "1.0.0"
 dependencies = [
  "acala-primitives",
+ "chainbridge",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
  "ecosystem-renvm-bridge",
