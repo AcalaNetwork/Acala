@@ -107,7 +107,7 @@ runtime_benchmarks! {
 	deploy_free {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(KAR));
+		set_aca_balance(&alice_account, 1_000_000 * dollar(KAR));
 		set_aca_balance(&bob_account_id(), 1_000 * dollar(KAR));
 		let contract = deploy_contract(alice_account_id())?;
 	}: _(RawOrigin::Root, contract)
