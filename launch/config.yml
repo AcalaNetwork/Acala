@@ -1,5 +1,5 @@
 relaychain:
-  image: acala/polkadot:latest
+  image: parity/polkadot:v0.9.3
   chain: rococo-local
   runtime_genesis_config:
     parachainsConfiguration:

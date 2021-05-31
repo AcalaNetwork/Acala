@@ -90,7 +90,10 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output
   const spec = getChainspec(relaychain.image, relaychain.chain);
 
   // clear authorities
-  const sessionKeys = spec.genesis.runtime.runtime_genesis_config.palletSession.keys;
+
+  const runtime = spec.genesis.runtime.runtime_genesis_config || spec.genesis.runtime;
+
+  const sessionKeys = runtime.palletSession.keys;
   sessionKeys.length = 0;
 
   // add authorities from config
@@ -123,7 +126,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output
 
   // additional patches
   if (config.relaychain.runtime_genesis_config) {
-    _.merge(spec.genesis.runtime.runtime_genesis_config, config.relaychain.runtime_genesis_config);
+    _.merge(runtime, config.relaychain.runtime_genesis_config);
   }
 
   // genesis parachains
@@ -140,7 +143,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output
         parachain: parachain.parachain,
       },
     ];
-    spec.genesis.runtime.runtime_genesis_config.parachainsParas.paras.push(para);
+    runtime.parachainsParas.paras.push(para);
   }
 
   let tmpfile = `${shell.tempdir()}/${config.relaychain.chain}.json`
