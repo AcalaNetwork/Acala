@@ -83,16 +83,21 @@ pub mod pallet {
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
-		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
+		sp_runtime::{
+			traits::{AccountIdConversion, Convert},
+			RuntimeDebug,
+		},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
 	use frame_system::Config as SystemConfig;
 	use pallet_session::SessionManager;
 	use sp_staking::SessionIndex;
-	use sp_std::convert::TryInto;
+	use sp_std::{convert::TryInto, vec};
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
+	type ValidatorIdOf<T> =
+		<<T as Config>::ValidatorSet as ValidatorSet<<T as frame_system::Config>::AccountId>>::ValidatorIdOf;
 
 	/// A convertor from collators id. Since this pallet does not have stash/controller, this is
 	/// just identity.
@@ -141,8 +146,6 @@ pub mod pallet {
 		pub who: AccountId,
 		/// Reserved deposit.
 		pub deposit: Balance,
-		/// The session when parachain node become collators.
-		pub start_session: SessionIndex,
 	}
 
 	type CandidateInfoOf<T> = CandidateInfo<<T as SystemConfig>::AccountId, BalanceOf<T>>;
@@ -296,9 +299,6 @@ pub mod pallet {
 			let incoming = CandidateInfo {
 				who: who.clone(),
 				deposit,
-				// pallet-session have 1 session delay so this will be applied on 1 session after next session
-				// Tracking issue: https://github.com/paritytech/substrate/issues/8650
-				start_session: T::ValidatorSet::session_index() + 2,
 			};
 
 			let mut bounded_candidates = Self::candidates();
@@ -404,26 +404,28 @@ pub mod pallet {
 		}
 
 		fn start_session(index: SessionIndex) {
-			let (candidates_len, collator_len) = <Candidates<T>>::mutate(|candidates| -> (usize, usize) {
-				let mut collator = 0;
-				candidates.iter().for_each(|candidate| {
-					if index >= candidate.start_session {
-						collator += 1;
-						<SessionPoints<T>>::insert(&candidate.who, 0);
-					}
-				});
-				(candidates.len(), collator)
+			let validators = T::ValidatorSet::validators();
+			let candidates = Self::candidates();
+			let mut collators = vec![];
+
+			candidates.iter().for_each(|candidate| {
+				let who = ValidatorIdOf::<T>::convert(candidate.who.clone())
+					.expect("This should never fail because ValidatorId is type of AccountId.");
+				if validators.contains(&who) {
+					collators.push(&candidate.who);
+					<SessionPoints<T>>::insert(&candidate.who, 0);
+				}
 			});
 
 			log::debug!(
 				"start session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
-				<SessionPoints<T>>::iter().map(|(who, _)| who).collect::<Vec<_>>()
+				collators
 			);
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::start_session(candidates_len as u32, collator_len as u32),
+				T::WeightInfo::start_session(candidates.len() as u32, collators.len() as u32),
 				DispatchClass::Mandatory,
 			);
 		}
