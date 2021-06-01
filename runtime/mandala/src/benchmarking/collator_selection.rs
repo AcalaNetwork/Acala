@@ -16,7 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, Balance, Balances, CollatorSelection, Event, MaxCandidates, MaxInvulnerables, Runtime, System};
+use crate::{
+	AccountId, Balance, Balances, CollatorSelection, Event, MaxCandidates, MaxInvulnerables, Runtime, Session, System,
+};
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::assert_ok;
@@ -160,6 +162,10 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
+		// TODO: https://github.com/paritytech/substrate/pull/8815
+		// for i in 0..r {
+		//     pallet_session::Validators::insert()
+		// }
 		System::set_block_number(20u32.into());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);

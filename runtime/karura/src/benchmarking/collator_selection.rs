@@ -160,6 +160,10 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
+		// TODO: https://github.com/paritytech/substrate/pull/8815
+		// for i in 0..r {
+		//     pallet_session::Validators::insert()
+		// }
 		System::set_block_number(20u32.into());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
