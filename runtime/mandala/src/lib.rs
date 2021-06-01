@@ -1392,6 +1392,7 @@ impl ecosystem_chainsafe::Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type RegistorOrigin = EnsureRootOrHalfGeneralCouncil;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type WeightInfo = weights::ecosystem_chainsafe::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1990,6 +1991,8 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
 			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
+
+			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
