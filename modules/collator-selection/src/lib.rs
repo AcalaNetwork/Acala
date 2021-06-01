@@ -83,10 +83,7 @@ pub mod pallet {
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
-		sp_runtime::{
-			traits::{AccountIdConversion, Convert},
-			RuntimeDebug,
-		},
+		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
@@ -96,8 +93,6 @@ pub mod pallet {
 	use sp_std::{convert::TryInto, vec};
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
-	type ValidatorIdOf<T> =
-		<<T as Config>::ValidatorSet as ValidatorSet<<T as frame_system::Config>::AccountId>>::ValidatorIdOf;
 
 	/// A convertor from collators id. Since this pallet does not have stash/controller, this is
 	/// just identity.
@@ -118,7 +113,7 @@ pub mod pallet {
 		type Currency: ReservableCurrency<Self::AccountId>;
 
 		/// A type for retrieving the validators supposed to be online in a session.
-		type ValidatorSet: ValidatorSet<Self::AccountId>;
+		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>;
 
 		/// Origin that can dictate updating parameters of this pallet.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
@@ -409,9 +404,7 @@ pub mod pallet {
 			let mut collators = vec![];
 
 			candidates.iter().for_each(|candidate| {
-				let who = ValidatorIdOf::<T>::convert(candidate.who.clone())
-					.expect("This should never fail because ValidatorId is type of AccountId.");
-				if validators.contains(&who) {
+				if validators.contains(&candidate.who) {
 					collators.push(&candidate.who);
 					<SessionPoints<T>>::insert(&candidate.who, 0);
 				}
