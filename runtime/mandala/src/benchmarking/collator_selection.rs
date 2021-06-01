@@ -160,14 +160,10 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
-		let mut candidates = module_collator_selection::Candidates::<Runtime>::get();
-		let non_collator = if c > r { c - r } else { 0 };
-
-		for i in 0..non_collator {
-			candidates[i as usize].start_session = 10;
-		}
-		module_collator_selection::Candidates::<Runtime>::put(candidates.clone());
-
+		// TODO: https://github.com/paritytech/substrate/pull/8815
+		// for i in 0..r {
+		//     pallet_session::Validators::insert()
+		// }
 		System::set_block_number(20u32.into());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
