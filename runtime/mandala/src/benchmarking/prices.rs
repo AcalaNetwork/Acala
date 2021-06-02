@@ -21,7 +21,7 @@ use crate::{AcalaOracle, CollateralCurrencyIds, CurrencyId, Origin, Price, Price
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_runtime::traits::One;
-use sp_std::prelude::*;
+use sp_std::vec;
 
 runtime_benchmarks! {
 	{ Runtime, module_prices }

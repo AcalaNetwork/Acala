@@ -108,6 +108,7 @@ name = "acala-runtime"
 version = "1.0.0"
 dependencies = [
  "acala-primitives",
+ "chainbridge",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
  "ecosystem-renvm-bridge",
@@ -218,6 +219,7 @@ dependencies = [
  "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-system-rpc-runtime-api",
+ "futures 0.3.14",
  "hex-literal 0.3.1",
  "jsonrpc-core",
  "karura-runtime",

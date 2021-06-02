@@ -128,11 +128,7 @@ fn cannot_register_dupe_candidate() {
 	new_test_ext().execute_with(|| {
 		// can add 3 as candidate
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		let addition = CandidateInfo {
-			who: 3,
-			deposit: 10,
-			last_block: 0,
-		};
+		let addition = CandidateInfo { who: 3, deposit: 10 };
 		assert_eq!(CollatorSelection::candidates(), vec![addition]);
 		assert_eq!(Balances::free_balance(3), 90);
 
@@ -216,11 +212,7 @@ fn fees_edgecases() {
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
-		let collator = CandidateInfo {
-			who: 4,
-			deposit: 10,
-			last_block: 0,
-		};
+		let collator = CandidateInfo { who: 4, deposit: 10 };
 
 		assert_eq!(CollatorSelection::candidates(), vec![collator]);
 
@@ -279,15 +271,21 @@ fn kick_mechanism() {
 		assert_eq!(CollatorSelection::candidates().len(), 2);
 		initialize_to_block(21);
 		assert_eq!(SessionChangeBlock::get(), 20);
+		assert_eq!(CollatorSelection::candidates().len(), 2);
+		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
+		let collators = vec![
+			CandidateInfo { who: 3, deposit: 10 },
+			CandidateInfo { who: 4, deposit: 10 },
+		];
+		assert_eq!(CollatorSelection::candidates(), collators);
+
+		initialize_to_block(31);
 		// 4 authored this block, gets to stay 3 was kicked
+		assert_eq!(SessionChangeBlock::get(), 30);
 		assert_eq!(CollatorSelection::candidates().len(), 1);
-		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 4]);
-		let collator = CandidateInfo {
-			who: 4,
-			deposit: 10,
-			last_block: 21,
-		};
-		assert_eq!(CollatorSelection::candidates(), vec![collator]);
+		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
+		let collators = vec![CandidateInfo { who: 4, deposit: 10 }];
+		assert_eq!(CollatorSelection::candidates(), collators);
 		// kicked collator gets funds back
 		assert_eq!(Balances::free_balance(3), 100);
 	});

@@ -22,6 +22,7 @@
 pub mod auction_manager;
 pub mod cdp_engine;
 pub mod cdp_treasury;
+pub mod collator_selection;
 pub mod dex;
 pub mod emergency_shutdown;
 pub mod evm;

@@ -21,7 +21,7 @@ use crate::{AcalaDataProvider, AcalaOracle, CollateralCurrencyIds, Origin, Price
 use frame_support::traits::OnFinalize;
 use orml_benchmarking::runtime_benchmarks_instance;
 use sp_runtime::traits::One;
-use sp_std::prelude::*;
+use sp_std::vec;
 
 runtime_benchmarks_instance! {
 	{ Runtime, orml_oracle, AcalaDataProvider }
