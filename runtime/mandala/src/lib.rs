@@ -1606,6 +1606,7 @@ impl orml_xtokens::Config for Runtime {
 	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
