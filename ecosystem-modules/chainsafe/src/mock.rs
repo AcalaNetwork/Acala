@@ -115,6 +115,7 @@ impl Config for Runtime {
 	type NativeCurrencyId = ACA;
 	type RegistorOrigin = EnsureSignedBy<RegistorOrigin, AccountId>;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
