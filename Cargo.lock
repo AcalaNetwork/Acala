@@ -6268,7 +6268,6 @@ dependencies = [
  "cumulus-primitives-core",
  "frame-support",
  "frame-system",
- "orml-tokens",
  "orml-traits",
  "orml-xcm-support",
  "parity-scale-codec",
