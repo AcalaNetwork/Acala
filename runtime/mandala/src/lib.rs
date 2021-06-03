@@ -157,7 +157,7 @@ parameter_types! {
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
-	// Decentralized Sovereign Wealth Fund
+	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"aca/phre";
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
