@@ -28,9 +28,9 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateTokenDeposit, CurrencyId, DSWFPalletId, EVMBridge, EnabledTradingPairs, Event, EvmAccounts,
-	EvmCurrencyIdMapping, GetNativeCurrencyId, NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller,
-	Perbill, Runtime, SevenDays, System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
+	CreateTokenDeposit, CurrencyId, EVMBridge, EnabledTradingPairs, Event, EvmAccounts, EvmCurrencyIdMapping,
+	GetNativeCurrencyId, NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller, Perbill, Runtime, SevenDays,
+	System, TokenSymbol, TreasuryReservePalletId, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -893,7 +893,7 @@ fn test_authority_module() {
 		.balances(vec![
 			(AccountId::from(ALICE), AUSD, 1_000 * dollar(AUSD)),
 			(AccountId::from(ALICE), RENBTC, 1_000 * dollar(RENBTC)),
-			(DSWFPalletId::get().into_account(), AUSD, 1000 * dollar(AUSD)),
+			(TreasuryReservePalletId::get().into_account(), AUSD, 1000 * dollar(AUSD)),
 		])
 		.build()
 		.execute_with(|| {
@@ -930,14 +930,14 @@ fn test_authority_module() {
 
 			// schedule_dispatch
 			run_to_block(1);
-			// DSWF transfer
+			// TreasuryReserve transfer
 			let transfer_call = Call::Currencies(module_currencies::Call::transfer(
 				AccountId::from(BOB).into(),
 				AUSD,
 				500 * dollar(AUSD),
 			));
-			let dswf_call = Call::Authority(orml_authority::Call::dispatch_as(
-				AuthoritysOriginId::DSWF,
+			let treasury_reserve_call = Call::Authority(orml_authority::Call::dispatch_as(
+				AuthoritysOriginId::TreasuryReserve,
 				Box::new(transfer_call.clone()),
 			));
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -945,7 +945,7 @@ fn test_authority_module() {
 				DispatchTime::At(2),
 				0,
 				true,
-				Box::new(dswf_call.clone())
+				Box::new(treasury_reserve_call.clone())
 			));
 
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -965,7 +965,7 @@ fn test_authority_module() {
 
 			run_to_block(2);
 			assert_eq!(
-				Currencies::free_balance(AUSD, &DSWFPalletId::get().into_account()),
+				Currencies::free_balance(AUSD, &TreasuryReservePalletId::get().into_account()),
 				500 * dollar(AUSD)
 			);
 			assert_eq!(

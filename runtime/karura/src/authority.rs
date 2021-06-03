@@ -19,11 +19,11 @@
 //! An orml_authority trait implementation.
 
 use crate::{
-	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DSWFPalletId, DispatchResult,
-	EnsureRoot, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DispatchResult, EnsureRoot,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, Origin, OriginCaller,
-	TreasuryPalletId, DAYS, HOURS,
+	TreasuryPalletId, TreasuryReservePalletId, DAYS, HOURS,
 };
 use frame_support::parameter_types;
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
@@ -93,7 +93,9 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 			AuthoritysOriginId::HomaTreasury => Origin::signed(HomaTreasuryPalletId::get().into_account())
 				.caller()
 				.clone(),
-			AuthoritysOriginId::DSWF => Origin::signed(DSWFPalletId::get().into_account()).caller().clone(),
+			AuthoritysOriginId::TreasuryReserve => Origin::signed(TreasuryReservePalletId::get().into_account())
+				.caller()
+				.clone(),
 		}
 	}
 
@@ -126,7 +128,7 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 					>>::ensure_origin(origin)
 					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 				}
-				AuthoritysOriginId::DSWF => Err(BadOrigin.into()), // only allow root
+				AuthoritysOriginId::TreasuryReserve => Err(BadOrigin.into()), // only allow root
 			}
 		})
 	}

@@ -151,8 +151,8 @@ parameter_types! {
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
-	// Decentralized Sovereign Wealth Fund
-	pub const DSWFPalletId: PalletId = PalletId(*b"aca/dswf");
+	// Treasury reserve
+	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
@@ -168,7 +168,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		HonzonTreasuryPalletId::get().into_account(),
 		HomaTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
-		DSWFPalletId::get().into_account(),
+		TreasuryReservePalletId::get().into_account(),
 		ZeroAccountId::get(),
 	]
 }
