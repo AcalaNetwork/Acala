@@ -39,7 +39,7 @@ use runtime_common::TokenInfo;
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 2000;
+pub const PARA_ID: u32 = 2005;
 
 pub fn karura_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-dist.json")[..])
