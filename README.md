@@ -160,38 +160,53 @@ To generate weights for all modules just pass `*` as `module_name` i.e: `/bench 
 Bench bot will do the benchmarking, generate weights file push changes into your branch.
 
 # 7. Migration testing runtime
-If we modify the storage, we should test the data migration before upgrade the runtime.
-
-## Run local node(Optional. If the mainnet launch, can skip the step)
-
-```bash
-cd launch
-# install dependencies
-yarn
-# generate docker-compose.yml and genesis
-yarn run start generate
-
-cd output
-# start relaychain and parachain
-docker-compose up
-
-# remove volume
-docker-compose rm
-docker volume ls
-docker volume rm [your_volume]
-# or prune
-docker volume prune
-```
+If modify the storage, should test the data migration before upgrade the runtime.
 
 ## Try testing runtime
 
 ```bash
-# Use a state snapshot as state to run the migration.
-# TODO: test the command.
-# Stop node and export the state:
-# acala export-state --chain karura-dev > snapshot.bin
-# cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime snap snapshot.bin
+# Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
+# Add `-m module_name` can specify the module.
+cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled live "http://localhost:9933" -s snapshot.bin [-m module_name]
 
-# Use a live chain to run the migration.
-cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime live "http://localhost:9936" [--modules EVM]
+# Use a state snapshot as state to run the migration test.
+# cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled snap snapshot.bin
+```
+
+# 8. Run local network with `Relaychain` and `Parachain`.
+Build Relaychain and Parachain local testnet to develop.
+
+```bash
+cd launch
+
+# install dependencies
+yarn
+
+# generate docker-compose.yml and genesis
+# NOTE: If the docker image is not the latest, need to download it manually.
+# bash: docker pull acala/karura-node:latest
+yarn run start generate
+
+# start relaychain and parachain
+cd output
+docker-compose up -d
+
+# list all of the containers.
+docker ps -a
+
+# track container logs
+docker logs -f [container_id/container_name]
+
+# stop all of the containers. 
+docker-compose stop
+
+# remove all of the containers. 
+docker-compose rm
+
+# If you want to clear the data and restart, you need to clear the volumes.
+# remove volume 
+docker volume ls
+docker volume rm [volume_name]
+# prune all volumes
+docker volume prune
 ```
