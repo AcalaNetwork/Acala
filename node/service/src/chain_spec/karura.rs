@@ -30,8 +30,8 @@ use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from
 
 use karura_runtime::{
 	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
-	CollatorSelectionConfig, DexConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-	HonzonCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
+	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
 	ParachainInfoConfig, SessionConfig, SessionKeys, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
 	TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
 };
@@ -91,6 +91,21 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 					hex!["643aa70071341b904e6e5b4e41d6dfc02b4cfcdc4c9c7a66f41fc0e59c07e24c"].into(),
 					hex!["60fdcbd860869ee9b1230731b82604e8cf63c6c66e69277b59e337f1f25af225"].unchecked_into(),
 				),
+			];
+
+			let general_councils: Vec<AccountId> = vec![
+				// ouJX1WJQ9s4RMukAx5zvMwPY2zJZ9Xr5euzRG97Ne6UTNG9
+				hex!["1ab677fa2007fb1e8ac2f5f6d253d5a2bd9c2ed4e5d3c1565c5d84436f81325d"].into(),
+				// qMJYLJEP2HTBFhxqTFAJz9RcsT9UQ3VW2tFHRBmyaxPdj1n
+				hex!["5ac728d31a0046274f1c5bece1867555c6728c8e8219ff77bb7a8afef4ab8137"].into(),
+				// qPnkT89PRdiCbBgvE6a6gLcFCqWC8F1UoCZUhFvjbBkXMXc
+				hex!["5cac9c2837017a40f90cc15b292acdf1ee28ae03005dff8d13d32fdf7d2e237c"].into(),
+				// sZCH1stvMnSuDK1EDpdNepMYcpZWoDt3yF3PnUENS21f2tA
+				hex!["1ab677fa2007fb1e8ac2f5f6d253d5a2bd9c2ed4e5d3c1565c5d84436f81325d"].into(),
+				// ra6MmAYU2qdCVsMS3REKZ82CJ1EwMWq6H6Zo475xTzedctJ
+				hex!["90c492f38270b5512370886c392ff6ec7624b14185b4b610b30248a28c94c953"].into(),
+				// ts9q95ZJmaCMCPKuKTY4g5ZeK65GdFVz6ZDD8LEnYJ3jpbm
+				hex!["f63fe694d0c8a0703fc45362efc2852c8b8c9c4061b5f0cf9bd0329a984fc95d"].into(),
 			];
 
 			// sWcq8FAQXPdXGSaxSTBKS614hCB8YutkVWWacBKG1GbGS23
@@ -155,6 +170,7 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 				root_key,
 				initial_allocation,
 				vesting_list,
+				general_councils,
 			)
 		},
 		vec![
@@ -197,6 +213,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 					),
 				],
 				vec![],
+				vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
 			)
 		},
 		vec![],
@@ -216,6 +233,7 @@ fn karura_genesis(
 	root_key: AccountId,
 	initial_allocation: Vec<(AccountId, Balance)>,
 	vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)>,
+	general_councils: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	karura_runtime::GenesisConfig {
 		frame_system: SystemConfig {
@@ -229,11 +247,11 @@ fn karura_genesis(
 		pallet_sudo: SudoConfig { key: root_key },
 		pallet_collective_Instance1: Default::default(),
 		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
-			members: vec![],
+			members: general_councils,
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
+		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
 			members: vec![],
 			phantom: Default::default(),
 		},

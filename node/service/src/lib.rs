@@ -41,6 +41,8 @@ pub use mandala_runtime;
 use sc_consensus_aura::StartAuraParams;
 
 use acala_primitives::{Block, Hash};
+#[cfg(feature = "with-mandala-runtime")]
+use futures::stream::StreamExt;
 use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
@@ -212,12 +214,10 @@ where
 			)
 		} else {
 			// aura import queue
-			let block_import =
-				sc_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
 
 			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
-				block_import,
+				block_import: client.clone(),
 				justification_import: None,
 				client: client.clone(),
 				create_inherent_data_providers: move |_, ()| async move {
@@ -239,12 +239,10 @@ where
 		}
 	} else {
 		let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-		let block_import =
-			cumulus_client_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
 
 		cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
 			cumulus_client_consensus_aura::ImportQueueParams {
-				block_import,
+				block_import: client.clone(),
 				client: client.clone(),
 				create_inherent_data_providers: move |_, _| async move {
 					let time = sp_timestamp::InherentDataProvider::from_system_time();
@@ -341,14 +339,14 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let mut task_manager = params.task_manager;
-	let import_queue = params.import_queue;
+	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
 	let (network, network_status_sinks, system_rpc_tx, start_network) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &parachain_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
 			spawn_handle: task_manager.spawn_handle(),
-			import_queue,
+			import_queue: import_queue.clone(),
 			on_demand: None,
 			block_announce_validator_builder: Some(Box::new(|_| block_announce_validator)),
 		})?;
@@ -423,6 +421,7 @@ where
 			relay_chain_full_node,
 			spawner,
 			parachain_consensus,
+			import_queue,
 		};
 
 		start_collator(params).await?;
@@ -432,7 +431,7 @@ where
 			announce_block,
 			task_manager: &mut task_manager,
 			para_id: id,
-			polkadot_full_node: relay_chain_full_node,
+			relay_chain_full_node,
 		};
 
 		start_full_node(params)?;
@@ -640,12 +639,23 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		);
 
 		if instant_sealing {
+			let pool = transaction_pool.pool().clone();
+			let commands_stream = pool.validated_pool().import_notification_stream().map(|_| {
+				sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
+					create_empty: false,
+					finalize: true,
+					parent_hash: None,
+					sender: None,
+				}
+			});
+
 			let authorship_future =
-				sc_consensus_manual_seal::run_instant_seal(sc_consensus_manual_seal::InstantSealParams {
+				sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
 					block_import: client.clone(),
 					env: proposer_factory,
 					client: client.clone(),
-					pool: transaction_pool.pool().clone(),
+					pool,
+					commands_stream,
 					select_chain,
 					consensus_data_provider: None,
 					create_inherent_data_providers: |_, _| async {
@@ -662,14 +672,12 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		} else {
 			// aura
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-			let block_import =
-				sc_consensus_aura::AuraBlockImport::<_, _, _, AuraPair>::new(client.clone(), client.clone());
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
 			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
-				block_import,
+				block_import: client.clone(),
 				proposer_factory,
 				create_inherent_data_providers: move |_, ()| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();

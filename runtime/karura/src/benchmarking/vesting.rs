@@ -18,8 +18,8 @@
 
 use super::utils::{lookup_of_account, set_aca_balance};
 use crate::{
-	dollar, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, KaruraFoundationAccounts,
-	MaxVestingSchedules, MinVestedTransfer, Runtime, System, Vesting, KAR,
+	dollar, AccountId, Balance, BlockNumber, Currencies, KaruraFoundationAccounts, MaxVestingSchedules,
+	MinVestedTransfer, Runtime, System, Vesting, KAR,
 };
 
 use sp_std::prelude::*;

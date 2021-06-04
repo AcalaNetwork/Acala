@@ -125,8 +125,8 @@ fn acala_genesis(
 ) -> acala_runtime::GenesisConfig {
 	use acala_runtime::{
 		cent, dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig,
-		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EnabledTradingPairs, GeneralCouncilMembershipConfig,
-		HomaCouncilMembershipConfig, HonzonCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
+		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
 		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD,
@@ -203,7 +203,7 @@ fn acala_genesis(
 			phantom: Default::default(),
 		},
 		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: HonzonCouncilMembershipConfig {
+		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},

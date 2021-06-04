@@ -160,7 +160,8 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 
 	close_loan_has_debit_by_dex {
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
+		let collateral_currency_ids = CollateralCurrencyIds::get();
+		let currency_id: CurrencyId = *collateral_currency_ids.last().unwrap();
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(AUSD);

@@ -17,10 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
-	Honzon, Price, Rate, Ratio, Runtime, KAR, KSM, KUSD,
+	dollar, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex, Honzon,
+	Price, Rate, Ratio, Runtime, KAR, KSM, KUSD,
 };
 
+use super::utils::feed_price;
 use super::utils::set_balance;
 use core::convert::TryInto;
 use frame_benchmarking::{account, whitelisted_caller};
@@ -97,7 +98,7 @@ runtime_benchmarks! {
 		set_balance(currency_id, &caller, collateral_amount);
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, collateral_price)])?;
+		feed_price(currency_id, collateral_price)?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
@@ -130,7 +131,7 @@ runtime_benchmarks! {
 		set_balance(KAR, &sender, DepositPerAuthorization::get());
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
+		feed_price(currency_id, Price::one())?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
@@ -187,7 +188,7 @@ runtime_benchmarks! {
 		)?;
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
+		feed_price(currency_id, Price::one())?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(

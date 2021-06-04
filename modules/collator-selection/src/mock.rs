@@ -187,18 +187,18 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	pub const MaxCandidates: u32 = 20;
-	pub const MaxInvulnerables: u32 = 20;
+	pub const MaxCandidates: u32 = 4;
+	pub const MaxInvulnerables: u32 = 4;
 }
 
 impl Config for Test {
 	type Event = Event;
 	type Currency = Balances;
+	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureSignedBy<RootAccount, u64>;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
-	type KickThreshold = Period;
 	type WeightInfo = ();
 }
 

@@ -19,11 +19,11 @@
 //! An orml_authority trait implementation.
 
 use crate::{
-	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DSWFPalletId, DispatchResult,
-	EnsureRoot, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrHalfHonzonCouncil,
+	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DispatchResult, EnsureRoot,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, Origin, OriginCaller,
-	TreasuryPalletId, DAYS, HOURS,
+	TreasuryPalletId, TreasuryReservePalletId, DAYS, HOURS,
 };
 use frame_support::parameter_types;
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
@@ -40,7 +40,7 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 	fn check_schedule_dispatch(origin: Origin, _priority: Priority) -> DispatchResult {
 		EnsureRoot::<AccountId>::try_origin(origin)
 			.or_else(|o| EnsureRootOrHalfGeneralCouncil::try_origin(o).map(|_| ()))
-			.or_else(|o| EnsureRootOrHalfHonzonCouncil::try_origin(o).map(|_| ()))
+			.or_else(|o| EnsureRootOrHalfFinancialCouncil::try_origin(o).map(|_| ()))
 			.or_else(|o| EnsureRootOrHalfHomaCouncil::try_origin(o).map(|_| ()))
 			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 	}
@@ -93,7 +93,9 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 			AuthoritysOriginId::HomaTreasury => Origin::signed(HomaTreasuryPalletId::get().into_account())
 				.caller()
 				.clone(),
-			AuthoritysOriginId::DSWF => Origin::signed(DSWFPalletId::get().into_account()).caller().clone(),
+			AuthoritysOriginId::TreasuryReserve => Origin::signed(TreasuryReservePalletId::get().into_account())
+				.caller()
+				.clone(),
 		}
 	}
 
@@ -113,19 +115,20 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 					>>::ensure_origin(origin)
 					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 				}
-				AuthoritysOriginId::HonzonTreasury => {
-					<EnsureDelayed<OneDay, EnsureRootOrHalfHonzonCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-						Origin,
-					>>::ensure_origin(origin)
-					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-				}
+				AuthoritysOriginId::HonzonTreasury => <EnsureDelayed<
+					OneDay,
+					EnsureRootOrHalfFinancialCouncil,
+					BlockNumber,
+					OriginCaller,
+				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
 				AuthoritysOriginId::HomaTreasury => {
 					<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
 						Origin,
 					>>::ensure_origin(origin)
 					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 				}
-				AuthoritysOriginId::DSWF => Err(BadOrigin.into()), // only allow root
+				AuthoritysOriginId::TreasuryReserve => Err(BadOrigin.into()), // only allow root
 			}
 		})
 	}

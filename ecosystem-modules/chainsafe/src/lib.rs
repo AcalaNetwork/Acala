@@ -27,9 +27,11 @@ use sp_runtime::SaturatedConversion;
 use sp_std::vec::Vec;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 mod mock;
 mod tests;
+pub mod weights;
 
 type ResourceId = chainbridge::ResourceId;
 
@@ -51,6 +53,9 @@ pub mod module {
 		/// Specifies the origin check provided by the bridge for calls that can
 		/// only be called by the bridge pallet
 		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
@@ -84,7 +89,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(1_000_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::register_resource_id())]
 		#[transactional]
 		pub fn register_resource_id(
 			origin: OriginFor<T>,
@@ -113,7 +118,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(1_000_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_resource_id())]
 		#[transactional]
 		pub fn remove_resource_id(origin: OriginFor<T>, resource_id: ResourceId) -> DispatchResultWithPostInfo {
 			T::RegistorOrigin::ensure_origin(origin)?;
@@ -124,7 +129,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(1_000_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_origin_chain_token_to_bridge())]
 		#[transactional]
 		pub fn transfer_to_bridge(
 			origin: OriginFor<T>,
@@ -138,7 +143,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(1_000_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_native_to_bridge())]
 		#[transactional]
 		pub fn transfer_native_to_bridge(
 			origin: OriginFor<T>,
@@ -151,7 +156,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(1_000_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_origin_chain_token_from_bridge())]
 		#[transactional]
 		pub fn transfer_from_bridge(
 			origin: OriginFor<T>,

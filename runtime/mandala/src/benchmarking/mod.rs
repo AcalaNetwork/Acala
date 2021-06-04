@@ -22,6 +22,7 @@
 pub mod auction_manager;
 pub mod cdp_engine;
 pub mod cdp_treasury;
+pub mod collator_selection;
 pub mod dex;
 pub mod emergency_shutdown;
 pub mod evm;
@@ -41,3 +42,6 @@ pub mod oracle;
 pub mod tokens;
 pub mod utils;
 pub mod vesting;
+
+// ecosystem benchmarking
+pub mod chainsafe_transfer;
