@@ -158,3 +158,55 @@ Comment on a PR `/bench runtime <runtime> <module_name>` i.e.: `/bench runtime m
 To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *`
 
 Bench bot will do the benchmarking, generate weights file push changes into your branch.
+
+# 7. Migration testing runtime
+If modify the storage, should test the data migration before upgrade the runtime.
+
+## Try testing runtime
+
+```bash
+# Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
+# Add `-m module_name` can specify the module.
+cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled live "http://localhost:9933" -s snapshot.bin [-m module_name]
+
+# Use a state snapshot as state to run the migration test.
+cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled snap snapshot.bin
+```
+
+# 8. Run local testnet with `Relaychain` and `Parachain`
+Build Relaychain and Parachain local testnet to develop.
+
+```bash
+cd launch
+
+# install dependencies
+yarn
+
+# generate docker-compose.yml and genesis
+# NOTE: If the docker image is not the latest, need to download it manually.
+# bash: docker pull acala/karura-node:latest
+yarn run start generate
+
+# start relaychain and parachain
+cd output
+docker-compose up -d
+
+# list all of the containers.
+docker ps -a
+
+# track container logs
+docker logs -f [container_id/container_name]
+
+# stop all of the containers. 
+docker-compose stop
+
+# remove all of the containers. 
+docker-compose rm
+
+# If you want to clear the data and restart, you need to clear the volumes.
+# remove volume 
+docker volume ls
+docker volume rm [volume_name]
+# prune all volumes
+docker volume prune
+```
