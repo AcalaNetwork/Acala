@@ -170,10 +170,10 @@ If modify the storage, should test the data migration before upgrade the runtime
 cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled live "http://localhost:9933" -s snapshot.bin [-m module_name]
 
 # Use a state snapshot as state to run the migration test.
-# cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled snap snapshot.bin
+cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled snap snapshot.bin
 ```
 
-# 8. Run local network with `Relaychain` and `Parachain`.
+# 8. Run local testnet with `Relaychain` and `Parachain`
 Build Relaychain and Parachain local testnet to develop.
 
 ```bash
