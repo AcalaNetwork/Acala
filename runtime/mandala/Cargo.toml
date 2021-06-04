@@ -115,6 +115,7 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 ecosystem-chainsafe = { path = "../../ecosystem-modules/chainsafe", default-features = false }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
+pallet-chainlink-feed = { git = "https://github.com/smartcontractkit/chainlink-polkadot", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "4.0.0"
@@ -230,6 +231,7 @@ std = [
 	"ecosystem-renvm-bridge/std",
 	"ecosystem-chainsafe/std",
 	"chainbridge/std",
+	"pallet-chainlink-feed/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

@@ -96,6 +96,9 @@ pub type BlockId = generic::BlockId<Block>;
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
+/// Feed ID for chainlink-feed.
+pub type FeedId = u32;
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AirDropCurrencyId {

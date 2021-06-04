@@ -106,8 +106,8 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId,
-	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol,
-	TradingPair,
+	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, FeedId, Hash, Moment, Nonce, Share, Signature,
+	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit, Price,
@@ -720,6 +720,33 @@ impl orml_oracle::Config<BandDataProvider> for Runtime {
 	type RootOperatorAccountId = ZeroAccountId;
 	type Members = OperatorMembershipBand;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	// Used to generate the fund account that pools oracle payments.
+	pub const FeedPalletId: PalletId = PalletId(*b"linkfeed");
+	// The minimum amount of tokens to keep in reserve for oracle payment.
+	pub MinimumReserve: Balance = NativeTokenExistentialDeposit::get() * 1000;
+	// Maximum length of the feed description.
+	pub const StringLimit: u32 = 30;
+	// Maximum number of oracles per feed.
+	pub const OracleCountLimit: u32 = 25;
+	// Maximum number of feeds.
+	pub const FeedLimit: FeedId = 100;
+}
+
+impl pallet_chainlink_feed::Config for Runtime {
+	type Event = Event;
+	type FeedId = FeedId;
+	type Value = u128;
+	type Currency = Balances;
+	type PalletId = FeedPalletId;
+	type MinimumReserve = MinimumReserve;
+	type StringLimit = StringLimit;
+	type OracleCountLimit = OracleCountLimit;
+	type FeedLimit = FeedLimit;
+	type OnAnswerHandler = ();
+	type WeightInfo = ();
 }
 
 create_median_value_data_provider!(
@@ -1673,6 +1700,7 @@ construct_runtime! {
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
+		ChainlinkFeed: pallet_chainlink_feed::{Pallet, Call, Storage, Event<T>} = 153,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 160,

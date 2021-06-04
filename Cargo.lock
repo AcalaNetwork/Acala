@@ -4746,6 +4746,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-bounties",
+ "pallet-chainlink-feed",
  "pallet-collective",
  "pallet-elections-phragmen",
  "pallet-indices",
@@ -6294,6 +6295,22 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-trie",
+]
+
+[[package]]
+name = "pallet-chainlink-feed"
+version = "0.1.0"
+source = "git+https://github.com/smartcontractkit/chainlink-polkadot#ef7f415d5415ad016230532edce2b21533f5b1a9"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
