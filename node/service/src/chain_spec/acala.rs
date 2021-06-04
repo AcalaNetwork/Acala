@@ -225,6 +225,7 @@ fn acala_genesis(
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
+		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![

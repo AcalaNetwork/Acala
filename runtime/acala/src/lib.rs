@@ -646,7 +646,7 @@ parameter_types! {
 	pub MinimumDeposit: Balance = 100 * dollar(ACA);
 	pub const EnactmentPeriod: BlockNumber = 28 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
-	pub PreimageByteDeposit: Balance = 1 * cent(ACA);
+	pub PreimageByteDeposit: Balance = cent(ACA);
 	pub const InstantAllowed: bool = true;
 	pub const MaxVotes: u32 = 100;
 	pub const MaxProposals: u32 = 100;
