@@ -184,6 +184,7 @@ runtime_benchmarks! {
 			KUSD,
 			collateral_amount,
 			debit_value * 100,
+			Default::default(),
 			false,
 		)?;
 

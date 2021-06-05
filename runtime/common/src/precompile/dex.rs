@@ -217,18 +217,29 @@ where
 				let currency_id_b = input.currency_id_at(3)?;
 				let max_amount_a = input.balance_at(4)?;
 				let max_amount_b = input.balance_at(5)?;
+
+				// TODO: get this from evm call
+				let min_share_increment: Balance = Default::default();
+
 				log::debug!(
 					target: "evm",
-					"dex: add_liquidity who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}, max_amount_a: {:?}, max_amount_b: {:?}",
-					who, currency_id_a, currency_id_b, max_amount_a, max_amount_b,
+					"dex: add_liquidity who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}, max_amount_a: {:?}, max_amount_b: {:?}, min_share_increment: {:?}",
+					who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, min_share_increment,
 				);
 
-				Dex::add_liquidity(&who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, false).map_err(
-					|e| {
-						let err_msg: &str = e.into();
-						ExitError::Other(err_msg.into())
-					},
-				)?;
+				Dex::add_liquidity(
+					&who,
+					currency_id_a,
+					currency_id_b,
+					max_amount_a,
+					max_amount_b,
+					min_share_increment,
+					false,
+				)
+				.map_err(|e| {
+					let err_msg: &str = e.into();
+					ExitError::Other(err_msg.into())
+				})?;
 
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
@@ -237,13 +248,27 @@ where
 				let currency_id_a = input.currency_id_at(2)?;
 				let currency_id_b = input.currency_id_at(3)?;
 				let remove_share = input.balance_at(4)?;
+
+				// TODO: get this from evm call
+				let min_withdrawn_a: Balance = Default::default();
+				let min_withdrawn_b: Balance = Default::default();
+
 				log::debug!(
 					target: "evm",
-					"dex: remove_liquidity who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}, remove_share: {:?}",
-					who, currency_id_a, currency_id_b, remove_share
+					"dex: remove_liquidity who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}, remove_share: {:?}, min_withdrawn_a: {:?}, min_withdrawn_b: {:?}",
+					who, currency_id_a, currency_id_b, remove_share, min_withdrawn_a, min_withdrawn_b,
 				);
 
-				Dex::remove_liquidity(&who, currency_id_a, currency_id_b, remove_share, false).map_err(|e| {
+				Dex::remove_liquidity(
+					&who,
+					currency_id_a,
+					currency_id_b,
+					remove_share,
+					min_withdrawn_a,
+					min_withdrawn_b,
+					false,
+				)
+				.map_err(|e| {
 					let err_msg: &str = e.into();
 					ExitError::Other(err_msg.into())
 				})?;
