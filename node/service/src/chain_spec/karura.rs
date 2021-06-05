@@ -174,7 +174,9 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![
-			// no bootnode yet
+			"/dns/karura-rpc-0.aca-api.network/tcp/30333/p2p/12D3KooWDVQHcjsM5UkWKhfpxiNhWofmX5bvJd5Wn9qPFZk1C8t8"
+				.parse()
+				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("karura"),
