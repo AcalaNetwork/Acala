@@ -363,7 +363,9 @@ pub mod pallet {
 				author,
 				<frame_system::Pallet<T>>::block_number(),
 			);
-			<SessionPoints<T>>::mutate(author, |point| *point += 1);
+			if <SessionPoints<T>>::contains_key(&author) {
+				<SessionPoints<T>>::mutate(author, |point| *point += 1);
+			}
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
 				T::WeightInfo::note_author(),
