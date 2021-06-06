@@ -136,6 +136,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		currency_id_b: CurrencyId,
 		max_amount_a: Balance,
 		max_amount_b: Balance,
+		min_share_increment: Balance,
 		deposit_increment_share: bool,
 	) -> DispatchResult;
 
@@ -144,6 +145,8 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		currency_id_a: CurrencyId,
 		currency_id_b: CurrencyId,
 		remove_share: Balance,
+		min_withdrawn_a: Balance,
+		min_withdrawn_b: Balance,
 		by_withdraw: bool,
 	) -> DispatchResult;
 }
@@ -202,6 +205,7 @@ where
 		_currency_id_b: CurrencyId,
 		_max_amount_a: Balance,
 		_max_amount_b: Balance,
+		_min_share_increment: Balance,
 		_deposit_increment_share: bool,
 	) -> DispatchResult {
 		Ok(())
@@ -212,6 +216,8 @@ where
 		_currency_id_a: CurrencyId,
 		_currency_id_b: CurrencyId,
 		_remove_share: Balance,
+		_min_withdrawn_a: Balance,
+		_min_withdrawn_b: Balance,
 		_by_withdraw: bool,
 	) -> DispatchResult {
 		Ok(())
