@@ -296,7 +296,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 parameter_types! {
-	pub NativeTokenExistentialDeposit: Balance = 10 * cent(KAR);	// 0.1 KAR
+	pub NativeTokenExistentialDeposit: Balance = 10 * cent(KAR);    // 0.1 KAR
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
@@ -1828,5 +1828,16 @@ mod tests {
 			let next = SlowAdjustingFeeUpdate::<Runtime>::convert(minimum_multiplier);
 			assert!(next > minimum_multiplier, "{:?} !>= {:?}", next, minimum_multiplier);
 		})
+	}
+
+	#[test]
+	fn ensure_can_create_contract() {
+		// Ensure that the `ExistentialDeposit` for creating the contract >= account `ExistentialDeposit`.
+		// Otherwise, the creation of the contract account will fail because it is less than
+		// ExistentialDeposit.
+		assert!(
+			Balance::from(NewContractExtraBytes::get()) * StorageDepositPerByte::get()
+				>= NativeTokenExistentialDeposit::get()
+		);
 	}
 }
