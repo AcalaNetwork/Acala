@@ -47,8 +47,8 @@ pub enum Action {
 	GetSwapSupplyAmount = 0xdbcd19a2,
 	SwapWithExactSupply = 0x579baa18,
 	SwapWithExactTarget = 0x9782ac81,
-	AddLiquidity = 0x4ea5efef,
-	RemoveLiquidity = 0xda613b51,
+	AddLiquidity = 0x67088D59,
+	RemoveLiquidity = 0x35315332,
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
@@ -217,9 +217,7 @@ where
 				let currency_id_b = input.currency_id_at(3)?;
 				let max_amount_a = input.balance_at(4)?;
 				let max_amount_b = input.balance_at(5)?;
-
-				// TODO: get this from evm call
-				let min_share_increment: Balance = Default::default();
+				let min_share_increment = input.balance_at(6)?;
 
 				log::debug!(
 					target: "evm",
@@ -248,10 +246,8 @@ where
 				let currency_id_a = input.currency_id_at(2)?;
 				let currency_id_b = input.currency_id_at(3)?;
 				let remove_share = input.balance_at(4)?;
-
-				// TODO: get this from evm call
-				let min_withdrawn_a: Balance = Default::default();
-				let min_withdrawn_b: Balance = Default::default();
+				let min_withdrawn_a = input.balance_at(5)?;
+				let min_withdrawn_b = input.balance_at(6)?;
 
 				log::debug!(
 					target: "evm",
@@ -322,14 +318,14 @@ mod tests {
 
 		assert_eq!(
 			u32::from_be_bytes(get_function_selector(
-				"addLiquidity(address,address,address,uint256,uint256)"
+				"addLiquidity(address,address,address,uint256,uint256,uint256)"
 			)),
 			Into::<u32>::into(Action::AddLiquidity)
 		);
 
 		assert_eq!(
 			u32::from_be_bytes(get_function_selector(
-				"removeLiquidity(address,address,address,uint256)"
+				"removeLiquidity(address,address,address,uint256,uint256,uint256)"
 			)),
 			Into::<u32>::into(Action::RemoveLiquidity)
 		);
