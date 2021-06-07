@@ -657,12 +657,12 @@ impl pallet_recovery::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = HOURS;
-	pub const VotingPeriod: BlockNumber = HOURS;
+	pub const LaunchPeriod: BlockNumber = MINUTES;
+	pub const VotingPeriod: BlockNumber = 3 * MINUTES;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * MINUTES;
 	pub MinimumDeposit: Balance = 100 * cent(ACA);
-	pub const EnactmentPeriod: BlockNumber = HOURS;
-	pub const CooloffPeriod: BlockNumber = HOURS;
+	pub const EnactmentPeriod: BlockNumber = MINUTES;
+	pub const CooloffPeriod: BlockNumber = MINUTES;
 	pub PreimageByteDeposit: Balance = 10 * millicent(ACA);
 	pub const InstantAllowed: bool = true;
 	pub const MaxVotes: u32 = 100;
