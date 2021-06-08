@@ -286,6 +286,7 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 			AUSD,
 			100,
 			1000,
+			0,
 			false
 		));
 		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100, None).unwrap(), 500);

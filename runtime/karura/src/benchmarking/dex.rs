@@ -61,6 +61,7 @@ fn inject_liquidity(
 		currency_id_b,
 		max_amount_a,
 		max_amount_b,
+		Default::default(),
 		deposit,
 	)?;
 
@@ -118,7 +119,7 @@ runtime_benchmarks! {
 
 		// first maker inject liquidity
 		inject_liquidity(first_maker.clone(), trading_pair.0, trading_pair.1, amount_a, amount_b, false)?;
-	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b, false)
+	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b, Default::default(), false)
 
 	// worst: add liquidity and stake lp
 	add_liquidity_and_deposit {
@@ -134,21 +135,21 @@ runtime_benchmarks! {
 
 		// first maker inject liquidity
 		inject_liquidity(first_maker.clone(), trading_pair.0, trading_pair.1, amount_a, amount_b, true)?;
-	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b, true)
+	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b, Default::default(), true)
 
 	// remove liquidity by liquid lp share
 	remove_liquidity {
 		let maker: AccountId = whitelisted_caller();
 		let trading_pair = TradingPair::new(KUSD, KAR);
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
-	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), false)
+	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), Default::default(), Default::default(), false)
 
 	// remove liquidity by withdraw staking lp share
 	remove_liquidity_by_withdraw {
 		let maker: AccountId = whitelisted_caller();
 		let trading_pair = TradingPair::new(KUSD, KAR);
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), true)?;
-	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), true)
+	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), Default::default(), Default::default(), true)
 
 	swap_with_exact_supply {
 		let u in 2 .. TradingPathLimit::get() as u32;

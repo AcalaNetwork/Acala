@@ -117,6 +117,7 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 			AUSD,
 			10000,
 			1000,
+			0,
 			false
 		));
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
@@ -160,6 +161,7 @@ fn charge_fee_by_default_fee_token() {
 			AUSD,
 			10000,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
@@ -168,6 +170,7 @@ fn charge_fee_by_default_fee_token() {
 			AUSD,
 			100,
 			1000,
+			0,
 			false
 		));
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
