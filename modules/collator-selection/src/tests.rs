@@ -128,9 +128,10 @@ fn cannot_register_dupe_candidate() {
 	new_test_ext().execute_with(|| {
 		// can add 3 as candidate
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		let addition = CandidateInfo { who: 3, deposit: 10 };
+		let addition = CandidateInfo { who: 3 };
 		assert_eq!(CollatorSelection::candidates(), vec![addition]);
 		assert_eq!(Balances::free_balance(3), 90);
+		assert_eq!(Balances::reserved_balance_named(RESERVE_ID, 3), 90);
 
 		// but no more
 		assert_noop!(

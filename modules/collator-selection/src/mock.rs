@@ -25,6 +25,7 @@ use frame_support::{
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
+use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, UintAuthorityId},
@@ -97,7 +98,7 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 }
 
 pub struct Author4;
