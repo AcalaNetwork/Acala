@@ -1832,4 +1832,15 @@ mod tests {
 			assert!(next > minimum_multiplier, "{:?} !>= {:?}", next, minimum_multiplier);
 		})
 	}
+
+	#[test]
+	fn ensure_can_create_contract() {
+		// Ensure that the `ExistentialDeposit` for creating the contract >= account `ExistentialDeposit`.
+		// Otherwise, the creation of the contract account will fail because it is less than
+		// ExistentialDeposit.
+		assert!(
+			Balance::from(NewContractExtraBytes::get()) * StorageDepositPerByte::get()
+				>= NativeTokenExistentialDeposit::get()
+		);
+	}
 }
