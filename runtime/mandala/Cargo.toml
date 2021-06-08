@@ -116,6 +116,7 @@ ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", de
 ecosystem-chainsafe = { path = "../../ecosystem-modules/chainsafe", default-features = false }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 pallet-chainlink-feed = { git = "https://github.com/smartcontractkit/chainlink-polkadot", default-features = false }
+ecosystem-chainlink-adaptor = { path = "../../ecosystem-modules/chainlink/chainlink-adaptor", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "4.0.0"
@@ -204,6 +205,7 @@ std = [
 	"module-auction-manager/std",
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
+	"ecosystem-chainlink-adaptor/std",
 	"module-collator-selection/std",
 	"module-currencies/std",
 	"module-dex/std",
@@ -302,6 +304,7 @@ try-runtime = [
 	"module-auction-manager/try-runtime",
 	"module-cdp-engine/try-runtime",
 	"module-cdp-treasury/try-runtime",
+	"ecosystem-chainlink-adaptor/try-runtime",
 	"module-collator-selection/try-runtime",
 	"module-currencies/try-runtime",
 	"module-dex/try-runtime",

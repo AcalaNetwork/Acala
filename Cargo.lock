@@ -2121,6 +2121,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
+name = "ecosystem-chainlink-adaptor"
+version = "1.0.0"
+dependencies = [
+ "acala-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-chainlink-feed",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "ecosystem-chainsafe"
 version = "1.0.0"
 dependencies = [
@@ -4693,6 +4716,7 @@ dependencies = [
  "chainbridge",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
+ "ecosystem-chainlink-adaptor",
  "ecosystem-chainsafe",
  "ecosystem-renvm-bridge",
  "evm",

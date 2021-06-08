@@ -726,7 +726,7 @@ parameter_types! {
 	// Used to generate the fund account that pools oracle payments.
 	pub const FeedPalletId: PalletId = PalletId(*b"linkfeed");
 	// The minimum amount of tokens to keep in reserve for oracle payment.
-	pub MinimumReserve: Balance = NativeTokenExistentialDeposit::get() * 1000;
+	pub MinimumReserve: Balance = NativeTokenExistentialDeposit::get() * 10;
 	// Maximum length of the feed description.
 	pub const StringLimit: u32 = 30;
 	// Maximum number of oracles per feed.
@@ -749,12 +749,27 @@ impl pallet_chainlink_feed::Config for Runtime {
 	type WeightInfo = ();
 }
 
+pub struct PriceConvert;
+impl Convert<u128, Option<Price>> for PriceConvert {
+	fn convert(value: u128) -> Option<Price> {
+		Some(Price::from_inner(value))
+	}
+}
+
+impl ecosystem_chainlink_adaptor::Config for Runtime {
+	type Event = Event;
+	type Convert = PriceConvert;
+	type Time = Timestamp;
+	// TODO: replace it with chainlink's admin
+	type RegistorOrigin = EnsureRootOrHalfFinancialCouncil;
+}
+
 create_median_value_data_provider!(
 	AggregatedDataProvider,
 	CurrencyId,
 	Price,
 	TimeStampedPrice,
-	[AcalaOracle, BandOracle]
+	[AcalaOracle, BandOracle, ChainlinkAdaptor]
 );
 // Aggregated data provider cannot feed.
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
@@ -1701,6 +1716,7 @@ construct_runtime! {
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
 		ChainlinkFeed: pallet_chainlink_feed::{Pallet, Call, Storage, Event<T>} = 153,
+		ChainlinkAdaptor: ecosystem_chainlink_adaptor::{Pallet, Call, Storage, Event<T>} = 154,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 160,
