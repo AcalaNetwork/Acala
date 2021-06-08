@@ -69,6 +69,7 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
+	pub const MaxReserves: u32 = 50;
 }
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
@@ -77,6 +78,8 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
 

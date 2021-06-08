@@ -23,7 +23,7 @@ use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{GenesisBuild, InstanceFilter, OnFinalize, OnInitialize, SortedMembers},
+	traits::{GenesisBuild, InstanceFilter, MaxEncodedLen, OnFinalize, OnInitialize, SortedMembers},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
@@ -134,6 +134,7 @@ impl orml_tokens::Config for Test {
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Test {
@@ -144,6 +145,8 @@ impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -236,7 +239,7 @@ parameter_types! {
 	pub const AnnouncementDepositFactor: u64 = 1;
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub enum ProxyType {
 	Any,
 	JustTransfer,

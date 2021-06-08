@@ -300,6 +300,7 @@ parameter_types! {
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -309,6 +310,8 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
 
@@ -1828,5 +1831,16 @@ mod tests {
 			let next = SlowAdjustingFeeUpdate::<Runtime>::convert(minimum_multiplier);
 			assert!(next > minimum_multiplier, "{:?} !>= {:?}", next, minimum_multiplier);
 		})
+	}
+
+	#[test]
+	fn ensure_can_create_contract() {
+		// Ensure that the `ExistentialDeposit` for creating the contract >= account `ExistentialDeposit`.
+		// Otherwise, the creation of the contract account will fail because it is less than
+		// ExistentialDeposit.
+		assert!(
+			Balance::from(NewContractExtraBytes::get()) * StorageDepositPerByte::get()
+				>= NativeTokenExistentialDeposit::get()
+		);
 	}
 }

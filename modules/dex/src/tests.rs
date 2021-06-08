@@ -187,6 +187,7 @@ fn disable_provisioning_trading_pair_work() {
 				DOT,
 				5_000_000_000_000u128,
 				0,
+				0,
 				false
 			));
 			assert_ok!(DexModule::add_liquidity(
@@ -195,6 +196,7 @@ fn disable_provisioning_trading_pair_work() {
 				DOT,
 				5_000_000_000_000u128,
 				1_000_000_000_000u128,
+				0,
 				false
 			));
 
@@ -267,6 +269,7 @@ fn add_provision_work() {
 					DOT,
 					4_999_999_999_999u128,
 					999_999_999_999u128,
+					0,
 					false
 				),
 				Error::<Runtime>::InvalidContributionIncrement
@@ -294,6 +297,7 @@ fn add_provision_work() {
 				AUSD,
 				DOT,
 				5_000_000_000_000u128,
+				0,
 				0,
 				false
 			));
@@ -338,6 +342,7 @@ fn add_provision_work() {
 				DOT,
 				AUSD,
 				1_000_000_000_000_000u128,
+				0,
 				0,
 				false
 			));
@@ -398,6 +403,7 @@ fn add_provision_work() {
 				DOT,
 				995_000_000_000_000u128,
 				1_000_000_000_000_000u128,
+				0,
 				false
 			));
 			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_000_000_000_000_000u128);
@@ -633,11 +639,11 @@ fn add_liquidity_work() {
 			System::set_block_number(1);
 
 			assert_noop!(
-				DexModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 100_000_000, 100_000_000, false),
+				DexModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 100_000_000, 100_000_000, 0, false),
 				Error::<Runtime>::NotEnabledTradingPair
 			);
 			assert_noop!(
-				DexModule::add_liquidity(Origin::signed(ALICE), AUSD, DOT, 0, 100_000_000, false),
+				DexModule::add_liquidity(Origin::signed(ALICE), AUSD, DOT, 0, 100_000_000, 0, false),
 				Error::<Runtime>::InvalidLiquidityIncrement
 			);
 
@@ -661,6 +667,7 @@ fn add_liquidity_work() {
 				DOT,
 				5_000_000_000_000,
 				1_000_000_000_000,
+				0,
 				false,
 			));
 			System::assert_last_event(Event::dex(crate::Event::AddLiquidity(
@@ -698,12 +705,25 @@ fn add_liquidity_work() {
 			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000);
 
+			assert_noop!(
+				DexModule::add_liquidity(
+					Origin::signed(BOB),
+					AUSD,
+					DOT,
+					50_000_000_000_000,
+					8_000_000_000_000,
+					80_000_000_000_001,
+					true,
+				),
+				Error::<Runtime>::UnacceptableShareIncrement
+			);
 			assert_ok!(DexModule::add_liquidity(
 				Origin::signed(BOB),
 				AUSD,
 				DOT,
 				50_000_000_000_000,
 				8_000_000_000_000,
+				80_000_000_000_000,
 				true,
 			));
 			System::assert_last_event(Event::dex(crate::Event::AddLiquidity(
@@ -747,6 +767,7 @@ fn remove_liquidity_work() {
 				DOT,
 				5_000_000_000_000,
 				1_000_000_000_000,
+				0,
 				false
 			));
 			assert_noop!(
@@ -755,6 +776,8 @@ fn remove_liquidity_work() {
 					AUSD_DOT_PAIR.get_dex_share_currency_id().unwrap(),
 					DOT,
 					100_000_000,
+					0,
+					0,
 					false,
 				),
 				Error::<Runtime>::InvalidCurrencyId
@@ -773,11 +796,37 @@ fn remove_liquidity_work() {
 			assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999_995_000_000_000_000);
 			assert_eq!(Tokens::free_balance(DOT, &ALICE), 999_999_000_000_000_000);
 
+			assert_noop!(
+				DexModule::remove_liquidity(
+					Origin::signed(ALICE),
+					AUSD,
+					DOT,
+					8_000_000_000_000,
+					4_000_000_000_001,
+					800_000_000_000,
+					false,
+				),
+				Error::<Runtime>::UnacceptableLiquidityWithdrawn
+			);
+			assert_noop!(
+				DexModule::remove_liquidity(
+					Origin::signed(ALICE),
+					AUSD,
+					DOT,
+					8_000_000_000_000,
+					4_000_000_000_000,
+					800_000_000_001,
+					false,
+				),
+				Error::<Runtime>::UnacceptableLiquidityWithdrawn
+			);
 			assert_ok!(DexModule::remove_liquidity(
 				Origin::signed(ALICE),
 				AUSD,
 				DOT,
 				8_000_000_000_000,
+				4_000_000_000_000,
+				800_000_000_000,
 				false,
 			));
 			System::assert_last_event(Event::dex(crate::Event::RemoveLiquidity(
@@ -806,6 +855,8 @@ fn remove_liquidity_work() {
 				AUSD,
 				DOT,
 				2_000_000_000_000,
+				0,
+				0,
 				false,
 			));
 			System::assert_last_event(Event::dex(crate::Event::RemoveLiquidity(
@@ -832,6 +883,7 @@ fn remove_liquidity_work() {
 				DOT,
 				5_000_000_000_000,
 				1_000_000_000_000,
+				0,
 				true
 			));
 			assert_eq!(
@@ -847,6 +899,8 @@ fn remove_liquidity_work() {
 				AUSD,
 				DOT,
 				2_000_000_000_000,
+				0,
+				0,
 				true,
 			));
 			assert_eq!(
@@ -874,6 +928,7 @@ fn do_swap_with_exact_supply_work() {
 				DOT,
 				500_000_000_000_000,
 				100_000_000_000_000,
+				0,
 				false,
 			));
 			assert_ok!(DexModule::add_liquidity(
@@ -882,6 +937,7 @@ fn do_swap_with_exact_supply_work() {
 				RENBTC,
 				100_000_000_000_000,
 				10_000_000_000,
+				0,
 				false,
 			));
 
@@ -1010,6 +1066,7 @@ fn do_swap_with_exact_target_work() {
 				DOT,
 				500_000_000_000_000,
 				100_000_000_000_000,
+				0,
 				false,
 			));
 			assert_ok!(DexModule::add_liquidity(
@@ -1018,6 +1075,7 @@ fn do_swap_with_exact_target_work() {
 				RENBTC,
 				100_000_000_000_000,
 				10_000_000_000,
+				0,
 				false,
 			));
 

@@ -195,6 +195,7 @@ fn swap_collateral_to_exact_stable_work() {
 			AUSD,
 			100,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
@@ -203,6 +204,7 @@ fn swap_collateral_to_exact_stable_work() {
 			DOT,
 			900,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
@@ -211,6 +213,7 @@ fn swap_collateral_to_exact_stable_work() {
 			AUSD,
 			1000,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 200));
@@ -262,6 +265,7 @@ fn swap_exact_collateral_to_stable_work() {
 			AUSD,
 			100,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
@@ -270,6 +274,7 @@ fn swap_exact_collateral_to_stable_work() {
 			DOT,
 			900,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
@@ -278,6 +283,7 @@ fn swap_exact_collateral_to_stable_work() {
 			AUSD,
 			1000,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 200));
