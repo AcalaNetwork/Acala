@@ -247,14 +247,14 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn has_indexed_transaction(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<bool> {
+	fn block_indexed_body(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Vec<Vec<u8>>>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.has_indexed_transaction(hash),
+			Self::Mandala(client) => client.block_indexed_body(id),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.has_indexed_transaction(hash),
+			Self::Karura(client) => client.block_indexed_body(id),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.has_indexed_transaction(hash),
+			Self::Acala(client) => client.block_indexed_body(id),
 		}
 	}
 }
