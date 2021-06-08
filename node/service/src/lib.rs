@@ -44,6 +44,7 @@ use acala_primitives::{Block, Hash};
 #[cfg(feature = "with-mandala-runtime")]
 use futures::stream::StreamExt;
 use mock_inherent_data_provider::MockParachainInherentDataProvider;
+use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
@@ -281,6 +282,7 @@ where
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl<RB, RuntimeApi, Executor, BIC>(
 	parachain_config: Configuration,
+	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 	_rpc_ext_builder: RB,
@@ -313,13 +315,15 @@ where
 	let params = new_partial(&parachain_config, false, false)?;
 	let (mut telemetry, telemetry_worker_handle) = params.other;
 
-	let relay_chain_full_node =
-		cumulus_client_service::build_polkadot_full_node(polkadot_config, telemetry_worker_handle).map_err(
-			|e| match e {
-				polkadot_service::Error::Sub(x) => x,
-				s => format!("{}", s).into(),
-			},
-		)?;
+	let relay_chain_full_node = cumulus_client_service::build_polkadot_full_node(
+		polkadot_config,
+		collator_key.clone(),
+		telemetry_worker_handle,
+	)
+	.map_err(|e| match e {
+		polkadot_service::Error::Sub(x) => x,
+		s => format!("{}", s).into(),
+	})?;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -411,6 +415,7 @@ where
 			announce_block,
 			client: client.clone(),
 			task_manager: &mut task_manager,
+			collator_key,
 			relay_chain_full_node,
 			spawner,
 			parachain_consensus,
@@ -438,6 +443,7 @@ where
 /// Start a normal parachain node.
 pub async fn start_node<RuntimeApi, Executor>(
 	parachain_config: Configuration,
+	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
@@ -449,6 +455,7 @@ where
 {
 	start_node_impl(
 		parachain_config,
+		collator_key,
 		polkadot_config,
 		id,
 		|_| Default::default(),

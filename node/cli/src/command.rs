@@ -431,6 +431,8 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.run_node_until_exit(|config| async move {
+				let key = sp_core::Pair::generate().0;
+
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec).map(|e| e.para_id);
 
 				if is_mandala_dev {
@@ -463,7 +465,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 				with_runtime_or_err!(config.chain_spec, {
 					{
-						service::start_node::<RuntimeApi, Executor>(config, polkadot_config, id)
+						service::start_node::<RuntimeApi, Executor>(config, key, polkadot_config, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)

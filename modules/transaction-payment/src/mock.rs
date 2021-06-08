@@ -111,7 +111,6 @@ impl orml_tokens::Config for Runtime {
 
 parameter_types! {
 	pub const NativeTokenExistentialDeposit: Balance = 0;
-	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -121,8 +120,6 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
 
