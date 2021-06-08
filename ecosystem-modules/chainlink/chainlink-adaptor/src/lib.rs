@@ -121,9 +121,9 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	fn get_price_from_chainlink_feed(currency_id: &CurrencyId) -> Option<Price> {
 		Self::feed_id_mapping(currency_id)
-			.and_then(|feed_id| <pallet_chainlink_feed::Pallet<T>>::feed(feed_id))
+			.and_then(<pallet_chainlink_feed::Pallet<T>>::feed)
 			.map(|feed| feed.latest_data().answer)
-			.and_then(|feed_value| T::Convert::convert(feed_value))
+			.and_then(T::Convert::convert)
 	}
 }
 
@@ -144,7 +144,7 @@ impl<T: Config> DataProviderExtended<CurrencyId, TimestampedValue<Price, MomentO
 		Self::get_price_from_chainlink_feed(key).map(|price| TimestampedValue {
 			value: price,
 			timestamp: Self::feed_id_mapping(key)
-				.map(|feed_id| Self::last_updated_timestamp(feed_id))
+				.map(Self::last_updated_timestamp)
 				.unwrap_or_default(),
 		})
 	}
