@@ -1472,7 +1472,7 @@ construct_runtime!(
 		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 66,
 		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 67,
 		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
-		Democracy: pallet_democracy::{Pallet, Call, Storage, Config, Event<T>} = 69,
+		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
 
 		// Oracle
 		//

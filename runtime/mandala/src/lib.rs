@@ -1698,7 +1698,7 @@ construct_runtime! {
 
 		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 70,
 		ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 71,
-		Democracy: pallet_democracy::{Pallet, Call, Storage, Config, Event<T>} = 72,
+		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 72,
 
 		// Oracle
 		//
