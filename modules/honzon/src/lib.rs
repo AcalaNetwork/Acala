@@ -66,10 +66,14 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		// No authorization
-		NoAuthorization,
+		// No permisson
+		NoPermission,
 		// The system has been shutdown
 		AlreadyShutdown,
+		// Authorization not exists
+		AuthorizationNotExists,
+		// Have authorized already
+		AlreadyAuthorized,
 	}
 
 	#[pallet::event]
@@ -189,8 +193,10 @@ pub mod module {
 					<T as Config>::Currency::reserve(&from, reserve_amount)?;
 					*maybe_reserved = Some(reserve_amount);
 					Self::deposit_event(Event::Authorization(from.clone(), to.clone(), currency_id));
+					Ok(())
+				} else {
+					Err(Error::<T>::AlreadyAuthorized.into())
 				}
-				Ok(())
 			})?;
 			Ok(().into())
 		}
@@ -208,10 +214,10 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			if let Some(reserved) = Authorization::<T>::take(&from, (currency_id, &to)) {
-				<T as Config>::Currency::unreserve(&from, reserved);
-				Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
-			}
+			let reserved =
+				Authorization::<T>::take(&from, (currency_id, &to)).ok_or(Error::<T>::AuthorizationNotExists)?;
+			<T as Config>::Currency::unreserve(&from, reserved);
+			Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
 			Ok(().into())
 		}
 
@@ -236,7 +242,7 @@ impl<T: Config> Pallet<T> {
 	fn check_authorization(from: &T::AccountId, to: &T::AccountId, currency_id: CurrencyId) -> DispatchResult {
 		ensure!(
 			from == to || Authorization::<T>::contains_key(from, (currency_id, to)),
-			Error::<T>::NoAuthorization
+			Error::<T>::NoPermission
 		);
 		Ok(())
 	}
