@@ -623,6 +623,7 @@ fn close_cdp_has_debit_by_dex_work() {
 			AUSD,
 			100,
 			1000,
+			0,
 			false
 		));
 		assert_ok!(CDPEngineModule::set_collateral_params(

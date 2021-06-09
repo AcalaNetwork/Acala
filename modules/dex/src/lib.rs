@@ -158,6 +158,10 @@ pub mod module {
 		ZeroSupplyAmount,
 		/// The target amount is zero
 		ZeroTargetAmount,
+		/// The share increment is unacceptable
+		UnacceptableShareIncrement,
+		/// The liquidity withdrawn is unacceptable
+		UnacceptableLiquidityWithdrawn,
 	}
 
 	#[pallet::event]
@@ -276,6 +280,7 @@ pub mod module {
 									trading_pair.1,
 									*deposit_amount_0,
 									*deposit_amount_1,
+									Default::default(),
 									false,
 								),
 								_ => Err(Error::<T>::NotEnabledTradingPair.into()),
@@ -358,6 +363,7 @@ pub mod module {
 			currency_id_b: CurrencyId,
 			#[pallet::compact] max_amount_a: Balance,
 			#[pallet::compact] max_amount_b: Balance,
+			#[pallet::compact] min_share_increment: Balance,
 			deposit_increment_share: bool,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -371,6 +377,7 @@ pub mod module {
 					currency_id_b,
 					max_amount_a,
 					max_amount_b,
+					min_share_increment,
 					deposit_increment_share,
 				),
 				TradingPairStatus::<_, _>::Provisioning(_) => {
@@ -401,10 +408,20 @@ pub mod module {
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
 			#[pallet::compact] remove_share: Balance,
+			#[pallet::compact] min_withdrawn_a: Balance,
+			#[pallet::compact] min_withdrawn_b: Balance,
 			by_withdraw: bool,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			Self::do_remove_liquidity(&who, currency_id_a, currency_id_b, remove_share, by_withdraw)?;
+			Self::do_remove_liquidity(
+				&who,
+				currency_id_a,
+				currency_id_b,
+				remove_share,
+				min_withdrawn_a,
+				min_withdrawn_b,
+				by_withdraw,
+			)?;
 			Ok(().into())
 		}
 
@@ -705,6 +722,7 @@ impl<T: Config> Pallet<T> {
 		currency_id_b: CurrencyId,
 		max_amount_a: Balance,
 		max_amount_b: Balance,
+		min_share_increment: Balance,
 		deposit_increment_share: bool,
 	) -> DispatchResult {
 		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
@@ -769,6 +787,10 @@ impl<T: Config> Pallet<T> {
 				!share_increment.is_zero() && !pool_0_increment.is_zero() && !pool_1_increment.is_zero(),
 				Error::<T>::InvalidLiquidityIncrement,
 			);
+			ensure!(
+				share_increment >= min_share_increment,
+				Error::<T>::UnacceptableShareIncrement
+			);
 
 			let module_account_id = Self::account_id();
 			T::Currency::transfer(trading_pair.0, who, &module_account_id, pool_0_increment)?;
@@ -800,6 +822,8 @@ impl<T: Config> Pallet<T> {
 		currency_id_a: CurrencyId,
 		currency_id_b: CurrencyId,
 		remove_share: Balance,
+		min_withdrawn_a: Balance,
+		min_withdrawn_b: Balance,
 		by_withdraw: bool,
 	) -> DispatchResult {
 		if remove_share.is_zero() {
@@ -812,11 +836,21 @@ impl<T: Config> Pallet<T> {
 			.ok_or(Error::<T>::InvalidCurrencyId)?;
 
 		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+			let (min_withdrawn_0, min_withdrawn_1) = if currency_id_a == trading_pair.0 {
+				(min_withdrawn_a, min_withdrawn_b)
+			} else {
+				(min_withdrawn_b, min_withdrawn_a)
+			};
 			let total_shares = T::Currency::total_issuance(lp_share_currency_id);
 			let proportion = Ratio::checked_from_rational(remove_share, total_shares).unwrap_or_default();
 			let pool_0_decrement = proportion.saturating_mul_int(*pool_0);
 			let pool_1_decrement = proportion.saturating_mul_int(*pool_1);
 			let module_account_id = Self::account_id();
+
+			ensure!(
+				pool_0_decrement >= min_withdrawn_0 && pool_1_decrement >= min_withdrawn_1,
+				Error::<T>::UnacceptableLiquidityWithdrawn,
+			);
 
 			if by_withdraw {
 				T::DEXIncentives::do_withdraw_dex_share(who, lp_share_currency_id, remove_share)?;
@@ -1133,6 +1167,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		currency_id_b: CurrencyId,
 		max_amount_a: Balance,
 		max_amount_b: Balance,
+		min_share_increment: Balance,
 		deposit_increment_share: bool,
 	) -> DispatchResult {
 		Self::do_add_liquidity(
@@ -1141,6 +1176,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 			currency_id_b,
 			max_amount_a,
 			max_amount_b,
+			min_share_increment,
 			deposit_increment_share,
 		)
 	}
@@ -1150,8 +1186,18 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		currency_id_a: CurrencyId,
 		currency_id_b: CurrencyId,
 		remove_share: Balance,
+		min_withdrawn_a: Balance,
+		min_withdrawn_b: Balance,
 		by_withdraw: bool,
 	) -> DispatchResult {
-		Self::do_remove_liquidity(who, currency_id_a, currency_id_b, remove_share, by_withdraw)
+		Self::do_remove_liquidity(
+			who,
+			currency_id_a,
+			currency_id_b,
+			remove_share,
+			min_withdrawn_a,
+			min_withdrawn_b,
+			by_withdraw,
+		)
 	}
 }
