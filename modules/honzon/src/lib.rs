@@ -187,6 +187,10 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
+			if from == to {
+				return Ok(().into());
+			}
+
 			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
 				if maybe_reserved.is_none() {
 					let reserve_amount = T::DepositPerAuthorization::get();
