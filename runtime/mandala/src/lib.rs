@@ -36,14 +36,14 @@ use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier, Randomness,
-		SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		ContainsLengthBound, EnsureOrigin, Filter, Get, InstanceFilter, IsType, KeyOwnerProofSystem, LockIdentifier,
+		MaxEncodedLen, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		DispatchClass, IdentityFee, Weight,
 	},
-	PalletId, StorageValue,
+	PalletId, RuntimeDebug, StorageValue,
 };
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use hex_literal::hex;
@@ -1250,11 +1250,37 @@ parameter_types! {
 	pub const MaxPending: u16 = 32;
 }
 
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+pub enum ProxyType {
+	Any,
+	CancelProxy,
+}
+impl Default for ProxyType {
+	fn default() -> Self {
+		Self::Any
+	}
+}
+impl InstanceFilter<Call> for ProxyType {
+	fn filter(&self, c: &Call) -> bool {
+		match self {
+			ProxyType::Any => true,
+			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
+		}
+	}
+	fn is_superset(&self, o: &Self) -> bool {
+		match (self, o) {
+			(ProxyType::Any, _) => true,
+			_ => false,
+		}
+	}
+}
+
 impl pallet_proxy::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
-	type ProxyType = ();
+	type ProxyType = ProxyType;
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = MaxProxies;
