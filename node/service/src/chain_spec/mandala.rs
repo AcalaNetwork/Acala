@@ -404,6 +404,7 @@ fn testnet_genesis(
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		pallet_aura: Default::default(),
+		cumulus_pallet_parachain_system: Default::default(),
 	}
 }
 
@@ -636,5 +637,6 @@ fn mandala_genesis(
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		pallet_aura: Default::default(),
+		cumulus_pallet_parachain_system: Default::default(),
 	}
 }
