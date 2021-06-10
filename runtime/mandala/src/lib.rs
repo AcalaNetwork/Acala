@@ -1320,9 +1320,7 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::PolkadotBridge(..) |
 				Call::HomaValidatorListModule(..) |
 				Call::Incentives(..) |
-				Call::NFT(..) |
 				Call::AirDrop(..) |
-				Call::EVM(..) |
 				Call::EVMBridge(..) |
 				Call::EvmAccounts(..) |
 				Call::EvmManager(..) |
@@ -1337,7 +1335,7 @@ impl InstanceFilter<Call> for ProxyType {
 					| Call::Treasury(..) | Call::Bounties(..)
 					| Call::Tips(..) | Call::Utility(..)
 			),
-			ProxyType::Staking => matches!(c, Call::Session(..) | Call::Utility(..)),
+			ProxyType::Staking => matches!(c, Call::CollatorSelection(..) | Call::Session(..) | Call::Utility(..)),
 			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
 		}
 	}
