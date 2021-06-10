@@ -1282,7 +1282,7 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Vesting(orml_vesting::Call::update_vesting_schedules(..)) |
 				// Specifically omitting Vesting `vested_transfer`
 				Call::TransactionPayment(..) |
-				Call::Treasury(..) |
+				Call::AcalaTreasury(..) |
 				Call::Bounties(..) |
 				Call::Tips(..) |
 				Call::ParachainSystem(..) |
@@ -1322,9 +1322,7 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::HomaValidatorListModule(..) |
 				Call::Incentives(..) |
 				Call::AirDrop(..) |
-				Call::EVMBridge(..) |
-				Call::EvmAccounts(..) |
-				Call::EvmManager(..) |
+				Call::EvmAccounts(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
@@ -1333,8 +1331,9 @@ impl InstanceFilter<Call> for ProxyType {
 					| Call::FinancialCouncil(..)
 					| Call::HomaCouncil(..)
 					| Call::TechnicalCommittee(..)
-					| Call::Treasury(..) | Call::Bounties(..)
-					| Call::Tips(..) | Call::Utility(..)
+					| Call::AcalaTreasury(..)
+					| Call::Bounties(..) | Call::Tips(..)
+					| Call::Utility(..)
 			),
 			ProxyType::Staking => matches!(c, Call::CollatorSelection(..) | Call::Session(..) | Call::Utility(..)),
 		}
