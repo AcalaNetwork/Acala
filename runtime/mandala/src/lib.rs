@@ -1675,7 +1675,7 @@ construct_runtime! {
 		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 160,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
 
 		// XCM
