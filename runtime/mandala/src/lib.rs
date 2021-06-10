@@ -36,14 +36,14 @@ use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier, Randomness,
-		SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		ContainsLengthBound, EnsureOrigin, Filter, Get, InstanceFilter, IsType, KeyOwnerProofSystem, LockIdentifier,
+		MaxEncodedLen, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		DispatchClass, IdentityFee, Weight,
 	},
-	PalletId, StorageValue,
+	PalletId, RuntimeDebug, StorageValue,
 };
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use hex_literal::hex;
@@ -1250,11 +1250,110 @@ parameter_types! {
 	pub const MaxPending: u16 = 32;
 }
 
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+pub enum ProxyType {
+	Any,
+	CancelProxy,
+	NonTransfer,
+	Governance,
+	Staking,
+}
+impl Default for ProxyType {
+	fn default() -> Self {
+		Self::Any
+	}
+}
+impl InstanceFilter<Call> for ProxyType {
+	fn filter(&self, c: &Call) -> bool {
+		match self {
+			ProxyType::Any => true,
+			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
+			ProxyType::NonTransfer => matches!(
+				c,
+				Call::System(..) |
+				Call::Timestamp(..) |
+				Call::Scheduler(..) |
+				Call::Utility(..) |
+				Call::Multisig(..) |
+				Call::Proxy(..) |
+				// Specifically omitting the entire Balances, Tokens and Currencies pallet
+				Call::Vesting(orml_vesting::Call::claim(..)) |
+				Call::Vesting(orml_vesting::Call::update_vesting_schedules(..)) |
+				// Specifically omitting Vesting `vested_transfer`
+				Call::TransactionPayment(..) |
+				Call::AcalaTreasury(..) |
+				Call::Bounties(..) |
+				Call::Tips(..) |
+				Call::ParachainSystem(..) |
+				Call::Authorship(..) |
+				Call::CollatorSelection(..) |
+				Call::Session(..) |
+				Call::Indices(..) |
+				Call::GraduallyUpdate(..) |
+				Call::Authority(..) |
+				Call::ElectionsPhragmen(..) |
+				Call::GeneralCouncil(..) |
+				Call::GeneralCouncilMembership(..) |
+				Call::FinancialCouncil(..) |
+				Call::FinancialCouncilMembership(..) |
+				Call::HomaCouncil(..) |
+				Call::HomaCouncilMembership(..) |
+				Call::TechnicalCommittee(..) |
+				Call::TechnicalCommitteeMembership(..) |
+				Call::AcalaOracle(..) |
+				Call::OperatorMembershipAcala(..) |
+				Call::BandOracle(..) |
+				Call::OperatorMembershipBand(..) |
+				Call::Auction(..) |
+				Call::Rewards(..) |
+				Call::Prices(..) |
+				Call::Dex(..) |
+				Call::AuctionManager(..) |
+				Call::Loans(..) |
+				Call::Honzon(..) |
+				Call::CdpTreasury(..) |
+				Call::CdpEngine(..) |
+				Call::EmergencyShutdown(..) |
+				Call::Homa(..) |
+				Call::NomineesElection(..) |
+				Call::StakingPool(..) |
+				Call::PolkadotBridge(..) |
+				Call::HomaValidatorListModule(..) |
+				Call::Incentives(..) |
+				Call::AirDrop(..) |
+				Call::EvmAccounts(..)
+			),
+			ProxyType::Governance => matches!(
+				c,
+				Call::Authority(..)
+					| Call::GeneralCouncil(..)
+					| Call::FinancialCouncil(..)
+					| Call::HomaCouncil(..)
+					| Call::TechnicalCommittee(..)
+					| Call::AcalaTreasury(..)
+					| Call::Bounties(..) | Call::Tips(..)
+					| Call::Utility(..)
+			),
+			ProxyType::Staking => matches!(c, Call::CollatorSelection(..) | Call::Session(..) | Call::Utility(..)),
+		}
+	}
+	fn is_superset(&self, o: &Self) -> bool {
+		match (self, o) {
+			(x, y) if x == y => true,
+			(ProxyType::Any, _) => true,
+			(_, ProxyType::Any) => false,
+			(ProxyType::NonTransfer, _) => true,
+			_ => false,
+		}
+	}
+}
+
 impl pallet_proxy::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
-	type ProxyType = ();
+	type ProxyType = ProxyType;
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = MaxProxies;
