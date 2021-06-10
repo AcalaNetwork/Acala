@@ -315,5 +315,6 @@ fn karura_genesis(
 		// of this.
 		pallet_aura: Default::default(),
 		cumulus_pallet_aura_ext: Default::default(),
+		cumulus_pallet_parachain_system: Default::default(),
 	}
 }
