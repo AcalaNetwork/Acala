@@ -1108,9 +1108,6 @@ parameter_types! {
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub enum ProxyType {
 	Any,
-	NonTransfer,
-	Governance,
-	Staking,
 	CancelProxy,
 }
 impl Default for ProxyType {
@@ -1122,73 +1119,11 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => matches!(
-				c,
-				Call::System(..) |
-				Call::Timestamp(..) |
-				Call::Scheduler(..) |
-				Call::Utility(..) |
-				Call::Multisig(..) |
-				Call::Proxy(..) |
-				// Specifically omitting the entire Balances, Tokens and Currencies pallet
-				Call::Vesting(orml_vesting::Call::claim(..)) |
-				Call::Vesting(orml_vesting::Call::update_vesting_schedules(..)) |
-				// Specifically omitting Vesting `vested_transfer`
-				Call::TransactionPayment(..) |
-				Call::Treasury(..) |
-				Call::Bounties(..) |
-				Call::Tips(..) |
-				Call::ParachainSystem(..) |
-				Call::Authorship(..) |
-				Call::CollatorSelection(..) |
-				Call::Session(..) |
-				Call::Authority(..) |
-				Call::GeneralCouncil(..) |
-				Call::GeneralCouncilMembership(..) |
-				Call::FinancialCouncil(..) |
-				Call::FinancialCouncilMembership(..) |
-				Call::HomaCouncil(..) |
-				Call::HomaCouncilMembership(..) |
-				Call::TechnicalCommittee(..) |
-				Call::TechnicalCommitteeMembership(..) |
-				Call::AcalaOracle(..) |
-				Call::OperatorMembershipAcala(..) |
-				Call::Auction(..) |
-				Call::Rewards(..) |
-				Call::Prices(..) |
-				Call::Dex(..) |
-				Call::AuctionManager(..) |
-				Call::Loans(..) |
-				Call::Honzon(..) |
-				Call::CdpTreasury(..) |
-				Call::CdpEngine(..) |
-				Call::EmergencyShutdown(..) |
-				// Specifically omitting homa pallet
-				Call::Incentives(..) |
-				Call::NFT(..) // Specifically omitting EVM pallet
-			),
-			ProxyType::Governance => matches!(
-				c,
-				Call::Authority(..)
-					| Call::GeneralCouncil(..)
-					| Call::FinancialCouncil(..)
-					| Call::HomaCouncil(..)
-					| Call::TechnicalCommittee(..)
-					| Call::Treasury(..) | Call::Bounties(..)
-					| Call::Tips(..) | Call::Utility(..)
-			),
-			ProxyType::Staking => matches!(c, Call::Session(..) | Call::Utility(..)),
 			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
-		match (self, o) {
-			(x, y) if x == y => true,
-			(ProxyType::Any, _) => true,
-			(_, ProxyType::Any) => false,
-			(ProxyType::NonTransfer, _) => true,
-			_ => false,
-		}
+		matches!((self, o), (ProxyType::Any, _))
 	}
 }
 
