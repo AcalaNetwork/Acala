@@ -1254,10 +1254,10 @@ parameter_types! {
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub enum ProxyType {
 	Any,
+	CancelProxy,
 	NonTransfer,
 	Governance,
 	Staking,
-	CancelProxy,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -1268,6 +1268,7 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
+			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
 			ProxyType::NonTransfer => matches!(
 				c,
 				Call::System(..) |
@@ -1336,7 +1337,6 @@ impl InstanceFilter<Call> for ProxyType {
 					| Call::Tips(..) | Call::Utility(..)
 			),
 			ProxyType::Staking => matches!(c, Call::CollatorSelection(..) | Call::Session(..) | Call::Utility(..)),
-			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
