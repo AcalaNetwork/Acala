@@ -196,7 +196,9 @@ impl Filter<Call> for BaseCallFilter {
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
 			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
 			// Oracle
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_)
+			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
+			// Democracy
+			Call::Democracy(_)
 		)
 	}
 }
