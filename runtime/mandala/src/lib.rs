@@ -185,6 +185,11 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42; // Ss58AddressFormat::SubstrateAccount
 }
 
+pub struct BaseCallFilter;
+impl Filter<Call> for BaseCallFilter {
+	fn filter(call: &Call) -> bool {}
+}
+
 impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
@@ -657,9 +662,9 @@ impl pallet_recovery::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = MINUTES;
-	pub const VotingPeriod: BlockNumber = 3 * MINUTES;
-	pub const FastTrackVotingPeriod: BlockNumber = 3 * MINUTES;
+	pub const LaunchPeriod: BlockNumber = 20 * MINUTES;
+	pub const VotingPeriod: BlockNumber = 10 * MINUTES;
+	pub const FastTrackVotingPeriod: BlockNumber = 10 * MINUTES;
 	pub MinimumDeposit: Balance = 100 * cent(ACA);
 	pub const EnactmentPeriod: BlockNumber = MINUTES;
 	pub const CooloffPeriod: BlockNumber = MINUTES;
