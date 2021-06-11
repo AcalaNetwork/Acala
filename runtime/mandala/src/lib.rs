@@ -187,7 +187,9 @@ parameter_types! {
 
 pub struct BaseCallFilter;
 impl Filter<Call> for BaseCallFilter {
-	fn filter(call: &Call) -> bool {}
+	fn filter(call: &Call) -> bool {
+		!matches!(call, Call::Democracy(pallet_democracy::Call::propose(..)),)
+	}
 }
 
 impl frame_system::Config for Runtime {
@@ -213,7 +215,7 @@ impl frame_system::Config for Runtime {
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
 	type DbWeight = RocksDbWeight;
-	type BaseCallFilter = ();
+	type BaseCallFilter = BaseCallFilter;
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
