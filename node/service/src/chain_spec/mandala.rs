@@ -302,6 +302,7 @@ fn testnet_genesis(
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
+		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: endowed_accounts
@@ -497,6 +498,7 @@ fn mandala_genesis(
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
+		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![(root_key.clone(), DOT, initial_balance)],

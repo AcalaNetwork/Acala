@@ -271,6 +271,7 @@ fn karura_genesis(
 			members: vec![],
 			phantom: Default::default(),
 		},
+		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![],

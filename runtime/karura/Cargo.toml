@@ -21,6 +21,7 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
 pallet-bounties = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
+pallet-democracy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features =false }
 pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
 pallet-multisig = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
@@ -133,6 +134,7 @@ std = [
 	"pallet-balances/std",
 	"pallet-bounties/std",
 	"pallet-collective/std",
+	"pallet-democracy/std",
 	"pallet-membership/std",
 	"pallet-multisig/std",
 	"pallet-proxy/std",
@@ -256,6 +258,7 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-bounties/try-runtime",
 	"pallet-collective/try-runtime",
+	"pallet-democracy/try-runtime",
 	"pallet-membership/try-runtime",
 	"pallet-multisig/try-runtime",
 	"pallet-proxy/try-runtime",
