@@ -1684,7 +1684,7 @@ construct_runtime!(
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 190,
 		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 191,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 192,
-		Aura: pallet_aura::{Pallet, Config<T>} = 193,
+		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
