@@ -278,6 +278,7 @@ cumulus-client-service = { git = "https://github.com/paritytech//cumulus", rev =
 cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech//cumulus", rev = "08b7bcfe21b2ce2a26dcdaa664bf8c016f7c93ae" }
 cumulus-client-consensus-aura = { git = "https://github.com/paritytech//cumulus", rev = "08b7bcfe21b2ce2a26dcdaa664bf8c016f7c93ae" }
 cumulus-client-consensus-common = { git = "https://github.com/paritytech//cumulus", rev = "08b7bcfe21b2ce2a26dcdaa664bf8c016f7c93ae" }
+# cumulus-pallet-xcm-handler = { git = "https://github.com/paritytech//cumulus", rev = "08b7bcfe21b2ce2a26dcdaa664bf8c016f7c93ae" }
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech//cumulus", rev = "08b7bcfe21b2ce2a26dcdaa664bf8c016f7c93ae" }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "08b7bcfe21b2ce2a26dcdaa664bf8c016f7c93ae" }
 

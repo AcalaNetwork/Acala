@@ -225,6 +225,7 @@ fn acala_genesis(
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
+		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![
@@ -323,5 +324,6 @@ fn acala_genesis(
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		pallet_aura: Default::default(),
+		cumulus_pallet_parachain_system: Default::default(),
 	}
 }

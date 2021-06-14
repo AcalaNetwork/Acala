@@ -197,11 +197,27 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
-	fn add_liquidity(_: &AccountId, _: CurrencyId, _: CurrencyId, _: Balance, _: Balance, _: bool) -> DispatchResult {
+	fn add_liquidity(
+		_: &AccountId,
+		_: CurrencyId,
+		_: CurrencyId,
+		_: Balance,
+		_: Balance,
+		_: Balance,
+		_: bool,
+	) -> DispatchResult {
 		unimplemented!()
 	}
 
-	fn remove_liquidity(_: &AccountId, _: CurrencyId, _: CurrencyId, _: Balance, _: bool) -> DispatchResult {
+	fn remove_liquidity(
+		_: &AccountId,
+		_: CurrencyId,
+		_: CurrencyId,
+		_: Balance,
+		_: Balance,
+		_: Balance,
+		_: bool,
+	) -> DispatchResult {
 		unimplemented!()
 	}
 }

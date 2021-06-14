@@ -44,7 +44,6 @@ use acala_primitives::{Block, Hash};
 #[cfg(feature = "with-mandala-runtime")]
 use futures::stream::StreamExt;
 use mock_inherent_data_provider::MockParachainInherentDataProvider;
-use polkadot_primitives::v0::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
@@ -282,7 +281,6 @@ where
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl<RB, RuntimeApi, Executor, BIC>(
 	parachain_config: Configuration,
-	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 	_rpc_ext_builder: RB,
@@ -315,15 +313,13 @@ where
 	let params = new_partial(&parachain_config, false, false)?;
 	let (mut telemetry, telemetry_worker_handle) = params.other;
 
-	let relay_chain_full_node = cumulus_client_service::build_polkadot_full_node(
-		polkadot_config,
-		collator_key.clone(),
-		telemetry_worker_handle,
-	)
-	.map_err(|e| match e {
-		polkadot_service::Error::Sub(x) => x,
-		s => format!("{}", s).into(),
-	})?;
+	let relay_chain_full_node =
+		cumulus_client_service::build_polkadot_full_node(polkadot_config, telemetry_worker_handle).map_err(
+			|e| match e {
+				polkadot_service::Error::Sub(x) => x,
+				s => format!("{}", s).into(),
+			},
+		)?;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -340,16 +336,15 @@ where
 	let transaction_pool = params.transaction_pool.clone();
 	let mut task_manager = params.task_manager;
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
-	let (network, network_status_sinks, system_rpc_tx, start_network) =
-		sc_service::build_network(sc_service::BuildNetworkParams {
-			config: &parachain_config,
-			client: client.clone(),
-			transaction_pool: transaction_pool.clone(),
-			spawn_handle: task_manager.spawn_handle(),
-			import_queue: import_queue.clone(),
-			on_demand: None,
-			block_announce_validator_builder: Some(Box::new(|_| block_announce_validator)),
-		})?;
+	let (network, system_rpc_tx, start_network) = sc_service::build_network(sc_service::BuildNetworkParams {
+		config: &parachain_config,
+		client: client.clone(),
+		transaction_pool: transaction_pool.clone(),
+		spawn_handle: task_manager.spawn_handle(),
+		import_queue: import_queue.clone(),
+		on_demand: None,
+		block_announce_validator_builder: Some(Box::new(|_| block_announce_validator)),
+	})?;
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
@@ -386,7 +381,6 @@ where
 		keystore: params.keystore_container.sync_keystore(),
 		backend: backend.clone(),
 		network: network.clone(),
-		network_status_sinks,
 		system_rpc_tx,
 		telemetry: telemetry.as_mut(),
 	})?;
@@ -417,7 +411,6 @@ where
 			announce_block,
 			client: client.clone(),
 			task_manager: &mut task_manager,
-			collator_key,
 			relay_chain_full_node,
 			spawner,
 			parachain_consensus,
@@ -445,7 +438,6 @@ where
 /// Start a normal parachain node.
 pub async fn start_node<RuntimeApi, Executor>(
 	parachain_config: Configuration,
-	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
@@ -457,7 +449,6 @@ where
 {
 	start_node_impl(
 		parachain_config,
-		collator_key,
 		polkadot_config,
 		id,
 		|_| Default::default(),
@@ -605,16 +596,15 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		other: (mut telemetry, _),
 	} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutor>(&config, true, instant_sealing)?;
 
-	let (network, network_status_sinks, system_rpc_tx, network_starter) =
-		sc_service::build_network(sc_service::BuildNetworkParams {
-			config: &config,
-			client: client.clone(),
-			transaction_pool: transaction_pool.clone(),
-			spawn_handle: task_manager.spawn_handle(),
-			import_queue,
-			on_demand: None,
-			block_announce_validator_builder: None,
-		})?;
+	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
+		config: &config,
+		client: client.clone(),
+		transaction_pool: transaction_pool.clone(),
+		spawn_handle: task_manager.spawn_handle(),
+		import_queue,
+		on_demand: None,
+		block_announce_validator_builder: None,
+	})?;
 
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
@@ -730,7 +720,6 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		keystore: keystore_container.sync_keystore(),
 		backend,
 		network,
-		network_status_sinks,
 		system_rpc_tx,
 		telemetry: telemetry.as_mut(),
 	})?;

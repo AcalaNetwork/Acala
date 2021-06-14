@@ -12,13 +12,14 @@ relaychain:
     - --rpc-methods=unsafe
     - --wasm-execution=compiled
     - --execution=wasm
+    - --no-beefy
   nodes:
     - name: alice
     - name: bob
     - name: charlie
 
 paras:
-- image: acala/karura-node:latest
+- image: acala/karura-node:1.0.1
   chain:
     base: karura-latest
     collators:
@@ -37,11 +38,11 @@ paras:
   relaychainFlags:
     - --wasm-execution=compiled
     - --execution=wasm
+    - --no-beefy
   env:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   nodes:
-  - wsPort: 19944
-    flags:
+  - flags:
     - --alice
   - flags:
     - --bob

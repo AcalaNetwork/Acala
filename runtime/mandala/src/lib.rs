@@ -36,14 +36,14 @@ use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		All, ContainsLengthBound, EnsureOrigin, Filter, Get, IsType, KeyOwnerProofSystem, LockIdentifier, Randomness,
-		SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		All, ContainsLengthBound, EnsureOrigin, Filter, Get, InstanceFilter, IsType, KeyOwnerProofSystem,
+		LockIdentifier, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		DispatchClass, IdentityFee, Weight,
 	},
-	PalletId, StorageValue,
+	PalletId, RuntimeDebug, StorageValue,
 };
 use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
 use hex_literal::hex;
@@ -160,8 +160,8 @@ parameter_types! {
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
-	// Decentralized Sovereign Wealth Fund
-	pub const DSWFPalletId: PalletId = PalletId(*b"aca/dswf");
+	// Treasury reserve
+	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"aca/phre";
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
@@ -177,7 +177,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		HonzonTreasuryPalletId::get().into_account(),
 		HomaTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
-		DSWFPalletId::get().into_account(),
+		TreasuryReservePalletId::get().into_account(),
 		ZeroAccountId::get(),
 	]
 }
@@ -186,6 +186,13 @@ parameter_types! {
 	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
 	pub const Version: RuntimeVersion = VERSION;
 	pub const SS58Prefix: u8 = 42; // Ss58AddressFormat::SubstrateAccount
+}
+
+pub struct BaseCallFilter;
+impl Filter<Call> for BaseCallFilter {
+	fn filter(call: &Call) -> bool {
+		!matches!(call, Call::Democracy(pallet_democracy::Call::propose(..)),)
+	}
 }
 
 impl frame_system::Config for Runtime {
@@ -211,7 +218,7 @@ impl frame_system::Config for Runtime {
 		module_evm_accounts::CallKillAccount<Runtime>,
 	);
 	type DbWeight = RocksDbWeight;
-	type BaseCallFilter = ();
+	type BaseCallFilter = BaseCallFilter;
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
@@ -323,6 +330,12 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _1, AccountId, GeneralCouncilInstance>,
+>;
+
 type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
@@ -351,6 +364,12 @@ type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>,
+>;
+
+type EnsureRootOrAllTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _1, AccountId, TechnicalCommitteeInstance>,
 >;
 
 type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
@@ -645,6 +664,61 @@ impl pallet_recovery::Config for Runtime {
 	type FriendDepositFactor = FriendDepositFactor;
 	type MaxFriends = MaxFriends;
 	type RecoveryDeposit = RecoveryDeposit;
+}
+
+parameter_types! {
+	pub const LaunchPeriod: BlockNumber = 20 * MINUTES;
+	pub const VotingPeriod: BlockNumber = 10 * MINUTES;
+	pub const FastTrackVotingPeriod: BlockNumber = 10 * MINUTES;
+	pub MinimumDeposit: Balance = 100 * cent(ACA);
+	pub const EnactmentPeriod: BlockNumber = MINUTES;
+	pub const CooloffPeriod: BlockNumber = MINUTES;
+	pub PreimageByteDeposit: Balance = 10 * millicent(ACA);
+	pub const InstantAllowed: bool = true;
+	pub const MaxVotes: u32 = 100;
+	pub const MaxProposals: u32 = 100;
+}
+
+impl pallet_democracy::Config for Runtime {
+	type Proposal = Call;
+	type Event = Event;
+	type Currency = Balances;
+	type EnactmentPeriod = EnactmentPeriod;
+	type LaunchPeriod = LaunchPeriod;
+	type VotingPeriod = VotingPeriod;
+	type MinimumDeposit = MinimumDeposit;
+	/// A straight majority of the council can decide what their next motion is.
+	type ExternalOrigin = EnsureRootOrHalfGeneralCouncil;
+	/// A majority can have the next scheduled referendum be a straight majority-carries vote.
+	type ExternalMajorityOrigin = EnsureRootOrHalfGeneralCouncil;
+	/// A unanimous council can have the next scheduled referendum be a straight default-carries
+	/// (NTB) vote.
+	type ExternalDefaultOrigin = EnsureRootOrAllGeneralCouncil;
+	/// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
+	/// be tabled immediately and with a shorter voting/enactment period.
+	type FastTrackOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	type InstantOrigin = EnsureRootOrAllTechnicalCommittee;
+	type InstantAllowed = InstantAllowed;
+	type FastTrackVotingPeriod = FastTrackVotingPeriod;
+	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
+	type CancellationOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	type BlacklistOrigin = EnsureRoot<AccountId>;
+	// To cancel a proposal before it has been passed, the technical committee must be unanimous or
+	// Root must agree.
+	type CancelProposalOrigin = EnsureRootOrAllTechnicalCommittee;
+	// Any single technical committee member may veto a coming council proposal, however they can
+	// only do it once and it lasts only for the cooloff period.
+	type VetoOrigin = pallet_collective::EnsureMember<AccountId, TechnicalCommitteeInstance>;
+	type CooloffPeriod = CooloffPeriod;
+	type PreimageByteDeposit = PreimageByteDeposit;
+	type OperationalPreimageOrigin = pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>;
+	type Slash = AcalaTreasury;
+	type Scheduler = Scheduler;
+	type PalletsOrigin = OriginCaller;
+	type MaxVotes = MaxVotes;
+	//TODO: might need to weight for Mandala
+	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
+	type MaxProposals = MaxProposals;
 }
 
 impl orml_auction::Config for Runtime {
@@ -1253,11 +1327,110 @@ parameter_types! {
 	pub const MaxPending: u16 = 32;
 }
 
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+pub enum ProxyType {
+	Any,
+	CancelProxy,
+	NonTransfer,
+	Governance,
+	Staking,
+}
+impl Default for ProxyType {
+	fn default() -> Self {
+		Self::Any
+	}
+}
+impl InstanceFilter<Call> for ProxyType {
+	fn filter(&self, c: &Call) -> bool {
+		match self {
+			ProxyType::Any => true,
+			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
+			ProxyType::NonTransfer => matches!(
+				c,
+				Call::System(..) |
+				Call::Timestamp(..) |
+				Call::Scheduler(..) |
+				Call::Utility(..) |
+				Call::Multisig(..) |
+				Call::Proxy(..) |
+				// Specifically omitting the entire Balances, Tokens and Currencies pallet
+				Call::Vesting(orml_vesting::Call::claim(..)) |
+				Call::Vesting(orml_vesting::Call::update_vesting_schedules(..)) |
+				// Specifically omitting Vesting `vested_transfer`
+				Call::TransactionPayment(..) |
+				Call::AcalaTreasury(..) |
+				Call::Bounties(..) |
+				Call::Tips(..) |
+				Call::ParachainSystem(..) |
+				Call::Authorship(..) |
+				Call::CollatorSelection(..) |
+				Call::Session(..) |
+				Call::Indices(..) |
+				Call::GraduallyUpdate(..) |
+				Call::Authority(..) |
+				Call::ElectionsPhragmen(..) |
+				Call::GeneralCouncil(..) |
+				Call::GeneralCouncilMembership(..) |
+				Call::FinancialCouncil(..) |
+				Call::FinancialCouncilMembership(..) |
+				Call::HomaCouncil(..) |
+				Call::HomaCouncilMembership(..) |
+				Call::TechnicalCommittee(..) |
+				Call::TechnicalCommitteeMembership(..) |
+				Call::AcalaOracle(..) |
+				Call::OperatorMembershipAcala(..) |
+				Call::BandOracle(..) |
+				Call::OperatorMembershipBand(..) |
+				Call::Auction(..) |
+				Call::Rewards(..) |
+				Call::Prices(..) |
+				Call::Dex(..) |
+				Call::AuctionManager(..) |
+				Call::Loans(..) |
+				Call::Honzon(..) |
+				Call::CdpTreasury(..) |
+				Call::CdpEngine(..) |
+				Call::EmergencyShutdown(..) |
+				Call::Homa(..) |
+				Call::NomineesElection(..) |
+				Call::StakingPool(..) |
+				Call::PolkadotBridge(..) |
+				Call::HomaValidatorListModule(..) |
+				Call::Incentives(..) |
+				Call::AirDrop(..) |
+				Call::EvmAccounts(..)
+			),
+			ProxyType::Governance => matches!(
+				c,
+				Call::Authority(..)
+					| Call::GeneralCouncil(..)
+					| Call::FinancialCouncil(..)
+					| Call::HomaCouncil(..)
+					| Call::TechnicalCommittee(..)
+					| Call::AcalaTreasury(..)
+					| Call::Bounties(..) | Call::Tips(..)
+					| Call::Utility(..)
+			),
+			ProxyType::Staking => matches!(c, Call::CollatorSelection(..) | Call::Session(..) | Call::Utility(..)),
+		}
+	}
+	fn is_superset(&self, o: &Self) -> bool {
+		match (self, o) {
+			(x, y) if x == y => true,
+			(ProxyType::Any, _) => true,
+			(_, ProxyType::Any) => false,
+			(ProxyType::NonTransfer, _) => true,
+			_ => false,
+		}
+	}
+}
+
 impl pallet_proxy::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
-	type ProxyType = ();
+	type ProxyType = ProxyType;
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = MaxProxies;
@@ -1395,6 +1568,7 @@ impl ecosystem_chainsafe::Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type RegistorOrigin = EnsureRootOrHalfGeneralCouncil;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type WeightInfo = weights::ecosystem_chainsafe::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1689,6 +1863,7 @@ construct_runtime! {
 
 		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 70,
 		ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 71,
+		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 72,
 
 		// Oracle
 		//
@@ -1733,7 +1908,7 @@ construct_runtime! {
 		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 160,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
 
 		// XCM
@@ -1754,7 +1929,7 @@ construct_runtime! {
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 190,
 		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 191,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 192,
-		Aura: pallet_aura::{Pallet, Config<T>} = 193,
+		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2053,6 +2228,8 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
+			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
+
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
 		}
@@ -2076,6 +2253,17 @@ mod tests {
 		}
 
 		is_submit_signed_transaction::<Runtime>();
+	}
+
+	#[test]
+	fn ensure_can_create_contract() {
+		// Ensure that the `ExistentialDeposit` for creating the contract >= account `ExistentialDeposit`.
+		// Otherwise, the creation of the contract account will fail because it is less than
+		// ExistentialDeposit.
+		assert!(
+			Balance::from(NewContractExtraBytes::get()) * StorageDepositPerByte::get()
+				>= NativeTokenExistentialDeposit::get()
+		);
 	}
 }
 

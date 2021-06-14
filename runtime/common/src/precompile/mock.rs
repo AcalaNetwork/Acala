@@ -23,7 +23,7 @@ use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{GenesisBuild, InstanceFilter, OnFinalize, OnInitialize, SortedMembers},
+	traits::{GenesisBuild, InstanceFilter, MaxEncodedLen, OnFinalize, OnInitialize, SortedMembers},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
@@ -236,7 +236,7 @@ parameter_types! {
 	pub const AnnouncementDepositFactor: u64 = 1;
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub enum ProxyType {
 	Any,
 	JustTransfer,

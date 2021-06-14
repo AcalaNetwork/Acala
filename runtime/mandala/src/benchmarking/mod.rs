@@ -42,3 +42,6 @@ pub mod oracle;
 pub mod tokens;
 pub mod utils;
 pub mod vesting;
+
+// ecosystem benchmarking
+pub mod chainsafe_transfer;

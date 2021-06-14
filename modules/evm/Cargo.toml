@@ -21,6 +21,7 @@ evm = { version = "0.26.0", default-features = false, features = ["with-codec"] 
 evm-gasometer = { version = "0.26.0", default-features = false }
 evm-runtime = { version = "0.26.0", default-features = false }
 
+max-encoded-len = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }

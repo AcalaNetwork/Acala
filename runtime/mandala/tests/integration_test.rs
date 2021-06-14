@@ -28,9 +28,9 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateTokenDeposit, CurrencyId, DSWFPalletId, EVMBridge, EnabledTradingPairs, Event, EvmAccounts,
-	EvmCurrencyIdMapping, GetNativeCurrencyId, NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller,
-	Perbill, Runtime, SevenDays, System, TokenSymbol, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
+	CreateTokenDeposit, CurrencyId, EVMBridge, EnabledTradingPairs, Event, EvmAccounts, EvmCurrencyIdMapping,
+	GetNativeCurrencyId, NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller, Perbill, Runtime, SevenDays,
+	System, TokenSymbol, TreasuryReservePalletId, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -383,6 +383,7 @@ fn liquidate_cdp() {
 				AUSD,
 				100 * dollar(RENBTC),
 				1_000_000 * dollar(AUSD),
+				0,
 				false,
 			));
 
@@ -507,7 +508,7 @@ fn test_dex_module() {
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
 
 			assert_noop!(
-				DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), RENBTC, AUSD, 0, 10000000, false,),
+				DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), RENBTC, AUSD, 0, 10000000, 0, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 
@@ -517,6 +518,7 @@ fn test_dex_module() {
 				AUSD,
 				10000,
 				10000000,
+				0,
 				false,
 			));
 
@@ -541,13 +543,14 @@ fn test_dex_module() {
 				AUSD,
 				1,
 				1000,
+				0,
 				false,
 			));
 			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10001, 10001000));
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_noop!(
-				DexModule::add_liquidity(origin_of(AccountId::from(BOB)), RENBTC, AUSD, 1, 999, false,),
+				DexModule::add_liquidity(origin_of(AccountId::from(BOB)), RENBTC, AUSD, 1, 999, 0, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10001, 10001000));
@@ -559,6 +562,7 @@ fn test_dex_module() {
 				AUSD,
 				2,
 				1000,
+				0,
 				false,
 			));
 			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10002, 10002000));
@@ -568,6 +572,7 @@ fn test_dex_module() {
 				AUSD,
 				1,
 				1001,
+				0,
 				false,
 			));
 			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10003, 10003000));
@@ -600,6 +605,7 @@ fn test_dex_module() {
 				CurrencyId::Erc20(erc20_address_1()),
 				10,
 				100,
+				0,
 				false,
 			));
 			assert_eq!(
@@ -640,6 +646,7 @@ fn test_dex_module() {
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
 				1000,
+				0,
 				false,
 			));
 			assert_eq!(
@@ -671,6 +678,8 @@ fn test_dex_module() {
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				1,
+				0,
+				0,
 				false,
 			));
 
@@ -893,7 +902,7 @@ fn test_authority_module() {
 		.balances(vec![
 			(AccountId::from(ALICE), AUSD, 1_000 * dollar(AUSD)),
 			(AccountId::from(ALICE), RENBTC, 1_000 * dollar(RENBTC)),
-			(DSWFPalletId::get().into_account(), AUSD, 1000 * dollar(AUSD)),
+			(TreasuryReservePalletId::get().into_account(), AUSD, 1000 * dollar(AUSD)),
 		])
 		.build()
 		.execute_with(|| {
@@ -930,14 +939,14 @@ fn test_authority_module() {
 
 			// schedule_dispatch
 			run_to_block(1);
-			// DSWF transfer
+			// TreasuryReserve transfer
 			let transfer_call = Call::Currencies(module_currencies::Call::transfer(
 				AccountId::from(BOB).into(),
 				AUSD,
 				500 * dollar(AUSD),
 			));
-			let dswf_call = Call::Authority(orml_authority::Call::dispatch_as(
-				AuthoritysOriginId::DSWF,
+			let treasury_reserve_call = Call::Authority(orml_authority::Call::dispatch_as(
+				AuthoritysOriginId::TreasuryReserve,
 				Box::new(transfer_call.clone()),
 			));
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -945,7 +954,7 @@ fn test_authority_module() {
 				DispatchTime::At(2),
 				0,
 				true,
-				Box::new(dswf_call.clone())
+				Box::new(treasury_reserve_call.clone())
 			));
 
 			assert_ok!(AuthorityModule::schedule_dispatch(
@@ -965,7 +974,7 @@ fn test_authority_module() {
 
 			run_to_block(2);
 			assert_eq!(
-				Currencies::free_balance(AUSD, &DSWFPalletId::get().into_account()),
+				Currencies::free_balance(AUSD, &TreasuryReservePalletId::get().into_account()),
 				500 * dollar(AUSD)
 			);
 			assert_eq!(
@@ -1328,6 +1337,7 @@ fn test_multicurrency_precompile_module() {
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
 				1000,
+				0,
 				false,
 			));
 			assert_eq!(

@@ -302,6 +302,7 @@ fn testnet_genesis(
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
+		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: endowed_accounts
@@ -403,6 +404,7 @@ fn testnet_genesis(
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		pallet_aura: Default::default(),
+		cumulus_pallet_parachain_system: Default::default(),
 	}
 }
 
@@ -496,6 +498,7 @@ fn mandala_genesis(
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
+		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
 			endowed_accounts: vec![(root_key.clone(), DOT, initial_balance)],
@@ -634,5 +637,6 @@ fn mandala_genesis(
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		pallet_aura: Default::default(),
+		cumulus_pallet_parachain_system: Default::default(),
 	}
 }
