@@ -273,9 +273,7 @@ fn karura_genesis(
 		},
 		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
-		orml_tokens: TokensConfig {
-			endowed_accounts: vec![],
-		},
+		orml_tokens: TokensConfig { balances: vec![] },
 		orml_vesting: VestingConfig { vesting: vesting_list },
 		module_cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![],
