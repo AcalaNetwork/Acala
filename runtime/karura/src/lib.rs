@@ -1488,7 +1488,7 @@ construct_runtime!(
 		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 52,
 
 		// Governance
-		Authority: orml_authority::{Pallet, Call, Event<T>, Origin<T>} = 60,
+		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 60,
 		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 61,
 		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 62,
 		FinancialCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 63,
