@@ -119,7 +119,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.1",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -2772,7 +2772,7 @@ dependencies = [
  "frame-support-procedural",
  "impl-trait-for-tuples 0.2.1",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "max-encoded-len",
  "once_cell",
  "parity-scale-codec",
  "paste",
@@ -3966,7 +3966,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.1",
  "libsecp256k1",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -4078,7 +4078,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.1",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "pallet-authority-discovery",
  "pallet-authorship",
  "pallet-babe",
@@ -4823,7 +4823,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.1",
  "libsecp256k1",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -4962,34 +4962,12 @@ dependencies = [
 [[package]]
 name = "max-encoded-len"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4#1d04678e20555e623c974ee1127bc8a45abcf3d6"
-dependencies = [
- "impl-trait-for-tuples 0.2.1",
- "max-encoded-len-derive 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
- "parity-scale-codec",
- "primitive-types",
-]
-
-[[package]]
-name = "max-encoded-len"
-version = "3.0.0"
 source = "git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6#1d04678e20555e623c974ee1127bc8a45abcf3d6"
 dependencies = [
  "impl-trait-for-tuples 0.2.1",
- "max-encoded-len-derive 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "max-encoded-len-derive",
  "parity-scale-codec",
  "primitive-types",
-]
-
-[[package]]
-name = "max-encoded-len-derive"
-version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4#1d04678e20555e623c974ee1127bc8a45abcf3d6"
-dependencies = [
- "proc-macro-crate 1.0.0",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -5299,7 +5277,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -5347,7 +5325,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-support",
  "orml-tokens",
  "orml-traits",
@@ -5394,7 +5372,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -5514,7 +5492,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-support",
  "parity-scale-codec",
  "serde",
@@ -5529,7 +5507,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -5595,7 +5573,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-cdp-treasury",
  "module-support",
  "orml-currencies",
@@ -5619,7 +5597,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-currencies",
  "module-support",
  "orml-nft",
@@ -5643,7 +5621,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -6193,7 +6171,7 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -6208,7 +6186,7 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -6263,7 +6241,7 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "orml-traits",
  "parity-scale-codec",
  "serde",
@@ -6279,7 +6257,7 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "orml-traits",
  "pallet-elections-phragmen",
  "pallet-treasury",
@@ -6343,7 +6321,7 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "pallet-balances",
  "parity-scale-codec",
  "serde",
@@ -6493,7 +6471,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "max-encoded-len",
  "parity-scale-codec",
  "sp-runtime",
  "sp-std",
@@ -6844,7 +6822,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "max-encoded-len",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
@@ -8192,7 +8170,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.1",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "pallet-authority-discovery",
  "pallet-authorship",
  "pallet-babe",
@@ -9097,7 +9075,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal 0.3.1",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "pallet-authority-discovery",
  "pallet-authorship",
  "pallet-babe",
@@ -9169,7 +9147,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal 0.3.1",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "module-currencies",
  "module-dex",
  "module-evm",
@@ -10823,7 +10801,7 @@ name = "sp-application-crypto"
 version = "3.0.0"
 source = "git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6#1d04678e20555e623c974ee1127bc8a45abcf3d6"
 dependencies = [
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "max-encoded-len",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -11026,7 +11004,7 @@ dependencies = [
  "lazy_static",
  "libsecp256k1",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "max-encoded-len",
  "merlin",
  "num-traits",
  "parity-scale-codec",
@@ -11238,7 +11216,7 @@ dependencies = [
  "hash256-std-hasher",
  "impl-trait-for-tuples 0.2.1",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "max-encoded-len",
  "parity-scale-codec",
  "parity-util-mem",
  "paste",
@@ -13043,7 +13021,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.1",
  "log",
- "max-encoded-len 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "max-encoded-len",
  "pallet-authority-discovery",
  "pallet-authorship",
  "pallet-babe",
