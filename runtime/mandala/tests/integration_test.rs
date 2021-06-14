@@ -143,20 +143,18 @@ pub fn deploy_erc20_contracts() {
 }
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			endowed_accounts: vec![],
-		}
+		Self { balances: vec![] }
 	}
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
-		self.endowed_accounts = endowed_accounts;
+	pub fn balances(mut self, balances: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
+		self.balances = balances;
 		self
 	}
 
@@ -181,7 +179,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
-				.endowed_accounts
+				.balances
 				.clone()
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id == native_currency_id)
@@ -197,8 +195,8 @@ impl ExtBuilder {
 		.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self
-				.endowed_accounts
+			balances: self
+				.balances
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id != native_currency_id)
 				.collect::<Vec<_>>(),
