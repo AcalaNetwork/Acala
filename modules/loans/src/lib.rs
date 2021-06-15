@@ -90,8 +90,6 @@ pub mod module {
 	#[pallet::error]
 	pub enum Error<T> {
 		AmountConvertFailed,
-		/// Balance is too low.
-		BalanceTooLow,
 	}
 
 	#[pallet::event]
@@ -196,18 +194,8 @@ impl<T: Config> Pallet<T> {
 		let module_account = Self::account_id();
 
 		if collateral_adjustment.is_positive() {
-			ensure!(
-				T::Currency::total_balance(currency_id, who).saturating_sub(collateral_balance_adjustment)
-					>= T::Currency::minimum_balance(currency_id),
-				Error::<T>::BalanceTooLow
-			);
 			T::Currency::transfer(currency_id, who, &module_account, collateral_balance_adjustment)?;
 		} else if collateral_adjustment.is_negative() {
-			ensure!(
-				T::Currency::total_balance(currency_id, &module_account).saturating_sub(collateral_balance_adjustment)
-					>= T::Currency::minimum_balance(currency_id),
-				Error::<T>::BalanceTooLow
-			);
 			T::Currency::transfer(currency_id, &module_account, who, collateral_balance_adjustment)?;
 		}
 

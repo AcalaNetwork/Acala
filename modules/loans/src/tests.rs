@@ -71,7 +71,7 @@ fn adjust_position_should_work() {
 		// collateral_adjustment is positive
 		assert_noop!(
 			LoansModule::adjust_position(&ALICE, BTC, 1000, 0),
-			Error::<Runtime>::BalanceTooLow,
+			orml_tokens::Error::<Runtime>::KeepAlive,
 		);
 
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
@@ -94,12 +94,12 @@ fn adjust_position_should_work() {
 		System::assert_last_event(Event::loans(crate::Event::PositionUpdated(ALICE, BTC, 500, 300)));
 
 		// collateral_adjustment is negatives
-		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 500);
-		assert_noop!(
-			LoansModule::adjust_position(&ALICE, BTC, -450, 0),
-			Error::<Runtime>::BalanceTooLow,
-		);
-		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -400, 0));
+		// remove module account.
+		assert_eq!(Currencies::total_balance(BTC, &LoansModule::account_id()), 500);
+		assert_eq!(System::account_exists(&LoansModule::account_id()), true);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -500, 0));
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
+		assert_eq!(System::account_exists(&LoansModule::account_id()), false);
 	});
 }
 
